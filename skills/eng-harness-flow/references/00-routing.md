@@ -235,7 +235,7 @@ The router exposes its loop to host flows as a **closed set of five neutral life
 | `pre-coding` | spec settled, before building | fire | backpressure survey |
 | `coding` | mid-build, in flight | **silent** — one capture per call | in-flight capture (`harness observe`) |
 | `post-coding` | a phase / work-unit just ended | fire | per-phase retro drain |
-| `post-flight` | the whole plan / journey is complete | fire | terminal close-out — harvest + present improvements + encode |
+| `post-flight` | all phases + reviews are done — the host's pre-ship close-out (a ship may follow later, or never) | fire | terminal close-out — harvest + present improvements + encode |
 
 **`--event` seam → `--hook` mapping** (the six host seams alias onto the five hooks — `session-start` and `pre-implement` both open onto `pre-flight`):
 
@@ -374,7 +374,7 @@ All five entries pin the **same nine fields** (`hook`, `intent`, `run_at`, `kind
     {
       "hook": "post-flight",
       "intent": "close out the whole plan — harvest, present improvements, encode",
-      "run_at": "the whole plan / journey is complete",
+      "run_at": "all phases + reviews done — the host's pre-ship close-out",
       "kind": "fire",
       "invoke": "/eng-harness-flow --hook post-flight --json",
       "aliases": ["plan-complete"],

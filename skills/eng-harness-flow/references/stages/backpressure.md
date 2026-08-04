@@ -9,7 +9,7 @@
 **Purpose**: **Select the deterministic proof** for the planned work — per acceptance criterion / failure mode, the exact repo-local **paved command** (build, typecheck, test, lint, runtime/smoke check, boot probe, architecture check — dependency rules, ArchUnit, Roslyn analyzers, CodeQL — schema validator, data-check script) whose green output will show that criterion holds — rather than leaving "done" to agent **inference** or human **eyeballing**. The survey doesn't stop at *can this be proven?*; it commits to *how it will be proven*, and where no sensor exists it specifies the Phase-0 build that creates one. The computational-control tier pulled forward to design time, so missing backpressure is caught and planned for **before** code is written.
 **Consumes**: `PLAN_FILE` = `docs/plans/<ordinal>-<slug>/<slug>-plan.md` (required) — the unified document: `## Business Specification` (its `## Acceptance Criteria`, `## Target Domains`, `## Risks & Assumptions`) **plus** `## Implementation Plan` (its `#### Phase Index` when Full; a Simple plan is one phase). A legacy split folder (a `<slug>-spec.md` with no unified plan) remains readable — survey the spec and treat the work as one phase. Plus read-only repo signals (workspace manifests, build/task files, test/e2e signatures, CI config, analyzer/architecture configs).
 **Flags**: `--plan <path>` / `--spec <path>` (resolve the plan; legacy spec accepted) — survey is idempotent; re-run any time the plan changes (the artifact records the surveyed plan's full SHA-256 as its **Basis**, so a changed plan is a changed basis).
-**Produces**: one artifact — `${PLAN_DIR}/backpressure-coverage.md` (overwrite-safe). No persisted index / rollup / ledger.
+**Produces**: one artifact — `${PLAN_DIR}/assets/backpressure-coverage.md` (overwrite-safe; create `assets/` if missing — a plan made before the assets layout may carry a legacy root copy, which stays untouched). No persisted index / rollup / ledger.
 **Side effects**: none beyond writing the single artifact. Read-only against the repo.
 
 ## 🟢 ADVISORY INVARIANT — read first, never violate
@@ -20,7 +20,7 @@ This verb is **best-effort and advisory**. It exists to *inform a conversation*,
 
 - It **NEVER blocks** anything and **NEVER flips a plan to DRAFT**.
 - The certainty rating is **qualitative** (Strong / Partial / Weak). It emits **no numeric score, percentage, floor, or SLA**.
-- It produces **one artifact** (`backpressure-coverage.md`) and **no persisted index / rollup / ledger** files. Cross-cutting views are recomputed at read time, never stored.
+- It produces **one artifact** (`assets/backpressure-coverage.md`) and **no persisted index / rollup / ledger** files. Cross-cutting views are recomputed at read time, never stored.
 - The Recommended Phase 0 is a **recommendation**. It may be taken or ignored. It is never mandatory.
 
 If a future change to this verb adds a threshold, a gate, a blocking behaviour, or a persisted index, that change is **wrong** — revert it.
@@ -43,7 +43,7 @@ A *Backpressure Check is distinct from back pressure itself*: it is an advisory,
 Inputs:
   PLAN_FILE  = `docs/plans/<ordinal>-<slug>/<slug>-plan.md`  (required; legacy fallback: `<slug>-spec.md`)
   PLAN_DIR   = dirname(PLAN_FILE)
-  OUT_FILE   = `${PLAN_DIR}/backpressure-coverage.md`
+  OUT_FILE   = `${PLAN_DIR}/assets/backpressure-coverage.md`  (create `assets/` if missing)
   BASIS      = sha256(PLAN_FILE bytes) — recorded in the artifact header
   Repo signals (read-only, all optional — probe recursively across the repo root AND every workspace/package root, never root-only):
     - workspace manifests: `pnpm-workspace.yaml`, `package.json#workspaces`, `Cargo.toml [workspace]`, `go.work`, `lerna.json`, `nx.json`
@@ -183,7 +183,7 @@ The survey **ends by answering its own question out loud**: *how will we know th
 
 Also **flag thin coverage** here when it applies — rough-size what closing it would take: a single criterion line, extra work in this plan, or its own follow-up. All of it informs the conversation — the survey writes its artifact and leaves any editing to the plan's owner.
 
-### OUTPUT — write `${PLAN_DIR}/backpressure-coverage.md`
+### OUTPUT — write `${PLAN_DIR}/assets/backpressure-coverage.md`
 
 Overwrite if it exists (regeneration-safe). Use this template:
 

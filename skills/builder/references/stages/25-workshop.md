@@ -6,9 +6,9 @@
 
 **Verb**: workshop
 **Purpose**: Create a decision-focused design note — a working reference — that resolves a complex concept before architecture, from the spec's Workshop Opportunities or any topic needing deep exploration. Optional — can run any time during planning.
-**Consumes**: an existing plan folder (`docs/plans/<ordinal>-<slug>/`) · business source — the `## Business Specification` of `${PLAN_DIR}/<slug>-plan.md` (unified), else a legacy `${PLAN_DIR}/<slug>-spec.md` (required for `--from-spec`, otherwise context) · `research-dossier.md` (optional) · existing `workshops/*.md` (optional) · domain registry (optional)
+**Consumes**: an existing plan folder (`docs/plans/<ordinal>-<slug>/`) · business source — the `## Business Specification` of `${PLAN_DIR}/<slug>-plan.md` (unified), else a legacy `${PLAN_DIR}/<slug>-spec.md` (required for `--from-spec`, otherwise context) · `assets/research-dossier.md` (optional; legacy root fallback) · existing `assets/workshops/*.md` (optional; legacy root fallback) · domain registry (optional, domain mode ON only)
 **Flags**: `<plan>` (ordinal, slug, or path) + `"<topic>"` · `--from-spec` (pick from the spec's Workshop Opportunities) · `--list` (list existing workshops)
-**Produces**: `${PLAN_DIR}/workshops/<NNN>-<topic-slug>.md` (typed design doc with value frame, proof levels, evidence ledger) + terminal success block (type, proof level, value axes, key questions, related workshops)
+**Produces**: `${PLAN_DIR}/assets/workshops/<NNN>-<topic-slug>.md` (typed design doc with value frame, proof levels, evidence ledger) + terminal success block (type, proof level, value axes, key questions, related workshops)
 **Side effects**: none
 
 ---
@@ -185,12 +185,12 @@ Select topic number (or 'all' to create all): _
 
 ### 3) Check for Existing Workshop & Determine Ordinal
 
-- Scan `${PLAN_DIR}/workshops/` for existing files matching `NNN-*.md` pattern
+- Scan `${PLAN_DIR}/assets/workshops/` (legacy root `workshops/` too — § Plan-folder layout, `references/00-routing.md`) for existing files matching `NNN-*.md` pattern
 - Determine next ordinal: highest NNN + 1 (zero-pad to 3 digits, start at 001)
 - Check if a workshop with matching topic-slug already exists (any ordinal)
 - If exists: Ask whether to update existing or create new
 - If not exists: Create new with next ordinal
-- WORKSHOP_FILE = `${PLAN_DIR}/workshops/${ORD}-${topic-slug}.md`
+- WORKSHOP_FILE = `${PLAN_DIR}/assets/workshops/${ORD}-${topic-slug}.md` (create the folder if missing)
 
 ### 4) Gather Context
 
@@ -208,7 +208,7 @@ Select topic number (or 'all' to create all): _
    - Maintain consistency
 
 4. **Load domain context**
-   - Load domain context per `references/00-routing.md` § Domain context loading
+   - Load domain context per `references/00-routing.md` § Domain mode & context loading (OFF by default — when OFF, skip domain context entirely)
    - Note existing contracts and composition — the workshop design should respect domain boundaries
    - If the workshop is designing a new service/adapter/model, check which domain it belongs to
    - If the topic spans multiple domains, note the cross-domain contracts needed
@@ -573,11 +573,11 @@ Spike code at [location] is throwaway. Nothing to merge.
 
 ### 6) Output
 
-**Save to**: `${PLAN_DIR}/workshops/${ORD}-${topic-slug}.md`
+**Save to**: `${PLAN_DIR}/assets/workshops/${ORD}-${topic-slug}.md`
 
 **Success message**:
 ```
-✅ Workshop created: docs/plans/003-workflow-service/workshops/cli-command-flows.md
+✅ Workshop created: docs/plans/003-workflow-service/assets/workshops/cli-command-flows.md
 
 Type: CLI Flow
 Target Proof Level: Implementation Ready
@@ -616,7 +616,7 @@ Refinement:
 - This verb's `--from-spec` flag picks from that list
 
 ### Into the architect verb
-- The architect checks for `workshops/*.md` in the plan folder
+- The architect checks for `assets/workshops/*.md` (legacy root `workshops/`) in the plan folder
 - Incorporates workshop decisions into phase planning (they are authoritative)
 - Reduces discovery work for workshopped topics
 - References workshop documents in relevant phases
@@ -649,7 +649,7 @@ Refinement:
 # arguments to this verb:
 003-workflow-service "CLI command flows"
 ```
-Creates `docs/plans/003-workflow-service/workshops/cli-command-flows.md` with command examples, ASCII flow diagrams, output formats, error codes.
+Creates `docs/plans/003-workflow-service/assets/workshops/cli-command-flows.md` with command examples, ASCII flow diagrams, output formats, error codes.
 
 ### Example 2: Data Model Workshop
 ```bash

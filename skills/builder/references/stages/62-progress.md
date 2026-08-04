@@ -42,7 +42,7 @@ $ARGUMENTS
 1) Resolve paths:
    - PLAN, PLAN_DIR from --plan
    - If --inline: update task table within PLAN itself
-   - If --phase: locate dossier at PLAN_DIR/tasks/${PHASE_SLUG}/tasks.md
+   - If --phase: locate dossier at PLAN_DIR/assets/tasks/${PHASE_SLUG}/tasks.md (legacy root `tasks/` fallback — § Plan-folder layout, `references/00-routing.md`)
    - If --subtask: locate subtask dossier
 
 2) Parse --changes as a list of changed file paths.

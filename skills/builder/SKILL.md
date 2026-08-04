@@ -1,7 +1,7 @@
 ---
 name: builder
 description: |
-  The single front door to the SDD pipeline (docs/plans/): research → plan → workshop → ADR → tasks → implement → review → ship. Use when the user wants to plan, research, specify/architect (one plan doc: business spec + implementation plan), clarify, workshop, write an ADR, break work into phase tasks, implement/build a phase (optionally with live review), update progress, code-review, ship a plan, or start/resume/adopt a plan flow. Guided mode coaches from durable on-disk state; direct jump runs one stage: /builder <id> <verb> [flags] — 1a explore, 1b plan, 2c workshop, 3a adr, 5 tasks, 6 implement, 6a progress, 7 review, 8 ship, 8c reconcile. Ids and verbs resolve alone; printed commands carry both.
+  The single front door to the SDD pipeline (docs/plans/): research → plan → workshop → ADR → tasks → implement → review → ship. Use when the user wants to plan, research, specify/architect (one plan doc: business spec + implementation plan), clarify, workshop, write an ADR, break work into phase tasks, implement/build a phase (optionally with live review), update progress, code-review, ship a plan, or start/resume/adopt a plan flow. Guided mode coaches from durable on-disk state; direct jump runs one stage: /builder <id> <verb> [flags] — 1a explore, 1b plan, 2c workshop, 3a adr, 5 tasks, 6 implement, 6a progress, 7 review, 7b post-flight (close-out + archive), 8 ship, 8c reconcile. Ids and verbs resolve alone; printed commands carry both.
 ---
 
 # /builder — SDD pipeline dispatch
@@ -41,14 +41,15 @@ A sub-skill may lazily pull `references/00-routing.md` § Shared conventions whe
 | 5 | tasks | `references/stages/50-phase-tasks.md` | plan → `tasks/<phase>/tasks.md` + context brief | `--phase "<Phase N: Title>" --plan "<path>"` |
 | 6 | implement | `references/stages/60-implement.md` | plan, tasks? → code + `execution.log.md` (exactly one phase) | `--plan "<path>"` `[--phase "<Phase N: Title>"]` `[--subtask "<ORD-slug>"]` `[--companion]` `[--companion-slug "<slug>"]` |
 | 6a | progress | `references/stages/62-progress.md` | task outcome → updated task table + execution log (read by the implement verb after each task; owns the companion debrief) | `--plan --phase --task --status` `[--companion-run-id]` `[--companion-slug]` |
-| 7 | review | `references/stages/70-review.md` | plan, code → `reviews/*.md` | `--plan "<path>"` `[--phase "<Phase N: Title>"]` |
-| 8 | ship | `references/stages/80-ship.md` | plan, review → pushed branch + PR (repo-guidance-aware) + watched CI checks; push & PR-open **each behind a confirm**, merge optional; **flushes telemetry (no confirm)** | `--plan "<path>"` `[--base "<branch>"]` `[--no-watch]` `[--draft]` |
+| 7 | review | `references/stages/70-review.md` | plan, code → `assets/reviews/*.md` | `--plan "<path>"` `[--phase "<Phase N: Title>"]` |
+| 7b | post-flight | `references/stages/75-post-flight.md` | all phases + reviews done (pre-ship) → `assets/post-flight.md` close-out note + the whole plan folder archived to `docs/plans/archive/<ord>-<slug>/` (`git mv`, layout intact); the terminal harness close-out fires here (engine-owned seam) — runs whether or not the work ever ships | `--plan "<path>"` |
+| 8 | ship | `references/stages/80-ship.md` | archived plan (7b moved it — resolve `--plan` under `docs/plans/archive/`), review → pushed branch + PR (repo-guidance-aware) + watched CI checks; push & PR-open **each behind a confirm**, merge optional; **flushes telemetry (no confirm)** | `--plan "<path>"` `[--base "<branch>"]` `[--no-watch]` `[--draft]` |
 | 8c | reconcile | `references/stages/80-merge.md` | (conditional excursion — divergent base) → reconcile/merge plan; **merge executes only on typed `PROCEED`** | `--plan "<path>"` `[--target "<branch>"]` |
 | sync | sync | `references/00-routing.md` | flight plan + plan artifacts → **reconciled** flight plan: backfills every past/present/future phase + workshop + harness seam-node that current knowledge implies; **idempotent** (a complete spine writes nothing), advisory, CLI-only, never advances `nav` | (none) — auto-fired every guided entry; also invokable on demand |
 
 Module missing at its path → say so and stop. Never improvise a stage from memory.
 
-> **`8 ship` is the terminal spine stage; `8c reconcile` is a conditional excursion** (fired only when the base has meaningfully diverged), never on the spine. Typed `merge` and the legacy `plan-8-v2-merge` resolve to `8c reconcile` (alias table below).
+> **`8 ship` is the terminal spine stage; `7b post-flight` sits between the last review and ship** — the close-out that runs even when nothing ships (harvest + archive; shipping is optional and later). **`8c reconcile` is a conditional excursion** (fired only when the base has meaningfully diverged), never on the spine. Typed `merge` and the legacy `plan-8-v2-merge` resolve to `8c reconcile` (alias table below).
 > **`sync` is a maintenance verb, not a journey stage** — it has no ordinal id, produces no stage artifact, and never moves the cursor or runs a stage. It is the engine's **every-entry spine-reconcile pass** (the routine lives in `references/00-routing.md` § Reconcile the spine), exposed as a verb so anyone can run it on demand (and so a direct-jump-built or hand-adopted plan can be repaired in one call). Distinct from `8c reconcile` (which merges a divergent git base — unrelated). See invariant #11.
 
 ## Command grammar
@@ -81,6 +82,7 @@ Docs and **legacy** state files written before the consolidation may carry comma
 | `plan-8-v2-merge` | `8c reconcile` |
 | typed `merge` | `8c reconcile` |
 | typed `6c` or `companion` | `6 implement --companion` |
+| typed `archive` or `close-out` | `7b post-flight` |
 
 **Unmapped slug → print the bare stage alias and ask — never guess.** (An unrecognised `/plan-*` command: show the Registry's ids/verbs and ask which stage was meant.)
 
@@ -103,7 +105,7 @@ Docs and **legacy** state files written before the consolidation may carry comma
 
 ## State
 
-Durable state **is** the flight plan — `nav` (position + the free-form `bag`) + node statuses in `docs/plans/<ord>-<slug>/the-flow.json` (rendered to `the-flow.md`). **No separate state file** — the CLI is the only state writer. Contract, write ownership, and the Graph: `references/00-routing.md`; harness-seam orchestration (detection, seam map, node emission, upstream contract): `references/harness-seams.md`. Sub-skills own their *stage* artifacts (spec / plan / tasks / execution log / reviews), never write the-flow state, and carry no harness knowledge.
+Durable state **is** the flight plan — `nav` (position + the free-form `bag`) + node statuses in `docs/plans/<ord>-<slug>/the-flow.json` (rendered to `the-flow.md`; after `7b post-flight` archives the plan, the same files under `docs/plans/archive/<ord>-<slug>/`). **No separate state file** — the CLI is the only state writer. The plan folder keeps only `<slug>-plan.md`, `the-flow.json`, `the-flow.md`, and `original-ask.md` at its root; every other stage artifact lives under `assets/` (`references/00-routing.md` § Plan-folder layout). Contract, write ownership, and the Graph: `references/00-routing.md`; harness-seam orchestration (detection, seam map, node emission, upstream contract): `references/harness-seams.md`. Sub-skills own their *stage* artifacts (spec / plan / tasks / execution log / reviews), never write the-flow state, and carry no harness knowledge.
 
 ## Prerequisite — a capable `harness flow` CLI (capability + version floor)
 

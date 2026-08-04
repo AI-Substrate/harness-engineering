@@ -251,7 +251,7 @@ tier: Opus-class
 **Read (via git show ${TARGET}:path):**
 - ${PLAN_FOLDER}/${SLUG}-plan.md § `## Business Specification` (summary, goals, acceptance criteria); legacy ${PLAN_FOLDER}/${SLUG}-spec.md if present
 - ${PLAN_FOLDER}/${SLUG}-plan.md § `## Implementation Plan` (phases, tasks, critical findings)
-- ${PLAN_FOLDER}/tasks/*/execution.log.md (implementation decisions)
+- ${PLAN_FOLDER}/assets/tasks/*/execution.log.md (implementation decisions; legacy root `tasks/` fallback)
 
 **Output** - Plan Summary Card:
 ```markdown
@@ -864,7 +864,7 @@ Before generating merge plan, verify:
 
 **Locations to update:**
 1. Plan § Change Footnotes Ledger (plan.md)
-2. Phase Footnote Stubs (tasks/phase-N/tasks.md)
+2. Phase Footnote Stubs (assets/tasks/phase-N/tasks.md; legacy root tasks/)
 3. Task table Notes column (footnote tags [^N])
 4. Source code FlowSpace comments (if present)
 
@@ -882,7 +882,7 @@ Your [^2] -> [^${NEW_START + 1}]
 
 **Update list:**
 1. Update plan.md § 12: Add your renumbered footnotes
-2. Update tasks/*/tasks.md: Replace [^N] tags with new numbers
+2. Update assets/tasks/*/tasks.md (legacy root tasks/): Replace [^N] tags with new numbers
 3. Update source code FlowSpace comments: Replace [^N] with new numbers
 4. Verify bidirectional links still resolve
 

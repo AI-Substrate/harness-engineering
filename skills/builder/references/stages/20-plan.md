@@ -6,7 +6,7 @@
 
 **Verb**: plan
 **Purpose**: Produce **one** canonical planning document in a single atomic pass — always both halves: a `## Business Specification` (WHAT/WHY, front-loaded clarifications resolved) on top, and a `## Implementation Plan` (HOW — phases, task tables, acceptance criteria, self-validating gates G1–G7) below. The questions are asked up front; the whole document is written from the answers in one run. Idempotent — re-run after a refinement (e.g. a workshop) or a clarification and it regenerates **both** halves together. Also hosts the mid-plan clarification re-entry (§ Re-entry, end of this module).
-**Consumes**: feature description (argument; plan folder auto-created, or reused if a research pass already made one) · `${PLAN_DIR}/research-dossier.md` (optional) · `${PLAN_DIR}/workshops/*.md` (optional, authoritative) · repo doctrine `docs/project-rules/*`, `docs/adr/*.md`, `docs/domains/*` (optional). § Re-entry instead consumes the existing planning document (path or plan slug).
+**Consumes**: feature description (argument; plan folder auto-created, or reused if a research pass already made one) · `${PLAN_DIR}/assets/research-dossier.md` (optional; legacy root fallback) · `${PLAN_DIR}/assets/workshops/*.md` (optional, authoritative; legacy root fallback) · repo doctrine `docs/project-rules/*`, `docs/adr/*.md`, `docs/domains/*` (domain mode ON only). § Re-entry instead consumes the existing planning document (path or plan slug).
 **Flags**: `"<intent>"` · `--simple` (pre-set Mode: Simple, skip the Workflow Mode question) · `--skip-clarify` (G1 override)
 **Produces**: `${PLAN_DIR}/<slug>-plan.md` — one document with the frozen top-metadata block, `## Business Specification`, `## Planning Seam`, and `## Implementation Plan` (Gate Matrix G1–G7 + single `**Status**` header; inline `⚠️ GAP:` markers + a final `## Unresolved Gaps` table on any gate FAIL). Terminal report: plan path · Status · phase/task/domain counts · gate tally. § Re-entry: new `### Session YYYY-MM-DD` block under `## Clarifications` + a re-run that regenerates both halves.
 **Side effects**: **always** auto-runs `/validate-v2 --artifact "${PLAN_PATH}"` (utility skill, not a flow stage), at the end of the one pass, READY or DRAFT.
@@ -58,15 +58,15 @@ Default to batched. Fall back without ceremony — do not announce capability de
    - `PLAN_PATH = ${PLAN_DIR}/<slug>-plan.md` (the single output document)
 
 2. Check for and incorporate existing research:
-   - If `${PLAN_DIR}/research-dossier.md` exists → read fully; use to inform complexity, domains, and question framing. Add a note to the business half: "📚 Incorporates findings from research-dossier.md"
+   - If `${PLAN_DIR}/assets/research-dossier.md` exists (legacy fallback: root `research-dossier.md`) → read fully; use to inform complexity, domains, and question framing. Add a note to the business half: "📚 Incorporates findings from research-dossier.md"
    - Else → add a note: "ℹ️ Consider a deeper research pass (the explore verb) for codebase understanding"
 
-3. Check for existing domains:
-   - Load domain context per `references/00-routing.md` § Domain context loading
-   - If no domain registry exists → note that domains will be identified as part of this document
+3. Resolve **domain mode** (`references/00-routing.md` § Domain mode & context loading — **OFF by default**; ON only via `HARNESS_DOMAINS=1` or an explicit user ask, or when an existing document being re-run already carries populated domain sections):
+   - **ON** → load domain context per that convention; if no domain registry exists, note that domains will be identified as part of this document
+   - **OFF** → skip every domain step in this module: no `### Target Domains` (A2), no Domain Review (A3/Round 2), `SPEC_DOMAINS` empty (B0), no `### Domain Manifest` (B3), gate **G7 → N/A (domains off)**, domain research angles dropped from B2, task-table `Domain` columns carry `—`
 
 4. Check for workshop documents:
-   - If `${PLAN_DIR}/workshops/*.md` exist → read all; they are **authoritative design decisions** and must not be contradicted (by either half)
+   - If `${PLAN_DIR}/assets/workshops/*.md` exist (legacy fallback: root `workshops/`) → read all; they are **authoritative design decisions** and must not be contradicted (by either half)
 
 5. Legacy business source (AC-07 fallback): if a sibling `${PLAN_DIR}/<slug>-spec.md` exists (a legacy split folder) and no unified document yet, read it as the business source and fold its content into the `## Business Specification` half of the new document — do not require a standalone spec file going forward.
 
@@ -110,7 +110,7 @@ Then write the `## Business Specification` half with these subsections:
 - `### Summary` — short WHAT/WHY overview
 - `### Goals` — bullet list of desired outcomes/user value
 - `### Non-Goals` — explicitly out-of-scope behavior
-- `### Target Domains` — **MANDATORY** domain mapping (this is the canonical domain set every Part B gate compares against):
+- `### Target Domains` — **domain mode ON only** (omit the section entirely when OFF — § A0 step 3). When ON it is **MANDATORY**: the canonical domain set every Part B gate compares against:
 
   ```markdown
   ### Target Domains
@@ -162,7 +162,7 @@ For genuinely topic-specific unknowns the sketch can't resolve (e.g., a data-mod
 ## A3 — Round 2: Sketch-dependent questions (conditional)
 
 Only fires if at least one of these is true:
-- Target Domains contains NEW or contested entries → ask **Domain Review**
+- Target Domains contains NEW or contested entries (domain mode ON) → ask **Domain Review**
 - The sketch left ≥1 critical `[NEEDS CLARIFICATION]` marker → ask up to 2 topic-specific questions
 
 **Compose Round 2** (up to 4 questions in one batched prompt). Skip Round 2 entirely if none of the conditions hold.
@@ -208,7 +208,7 @@ The document is always written. The user is never blocked from seeing it. The st
 ## B0: Mode & context (already loaded in Part A)
 
 - **Mode** is already decided (Round 1 / `--simple`) and written to the top-metadata block: Simple → single-phase plan with inline tasks; Full → multi-phase plan.
-- **Domains**: `### Target Domains` from the business half is `SPEC_DOMAINS` (the set every gate compares against). Domain context was loaded in A0.
+- **Domains**: `### Target Domains` from the business half is `SPEC_DOMAINS` (the set every gate compares against). Domain context was loaded in A0. **Domain mode OFF → `SPEC_DOMAINS` is empty and every domain gate is N/A.**
 - **ADRs**: if `docs/adr/` exists → read all `docs/adr/*.md`; filter to `Status: Accepted` → `ACCEPTED_ADRS`; note each constraint (what it requires / forbids).
 
 ## B1: Pre-Generation Gates
@@ -239,26 +239,26 @@ Each gate produces a PASS / FAIL / N/A verdict. FAILs do **not** block emission 
 
 ### Use existing research first
 
-If `${PLAN_DIR}/research-dossier.md` exists → read fully; extract critical findings; reduce to 1 implementation-focused research subagent; reference findings throughout.
+If `${PLAN_DIR}/assets/research-dossier.md` exists (legacy root fallback) → read fully; extract critical findings; reduce to 1 implementation-focused research subagent; reference findings throughout.
 
-If `${PLAN_DIR}/workshops/*.md` exist → read all; they are **authoritative design decisions**; do NOT contradict them; skip research for workshopped topics.
+If `${PLAN_DIR}/assets/workshops/*.md` exist (legacy root fallback) → read all; they are **authoritative design decisions**; do NOT contradict them; skip research for workshopped topics.
 
 ### Research Subagents (2 parallel)
 
 Choose each worker's `tier:` using `references/00-routing.md` § Model-to-task fit & delegation.
 
-**Subagent 1 — Domain & Pattern Scout**:
+**Subagent 1 — Domain & Pattern Scout** *(domain mode OFF → drop the domain angles: check items 2–3 + code-level anti-reinvention only)*:
 "What exists that this plan needs to know about?
 
 tier: Opus-class
 
 Check:
-1. `docs/domains/` — existing domain contracts and composition
+1. `docs/domains/` — existing domain contracts and composition *(domain mode ON only)*
 2. Codebase patterns relevant to this feature
 3. Integration points where new code connects to existing code
-4. **Anti-reinvention**: Does any planned capability already exist? Scan `§ Concepts` tables across domains — concept matches are higher confidence than code-level matches.
+4. **Anti-reinvention**: Does any planned capability already exist? Domain mode ON: scan `§ Concepts` tables across domains — concept matches are higher confidence than code-level matches. OFF: scan for code-level matches.
 
-For each proposed new component, check domain contracts and concepts:
+For each proposed new component (domain mode ON), check domain contracts and concepts:
 - EXISTING → reuse (report contract and location)
 - EXTEND → add to existing domain (report what to extend)
 - NEW → create fresh (confirm no duplication)
@@ -291,7 +291,7 @@ The document **MUST** contain these sections, in this order. The top-metadata bl
 1. `## Implementation Plan` (the heading that marks the HOW half — load-bearing for routing)
 2. `### Gate Matrix` (built in B4)
 3. `### Summary` (3–5 sentences: problem, approach, expected outcome)
-4. `### Domain Manifest` table — every file mentioned in any phase task table MUST appear with domain + classification
+4. `### Domain Manifest` table — **domain mode ON only** (omit entirely when OFF; G5 does not require it then): every file mentioned in any phase task table MUST appear with domain + classification
 5. `### Key Findings` table (from B2 research)
 6. `### Phases` containing `#### Phase Index` table followed by per-phase blocks — **or**, in Simple Mode, `### Implementation` with one inline task table
 7. `### Acceptance Coverage Map` (tasks → AC ids from the business half)
@@ -369,7 +369,7 @@ Classification: `contract` (public interface), `internal` (domain-internal), `cr
 - Domain creation comes before domain extension, and composition/wiring comes last — treat these as *ordering* (within and across phases), **not** as a mandate to mint a fresh phase for each step.
 - **Spike-first tasks for high-novelty phases.** When a phase's core hinges on something still unproven at plan time (a `Spike/POC` opportunity the user declined to workshop, or a feasibility risk surfaced in Key Findings), make that phase's **first task a spike**: `N.1 | Spike: prove <X> with throwaway code in a temp/scratch location | success = go/no-go verdict + discovered constraints recorded in the execution log`. The spike grounds the implementor in observed reality before the real build; its **learnings are promoted, its code never is** (the real tasks re-implement properly in the shipping tree). One spike task per genuine unknown — not a ritual row in every phase.
 - **No "build the dev tooling" phase**: if research surfaced that no working dev substrate exists (no build, no test runner), surface it as a Critical Key Finding — don't invent a phase to stand tooling up; the plan uses the standard testing approach throughout.
-- For each NEW domain, the first phase includes a domain setup task:
+- (Domain mode ON) For each NEW domain, the first phase includes a domain setup task:
   - Create `docs/domains/<slug>/domain.md` (use the format from `/extract-domain`)
   - Create the source directory
   - Update `docs/domains/registry.md`
@@ -453,6 +453,7 @@ Before finalizing the document, run the post-generation gates (G5–G7), build t
 - Mock usage intent matches the stated preference (if specified)? **FAIL** describes mismatch.
 
 ### Gate G7 — Domain Completeness
+- **Domain mode OFF → G7 is `N/A (domains off)`** — skip every check below.
 - Is every domain in `SPEC_DOMAINS` (the business half's `### Target Domains`) present with status + relationship + role? **FAIL** lists missing.
 - For each NEW domain: does some phase have a domain setup task (create `domain.md`, source dir, registry entry, domain-map update)? **FAIL** lists NEW domains without setup tasks.
 - Domain Manifest covers every file referenced in phase task tables? **FAIL** lists uncovered files.
@@ -488,7 +489,7 @@ Before finalizing the document, run the post-generation gates (G5–G7), build t
 ✅ Plan written: [PLAN_PATH]
 Status: READY | DRAFT — UNRESOLVED GAPS
 Mode: Simple | Full
-Phases: [count]   Tasks: [count]   Domains: [count existing + count new]
+Phases: [count]   Tasks: [count]   Domains: [count existing + count new | off]
 Gate Matrix: [N PASS / M FAIL / K N/A]
 
 (Adaptive validation via /validate-v2 auto-runs next — always, READY or DRAFT.)
@@ -557,7 +558,7 @@ Updates: `### Testing Strategy` with Approach, Rationale, Focus Areas, Excluded.
 | C | Hybrid (README + docs/how/) | Both quick-start and depth |
 | D | No new documentation | Internal/trivial changes |
 
-### Domain Review (Round 2, conditional)
+### Domain Review (Round 2, conditional — domain mode ON only)
 
 Fires only if Target Domains contains NEW or contested entries. Read `docs/domains/domain-map.md` first if present, then present:
 
@@ -590,7 +591,7 @@ Draw from these categories based on `[NEEDS CLARIFICATION]` markers in the sketc
 ## Gates (whole pass)
 
 - At least Round 1 completed (or `--simple` provided + 3 Round 1 answers)
-- `### Target Domains` present with at least one domain
+- `### Target Domains` present with at least one domain (domain mode ON; OFF → the section is absent by design)
 - No critical `[NEEDS CLARIFICATION]` markers remaining after Round 2 (or G1 FAIL / `--skip-clarify`)
 - Both halves present: `## Business Specification`, `## Planning Seam`, `## Implementation Plan` — mandatory sections populated; acceptance criteria are testable
 - Empty description → ERROR

@@ -129,14 +129,14 @@ The exact, deterministic chore shape:
 | `status` | `todo` → `done`\|`skipped` over its lifecycle |
 | `anchor` (`branch_of`) | the spine node the hook belongs to — **always set**, so the chore is a connected excursion (never an orphan); per the **hook → anchor map** below |
 
-**Hook → anchor map (total; deterministic fallback by spine order research < plan < phase(s) < review < ship).** The anchor is **always an existing spine node** at injection time — walk the fallback list and take the first node that exists, so an orphan (`anchor:null`, floating off the rail with no edge) is impossible:
+**Hook → anchor map (total; deterministic fallback by spine order research < plan < phase(s) < review < post-flight < ship).** The anchor is **always an existing spine node** at injection time — walk the fallback list and take the first node that exists, so an orphan (`anchor:null`, floating off the rail with no edge) is impossible:
 
 | Hook | Preferred anchor | Fallback if absent |
 |---|---|---|
 | `pre-flight` | first `phase` node | → `plan` → `research` |
 | `pre-coding` | `plan` | → first `phase` → `research` |
 | `post-coding` | last `phase` node | → `plan` |
-| `post-flight` | `ship` | → `review` → last `phase` → `plan` |
+| `post-flight` | `post-flight` (the host's pre-ship close-out node) | → `ship` → `review` → last `phase` → `plan` |
 
 **Dedup key = the `--hook <X>` token inside `command`.** Exactly one chore per hook
 per the-flow plan. Injection is therefore **idempotent** — the scan (step 1 below)

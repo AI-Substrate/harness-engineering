@@ -6,9 +6,9 @@
 
 **Verb**: implement
 **Purpose**: Implement exactly one approved phase or subtask using the testing approach from the plan, with domain placement rules; keep the task table + execution log live; update domain.md files after implementation.
-**Consumes**: plan (`**Status**: READY`); Full Mode needs the phase's tasks dossier (`tasks/<phase-slug>/tasks.md`) with human GO given; Simple Mode uses inline plan tasks. Reads the plan's Testing Strategy, the task table, Context Brief / Key Findings, and domain context.
+**Consumes**: plan (`**Status**: READY`); Full Mode needs the phase's tasks dossier (`assets/tasks/<phase-slug>/tasks.md`; legacy root `tasks/` fallback) with human GO given; Simple Mode uses inline plan tasks. Reads the plan's Testing Strategy, the task table, Context Brief / Key Findings, and domain context.
 **Flags**: `--plan "<abs path to plan.md>"` · `--phase "<Phase N: Title>"` (Full Mode) or omitted (Simple Mode) · `[--subtask "<ORD-subtask-slug>"]` · `[--companion]` (+ `[--companion-slug "<slug>"]`, default `code-review-companion`) — run with a live minih review companion (§ Companion mode)
-**Produces**: Code changes + tests per the plan's testing approach; `execution.log.md` with per-task entries; task table + Architecture Map kept current per task; domain.md/registry/domain-map updates; terminal report = unified diffs, evidence, domain files updated, final status vs acceptance criteria, suggested commit message.
+**Produces**: Code changes + tests per the plan's testing approach; `execution.log.md` with per-task entries; task table + Architecture Map kept current per task; domain.md/registry/domain-map updates (domain mode ON only); terminal report = unified diffs, evidence, domain files updated (when ON), final status vs acceptance criteria, suggested commit message.
 **Side effects**: updates `domain.md` / `registry.md` / `domain-map.md` after implementation (§4); keeps the task table + execution log live per task.
 **Delegates**: progress — per-task protocol after each completed task, and the final-task companion debrief; resolved via the Registry.
 
@@ -89,22 +89,22 @@ $ARGUMENTS
    **Mode Detection**: Read PLAN for `**Mode**: Simple` or `**Mode**: Full`
 
    **Full Mode**:
-   - PHASE_DIR = PLAN_DIR/tasks/${PHASE_SLUG}
+   - PHASE_DIR = PLAN_DIR/assets/tasks/${PHASE_SLUG} (legacy root `tasks/` fallback for pre-assets plans — § Plan-folder layout, `references/00-routing.md`; write new files where the dossier already lives)
    - PHASE_DOC = ${PHASE_DIR}/tasks.md
    - EXEC_LOG = ${PHASE_DIR}/execution.log.md
    - If --subtask: PHASE_DOC = ${PHASE_DIR}/${SUBTASK_KEY}.md
 
    **Simple Mode**:
-   - Check for optional dossier: ${PLAN_DIR}/tasks/implementation/tasks.md
+   - Check for optional dossier: ${PLAN_DIR}/assets/tasks/implementation/tasks.md (legacy root fallback)
    - If exists → PHASE_DOC = that file
    - If not → PHASE_DOC = PLAN itself (inline tasks from § Implementation)
-   - EXEC_LOG = ${PLAN_DIR}/execution.log.md
+   - EXEC_LOG = ${PLAN_DIR}/assets/execution.log.md (legacy root fallback; create assets/ if missing)
 
 2) Load context:
    - Read Testing Strategy from plan (approach + mock usage)
    - Read task table from PHASE_DOC
    - Read Context Brief / Key Findings for hazards to watch for
-   - **Load domain context** per `references/00-routing.md` § Domain context loading
+   - **Load domain context** per `references/00-routing.md` § Domain mode & context loading (OFF by default — when OFF, skip domain context, domain placement rules, and domain-file updates)
 
 3) Execute tasks:
    Follow task order. Apply testing approach from plan:

@@ -206,7 +206,7 @@ You can drive every step by hand, but you never have to *route* by hand — `/en
 | `/eng-harness-0-harnessability-assessment` | The public peer — size up the repo: evidence vs inference vs unknowns | `.harness/reports/harnessability/latest.{md,json}` |
 | `add-extension` verb | Guided authoring of a new `harness <verb>` (incl. `boot` at S4) | `.harness/extensions/<name>/` (entry + `instructions.md`) |
 | `boot` verb | Re-run the boot adoption built; readiness verdict + maturity read | terminal report (healthy / SLOW / UNHEALTHY / UNAVAILABLE) |
-| `backpressure` verb | Deterministic-sensor coverage survey for scoped work | `docs/plans/<ordinal>-<slug>/backpressure-coverage.md` |
+| `backpressure` verb | Deterministic-sensor coverage survey for scoped work | `docs/plans/<ordinal>-<slug>/assets/backpressure-coverage.md` |
 | `harness observe "<what>" --kind <kind>` | Capture one friction entry (CLI verb, not a verb module) | one buffer entry in gitignored `.harness/temp/` |
 | `retro` verb `--drain` | Plain-language save prompt for the session's notes (keep all · pick · skip) | committed record via `harness record retro` |
 | `retro` verb `--harvest` | Curated cross-plan friction view (read-only) | terminal print (`--json` for tooling) |

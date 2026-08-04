@@ -30,7 +30,8 @@ The pipeline used to be a family of standalone per-stage skills; it is now **one
 | Implement | `6` | `implement` | `references/stages/60-implement.md` — `--companion` mode adds a live minih reviewer |
 | Progress | `6a` | `progress` | `references/stages/62-progress.md` |
 | Review | `7` | `review` | `references/stages/70-review.md` |
-| Ship | `8` | `ship` | `references/stages/80-ship.md` — push + open PR (repo-guidance-aware) + watch CI checks; push & PR-open each behind a confirm |
+| Post-flight | `7b` | `post-flight` | `references/stages/75-post-flight.md` — pre-ship close-out: completion check, `assets/post-flight.md` note, archives the whole plan folder to `docs/plans/archive/<ord>-<slug>/`; the terminal harvest seam fires here. Typed `archive` / `close-out` resolve here |
+| Ship | `8` | `ship` | `references/stages/80-ship.md` — push + open PR (repo-guidance-aware) + watch CI checks; push & PR-open each behind a confirm; reads the plan from its archive path |
 | Reconcile | `8c` | `reconcile` | `references/stages/80-merge.md` — conditional upstream-reconcile excursion (divergent base); merge on typed `PROCEED`. Typed `merge` / `plan-8-v2-merge` resolve here |
 | Reconcile spine *(maintenance)* | `sync` | `sync` | `references/00-routing.md` § Reconcile the spine — engine pass, **auto-fired every guided entry** (idempotent); keeps every past/present/future phase + workshop + harness seam-node present in the flight plan. Not a journey stage; also invokable on demand. Distinct from `8c reconcile` (git-base merge) |
 
@@ -42,7 +43,7 @@ The pipeline used to be a family of standalone per-stage skills; it is now **one
 
 Two loops run side by side in the same context — that is all. Neither owns the other:
 
-- **SDD pipeline** (you drive it) — `/builder 1a explore → 1b → [2c] → 5 → 6 → 7 → 8`, one stage per call (by id or by name). A linear journey: plan (spec + impl, one document) → tasks → code → review → **ship** (push + PR + watch checks), with the optional post-spec backpressure check as a post-plan refinement off 1b, and the upstream **reconcile** (8c) as a conditional excursion when the base has diverged.
+- **SDD pipeline** (you drive it) — `/builder 1a explore → 1b → [2c] → 5 → 6 → 7 → 7b → 8`, one stage per call (by id or by name). A linear journey: plan (spec + impl, one document) → tasks → code → review → **post-flight** (close-out + archive — runs even if nothing ever ships) → **ship** (push + PR + watch checks, optional and later), with the optional post-spec backpressure check as a post-plan refinement off 1b, and the upstream **reconcile** (8c) as a conditional excursion when the base has diverged.
 - **Engineering harness** (the external eng-harness family drives it) — a *cycle*: Boot → Backpressure → Observe → Retro → Improve. The flow's stages never run harness stages themselves; the guided **engine** offers each seam at the Graph edge (seams are **flow-owned** — `references/harness-seams.md`; the stage sub-skills are harness-blind) and tells the router *where the work is* via a lifecycle **hook**:
 
 | Seam (Graph edge) | Offered by | Router call (`--event` alias) |
@@ -51,7 +52,7 @@ Two loops run side by side in the same context — that is all. Neither owns the
 | post-plan refinement off 1b | the engine, as a Graph-edge beat | `/eng-harness-flow --hook pre-coding --spec <path>` (`post-spec`) |
 | before each phase | the engine, before the phase | `/eng-harness-flow --hook pre-flight --phase <id> --plan-dir <p>` (`pre-implement`) |
 | each phase end | the engine, at the phase-end edge | `/eng-harness-flow --hook post-coding --plan-dir <p>` (`phase-end`) |
-| at ship | the engine, after ship reports checks / opens the PR | `/eng-harness-flow --hook post-flight --plan-dir <p>` (`plan-complete`) |
+| at post-flight | the engine, at the close-out stage — before the archive move, before any ship | `/eng-harness-flow --hook post-flight --plan-dir <p>` (`plan-complete`) |
 
 The flow wires **four fire-hooks** (`pre-flight` at the two edges, `pre-coding`, `post-coding`, `post-flight`); `coding` gets **no `/eng-harness-flow` fire-hook** (silent in *that* sense), but `observe` **is** still a **per-phase chore** the-flow bakes (the `harness observe "<what>" --kind <kind>` capture, `branch_of` the phase) — separate from these four. The router's child skills are **private** — they may move or rename, and no SDD stage (or user doc) ever names them. One name is stable: `/eng-harness-flow` + its `--hook` vocabulary (permanent `--event` alias). Full seam map: `docs/how/the-flow-harness-seams.md`.
 
@@ -75,6 +76,7 @@ flowchart TB
         P6["/builder 6 implement<br/>(--companion = +live review)"]:::manual
         P6A["/builder 6a progress"]:::auto
         P7["/builder 7 review"]:::optional
+        P7B["/builder 7b post-flight<br/>close-out + archive"]:::manual
         P8["/builder 8 ship"]:::optional
     end
 
@@ -94,9 +96,10 @@ flowchart TB
     P6 --> P7
     P7 -->|next phase| P5
     P7 -.->|fixes| P6
-    P7 -.-> P8
+    P7 --> P7B
+    P7B -.-> P8
     P6 -.->|"--hook pre-flight / post-coding (engine-offered)"| R
-    P8 -.->|"--hook post-flight"| R
+    P7B -.->|"--hook post-flight"| R
 ```
 
 **Legend**: 🔵 blue = you call it · 🟢 green = auto-called · 🟠 orange = optional · 🟣 purple = the harness router. Solid = main flow, dashed = optional/automatic.
@@ -135,7 +138,7 @@ flowchart LR
         direction TB
         F1["/builder 1b plan"] --> F3["/builder 5 tasks"] --> F4["/builder 6 implement"] --> F5["/builder 7 review"]
         F5 -->|next phase| F3
-        F5 --> F6["/builder 8 ship"]
+        F5 --> F5B["/builder 7b post-flight"] --> F6["/builder 8 ship"]
     end
 
     class simple s
@@ -144,7 +147,7 @@ flowchart LR
 
 **Simple Mode** — single-phase, inline tasks. `/builder 1b plan` (front-loads clarifications, writes spec + plan in one document) → `/builder 6 implement`. No `/builder 5 tasks` expansion needed.
 
-**Full Mode** — multi-phase. `/builder 1b plan`, then a per-phase loop of `/builder 5 tasks → /builder 6 implement → /builder 7 review`, then `/builder 8 ship` to push, open the PR, and watch checks.
+**Full Mode** — multi-phase. `/builder 1b plan`, then a per-phase loop of `/builder 5 tasks → /builder 6 implement → /builder 7 review`, then `/builder 7b post-flight` to close out + archive, then (optionally, whenever) `/builder 8 ship` to push, open the PR, and watch checks.
 
 > **Merged stages**: stage `1b plan` produces the **business spec and the implementation plan in one document**, in one atomic pass — front-loaded clarifications up front, the validate gates (G1–G7) run inline, and `/validate-v2` auto-runs at the end. Later mid-plan clarifications re-enter through the Re-entry section inside `references/stages/20-plan.md`. There is no separate specify, clarify, architect, or complete-the-plan stage in the flow.
 
@@ -158,8 +161,9 @@ flowchart LR
 1.  /builder 1a explore "how are API endpoints structured here?"
     → The engine offers /eng-harness-flow --hook pre-flight (the router checks
       the harness is alive; one calm line either way).
-    → minimum-sufficient research (cheap scout; workers added only as the evidence demands)
-      → docs/plans/005-api-widgets/research-dossier.md
+    → minimum-sufficient research (cheap scout; workers added only as the evidence demands;
+      docs/plans/archive/ mined as institutional memory — never authoritative)
+      → docs/plans/005-api-widgets/assets/research-dossier.md
 
 2.  /builder 1b plan "POST endpoint to create widgets (name, color)"
     → Asks testing/mock/docs/mode questions up front, then writes ONE document:
@@ -167,7 +171,7 @@ flowchart LR
       `## Implementation Plan` below (inline gates G1–G7 + 2 research subagents;
       2 phases). /validate-v2 auto-runs.
     → Optional post-plan refinement (engine-offered): /eng-harness-flow --hook pre-coding --spec ...
-      → backpressure-coverage.md (advisory: what's provable vs eyeballed); re-run plan informed by it.
+      → assets/backpressure-coverage.md (advisory: what's provable vs eyeballed); re-run plan informed by it.
 
 3.  /builder 5 tasks --phase "Phase 1: Route & Validation" --plan ".../api-widgets-plan.md"
     → tasks.md (harness seams are engine-owned — offered at the phase edge, not task rows).
@@ -183,10 +187,16 @@ flowchart LR
 
 5.  /builder 5 tasks + /builder 6 implement --companion for Phase 2 ...
 
-6.  /builder 8 ship --plan "..."
+6.  /builder 7b post-flight --plan "..."
+    → SEAM FIRST (engine-fired at this edge): /eng-harness-flow --hook post-flight ... —
+      the long-horizon reflection: harvest + the encode offer, receipts landed.
+    → Completion check, close-out note (assets/post-flight.md), then the whole plan
+      folder archives: docs/plans/005-api-widgets/ → docs/plans/archive/005-api-widgets/.
+      The flight is closed — shipping is optional from here.
+
+7.  /builder 8 ship --plan "docs/plans/archive/005-api-widgets/..."
     → Push (confirm) + open PR (separate confirm, repo-guidance-aware) + watch CI
-      checks; a red check routes back to a fix, then re-ship. The engine then offers
-      /eng-harness-flow --hook post-flight for the long-horizon reflection.
+      checks; a red check routes back to a fix, then re-ship.
       A diverged base hands off to /builder 8c reconcile (merge typed-PROCEED-gated).
       Feature shipped 🎉
 ```
@@ -200,16 +210,17 @@ You never named a harness skill — the flow told the router *where the work was
 | Command | What it does | Produces | Harness behaviour |
 |---|---|---|---|
 | `/the-flow` | **Guided mode** — drives this whole pipeline conversationally (loads coach + routing + the current stage module only) | `the-flow.{json,md}` + `original-ask.md` | probes for the router; the engine offers the seams at the Graph edges, only via `/eng-harness-flow` |
-| `/builder 1a explore` · `explore` | Deep-dive codebase research *(optional)* | `research-dossier.md` | engine offers `--hook pre-flight` at flow entry |
+| `/builder 1a explore` · `explore` | Deep-dive codebase research *(optional; mines `docs/plans/archive/` as non-authoritative institutional memory)* | `assets/research-dossier.md` | engine offers `--hook pre-flight` at flow entry |
 | `/builder 1b plan` · `plan` | Business spec + implementation plan in one document (front-loaded clarifications; inline gates G1–G7; validate-v2 auto-runs) | `<slug>-plan.md` | engine offers `--hook pre-coding` backpressure as a post-plan refinement (seams engine-owned, not plan rows) |
-| `/builder 2c workshop` · `workshop` | Design workshop for complex topics *(optional)* | `workshops/<topic>.md` | — |
-| `/eng-harness-flow --hook pre-coding` | Backpressure survey *(optional post-plan refinement)* | `backpressure-coverage.md` | advisory output; informs your re-plan; never blocks |
+| `/builder 2c workshop` · `workshop` | Design workshop for complex topics *(optional)* | `assets/workshops/<topic>.md` | — |
+| `/eng-harness-flow --hook pre-coding` | Backpressure survey *(optional post-plan refinement)* | `assets/backpressure-coverage.md` | advisory output; informs your re-plan; never blocks |
 | `/builder 3a adr` · `adr` | Architectural Decision Record *(optional)* | `docs/adr/*.md` | — |
-| `/builder 5 tasks` · `tasks` | Task table + brief for one phase | `tasks.md` | — (harness seams engine-owned, offered at the phase edge) |
+| `/builder 5 tasks` · `tasks` | Task table + brief for one phase | `assets/tasks/<phase>/tasks.md` | — (harness seams engine-owned, offered at the phase edge) |
 | `/builder 6 implement` · `implement` | Implement one phase — add `--companion` for live companion review (typed `6c`/`companion` alias here) | code + `execution.log.md` (+ reviews in companion mode) | engine offers `--hook pre-flight` (before) + `--hook post-coding` (after) |
 | `/builder 6a progress` · `progress` | Progress tracking *(auto-run by the implement verb)* | updated task tables + execution log | none (progress only) |
 | `/builder 7 review` · `review` | Code review *(rare in companion flow)* | `reviews/review.md` | none (read-only review) |
-| `/builder 8 ship` · `ship` | Get work out — push + open PR (repo-guidance-aware) + watch CI checks + report; push & PR-open each behind a confirm, merge optional | pushed branch + PR + `ship/<date>/ship-report.md` | engine offers `--hook post-flight` after ship reports |
+| `/builder 7b post-flight` · `post-flight` | Pre-ship close-out: completion check → `assets/post-flight.md` note → archive the whole plan folder to `docs/plans/archive/<ord>-<slug>/` (typed `archive`/`close-out` alias here) | archived plan folder + close-out note | engine fires `--hook post-flight` here — the terminal harvest, before the move |
+| `/builder 8 ship` · `ship` | Get work out — push + open PR (repo-guidance-aware) + watch CI checks + report; push & PR-open each behind a confirm, merge optional; reads the plan from its archive path | pushed branch + PR + `assets/ship/<date>/ship-report.md` | — (the post-flight harvest already ran at 7b) |
 | `/builder 8c reconcile` · `reconcile` | Conditional upstream-reconcile excursion (divergent base) — kept merge-analysis machinery; typed `merge` resolves here | reconcile/merge plan | merge executes only on typed `PROCEED` |
 | `sync` *(maintenance — auto every entry; on-demand)* | **Reconcile the spine** — backfills every known phase + workshop + harness seam-node the flight plan is missing; idempotent, advisory, never advances the journey | updated `the-flow.{json,md}` | re-anchors per-phase harness seam-nodes across all phases (nodes only; `eng-harness-flow` owns the chore flag) |
 | `/eng-harness-flow` | **The harness front door** — stateless router; detects where the loop is and routes one step | routing envelope (`--json`) | the only harness skill the flow ever calls |
@@ -221,17 +232,25 @@ You never named a harness skill — the flow told the router *where the work was
 ```
 docs/
 └── plans/
-    └── 005-api-widgets/
-        ├── research-dossier.md        ← /builder 1a explore (optional)
-        ├── api-widgets-plan.md        ← /builder 1b plan (business spec + implementation plan)
-        ├── backpressure-coverage.md   ← post-spec seam (optional post-plan refinement)
-        ├── execution.log.md           ← /builder 6 implement
-        ├── workshops/                 ← /builder 2c workshop (optional)
-        └── tasks/
-            └── phase-1/
-                ├── tasks.md
-                └── execution.log.md
+    ├── 005-api-widgets/               ← live plans; moves to archive/ at post-flight
+    │   ├── api-widgets-plan.md        ← /builder 1b plan (business spec + implementation plan)
+    │   ├── original-ask.md            ← guided mode (verbatim ask)
+    │   ├── the-flow.json + the-flow.md ← the flight plan (CLI-written)
+    │   └── assets/                    ← everything else lives here (§ Plan-folder layout)
+    │       ├── research-dossier.md    ← /builder 1a explore (optional)
+    │       ├── backpressure-coverage.md ← post-spec seam (optional post-plan refinement)
+    │       ├── workshops/             ← /builder 2c workshop (optional)
+    │       ├── post-flight.md         ← /builder 7b post-flight (close-out note)
+    │       ├── ship/                  ← /builder 8 ship (report per date)
+    │       └── tasks/
+    │           └── phase-1/
+    │               ├── tasks.md
+    │               └── execution.log.md
+    └── archive/
+        └── 003-older-plan/            ← completed flights (post-flight moved them; same layout)
 ```
+
+*(Plans made before this layout keep their artifacts at the folder root — readers probe `assets/` first, then the legacy root; nothing is migrated.)*
 
 The harness's own substrate (governance doc, observe scratch, retro records) lives under `.harness/` in repos that have one — owned and documented by the external family, not by SDD.
 

@@ -1,5 +1,5 @@
 {
-  "_comment": "FULL FLIGHT-PLAN SEED (plan 040 / D1, AC-06, AC-13). The REAL, pre-authored, deterministic create-seed the-flow passes to `harness flow create flight-plan --template <this>` (see references/00-routing.md create routine). It is the FULL 10-node starter — the 5-node SDD spine (research → plan → phase-1 → review-1 → ship) PLUS the 5 harness chores baked in (backpressure off `plan`; boot-1/observe-1/retro-1 off `phase-1` + retro-ship off `ship`) — so an empty flow is fully ready at create with ZERO inference: even a weak model on a cheap tier gets the whole spine, the chores, AND pre-authored per-node `instructions[]` (the static 'bone' a model reads via `harness flow orient`). D1 REVERSES the plan-039 split: there is NO create-time conditional chore apply and NO router/provisioned gate — the template carries the chores directly. Chores seed at status 'known' (designed, definite work — never speculative) and are MANDATORY FOR THE AGENT, declinable only by the human (`importance` grades advisory strength for the human, never agent licence); an un-harnessed repo carries them un-run, not absent (harmless — it reads as 'here's how to adopt'). The CLI consumes `cursor` (→ nav.now) + `nodes` VERBATIM and stamps root identity (provenance / created_at / events / nav / per-node created_at). The shared chore/seam SHAPE is owned by the doctrine-parity:039 block (references/harness-seams.md — the single source of truth); this template is one CONSUMER that bakes that shape in, eng-harness-flow standalone is the other (workshop 001 WS-2). The plan-complete additive expander splices phases 2..N + their per-phase trio from that SAME shared shape. Instruction TEXT is read by `orient`, never rendered in the diagram (only a 📝N badge). The 'copy this shape' worked example lives at flight-plan.example.json (+ .example.md). Round-trip-verified: `harness flow create flight-plan --template <this> --schema flight-plan.schema.json` + `harness flow orient` + `harness flow render`.",
+  "_comment": "FULL FLIGHT-PLAN SEED (plan 040 / D1, AC-06, AC-13). The REAL, pre-authored, deterministic create-seed the-flow passes to `harness flow create flight-plan --template <this>` (see references/00-routing.md create routine). It is the FULL 11-node starter — the 6-node SDD spine (research → plan → phase-1 → review-1 → post-flight → ship) PLUS the 5 harness chores baked in (backpressure off `plan`; boot-1/observe-1/retro-1 off `phase-1` + retro-harvest off `post-flight`) — so an empty flow is fully ready at create with ZERO inference: even a weak model on a cheap tier gets the whole spine, the chores, AND pre-authored per-node `instructions[]` (the static 'bone' a model reads via `harness flow orient`). D1 REVERSES the plan-039 split: there is NO create-time conditional chore apply and NO router/provisioned gate — the template carries the chores directly. Chores seed at status 'known' (designed, definite work — never speculative) and are MANDATORY FOR THE AGENT, declinable only by the human (`importance` grades advisory strength for the human, never agent licence); an un-harnessed repo carries them un-run, not absent (harmless — it reads as 'here's how to adopt'). The CLI consumes `cursor` (→ nav.now) + `nodes` VERBATIM and stamps root identity (provenance / created_at / events / nav / per-node created_at). The shared chore/seam SHAPE is owned by the doctrine-parity:039 block (references/harness-seams.md — the single source of truth); this template is one CONSUMER that bakes that shape in, eng-harness-flow standalone is the other (workshop 001 WS-2). The plan-complete additive expander splices phases 2..N + their per-phase trio from that SAME shared shape. Instruction TEXT is read by `orient`, never rendered in the diagram (only a 📝N badge). The 'copy this shape' worked example lives at flight-plan.example.json (+ .example.md). Round-trip-verified: `harness flow create flight-plan --template <this> --schema flight-plan.schema.json` + `harness flow orient` + `harness flow render`.",
   "cursor": "research",
   "nodes": [
     { "id": "research", "type": "research", "label": "Research", "status": "in_progress",
@@ -30,18 +30,26 @@
       ] },
 
     { "id": "review-1", "type": "review", "label": "Review: P1", "status": "assumed",
-      "command": "/builder 7 review", "next": ["ship"], "zone": "flight",
+      "command": "/builder 7 review", "next": ["post-flight"], "zone": "flight",
       "instructions": [
         "Review exactly ONE phase's diff against its acceptance criteria — confirm the tests prove behaviour and nothing risky slipped in; skippable when a companion already reviewed every commit.",
-        "Run /builder 7 review — it inspects the newest reviews/*.md and surfaces a verdict; REQUEST_CHANGES loops back to fix, clean continues to the next phase or ship.",
+        "Run /builder 7 review — it inspects the newest assets/reviews/*.md and surfaces a verdict; REQUEST_CHANGES loops back to fix, clean continues to the next phase or post-flight.",
         "Done when the verdict is recorded (one finding line) and either accepted or routed to a fix-loop."
+      ] },
+
+    { "id": "post-flight", "type": "post-flight", "label": "Post-flight", "status": "assumed",
+      "command": "/builder 7b post-flight", "next": ["ship"], "zone": "postflight",
+      "instructions": [
+        "Close out the flight BEFORE any ship: every phase and review is done; the terminal harness harvest fires at this edge, then the plan folder is archived — this stage runs whether or not the work ever ships.",
+        "Run /builder 7b post-flight --plan \"<plan path>\" — it verifies completion, writes assets/post-flight.md (close-out note + open-items digest), then moves the WHOLE plan folder to docs/plans/archive/<ord>-<slug>/ (git mv, layout intact). Land every flight-plan receipt before the move — the flow file's path changes with the folder.",
+        "Done when the close-out note exists and the plan folder lives under docs/plans/archive/ — ship (optional, later) resolves --plan from the archive path."
       ] },
 
     { "id": "ship", "type": "ship", "label": "Ship", "status": "assumed",
       "command": "/builder 8 ship", "next": [],
       "instructions": [
         "Get the work out — push the branch, open a PR (using the repo's PR guidance), watch its CI checks, and report problems; the merge itself is optional.",
-        "Run /builder 8 ship --plan \"<plan path>\"; push and PR-open each pause for a separate confirm, and any merge waits for a typed PROCEED.",
+        "Run /builder 8 ship --plan \"<plan path>\" — the plan folder was archived at post-flight, so resolve --plan under docs/plans/archive/<ord>-<slug>/; push and PR-open each pause for a separate confirm, and any merge waits for a typed PROCEED.",
         "Done when the PR is open and its checks are green (or the failures are reported with a fix-loop offer); a diverged base hands off to 8c reconcile."
       ] },
 
@@ -92,14 +100,14 @@
         "Runs after this phase's observe chore is terminalized (real capture receipt, or human decline). On done, receipt first, status second: harness flow comment --path <flow-path> --node retro-1 --kind validation --source agent --text \"verdict:<…> time:<…>\" (router missing / envelope noop/UNAVAILABLE → text \"decision:unavailable reason:<…> time:<…>\" — a completed attempt, not a skip) THEN harness flow status --path <flow-path> --node retro-1 --to done. Mandatory unless the human declines — a decline is: harness flow comment --path <flow-path> --node retro-1 --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node retro-1 --to skipped."
       ] },
 
-    { "id": "retro-ship", "type": "harness-retro", "label": "Retro: ship (harvest)", "status": "known",
-      "branch_of": "ship", "next": ["ship"],
+    { "id": "retro-harvest", "type": "harness-retro", "label": "Retro: post-flight (harvest)", "status": "known",
+      "branch_of": "post-flight", "next": ["post-flight"],
       "command": "run /eng-harness-flow --hook post-flight --json",
       "chore": { "kind": "command", "importance": "recommended" },
       "instructions": [
-        "Post-flight seam: the terminal long-horizon harvest — fold this flight's learnings into durable memory at ship.",
+        "Post-flight seam: the terminal long-horizon harvest — fold this flight's learnings into durable memory at the pre-ship close-out, BEFORE the plan folder archives (so it runs even on work that never ships).",
         "Run /eng-harness-flow --hook post-flight --json — a REAL invocation; narrate its envelope verbatim.",
-        "On done, receipt first, status second: harness flow comment --path <flow-path> --node retro-ship --kind validation --source agent --text \"verdict:<…> time:<…>\" (router missing / envelope noop/UNAVAILABLE → text \"decision:unavailable reason:<…> time:<…>\" — a completed attempt, not a skip) THEN harness flow status --path <flow-path> --node retro-ship --to done. Mandatory unless the human declines — a decline is: harness flow comment --path <flow-path> --node retro-ship --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node retro-ship --to skipped."
+        "On done, receipt first, status second: harness flow comment --path <flow-path> --node retro-harvest --kind validation --source agent --text \"verdict:<…> time:<…>\" (router missing / envelope noop/UNAVAILABLE → text \"decision:unavailable reason:<…> time:<…>\" — a completed attempt, not a skip) THEN harness flow status --path <flow-path> --node retro-harvest --to done. Mandatory unless the human declines — a decline is: harness flow comment --path <flow-path> --node retro-harvest --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node retro-harvest --to skipped."
       ] }
   ]
 }
