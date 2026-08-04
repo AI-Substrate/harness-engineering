@@ -173,7 +173,8 @@
       "value": [
         {
           "question": "ac-7007 non---complete posture (open completables as one summary info line, per-row warnings only under --complete) is a carried LEAN — koala's warning-fatigue proposal, narratively walked with Jordan but not explicitly confirmed. One-line confirm or veto flips the wording; nothing else depends on it.",
-          "state": "unchecked"
+          "state": "checked",
+          "note": "RULED (Jordan, 2026-08-04): \"yeah we don't warn\" — summary info line only mid-flight; --address (ac-7008) is the on-demand scoped read; per-row accounting reserved for --complete."
         }
       ]
     },
@@ -273,9 +274,9 @@
           "effect": "Folded; the load-bearing findings promoted to key_findings."
         },
         {
-          "artifact": "Open: ac-7007 carried LEAN",
+          "artifact": "Resolved: ac-7007 posture ruled",
           "present": "—",
-          "effect": "One-line confirm pending (open_questions)."
+          "effect": "Confirmed — no mid-flight warns; summary line + --address scoped read; see open_questions receipt."
         },
         {
           "artifact": "assets/research-flow-eval-history.md (subagent sweep)",

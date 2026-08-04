@@ -116,7 +116,7 @@ Standing assumption: R-elegance — when a mechanism can be a convention, it is.
 
 | question | state | note |
 | --- | --- | --- |
-| ac-7007 non---complete posture (open completables as one summary info line, per-row warnings only under --complete) is a carried LEAN — koala's warning-fatigue proposal, narratively walked with Jordan but not explicitly confirmed. One-line confirm or veto flips the wording; nothing else depends on it. | [ ] unchecked | — |
+| ac-7007 non---complete posture (open completables as one summary info line, per-row warnings only under --complete) is a carried LEAN — koala's warning-fatigue proposal, narratively walked with Jordan but not explicitly confirmed. One-line confirm or veto flips the wording; nothing else depends on it. | [x] checked | RULED (Jordan, 2026-08-04): "yeah we don't warn" — summary info line only mid-flight; --address (ac-7008) is the on-demand scoped read; per-row accounting reserved for --complete. |
 
 <a id="workshop-opportunities"></a>
 
@@ -154,7 +154,7 @@ Standing assumption: R-elegance — when a mechanism can be a convention, it is.
 | 065/builder-tuning/structural-proof-graph.md | y | The design doc; promotes to docs/how/dd in ph-7003. |
 | 070/original-ask.md | y | Jordan's directives distilled. |
 | Opus validation pass (10 findings) | y | Folded; the load-bearing findings promoted to key_findings. |
-| Open: ac-7007 carried LEAN | — | One-line confirm pending (open_questions). |
+| Resolved: ac-7007 posture ruled | — | Confirmed — no mid-flight warns; summary line + --address scoped read; see open_questions receipt. |
 | assets/research-flow-eval-history.md (subagent sweep) | y | The flow-eval/telemetry capability arc (034→069), current assertion vocabulary, the four-probe evidence inventory, and the reuse-vs-build delta for the eval scenario; sourced the refusal-evidence and SessionEvidence key findings. |
 
 <a id="gate-matrix"></a>
