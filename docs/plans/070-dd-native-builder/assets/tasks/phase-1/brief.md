@@ -95,3 +95,14 @@ Line 1: `PHASE1 COMPLETE` or `BLOCKED: <one line>`. Then: tasks done (ids),
 commits (shas + subjects), proof counts (suite/checks/probes), evidence per
 AC (one line each), observations captured, anything out-of-fence you needed
 and did NOT touch.
+
+## Fence amendment 1 (post-dispatch, 2026-08-04 — pij-related-koala, fence issuer)
+
+`.dependency-cruiser.cjs` (dd-layer rules only) is ADDED to the allowed
+paths, retroactively covering commits `77e3ef3f` and `0f687eca`. Rationale:
+the brief's own "dd-core isolation" constraint instructs "dep-cruiser + arch
+tests enforce" — enforcement rules for the new dd layers (mutate, plan,
+links) cannot land anywhere else, so the omission was a defect in this fence
+text, not coder overreach. The reviewer's Dim-3 architecture PASS relied on
+exactly these rules. Raised as review finding 1 (BLOCKER, phase-1 review);
+resolved by this amendment rather than by removal.
