@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -436,6 +436,43 @@ describe('dd links family — live over a real corpus', () => {
     const check = await runDd(['dd', 'build', 'docs/plan.dd.json', '--check']);
     expect(check.code).toBe(0);
     expect(check.envelope.data).toMatchObject({ drift: false });
+  });
+
+  it('T004: refuses the ledger move when the sibling cannot be written, and restores the document', async () => {
+    // Second callsite of the same contract: the ledger move and the sibling
+    // render land together or not at all. A "warn and keep going" posture here
+    // would report a successful re-verification while leaving the drift gate a
+    // hand-edit to blame on the next person.
+    const source = join(repo, 'docs/plan.dd.json');
+    const sibling = join(repo, 'docs/plan.dd.md');
+    const before = readFileSync(source, 'utf8');
+    const ledger = JSON.parse(before);
+    write('docs/evidence.dd.json', evidenceDoc('an edit the ledger must not record'));
+    rmSync(sibling, { force: true });
+    mkdirSync(sibling);
+
+    const result = await runDd([
+      'dd',
+      'link',
+      'verify-basis',
+      'docs/evidence.dd.json#entries',
+      '--sha',
+      ledger.references[0].sha,
+      '--update',
+      'docs/plan.dd.json',
+    ]);
+
+    expect(result.code).toBe(1);
+    expect(result.envelope.error?.code).toBe('E452');
+    expect(result.envelope.error?.details).toMatchObject({
+      stage: 'sibling',
+      updated: false,
+      source_restored: true,
+    });
+    expect(readFileSync(source, 'utf8')).toBe(before);
+    expect(readdirSync(sibling)).toEqual([]);
+
+    rmSync(sibling, { recursive: true, force: true });
   });
 
   it('refuses to mint a ledger entry that was never recorded', async () => {

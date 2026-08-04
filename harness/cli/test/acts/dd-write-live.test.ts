@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createSyntheticPlan, type SyntheticCorpus } from '../support/dd-corpus.js';
 import { runCli } from '../support/run-cli.js';
@@ -101,6 +101,34 @@ describe('harness dd get/set/add/rm — live', () => {
       true,
     );
     expect(readFileSync(sibling, 'utf8')).toContain('proven');
+  });
+
+  it('refuses the mutation and restores the source when the sibling cannot be written (dw-0283)', async () => {
+    // Best-effort regeneration is what this replaces: the verb used to write the
+    // source, warn that the sibling failed, and still report `written: true` —
+    // manufacturing exactly the source/sibling drift `dd build --check` exists to
+    // catch. A directory parked on the sibling path makes that write fail for
+    // real, on any platform, without chmod games.
+    const source = corpus.taskFiles['ph-0001'] as string;
+    const sibling = `${source.replace(/\.json$/, '')}.md`;
+    const before = readFileSync(source, 'utf8');
+    mkdirSync(sibling);
+
+    const result = await runCli(['dd', 'set', `${tasks()}#tasks/tk-0002/title`, 'proven']);
+
+    // (a) the envelope is a refusal, not a warning attached to a success
+    expect(result.code).toBe(1);
+    expect(result.envelope?.error?.code).toBe('E452');
+    expect(result.envelope?.error?.details).toMatchObject({
+      stage: 'sibling',
+      written: false,
+      source_restored: true,
+    });
+    // (b) the source on disk is byte-identical to before the call
+    expect(readFileSync(source, 'utf8')).toBe(before);
+    // (c) nothing stale was left where the sibling would have gone
+    expect(statSync(sibling).isDirectory()).toBe(true);
+    expect(readdirSync(sibling)).toEqual([]);
   });
 
   it('mints the next collision-free id under a registered prefix (dw-0284)', async () => {

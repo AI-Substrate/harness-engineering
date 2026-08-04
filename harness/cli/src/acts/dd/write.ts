@@ -1,5 +1,4 @@
 import type { Command } from 'commander';
-import { NodeFs } from '../../adapters/fs/node-fs.js';
 import { formatError, formatOk } from '../../output/envelope.js';
 import { ErrorCodes } from '../../output/error-codes.js';
 import { emitRawAndExit, exitWithEnvelope } from '../../output/exit.js';
@@ -20,7 +19,7 @@ import {
 } from '../../services/dd/mutate/index.js';
 import type { SchemaRecord } from '../../services/dd/schema/model.js';
 import { resolveInRepo } from '../../services/shared/posix-path.js';
-import { autoRegenerateSibling } from './build.js';
+import { writeDocumentWithSibling } from './build.js';
 import { createLinkContext, type DdActDeps, type DdLinkContext } from './shared.js';
 
 /**
@@ -165,13 +164,17 @@ function refuseMutation(
 }
 
 /**
- * Persist a successful mutation and regenerate the sibling in the SAME operation.
+ * Persist a successful mutation and its sibling as ONE operation, or persist
+ * neither.
  *
  * The regeneration is not a courtesy. A dd document's `.dd.md` is a derived
  * artifact with a drift gate pointed at it, so a writer that changed the source
  * and left the sibling behind would be manufacturing exactly the failure
  * `dd build --check` exists to catch — and the agent who ran the verb would be
- * blamed for a hand-edit it never made.
+ * blamed for a hand-edit it never made. Best-effort regeneration has the same
+ * defect wearing a warning: the envelope still says `written: true`. So a
+ * sibling failure is a MUTATION failure here, the source is rolled back, and the
+ * caller is told nothing moved.
  */
 async function persist(
   ctx: DdLinkContext,
@@ -179,25 +182,33 @@ async function persist(
   address: string,
   target: WriterTarget,
   outcome: Extract<DdMutationOutcome, { ok: true }>,
-  io: CliIo,
 ): Promise<never> {
   const text = serializeDoc(outcome.doc, target.text);
-  try {
-    new NodeFs().writeText(target.path, text);
-  } catch (error) {
+  const write = await writeDocumentWithSibling({
+    documentPath: target.path,
+    text,
+    previousText: target.text,
+    repoRoot: ctx.repoRoot,
+  });
+  if (!write.ok) {
     exitWithEnvelope(
-      formatError(
-        command,
-        ErrorCodes.DD_MUTATION_WRITE_FAILED,
-        `could not write ${target.path}: ${error instanceof Error ? error.message : String(error)}`,
-        ctx.clock,
-        { details: { address, path: target.path }, next_action: 'Check permissions, then retry.' },
-      ),
+      formatError(command, write.code, write.message, ctx.clock, {
+        details: {
+          address,
+          path: target.path,
+          stage: write.stage,
+          written: false,
+          source_restored: write.restored,
+          ...(write.details !== undefined && { cause: write.details }),
+        },
+        next_action: write.restored
+          ? write.next_action
+          : `The document could not be restored after a failed ${write.stage} write — recover ${target.path} from git before retrying.`,
+      }),
       ctx.port,
     );
   }
 
-  const regeneration = await autoRegenerateSibling(target.path, ctx.repoRoot, io);
   return exitWithEnvelope(
     formatOk(
       command,
@@ -209,15 +220,12 @@ async function persist(
         value: outcome.value,
         ...(outcome.minted !== undefined && { minted: outcome.minted }),
         written: true,
-        sibling_regenerated: regeneration.regenerated,
-        ...(regeneration.reason !== undefined && { sibling_reason: regeneration.reason }),
+        sibling_regenerated: true,
       },
       ctx.clock,
       {
         evidence: [{ label: 'document', path: target.path }],
-        next_action: regeneration.regenerated
-          ? `Commit ${target.path} and its regenerated sibling together.`
-          : `The document changed but its sibling did not regenerate (${regeneration.reason ?? 'unknown'}) — run \`harness dd build ${target.path}\` before committing.`,
+        next_action: `Commit ${target.path} and its regenerated sibling together.`,
       },
     ),
     ctx.port,
@@ -287,7 +295,7 @@ export function registerWriterCommands(dd: Command, io: CliIo, deps: DdActDeps):
         asJson: opts.valueJson === true,
       });
       if (!outcome.ok) refuseMutation(ctx, 'dd set', address, outcome);
-      await persist(ctx, 'dd set', address, target, outcome, io);
+      await persist(ctx, 'dd set', address, target, outcome);
     });
 
   dd.command('add <address> <json>')
@@ -301,7 +309,7 @@ export function registerWriterCommands(dd: Command, io: CliIo, deps: DdActDeps):
         ...(opts.mint !== undefined && { mint: opts.mint }),
       });
       if (!outcome.ok) refuseMutation(ctx, 'dd add', address, outcome);
-      await persist(ctx, 'dd add', address, target, outcome, io);
+      await persist(ctx, 'dd add', address, target, outcome);
     });
 
   dd.command('rm <address>')
@@ -311,6 +319,6 @@ export function registerWriterCommands(dd: Command, io: CliIo, deps: DdActDeps):
       const target = readTarget(ctx, 'dd rm', address);
       const outcome = ddRemove(target.doc, target.segments, mutationDeps(ctx, target));
       if (!outcome.ok) refuseMutation(ctx, 'dd rm', address, outcome);
-      await persist(ctx, 'dd rm', address, target, outcome, io);
+      await persist(ctx, 'dd rm', address, target, outcome);
     });
 }
