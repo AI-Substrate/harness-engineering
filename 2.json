@@ -1,0 +1,56 @@
+{
+  "schema_version": "2.6",
+  "command": "checks",
+  "harness": "cursor-agent",
+  "harness_version": "unknown",
+  "harness_session_id": "755f2676-70d3-409e-a684-00e3eaf63f53",
+  "timecode": "2026-08-04T07:49:46.719Z",
+  "window": {
+    "since": "session-start",
+    "from": 0,
+    "to": 0
+  },
+  "branch": null,
+  "tokens": null,
+  "effort": null,
+  "event_stream": [
+    {
+      "t": "2026-08-04T07:49:46.719Z",
+      "kind": "checks",
+      "status": "error",
+      "gates": {
+        "tests": "error",
+        "biome": "error",
+        "typecheck": "ok",
+        "check:docs": "ok",
+        "check:flows": "ok",
+        "check:telemetry-fixtures": "ok",
+        "check:doctrine-parity": "ok",
+        "check:dd-docs": "ok",
+        "root-invocation-smoke": "ok",
+        "arch-check": "degraded",
+        "dd doctor": "ok",
+        "skills-check": "ok",
+        "markdown-lint": "degraded",
+        "windows-check": "degraded"
+      }
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 0,
+      "agent_working_s": 0,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 0
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": null,
+    "tools": {},
+    "outcomes": {
+      "checks": "error",
+      "exits": {}
+    }
+  }
+}
