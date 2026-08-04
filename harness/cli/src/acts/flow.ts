@@ -15,6 +15,7 @@ import { ConventionSchemaResolver } from '../services/dd/schema/index.js';
 import {
   type DdGateDeps,
   type DdGateDrift,
+  type DdGateFinding,
   type DdGateResult,
   ddGateDrift,
   evaluateDdGate,
@@ -1282,6 +1283,8 @@ interface OrientGate {
   address: string;
   /** Whether departure from this node is actually gated on it. */
   gates: boolean;
+  /** Which question the gate asks — absent for the completion kind. */
+  check?: string;
   status: 'complete' | 'incomplete' | 'unevaluable';
   terminal: number;
   total: number;
@@ -1289,6 +1292,8 @@ interface OrientGate {
   path: string | null;
   /** Every item, in document order — complete AND incomplete (see below). */
   items: OrientGateItem[];
+  /** Check-kind only: what the validator said, verbatim. Empty when green. */
+  findings?: DdGateFinding[];
   /** Why the gate could not be evaluated; absent when it could. */
   problem?: string;
   /** A stale recorded basis — INFORMATION, never a refusal (workshop-001). */
@@ -1349,11 +1354,13 @@ function orientGate(node: FlowNode, deps: DdGateDeps, repoRoot: string): OrientG
   return {
     address: result.address,
     gates,
+    ...(result.kind === 'check' && result.check !== undefined && { check: result.check }),
     status: result.complete ? 'complete' : 'incomplete',
     terminal: result.terminal,
     total: result.total,
     path: result.path,
     items,
+    ...(result.kind === 'check' && { findings: result.findings }),
     ...(drift !== null && { drift }),
   };
 }
@@ -1479,6 +1486,17 @@ function renderOrientGate(gate: OrientGate): string[] {
   const verb = gate.gates ? 'gate' : 'link (not gating)';
   if (gate.status === 'unevaluable') {
     lines.push(`  dd ${verb}: ${gate.address}`, `    ! could not evaluate — ${gate.problem ?? ''}`);
+  } else if (gate.check !== undefined) {
+    // The check block prints FINDINGS, not pips. Its one item would render as a
+    // single square saying nothing a reader could act on, whereas the findings are
+    // exactly the work standing between them and departure — the same list the
+    // refusal would print, shown BEFORE they hit it.
+    const mark = gate.status === 'complete' ? '✓ open' : '✕ holds';
+    lines.push(`  dd ${verb} (${gate.check}): ${gate.address}  ${mark}`);
+    for (const finding of gate.findings ?? []) {
+      lines.push(`    □ ${finding.severity} ${finding.class} ${finding.address}`);
+      lines.push(`      ${finding.message}`);
+    }
   } else {
     const mark = gate.status === 'complete' ? '✓ open' : '✕ holds';
     lines.push(`  dd ${verb}: ${gate.address}  ${gate.terminal}/${gate.total} ${mark}`);

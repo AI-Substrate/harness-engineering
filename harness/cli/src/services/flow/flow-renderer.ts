@@ -1,3 +1,4 @@
+import { isPlanCheckKind, type PlanCheckKind } from '../dd/plan/index.js';
 import {
   ddLinkOf,
   type FlowComment,
@@ -129,6 +130,19 @@ const choreStatusGlyph = (status: string | undefined): string =>
 function ddGateBadge(node: FlowNode): string | null {
   const link = ddLinkOf(node);
   if (link === undefined || typeof link.address !== 'string') return null;
+  // A CHECK gate's counts carry no information: it asks one question, so `1/1`
+  // occupies the busiest channel on the diagram to say nothing. The verdict is the
+  // whole answer, so it is the whole badge.
+  //
+  // The check KIND is never interpolated from the document — `checkKindOf` narrows
+  // it to our own frozen constant or to nothing. That is the F004 discipline
+  // applied to the second authored key: an unrecognised value is not echoed into a
+  // mermaid label, it renders as the bare shield, which is what "nothing
+  // trustworthy to report" has always looked like here.
+  if (checkKindOf(link) !== null) {
+    if (link.reading === undefined) return '⛨';
+    return link.reading.status === 'complete' ? '⛨✓' : '⛨✕';
+  }
   // F004: the counts are re-checked HERE too, not merely at the mutation boundary.
   // A `FlowDoc` is JSON on disk, and anyone with an editor can put anything in a
   // recorded reading — including `1"] --> EVIL["pwned`, which would inject a node
@@ -139,6 +153,18 @@ function ddGateBadge(node: FlowNode): string | null {
   if (counts === null) return '⛨';
   const tick = link.reading?.status === 'complete' ? ' ✓' : '';
   return `⛨${counts.terminal}/${counts.total}${tick}`;
+}
+
+/**
+ * The link's check kind, narrowed to the FROZEN vocabulary — or `null`.
+ *
+ * The value returned is our own constant, never the document's bytes. A renderer
+ * that echoed `link.check` would hand an editor a second string channel straight
+ * into a mermaid label, which is precisely the hole F004 closed for the counts.
+ */
+function checkKindOf(link: { check?: string }): PlanCheckKind | null {
+  const kind = link.check;
+  return isPlanCheckKind(kind) ? kind : null;
 }
 
 /** Rail bands (ws-002) — which segment a node renders in: `pre ─ [ flight ] ─ post`. */
@@ -227,8 +253,21 @@ const LEGEND =
  */
 const GATE_LEGEND = ' · ⛨ dd gate (terminal/total from the last evaluation; ✓ = open).';
 
-const legendFor = (nodes: readonly FlowNode[]): string =>
-  nodes.some((n) => ddLinkOf(n) !== undefined) ? `${LEGEND}${GATE_LEGEND}` : `${LEGEND}.`;
+/**
+ * The check-gate clause, appended only when a CHECK gate is actually on the page.
+ *
+ * Same conditional discipline as `GATE_LEGEND`, one level finer: a flow carrying
+ * only completion gates renders byte-identically to what it rendered before the
+ * check kind existed. The legend grows exactly when the diagram does.
+ */
+const CHECK_LEGEND = ' ⛨✓/⛨✕ = a plan-validate check gate (green / not green).';
+
+const legendFor = (nodes: readonly FlowNode[]): string => {
+  const links = nodes.map((n) => ddLinkOf(n)).filter((l) => l !== undefined);
+  if (links.length === 0) return `${LEGEND}.`;
+  const checks = links.some((l) => checkKindOf(l) !== null) ? CHECK_LEGEND : '';
+  return `${LEGEND}${GATE_LEGEND}${checks}`;
+};
 
 // ---------------------------------------------------------------------------
 // Escaping — the corruption firewall (Risk #10).
@@ -767,6 +806,20 @@ function railGateCallout(doc: FlowDoc): string {
   const link = node === undefined ? undefined : ddLinkOf(node);
   if (node === undefined || link === undefined || link.gate === false) return '';
   if (typeof link.address !== 'string' || link.address.length === 0) return '';
+  // A check gate says WHICH check by name — the rail has the room the badge does
+  // not, and "this gate runs the plan validator" is the thing a reader standing on
+  // the node needs to know. The name printed is the frozen constant, never the
+  // document's own string.
+  const check = checkKindOf(link);
+  if (check !== null) {
+    const verdict =
+      link.reading === undefined
+        ? 'not yet evaluated'
+        : link.reading.status === 'complete'
+          ? '✓'
+          : '✕';
+    return `  ⚑ gate: ${escapeMd(node.label ?? node.id)} ⛨ ${check} ${verdict}`;
+  }
   // Same untrusted-counts defence as the badge (F004) — an unreadable reading is
   // reported as unevaluated rather than interpolated.
   const counts = readingCounts(link.reading);
