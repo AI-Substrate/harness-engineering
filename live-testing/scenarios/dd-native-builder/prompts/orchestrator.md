@@ -73,7 +73,18 @@ Identical to `md-to-pdf-flow` except:
 1. Spawn the subject with `prompts/subject.md` verbatim. Do NOT answer method
    questions — the packet's protocol allows task-scope questions only, and
    answering a method question destroys the measurement.
-2. When the subject reports, sync its worktree telemetry BEFORE teardown.
+2. When the subject reports: **SCORE FIRST, then sync, then snapshot, then
+   close.** This is a two-constraint order and each constraint was learned
+   by losing the thing it protects (run 1, 2026-08-05): `telemetry sync`
+   EMPTIES the worktree buffer the scorer reads — sync-before-score blinded
+   the whole telemetry lane (A1/A7/A8/A10 unknown) even though every
+   segment carried the join key; and `pij close` destroys the seat
+   descriptor the cost/ledger join needs — close-before-snapshot forfeits
+   the run's cost accounting. Also pin the SKILL SURFACE, not just the CLI
+   ref: run 1's subject loaded the machine-deployed builder (weeks stale),
+   because a base sha pins code, not skills — copy the branch's
+   `skills/builder` into the worktree's `.claude/skills/` (project skills
+   win) or deploy before the run, and record which you did.
 3. Score:
 
    ```bash
