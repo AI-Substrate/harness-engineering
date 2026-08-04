@@ -1,14 +1,16 @@
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
+import { headBlobBase } from '../../src/acts/plan/index.js';
 import type { VerbActDeps } from '../../src/acts/verb.js';
 import { FakeClock } from '../../src/adapters/clock/fake-clock.js';
 import { FakeEnv } from '../../src/adapters/env/fake-env.js';
 import { FakeExec } from '../../src/adapters/exec/fake-exec.js';
 import { FakeFs } from '../../src/adapters/fs/fake-fs.js';
 import { FakeGit } from '../../src/adapters/git/fake-git.js';
+import type { GitPort } from '../../src/adapters/git/git-port.js';
 import { FakeProcess } from '../../src/adapters/process/fake-process.js';
 import { buildProgram } from '../../src/app.js';
 import type { CliIo } from '../../src/output/output-port.js';
@@ -51,49 +53,51 @@ interface PrBodyData {
   }>;
 }
 
-describe('harness plan pr-body — the corpus renders its own proof', () => {
-  let previousCwd = '';
-  let temp = '';
-  let corpus: SyntheticCorpus | undefined;
+let previousCwd = '';
+let temp = '';
+let corpus: SyntheticCorpus | undefined;
 
-  const enter = (dir: string): void => {
-    previousCwd = process.cwd();
-    process.chdir(dir);
-  };
+const enter = (dir: string): void => {
+  previousCwd = process.cwd();
+  process.chdir(dir);
+};
 
-  afterEach(() => {
-    if (previousCwd.length > 0) process.chdir(previousCwd);
-    previousCwd = '';
-    if (temp.length > 0) rmSync(temp, { recursive: true, force: true });
-    temp = '';
-    corpus?.cleanup();
-    corpus = undefined;
+afterEach(() => {
+  if (previousCwd.length > 0) process.chdir(previousCwd);
+  previousCwd = '';
+  if (temp.length > 0) rmSync(temp, { recursive: true, force: true });
+  temp = '';
+  corpus?.cleanup();
+  corpus = undefined;
+});
+
+/** A throwaway copy of the shipped exemplar, so a control may edit it. */
+const copyExemplar = (): string => {
+  temp = mkdtempSync(join(tmpdir(), 'pr-body-exemplar-'));
+  cpSync(join(REPO_ROOT, '.dd'), join(temp, '.dd'), { recursive: true });
+  cpSync(join(REPO_ROOT, 'docs/how/dd/exemplar'), join(temp, 'docs/how/dd/exemplar'), {
+    recursive: true,
   });
+  return temp;
+};
 
-  /** A throwaway copy of the shipped exemplar, so a control may edit it. */
-  const copyExemplar = (): string => {
-    temp = mkdtempSync(join(tmpdir(), 'pr-body-exemplar-'));
-    cpSync(join(REPO_ROOT, '.dd'), join(temp, '.dd'), { recursive: true });
-    cpSync(join(REPO_ROOT, 'docs/how/dd/exemplar'), join(temp, 'docs/how/dd/exemplar'), {
-      recursive: true,
-    });
-    return temp;
+const closeEveryCriterion = (root: string): void => {
+  const path = join(root, EXEMPLAR);
+  const doc = JSON.parse(readFileSync(path, 'utf8')) as {
+    sections: Array<{ name: string; value: unknown }>;
   };
+  for (const section of doc.sections) {
+    if (section.name !== 'acceptance_criteria') continue;
+    for (const row of section.value as Array<Record<string, unknown>>) row.state = 'checked';
+  }
+  writeFileSync(path, `${JSON.stringify(doc, null, 2)}\n`, 'utf8');
+};
 
-  const closeEveryCriterion = (root: string): void => {
-    const path = join(root, EXEMPLAR);
-    const doc = JSON.parse(readFileSync(path, 'utf8')) as {
-      sections: Array<{ name: string; value: unknown }>;
-    };
-    for (const section of doc.sections) {
-      if (section.name !== 'acceptance_criteria') continue;
-      for (const row of section.value as Array<Record<string, unknown>>) row.state = 'checked';
-    }
-    writeFileSync(path, `${JSON.stringify(doc, null, 2)}\n`, 'utf8');
-  };
+const data = (result: Awaited<ReturnType<typeof runCli>>): PrBodyData =>
+  result.envelope?.data as unknown as PrBodyData;
 
-  const data = (result: Awaited<ReturnType<typeof runCli>>): PrBodyData =>
-    result.envelope?.data as unknown as PrBodyData;
+describe('harness plan pr-body — the corpus renders its own proof', () => {
+  // helpers hoisted to module scope — a second describe needs them too.
 
   // -- dw-0002: the refusal ------------------------------------------------
 
@@ -251,5 +255,106 @@ describe('harness plan pr-body — the corpus renders its own proof', () => {
     expect(help).toContain('head sha');
     expect(help).toContain('--heading <text>');
     expect(help).toContain('--depth <n>');
+  });
+});
+
+/**
+ * tk-7152 / dw-0003 — the ship stage's half: read from the ARCHIVE path, and pin
+ * every link at the head sha.
+ *
+ * `headBlobBase` is unit-driven over a fake GitPort rather than a real remote,
+ * because what needs proving is the DECISION — which remote shapes produce a URL
+ * and which produce a refusal. A refusal here is the whole point: the plan's risk
+ * register names broken PR links as the thing that would discredit this surface
+ * on day one, so an unrecognised remote must never become a plausible guess.
+ */
+describe('dw-0003 — links pinned at the head sha, derived and not assembled', () => {
+  const gitWith = (remote: string | null, commit: string | null): GitPort =>
+    ({
+      isRepo: () => true,
+      currentBranch: () => 'main',
+      currentCommit: () => commit,
+      remoteUrl: () => remote,
+      knownWorktreeRoots: () => ({ status: 'ok', roots: [] }),
+    }) as unknown as GitPort;
+
+  const SHA = 'a'.repeat(40);
+
+  it('builds the same blob base from an https remote and an scp-style ssh remote', () => {
+    const https = headBlobBase(
+      gitWith('https://github.com/AI-Substrate/harness-engineering.git', SHA),
+    );
+    const ssh = headBlobBase(gitWith('git@github.com:AI-Substrate/harness-engineering.git', SHA));
+
+    expect(https).toEqual({
+      ok: true,
+      sha: SHA,
+      base: `https://github.com/AI-Substrate/harness-engineering/blob/${SHA}/`,
+    });
+    // Two ways of naming ONE repository must not produce two different link bases.
+    expect(ssh).toEqual(https);
+  });
+
+  it('pins a SHA, never a branch — a branch link silently changes what it shows', () => {
+    const pinned = headBlobBase(gitWith('https://github.com/o/r.git', SHA));
+    expect(pinned.ok && pinned.base).toContain(`/blob/${SHA}/`);
+    expect(pinned.ok && pinned.base).not.toContain('/blob/main/');
+  });
+
+  it('REFUSES rather than guessing when there is no remote, no commit, or an odd URL', () => {
+    for (const [remote, commit, needle] of [
+      [null, SHA, 'no `origin` remote'],
+      ['https://github.com/o/r.git', null, 'does not resolve to a commit'],
+      ['/some/local/path.git', SHA, 'not a shape blob links can be built from'],
+    ] as const) {
+      const pinned = headBlobBase(gitWith(remote, commit));
+      expect(pinned.ok).toBe(false);
+      expect(pinned.ok === false && pinned.reason).toContain(needle);
+      // Every refusal offers the manual way out rather than dead-ending.
+      expect(pinned.ok === false && pinned.hint).toContain('--link-base');
+    }
+  });
+
+  it('refuses --pin-head together with --link-base — which one wins should not be luck', async () => {
+    const root = copyExemplar();
+    closeEveryCriterion(root);
+    enter(root);
+
+    const result = await runCli([
+      'plan',
+      'pr-body',
+      EXEMPLAR,
+      '--pin-head',
+      '--link-base',
+      'https://example.invalid/',
+    ]);
+
+    expect(result.code).not.toBe(0);
+    expect(result.envelope?.error?.code).toBe('E108');
+  });
+
+  it('renders from the ARCHIVE path — the corpus ship reads has already moved', async () => {
+    const root = copyExemplar();
+    closeEveryCriterion(root);
+    // The #90 read-from-archive rule: post-flight archives BEFORE ship runs, so
+    // the path ship resolves is under docs/plans/archive/. A renderer that only
+    // worked at the authoring path would fail exactly when it is needed.
+    mkdirSync(join(root, 'docs/plans/archive'), { recursive: true });
+    cpSync(join(root, 'docs/how/dd/exemplar'), join(root, 'docs/plans/archive/099-exemplar'), {
+      recursive: true,
+    });
+    enter(root);
+
+    const result = await runCli([
+      'plan',
+      'pr-body',
+      'docs/plans/archive/099-exemplar/plan.dd.json',
+    ]);
+
+    expect(result.code).toBe(0);
+    expect(data(result).count).toBe(4);
+    expect(data(result).markdown).toContain(
+      '(docs/plans/archive/099-exemplar/backpressure.dd.md#rows)',
+    );
   });
 });

@@ -199,3 +199,35 @@ describe('ac-7115 — the legacy markdown read path is retained (tk-7146)', () =
     expect(text).toContain('no migration backlog');
   });
 });
+
+/**
+ * tk-7152 / tk-7165 — the close-out seams teach the two verbs that keep an
+ * archived plan's evidence alive.
+ *
+ * Both stages instruct a MECHANISM, and phase 1's defect class was a brief that
+ * instructs a mechanism while omitting what it needs to run. These pins hold the
+ * exact commands, not the topic: prose can be rewritten freely, but it may not
+ * quietly stop naming the verb, because the failure that follows is invisible —
+ * a body full of dead links, or a set of gates pointing at a folder that moved.
+ */
+describe('close-out seams teach the archive relocate and the PR proof table', () => {
+  it('75 post-flight relocates the flow in the same breath as the git mv', () => {
+    const stage = read('stages/75-post-flight.md');
+    expect(stage).toMatch(/harness flow relocate --slug "\$\{FLOW_SLUG\}" --to "\$\{DEST\}"/);
+    // The instruction is only followable because `flow list` reports plan_dir.
+    expect(stage).toContain('harness flow list --json');
+    expect(stage).toContain('plan_dir');
+    // And it says WHY it is not optional — the failure has no discovery moment.
+    expect(stage).toContain('not optional on a dd-native plan');
+  });
+
+  it('80 ship appends the derived proof table, pinned at HEAD', () => {
+    const stage = read('stages/80-ship.md');
+    expect(stage).toMatch(/harness plan pr-body\s+"\$\{PLAN_DIR\}\/plan\.dd\.json" --pin-head/);
+    expect(stage).toContain('docs/plans/archive/');
+    // The two refusals a stage reader must NOT route around by hand.
+    expect(stage).toContain('E457');
+    expect(stage).toContain('do NOT hand-write the table');
+    expect(stage).toContain('Do not assemble the URL yourself');
+  });
+});

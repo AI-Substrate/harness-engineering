@@ -22,9 +22,17 @@ The plan folder archived at post-flight, so the corpus is read from `docs/plans/
 ```bash
 ARCHIVE="docs/plans/archive/<ord>-<slug>"
 harness plan validate "${ARCHIVE}/plan.dd.json" --complete   # must be green before you claim it is
+harness plan pr-body  "${ARCHIVE}/plan.dd.json" --pin-head   # the AC table, every link pinned at HEAD
 harness dd get "${ARCHIVE}/plan.dd.json#acceptance_criteria" # the closed criteria + their receipts
 harness dd graph map "${ARCHIVE}/plan.dd.json#acceptance_criteria/ac-XXXX" --direction in
 ```
+
+`plan pr-body` emits `data.markdown` — paste it into the PR body verbatim. It renders each closed criterion beside the evidence it rests on: `proven_by`, its `pressure` instrument, and the incoming `satisfies` naming the tasks that accounted for it.
+
+Two things it does on purpose:
+
+- **It refuses an unclosed corpus** (`E457`), naming the open rows. Do not work around that by writing the table by hand — a table that quietly omits the criteria that were not met makes a reviewer's approval mean less than they think it does. Close the rows through the dd surfaces, or say plainly in the PR that they are open.
+- **`--pin-head` derives the link prefix** from the origin remote and the HEAD commit, and REFUSES if it cannot (no remote, no commit, an unrecognised remote shape). Do not assemble the URL yourself from `git remote` output — that is how a body full of 404s reaches a reviewer, and broken links discredit the surface faster than a missing one. If the derivation refuses, pass `--link-base <url>` explicitly and say why in the ship report.
 
 The last read shows the incoming work-accounting for one criterion — which tasks `satisfies` it — which is exactly what a human reviewer wants beside the claim.
 
@@ -123,6 +131,15 @@ $ARGUMENTS
    **Absent (default path)**: title = the plan's feature name (from `*-plan.md` h1 / Summary);
    body = the plan's `## Business Specification` § Summary (or the plan summary) + a trailing
    "🤖 Generated with the SDD flow" line. Quote the plan, don't invent scope.
+
+   **dd-native plan? Append the proof table.** After the summary, append the output of
+   `harness plan pr-body "${PLAN_DIR}/plan.dd.json" --pin-head` (see the section above).
+   The body then carries every closed criterion beside the evidence it rests on, one click
+   away, which is what turns the human checkpoint from "do I trust this summary?" into
+   "do I agree with this evidence?". If it refuses — `E457` on an unclosed corpus, or a
+   `--pin-head` derivation it will not guess at — do NOT hand-write the table: report the
+   refusal and let the human decide, because the value of the table is precisely that
+   nobody typed it.
 
 4) Build the **Deferred & Noteworthy** rollup (read-time, whole-plan; informs the outbound gates; never a gate):
 

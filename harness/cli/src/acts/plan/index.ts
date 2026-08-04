@@ -4,6 +4,8 @@ import { SystemClock } from '../../adapters/clock/system-clock.js';
 import { NodeEnv } from '../../adapters/env/node-env.js';
 import { NodeExec } from '../../adapters/exec/node-exec.js';
 import { NodeFs } from '../../adapters/fs/node-fs.js';
+import { ExecGit } from '../../adapters/git/exec-git.js';
+import type { GitPort } from '../../adapters/git/git-port.js';
 import { NodeHash } from '../../adapters/hash/node-hash.js';
 import { NodeProcess } from '../../adapters/process/node-process.js';
 import { formatDegraded, formatError, formatOk } from '../../output/envelope.js';
@@ -564,9 +566,16 @@ function registerPrBodyCommand(plan: Command, io: CliIo, deps: DdActDeps): void 
       '--link-base <url>',
       'absolute prefix every reference resolves against — pin it at the head sha so the links keep meaning what they meant',
     )
+    .option(
+      '--pin-head',
+      "derive that prefix from this checkout's origin remote and HEAD commit (refuses rather than guessing a URL)",
+    )
     .option('--heading <text>', 'the section heading, for composing into a larger body')
     .action(
-      async (target: string, opts: { depth: string; linkBase?: string; heading?: string }) => {
+      async (
+        target: string,
+        opts: { depth: string; linkBase?: string; pinHead?: boolean; heading?: string },
+      ) => {
         const ctx = context(io, deps);
         const path = resolvePlanDocument(target, ctx.repoRoot);
         const depth = Number(opts.depth);
@@ -581,6 +590,37 @@ function registerPrBodyCommand(plan: Command, io: CliIo, deps: DdActDeps): void 
             ),
             ctx.port,
           );
+        }
+        if (opts.pinHead === true && opts.linkBase !== undefined) {
+          exitWithEnvelope(
+            formatError(
+              'plan pr-body',
+              ErrorCodes.INVALID_ARGS,
+              '--pin-head and --link-base both set the prefix; passing both leaves which one wins to luck',
+              ctx.clock,
+              {
+                next_action:
+                  'Pass one: `--pin-head` to derive it, `--link-base <url>` to state it.',
+              },
+            ),
+            ctx.port,
+          );
+        }
+
+        let linkBase = opts.linkBase ?? null;
+        let pinnedSha: string | null = null;
+        if (opts.pinHead === true) {
+          const pinned = headBlobBase(new ExecGit(ctx.repoRoot));
+          if (!pinned.ok) {
+            exitWithEnvelope(
+              formatError('plan pr-body', ErrorCodes.INVALID_ARGS, pinned.reason, ctx.clock, {
+                next_action: pinned.hint,
+              }),
+              ctx.port,
+            );
+          }
+          linkBase = pinned.base;
+          pinnedSha = pinned.sha;
         }
 
         // Reads the plan document first so an unreadable/unresolvable one fails
@@ -620,7 +660,7 @@ function registerPrBodyCommand(plan: Command, io: CliIo, deps: DdActDeps): void 
         }
 
         const body = renderPrBody(check.index, {
-          linkBase: opts.linkBase ?? null,
+          linkBase,
           ...(opts.heading !== undefined && { heading: opts.heading }),
         });
         if (!body.ok) {
@@ -640,6 +680,8 @@ function registerPrBodyCommand(plan: Command, io: CliIo, deps: DdActDeps): void 
               markdown: body.markdown,
               criteria: body.criteria,
               count: body.criteria.length,
+              ...(linkBase !== null && { link_base: linkBase }),
+              ...(pinnedSha !== null && { pinned_sha: pinnedSha }),
             },
             ctx.clock,
             {
@@ -651,6 +693,57 @@ function registerPrBodyCommand(plan: Command, io: CliIo, deps: DdActDeps): void 
         );
       },
     );
+}
+
+/**
+ * The blob-URL prefix for THIS checkout, pinned at the commit the PR is opened on.
+ *
+ * Derived rather than assembled in prompt-ware, for the reason the plan's risk
+ * register gives: broken PR links would discredit the surface on day one, and a
+ * stage doc that says "concatenate the remote, the word blob, and the sha" is a
+ * link-builder that works until somebody's remote is an SSH URL or their default
+ * branch moved. It also has to be a SHA and not a branch — a branch-based link
+ * silently starts pointing at different content the moment the branch advances,
+ * which is the same class of quiet staleness the archive rewrite exists to stop.
+ *
+ * Returns a REASON when it cannot, never a plausible guess: an unrecognised
+ * remote host, a detached/empty repository, or no remote at all each produce a
+ * refusal the caller reports, so nobody pastes a 404 into a pull request.
+ */
+export function headBlobBase(
+  git: GitPort,
+): { ok: true; base: string; sha: string } | { ok: false; reason: string; hint: string } {
+  const remote = git.remoteUrl();
+  if (remote === null || remote.length === 0) {
+    return {
+      ok: false,
+      reason:
+        'this checkout has no `origin` remote, so there is no host to build blob links against',
+      hint: 'Pass the prefix yourself with `--link-base <url>`, or add an origin remote.',
+    };
+  }
+  const sha = git.currentCommit();
+  if (sha === null) {
+    return {
+      ok: false,
+      reason: 'HEAD does not resolve to a commit, so there is no revision to pin the links at',
+      hint: 'Commit the work first — a link pinned at a branch silently changes meaning when the branch moves. Or state the prefix yourself with `--link-base <url>`.',
+    };
+  }
+  // Both shapes git hands out for the same repository.
+  const match =
+    /^git@([^:]+):(.+?)(?:\.git)?$/.exec(remote) ??
+    /^(?:https?|ssh):\/\/(?:[^@/]+@)?([^/]+)\/(.+?)(?:\.git)?$/.exec(remote);
+  const host = match?.[1];
+  const slug = match?.[2];
+  if (host === undefined || slug === undefined) {
+    return {
+      ok: false,
+      reason: `the origin remote is not a shape blob links can be built from: ${remote}`,
+      hint: 'Pass the prefix yourself with `--link-base https://<host>/<owner>/<repo>/blob/<sha>/`.',
+    };
+  }
+  return { ok: true, base: `https://${host}/${slug}/blob/${sha}/`, sha };
 }
 
 /**
