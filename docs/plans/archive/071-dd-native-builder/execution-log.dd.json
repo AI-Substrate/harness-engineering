@@ -90,6 +90,22 @@
           "links": [
             "plan.dd.json#acceptance_criteria/ac-7117"
           ]
+        },
+        {
+          "id": "lg-000a",
+          "at": "2026-08-05T03:20+10:00",
+          "text": "PR #95 opened (provisional body). Click-through PROVEN: blob links resolve at the pushed head b59b7c6f — repos/.../contents/docs/plans/archive/071-dd-native-builder/plan.dd.md?ref=b59b7c6f returns the document (html_url verified), and the phase-3 tasks sibling likewise. dw-0003 closes on this evidence; the dd-derived AC table renders next via plan pr-body --pin-head and replaces the provisional body.",
+          "links": [
+            "plan.dd.json#acceptance_criteria/ac-7112"
+          ]
+        },
+        {
+          "id": "lg-000b",
+          "at": "2026-08-05T03:25+10:00",
+          "text": "THE GATE PASSED — the same review-3 plan-validate gate that refused departure at lg-0009 evaluated green on the closed corpus (--complete strict zero: 148/148, 0 contradictions, 0 orphans, 1247 items) and the departure to ship went through with no override. Refusal and pass, both live, both on this plan's own journey: ac-7117's demand met in full. PR #95 carries the pr-body-rendered AC table pinned at b59b7c6f.",
+          "links": [
+            "plan.dd.json#acceptance_criteria/ac-7117"
+          ]
         }
       ]
     }

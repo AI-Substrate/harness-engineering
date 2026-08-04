@@ -156,7 +156,7 @@
         {
           "id": "ac-7112",
           "claim": "PR surface: ship renders the dd-derived AC table into the PR body — state marks + resolved proven_by / pressure / incoming-satisfies as clickable references — generated from the corpus under docs/plans/archive/<ord>-<slug>/ (7b has already archived;\nthe #90 read-from-archive rule);\nrefuses to fabricate on an unclosed corpus.",
-          "state": "unchecked",
+          "state": "checked",
           "pressure": "backpressure.dd.json#rows/bp-7112"
         },
         {
@@ -188,7 +188,7 @@
         {
           "id": "ac-7117",
           "claim": "Self-hosting: by the final review, plan 071's own corpus is fully dogfooded — backpressure.dd.json and execution-log.dd.json exist with AC rows carrying pressure/proven_by links;\nper-phase task files exist with done_when lists (mandatory pressure honoured);\ntasks carry rel-typed satisfies;\nthe flight plan carries real dd_link gates exercised by the actual journey with the evidence RECORDED where each side lives: at least one genuine refusal captured in telemetry (command_exit carrying the gate E-code — refusals write nothing to the flow by pinned invariant) and any force as the existing dd-gate-override flow event;\nplan validate --complete runs green at the last review node's gate;\nship's PR renders this plan's own AC table.\n\nThe corpus is indistinguishable from one authored entirely by the finished feature — the plan is its own acceptance fixture.",
-          "state": "unchecked",
+          "state": "checked",
           "pressure": "backpressure.dd.json#rows/bp-7117"
         },
         {

@@ -38,7 +38,7 @@ JIT-authored at the phase-2 boundary through the taught stage-5 stroke (file bir
 | id | title | domain | phase | state | note | receipt | done | success | notes | satisfies |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | tk-7151 | Corpus → PR-body AC table renderer | — | ph-7103 | [x] checked | — | — | [x] 2/2 [tk-7151](#tk-7151) | Goldens over the exemplar; refuses unclosed corpus. | — | [ac-7112](../../../plan.dd.md#acceptance-criteria) |
-| tk-7152 | Ship stage integration (archive path, head-SHA links) | — | ph-7103 | [ ] unchecked | — | — | [ ] 0/1 [tk-7152](#tk-7152) | Links click through on a real PR. | key finding: archive-before-ship | [ac-7112](../../../plan.dd.md#acceptance-criteria) |
+| tk-7152 | Ship stage integration (archive path, head-SHA links) | — | ph-7103 | [x] checked | — | — | [x] 1/1 [tk-7152](#tk-7152) | Links click through on a real PR. | key finding: archive-before-ship | [ac-7112](../../../plan.dd.md#acceptance-criteria) |
 | tk-7161 | Exemplar schema upgrade (pressure, satisfies, done_when) | — | ph-7103 | [x] checked | — | — | [x] 1/1 [tk-7161](#tk-7161) | Doctor-clean 0/0; leaf-first re-verify. | key finding: 18/26 rows | [ac-7104](../../../plan.dd.md#acceptance-criteria), [ac-7114](../../../plan.dd.md#acceptance-criteria) |
 | tk-7162 | docs/how/dd chapters + justfile recipes for new commands | — | ph-7103 | [x] checked | — | — | [x] 1/1 [tk-7162](#tk-7162) | Every new command has a runnable recipe. | — | [ac-7114](../../../plan.dd.md#acceptance-criteria) |
 | tk-7163 | Promote structural-proof-graph to docs/how/dd/11-the-builder-proof-graph.md | — | ph-7103 | [x] checked | — | — | [x] 1/1 [tk-7163](#tk-7163) | Doc lands as docs/how/dd/11-the-builder-proof-graph.md (Jordan's ruling 2026-08-04: builder graph joins the dd chapter set, not a new docs/how/builder dir), updated to the shipped surface (rels, pressure, done_when, writer verbs, semantic validate, check gates) and framed as the work-graph/knowledge-graph join per the graph-engineering concepts (work graph expires, knowledge graph compounds, joined via deterministic typed citations with recorded freshness). README chapter index updated; links repaired; builder-tuning keeps a signpost. | — | [ac-7114](../../../plan.dd.md#acceptance-criteria) |
@@ -67,7 +67,7 @@ JIT-authored at the phase-2 boundary through the taught stage-5 stroke (file bir
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0003 | Ship renders the table from the ARCHIVE path with head-SHA links (the #90 read-from-archive rule); links click through on a real PR, proof captured in the execution log. | [ ] unchecked | [bp-7112](../../../backpressure.dd.md#rows) |
+| dw-0003 | Ship renders the table from the ARCHIVE path with head-SHA links (the #90 read-from-archive rule); links click through on a real PR, proof captured in the execution log. | [x] checked | [bp-7112](../../../backpressure.dd.md#rows) |
 
 ### tk-7161
 

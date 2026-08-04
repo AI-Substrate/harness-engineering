@@ -3,7 +3,7 @@
   "kind": "flight-plan",
   "slug": "dd-native-builder",
   "nav": {
-    "now": "review-3",
+    "now": "post-flight",
     "next": "review-1",
     "intent": "Make the builder pipeline dd-native: plans and task files as .dd.json, flow gates driven by document state, typed rels, semantic validate with strict-zero --complete, PR evidence surface — the flow that delivers this plan is the feature itself",
     "bag": {
@@ -802,6 +802,99 @@
           "dd_link"
         ]
       }
+    },
+    {
+      "id": "UPD-032",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-04T17:04:24.855Z",
+      "details": {
+        "node": "review-3",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-020",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-04T17:04:25.273Z",
+      "details": {
+        "node": "review-3",
+        "from": "assumed",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-007",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-08-04T17:04:25.687Z",
+      "details": {
+        "from": "review-3",
+        "to": "ship"
+      }
+    },
+    {
+      "id": "UPD-033",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-04T17:05:14.955Z",
+      "details": {
+        "node": "retro-harvest",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-021",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-04T17:05:15.363Z",
+      "details": {
+        "node": "retro-harvest",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "UPD-034",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-04T17:05:15.918Z",
+      "details": {
+        "node": "ship",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-022",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-04T17:05:16.344Z",
+      "details": {
+        "node": "ship",
+        "from": "assumed",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-008",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-08-04T17:05:16.781Z",
+      "details": {
+        "from": "ship",
+        "to": "post-flight"
+      }
     }
   ],
   "nodes": [
@@ -930,7 +1023,7 @@
       "id": "ship",
       "type": "ship",
       "label": "Ship",
-      "status": "assumed",
+      "status": "done",
       "command": "/builder 8 ship",
       "next": [],
       "instructions": [
@@ -940,9 +1033,26 @@
       ],
       "dd_link": {
         "address": "docs/plans/archive/071-dd-native-builder/plan.dd.json#acceptance_criteria",
-        "gate": true
+        "gate": true,
+        "basis_sha": "7ba7a502c69377b06a5179298b259a4b4fffe95755b2fb3719502c9f09242a84",
+        "reading": {
+          "status": "complete",
+          "terminal": 21,
+          "total": 21,
+          "incomplete": [],
+          "at": "2026-08-04T17:05:16.781Z"
+        }
       },
-      "modified_at": "2026-08-04T17:01:09.424Z"
+      "modified_at": "2026-08-04T17:05:16.344Z",
+      "comments": [
+        {
+          "at": "2026-08-04T17:05:15.918Z",
+          "text": "verdict:shipped reason:corpus archive-moved (#90) with gates re-pointed via CLI; PR #95 up with pr-body-rendered AC table pinned at b59b7c6f; click-through proven (lg-0010); --complete strict zero 148/148; gate refusal lg-0009 + pass lg-0011 both live; CI watch next time:2026-08-05T03:30Z",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-04T17:05:16.344Z"
     },
     {
       "id": "backpressure",
@@ -1075,7 +1185,7 @@
       "id": "retro-harvest",
       "type": "harness-retro",
       "label": "Retro: post-flight (harvest)",
-      "status": "known",
+      "status": "done",
       "branch_of": "post-flight",
       "next": [
         "post-flight"
@@ -1089,7 +1199,17 @@
         "Post-flight seam: the terminal long-horizon harvest — fold this flight's learnings into durable memory at the pre-ship close-out, BEFORE the plan folder archives (so it runs even on work that never ships).",
         "Run /eng-harness-flow --hook post-flight --json — a REAL invocation; narrate its envelope verbatim.",
         "On done, receipt first, status second: harness flow comment --path <flow-path> --node retro-harvest --kind validation --source agent --text \"verdict:<…> time:<…>\" (router missing / envelope noop/UNAVAILABLE → text \"decision:unavailable reason:<…> time:<…>\" — a completed attempt, not a skip) THEN harness flow status --path <flow-path> --node retro-harvest --to done. Mandatory unless the human declines — a decline is: harness flow comment --path <flow-path> --node retro-harvest --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node retro-harvest --to skipped."
-      ]
+      ],
+      "comments": [
+        {
+          "at": "2026-08-04T17:05:14.955Z",
+          "text": "decision:done reason:real post-flight harvest — harness retro insights: 48 records / 276 entries / 190 open; top cluster difficulty-tooling n=26 proof-gap; highest-leverage encode named = fence-row derivation from task texts (5 same-shape amendments this plan; tk-7171 shipped mechanism, authoring still manual) — offered to Jordan at closeout time:2026-08-05T03:30Z",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "modified_at": "2026-08-04T17:05:15.363Z",
+      "ran_at": "2026-08-04T17:05:15.363Z"
     },
     {
       "id": "phase-2",
@@ -1156,18 +1276,35 @@
       "id": "review-3",
       "type": "review",
       "label": "Review 3",
-      "status": "assumed",
+      "status": "done",
       "next": [
         "post-flight"
       ],
       "created_at": "2026-08-04T08:18:21.559Z",
-      "modified_at": "2026-08-04T17:01:09.424Z",
+      "modified_at": "2026-08-04T17:04:25.273Z",
       "zone": "flight",
       "dd_link": {
         "address": "docs/plans/archive/071-dd-native-builder/plan.dd.json",
         "check": "plan-validate",
-        "gate": true
-      }
+        "gate": true,
+        "basis_sha": "7ba7a502c69377b06a5179298b259a4b4fffe95755b2fb3719502c9f09242a84",
+        "reading": {
+          "status": "complete",
+          "terminal": 1,
+          "total": 1,
+          "incomplete": [],
+          "at": "2026-08-04T17:04:25.687Z"
+        }
+      },
+      "comments": [
+        {
+          "at": "2026-08-04T17:04:24.855Z",
+          "text": "verdict:APPROVE reason:4-round cross-model review (FIX2/FIX1/FIX2/APPROVE, no findings); recorded as rows at review/round-3.dd.json with verdict deciding every finding; gate exercised BOTH ways at this node — E440 refusal pre-close (lg-0009) and green pass post-close time:2026-08-05T03:25Z",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-04T17:04:25.273Z"
     },
     {
       "id": "boot-2",

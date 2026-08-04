@@ -35,7 +35,7 @@
           "id": "tk-7152",
           "title": "Ship stage integration (archive path, head-SHA links)",
           "phase": "ph-7103",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Links click through on a real PR.",
           "notes": "key finding: archive-before-ship",
           "satisfies": [
@@ -208,7 +208,7 @@
           {
             "id": "dw-0003",
             "assertion": "Ship renders the table from the ARCHIVE path with head-SHA links (the #90 read-from-archive rule); links click through on a real PR, proof captured in the execution log.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../../backpressure.dd.json#rows/bp-7112"
           }
         ],
