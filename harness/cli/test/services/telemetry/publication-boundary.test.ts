@@ -68,7 +68,14 @@ interface PublicationGitOperations {
   /** The repo this operations object scans — the live repo, or a bounded fixture. */
   readonly root: string;
   readonly counts: GitOperationCounts;
+  /** Zero the counters ONLY — the inventory cache is untouched. */
   resetCounts(): void;
+  /**
+   * Drop the inventory cache ONLY — the counters keep their history. These are two
+   * seams, not one, on purpose: a control that clears both at once can never
+   * observe a SECOND child, because the count it reads afterwards started at zero.
+   */
+  invalidateInventoryCache(): void;
   committableFiles(): string[];
   ignoredPaths(paths: readonly string[]): Set<string>;
 }
@@ -83,6 +90,8 @@ function createPublicationGitOperations(root: string = REPO_ROOT): PublicationGi
     resetCounts() {
       counts.inventory = 0;
       counts.checkIgnore = 0;
+    },
+    invalidateInventoryCache() {
       cachedCommittableFiles = undefined;
     },
     committableFiles() {
@@ -296,14 +305,15 @@ describe('publication boundary — an owning scan spends exactly two git childre
   const ignoredControl = 'docs/how/telemetry-reports.log';
   let fixtureRoot: string;
 
-  beforeAll(() => {
-    fixtureRoot = mkdtempSync(join(tmpdir(), 'harness-pubscan-'));
+  /** A disposable repo with both halves of `-co`: one tracked, one untracked-not-ignored. */
+  const createFixtureRepo = (): string => {
+    const root = mkdtempSync(join(tmpdir(), 'harness-pubscan-'));
     const write = (rel: string, content: string): void => {
-      mkdirSync(dirname(join(fixtureRoot, rel)), { recursive: true });
-      writeFileSync(join(fixtureRoot, rel), content);
+      mkdirSync(dirname(join(root, rel)), { recursive: true });
+      writeFileSync(join(root, rel), content);
     };
     const git = (args: string[]): void => {
-      const r = spawnSync('git', args, { cwd: fixtureRoot, encoding: 'utf8' });
+      const r = spawnSync('git', args, { cwd: root, encoding: 'utf8' });
       if (r.status !== 0) throw new Error(`fixture git ${args.join(' ')} failed: ${r.stderr}`);
     };
     write('.gitignore', '*.log\n');
@@ -317,6 +327,11 @@ describe('publication boundary — an owning scan spends exactly two git childre
     // `-co` must see BOTH halves: `a.session.json` stays untracked-not-ignored, so
     // a scan that only listed tracked files would come back short.
     git(['reset', '-q', '--', 'a.session.json']);
+    return root;
+  };
+
+  beforeAll(() => {
+    fixtureRoot = createFixtureRepo();
   });
 
   afterAll(() => {
@@ -350,17 +365,36 @@ describe('publication boundary — an owning scan spends exactly two git childre
   });
 
   it('CONTROL: dropping the cache spends a SECOND inventory child — the count is live', () => {
-    const operations = createPublicationGitOperations(fixtureRoot);
-    operations.resetCounts();
+    // Its OWN repo: this case ADDS a file mid-test to prove the second child really
+    // re-read the tree, and a mutation its sibling above could see would make that
+    // sibling depend on execution order.
+    const controlRoot = createFixtureRepo();
+    try {
+      const operations = createPublicationGitOperations(controlRoot);
+      operations.resetCounts();
 
-    dataArtifacts(operations);
-    expect(operations.counts.inventory).toBe(1);
-    // Without this, `{inventory: 1}` above would also hold for an implementation
-    // that never spawned at all, or one whose counter was wired to a constant.
-    operations.resetCounts();
-    dataArtifacts(operations);
-    dataArtifacts(operations);
-    expect(operations.counts.inventory).toBe(1);
+      const first = dataArtifacts(operations).map((artifact) => artifact.path);
+      expect([...first].sort()).toEqual(['a.session.json', 'b.report.json']);
+      expect(operations.counts.inventory).toBe(1);
+
+      // Half one — a repeat WITHOUT invalidation must be absorbed by the cache.
+      // A cache-free implementation spends a child here and reads 2.
+      dataArtifacts(operations);
+      expect(operations.counts.inventory).toBe(1);
+
+      // Half two — drop the CACHE ONLY. The counter keeps its history, so a real
+      // spawn has to show up as a SECOND child. An implementation that never
+      // spawned, or whose counter was wired to a constant, still reads 1 here.
+      writeFileSync(join(controlRoot, 'c.session.json'), '{}\n');
+      operations.invalidateInventoryCache();
+      const second = dataArtifacts(operations).map((artifact) => artifact.path);
+      expect(operations.counts.inventory).toBe(2);
+      // ...and that second child re-read the TREE — otherwise the count is just a
+      // number being bumped beside a stale list.
+      expect([...second].sort()).toEqual(['a.session.json', 'b.report.json', 'c.session.json']);
+    } finally {
+      rmSync(controlRoot, { recursive: true, force: true });
+    }
   });
 });
 
