@@ -104,3 +104,129 @@ describe('buildReport authorship (T008 · AC-08)', () => {
     expect(buildReport([exp]).authorship).toBeUndefined();
   });
 });
+
+/**
+ * Plan 068 item 3 — a harness that records WHICH files were touched but exposes no
+ * per-file payload (a `files.written`/`files.edited` path list with no `file` event
+ * behind it) had its evidence dropped on the floor: `computeAuthorship` is
+ * events-only, so §8 never saw it. It is now rendered explicitly, with a NAMED gap.
+ *
+ * Three hard rules, each pinned below: never fabricate a number; delta-backed rows
+ * stay byte-identical; the marker survives to JSON and HTML.
+ */
+describe('plan 068 · item 3 — path-only authorship rows are visible, and honest', () => {
+  it('renders a path-only row with NULL deltas and a named reason, never zeros', () => {
+    const exp = exportOf('vscodeish', [
+      seg([{ t: '2026-06-29T00:00:00Z', kind: 'prompt', words: 3 }], {
+        files: { written: ['src/new.ts'], edited: ['src/old.ts'] },
+      }),
+    ]);
+    const report = buildReport([exp]);
+    const rows = report.authorship?.files ?? [];
+    expect(rows.map((f) => f.path).sort()).toEqual(['src/new.ts', 'src/old.ts']);
+    for (const row of rows) {
+      expect(row.delta_unavailable).toBe('no_per_file_delta_capture');
+      // NULL, not 0 — a zero is a measurement, a null is a gap.
+      expect(row.lines_added).toBeNull();
+      expect(row.lines_removed).toBeNull();
+      expect(row.bytes_added).toBeNull();
+      expect(row.bytes_removed).toBeNull();
+      expect(row.events).toBe(0);
+    }
+    expect(rows.find((f) => f.path === 'src/new.ts')?.change).toBe('written');
+    expect(rows.find((f) => f.path === 'src/old.ts')?.change).toBe('edited');
+    // The unmeasured rows contribute NOTHING to the sums, and the count is declared.
+    expect(report.authorship?.totals).toEqual({
+      files: 2,
+      lines_added: 0,
+      lines_removed: 0,
+      bytes_added: 0,
+      bytes_removed: 0,
+      files_delta_unavailable: 2,
+    });
+  });
+
+  it('leaves a delta-backed report BYTE-IDENTICAL to its pre-change shape', () => {
+    const exp = exportOf('measured', [
+      seg([
+        { t: '2026-06-29T00:00:00Z', kind: 'prompt', words: 3 },
+        fileEvent('src/a.ts', 'written', 10, 0),
+        fileEvent('src/b.ts', 'edited', 2, 1),
+      ]),
+    ]);
+    const authorship = buildReport([exp]).authorship;
+    // No new keys anywhere: the marker is ABSENT on measured rows and the
+    // unavailable count is ABSENT from totals.
+    expect(JSON.stringify(authorship)).toBe(
+      JSON.stringify({
+        files: [
+          {
+            path: 'src/a.ts',
+            change: 'written',
+            lines_added: 10,
+            lines_removed: 0,
+            bytes_added: 100,
+            bytes_removed: 0,
+            events: 1,
+          },
+          {
+            path: 'src/b.ts',
+            change: 'edited',
+            lines_added: 2,
+            lines_removed: 1,
+            bytes_added: 20,
+            bytes_removed: 10,
+            events: 1,
+          },
+        ],
+        totals: {
+          files: 2,
+          lines_added: 12,
+          lines_removed: 1,
+          bytes_added: 120,
+          bytes_removed: 10,
+        },
+      }),
+    );
+  });
+
+  it('a measured path is NEVER downgraded by also appearing in the path list', () => {
+    const exp = exportOf('both', [
+      seg(
+        [
+          { t: '2026-06-29T00:00:00Z', kind: 'prompt', words: 3 },
+          fileEvent('src/a.ts', 'written', 10, 0),
+        ],
+        {
+          files: { written: ['src/a.ts'], edited: ['src/only-path.ts'] },
+        },
+      ),
+    ]);
+    const rows = buildReport([exp]).authorship?.files ?? [];
+    const measured = rows.find((f) => f.path === 'src/a.ts');
+    expect(measured?.delta_unavailable).toBeUndefined();
+    expect(measured?.lines_added).toBe(10);
+    const pathOnly = rows.find((f) => f.path === 'src/only-path.ts');
+    expect(pathOnly?.delta_unavailable).toBe('no_per_file_delta_capture');
+    expect(rows).toHaveLength(2);
+  });
+
+  it('carries the observed paths through the session export, de-duplicated', () => {
+    const exp = exportOf('carried', [
+      seg([{ t: '2026-06-29T00:00:00Z', kind: 'prompt', words: 1 }], {
+        files: { written: ['src/a.ts'], edited: [] },
+      }),
+      seg([{ t: '2026-06-29T00:00:02Z', kind: 'prompt', words: 1 }], {
+        files: { written: ['src/a.ts', 'src/b.ts'], edited: [] },
+      }),
+    ]);
+    expect(exp.summary.files_observed).toEqual({ written: ['src/a.ts', 'src/b.ts'], edited: [] });
+  });
+
+  it('omits files_observed entirely when no segment carried a path list', () => {
+    const exp = exportOf('nolist', [
+      seg([{ t: '2026-06-29T00:00:00Z', kind: 'prompt', words: 1 }]),
+    ]);
+    expect('files_observed' in exp.summary).toBe(false);
+  });
+});

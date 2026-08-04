@@ -446,6 +446,11 @@
               }
             }
           }
+        },
+        "interval_events": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Events excluded from active-time accrual because their `t_precision` is `interval` \u2014 a capture-window stamp, not a work instant (plan 066 file events). They still count everywhere non-temporal; the exclusion is surfaced here so a shorter clock is never silent (plan 068 item 2)."
         }
       }
     },
@@ -458,7 +463,7 @@
     },
     "authorship": {
       "$ref": "#/$defs/authorship",
-      "description": "plan 056 \u2014 per-file write/edit deltas aggregated from the `file` events across every included session ('which files did agents write, and how much'). Absent when no session carried a `file` event."
+      "description": "plan 056 \u2014 per-file write/edit deltas aggregated from the `file` events across every included session ('which files did agents write, and how much'), plus (plan 068 item 3) path-only rows for paths the capture recorded WITHOUT a measurable delta, marked `delta_unavailable` with null deltas. Absent when no session carried a `file` event or an observed path."
     }
   },
   "$defs": {
@@ -498,25 +503,48 @@
                 "description": "The most recent change kind observed for the path."
               },
               "lines_added": {
-                "type": "integer",
-                "minimum": 0
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0,
+                "description": "Measured churn, or `null` when `delta_unavailable` is set. NEVER 0 as a stand-in for \u201cnot captured\u201d: a zero is a measurement, a null is a gap (plan 068 item 3)."
               },
               "lines_removed": {
-                "type": "integer",
-                "minimum": 0
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0,
+                "description": "Measured churn, or `null` when `delta_unavailable` is set. NEVER 0 as a stand-in for \u201cnot captured\u201d: a zero is a measurement, a null is a gap (plan 068 item 3)."
               },
               "bytes_added": {
-                "type": "integer",
-                "minimum": 0
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0,
+                "description": "Measured churn, or `null` when `delta_unavailable` is set. NEVER 0 as a stand-in for \u201cnot captured\u201d: a zero is a measurement, a null is a gap (plan 068 item 3)."
               },
               "bytes_removed": {
-                "type": "integer",
-                "minimum": 0
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0,
+                "description": "Measured churn, or `null` when `delta_unavailable` is set. NEVER 0 as a stand-in for \u201cnot captured\u201d: a zero is a measurement, a null is a gap (plan 068 item 3)."
               },
               "events": {
                 "type": "integer",
                 "minimum": 0,
-                "description": "How many `file` events (writes/edits) touched this path."
+                "description": "How many `file` events (writes/edits) touched this path. `0` on a path-only row."
+              },
+              "delta_unavailable": {
+                "type": "string",
+                "enum": [
+                  "no_per_file_delta_capture"
+                ],
+                "description": "Present ONLY on a path-only row \u2014 the capture recorded THAT the path was written/edited but exposes no per-file payload to measure it from. ABSENT on every delta-backed row, so a report with no path-only evidence is byte-identical to its pre-change shape (plan 068 item 3)."
               }
             }
           }
@@ -538,19 +566,28 @@
             },
             "lines_added": {
               "type": "integer",
-              "minimum": 0
+              "minimum": 0,
+              "description": "Sums over DELTA-BACKED rows only; a delta-unavailable row contributes nothing."
             },
             "lines_removed": {
               "type": "integer",
-              "minimum": 0
+              "minimum": 0,
+              "description": "Sums over DELTA-BACKED rows only; a delta-unavailable row contributes nothing."
             },
             "bytes_added": {
               "type": "integer",
-              "minimum": 0
+              "minimum": 0,
+              "description": "Sums over DELTA-BACKED rows only; a delta-unavailable row contributes nothing."
             },
             "bytes_removed": {
               "type": "integer",
-              "minimum": 0
+              "minimum": 0,
+              "description": "Sums over DELTA-BACKED rows only; a delta-unavailable row contributes nothing."
+            },
+            "files_delta_unavailable": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "How many rows carry no delta. OMITTED when none do (plan 068 item 3)."
             }
           }
         }

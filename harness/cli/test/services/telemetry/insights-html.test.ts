@@ -145,3 +145,60 @@ describe('insights HTML render (2.5 — self-contained, offline, narrator slot)'
     expect(visible).toContain(String(DISTINCT_SENT));
   });
 });
+
+/**
+ * Plan 068 item 3 — the delta-unavailable marker must survive to the HTML surface,
+ * not just the JSON. A reader looking at the rendered page must be able to tell a
+ * file with no measured churn from a file with zero churn.
+ */
+describe('plan 068 · item 3 — the delta-unavailable marker reaches the rendered page', () => {
+  const report = reportWith(1, 1);
+  report.authorship = {
+    files: [
+      {
+        path: 'src/only-path.ts',
+        change: 'written',
+        lines_added: null,
+        lines_removed: null,
+        bytes_added: null,
+        bytes_removed: null,
+        events: 0,
+        delta_unavailable: 'no_per_file_delta_capture',
+      },
+    ],
+    totals: {
+      files: 1,
+      lines_added: 0,
+      lines_removed: 0,
+      bytes_added: 0,
+      bytes_removed: 0,
+      files_delta_unavailable: 1,
+    },
+  };
+  const html = renderInsights(
+    buildInsights([{ name: 'r', report }], { generatedAt: '2026-07-02T00:00:00Z' }),
+  );
+
+  it('renders the path, the named reason, and "unmeasured" cells — never a 0', () => {
+    const dom = new JSDOM(html, { runScripts: 'dangerously' });
+    const text = dom.window.document.body.textContent ?? '';
+    expect(text).toContain('src/only-path.ts');
+    expect(text).toContain('no_per_file_delta_capture');
+    expect(text).toContain('delta unavailable');
+    // The delta cells render as the honest "unmeasured" token, not a fabricated 0.
+    const section = [...dom.window.document.querySelectorAll('section')].find((s) =>
+      (s.textContent ?? '').includes('src/only-path.ts'),
+    );
+    if (section === undefined) throw new Error('files_written section not rendered');
+    // Each of the four delta columns renders the honest "unmeasured" token, never a 0.
+    const headers = [...section.querySelectorAll('thead th')].map((th) => th.textContent ?? '');
+    const cells = [...section.querySelectorAll('tbody td')].map((td) => td.textContent ?? '');
+    for (const column of ['lines_added', 'lines_removed', 'bytes_added', 'bytes_removed']) {
+      const at = headers.indexOf(column);
+      expect(at, column).toBeGreaterThan(-1);
+      expect(cells[at].trim(), column).toBe('unmeasured');
+    }
+    // `events: 0` is a real measurement (zero file events) and stays a number.
+    expect(cells[headers.indexOf('events')].trim()).toBe('0');
+  });
+});

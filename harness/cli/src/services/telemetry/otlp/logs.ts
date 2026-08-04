@@ -563,7 +563,12 @@ export function validateLogRecordContract(record: LogRecord): boolean {
   );
 }
 
-function encodeEvent(e: Event): LogRecord {
+/**
+ * Encode ONE event, or `null` when the encoded record fails the producer contract.
+ * Returning `null` (rather than throwing) is what keeps ONE unencodable event from
+ * making a whole session unreadable — the caller drops it and names its kind.
+ */
+function encodeEventOrNull(e: Event): LogRecord | null {
   const attrs: KeyValue[] = [kv(A.KIND, sv(e.kind)), kv(A.T, sv(e.t))];
   if (e.t_precision !== undefined) attrs.push(kv(A.T_PRECISION, sv(e.t_precision)));
   let sev = SEV_INFO;
@@ -714,7 +719,7 @@ function encodeEvent(e: Event): LogRecord {
     attributes: attrs,
   };
   if (!validateLogRecordContract(record)) {
-    throw new Error(`invalid producer log event: ${e.kind}`);
+    return null;
   }
   return record;
 }
@@ -1058,24 +1063,56 @@ export function reconstructSegmentFromOtlpLogs(logs: LogsData): OtlpSegmentRecon
 }
 
 /** Serialize a segment's `event_stream` to one version-aware `ResourceLogs`. */
-export function segmentToOtlpLogs(seg: Segment): LogsData {
+/**
+ * A logs production and the honest note of what it could not carry.
+ *
+ * `skipped` names each event KIND dropped because its encoded record failed the
+ * producer contract. Like {@link produceOtlpMetrics}, this is never an error: a throw
+ * here made the WHOLE session unreadable over one unencodable event. Always warn,
+ * never hide — drop the event, name its kind, return the rest.
+ */
+export interface OtlpLogsProduction {
+  logs: LogsData;
+  skipped: readonly string[];
+}
+
+/**
+ * Produce this segment's OTLP logs, naming any event kind the producer contract could
+ * not admit. Never throws.
+ */
+export function produceOtlpLogs(seg: Segment): OtlpLogsProduction {
   const identity = schemaIdentityForSegmentVersion(seg.schema_version);
   const attributes = resourceAttrs(seg);
+  const logRecords: LogRecord[] = [];
+  const skipped = new Set<string>();
+  for (const event of seg.event_stream) {
+    const record = encodeEventOrNull(event);
+    if (record === null) skipped.add(event.kind);
+    else logRecords.push(record);
+  }
   return {
-    resourceLogs: [
-      {
-        resource: { attributes },
-        schemaUrl: identity.schemaUrl,
-        scopeLogs: [
-          {
-            scope: { name: SCOPE_NAME, version: identity.scopeVersion },
-            schemaUrl: identity.schemaUrl,
-            logRecords: seg.event_stream.map(encodeEvent),
-          },
-        ],
-      },
-    ],
+    logs: {
+      resourceLogs: [
+        {
+          resource: { attributes },
+          schemaUrl: identity.schemaUrl,
+          scopeLogs: [
+            {
+              scope: { name: SCOPE_NAME, version: identity.scopeVersion },
+              schemaUrl: identity.schemaUrl,
+              logRecords,
+            },
+          ],
+        },
+      ],
+    },
+    skipped: [...skipped].sort(),
   };
+}
+
+/** {@link produceOtlpLogs} for callers that carry no degrade channel. Never throws. */
+export function segmentToOtlpLogs(seg: Segment): LogsData {
+  return produceOtlpLogs(seg).logs;
 }
 
 /** Reconstruct the exact serialized `Event[]` from OTLP Logs (the inverse). */

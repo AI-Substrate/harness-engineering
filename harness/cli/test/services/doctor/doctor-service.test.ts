@@ -695,6 +695,99 @@ describe('telemetry-flush-hook check (plan 038 follow-up — the deterministic f
   });
 });
 
+describe('precommit-hook-latency check (plan 068 C4 — the budget INSTRUMENT, not a comment)', () => {
+  const SAMPLES = '/repo/.harness/temp/precommit-latency.tsv';
+  const layer = (r: ReturnType<typeof buildDoctorReport>) =>
+    r.layers.find((l) => l.name === 'precommit-hook-latency');
+  /** N samples all at `ms`, plus any extra literal lines. */
+  const tsv = (ms: number[], extra: string[] = []): string =>
+    [...ms.map((m, i) => `${1785815000000 + i}\t${m}`), ...extra].join('\n').concat('\n');
+
+  it('no samples file → ok, and says WHY it has nothing rather than implying "fast"', () => {
+    /*
+    Test Doc:
+    - Why: an absent instrument must never read as a pass. A hook that has never fired and a
+      hook that is fast produce the same silence; only one of them is evidence.
+    - Contract: missing `.harness/temp/precommit-latency.tsv` → ok with a detail naming the
+      three real causes (not installed / never fired / no sub-second clock).
+    - Quality Contribution: pins plan 068's house rule — always warn, never hide — on C4 itself.
+    */
+    const l = layer(buildDoctorReport(deps(), EMPTY));
+    expect(l?.ok).toBe(true);
+    expect(l?.detail).toContain('has not fired');
+    expect(l?.detail).toContain('sub-second clock');
+  });
+
+  it('p95 OVER the 2000ms budget → not ok, names the numbers, and points at the narrow kill switch', () => {
+    /*
+    Test Doc:
+    - Why: C4's whole point is a control that CAN fail. This is the failing direction, with a
+      known-bad fixture (five fires, one of them 9s).
+    - Contract: >= the sample floor and p95 > PRECOMMIT_P95_BUDGET_MS → ok:false + a next_action
+      naming HARNESS_NO_TELEMETRY_PRECOMMIT (disarm THIS hook, keep the post-commit flush).
+    - Worked Example: [100,120,150,180,9000] → p95 (nearest rank, ceil(0.95*5)=5) = 9000 > 2000.
+    */
+    const fs = new FakeFs({ ...BUILT_CLI, [SAMPLES]: tsv([100, 120, 150, 180, 9000]) });
+    const l = layer(buildDoctorReport(deps({ fs }), EMPTY));
+    expect(l?.ok).toBe(false);
+    expect(l?.detail).toContain('OVER BUDGET');
+    expect(l?.detail).toContain('p95 9000ms');
+    expect(l?.next_action).toContain('HARNESS_NO_TELEMETRY_PRECOMMIT');
+  });
+
+  it('p95 WITHIN budget → ok with p50/p95 reported (the non-vacuous other direction)', () => {
+    const fs = new FakeFs({ ...BUILT_CLI, [SAMPLES]: tsv([100, 120, 150, 180, 210]) });
+    const l = layer(buildDoctorReport(deps({ fs }), EMPTY));
+    expect(l?.ok).toBe(true);
+    expect(l?.detail).toContain('within budget');
+    expect(l?.detail).toContain('p50 150ms');
+    expect(l?.detail).toContain('p95 210ms');
+  });
+
+  it('below the 5-sample floor → REPORTED with its percentiles but never judged, even when huge', () => {
+    /*
+    Test Doc:
+    - Why: two slow readings on one laptop is not a distribution. Failing on them would train
+      people to ignore the layer; hiding them would lose the only signal there is.
+    - Contract: < PRECOMMIT_MIN_SAMPLES → ok:true, detail still carries p50/p95 + the floor.
+    */
+    const fs = new FakeFs({ ...BUILT_CLI, [SAMPLES]: tsv([8000, 9000]) });
+    const l = layer(buildDoctorReport(deps({ fs }), EMPTY));
+    expect(l?.ok).toBe(true);
+    expect(l?.detail).toContain('below the 5-sample floor');
+    expect(l?.detail).toContain('p95 9000ms');
+  });
+
+  it('malformed lines are COUNTED and named, not silently dropped', () => {
+    const fs = new FakeFs({
+      ...BUILT_CLI,
+      [SAMPLES]: tsv([100, 120, 150, 180, 210], ['garbage', '1785815000009\tNaN']),
+    });
+    const l = layer(buildDoctorReport(deps({ fs }), EMPTY));
+    expect(l?.ok).toBe(true);
+    expect(l?.detail).toContain('5 sample(s)');
+    expect(l?.detail).toContain('2 unparseable line(s) skipped');
+  });
+
+  it('a file with only unreadable lines → ok, and says so (never a fabricated percentile)', () => {
+    const fs = new FakeFs({ ...BUILT_CLI, [SAMPLES]: 'nonsense\nmore nonsense\n' });
+    const l = layer(buildDoctorReport(deps({ fs }), EMPTY));
+    expect(l?.ok).toBe(true);
+    expect(l?.detail).toContain('no readable samples');
+    expect(l?.detail).not.toContain('p50');
+  });
+
+  it('over budget is ADVISORY — the doctor envelope degrades but still exits 0', () => {
+    const fs = new FakeFs({ ...BUILT_CLI, [SAMPLES]: tsv([9000, 9000, 9000, 9000, 9000]) });
+    const env = doctorEnvelope(
+      buildDoctorReport(deps({ fs }), EMPTY),
+      new FakeClock('2026-08-04T00:00:00.000Z'),
+    );
+    expect(env.status).toBe('degraded');
+    expect(exitCodeFor(env)).toBe(0);
+  });
+});
+
 describe('sensor-watcher check (plan 059 follow-up — the live-scanner nudge)', () => {
   /*
   Test Doc:

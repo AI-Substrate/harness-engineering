@@ -532,6 +532,27 @@ bounded by a timeout) is *reported*, never thrown, and never fails `checks`:
 To keep the auto-push but silence it, or to turn it off, see
 [Disabling telemetry](#disabling-telemetry).
 
+### The git hooks — capture at pre-commit, flush at post-commit
+
+`just install-hooks` (sets `core.hooksPath=.githooks`) arms **two** hooks:
+
+- **`.githooks/pre-commit`** (plan 068) — one counts-only **capture**, so file
+  evidence anchors to the commit's true parent no matter whether any harness
+  verb ran since the last edit. Never syncs, never pushes, never runs checks;
+  `trap 'exit 0'` first — git HONOURS this hook's exit code (unlike
+  post-commit's), so exit-0 is enforced by trap, not discipline. Amend commits
+  are deduped losslessly (the capture cursor doesn't advance, so the next fire
+  captures the same work against a commit that exists); amend *detection* is a
+  labelled heuristic over the lossy `ps` argv rendering, steered so its
+  residual errors capture-as-noise rather than skip. Latency is instrumented,
+  not asserted: each fire logs to `.harness/temp/precommit-latency.tsv`,
+  `harness doctor` warns when p95 crosses the budget (2000 ms; measured
+  baseline p95 217–485 ms under load — re-measure with
+  `./scripts/precommit-latency-harness.sh`). Disarm just this hook with
+  `HARNESS_NO_TELEMETRY_PRECOMMIT=1`.
+- **`.githooks/post-commit`** — the deterministic **flush** point
+  (`harness telemetry sync`), unchanged.
+
 ### Team scale — many engineers, one repo
 
 A single shared, mutable `refs/harness-telemetry` does **not** work for a team:
@@ -663,6 +684,35 @@ totals and `source` remain compatibility projections; per-field evidence is the
 authoritative surface. A synced ref with empty fields cannot mask measured vendor
 evidence, and pruning the local buffer does not remove ref-backed measurements.
 
+
+## Read-path honesty — degrade and name, never throw, never invent
+
+Plan 068 made the read path obey the repo's warn-never-hide doctrine
+end-to-end:
+
+- **Producer failures degrade, never throw.** An OTLP metric set or log event
+  that fails validation is SKIPPED AND NAMED — `metric_skipped:<metric>` /
+  `event_skipped:<kind>` in the session summary's `degraded` list — and
+  `telemetry session save` reports `degraded` (exit 0) instead of `ok`
+  whenever anything was skipped. Previously one bad value made the whole
+  session permanently unreadable.
+- **One grammar per value, on BOTH sides of the logs↔metrics seam.** The bug
+  that motivated this: command verbs admit multi-word extension forms
+  (`dd build`) in the logs grammar, while the metrics side validated the same
+  value as a single-word atom — so every session in which an extension
+  subcommand exited was poisoned at write AND unreadable at read. Rule for
+  future attributes: a value crossing the seam must be admitted under the
+  same grammar on both sides.
+- **`t_precision` is consumed, not just carried.** Events stamped
+  `'interval'` ("within this capture window", e.g. cursor file events with no
+  bubble anchor) are excluded from active-time gap accrual and counted in
+  `report.provenance.interval_events`, so bucket timestamps can no longer
+  inflate `agent_working_s` or trip cohort exclusions.
+- **Authorship rows may be path-only.** A surface that knows *which* files an
+  agent wrote but not *how many lines* (copilot-vscode) yields rows whose
+  delta fields are `null` with a named marker (`delta_unavailable`), counted
+  in `totals.files_delta_unavailable` — never zeros, never a number in the
+  claim, never diluting measured totals.
 
 ## See also
 

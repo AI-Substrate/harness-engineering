@@ -237,9 +237,10 @@ export const REPORT_TEMPLATE_HTML = `<!doctype html>
 
   function renderProvenance(cols) {
     var repos = [], branches = [], harnesses = [], models = [], sources = [];
-    var from = null, to = null, sessions = 0;
+    var from = null, to = null, sessions = 0, intervals = 0;
     cols.forEach(function (col) {
       var p = col.report.provenance || {};
+      intervals += p.interval_events || 0;
       repos = repos.concat(p.repos || []);
       branches = branches.concat(p.branches || []);
       harnesses = harnesses.concat(p.harnesses || []);
@@ -258,6 +259,7 @@ export const REPORT_TEMPLATE_HTML = `<!doctype html>
       "<div class='row'>Branches: " + badges(uniq(branches)) + "</div>" +
       (uniq(repos).length ? "<div class='row'>Repos: " + badges(uniq(repos)) + "</div>" : "") +
       "<div class='row'>Sources: " + badges(uniq(sources)) + "</div>" +
+      (intervals ? "<div class='row'>Excluded from active time: " + intervals + " interval-precision event(s) — capture-window stamps, not work instants</div>" : "") +
       (gen ? "<div class='row'>Generated " + esc(gen) + "</div>" : "");
   }
 

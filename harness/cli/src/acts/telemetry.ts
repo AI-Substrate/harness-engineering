@@ -1316,8 +1316,13 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
         html: htmlOut ?? null,
         totals,
       };
+      // Anything the producer contract could not carry (plan 068 item 1) — the read
+      // never dies for it, but it never passes as complete either.
+      const skippedSignals = exp.summary.degraded.filter(
+        (entry) => entry.startsWith('metric_skipped:') || entry.startsWith('event_skipped:'),
+      );
       const envelope =
-        exp.summary.token_evidence.coverage === 'measured'
+        exp.summary.token_evidence.coverage === 'measured' && skippedSignals.length === 0
           ? formatOk('telemetry', envelopeData, deps.clock, {
               evidence,
               next_action:
@@ -1326,7 +1331,9 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
           : formatDegraded(
               'telemetry',
               envelopeData,
-              `Token coverage is ${exp.summary.token_evidence.coverage} (${exp.summary.token_evidence.reason ?? 'source_unavailable'}). Run or sync a session with complete typed usage; inspect token_evidence.fields for unavailable buckets.`,
+              skippedSignals.length > 0 && exp.summary.token_evidence.coverage === 'measured'
+                ? `Skipped ${skippedSignals.length} signal(s) the producer contract could not carry (${skippedSignals.join(', ')}); every other signal is complete.`
+                : `Token coverage is ${exp.summary.token_evidence.coverage} (${exp.summary.token_evidence.reason ?? 'source_unavailable'}). Run or sync a session with complete typed usage; inspect token_evidence.fields for unavailable buckets.`,
               deps.clock,
               { evidence },
             );

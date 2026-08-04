@@ -5,6 +5,7 @@ import { EVENT_KINDS, type Event } from '../../../../src/services/telemetry/even
 import {
   LOG_EVENT_DEFINITIONS,
   otlpLogsToEvents,
+  produceOtlpLogs,
   reconstructSegmentFromOtlpLogs,
   segmentToOtlpLogs,
   validateLogRecordContract,
@@ -583,5 +584,102 @@ describe('P063 T008 — typed usage OTLP reconstruction', () => {
     logs.resourceLogs[0].scopeLogs[0].scope.version = identity.scopeVersion;
 
     expect(reconstructSegmentFromOtlpLogs(logs)).toMatchObject({ ok: false });
+  });
+});
+
+/**
+ * Plan 068 item 1 — the logs producer degrades, it does not kill the read.
+ *
+ * An event whose encoded record fails the producer contract cannot be emitted (that
+ * would break the wire contract), so the only two options are: drop it and name its
+ * kind, or throw and make every OTHER event in the session unreadable too. The house
+ * rule picks the first.
+ */
+describe('logs production degrades, never throws (plan 068 · item 1)', () => {
+  const base = {
+    command: 'flow',
+    harness: 'claude-code' as const,
+    harness_session_id: 'logs-degrade',
+    timecode: '2026-08-03T21:20:09Z',
+    window: { since: 'session-start' as const, from: 0, to: 1 },
+    branch: 'main',
+  };
+
+  it('drops ONLY the unencodable event and names its kind', () => {
+    const segment = serializeSegment(
+      {
+        ...base,
+        event_stream: [
+          { t: '2026-08-03T21:20:09Z', kind: 'turn', dur_s: 1, in: 2, out: 3 },
+          {
+            t: '2026-08-03T21:20:10Z',
+            kind: 'tools',
+            name: 'not a legal atom',
+            count: 1,
+            span_s: 1,
+          },
+          { t: '2026-08-03T21:20:11Z', kind: 'prompt', words: 12 },
+        ],
+      },
+      '/repo',
+    );
+    let produced: ReturnType<typeof produceOtlpLogs> | undefined;
+    expect(() => {
+      produced = produceOtlpLogs(segment);
+    }).not.toThrow();
+    if (produced === undefined) throw new Error('expected a production');
+
+    expect(produced.skipped).toEqual(['tools']);
+    expect(otlpLogsToEvents(produced.logs).map((e) => e.kind)).toEqual(['turn', 'prompt']);
+    // What DID survive is still contract-valid, and still conforms.
+    for (const record of produced.logs.resourceLogs[0].scopeLogs[0].logRecords ?? []) {
+      expect(validateLogRecordContract(record)).toBe(true);
+    }
+    expect(conformLogs(produced.logs)).toEqual({ ok: true });
+  });
+
+  it('names each skipped kind ONCE, sorted, however many events fail', () => {
+    const segment = serializeSegment(
+      {
+        ...base,
+        event_stream: [
+          {
+            t: '2026-08-03T21:20:09Z',
+            kind: 'tools',
+            name: 'not a legal atom',
+            count: 1,
+            span_s: 1,
+          },
+          { t: '2026-08-03T21:20:10Z', kind: 'tools', name: 'also not legal', count: 1, span_s: 1 },
+          { t: '2026-08-03T21:20:11Z', kind: 'skill', name: 'nor is this', status: 'completed' },
+        ],
+      },
+      '/repo',
+    );
+    expect(produceOtlpLogs(segment).skipped).toEqual(['skill', 'tools']);
+  });
+
+  it('reports NOTHING skipped and stays byte-identical on a clean segment', () => {
+    const segment = serializeSegment(
+      {
+        ...base,
+        event_stream: [
+          { t: '2026-08-03T21:20:09Z', kind: 'turn', dur_s: 1, in: 2, out: 3 },
+          { t: '2026-08-03T21:20:10Z', kind: 'tools', name: 'Bash', count: 1, span_s: 1 },
+          {
+            t: '2026-08-03T21:20:11Z',
+            kind: 'command_exit',
+            verb: 'dd build',
+            exit: 1,
+            status: 'error',
+          },
+        ],
+      },
+      '/repo',
+    );
+    const produced = produceOtlpLogs(segment);
+    expect(produced.skipped).toEqual([]);
+    expect(segmentToOtlpLogs(segment)).toEqual(produced.logs);
+    expect(otlpLogsToEvents(produced.logs)).toHaveLength(3);
   });
 });

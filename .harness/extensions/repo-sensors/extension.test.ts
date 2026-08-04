@@ -36,6 +36,7 @@ const EXPECTED_SENSORS = [
   'todo-debt',
   'dd-doctor',
   'lock-hygiene',
+  'telemetry-ref-size',
 ];
 
 function result(code: number, stdout = '', stderr = ''): ExecResult {
@@ -98,7 +99,9 @@ describe('repo real sensors', () => {
       readings.push(await declaration.run(fake.context));
     }
 
-    expect(fake.calls).toHaveLength(13);
+    // 13 single-command sensors + telemetry-ref-size's ref listing (which finds no
+    // `refs/harness-telemetry/**` line in the fake output, so it lists no trees).
+    expect(fake.calls).toHaveLength(14);
     expect(fake.calls.every((call) => call.command !== 'npx')).toBe(true);
     expect(fake.calls.every((call) => !call.args.some((arg) => /^(?:install|audit|exec)$/.test(arg)))).toBe(
       true,
@@ -234,6 +237,83 @@ describe('repo real sensors', () => {
       score: 1,
       direction: 'lower',
       threshold: 0,
+    });
+  });
+
+  /**
+   * Plan 068 item 4 — a 17,566-file legacy ref sat undetected from June because
+   * NOTHING watched ref tree size. This sensor's job is to make that VISIBLE, not
+   * to make it red: the June ref is a known, accepted offender and is expected to
+   * trip this forever.
+   */
+  describe('telemetry-ref-size (plan 068 · item 4)', () => {
+    const JUNE_REF = 'refs/harness-telemetry/2026/06/23/15eaa924-56f3-4427-9c7e-e4313cdb3e2a';
+    const ROLLED_REF = 'refs/harness-telemetry/2026/08/03/aaaaaaaa-0000-4000-8000-000000000000';
+    const ROLLED_TREE = 'manifest.json\nsession.logs.jsonl\nsession.metrics.jsonl';
+
+    const refFixture = (trees: Record<string, string>) =>
+      fakeContext((command, args) => {
+        if (command !== 'git') return result(0);
+        if (args[0] === 'for-each-ref') return result(0, `${Object.keys(trees).join('\n')}\n`);
+        if (args[0] === 'ls-tree') return result(0, trees[args[args.length - 1]] ?? '');
+        return result(0);
+      });
+
+    it('WARNS and names an unrolled ref — and never returns fail', async () => {
+      const big = Array.from({ length: 17_566 }, (_, i) => `${i}.json`).join('\n');
+      const fake = refFixture({ [JUNE_REF]: big, [ROLLED_REF]: ROLLED_TREE });
+      const reading = await sensors()['telemetry-ref-size'].run(fake.context);
+
+      expect(reading.state).toBe('warn');
+      expect(reading.state).not.toBe('fail');
+      expect(reading.score).toBe(1);
+      expect(reading.direction).toBe('lower');
+      expect(reading.report).toContain(JUNE_REF);
+      expect(reading.report).toContain('17566 files');
+      // The rolled ref is NOT named — only offenders are.
+      expect(reading.report).not.toContain(ROLLED_REF);
+      expect(reading.details?.length ?? 0).toBeLessThanOrEqual(80);
+    });
+
+    it('PASSES when every ref is rolled (3 files)', async () => {
+      const fake = refFixture({ [ROLLED_REF]: ROLLED_TREE, [JUNE_REF]: ROLLED_TREE });
+      const reading = await sensors()['telemetry-ref-size'].run(fake.context);
+
+      expect(reading.state).toBe('pass');
+      expect(reading.score).toBe(0);
+      expect(reading.report).toContain('Oversized refs: none');
+    });
+
+    it('measures every ref exactly once, and only through read-only git', async () => {
+      const fake = refFixture({ [ROLLED_REF]: ROLLED_TREE, [JUNE_REF]: ROLLED_TREE });
+      await sensors()['telemetry-ref-size'].run(fake.context);
+
+      expect(fake.calls).toHaveLength(3); // 1 listing + 1 per ref
+      expect(fake.calls.every((call) => call.command === 'git')).toBe(true);
+      expect(
+        fake.calls.every((call) => call.args[0] === 'for-each-ref' || call.args[0] === 'ls-tree'),
+      ).toBe(true);
+    });
+
+    it('SKIPS honestly when git cannot list refs — never a false pass, never a fail', async () => {
+      const fake = fakeContext(() => result(128, '', 'not a git repository'));
+      const reading = await sensors()['telemetry-ref-size'].run(fake.context);
+
+      expect(reading.state).toBe('skip');
+      expect(reading.score).toBeUndefined();
+      expect(fake.calls).toHaveLength(1);
+    });
+
+    it('counts an unreadable ref as unmeasured rather than as compliant', async () => {
+      const fake = fakeContext((command, args) => {
+        if (command !== 'git') return result(0);
+        if (args[0] === 'for-each-ref') return result(0, `${JUNE_REF}\n`);
+        return result(128, '', 'bad object');
+      });
+      const reading = await sensors()['telemetry-ref-size'].run(fake.context);
+
+      expect(reading.state).toBe('pass');
+      expect(reading.report).toContain('1 unreadable');
     });
   });
 

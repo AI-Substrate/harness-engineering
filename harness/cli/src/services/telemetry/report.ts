@@ -40,6 +40,7 @@ import {
   computeAuthorship,
   computeRollup,
   IDLE_CAP_S,
+  type ObservedPath,
   parseIso,
 } from './rollup.js';
 import type { SessionExport } from './session-export.js';
@@ -226,6 +227,13 @@ export interface ReportProvenance {
   flow_stage_mechanism: FlowStageMechanism;
   /** Sessions with real token data vs a declared token gap (T1.6 / AC-04). */
   token_coverage: TokenCoverage;
+  /**
+   * Events excluded from active-time accrual because their `t_precision` is
+   * `interval` — a capture-window stamp, not a work instant (plan 066 file
+   * events). They still count everywhere non-temporal. Surfaced so the exclusion
+   * is VISIBLE rather than a silently shorter clock (plan 068 item 2).
+   */
+  interval_events: number;
   /** Present only for bundle-derived full/partial/identity inputs. */
   input_coverage?: ReportInputCoverage;
 }
@@ -614,6 +622,8 @@ function foldSession(
   active: number;
   mechanism: FlowStageMechanism;
   tokenMeasured: boolean;
+  /** Events excluded from active-time accrual because they carry no exact instant. */
+  intervalEvents: number;
 } {
   const ev = view.events;
   const n = ev.length;
@@ -622,11 +632,25 @@ function foldSession(
   // `prompt` is the human away (idle) → contributes ZERO; agent gaps + brief human
   // gaps (≤ IDLE_CAP_S) stay. `gapAfter[i]` = the ACTIVE seconds between event i and
   // i+1, so Σ = the session's active time (agent+human, idle excluded).
+  //
+  // `t_precision: 'interval'` events (plan 066 file events) are NOT instants: they
+  // carry the CAPTURE wall-clock for work that happened somewhere in the preceding
+  // window. Treating one as an instant silently accrues a whole span into active
+  // time — a number the capture never measured. So active time is accrued between
+  // consecutive ANCHORED events only; an interval event is skipped over, never
+  // used as a gap boundary. It still counts everywhere non-temporal (its file
+  // delta, its authorship row, its coverage). With no interval events the anchored
+  // sequence IS the event sequence, so this is byte-identical to the exact-timed
+  // behaviour (plan 068 item 2).
   const gapAfter: number[] = new Array(n).fill(0);
-  for (let i = 0; i < n - 1; i++) {
-    const g = parseIso(ev[i + 1].t) - parseIso(ev[i].t);
+  const anchored: number[] = [];
+  for (let i = 0; i < n; i++) if (ev[i].t_precision !== 'interval') anchored.push(i);
+  for (let k = 0; k < anchored.length - 1; k++) {
+    const i = anchored[k];
+    const j = anchored[k + 1];
+    const g = parseIso(ev[j].t) - parseIso(ev[i].t);
     if (!Number.isFinite(g) || g <= 0) continue;
-    const kind = classifyGap(g, ev[i + 1].kind === 'prompt', IDLE_CAP_S);
+    const kind = classifyGap(g, ev[j].kind === 'prompt', IDLE_CAP_S);
     gapAfter[i] = kind === 'idle' ? 0 : g;
   }
   // Active seconds in the index window [a, b) — i.e. time [t_a, t_b), idle already
@@ -850,6 +874,7 @@ function foldSession(
     cacheRead: sessionCr,
     cacheCreate: sessionCc,
     active: activeBetween(0, n),
+    intervalEvents: n - anchored.length,
     mechanism,
     tokenMeasured,
   };
@@ -991,12 +1016,18 @@ export function buildReport(
   let controlTimeline: TimelineMarker[] | undefined;
   // plan 056: the file events across every included session → one authorship view.
   const fileEventsAll: SessionView['events'] = [];
+  // plan 068 item 3: paths the capture recorded WITHOUT a measurable delta, so the
+  // authorship surface can show them with a named gap rather than drop them.
+  const observedPaths: ObservedPath[] = [];
   // Plan 056 (workshop D6) — friction proxies + retro-drain aggregates. Counted
   // straight off the ordered event stream (P12-safe: codes/verbs/closed counts only).
   let commandErrors = 0;
   let apiErrors = 0;
   let observeEvents = 0;
   let retroObservations = 0;
+  // Plan 068 item 2 — how many events were excluded from active-time accrual for
+  // carrying an interval, not an instant. Visible, never silent.
+  let intervalEvents = 0;
   const retroDispositions: Record<string, number> = {};
 
   for (const exp of included) {
@@ -1025,6 +1056,7 @@ export function buildReport(
     mechanism.digit += sums.mechanism.digit;
     mechanism.unlabeled += sums.mechanism.unlabeled;
     mechanism.flow_log += sums.mechanism.flow_log;
+    intervalEvents += sums.intervalEvents;
     const coverage = exp.summary.token_evidence?.coverage;
     if (coverage === 'measured' || (coverage === undefined && sums.tokenMeasured)) {
       tokenCoverage.measured += 1;
@@ -1053,6 +1085,13 @@ export function buildReport(
     if (included.length === 1) controlTimeline = buildControlTimeline(view.events);
     // plan 056: collect this session's file events for the cohort authorship view.
     for (const e of view.events) if (e.kind === 'file') fileEventsAll.push(e);
+    // plan 068 item 3: and the path-only evidence beside them.
+    for (const path of exp.summary.files_observed?.written ?? []) {
+      observedPaths.push({ path, change: 'written' });
+    }
+    for (const path of exp.summary.files_observed?.edited ?? []) {
+      observedPaths.push({ path, change: 'edited' });
+    }
   }
 
   const idCap = opts.sessionIdCap ?? 200;
@@ -1123,9 +1162,12 @@ export function buildReport(
       flow_stage_map_version: FLOW_STAGE_MAP_VERSION,
       flow_stage_mechanism: mechanism,
       token_coverage: tokenCoverage,
+      interval_events: intervalEvents,
     },
     ...(controlTimeline !== undefined ? { control_timeline: controlTimeline } : {}),
-    ...(fileEventsAll.length > 0 ? { authorship: computeAuthorship(fileEventsAll) } : {}),
+    ...(fileEventsAll.length > 0 || observedPaths.length > 0
+      ? { authorship: computeAuthorship(fileEventsAll, observedPaths) }
+      : {}),
   };
 }
 
