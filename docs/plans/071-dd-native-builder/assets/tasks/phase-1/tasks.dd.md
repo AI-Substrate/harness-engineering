@@ -51,101 +51,101 @@ Hand-authored as the JIT dogfood — this file is the fixture ph-7102's 5 tasks 
 | tk-7126 | dd validate regression pin (byte-for-byte mechanical) | — | ph-7101 | [x] checked | — | — | [x] 1/1 [tk-7126](#tk-7126) | Byte-identical behaviour on existing corpora. | — | — |
 | tk-7127 | Synthetic corpus factory + lifecycle-mutation suites | — | ph-7101 | [x] checked | — | — | [x] 2/2 [tk-7127](#tk-7127) | Factory builds mock plans/phases/task files; suites drive tick/untick/block/human-skip/JIT-birth/basis-drift mutations asserting validate + gate verdicts at each step; shared by ph-7102 and ph-7103 test suites. | Jordan's explicit unit-coverage expectation | [ac-7106](../../../plan.dd.md#acceptance-criteria), [ac-7107](../../../plan.dd.md#acceptance-criteria), [ac-7108](../../../plan.dd.md#acceptance-criteria), [ac-7109](../../../plan.dd.md#acceptance-criteria) |
 
-<a id="evidence"></a>
+<a id="done-when"></a>
 
-## Evidence
+## Done when
 
 ### tk-7111
 
-| id | assertion | state |
-| --- | --- | --- |
-| dw-0111 | Declarations round-trip a rel on single and array link shapes; resolved schema exposes it. | [x] checked |
-| dw-0112 | The parse-layer allow-list carries rel — pinned in declarations.test.ts/parse.test.ts, not the renderer suite. | [x] checked |
-| dw-0113 | An unknown rel string is accepted and behaves as ref. | [x] checked |
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-0111 | Declarations round-trip a rel on single and array link shapes; resolved schema exposes it. | [x] checked | [bp-7101](../../../backpressure.dd.md#rows) |
+| dw-0112 | The parse-layer allow-list carries rel — pinned in declarations.test.ts/parse.test.ts, not the renderer suite. | [x] checked | [bp-7101](../../../backpressure.dd.md#rows) |
+| dw-0113 | An unknown rel string is accepted and behaves as ref. | [x] checked | [bp-7101](../../../backpressure.dd.md#rows) |
 
 ### tk-7112
 
-| id | assertion | state |
-| --- | --- | --- |
-| dw-0121 | The surface manifest names exactly the five built-in rels. | [x] checked |
-| dw-0122 | The surface test counts them and fails on any sixth. | [x] checked |
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-0121 | The surface manifest names exactly the five built-in rels. | [x] checked | [bp-7101](../../../backpressure.dd.md#rows) |
+| dw-0122 | The surface test counts them and fails on any sixth. | [x] checked | [bp-7101](../../../backpressure.dd.md#rows) |
 
 ### tk-7113
 
-| id | assertion | state |
-| --- | --- | --- |
-| dw-0131 | A populated links bucket renders as a final Links column. | [x] checked |
-| dw-0132 | An absent bucket renders byte-identical to today (golden pin). | [x] checked |
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-0131 | A populated links bucket renders as a final Links column. | [x] checked | [bp-7102](../../../backpressure.dd.md#rows) |
+| dw-0132 | An absent bucket renders byte-identical to today (golden pin). | [x] checked | [bp-7102](../../../backpressure.dd.md#rows) |
 
 ### tk-7114
 
-| id | assertion | state |
-| --- | --- | --- |
-| dw-0141 | dd graph map labels edges with their rel. | [x] checked |
-| dw-0142 | --rel filters the walk to matching edges. | [x] checked |
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-0141 | dd graph map labels edges with their rel. | [x] checked | [bp-7101](../../../backpressure.dd.md#rows) |
+| dw-0142 | --rel filters the walk to matching edges. | [x] checked | [bp-7101](../../../backpressure.dd.md#rows) |
 
 ### tk-7115
 
-| id | assertion | state |
-| --- | --- | --- |
-| dw-0151 | done_when rename lands in builder schemas; dw- ids unchanged. | [x] checked |
-| dw-0152 | satisfies declared always-array; a non-array fails validation (planted-bad). | [x] checked |
-| dw-0153 | An assertion without pressure is a validation ERROR (planted-bad); not-applicable validates and renders. | [x] checked |
-| dw-0154 | Every existing builder/* link field declares its rel — schema test pins the map. | [x] checked |
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-0151 | done_when rename lands in builder schemas; dw- ids unchanged. | [x] checked | [bp-7104](../../../backpressure.dd.md#rows) |
+| dw-0152 | satisfies declared always-array; a non-array fails validation (planted-bad). | [x] checked | [bp-7105](../../../backpressure.dd.md#rows) |
+| dw-0153 | An assertion without pressure is a validation ERROR (planted-bad); not-applicable validates and renders. | [x] checked | [bp-7103](../../../backpressure.dd.md#rows) |
+| dw-0154 | Every existing builder/* link field declares its rel — schema test pins the map. | [x] checked | [bp-7101](../../../backpressure.dd.md#rows) |
 
 ### tk-7121
 
-| id | assertion | state |
-| --- | --- | --- |
-| dw-0211 | Each rel path (proven_by/satisfies/derives) has a planted-bad fixture that FIRES. | [x] checked |
-| dw-0212 | Consistent-open and evidence-ready-unclaimed cells stay silent (good twins). | [x] checked |
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-0211 | Each rel path (proven_by/satisfies/derives) has a planted-bad fixture that FIRES. | [x] checked | [bp-7106](../../../backpressure.dd.md#rows) |
+| dw-0212 | Consistent-open and evidence-ready-unclaimed cells stay silent (good twins). | [x] checked | [bp-7106](../../../backpressure.dd.md#rows) |
 
 ### tk-7122
 
-| id | assertion | state |
-| --- | --- | --- |
-| dw-0221 | Mid-flight run emits one info summary line and zero per-row warnings. | [x] checked |
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-0221 | Mid-flight run emits one info summary line and zero per-row warnings. | [x] checked | [bp-7107](../../../backpressure.dd.md#rows) |
 
 ### tk-7123
 
-| id | assertion | state |
-| --- | --- | --- |
-| dw-0231 | --complete green means exactly 0 errors and 0 warnings. | [x] checked |
-| dw-0232 | An orphan AC (no incoming satisfies) warns under --complete (planted fixture). | [x] checked |
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-0231 | --complete green means exactly 0 errors and 0 warnings. | [x] checked | [bp-7107](../../../backpressure.dd.md#rows) |
+| dw-0232 | An orphan AC (no incoming satisfies) warns under --complete (planted fixture). | [x] checked | [bp-7107](../../../backpressure.dd.md#rows) |
 
 ### tk-7124
 
-| id | assertion | state |
-| --- | --- | --- |
-| dw-0241 | A phase-scoped run excludes other phases' open items. | [x] checked |
-| dw-0242 | An AC-scoped run shows the full proof tree including incoming satisfies. | [x] checked |
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-0241 | A phase-scoped run excludes other phases' open items. | [x] checked | [bp-7108](../../../backpressure.dd.md#rows) |
+| dw-0242 | An AC-scoped run shows the full proof tree including incoming satisfies. | [x] checked | [bp-7108](../../../backpressure.dd.md#rows) |
 
 ### tk-7125
 
-| id | assertion | state |
-| --- | --- | --- |
-| dw-0251 | E450-E459 allocated with JSDoc discipline; manifest row added. | [x] checked |
-| dw-0252 | dd-surface.test.ts green with the adjusted code count. | [x] checked |
+| id | assertion | state | pressure | note |
+| --- | --- | --- | --- | --- |
+| dw-0251 | E450-E459 allocated with JSDoc discipline; manifest row added. | [x] checked | not-applicable | instrument is the dd-surface.test.ts count pin, not a backpressure row |
+| dw-0252 | dd-surface.test.ts green with the adjusted code count. | [x] checked | not-applicable | instrument is the dd-surface.test.ts count pin, not a backpressure row |
 
 ### tk-7126
 
-| id | assertion | state |
-| --- | --- | --- |
-| dw-0261 | dd validate behaviour byte-identical on existing corpora (regression pin). | [x] checked |
+| id | assertion | state | pressure | note |
+| --- | --- | --- | --- | --- |
+| dw-0261 | dd validate behaviour byte-identical on existing corpora (regression pin). | [x] checked | not-applicable | instrument is the envelope-key regression pin test, not a backpressure row |
 
 ### tk-7127
 
-| id | assertion | state |
-| --- | --- | --- |
-| dw-0271 | The factory builds mock plans/phases/task files on demand. | [x] checked |
-| dw-0272 | Mutation suites cover tick/untick/block/human-skip/JIT-birth/basis-drift with validator+gate verdicts asserted at each step. | [x] checked |
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-0271 | The factory builds mock plans/phases/task files on demand. | [x] checked | [bp-7106](../../../backpressure.dd.md#rows) |
+| dw-0272 | Mutation suites cover tick/untick/block/human-skip/JIT-birth/basis-drift with validator+gate verdicts asserted at each step. | [x] checked | [bp-7106](../../../backpressure.dd.md#rows) |
 
 ### tk-7128
 
-| id | assertion | state |
-| --- | --- | --- |
-| dw-0281 | dd get resolves section, instance, and part addresses and returns the value (json + human). | [x] checked |
-| dw-0282 | A set/add violating the schema is refused with the validation issue and writes NOTHING. | [x] checked |
-| dw-0283 | Every successful mutation rebuilds the .dd.md sibling in the same operation. | [x] checked |
-| dw-0284 | add --mint produces the next collision-free id under the registered prefix (the DF-008 bug class is unrepresentable). | [x] checked |
-| dw-0285 | The dd surface manifest names get/set/add/rm; the surface test counts them. | [x] checked |
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-0281 | dd get resolves section, instance, and part addresses and returns the value (json + human). | [x] checked | [bp-7119](../../../backpressure.dd.md#rows) |
+| dw-0282 | A set/add violating the schema is refused with the validation issue and writes NOTHING. | [x] checked | [bp-7119](../../../backpressure.dd.md#rows) |
+| dw-0283 | Every successful mutation rebuilds the .dd.md sibling in the same operation. | [x] checked | [bp-7119](../../../backpressure.dd.md#rows) |
+| dw-0284 | add --mint produces the next collision-free id under the registered prefix (the DF-008 bug class is unrepresentable). | [x] checked | [bp-7119](../../../backpressure.dd.md#rows) |
+| dw-0285 | The dd surface manifest names get/set/add/rm; the surface test counts them. | [x] checked | [bp-7119](../../../backpressure.dd.md#rows) |

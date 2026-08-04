@@ -288,3 +288,19 @@
   is forbidden — both stay at 070 until a root-meta verb lands (captured
   DL-001 in the new buffer; candidate early-phase-2 task, flow wiring is in
   scope).
+
+## DF-018 — evidence→done_when migration done; the verbs cannot birth a section
+
+- **What**: the phase-1 task file migrated per ruling A — section renamed
+  `done_when`, all 30 dw rows gained `pressure` (28 to bp-71xx instruments,
+  2 `not-applicable` with notes naming their real non-bp instruments:
+  tk-7125 the dd-surface count pin, tk-7126 the envelope-key pin); 13
+  `done` links retargeted `#done_when/...` via `dd set`.
+- **Gap (DL-002)**: `dd set` AND `dd add` both refuse to create an absent
+  section — the permissive-tail rule covers fields, not sections — so the
+  rename itself was one documented python bypass, validated by `dd build`
+  immediately after. Candidate JIT task: section birth (or `dd mv`) through
+  the verbs.
+- **Mapping honesty**: per-row where the rows demanded it (tk-7115's four
+  assertions map 1:1 to bp-7104/7105/7103/7101), per-task first-arm
+  elsewhere.

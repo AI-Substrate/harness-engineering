@@ -28,7 +28,7 @@
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-7119"
           ],
-          "done": "#evidence/tk-7128",
+          "done": "#done_when/tk-7128",
           "success": "get returns values at any address kind; set/add/rm validate against the schema BEFORE writing and rebuild the sibling; add --mint <prefix> yields collision-free four-hex ids; surface manifest carries the four rows.",
           "notes": "FIRST TASK by Jordan's ruling — lands before everything else so the rest of this journey mutates dd through the CLI, never python. Born from the journey: DF-012 — agents were hand-editing .dd.json (dw-id collisions, stale siblings)"
         },
@@ -42,7 +42,7 @@
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-7101"
           ],
-          "done": "#evidence/tk-7111"
+          "done": "#done_when/tk-7111"
         },
         {
           "id": "tk-7112",
@@ -53,7 +53,7 @@
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-7101"
           ],
-          "done": "#evidence/tk-7112"
+          "done": "#done_when/tk-7112"
         },
         {
           "id": "tk-7113",
@@ -64,7 +64,7 @@
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-7102"
           ],
-          "done": "#evidence/tk-7113"
+          "done": "#done_when/tk-7113"
         },
         {
           "id": "tk-7114",
@@ -76,7 +76,7 @@
             "../../../plan.dd.json#acceptance_criteria/ac-7101",
             "../../../plan.dd.json#acceptance_criteria/ac-7102"
           ],
-          "done": "#evidence/tk-7114"
+          "done": "#done_when/tk-7114"
         },
         {
           "id": "tk-7115",
@@ -91,7 +91,7 @@
             "../../../plan.dd.json#acceptance_criteria/ac-7104",
             "../../../plan.dd.json#acceptance_criteria/ac-7105"
           ],
-          "done": "#evidence/tk-7115"
+          "done": "#done_when/tk-7115"
         },
         {
           "id": "tk-7121",
@@ -102,7 +102,7 @@
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-7106"
           ],
-          "done": "#evidence/tk-7121"
+          "done": "#done_when/tk-7121"
         },
         {
           "id": "tk-7122",
@@ -114,7 +114,7 @@
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-7107"
           ],
-          "done": "#evidence/tk-7122"
+          "done": "#done_when/tk-7122"
         },
         {
           "id": "tk-7123",
@@ -125,7 +125,7 @@
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-7107"
           ],
-          "done": "#evidence/tk-7123"
+          "done": "#done_when/tk-7123"
         },
         {
           "id": "tk-7124",
@@ -136,7 +136,7 @@
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-7108"
           ],
-          "done": "#evidence/tk-7124"
+          "done": "#done_when/tk-7124"
         },
         {
           "id": "tk-7125",
@@ -145,7 +145,7 @@
           "state": "checked",
           "success": "dd-surface.test.ts green with the new count; JSDoc discipline.",
           "notes": "key finding: E-blocks full",
-          "done": "#evidence/tk-7125"
+          "done": "#done_when/tk-7125"
         },
         {
           "id": "tk-7126",
@@ -153,7 +153,7 @@
           "phase": "ph-7101",
           "state": "checked",
           "success": "Byte-identical behaviour on existing corpora.",
-          "done": "#evidence/tk-7126"
+          "done": "#done_when/tk-7126"
         },
         {
           "id": "tk-7127",
@@ -168,187 +168,220 @@
           ],
           "success": "Factory builds mock plans/phases/task files; suites drive tick/untick/block/human-skip/JIT-birth/basis-drift mutations asserting validate + gate verdicts at each step; shared by ph-7102 and ph-7103 test suites.",
           "notes": "Jordan's explicit unit-coverage expectation",
-          "done": "#evidence/tk-7127"
+          "done": "#done_when/tk-7127"
         }
       ]
     },
     {
-      "name": "evidence",
+      "name": "done_when",
       "value": {
         "tk-7111": [
           {
             "id": "dw-0111",
             "assertion": "Declarations round-trip a rel on single and array link shapes; resolved schema exposes it.",
-            "state": "checked"
+            "state": "checked",
+            "pressure": "../../../backpressure.dd.json#rows/bp-7101"
           },
           {
             "id": "dw-0112",
             "assertion": "The parse-layer allow-list carries rel — pinned in declarations.test.ts/parse.test.ts, not the renderer suite.",
-            "state": "checked"
+            "state": "checked",
+            "pressure": "../../../backpressure.dd.json#rows/bp-7101"
           },
           {
             "id": "dw-0113",
             "assertion": "An unknown rel string is accepted and behaves as ref.",
-            "state": "checked"
+            "state": "checked",
+            "pressure": "../../../backpressure.dd.json#rows/bp-7101"
           }
         ],
         "tk-7112": [
           {
             "id": "dw-0121",
             "assertion": "The surface manifest names exactly the five built-in rels.",
-            "state": "checked"
+            "state": "checked",
+            "pressure": "../../../backpressure.dd.json#rows/bp-7101"
           },
           {
             "id": "dw-0122",
             "assertion": "The surface test counts them and fails on any sixth.",
-            "state": "checked"
+            "state": "checked",
+            "pressure": "../../../backpressure.dd.json#rows/bp-7101"
           }
         ],
         "tk-7113": [
           {
             "id": "dw-0131",
             "assertion": "A populated links bucket renders as a final Links column.",
-            "state": "checked"
+            "state": "checked",
+            "pressure": "../../../backpressure.dd.json#rows/bp-7102"
           },
           {
             "id": "dw-0132",
             "assertion": "An absent bucket renders byte-identical to today (golden pin).",
-            "state": "checked"
+            "state": "checked",
+            "pressure": "../../../backpressure.dd.json#rows/bp-7102"
           }
         ],
         "tk-7114": [
           {
             "id": "dw-0141",
             "assertion": "dd graph map labels edges with their rel.",
-            "state": "checked"
+            "state": "checked",
+            "pressure": "../../../backpressure.dd.json#rows/bp-7101"
           },
           {
             "id": "dw-0142",
             "assertion": "--rel filters the walk to matching edges.",
-            "state": "checked"
+            "state": "checked",
+            "pressure": "../../../backpressure.dd.json#rows/bp-7101"
           }
         ],
         "tk-7115": [
           {
             "id": "dw-0151",
             "assertion": "done_when rename lands in builder schemas; dw- ids unchanged.",
-            "state": "checked"
+            "state": "checked",
+            "pressure": "../../../backpressure.dd.json#rows/bp-7104"
           },
           {
             "id": "dw-0152",
             "assertion": "satisfies declared always-array; a non-array fails validation (planted-bad).",
-            "state": "checked"
+            "state": "checked",
+            "pressure": "../../../backpressure.dd.json#rows/bp-7105"
           },
           {
             "id": "dw-0153",
             "assertion": "An assertion without pressure is a validation ERROR (planted-bad); not-applicable validates and renders.",
-            "state": "checked"
+            "state": "checked",
+            "pressure": "../../../backpressure.dd.json#rows/bp-7103"
           },
           {
             "id": "dw-0154",
             "assertion": "Every existing builder/* link field declares its rel — schema test pins the map.",
-            "state": "checked"
+            "state": "checked",
+            "pressure": "../../../backpressure.dd.json#rows/bp-7101"
           }
         ],
         "tk-7121": [
           {
             "id": "dw-0211",
             "assertion": "Each rel path (proven_by/satisfies/derives) has a planted-bad fixture that FIRES.",
-            "state": "checked"
+            "state": "checked",
+            "pressure": "../../../backpressure.dd.json#rows/bp-7106"
           },
           {
             "id": "dw-0212",
             "assertion": "Consistent-open and evidence-ready-unclaimed cells stay silent (good twins).",
-            "state": "checked"
+            "state": "checked",
+            "pressure": "../../../backpressure.dd.json#rows/bp-7106"
           }
         ],
         "tk-7122": [
           {
             "id": "dw-0221",
             "assertion": "Mid-flight run emits one info summary line and zero per-row warnings.",
-            "state": "checked"
+            "state": "checked",
+            "pressure": "../../../backpressure.dd.json#rows/bp-7107"
           }
         ],
         "tk-7123": [
           {
             "id": "dw-0231",
             "assertion": "--complete green means exactly 0 errors and 0 warnings.",
-            "state": "checked"
+            "state": "checked",
+            "pressure": "../../../backpressure.dd.json#rows/bp-7107"
           },
           {
             "id": "dw-0232",
             "assertion": "An orphan AC (no incoming satisfies) warns under --complete (planted fixture).",
-            "state": "checked"
+            "state": "checked",
+            "pressure": "../../../backpressure.dd.json#rows/bp-7107"
           }
         ],
         "tk-7124": [
           {
             "id": "dw-0241",
             "assertion": "A phase-scoped run excludes other phases' open items.",
-            "state": "checked"
+            "state": "checked",
+            "pressure": "../../../backpressure.dd.json#rows/bp-7108"
           },
           {
             "id": "dw-0242",
             "assertion": "An AC-scoped run shows the full proof tree including incoming satisfies.",
-            "state": "checked"
+            "state": "checked",
+            "pressure": "../../../backpressure.dd.json#rows/bp-7108"
           }
         ],
         "tk-7125": [
           {
             "id": "dw-0251",
             "assertion": "E450-E459 allocated with JSDoc discipline; manifest row added.",
-            "state": "checked"
+            "state": "checked",
+            "pressure": "not-applicable",
+            "note": "instrument is the dd-surface.test.ts count pin, not a backpressure row"
           },
           {
             "id": "dw-0252",
             "assertion": "dd-surface.test.ts green with the adjusted code count.",
-            "state": "checked"
+            "state": "checked",
+            "pressure": "not-applicable",
+            "note": "instrument is the dd-surface.test.ts count pin, not a backpressure row"
           }
         ],
         "tk-7126": [
           {
             "id": "dw-0261",
             "assertion": "dd validate behaviour byte-identical on existing corpora (regression pin).",
-            "state": "checked"
+            "state": "checked",
+            "pressure": "not-applicable",
+            "note": "instrument is the envelope-key regression pin test, not a backpressure row"
           }
         ],
         "tk-7127": [
           {
             "id": "dw-0271",
             "assertion": "The factory builds mock plans/phases/task files on demand.",
-            "state": "checked"
+            "state": "checked",
+            "pressure": "../../../backpressure.dd.json#rows/bp-7106"
           },
           {
             "id": "dw-0272",
             "assertion": "Mutation suites cover tick/untick/block/human-skip/JIT-birth/basis-drift with validator+gate verdicts asserted at each step.",
-            "state": "checked"
+            "state": "checked",
+            "pressure": "../../../backpressure.dd.json#rows/bp-7106"
           }
         ],
         "tk-7128": [
           {
             "id": "dw-0281",
             "assertion": "dd get resolves section, instance, and part addresses and returns the value (json + human).",
-            "state": "checked"
+            "state": "checked",
+            "pressure": "../../../backpressure.dd.json#rows/bp-7119"
           },
           {
             "id": "dw-0282",
             "assertion": "A set/add violating the schema is refused with the validation issue and writes NOTHING.",
-            "state": "checked"
+            "state": "checked",
+            "pressure": "../../../backpressure.dd.json#rows/bp-7119"
           },
           {
             "id": "dw-0283",
             "assertion": "Every successful mutation rebuilds the .dd.md sibling in the same operation.",
-            "state": "checked"
+            "state": "checked",
+            "pressure": "../../../backpressure.dd.json#rows/bp-7119"
           },
           {
             "id": "dw-0284",
             "assertion": "add --mint produces the next collision-free id under the registered prefix (the DF-008 bug class is unrepresentable).",
-            "state": "checked"
+            "state": "checked",
+            "pressure": "../../../backpressure.dd.json#rows/bp-7119"
           },
           {
             "id": "dw-0285",
             "assertion": "The dd surface manifest names get/set/add/rm; the surface test counts them.",
-            "state": "checked"
+            "state": "checked",
+            "pressure": "../../../backpressure.dd.json#rows/bp-7119"
           }
         ]
       }
