@@ -1,4 +1,5 @@
 import type { Clock } from '../../adapters/clock/clock-port.js';
+import type { DbPort } from '../../adapters/db/db-port.js';
 import type { EnvPort } from '../../adapters/env/env-port.js';
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { GitPort } from '../../adapters/git/git-port.js';
@@ -14,11 +15,14 @@ import type { RecordRegistry, RecordTypeEntry } from '../record/registry.js';
 import { SensorStateStore } from '../sensors/state-store.js';
 import { posixDirname, posixJoin, posixRelative, toPosix } from '../shared/posix-path.js';
 import { HARNESS_DIR, TEMP_DIR } from '../shared/temp.js';
+import type { HarnessAdapter } from '../telemetry/adapters/harness-adapter.js';
+import { coreTelemetryAdapters } from '../telemetry/adapters/index.js';
 import {
   evaluateCaptureLiveness,
   readLivenessRecords,
   sourceExtent,
 } from '../telemetry/capture-liveness.js';
+import { laneRecoveryReason, type SkipLaneReason } from '../telemetry/capture-reconcile.js';
 
 /** Adapters the doctor service depends on (injected — never constructed here). */
 export interface DoctorDeps {
@@ -29,6 +33,26 @@ export interface DoctorDeps {
   clock: Clock;
   /** The RUNNING CLI's version — an injected string (`readVersion` reads `node:fs`, so it stays in the wiring, never the service — P2). Absent → the skew check is skipped. */
   runningVersion?: string;
+  /**
+   * Per-harness telemetry adapter OVERRIDE (plan 070) — tests only. Doctor asks
+   * the RECONCILER whether each owed capture lane can actually be paid back, and
+   * that answer depends on whether a reader for the lane's harness exists.
+   *
+   * It DEFAULTS to the real registry rather than being required, because the
+   * failure mode of forgetting to wire it is the worst one this layer has: every
+   * recoverable lane would be reported UNRECOVERABLE — crying wolf on the one
+   * surface that must not. The registry is a fixed in-repo constant, not a port,
+   * so there is no reason a caller should have to supply it and every reason the
+   * mistake should be impossible to make.
+   */
+  adapters?: HarnessAdapter[];
+  /**
+   * Read-only SQLite (plan 070). Wired so doctor's recoverability probe sees the
+   * SAME sources the sync-time recovery will — without it a lane whose only
+   * evidence is timed turns could be reported unrecoverable when sync would in
+   * fact recover it, i.e. crying wolf on the one surface that must not.
+   */
+  db?: DbPort;
 }
 
 /** One layer of the doctor report. */
@@ -670,11 +694,44 @@ function checkTelemetryHook(
  * sense, and lanes that recovered (an anomaly followed by a capture). It reads
  * markers only — it NEVER invokes capture (P7) and never fabricates a segment.
  */
+/** Short, human-scannable session handle. Never the full id — it is a correlation
+ * handle, and eight characters is enough to match a lane against a marker file. */
+function shortSession(session: string): string {
+  return session.slice(0, 8);
+}
+
+/** Trailing path segment of a recorded source — a NAME, never a directory. */
+function sourceName(path: string): string {
+  const parts = toPosix(path).split('/');
+  return parts[parts.length - 1] ?? path;
+}
+
+/**
+ * Render WHY a flagged lane can never be recovered, in operator language.
+ *
+ * `already-consumed` never reaches here: it means something else captured the
+ * window, which is a healthy lane rather than a finding.
+ */
+function unrecoverableReason(reason: SkipLaneReason, harness: string): string {
+  switch (reason) {
+    case 'no-adapter':
+      return `no reconcile adapter for ${harness}`;
+    case 'no-signal':
+      return 'source has no usable evidence';
+    case 'source-unreadable':
+      return 'source file no longer exists';
+    default:
+      return 'recovery attempt failed';
+  }
+}
+
 function checkCaptureLiveness(
   fs: FsPort,
   proc: ProcessPort,
   env: EnvPort,
   clock: Clock,
+  adapters: HarnessAdapter[] = coreTelemetryAdapters,
+  db?: DbPort,
 ): LayerReport {
   const name = 'capture-liveness';
   const cwd = toPosix(proc.cwd());
@@ -693,11 +750,45 @@ function checkCaptureLiveness(
     (path) => sourceExtent(fs, path),
     clock.nowIso(),
   );
-  if (verdict.stalled.length === 0 && verdict.residue.length === 0) {
+  // Split the OWED lanes from the UNRECOVERABLE ones, asking the RECONCILER
+  // itself which is which — `laneRecoveryReason` is the same function the sync
+  // pass runs, so doctor cannot claim a lane is recoverable that sync will skip
+  // (or vice versa). Two projections of one answer, never two implementations.
+  const owed: string[] = [];
+  const unrecoverable: string[] = [];
+  const reconcileDeps = { fs, env, clock, proc, adapters, ...(db !== undefined && { db }) };
+  for (const r of verdict.residue) {
+    const reason = laneRecoveryReason(reconcileDeps, cwd, r);
+    if (reason === null) {
+      owed.push(
+        `session ${shortSession(r.session)}: ${r.residue} lines uncaptured, ` +
+          `recoverable on next telemetry sync (source: ${sourceName(r.source)})`,
+      );
+    } else if (reason !== 'already-consumed') {
+      // A lane sync will never pay. Reporting it as merely "owed" would be a
+      // standing promise that silently never comes true.
+      unrecoverable.push(
+        `session ${shortSession(r.session)}: ${r.residue} lines uncaptured, ` +
+          `UNRECOVERABLE — ${unrecoverableReason(reason, r.harness)}`,
+      );
+    }
+    // `already-consumed` is NOT a finding: something else captured the window.
+  }
+  // Lanes whose source is gone were never measurable as residue at all — they
+  // reach here from the marker's OWN recorded observation of a window it saw and
+  // did not capture. The evidence is destroyed; only the fact of the loss remains.
+  for (const l of verdict.lost) {
+    unrecoverable.push(
+      `session ${shortSession(l.session)}: ${l.uncaptured} lines uncaptured, ` +
+        `UNRECOVERABLE — ${unrecoverableReason('source-unreadable', l.harness)}`,
+    );
+  }
+
+  if (verdict.stalled.length === 0 && owed.length === 0 && unrecoverable.length === 0) {
     const seen =
       verdict.sessions === 0
         ? 'no capture attempts recorded yet'
-        : `${verdict.sessions} session lane(s) recorded, none stalled`;
+        : `${verdict.sessions} session lane(s) recorded, none stalled, nothing owed`;
     const past =
       verdict.anomalies > 0
         ? ` (${verdict.anomalies} un-captured window(s) seen earlier, since recovered)`
@@ -713,38 +804,43 @@ function checkCaptureLiveness(
         ` on \`${s.last_command}\` at ${s.last_attempt_at}`,
     )
     .join('; ');
-  // Residue lanes are OWED, not lost: the source still exists on disk, so the next
-  // `harness telemetry sync` reconciles them. Naming the state is the point — an
-  // operator must be able to tell "recovery is pending" from "this is gone".
-  const residues = verdict.residue
-    .map(
-      (r) =>
-        `${r.session} (${r.harness}): captured ${r.cursor} of ${r.extent} source lines, ` +
-        `${r.residue} OWED, idle ${r.idle_hours}h, recoverable from ${r.source}`,
-    )
-    .join('; ');
   const parts: string[] = [];
   if (verdict.stalled.length > 0) {
     parts.push(`CAPTURE STALLED on ${verdict.stalled.length} lane(s): ${stalls}`);
   }
-  if (verdict.residue.length > 0) {
-    parts.push(
-      `${verdict.residue.length} finished lane(s) are OWED telemetry they never captured: ${residues}`,
-    );
+  if (owed.length > 0) {
+    parts.push(`${owed.length} lane(s) OWED telemetry they never captured: ${owed.join('; ')}`);
   }
+  if (unrecoverable.length > 0) {
+    parts.push(`${unrecoverable.length} lane(s) UNRECOVERABLE: ${unrecoverable.join('; ')}`);
+  }
+  // Only an OWED lane has an action a human can take. An unrecoverable one is a
+  // fact to be believed, not a task — saying "run sync" there would be a promise
+  // that quietly never comes true, which is the failure this layer exists to end.
+  const action =
+    owed.length > 0
+      ? 'Run `harness telemetry sync` to pay the owed lanes back \u2014 the recovered segments ' +
+        'declare themselves (`capture_mode: reconciled`) and contribute counts, never measured time. '
+      : '';
+  const lost =
+    unrecoverable.length > 0 || verdict.stalled.length > 0
+      ? 'For the lanes named UNRECOVERABLE (and any stall above), treat those sessions\u2019 committed ' +
+        'telemetry as INCOMPLETE \u2014 do NOT read their counts as the real volume of work. Preserve the ' +
+        'marker files (.harness/temp/telemetry/*.liveness.json) as evidence before the buffer is pruned; ' +
+        '`last_outcome` names which stage of capture stopped (error = a swallowed throw, ' +
+        'source-unreadable = the transcript could not be read, unread-window = a window was available ' +
+        'and skipped).'
+      : '';
   return {
     name,
+    // Never an ERROR: this layer is diagnosis, and diagnosis must not block a gate.
+    // But it is never quietly OK either — an unrecoverable lane is a confident,
+    // permanent under-count, and that is precisely what must not sit green.
     ok: false,
     detail:
-      `${parts.join(' — ')} — telemetry for this work was LOST silently, so what IS committed ` +
-      `under-represents the session (a plausible non-zero number, not a visible gap)`,
-    next_action:
-      'Treat these sessions\u2019 committed telemetry as incomplete — do NOT read their counts as the ' +
-      'real volume of work. Preserve the marker files (.harness/temp/telemetry/*.liveness.json) as ' +
-      'evidence before the buffer is pruned; `last_outcome` names which stage of capture stopped ' +
-      '(error = a swallowed throw, source-unreadable = the transcript could not be read, ' +
-      'unread-window = a window was available and skipped), and a residue-only report with healthy ' +
-      'attempts points at the SOURCE lagging rather than at capture.',
+      `${parts.join(' — ')} — an uncaptured window is a plausible non-zero number, ` +
+      `not a visible gap, so nothing downstream can notice it on its own`,
+    next_action: `${action}${lost}`.trim(),
   };
 }
 
@@ -860,7 +956,7 @@ export function buildDoctorReport(
     checkQualityGate(registry),
     checkSensorWatcher(deps.fs, deps.clock, deps.proc, registry),
     checkTelemetryHook(deps.fs, deps.proc, deps.git, deps.env),
-    checkCaptureLiveness(deps.fs, deps.proc, deps.env, deps.clock),
+    checkCaptureLiveness(deps.fs, deps.proc, deps.env, deps.clock, deps.adapters, deps.db),
     checkDd(deps.fs, deps.proc),
     checkPrecommitLatency(deps.fs, deps.proc),
     checkCoreInstructions(),

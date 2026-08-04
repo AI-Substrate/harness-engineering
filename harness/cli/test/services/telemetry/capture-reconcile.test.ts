@@ -17,8 +17,12 @@ import { FakeClock } from '../../../src/adapters/clock/fake-clock.js';
 import { FakeDb } from '../../../src/adapters/db/fake-db.js';
 import { FakeEnv } from '../../../src/adapters/env/fake-env.js';
 import { NodeFs } from '../../../src/adapters/fs/node-fs.js';
+import { FakeGit } from '../../../src/adapters/git/fake-git.js';
 import { FakeProcess } from '../../../src/adapters/process/fake-process.js';
+import { buildDoctorReport } from '../../../src/services/doctor/doctor-service.js';
+import type { VerbRegistry } from '../../../src/services/extensions/registry.js';
 import { cursorAdapter } from '../../../src/services/telemetry/adapters/cursor-adapter.js';
+import type { HarnessAdapter } from '../../../src/services/telemetry/adapters/harness-adapter.js';
 import {
   LIVENESS_RESIDUE_IDLE_MS,
   type LivenessRecord,
@@ -736,6 +740,146 @@ describe('honesty reaches the RENDER, not just the stored field', () => {
     expect(report.provenance.reconciled_events).toBe(0);
     expect(report.provenance.reconciled_sessions).toBe(0);
     expect(report.attribution.notes.some((n) => n.includes('RECONCILED'))).toBe(false);
+  });
+});
+
+/**
+ * Jordan's signed-off operator contract: owed / unrecoverable named, and GREEN
+ * MEANS NOTHING IS OWED ANYWHERE. A lane sync will never pay must not sit quietly
+ * under a green check — that is the confident-loss case.
+ */
+describe('doctor is the operator surface for owed and unrecoverable lanes', () => {
+  function livenessLayer(over: { adapters?: HarnessAdapter[] } = {}) {
+    const registry: VerbRegistry = { verbs: [], records: [] };
+    const report = buildDoctorReport(
+      {
+        fs: new NodeFs(),
+        proc: new FakeProcess({ node: '/usr/bin/node' }, repo),
+        git: new FakeGit({ isRepo: true, branch: STALL_FIXTURE.buffer_markers.branch }),
+        env: new FakeEnv({}, '/home/test'),
+        clock: new FakeClock(NOW),
+        adapters: over.adapters ?? [cursorAdapter],
+      },
+      registry,
+    );
+    const layer = report.layers.find((l) => l.name === 'capture-liveness');
+    if (layer === undefined) throw new Error('doctor has no capture-liveness layer');
+    return layer;
+  }
+
+  it('names an OWED lane and says recovery is pending', () => {
+    seedTranscript();
+    seedMarker();
+
+    const layer = livenessLayer();
+
+    expect(layer.ok).toBe(false);
+    expect(layer.detail).toContain(`session ${SESSION.slice(0, 8)}:`);
+    expect(layer.detail).toContain(
+      `${TOTAL_LINES - FROZEN_CURSOR} lines uncaptured, recoverable on next telemetry sync`,
+    );
+    expect(layer.detail).toContain(`(source: ${SESSION}.jsonl)`);
+    expect(layer.next_action).toContain('harness telemetry sync');
+  });
+
+  it('names an UNRECOVERABLE lane when no adapter can read its harness', () => {
+    seedTranscript();
+    seedMarker({ harness: 'some-future-harness' });
+
+    const layer = livenessLayer();
+
+    expect(layer.ok).toBe(false);
+    expect(layer.detail).toContain('UNRECOVERABLE — no reconcile adapter for some-future-harness');
+    // It must NOT promise a sync that will never pay this lane back.
+    expect(layer.detail).not.toContain('recoverable on next telemetry sync');
+    expect(layer.next_action).not.toContain('harness telemetry sync');
+  });
+
+  it('names an UNRECOVERABLE lane when the source holds no usable evidence', () => {
+    const head = nonEmptyLines(readFileSync(SCRUBBED_TRANSCRIPT, 'utf8')).slice(0, FROZEN_CURSOR);
+    const opaque = Array.from({ length: 54 }, () => JSON.stringify({ role: 'system' }));
+    mkdirSync(join(transcripts, SESSION), { recursive: true });
+    writeFileSync(transcriptPath(), `${[...head, ...opaque].join('\n')}\n`, 'utf8');
+    seedMarker();
+
+    const layer = livenessLayer();
+
+    expect(layer.ok).toBe(false);
+    expect(layer.detail).toContain('UNRECOVERABLE — source has no usable evidence');
+  });
+
+  it('names an UNRECOVERABLE lane when the source is gone but the loss was recorded', () => {
+    // No transcript on disk at all. This lane never enters the residue verdict —
+    // its extent cannot be measured — so it would be INVISIBLE without the
+    // marker's own record that it once saw a window it did not capture.
+    seedMarker({ cursor: 2, position: 56 });
+
+    const layer = livenessLayer();
+
+    expect(layer.ok).toBe(false);
+    expect(layer.detail).toContain(
+      '54 lines uncaptured, UNRECOVERABLE — source file no longer exists',
+    );
+  });
+
+  it('stays quiet when a vanished source never recorded an uncaptured window', () => {
+    // Honest limit: with position === cursor the marker never observed a debt, so
+    // a missing source proves nothing and must NOT be reported as a loss.
+    seedMarker({ cursor: 2, position: 2 });
+
+    expect(livenessLayer().ok).toBe(true);
+  });
+
+  it('goes GREEN once the owed lane has been paid', () => {
+    // The contract's other half: green must MEAN nothing is owed, so it has to
+    // flip back on its own after recovery — not merely start out green.
+    seedTranscript();
+    seedMarker();
+    expect(livenessLayer().ok).toBe(false);
+
+    reconcileOrphanLanes(deps());
+
+    const after = livenessLayer();
+    expect(after.ok).toBe(true);
+    expect(after.detail).toContain('nothing owed');
+  });
+
+  it('reports an owed lane correctly with NO adapter override wired', () => {
+    // The worst mistake this layer could make is calling a RECOVERABLE lane
+    // unrecoverable — it would send an operator to write off telemetry that sync
+    // was about to pay back. A caller that forgets to wire the adapter registry
+    // would do exactly that, so the registry is the service's own default and
+    // there is no unwired state to get wrong. This pins that.
+    seedTranscript();
+    seedMarker();
+    const registry: VerbRegistry = { verbs: [], records: [] };
+    const report = buildDoctorReport(
+      {
+        fs: new NodeFs(),
+        proc: new FakeProcess({ node: '/usr/bin/node' }, repo),
+        git: new FakeGit({ isRepo: true, branch: STALL_FIXTURE.buffer_markers.branch }),
+        env: new FakeEnv({}, '/home/test'),
+        clock: new FakeClock(NOW),
+      },
+      registry,
+    );
+    const layer = report.layers.find((l) => l.name === 'capture-liveness');
+
+    expect(layer?.detail).toContain('recoverable on next telemetry sync');
+    expect(layer?.detail).not.toContain('UNRECOVERABLE');
+  });
+
+  it('never renders an already-consumed lane as a finding', () => {
+    // Something else captured the window: a healthy lane, not a debt.
+    seedTranscript();
+    seedMarker();
+    writeFileSync(join(tel(), `${SESSION}.cursor`), String(TOTAL_LINES), 'utf8');
+
+    const layer = livenessLayer();
+
+    expect(layer.ok).toBe(true);
+    expect(layer.detail).not.toContain('UNRECOVERABLE');
+    expect(layer.detail).not.toContain('uncaptured');
   });
 });
 

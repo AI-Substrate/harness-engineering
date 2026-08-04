@@ -5,7 +5,12 @@ import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { posixJoin, toPosix } from '../shared/posix-path.js';
 import { ensureTemp } from '../shared/temp.js';
-import type { HarnessAdapter, HarnessContext, HarnessSource } from './adapters/harness-adapter.js';
+import type {
+  HarnessAdapter,
+  HarnessCapabilities,
+  HarnessContext,
+  HarnessSource,
+} from './adapters/harness-adapter.js';
 import {
   evaluateCaptureLiveness,
   type ResidueSession,
@@ -149,10 +154,23 @@ export interface ReconciledLane {
   events: number;
 }
 
+/**
+ * Why a flagged lane was NOT recovered. `already-consumed` means the window was
+ * captured by something else — a healthy lane, never a finding. The others are
+ * PERMANENT for this lane: it will keep being flagged as owed and will never be
+ * paid, which is exactly what an operator must be told.
+ */
+export type SkipLaneReason =
+  | 'no-adapter'
+  | 'already-consumed'
+  | 'source-unreadable'
+  | 'no-signal'
+  | 'error';
+
 /** Why a flagged lane was NOT recovered — visible, so a skip is never silent. */
 export interface SkippedLane {
   session: string;
-  reason: 'no-adapter' | 'already-consumed' | 'source-unreadable' | 'no-signal' | 'error';
+  reason: SkipLaneReason;
 }
 
 export interface ReconcileResult {
@@ -182,26 +200,51 @@ function mtimeIso(fs: FsPort, path: string): string | null {
  * Recover ONE flagged lane, or explain why not. Pure of the outer loop's
  * bookkeeping; throws are caught by {@link reconcileOrphanLanes}.
  */
-function reconcileLane(
+/** Everything a recoverable lane needs, gathered once. */
+interface PreparedLane {
+  ok: true;
+  from: number;
+  window: ReturnType<typeof computeWindow>;
+  caps: HarnessCapabilities;
+  events: Event[];
+  files: { written: string[]; edited: string[] };
+}
+
+/**
+ * Decide whether a flagged lane CAN be recovered, and gather what recovery needs.
+ * THE SINGLE SOURCE OF TRUTH for that question.
+ *
+ * Both callers are projections of this one function: {@link reconcileLane} runs it
+ * and writes the segment, and {@link laneRecoveryReason} runs it and renders the
+ * verdict for `doctor`. They cannot disagree about whether a lane is recoverable,
+ * because there is no second implementation to disagree with — the alternative
+ * (doctor re-deriving "unrecoverable" from its own reading of the adapters) is a
+ * drift bug waiting to happen, and it would drift on the ONE surface where being
+ * wrong means telling an operator their telemetry is fine when it is lost.
+ *
+ * The work it does is real (it runs the adapter's extract), which is why doctor —
+ * an explicitly diagnostic verb a human runs to look — is an acceptable caller and
+ * the capture path is not.
+ */
+function prepareLane(
   deps: ReconcileDeps,
   cwd: string,
   lane: ResidueSession,
-): ReconciledLane | SkippedLane {
+): PreparedLane | { ok: false; reason: SkipLaneReason } {
   const adapter = (deps.adapters ?? []).find((a) => a.handles(lane.harness));
   // No adapter ⇒ nothing can read this harness's source, so there is nothing to
   // recover. The null-default is deliberately NOT used as a fallback here: it would
   // emit an all-null segment that says "we recovered this window" while carrying no
   // evidence at all.
-  if (adapter === undefined) return { session: lane.session, reason: 'no-adapter' };
+  if (adapter === undefined) return { ok: false, reason: 'no-adapter' };
 
   // The `.cursor` sidecar is the AUTHORITY on what was consumed; the marker's copy
   // can only be equal or staler. Taking the higher of the two means a lane that was
   // consumed after its last recorded attempt (or by an earlier reconcile pass) can
   // never be re-emitted — the first of the two idempotence guards.
-  const cursorPath = cursorPathFor(cwd, lane.session);
-  const durable = readCursor(deps.fs, cursorPath);
+  const durable = readCursor(deps.fs, cursorPathFor(cwd, lane.session));
   const from = Math.max(lane.cursor, durable ?? 0);
-  if (from >= lane.extent) return { session: lane.session, reason: 'already-consumed' };
+  if (from >= lane.extent) return { ok: false, reason: 'already-consumed' };
 
   // The window's END anchor: when the source last changed on disk. A REAL observed
   // fact bounding the work, and the only defensible stamp for an event whose source
@@ -241,7 +284,41 @@ function reconcileLane(
   // nothing in it. Emitting an empty segment would assert "we looked and this
   // window was empty" — a claim we cannot support — and would burn the residue by
   // advancing the cursor past evidence a future adapter might read. Leave it.
-  if (!hasEvidence) return { session: lane.session, reason: 'no-signal' };
+  if (!hasEvidence) return { ok: false, reason: 'no-signal' };
+
+  return { ok: true, from, window, caps, events, files };
+}
+
+/**
+ * Why a flagged lane cannot be recovered, or `null` when it can be. The read-only
+ * projection of {@link prepareLane} that `doctor` renders.
+ *
+ * `already-consumed` is deliberately NOT a reason a caller should surface: it means
+ * something else already captured the window, which is a lane in good health, not
+ * a finding.
+ */
+export function laneRecoveryReason(
+  deps: ReconcileDeps,
+  cwd: string,
+  lane: ResidueSession,
+): SkipLaneReason | null {
+  try {
+    const prepared = prepareLane(deps, cwd, lane);
+    return prepared.ok ? null : prepared.reason;
+  } catch {
+    return 'error';
+  }
+}
+
+/** Recover ONE flagged lane, or explain why not. Throws are caught by the caller. */
+function reconcileLane(
+  deps: ReconcileDeps,
+  cwd: string,
+  lane: ResidueSession,
+): ReconciledLane | SkippedLane {
+  const prepared = prepareLane(deps, cwd, lane);
+  if (!prepared.ok) return { session: lane.session, reason: prepared.reason };
+  const { from, window, caps, events, files } = prepared;
 
   const segment: Segment = serializeSegment(
     {
@@ -283,7 +360,7 @@ function reconcileLane(
 
   writeCapturedSegment(deps, cwd, lane.session, segment);
   // Guard one: the durable watermark now covers everything recovered.
-  writeCursor(deps.fs, cursorPath, lane.extent);
+  writeCursor(deps.fs, cursorPathFor(cwd, lane.session), lane.extent);
   // Guard two: the marker itself records a real capture, which resets both its
   // cursor and its idle clock — so the residue detector stops flagging the lane
   // even if the `.cursor` sidecar is later removed. The attempt is recorded under

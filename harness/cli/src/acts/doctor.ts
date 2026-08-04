@@ -1,5 +1,6 @@
 import type { Command } from 'commander';
 import { SystemClock } from '../adapters/clock/system-clock.js';
+import { NodeDb } from '../adapters/db/node-db.js';
 import { NodeEnv } from '../adapters/env/node-env.js';
 import { NodeFs } from '../adapters/fs/node-fs.js';
 import { ExecGit } from '../adapters/git/exec-git.js';
@@ -43,6 +44,12 @@ export function registerDoctorAct(
           env: new NodeEnv(),
           clock,
           runningVersion: readVersion(),
+          // plan 070 — doctor asks the reconciler whether each owed capture lane
+          // can actually be paid back. The adapter registry is the service's own
+          // default (a caller cannot forget it and raise a false alarm); the db is
+          // a port, so it is injected here — giving doctor the SAME sources sync
+          // will use is what keeps its verdict from disagreeing with the recovery.
+          db: new NodeDb(),
         },
         registry,
         recordRegistry,

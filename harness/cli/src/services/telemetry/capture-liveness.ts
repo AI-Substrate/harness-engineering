@@ -402,12 +402,38 @@ export function isResidueLoss(cursor: number, extent: number): boolean {
   return residue >= LIVENESS_RESIDUE_MIN_LINES && residue > cursor;
 }
 
+/**
+ * A lane whose recorded source is GONE while its own marker still records more
+ * source than it ever consumed. Distinct from residue in the one way that matters:
+ * residue is a debt that can still be paid, and this is a debt that cannot.
+ *
+ * It is derived from RECORDED FACTS only — the marker's own last-observed
+ * `position` against its `cursor`. That pairing exists only when an attempt
+ * actually SAW an unconsumed window (the stall shape), so this never guesses that
+ * a vanished source "probably" held work; it reports the case where the harness
+ * itself told us it did, and the evidence has since been destroyed.
+ */
+export interface LostSession {
+  session: string;
+  harness: string;
+  cursor: number;
+  /** Source units the lane observed and never captured — now unrecoverable. */
+  uncaptured: number;
+  last_attempt_at: string;
+}
+
 /** The detector's verdict over a repo's recorded lanes. */
 export interface LivenessVerdict {
   /** Lanes at or past {@link LIVENESS_STALL_THRESHOLD} consecutive un-captured attempts. */
   stalled: StalledSession[];
   /** Quiet lanes still holding more unconsumed source than they ever captured. */
   residue: ResidueSession[];
+  /**
+   * Lanes whose observed-but-uncaptured window can never be recovered because the
+   * source it lived in is gone. A confident, permanent loss — reported so it can
+   * never sit quietly under a green check.
+   */
+  lost: LostSession[];
   /** Lifetime anomalous attempts across every recorded lane (visible even below the threshold). */
   anomalies: number;
   /** How many lanes have a marker at all. */
@@ -447,6 +473,7 @@ export function evaluateCaptureLiveness(
 ): LivenessVerdict {
   const stalled: StalledSession[] = [];
   const residue: ResidueSession[] = [];
+  const lost: LostSession[] = [];
   const now = nowIso === undefined ? Number.NaN : Date.parse(nowIso);
   let anomalies = 0;
   for (const record of records) {
@@ -470,7 +497,24 @@ export function evaluateCaptureLiveness(
     const idleMs = now - Date.parse(record.last_attempt_at);
     if (!Number.isFinite(idleMs) || idleMs < LIVENESS_RESIDUE_IDLE_MS) continue;
     const extent = measure(record.source);
-    if (extent === null || !isResidueLoss(record.cursor, extent)) continue;
+    if (extent === null) {
+      // The source cannot be measured at all. Ordinarily that is simply unknowable
+      // and stays silent — but when the marker ALREADY recorded a window this lane
+      // saw and did not capture, the loss is a recorded fact and the evidence is
+      // now gone. Silence there would be the exact failure this module exists to
+      // end: a confident wrong number with nothing to point at it.
+      if (record.position !== null && record.position > record.cursor) {
+        lost.push({
+          session: record.session,
+          harness: record.harness,
+          cursor: record.cursor,
+          uncaptured: record.position - record.cursor,
+          last_attempt_at: record.last_attempt_at,
+        });
+      }
+      continue;
+    }
+    if (!isResidueLoss(record.cursor, extent)) continue;
     residue.push({
       session: record.session,
       harness: record.harness,
@@ -482,5 +526,5 @@ export function evaluateCaptureLiveness(
       idle_hours: Math.floor(idleMs / (60 * 60 * 1000)),
     });
   }
-  return { stalled, residue, anomalies, sessions: records.length };
+  return { stalled, residue, lost, anomalies, sessions: records.length };
 }

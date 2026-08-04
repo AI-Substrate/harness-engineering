@@ -257,10 +257,15 @@ describe('the detector FIRES on the known-bad shape (AC-2)', () => {
     const later = new Date(Date.parse(NOW) + LIVENESS_RESIDUE_IDLE_MS + 60_000).toISOString();
     const layer = livenessLayer(later);
     expect(layer.ok).toBe(false);
-    expect(layer.detail).toContain('never captured');
+    // The lane is OWED, not lost: the source is on disk, so reconciliation (plan
+    // 070 deliverable 3) can still pay it back — and doctor must say which of the
+    // two it is, because "recovery is pending" and "this is gone" call for very
+    // different things from an operator.
     expect(layer.detail).toContain(
-      `captured ${FROZEN_CURSOR} of ${STALL_FIXTURE.transcript_nonempty_lines}`,
+      `${STALL_FIXTURE.transcript_nonempty_lines - FROZEN_CURSOR} lines uncaptured, ` +
+        'recoverable on next telemetry sync',
     );
+    expect(layer.detail).not.toContain('UNRECOVERABLE');
   });
 });
 
