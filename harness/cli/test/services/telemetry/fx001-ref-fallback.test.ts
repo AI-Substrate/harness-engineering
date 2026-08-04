@@ -8,11 +8,13 @@ import { FakeGitRead } from '../../../src/adapters/git/fake-git-read.js';
 import { FakeGitWrite } from '../../../src/adapters/git/fake-git-write.js';
 import { FakeProcess } from '../../../src/adapters/process/fake-process.js';
 import type { CliIo, Writers } from '../../../src/output/output-port.js';
+import { unwrapFailedBashResult } from '../../../src/services/telemetry/adapters/claude-adapter.js';
 import type { Event } from '../../../src/services/telemetry/events.js';
 import {
   reconstructSegmentFromOtlpLogs,
   segmentToOtlpLogs,
 } from '../../../src/services/telemetry/otlp/logs.js';
+import { outcomeEvents } from '../../../src/services/telemetry/outcome-events.js';
 import { type SegmentInput, serializeSegment } from '../../../src/services/telemetry/segment.js';
 import {
   getSessionEvidence,
@@ -264,6 +266,63 @@ describe('FX001 D2 — a refusal code must survive the OTLP round trip', () => {
     if (attr) attr.value = { stringValue: 'refused: gate said no' };
 
     expect(reconstructSegmentFromOtlpLogs(logs).ok).toBe(false);
+  });
+});
+
+describe('FX001 D4 — a FAILING harness command must still yield its outcome events', () => {
+  // The refusal that never reached the wire. Claude Code wraps a failing Bash
+  // tool_result with its own `Exit code N` line; `outcomeEvents` guards on the
+  // trimmed text starting with `{`, so every non-zero harness command — which is
+  // every refusal — produced NO command_exit at all. D2 kept the code through the
+  // roll; D4 is why there was never a code to keep.
+  const ENVELOPE = JSON.stringify({
+    command: 'flow',
+    status: 'error',
+    error: { code: 'E440', message: 'node "boot" gates on "docs/tasks.dd.json#tasks"' },
+  });
+
+  it('the real Claude Code failure shape yields command_exit with its E-code', () => {
+    const events = outcomeEvents(
+      unwrapFailedBashResult(`Exit code 1\n${ENVELOPE}`, true),
+      '2026-08-05T10:00:00.000Z',
+      true,
+    );
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ kind: 'command_exit', verb: 'flow', exit: 1, code: 'E440' });
+  });
+
+  it('a CRLF transcript works too — the wrapper line ends either way', () => {
+    const events = outcomeEvents(
+      unwrapFailedBashResult(`Exit code 1\r\n${ENVELOPE}`, true),
+      '2026-08-05T10:00:00.000Z',
+      true,
+    );
+    expect(events[0]).toMatchObject({ kind: 'command_exit', code: 'E440' });
+  });
+
+  it('regression guard: a bare envelope under isError is untouched', () => {
+    // The strip must never eat real content — a failing result with no wrapper
+    // line has to parse exactly as it did before.
+    const events = outcomeEvents(
+      unwrapFailedBashResult(ENVELOPE, true),
+      '2026-08-05T10:00:00.000Z',
+      true,
+    );
+    expect(events[0]).toMatchObject({ kind: 'command_exit', verb: 'flow', exit: 1, code: 'E440' });
+  });
+
+  it('planted bad: prose behind the wrapper line is still not an envelope', () => {
+    expect(
+      outcomeEvents(
+        unwrapFailedBashResult('Exit code 1\nbash: harness: command not found', true),
+        '2026-08-05T10:00:00.000Z',
+        true,
+      ),
+    ).toEqual([]);
+    // …and a SUCCESSFUL result is never stripped: no isError, no unwrap.
+    expect(unwrapFailedBashResult(`Exit code 1\n${ENVELOPE}`, false)).toBe(
+      `Exit code 1\n${ENVELOPE}`,
+    );
   });
 });
 

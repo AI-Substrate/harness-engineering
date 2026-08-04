@@ -221,3 +221,75 @@ than being the sole cause. Consequence for plan 071's `lg-0009`: the refusal was
 human-observed, but it was never in telemetry either, so A10 was doubly unanswerable.
 
 Raised as fence question #3; awaiting a ruling. T4b cannot be proven until D4 is fixed.
+
+## D4 — the fix (Ruling #3), and what it means for the two earlier findings
+
+Fixed at the `claude-adapter.ts` call site, not in `outcome-events.ts`: the
+`Exit code N` prefix is a Claude Code tool-result convention, not a harness envelope
+convention. `outcomeEvents` has exactly one caller today, which is precisely why the strip
+belongs in the adapter — the next adapter must not inherit a Claude-specific strip it never
+needed. New `unwrapFailedBashResult(text, isError)`: strips only under `isError`, only
+anchored at `^`, only ONE line, `\r?\n` so a CRLF transcript cannot silently re-break the
+lane.
+
+Controls (4 more in `fx001-ref-fallback.test.ts`, 14 tests total): the real Claude Code
+failure shape yields `command_exit{verb:'flow', exit:1, code:'E440'}`; the CRLF variant does
+too; the REGRESSION GUARD — `isError` true with a bare JSON body (no prefix) must still
+parse, so the strip can never eat real content; and the planted bad — prose behind the
+wrapper line is still not an envelope, plus a successful result is never stripped.
+
+Pre-fix behaviour, replayed against the built module (the old call site passed the raw text):
+
+```text
+outcomeEvents('Exit code 1\n{"command":"flow","status":"error","error":{"code":"E440",…}}', t, true)
+  -> []                                          # pre-fix: no event at all
+outcomeEvents('{"command":"flow",…}', t, true)
+  -> [{kind:'command_exit', verb:'flow', exit:1, status:'error', code:'E440'}]
+```
+
+**Finding 1 — D2's loss was MASKED by D4.** The 0-coded-exits-in-112-refs count is fully
+explained by D4 alone: nothing was ever put on the wire, so nothing could be dropped from
+it. Neither fix repairs the lane by itself — D4 puts the event on the wire, D2 keeps its
+code through the roll. Both were always required, and a reader who finds only one of them
+will conclude the other was unnecessary.
+
+**Finding 2 — plan 071's `lg-0009` was DOUBLY unrecorded.** The orchestrator note at the top
+of this log says A10 was structurally unanswerable for FLUSHED sessions (D2). D4 STRENGTHENS
+that, and does not replace it: the refusal was unanswerable for UNFLUSHED sessions too,
+because the event never reached a segment in the first place. Both `unknown`s are artefacts
+of the instrument. **No future reader may read either one as "the subject never hit a gate."**
+
+**A second, independent reason my first T4b attempt captured nothing** (recorded so nobody
+re-derives it): outcome events fire only for a Bash call whose command signature IS a harness
+sub-command. `node <path>/harness/cli/bin/harness.js flow nav set` signs as `node`, not
+`harness flow nav`, so it is not correlated. That is correct behaviour, not a defect — the
+proof below therefore uses the linked `harness` binary.
+
+## T4b — the fresh E440, end to end (PROVEN)
+
+```text
+1. REFUSE   $ harness flow nav set --path .harness/flows/journey.json --now backpressure --json
+            exit 1  {"error":{"code":"E440","message":"node \"boot\" gates on
+                     \"docs/tasks.dd.json#tasks\": 1 of 2 items are not complete (dw-0002 …)"}}
+            cursor still `boot` — nothing written, the invariant holding.
+
+2. CAPTURE  $ harness dd doctor            (any harness command; capture is tail-shaped)
+            seq 15.json → 14 events, 1 command_exit, code E440
+            ← the first coded refusal ever captured in this repo (D4)
+
+3. FLUSH    $ harness telemetry sync --json
+            {"synced":4,"sessions":1,"pushed":true}
+            $ git grep -c E440 refs/harness-telemetry/2026/08/04/4312e257-…
+            session.logs.jsonl:1     ← the code SURVIVED the OTLP roll (D2)
+
+4. READ     $ harness telemetry get pij-blonde-pig --json
+            exit 0, status ok
+              segments:    18
+              source:      "buffer+ref"      ref_checked: true
+              refusals:    {"E440": 1}
+```
+
+The control that makes step 4 mean something: at that moment the live buffer held ONE
+segment and **zero** `E440` bytes (`grep -l E440 …/*.json` → 0 files, coded exits → 0). The
+`{"E440": 1}` can only have come from the REF half of the union. `source: buffer+ref` rather
+than `ref` is honest, not a miss — a capture landed after the sync, and the envelope says so.
