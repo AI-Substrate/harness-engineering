@@ -675,6 +675,30 @@
         "from": "known",
         "to": "done"
       }
+    },
+    {
+      "id": "UPD-025",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-04T14:44:32.124Z",
+      "details": {
+        "node": "review-3",
+        "fields": [
+          "dd_link"
+        ]
+      }
+    },
+    {
+      "id": "UPD-026",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-04T14:44:32.124Z",
+      "details": {
+        "node": "ship",
+        "fields": [
+          "dd_link"
+        ]
+      }
     }
   ],
   "nodes": [
@@ -810,7 +834,12 @@
         "Get the work out — push the branch, open a PR (using the repo's PR guidance), watch its CI checks, and report problems; the merge itself is optional.",
         "Run /builder 8 ship --plan \"<plan path>\" — the plan folder was archived at post-flight, so resolve --plan under docs/plans/archive/<ord>-<slug>/; push and PR-open each pause for a separate confirm, and any merge waits for a typed PROCEED.",
         "Done when the PR is open and its checks are green (or the failures are reported with a fix-loop offer); a diverged base hands off to 8c reconcile."
-      ]
+      ],
+      "dd_link": {
+        "address": "docs/plans/071-dd-native-builder/plan.dd.json#acceptance_criteria",
+        "gate": true
+      },
+      "modified_at": "2026-08-04T14:44:32.124Z"
     },
     {
       "id": "backpressure",
@@ -1020,8 +1049,13 @@
         "post-flight"
       ],
       "created_at": "2026-08-04T08:18:21.559Z",
-      "modified_at": "2026-08-04T08:23:16.330Z",
-      "zone": "flight"
+      "modified_at": "2026-08-04T14:44:32.124Z",
+      "zone": "flight",
+      "dd_link": {
+        "address": "docs/plans/071-dd-native-builder/plan.dd.json",
+        "check": "plan-validate",
+        "gate": true
+      }
     },
     {
       "id": "boot-2",

@@ -60,7 +60,10 @@
           "phase": "ph-7102",
           "state": "checked",
           "success": "Arch test refuses module-path reach.",
-          "done": "#done_when/tk-7134"
+          "done": "#done_when/tk-7134",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-7109"
+          ]
         },
         {
           "id": "tk-7135",
@@ -68,7 +71,10 @@
           "phase": "ph-7102",
           "state": "checked",
           "success": "Badge + rail callout render; legend only when present.",
-          "done": "#done_when/tk-7135"
+          "done": "#done_when/tk-7135",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-7109"
+          ]
         },
         {
           "id": "tk-7141",
@@ -100,7 +106,10 @@
           "state": "checked",
           "success": "State flips visible in dd; no hand-edited generated md.",
           "notes": "depends on tk-7128 (dd mutation verbs are the surface 6/6a mutates through)",
-          "done": "#done_when/tk-7143"
+          "done": "#done_when/tk-7143",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-7111"
+          ]
         },
         {
           "id": "tk-7144",

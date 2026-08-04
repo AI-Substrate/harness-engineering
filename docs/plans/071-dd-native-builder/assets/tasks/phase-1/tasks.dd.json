@@ -145,7 +145,10 @@
           "state": "checked",
           "success": "dd-surface.test.ts green with the new count; JSDoc discipline.",
           "notes": "key finding: E-blocks full",
-          "done": "#done_when/tk-7125"
+          "done": "#done_when/tk-7125",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-7119"
+          ]
         },
         {
           "id": "tk-7126",
@@ -153,7 +156,10 @@
           "phase": "ph-7101",
           "state": "checked",
           "success": "Byte-identical behaviour on existing corpora.",
-          "done": "#done_when/tk-7126"
+          "done": "#done_when/tk-7126",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-7119"
+          ]
         },
         {
           "id": "tk-7127",
