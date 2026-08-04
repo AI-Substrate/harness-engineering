@@ -170,6 +170,16 @@
           "id": "ac-7119",
           "claim": "dd read/write verb family: harness dd get returns the value at any address;\ndd set / dd add / dd rm mutate documents with schema validation BEFORE write, automatic sibling rebuild, and CLI-minted collision-free ids (add --mint <prefix>);\nthe frozen dd surface manifest gains the four rows via the one-line renegotiation;\nagents never hand-edit .dd.json again — the CLI is the writer, matching the flow doctrine.",
           "state": "checked"
+        },
+        {
+          "id": "ac-7120",
+          "claim": "Dispatch fences are data. A fence document (rows: path pattern, allow/forbid, owner, cause, expiry) validates under a builder schema, and a mechanical check compares a change's touched paths against the active fence — refusing out-of-fence work by naming the offending path AND the fence row (planted-bad fires).\n\nA fence amendment becomes a row edit carrying owner, cause, and expiry, so the phase-1 defect class (a brief that instructs a mechanism but omits its file) surfaces as schema-visible data, not a human review catch.",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-7121",
+          "claim": "Review dispatches and verdicts are dd documents. Findings are rows with severity and a repo address; the verdict links every finding (confirmed / refuted / fixed); Dim-0 planted-bad results carry pressure links to the fixtures that fired.\n\nA review corpus validates and renders like any other dd doc, so review history is queryable across reviews and models.",
+          "state": "unchecked"
         }
       ]
     },
@@ -574,6 +584,28 @@
           ],
           "success": "Scenario bundle (live-testing/scenarios/) + prompts pair authored;\nbase-ref pinned to include 071's own code (else the telemetry lane goes blind);\nassertions reuse existing types (skill-called builder, harness-verb-ran dd/plan validate, file-created plan.dd.json glob, forbidden-state on *-plan.md, file-content-matches for pressure/satisfies, command-succeeds --complete, refusal via tk-7169's evidence);\nscored via harness flow-eval score, judged lane filled, rendered, ledgered;\ninstructions.md + flow-eval-run SKILL updated.",
           "notes": "Research report: assets/research-flow-eval-history.md — reuse list §6"
+        },
+        {
+          "id": "tk-7171",
+          "title": "Fences as data: builder/fence schema + mechanical out-of-fence check",
+          "phase": "ph-7103",
+          "state": "unchecked",
+          "success": "A fence doc validates; the check refuses an out-of-fence change naming path + fence row (planted-bad fixture fires); an amendment is a row edit with owner/cause/expiry; a dispatch brief can cite its fence by address.",
+          "notes": "Jordan ruled IN 2026-08-04. Born from phase-1 review finding 1 (fence violation caught only by human review) and the expiry-ownership gap — a fence row that carries cause AND expiry cannot quietly outlive its reason.",
+          "satisfies": [
+            "#acceptance_criteria/ac-7120"
+          ]
+        },
+        {
+          "id": "tk-7172",
+          "title": "Reviews as dd: builder/review schema + verdict linkage, dogfooded on review-3",
+          "phase": "ph-7103",
+          "state": "unchecked",
+          "success": "builder/review schema lands; review-3 of THIS plan is authored as a .dd.json (findings rows, verdict links, pressure on Dim-0 results); doctor-clean; a jq recipe answers which findings were refuted.",
+          "notes": "Jordan ruled IN 2026-08-04. First dogfood is this plan's own final review — the review that closes the plan is itself rows in the graph.",
+          "satisfies": [
+            "#acceptance_criteria/ac-7121"
+          ]
         }
       ]
     },

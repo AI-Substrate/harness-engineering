@@ -338,3 +338,14 @@
   dd-scoped). Recorded here instead; --help documents the flag; a test pins
   absent-flag byte-identity. A flow-surface manifest is a candidate for a
   future plan, not this one.
+
+## DF-021 — Jordan ruled IN: fences-as-data + reviews-as-dd (ph-7103)
+
+- **What**: from the "what does this system unlock" session (2026-08-04),
+  Jordan ruled two ideas into the plan. Added with full claim shape via the
+  verbs: ac-7120 + tk-7171 + bp-7120 (fence documents with a mechanical
+  out-of-fence check — born from phase-1 review finding 1 and the
+  expiry-ownership gap) and ac-7121 + tk-7172 + bp-7121 (reviews as dd,
+  dogfooded on this plan's own review-3).
+- **Scope note**: ph-7103 grows by two tasks; close-out is heavier by
+  design, per Jordan.

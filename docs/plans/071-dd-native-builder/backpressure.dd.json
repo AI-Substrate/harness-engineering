@@ -203,6 +203,26 @@
           "proof": "Verb suites in the dd act tests: refusal fixture (invalid set writes nothing), sibling-rebuild assertion, mint collision test, manifest pin.",
           "state": "unchecked",
           "probe": "npx vitest run harness/cli/test/acts"
+        },
+        {
+          "id": "bp-7120",
+          "criterion": "Out-of-fence change refused mechanically, naming path + fence row; planted-bad fires; amendment rows carry owner/cause/expiry.",
+          "phase": "ph-7103",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "tk-7171 planted-bad fixture + check run over a real fence doc.",
+          "state": "unchecked",
+          "probe": "BUILD: tk-7171"
+        },
+        {
+          "id": "bp-7121",
+          "criterion": "A review corpus validates and renders; verdict links resolve; Dim-0 rows carry pressure to fired fixtures; findings queryable by jq.",
+          "phase": "ph-7103",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "review-3 of this plan authored as dd (tk-7172).",
+          "state": "unchecked",
+          "probe": "BUILD: tk-7172"
         }
       ]
     },

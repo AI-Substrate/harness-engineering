@@ -39,6 +39,8 @@
 | bp-7117 | This plan's own corpus ends fully dogfooded: recorded refusal in telemetry, --complete green, evidence linked. | ph-7103 | BUILD | computational | The self-hosting audit (tk-7167) + tk-7169's refusal-evidence capture; final proof is plan validate --complete on THIS plan. | [ ] unchecked | — | — | BUILD: tk-7169 capture; then `harness plan validate docs/plans/071-dd-native-builder/plan.dd.json --complete` (proposed) |
 | bp-7118 | A blind subject runs the new flow correctly, proven from telemetry, scored and ledgered. | ph-7103 | BUILD | computational | The flow-eval scenario (tk-7168) reusing the shipped scorer/ledger; assertions per the research dossier reuse list. | [ ] unchecked | — | — | BUILD: tk-7168 scenario; then `harness flow-eval score --scenario dd-native-builder --session &lt;pij-id&gt;` (proposed) |
 | bp-7119 | dd mutation verbs validate before write, rebuild siblings, mint collision-free ids. | ph-7101 | EXTEND | computational | Verb suites in the dd act tests: refusal fixture (invalid set writes nothing), sibling-rebuild assertion, mint collision test, manifest pin. | [ ] unchecked | — | — | npx vitest run harness/cli/test/acts |
+| bp-7120 | Out-of-fence change refused mechanically, naming path + fence row; planted-bad fires; amendment rows carry owner/cause/expiry. | ph-7103 | BUILD | computational | tk-7171 planted-bad fixture + check run over a real fence doc. | [ ] unchecked | — | — | BUILD: tk-7171 |
+| bp-7121 | A review corpus validates and renders; verdict links resolve; Dim-0 rows carry pressure to fired fixtures; findings queryable by jq. | ph-7103 | BUILD | computational | review-3 of this plan authored as dd (tk-7172). | [ ] unchecked | — | — | BUILD: tk-7172 |
 
 <a id="sensors"></a>
 
