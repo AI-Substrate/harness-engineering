@@ -6,7 +6,7 @@
 
 **Verb**: post-flight
 **Purpose**: Close out a finished flight **before** any ship: verify every phase and review is done, write a short close-out note, then **archive the whole plan folder** to `docs/plans/archive/<ord>-<slug>/` — the durable home for completed plans. Shipping is optional and later; this close-out is not, and it runs whether or not the work ever ships.
-**Consumes**: a plan folder (`--plan`, or auto-detect from cwd) whose phases and reviews are complete — task tables (`assets/tasks/*/tasks.md`, legacy root `tasks/`), execution log (`assets/execution.log.md`, legacy root), newest review verdict (`assets/reviews/`, legacy root). Open items are surfaced, never silently archived over.
+**Consumes**: a plan folder (`--plan`, or auto-detect from cwd) whose phases and reviews are complete — task tables (`assets/tasks/*/tasks.md`, legacy root `tasks/`), execution log (`assets/execution.log.md`, legacy root), newest review verdict (Full: `assets/tasks/*/reviews/` · Simple: `assets/reviews/`; legacy roots). Open items are surfaced, never silently archived over.
 **Flags**: `--plan "<abs path to docs/plans/<ordinal>-<slug>/>"` (optional; auto-detect from cwd)
 **Produces**: `${PLAN_DIR}/assets/post-flight.md` (close-out note: completion evidence, open/deferred digest, archive record) · the plan folder relocated to `docs/plans/archive/<ord>-<slug>/` (layout intact, `git mv`).
 **Side effects**: one repo-local `git mv` (in-tree and reversible — nothing outward-facing: no push, no PR, no network).
@@ -37,7 +37,7 @@ $ARGUMENTS
 
    - every phase's task table complete (`assets/tasks/*/tasks.md`, legacy root `tasks/`; Simple mode: the plan's inline task table)
    - acceptance criteria met (plan `## Acceptance Criteria` vs execution log)
-   - newest review verdict clean/APPROVE (`assets/reviews/`, legacy root `reviews/`)
+   - newest review verdict clean/APPROVE (Full mode: `assets/tasks/*/reviews/*.md` · Simple mode: `assets/reviews/*.md`; legacy root `tasks/*/reviews/` / `reviews/` as fallback)
    - leftover `Deferred` / `Noteworthy` rows, skipped/blocked tasks, unresolved review findings
 
    **All clean** → proceed. **Open items** → list them verbatim and ask: proceed (archive anyway — the digest is recorded in the close-out note) or stop to finish first. Never silently archive over open findings; never block a user who says go.

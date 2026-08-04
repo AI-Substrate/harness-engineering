@@ -140,7 +140,7 @@ $ARGUMENTS
       - Create source directory structure
       - Update `docs/domains/registry.md`
 
-4) After ALL tasks complete — update domain files:
+4) After ALL tasks complete — update domain files *(domain mode ON only — when OFF, skip this step entirely)*:
 
    For each domain touched by this phase:
 

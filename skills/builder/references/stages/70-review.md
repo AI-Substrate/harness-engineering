@@ -109,7 +109,7 @@ tier: Opus-class
 [{\"severity\": \"HIGH|MEDIUM|LOW\", \"file\": \"abs/path:lines\", \"category\": \"correctness|security|error-handling|performance|scope|pattern\", \"issue\": \"...\", \"suggestion\": \"...\"}]
 ```"
 
-### Subagent 2: Domain Compliance Validator
+### Subagent 2: Domain Compliance Validator *(domain mode ON only — `references/00-routing.md` § Domain mode & context loading; when OFF, skip this subagent entirely and report Domain Compliance as `N/A (domains off)`)*
 "Validate domain compliance for all changes in this phase.
 
 tier: Opus-class
@@ -414,7 +414,7 @@ Apply in order. Re-run review after fixes.
 - **Read-only**: Do NOT change source files
 - **Patches are hints only**: Unified diff snippets in report, not applied
 - **Report is deterministic**: Quote minimal context, use absolute paths throughout
-- **Domain map validation is mandatory**: If domain-map.md exists, it MUST be checked
+- **Domain map validation is mandatory when domain mode is ON**: If domain-map.md exists (and domain mode is ON), it MUST be checked; domain mode OFF → skip
 - **ALWAYS write review file**: Never just output to console — write the file to the phase's `reviews/` directory (Full Mode: `${PHASE_DIR}/reviews/`, Simple Mode: `${PLAN_DIR}/assets/reviews/`)
 - **ALWAYS include Handover Brief**: The next agent needs full context with absolute paths
 ```
