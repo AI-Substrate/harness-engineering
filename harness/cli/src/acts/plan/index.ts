@@ -38,6 +38,7 @@ import {
 import { renderDocument } from '../dd/build.js';
 import { NodeSchemaFs } from '../dd/schema-fs.js';
 import { DD_ISSUE_CODES, type DdActDeps, FsDocLoader, trackedPaths } from '../dd/shared.js';
+import { renderPrBody } from './pr-body.js';
 import { buildPlanScaffold } from './scaffold.js';
 
 /** Plan folder names follow the repo's own convention: lowercase, hyphenated. */
@@ -552,6 +553,106 @@ function registerRenderCommand(plan: Command, io: CliIo, deps: DdActDeps): void 
     });
 }
 
+function registerPrBodyCommand(plan: Command, io: CliIo, deps: DdActDeps): void {
+  plan
+    .command('pr-body <target>')
+    .description(
+      "Render the plan's closed acceptance criteria, with their evidence, as PR markdown",
+    )
+    .option('--depth <n>', 'outbound traversal depth (0 = the plan document only)', '3')
+    .option(
+      '--link-base <url>',
+      'absolute prefix every reference resolves against — pin it at the head sha so the links keep meaning what they meant',
+    )
+    .option('--heading <text>', 'the section heading, for composing into a larger body')
+    .action(
+      async (target: string, opts: { depth: string; linkBase?: string; heading?: string }) => {
+        const ctx = context(io, deps);
+        const path = resolvePlanDocument(target, ctx.repoRoot);
+        const depth = Number(opts.depth);
+        if (!Number.isInteger(depth) || depth < 0) {
+          exitWithEnvelope(
+            formatError(
+              'plan pr-body',
+              ErrorCodes.INVALID_ARGS,
+              `--depth must be a non-negative integer, got "${opts.depth}"`,
+              ctx.clock,
+              { next_action: 'Re-run with `--depth 0` or a positive integer.' },
+            ),
+            ctx.port,
+          );
+        }
+
+        // Reads the plan document first so an unreadable/unresolvable one fails
+        // here, with `plan pr-body`'s own message, rather than as a puzzling empty
+        // index later.
+        readPlan(ctx, 'plan pr-body', path);
+        const loader = new FsDocLoader(
+          ctx.fs,
+          new NodeHash(),
+          depth === 0 ? null : await trackedPaths(new NodeExec(), ctx.repoRoot),
+        );
+        // The SAME reading the validator and the departure gate take. A PR table
+        // built from a second walk of the same documents could disagree with the
+        // gate that let the work depart, and nobody downstream could tell which
+        // account was wrong.
+        const check = readPlanCheck(
+          path,
+          { schemaResolver: planResolver(ctx), docLoader: loader },
+          { repoRoot: ctx.repoRoot, depth },
+        );
+        if (!check.ok || check.index === null) {
+          exitWithEnvelope(
+            formatError(
+              'plan pr-body',
+              ErrorCodes.DD_DOCUMENT_INVALID,
+              check.ok
+                ? 'the plan does not validate, so its criteria cannot be rendered as proof of anything'
+                : check.message,
+              ctx.clock,
+              {
+                details: { path },
+                next_action: `Run \`harness plan validate ${target}\` and fix what it reports first.`,
+              },
+            ),
+            ctx.port,
+          );
+        }
+
+        const body = renderPrBody(check.index, {
+          linkBase: opts.linkBase ?? null,
+          ...(opts.heading !== undefined && { heading: opts.heading }),
+        });
+        if (!body.ok) {
+          exitWithEnvelope(
+            formatError('plan pr-body', ErrorCodes.DD_PLAN_INCOMPLETE, body.message, ctx.clock, {
+              details: { path, reason: body.reason, open: body.open },
+              next_action: body.next_action,
+            }),
+            ctx.port,
+          );
+        }
+        exitWithEnvelope(
+          formatOk(
+            'plan pr-body',
+            {
+              path,
+              markdown: body.markdown,
+              criteria: body.criteria,
+              count: body.criteria.length,
+            },
+            ctx.clock,
+            {
+              next_action:
+                'Paste `data.markdown` into the pull-request body, or pipe it there — every reference is already resolved.',
+            },
+          ),
+          ctx.port,
+        );
+      },
+    );
+}
+
 /**
  * `harness plan` — a plan is a folder of deterministic documents.
  *
@@ -573,4 +674,5 @@ export function registerPlanAct(program: Command, io: CliIo, deps: DdActDeps): v
   registerNewCommand(plan, io, deps);
   registerValidateCommand(plan, io, deps);
   registerRenderCommand(plan, io, deps);
+  registerPrBodyCommand(plan, io, deps);
 }

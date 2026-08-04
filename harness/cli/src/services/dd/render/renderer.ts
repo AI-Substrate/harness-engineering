@@ -110,7 +110,7 @@ export function headingSlug(text: string): string {
 }
 
 /** Table-cell escaping: a cell may never break the row, and may never inject HTML. */
-function escapeCell(text: string): string {
+export function escapeCell(text: string): string {
   return text
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')

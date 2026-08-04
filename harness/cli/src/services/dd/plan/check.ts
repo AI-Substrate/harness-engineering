@@ -11,7 +11,7 @@ import { type DocLoader, validateWalk } from '../core/walk.js';
 import { resolveMapSeed, traverseCorpus } from '../links/index.js';
 import type { SchemaResolution } from '../schema/index.js';
 import { buildPlanIndex, itemKey, type PlanDocument } from './index-plan.js';
-import type { PlanFinding, PlanSemanticResult } from './model.js';
+import type { PlanFinding, PlanIndex, PlanSemanticResult } from './model.js';
 import { readPlanSemantics, scopeFrom } from './semantics.js';
 
 /**
@@ -115,6 +115,17 @@ export interface PlanCheckReading {
   summary: string | null;
   /** Every document this plan is accountable for, plan document first. */
   documents: string[];
+  /**
+   * The flattened item graph the semantic layer reasoned over, or `null` when a
+   * blocking mechanical error stopped the read before one could be built.
+   *
+   * Exposed for the PR-body renderer (ac-7112), which must describe the SAME
+   * corpus this verdict was reached on. Rebuilding the index at the act would be a
+   * second reading of the same documents, and a PR table that disagreed with the
+   * gate that let the work depart is precisely the loss this surface exists to
+   * prevent.
+   */
+  index: PlanIndex | null;
 }
 
 export type PlanCheckResult = PlanCheckReading | PlanCheckFailure;
@@ -268,6 +279,7 @@ export function readPlanCheck(
       findings: [],
       counts: { error: errors.length, warn: mechanicalWarns, semantic: null },
       summary: null,
+      index: null,
     };
   }
 
@@ -312,5 +324,6 @@ export function readPlanCheck(
     findings: semantic.findings,
     counts: { error: 0, warn, semantic: semantic.counts },
     summary: semantic.summary,
+    index,
   };
 }
