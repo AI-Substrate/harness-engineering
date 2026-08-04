@@ -223,9 +223,20 @@ export function ddAdd(
     if (parent === null || Array.isArray(parent)) {
       return refuse('container-invalid', `"${cursor.trail.join('/')}" cannot hold a new entry`);
     }
-    parent[cursor.key as string] = item;
+    // A JIT-born container for an APPEND is a LIST. `add` means "put this item in
+    // that collection", so birthing the bare item would make the first add
+    // produce a different SHAPE from every subsequent one — and against a schema
+    // whose map values are arrays (`done_when`), the very first `dd add --mint`
+    // would be refused as `value must be an array`.
+    //
+    // An array item passes through untouched: `dd add <map-key> '[{…}]'` is
+    // birthing the whole list at once, which is a different, legitimate thing to
+    // ask for. (That form is what the plan-070 control happened to use, which is
+    // exactly why it never caught this — the phase-2 dry-run did.)
+    const born = Array.isArray(item) ? item : [item];
+    parent[cursor.key as string] = born;
     return applied(doc, after, deps, {
-      value: item,
+      value: born,
       kind: cursor.kind,
       trail: cursor.trail,
       ...(minted !== undefined && { minted }),

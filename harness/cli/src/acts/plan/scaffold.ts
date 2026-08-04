@@ -89,7 +89,18 @@ export function buildPlanScaffold(input: PlanScaffoldInput): PlanScaffold {
   const phases = input.phases.map((phaseTitle, index) => ({
     id: mint('ph', `${input.slug}/phase/${index}`, ids),
     title: phaseTitle,
-    slug: `phase-${index + 1}-${slugify(phaseTitle)}`,
+    /**
+     * BARE ORDINAL — `phase-2`, never `phase-2-<kebab-title>` (plan 071 ac-7110,
+     * the stated amendment to #90's convention).
+     *
+     * Two reasons, and the second is why it is load-bearing rather than tidy.
+     * A static flight-plan template must bake this address before any phase has
+     * a title, so a title-derived directory is unknowable at the moment the gate
+     * is authored. And retitling a phase must never MOVE its task file: a
+     * rename that silently relocates the document a departure gate points at
+     * turns a cosmetic edit into an unclearable refusal.
+     */
+    slug: `phase-${index + 1}`,
   }));
 
   const plan = {
@@ -119,7 +130,7 @@ export function buildPlanScaffold(input: PlanScaffoldInput): PlanScaffold {
           brief: '',
           state: 'unchecked',
           ...(index > 0 && { depends_on: [phases[index - 1]?.id] }),
-          tasks: `tasks/${phase.slug}/tasks.dd.json#tasks`,
+          tasks: `assets/tasks/${phase.slug}/tasks.dd.json#tasks`,
         })),
       },
     ],
@@ -130,7 +141,7 @@ export function buildPlanScaffold(input: PlanScaffoldInput): PlanScaffold {
   };
 
   const taskFiles = phases.map((phase) => ({
-    relativePath: `tasks/${phase.slug}/tasks.dd.json`,
+    relativePath: `assets/tasks/${phase.slug}/tasks.dd.json`,
     json: stringify({
       dd: { schema: 'builder/plan' },
       sections: [
