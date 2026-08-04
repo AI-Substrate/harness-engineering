@@ -15,6 +15,28 @@
 
 **Side effects**: none (read-only — does NOT modify code)
 
+### dd-native plans: closing criteria and clearing the check gate (plan 071, ac-7111/ac-7116)
+
+The last review node carries the `plan-validate` CHECK gate. Departure is refused until the plan is green by its own documents, so run the gate's own question first — the refusal quotes every finding, but reading them early is cheaper than being stopped:
+
+```bash
+harness plan validate "${PLAN_DIR}/plan.dd.json" --complete
+```
+
+Green means **exactly zero errors and zero warnings**. Under `--complete` an open row and an unclaimed acceptance criterion each warn, so the two things it typically catches are real: work still open, and a criterion no task `satisfies`.
+
+Close criteria and record their evidence through the verbs — never an editor:
+
+```bash
+harness dd set "${PLAN_DIR}/plan.dd.json#acceptance_criteria/ac-XXXX/state" checked
+harness dd set "${PLAN_DIR}/plan.dd.json#acceptance_criteria/ac-XXXX/receipt" "<command + result>"
+harness dd link verify-basis "<address>" --sha "<sha>" --update "${PLAN_DIR}/plan.dd.json"   # a moved basis
+```
+
+Closure is a PERFORMED act: nothing derives an AC's state for you. The guard rails make the claim trustworthy; they do not make it for you.
+
+If the gate still refuses and departing anyway is the **human's** decision, they pass `--force`, which records a defended override as a `dd-gate-override` event and returns a degraded envelope. **An agent may not force a dd gate on its own judgment** — `human-skipped` or `na` on the individual rows is the legitimate way a gate passes without the work.
+
 ---
 
 ## Procedure

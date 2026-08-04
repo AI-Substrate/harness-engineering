@@ -8,8 +8,34 @@
 **Purpose**: Generate an actionable tasks + context brief dossier for exactly one phase (or a subtask / lightweight tracked fix), then stop before any code changes.
 **Consumes**: a plan (Full Mode, typically `**Status**: READY` from the architect verb) with the target phase identified; the plan's task table, Key Findings, Domain Manifest, prior-phase dossiers and execution logs. Subtask mode additionally needs a parent task ID; fix mode needs only a summary (`--plan` optional).
 **Flags**: `--phase "<Phase N: Title>"` + `--plan "<abs path to plan.md>"`; optional subtask mode `--subtask "<summary>" --parent "T###"`; optional fix mode `--fix "<summary>"` / `--from-review "<abs path>"` / `--fix --list`
-**Produces**: `PLAN_DIR/assets/tasks/<phase-slug>/tasks.md` (Executive Briefing, Prior Phase Context, Pre-Implementation Check, Architecture Map, canonical 7-column Tasks table, Context Brief, Discoveries & Learnings) — or a subtask dossier `<ORD>-subtask-<slug>.md`, or a fix dossier `FX###-<slug>.md` + empty execution log. STOPS before implementation; terminal report = dossier path + wait for human GO.
-**Side effects**: none
+**Produces**: `PLAN_DIR/assets/tasks/phase-N/tasks.dd.json` **+ its generated sibling `tasks.dd.md`** — a DETERMINISTIC DOCUMENT at a BARE-ORDINAL path (plan 071, ac-7111; `phase-2`, never `phase-2-<kebab-title>` — the phase node's gate address is baked before titles exist, and retitling a phase must never move its task file). Carries the `tasks` section (each row with `satisfies` back to the ACs it serves) and a `done_when` section (each assertion naming its instrument via `pressure`). Narrative context (Executive Briefing, Architecture Map, Context Brief) stays prose beside it. STOPS before implementation; terminal report = task-file path + wait for human GO.
+**Side effects**: lands the phase row's `tasks` link in `plan.dd.json` **in the same stroke** — a task file nothing points at is invisible to the gate.
+
+### Authoring it — one stroke, through the verbs
+
+```bash
+TASKS="${PLAN_DIR}/assets/tasks/phase-N/tasks.dd.json"
+
+# 1. the task file exists already if `harness plan new` scaffolded this phase;
+#    otherwise scaffold the plan with the phase and it is born with it.
+# 2. rows, ids minted by the CLI — never hand-rolled
+harness dd add "${TASKS}#tasks" \
+  '{"title":"<task>","phase":"ph-XXXX","state":"unchecked","satisfies":["../../../plan.dd.json#acceptance_criteria/ac-XXXX"]}' --mint tk
+
+# 3. every task's done_when assertions — EVERY assertion names its instrument
+harness dd add "${TASKS}#done_when/tk-XXXX" \
+  '{"assertion":"<what must be true>","state":"unchecked","pressure":"../../../backpressure.dd.json#rows/bp-XXXX"}' --mint dw
+#    no instrument? say so explicitly — silence is a validation ERROR:
+#    ... '{"assertion":"…","state":"unchecked","pressure":"not-applicable","note":"<the real instrument>"}' --mint dw
+
+# 4. THE SAME STROKE: point the phase row at the file it just got
+harness dd set "${PLAN_DIR}/plan.dd.json#phases/ph-XXXX/tasks" "assets/tasks/phase-N/tasks.dd.md#tasks"
+
+# 5. prove it
+harness plan validate "${PLAN_DIR}/plan.dd.json"
+```
+
+**`satisfies` is always an ARRAY**, and it is what makes the work accountable to the criteria — an AC nobody satisfies warns as an orphan under `--complete`, which is exactly the gate the last review runs. **Never hand-edit the `.dd.json` and never edit the `.dd.md` at all**: the sibling is generated, and `harness dd build --check` reports a hand-edit as drift.
 
 ---
 

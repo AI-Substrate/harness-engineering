@@ -8,7 +8,7 @@
 **Purpose**: Produce **one** canonical planning document in a single atomic pass — always both halves: a `## Business Specification` (WHAT/WHY, front-loaded clarifications resolved) on top, and a `## Implementation Plan` (HOW — phases, task tables, acceptance criteria, self-validating gates G1–G7) below. The questions are asked up front; the whole document is written from the answers in one run. Idempotent — re-run after a refinement (e.g. a workshop) or a clarification and it regenerates **both** halves together. Also hosts the mid-plan clarification re-entry (§ Re-entry, end of this module).
 **Consumes**: feature description (argument; plan folder auto-created, or reused if a research pass already made one) · `${PLAN_DIR}/assets/research-dossier.md` (optional; legacy root fallback) · `${PLAN_DIR}/assets/workshops/*.md` (optional, authoritative; legacy root fallback) · repo doctrine `docs/project-rules/*`, `docs/adr/*.md`, `docs/domains/*` (domain mode ON only). § Re-entry instead consumes the existing planning document (path or plan slug).
 **Flags**: `"<intent>"` · `--simple` (pre-set Mode: Simple, skip the Workflow Mode question) · `--skip-clarify` (G1 override)
-**Produces**: `${PLAN_DIR}/<slug>-plan.md` — one document with the frozen top-metadata block, `## Business Specification`, `## Planning Seam`, and `## Implementation Plan` (Gate Matrix G1–G7 + single `**Status**` header; inline `⚠️ GAP:` markers + a final `## Unresolved Gaps` table on any gate FAIL). Terminal report: plan path · Status · phase/task/domain counts · gate tally. § Re-entry: new `### Session YYYY-MM-DD` block under `## Clarifications` + a re-run that regenerates both halves.
+**Produces**: `${PLAN_DIR}/plan.dd.json` **+ its generated sibling `plan.dd.md`** — the plan is a DETERMINISTIC DOCUMENT (plan 071, ac-7111). **No `<slug>-plan.md` is emitted.** The same content lives in schema-declared sections (`meta`, `summary`, `goals`, `non_goals`, `acceptance_criteria`, `phases`, `gate_matrix`, `key_findings`, `clarifications`, …); humans read the sibling, agents read the JSON, and `harness dd build` is the only thing that writes the sibling. Terminal report: plan path · Status · phase/task/domain counts · gate tally. § Re-entry: a new `clarifications` row + a re-run that regenerates both halves.
 **Side effects**: **always** auto-runs `/validate-v2 --artifact "${PLAN_PATH}"` (utility skill, not a flow stage), at the end of the one pass, READY or DRAFT.
 
 ---
@@ -55,7 +55,33 @@ Default to batched. Fall back without ceremony — do not announce capability de
    - If `docs/plans/*-<slug>/` already exists (created by a prior research pass) → use it
    - Else → create new folder with next available ordinal
    - `PLAN_DIR = docs/plans/<ordinal>-<slug>/`
-   - `PLAN_PATH = ${PLAN_DIR}/<slug>-plan.md` (the single output document)
+   - `PLAN_PATH = ${PLAN_DIR}/plan.dd.json` (the single output document — dd-native; its sibling `plan.dd.md` is GENERATED, never hand-written)
+
+   **dd-native root allow-list** (ac-7113, stated amendment to #90): a plan folder root holds `plan.dd.json`, `plan.dd.md`, `the-flow.json`, `the-flow.md`, and `original-ask.md` where one exists. The dd pair REPLACES `<slug>-plan.md`. Per-phase task files live under `assets/tasks/phase-N/` (bare ordinal). Nothing else belongs at the root.
+
+   Scaffold it with the CLI — never by hand:
+
+   ```bash
+   harness plan new <slug> --title "<title>" --dir docs/plans --phase "<Phase 1 title>" [--phase "<Phase 2 title>" …]
+   ```
+
+   Then fill it through the writer verbs, never with an editor:
+
+   ```bash
+   harness dd set  "${PLAN_PATH}#summary" "<one paragraph>"
+   harness dd add  "${PLAN_PATH}#acceptance_criteria" '{"claim":"<criterion>","state":"unchecked"}' --mint ac
+   harness dd add  "${PLAN_PATH}#goals" "<goal>"
+   harness dd get  "${PLAN_PATH}#phases"          # read anything back
+   ```
+
+   Every mutation is schema-validated BEFORE the write, rebuilds `plan.dd.md` in the same operation, and mints collision-free ids. A refused mutation writes nothing. **Never hand-edit `plan.dd.json`, and never edit `plan.dd.md` at all** — it is derived, and `harness dd build --check` will report your edit as drift.
+
+   Prove the document before you leave the stage:
+
+   ```bash
+   harness plan validate "${PLAN_PATH}"            # mechanical + the mid-flight summary line
+   harness plan validate "${PLAN_PATH}" --complete # the strict-zero read the last review gates on
+   ```
 
 2. Check for and incorporate existing research:
    - If `${PLAN_DIR}/assets/research-dossier.md` exists (legacy fallback: root `research-dossier.md`) → read fully; use to inform complexity, domains, and question framing. Add a note to the business half: "📚 Incorporates findings from research-dossier.md"

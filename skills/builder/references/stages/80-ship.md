@@ -15,6 +15,19 @@
 
 **Side effects**: outward-facing — `git push` (confirm #1), `gh pr create` (confirm #2), and an **optional** `gh pr merge` / `git merge` **only** on typed `PROCEED`. Each is public; **never** fired on a generic "yes". Plus one **non-gated** action: `harness telemetry sync` flushes the counts-only telemetry buffer to its out-of-tree `refs/harness-telemetry/*` shard refs — it publishes no work (no branch, no PR), is reversible/prunable, and is fail-safe, so it runs **without a confirm** (see Safety). No source files are modified.
 
+### dd-native plans: the PR body renders the proof (plan 071)
+
+The plan folder archived at post-flight, so the corpus is read from `docs/plans/archive/<ord>-<slug>/`. Read it with the CLI rather than by parsing markdown:
+
+```bash
+ARCHIVE="docs/plans/archive/<ord>-<slug>"
+harness plan validate "${ARCHIVE}/plan.dd.json" --complete   # must be green before you claim it is
+harness dd get "${ARCHIVE}/plan.dd.json#acceptance_criteria" # the closed criteria + their receipts
+harness dd graph map "${ARCHIVE}/plan.dd.json#acceptance_criteria/ac-XXXX" --direction in
+```
+
+The last read shows the incoming work-accounting for one criterion — which tasks `satisfies` it — which is exactly what a human reviewer wants beside the claim.
+
 ---
 
 ## Procedure

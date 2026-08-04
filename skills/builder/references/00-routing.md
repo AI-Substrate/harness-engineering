@@ -16,8 +16,10 @@ On guided invocation (`/the-flow` with no args, or `/builder <slug>` / `/builder
    - **Exactly 1 active** → **RESUME** (below).
    - **>1 active** → list them (slug + `nav.now`) and ask which to resume; offer "start a new one".
    - **0 active**:
-     - Target plan folder **already holds artifacts** (`*-plan.md`, legacy `*-spec.md`, `assets/tasks/phase-*/`, `assets/reviews/` — or their legacy root-level `tasks/` / `reviews/` twins, § Plan-folder layout) → **ADOPT** (see [`coach.md`](./coach.md) § Adoption contract).
+     - Target plan folder **already holds artifacts** (`plan.dd.json`, `*-plan.md`, legacy `*-spec.md`, `assets/tasks/phase-*/`, `assets/reviews/` — or their legacy root-level `tasks/` / `reviews/` twins, § Plan-folder layout) → **ADOPT** (see [`coach.md`](./coach.md) § Adoption contract).
      - Else → **FRESH START**.
+
+> **dd-native is the WRITE path only (plan 071, ac-7115).** New plans are authored as `plan.dd.json` (§ stage 1b), but the legacy markdown READ path is retained unchanged: a plan folder holding `<slug>-plan.md` still detects, adopts, and resumes exactly as it did, and nothing converts it. There is no migration backlog — in-flight markdown plans finish as markdown plans. Detection therefore accepts BOTH shapes and must never key on one alone; `plan.dd.json` is checked FIRST so a dd-native folder is never mistaken for an un-planned one.
 
 ### Fresh start (no state, no artifacts)
 
