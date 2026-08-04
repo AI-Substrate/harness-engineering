@@ -39,7 +39,7 @@
         "The flow gains a check-kind gate: the last review node refuses departure until plan validate --complete is green; phase nodes gate on their task sections; the builder template/expander authors all of it.",
         "1b plan and 5 tasks author .dd.json natively — the plan document is plan.dd.json with its generated sibling, no -plan.md exists; ship renders the dd-derived AC/evidence table into the PR body.",
         "The dd command surface is taught positionally: baked into node instructions[] and each stage module at its seam.",
-        "Self-hosting: by ship, plan 070's OWN corpus is fully retrofitted — real gates hit during the journey, real validations, backpressure and log linked — indistinguishable from a plan authored entirely by the finished feature.",
+        "Self-hosting: by ship, plan 071's OWN corpus is fully retrofitted — real gates hit during the journey, real validations, backpressure and log linked — indistinguishable from a plan authored entirely by the finished feature.",
         "The flow evaluates its own delivery: the flow-eval harness extension (and its prompting) gains a single-phase dd-native scenario — a blind subject runs the new builder flow end-to-end and telemetry-scored assertions prove it used the tooling correctly."
       ]
     },
@@ -158,7 +158,7 @@
         },
         {
           "id": "ac-7117",
-          "claim": "Self-hosting: by the final review, plan 070's own corpus is fully dogfooded — backpressure.dd.json and execution-log.dd.json exist with AC rows carrying pressure/proven_by links; per-phase task files exist with done_when lists (mandatory pressure honoured); tasks carry rel-typed satisfies; the flight plan carries real dd_link gates exercised by the actual journey with the evidence RECORDED where each side lives: at least one genuine refusal captured in telemetry (command_exit carrying the gate E-code — refusals write nothing to the flow by pinned invariant) and any force as the existing dd-gate-override flow event; plan validate --complete runs green at the last review node's gate; ship's PR renders this plan's own AC table. The corpus is indistinguishable from one authored entirely by the finished feature — the plan is its own acceptance fixture.",
+          "claim": "Self-hosting: by the final review, plan 071's own corpus is fully dogfooded — backpressure.dd.json and execution-log.dd.json exist with AC rows carrying pressure/proven_by links; per-phase task files exist with done_when lists (mandatory pressure honoured); tasks carry rel-typed satisfies; the flight plan carries real dd_link gates exercised by the actual journey with the evidence RECORDED where each side lives: at least one genuine refusal captured in telemetry (command_exit carrying the gate E-code — refusals write nothing to the flow by pinned invariant) and any force as the existing dd-gate-override flow event; plan validate --complete runs green at the last review node's gate; ship's PR renders this plan's own AC table. The corpus is indistinguishable from one authored entirely by the finished feature — the plan is its own acceptance fixture.",
           "state": "unchecked"
         },
         {
@@ -273,7 +273,7 @@
           "effect": "The design doc; promotes to docs/how/dd in ph-7103."
         },
         {
-          "artifact": "070/original-ask.md",
+          "artifact": "071/original-ask.md",
           "present": "y",
           "effect": "Jordan's directives distilled."
         },
@@ -555,7 +555,7 @@
         },
         {
           "id": "tk-7167",
-          "title": "Self-hosting retrofit + proof: plan 070's corpus fully dd-native",
+          "title": "Self-hosting retrofit + proof: plan 071's corpus fully dd-native",
           "phase": "ph-7103",
           "state": "unchecked",
           "satisfies": [
@@ -572,7 +572,7 @@
           "satisfies": [
             "#acceptance_criteria/ac-7118"
           ],
-          "success": "Scenario bundle (live-testing/scenarios/) + prompts pair authored; base-ref pinned to include 070's own code (else the telemetry lane goes blind); assertions reuse existing types (skill-called builder, harness-verb-ran dd/plan validate, file-created plan.dd.json glob, forbidden-state on *-plan.md, file-content-matches for pressure/satisfies, command-succeeds --complete, refusal via tk-7169's evidence); scored via harness flow-eval score, judged lane filled, rendered, ledgered; instructions.md + flow-eval-run SKILL updated.",
+          "success": "Scenario bundle (live-testing/scenarios/) + prompts pair authored; base-ref pinned to include 071's own code (else the telemetry lane goes blind); assertions reuse existing types (skill-called builder, harness-verb-ran dd/plan validate, file-created plan.dd.json glob, forbidden-state on *-plan.md, file-content-matches for pressure/satisfies, command-succeeds --complete, refusal via tk-7169's evidence); scored via harness flow-eval score, judged lane filled, rendered, ledgered; instructions.md + flow-eval-run SKILL updated.",
           "notes": "Research report: assets/research-flow-eval-history.md — reuse list §6"
         }
       ]

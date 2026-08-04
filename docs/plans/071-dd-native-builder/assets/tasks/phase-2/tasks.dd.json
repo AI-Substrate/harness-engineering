@@ -143,7 +143,7 @@
           "title": "Joint-exit dry-run: create → JIT → refuse → green → depart",
           "phase": "ph-7102",
           "state": "unchecked",
-          "success": "Scripted, CLI as actor; exercises ph-7103's refusal through ph-7104's artifacts; neither phase closes before this is green.",
+          "success": "Scripted, CLI as actor; exercises ph-7102's refusal through ph-7103's artifacts; neither phase closes before this is green.",
           "notes": "PHASE EXIT for ph-7102 — the phase does not close without this green",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-7111"

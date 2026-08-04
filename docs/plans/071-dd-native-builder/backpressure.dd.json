@@ -6,7 +6,7 @@
     {
       "name": "meta",
       "value": {
-        "title": "Backpressure coverage — dd-native builder (plan 070)",
+        "title": "Backpressure coverage — dd-native builder (plan 071)",
         "plan": "plan.dd.json#meta",
         "certainty": "Partial"
       }
@@ -60,7 +60,7 @@
           "phase": "ph-7101",
           "mode": "EXTEND",
           "tier": "computational",
-          "proof": "Schema planted-bad (non-array) + graph-map incoming-arm case over the 070 corpus itself.",
+          "proof": "Schema planted-bad (non-array) + graph-map incoming-arm case over the 071 corpus itself.",
           "state": "unchecked",
           "probe": "npx vitest run harness/cli/test/services/dd"
         },
