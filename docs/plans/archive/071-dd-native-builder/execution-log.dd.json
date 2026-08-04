@@ -106,6 +106,14 @@
           "links": [
             "plan.dd.json#acceptance_criteria/ac-7117"
           ]
+        },
+        {
+          "id": "lg-000c",
+          "at": "2026-08-05T03:55+10:00",
+          "text": "CI GREEN on PR #95 at 6ead0fd5 — build-test (node 22) 3m18s pass, build-test (node 24) 2m57s pass, ci-required pass, package-smoke 1m14s pass, rename-guard 9s pass (run 30932295331). Merge state CLEAN with all five checks ATTACHED and passed — a verdict, not an absence (the CLEAN-without-checks trap is on the record from fifteen minutes earlier). Jordan's exit contract met in full: PR up + CI green + the plan graph deterministically green underneath both.",
+          "links": [
+            "plan.dd.json#meta"
+          ]
         }
       ]
     }
