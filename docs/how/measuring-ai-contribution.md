@@ -140,6 +140,13 @@ each. That is *modification* being counted as *authorship*.
   `cursor` emit **zero** `file` events by design. That is an honest null, and it must be
   reported as *unavailable*, never as zero contribution.
 
+> **Path-only authorship rows (plan 068).** The report's authorship table can
+> now carry rows whose delta fields are `null` with a `delta_unavailable`
+> marker — a surface that knows *which* file an agent wrote but not *how many
+> lines* (see the per-surface ceilings above). For this method: such files are
+> attributable by PATH but contribute nothing to line sums; never read a null
+> delta as zero lines.
+
 ## Known blind spots
 
 Capture is deliberately limited to agent Write/Edit tool calls. It does not see:

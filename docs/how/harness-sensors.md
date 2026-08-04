@@ -31,6 +31,14 @@ the watcher and displayed in the detail view:
 | `coverage-branch` | Independent branch coverage; higher is better, target 80% | same six globs as `tests` |
 | `todo-debt` | Tracked debt-marker count; lower is better, target 20 | `harness/cli/src/**/*.{ts,tsx}`, `harness/cli/test/**/*.ts`, `.harness/extensions/**/*.{ts,tsx,js,mjs,cjs}`, `skills/**/*.md`, `scripts/**/*.{ts,js,mjs,cjs}`, `docs/**/*.md`, `*.md` |
 | `lock-hygiene` | Internal/proxy/signed URLs in the lock; target zero | `package.json`, `package-lock.json` |
+| `telemetry-ref-size` | Telemetry refs whose tree exceeds the rolled shape (>16 files); target zero offenders | `refs/harness-telemetry/**` (read-only) |
+
+`telemetry-ref-size` warns, never fails, and **warn is its correct terminal
+state in this repo**: the 2026-06-23 legacy ref (17,566 pre-rollup shard
+files) is a known, o-prime-accepted offender that stays by ruling — the
+sensor's job is keeping it *visible*, not making it green. Do not "fix" the
+sensor to pass; the plan-067 sync changes already make oversized refs cost
+nothing to leave in place.
 
 The coverage sensor is intentionally independent: it runs its own bounded
 `npm test` and parses that invocation's branch summary. It never assumes the
