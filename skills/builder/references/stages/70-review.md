@@ -15,7 +15,7 @@
 
 **Side effects**: none (read-only — does NOT modify code)
 
-### dd-native plans: closing criteria and clearing the check gate (plan 071, ac-7111/ac-7116)
+## dd-native plans: closing criteria and clearing the check gate (plan 071, ac-7111/ac-7116)
 
 The last review node carries the `plan-validate` CHECK gate. Departure is refused until the plan is green by its own documents, so run the gate's own question first — the refusal quotes every finding, but reading them early is cheaper than being stopped:
 

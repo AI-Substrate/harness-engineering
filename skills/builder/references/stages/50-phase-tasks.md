@@ -11,7 +11,7 @@
 **Produces**: `PLAN_DIR/assets/tasks/phase-N/tasks.dd.json` **+ its generated sibling `tasks.dd.md`** — a DETERMINISTIC DOCUMENT at a BARE-ORDINAL path (plan 071, ac-7111; `phase-2`, never `phase-2-<kebab-title>` — the phase node's gate address is baked before titles exist, and retitling a phase must never move its task file). Carries the `tasks` section (each row with `satisfies` back to the ACs it serves) and a `done_when` section (each assertion naming its instrument via `pressure`). Narrative context (Executive Briefing, Architecture Map, Context Brief) stays prose beside it. STOPS before implementation; terminal report = task-file path + wait for human GO.
 **Side effects**: lands the phase row's `tasks` link in `plan.dd.json` **in the same stroke** — a task file nothing points at is invisible to the gate.
 
-### Authoring it — one stroke, through the verbs
+## Authoring it — one stroke, through the verbs
 
 ```bash
 TASKS="${PLAN_DIR}/assets/tasks/phase-N/tasks.dd.json"
