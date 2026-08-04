@@ -38,6 +38,7 @@
 | bp-7016 | Every dd command this plan introduces is taught at the node and stage-module layers. | ph-7002 | ABSENT | human-judgement | Orient output cases cover the instructions[] half mechanically; whether the teaching actually suffices is judged by the blind subject (bp-7018) and the dry-run reader check — inference, honestly. | [ ] unchecked | — | — | — |
 | bp-7017 | This plan's own corpus ends fully dogfooded: recorded refusal in telemetry, --complete green, evidence linked. | ph-7003 | BUILD | computational | The self-hosting audit (tk-7067) + tk-7069's refusal-evidence capture; final proof is plan validate --complete on THIS plan. | [ ] unchecked | — | — | BUILD: tk-7069 capture; then `harness plan validate docs/plans/070-dd-native-builder/plan.dd.json --complete` (proposed) |
 | bp-7018 | A blind subject runs the new flow correctly, proven from telemetry, scored and ledgered. | ph-7003 | BUILD | computational | The flow-eval scenario (tk-7068) reusing the shipped scorer/ledger; assertions per the research dossier reuse list. | [ ] unchecked | — | — | BUILD: tk-7068 scenario; then `harness flow-eval score --scenario dd-native-builder --session &lt;pij-id&gt;` (proposed) |
+| bp-7019 | dd mutation verbs validate before write, rebuild siblings, mint collision-free ids. | ph-7001 | EXTEND | computational | Verb suites in the dd act tests: refusal fixture (invalid set writes nothing), sibling-rebuild assertion, mint collision test, manifest pin. | [ ] unchecked | — | — | npx vitest run harness/cli/test/acts |
 
 <a id="sensors"></a>
 

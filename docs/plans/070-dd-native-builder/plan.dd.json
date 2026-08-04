@@ -161,6 +161,11 @@
           "id": "ac-7018",
           "claim": "Flow-eval conformance: the flow-eval extension carries a single-phase dd-native builder scenario — a BLIND subject peer (pij) runs the new flow end-to-end on a scaffolded repo, and telemetry-scored assertions prove correct tool use: plan authored as plan.dd.json with no -plan.md, task file JIT-born with done_when + mandatory pressure + satisfies, at least one gate refusal evidenced in telemetry (command_exit gate E-code — tk-7069) followed by a pass, plan validate --complete green before ship-ward departure, states mutated through dd surfaces (never hand-edited generated md). Scenario prompting/instructions updated to match; scored via harness flow-eval score and ledgered. Multi-phase deferred.",
           "state": "unchecked"
+        },
+        {
+          "id": "ac-7019",
+          "claim": "dd read/write verb family: harness dd get returns the value at any address; dd set / dd add / dd rm mutate documents with schema validation BEFORE write, automatic sibling rebuild, and CLI-minted collision-free ids (add --mint <prefix>); the frozen dd surface manifest gains the four rows via the one-line renegotiation; agents never hand-edit .dd.json again — the CLI is the writer, matching the flow doctrine.",
+          "state": "unchecked"
         }
       ]
     },
@@ -393,6 +398,11 @@
           "impact": "High",
           "finding": "SessionEvidence deliberately excludes command_exit, file, artifact, and mark events (session-evidence.ts:311-333), and the flow-eval resolvers mirror must stay lock-step (a CLI test asserts it). Any new assertion keying on those needs the single seam widened on both sides.",
           "action": "tk-7069 widens SessionEvidence + resolvers lock-step; everything else in the dd scenario reuses existing assertion types (harness-verb-ran takes full two-token verbs like 'dd validate'; file-created/forbidden-state/file-content-matches/command-succeeds cover the fs lane — planted-friction A6-A9 is the exact precedent)."
+        },
+        {
+          "impact": "High",
+          "finding": "Dogfood (journey): dd documents have NO writer surface — every structural edit in this plan's own authoring was ad-hoc python read-modify-write, causing the dw-id collisions and stale-sibling risk; tk-7043's '6/6a mutate states through dd surfaces' implied verbs that do not exist.",
+          "action": "ac-7019 / tk-7028: dd get/set/add/rm + minting, schema-validated before write, auto sibling rebuild; surface renegotiation."
         }
       ]
     },
@@ -403,8 +413,9 @@
           "id": "ph-7001",
           "title": "dd core — relations, buckets, and the semantic validator",
           "objective": "The schema layer learns rel, the renderer learns the links bucket, the builder/* schemas gain every field this design needs, and harness plan validate grows its opinions.",
-          "brief": "rel declaration parsing + frozen-five manifest row; bucket render column; done_when rename; satisfies; mandatory pressure + not-applicable; rel declarations on every existing builder link field; then the rel-generic contradiction engine, summary info line, --complete (strict-zero green), --address scoping, and the E450–E459 block via manifest renegotiation. Planted-bad fixtures per failure class; the synthetic corpus factory + lifecycle-mutation suites land here and serve the next phase too; dd validate regression-pinned byte-for-byte mechanical.",
+          "brief": "TASK ONE (Jordan): tk-7028 — the dd read/write verb family (get/set/add/rm + minting) lands FIRST, so every later task and the journey itself mutates documents through the CLI instead of ad-hoc JSON edits. Then: rel declaration parsing + frozen-five manifest row; bucket render column; done_when rename; satisfies; mandatory pressure + not-applicable; rel declarations on every existing builder link field; then the rel-generic contradiction engine, summary info line, --complete (strict-zero green), --address scoping, and the E450–E459 block via manifest renegotiation. Planted-bad fixtures per failure class; the synthetic corpus factory + lifecycle-mutation suites land here and serve the next phase too; dd validate regression-pinned byte-for-byte mechanical.",
           "delivers": [
+            "dd get/set/add/rm + CLI id minting — built first, used by everything after",
             "rel on link shapes: parse, allow-list, resolved-schema exposure; unknown rel behaves as ref",
             "Frozen-five manifest row + surface test; links bucket + rel labels/filter in graph map",
             "builder/* schema upgrades: done_when, satisfies (array), mandatory pressure + not-applicable, rel declarations everywhere",
@@ -527,7 +538,8 @@
           "title": "6/6a mutate dd states; execution-log linkage",
           "phase": "ph-7002",
           "state": "unchecked",
-          "success": "State flips visible in dd; no hand-edited generated md."
+          "success": "State flips visible in dd; no hand-edited generated md.",
+          "notes": "depends on tk-7028 (dd mutation verbs are the surface 6/6a mutates through)"
         },
         {
           "id": "tk-7044",
@@ -840,6 +852,13 @@
             "tk-7069"
           ],
           "verified_in": "flow-eval report + ledger from a real blind-subject run"
+        },
+        {
+          "ac": "ac-7019",
+          "covered_by": [
+            "tk-7028"
+          ],
+          "verified_in": "verb suites: pre-write validation refusal, sibling rebuild, mint collision test, surface-manifest pin"
         }
       ]
     },

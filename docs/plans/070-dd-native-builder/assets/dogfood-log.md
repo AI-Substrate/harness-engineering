@@ -153,3 +153,26 @@
 - [ ] DF-008 collision-free dw mint reaches tk-7042's design.
 - [ ] Backpressure survey (flow chore) → `backpressure.dd.json` → evidence
       lists gain `pressure` links (mandatory once tk-7015 lands).
+
+## DF-011 — the reconcile pass and module contracts are dd-blind
+
+- **What**: builder's spine-reconcile reads `#### Phase Index` from markdown;
+  the backpressure module's contract names `<slug>-plan.md`; the plan node's
+  baked `instructions[]` speak `Status: READY` markdown. All satisfied in
+  *intent* by the dd plan, but every read is markdown-shaped. ph-7002's
+  prompting work (tk-7041/7044/7045) owns the re-point.
+- **Also**: the `builder/backpressure` schema enums (`BUILD`,
+  `human-judgement`) diverge from the module prose (`BUILDABLE`,
+  `inferential`) — the schema refused the prose vocabulary; schema won.
+
+## DF-012 — dd has no writer: the python-shaped hole (RULED into the plan)
+
+- **What**: every structural edit of this journey's own documents was ad-hoc
+  `json.load → poke → json.dump` — no validation before write, sibling
+  rebuild manual, ids hand-minted (the DF-008 collisions). Jordan spotted
+  the pattern live ("you keep running python… is there something we can
+  bake into harness?").
+- **Ruled**: `dd get/set/add/rm` + `--mint` — ac-7019, tk-7028, bp-7019 —
+  and **built FIRST in phase 1** ("do it early on") so the journey itself
+  stops hand-editing the moment the verbs exist. tk-7043 (6/6a state
+  mutation) explicitly depends on it.

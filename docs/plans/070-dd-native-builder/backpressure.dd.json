@@ -193,6 +193,16 @@
           "proof": "The flow-eval scenario (tk-7068) reusing the shipped scorer/ledger; assertions per the research dossier reuse list.",
           "state": "unchecked",
           "probe": "BUILD: tk-7068 scenario; then `harness flow-eval score --scenario dd-native-builder --session <pij-id>` (proposed)"
+        },
+        {
+          "id": "bp-7019",
+          "criterion": "dd mutation verbs validate before write, rebuild siblings, mint collision-free ids.",
+          "phase": "ph-7001",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "Verb suites in the dd act tests: refusal fixture (invalid set writes nothing), sibling-rebuild assertion, mint collision test, manifest pin.",
+          "state": "unchecked",
+          "probe": "npx vitest run harness/cli/test/acts"
         }
       ]
     },

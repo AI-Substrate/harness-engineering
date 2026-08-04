@@ -17,6 +17,18 @@
       "name": "tasks",
       "value": [
         {
+          "id": "tk-7028",
+          "title": "dd read/write verb family: get / set / add / rm + CLI id minting",
+          "phase": "ph-7001",
+          "state": "unchecked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-7019"
+          ],
+          "done": "#evidence/tk-7028",
+          "success": "get returns values at any address kind; set/add/rm validate against the schema BEFORE writing and rebuild the sibling; add --mint <prefix> yields collision-free four-hex ids; surface manifest carries the four rows.",
+          "notes": "FIRST TASK by Jordan's ruling — lands before everything else so the rest of this journey mutates dd through the CLI, never python. Born from the journey: DF-012 — agents were hand-editing .dd.json (dw-id collisions, stale siblings)"
+        },
+        {
           "id": "tk-7011",
           "title": "rel on link shapes: parse, allow-list, resolved-schema exposure",
           "phase": "ph-7001",
@@ -305,6 +317,33 @@
           {
             "id": "dw-0272",
             "assertion": "Mutation suites cover tick/untick/block/human-skip/JIT-birth/basis-drift with validator+gate verdicts asserted at each step.",
+            "state": "unchecked"
+          }
+        ],
+        "tk-7028": [
+          {
+            "id": "dw-0281",
+            "assertion": "dd get resolves section, instance, and part addresses and returns the value (json + human).",
+            "state": "unchecked"
+          },
+          {
+            "id": "dw-0282",
+            "assertion": "A set/add violating the schema is refused with the validation issue and writes NOTHING.",
+            "state": "unchecked"
+          },
+          {
+            "id": "dw-0283",
+            "assertion": "Every successful mutation rebuilds the .dd.md sibling in the same operation.",
+            "state": "unchecked"
+          },
+          {
+            "id": "dw-0284",
+            "assertion": "add --mint produces the next collision-free id under the registered prefix (the DF-008 bug class is unrepresentable).",
+            "state": "unchecked"
+          },
+          {
+            "id": "dw-0285",
+            "assertion": "The dd surface manifest names get/set/add/rm; the surface test counts them.",
             "state": "unchecked"
           }
         ]

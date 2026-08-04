@@ -29,6 +29,7 @@
 
 | id | title | domain | phase | state | note | receipt | done | success | notes | satisfies |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| tk-7028 | dd read/write verb family: get / set / add / rm + CLI id minting | — | ph-7001 | [ ] unchecked | — | — | [ ] 0/5 [tk-7028](#tk-7028) | get returns values at any address kind; set/add/rm validate against the schema BEFORE writing and rebuild the sibling; add --mint &lt;prefix&gt; yields collision-free four-hex ids; surface manifest carries the four rows. | FIRST TASK by Jordan's ruling — lands before everything else so the rest of this journey mutates dd through the CLI, never python. Born from the journey: DF-012 — agents were hand-editing .dd.json (dw-id collisions, stale siblings) | [ac-7019](../../../plan.dd.md#acceptance-criteria) |
 | tk-7011 | rel on link shapes: parse, allow-list, resolved-schema exposure | — | ph-7001 | [ ] unchecked | — | — | [ ] 0/3 [tk-7011](#tk-7011) | Declarations round-trip rel; unknown rel accepted as ref; pin in declarations.test.ts/parse.test.ts. | key finding: OD-8 allow-list | [ac-7001](../../../plan.dd.md#acceptance-criteria) |
 | tk-7012 | Frozen-five registry: manifest row + surface test | — | ph-7001 | [ ] unchecked | — | — | [ ] 0/2 [tk-7012](#tk-7012) | Manifest names the five rels; surface test counts them. | — | [ac-7001](../../../plan.dd.md#acceptance-criteria) |
 | tk-7013 | Links bucket: shape treatment + renderer final-column | — | ph-7001 | [ ] unchecked | — | — | [ ] 0/2 [tk-7013](#tk-7013) | Column appears only when populated; absent ⇒ byte-identical goldens. | — | [ac-7002](../../../plan.dd.md#acceptance-criteria) |
@@ -130,3 +131,13 @@
 | --- | --- | --- |
 | dw-0271 | The factory builds mock plans/phases/task files on demand. | [ ] unchecked |
 | dw-0272 | Mutation suites cover tick/untick/block/human-skip/JIT-birth/basis-drift with validator+gate verdicts asserted at each step. | [ ] unchecked |
+
+### tk-7028
+
+| id | assertion | state |
+| --- | --- | --- |
+| dw-0281 | dd get resolves section, instance, and part addresses and returns the value (json + human). | [ ] unchecked |
+| dw-0282 | A set/add violating the schema is refused with the validation issue and writes NOTHING. | [ ] unchecked |
+| dw-0283 | Every successful mutation rebuilds the .dd.md sibling in the same operation. | [ ] unchecked |
+| dw-0284 | add --mint produces the next collision-free id under the registered prefix (the DF-008 bug class is unrepresentable). | [ ] unchecked |
+| dw-0285 | The dd surface manifest names get/set/add/rm; the surface test counts them. | [ ] unchecked |
