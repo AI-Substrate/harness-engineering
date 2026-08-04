@@ -139,6 +139,37 @@ module.exports = {
       to: { path: '^harness/cli/src/adapters', reachable: true },
     },
     {
+      name: 'dd-plan-never-imports-output',
+      comment:
+        'The plan semantic layer returns structured findings and never imports harness envelopes or exits — the act maps a finding class to an E-code, exactly as every other dd layer does.',
+      severity: 'warn',
+      from: { path: '^harness/cli/src/services/dd/plan' },
+      to: { path: '^harness/cli/src/output', reachable: true },
+    },
+    {
+      name: 'dd-plan-never-imports-acts',
+      comment: 'The plan semantic layer is a library boundary and never imports command handlers.',
+      severity: 'warn',
+      from: { path: '^harness/cli/src/services/dd/plan' },
+      to: { path: '^harness/cli/src/acts', reachable: true },
+    },
+    {
+      name: 'dd-plan-never-imports-node-adapters',
+      comment:
+        'The plan semantic layer takes already-loaded documents and already-walked edges. Reading files belongs to the act, so a contradiction is provable without a filesystem.',
+      severity: 'warn',
+      from: { path: '^harness/cli/src/services/dd/plan' },
+      to: { path: '^harness/cli/src/adapters', reachable: true },
+    },
+    {
+      name: 'dd-plan-never-imports-render',
+      comment:
+        'The plan semantic layer reads structure, never markdown — the same boundary that keeps dd graph independent of the renderer.',
+      severity: 'warn',
+      from: { path: '^harness/cli/src/services/dd/plan' },
+      to: { path: '^harness/cli/src/services/dd/render', reachable: true },
+    },
+    {
       name: 'dd-render-never-imports-output',
       comment: 'The dd renderer is pure — it returns markdown and never imports harness envelopes or exits.',
       severity: 'warn',

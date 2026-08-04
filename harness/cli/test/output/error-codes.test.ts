@@ -116,6 +116,20 @@ describe('ErrorCodes table', () => {
       DD_GATE_EVENT_WRITE_FAILED: 'E447',
       DD_GATE_SURFACE_FAILED: 'E448',
       DD_GATE_LINK_MISSING: 'E449',
+      // E450-E459 — the dd writer verbs and the plan semantic layer (plan 070
+      // Phase 1). E430-E439 and E440-E449 were both complete allocations, so
+      // this block was opened by the one-line renegotiation recorded in
+      // dd-surface.md, and it is allocated complete for the same reason.
+      DD_MUTATION_TARGET_INVALID: 'E450',
+      DD_MUTATION_SCHEMA_REFUSED: 'E451',
+      DD_MUTATION_WRITE_FAILED: 'E452',
+      DD_MUTATION_VALUE_INVALID: 'E453',
+      DD_ID_MINT_FAILED: 'E454',
+      DD_REL_INVALID: 'E455',
+      DD_PLAN_CONTRADICTION: 'E456',
+      DD_PLAN_INCOMPLETE: 'E457',
+      DD_PLAN_SCOPE_UNRESOLVED: 'E458',
+      DD_PLAN_VALIDATE_FAILED: 'E459',
     });
   });
 

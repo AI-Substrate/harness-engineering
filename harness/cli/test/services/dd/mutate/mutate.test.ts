@@ -237,6 +237,26 @@ describe('dd mutate — the four verbs', () => {
     expect(section.ok && section.doc.sections[1]?.value).toStrictEqual({});
   });
 
+  it('set CREATES an absent optional field, but never conjures a missing instance', () => {
+    // "Make it this" has to work on a field that was never there — a task row
+    // that has not carried a `done` link yet is the ordinary case, not an error.
+    const created = ddSet(doc(), ['tasks', 'tk-0002', 'done'], '#evidence/tk-0002', DEPS);
+    expect(created.ok && (created.doc.sections[0]?.value as { done: string }[])[1]?.done).toBe(
+      '#evidence/tk-0002',
+    );
+    // An array member is found by id, so a missing id is a genuine miss.
+    expect(ddSet(doc(), ['tasks', 'tk-9999', 'state'], 'checked', DEPS)).toMatchObject({
+      ok: false,
+      reason: 'target-unknown',
+    });
+    // And the write gate still judges the result, so permissiveness cannot
+    // produce an invalid document.
+    expect(ddSet(doc(), ['tasks', 'tk-0002', 'state'], 'donezo', DEPS)).toMatchObject({
+      ok: false,
+      reason: 'schema-refused',
+    });
+  });
+
   it('add appends to a list and creates a JIT-born map entry', () => {
     const appended = ddAdd(doc(), ['tasks'], '{"title":"third","state":"unchecked"}', {
       ...DEPS,

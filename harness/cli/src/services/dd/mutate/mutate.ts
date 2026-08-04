@@ -131,20 +131,31 @@ export function ddGet(
   return { ok: true, doc, value: cursor.value, kind: cursor.kind, trail: cursor.trail };
 }
 
-/** Replace the value at an address. The address must already resolve. */
+/**
+ * Set the value at an address, creating an ABSENT optional field rather than
+ * refusing it.
+ *
+ * `set` means "make it this", so requiring the field to already exist would fail
+ * on exactly the case a writer surface exists for: a task row that has never
+ * carried a `done` link, an assertion that has never carried a `note`. The tail
+ * is permissive only for a field the SCHEMA declares (or a map key the schema
+ * shapes) — `#tasks/tk-9999/state` still refuses, because an array member is
+ * found by id and a missing id is a genuine miss. The write gate then judges the
+ * result, so permissiveness here can never produce an invalid document.
+ */
 export function ddSet(
   doc: DdDoc,
   segments: readonly string[],
   raw: string,
   deps: DdMutationDeps & { asJson?: boolean },
 ): DdMutationOutcome {
-  const probe = locate(doc, deps.schema, segments);
+  const probe = locate(doc, deps.schema, segments, { permissiveTail: true });
   if (!probe.ok) return probe;
   const coerced = coerceValue(raw, probe.shape, deps.asJson === true);
   if (!coerced.ok) return coerced;
 
   const after = clone(doc);
-  const cursor = locate(after, deps.schema, segments);
+  const cursor = locate(after, deps.schema, segments, { permissiveTail: true });
   if (!cursor.ok) return cursor;
   if (cursor.parent === null) {
     const section = after.sections.find((entry) => entry.name === cursor.key);

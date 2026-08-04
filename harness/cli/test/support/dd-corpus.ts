@@ -219,19 +219,15 @@ export function createSyntheticPlan(options: SyntheticPlanOptions = {}): Synthet
         },
         { name: 'summary', value: `Task detail for ${phase.id}.` },
         { name: 'tasks', value: phase.tasks.map((task) => taskRow(task, phase.id)) },
-        ...(withAssertions.length > 0
-          ? [
-              {
-                name: ASSERTIONS_SECTION,
-                value: Object.fromEntries(
-                  withAssertions.map((task) => [
-                    task.id,
-                    (task.assertions ?? []).map(assertionRow),
-                  ]),
-                ),
-              },
-            ]
-          : []),
+        // ALWAYS present, even when empty — exactly as `plan new` scaffolds it,
+        // so the first assertion added has somewhere to go instead of needing a
+        // section conjured for it.
+        {
+          name: ASSERTIONS_SECTION,
+          value: Object.fromEntries(
+            withAssertions.map((task) => [task.id, (task.assertions ?? []).map(assertionRow)]),
+          ),
+        },
       ],
     });
   }
