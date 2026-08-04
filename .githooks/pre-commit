@@ -61,6 +61,9 @@
 # `.harness/temp/precommit-latency.tsv` and `harness doctor` reads that file and
 # warns when p95 crosses the recorded budget (`PRECOMMIT_P95_BUDGET_MS`). A hook
 # on the critical path of every commit does not get to police itself with prose.
+# Baseline: p95 217-485 ms under LOAD, budget 2000 ms — measured, recorded and
+# re-measurable with `./scripts/precommit-latency-harness.sh [N]` (that script's
+# header carries the full table and the universe each run was taken in).
 trap 'exit 0' EXIT
 
 [ "${HARNESS_NO_TELEMETRY:-}" = "1" ] && exit 0
