@@ -37,19 +37,19 @@ Hand-authored as the JIT dogfood — this file is the fixture ph-7002's 5 tasks 
 
 | id | title | domain | phase | state | note | receipt | done | success | notes | satisfies |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| tk-7028 | dd read/write verb family: get / set / add / rm + CLI id minting | — | ph-7001 | [ ] unchecked | — | — | [ ] 0/5 [tk-7028](#tk-7028) | get returns values at any address kind; set/add/rm validate against the schema BEFORE writing and rebuild the sibling; add --mint &lt;prefix&gt; yields collision-free four-hex ids; surface manifest carries the four rows. | FIRST TASK by Jordan's ruling — lands before everything else so the rest of this journey mutates dd through the CLI, never python. Born from the journey: DF-012 — agents were hand-editing .dd.json (dw-id collisions, stale siblings) | [ac-7019](../../../plan.dd.md#acceptance-criteria) |
-| tk-7011 | rel on link shapes: parse, allow-list, resolved-schema exposure | — | ph-7001 | [ ] unchecked | — | — | [ ] 0/3 [tk-7011](#tk-7011) | Declarations round-trip rel; unknown rel accepted as ref; pin in declarations.test.ts/parse.test.ts. | key finding: OD-8 allow-list | [ac-7001](../../../plan.dd.md#acceptance-criteria) |
-| tk-7012 | Frozen-five registry: manifest row + surface test | — | ph-7001 | [ ] unchecked | — | — | [ ] 0/2 [tk-7012](#tk-7012) | Manifest names the five rels; surface test counts them. | — | [ac-7001](../../../plan.dd.md#acceptance-criteria) |
-| tk-7013 | Links bucket: shape treatment + renderer final-column | — | ph-7001 | [ ] unchecked | — | — | [ ] 0/2 [tk-7013](#tk-7013) | Column appears only when populated; absent ⇒ byte-identical goldens. | — | [ac-7002](../../../plan.dd.md#acceptance-criteria) |
-| tk-7014 | dd graph map / dd links rel labels + filter | — | ph-7001 | [ ] unchecked | — | — | [ ] 0/2 [tk-7014](#tk-7014) | Edges labelled; --rel filter works. | — | [ac-7001](../../../plan.dd.md#acceptance-criteria), [ac-7002](../../../plan.dd.md#acceptance-criteria) |
-| tk-7015 | builder/* schema upgrades: done_when, satisfies, mandatory pressure, rel declarations | — | ph-7001 | [ ] unchecked | — | — | [ ] 0/4 [tk-7015](#tk-7015) | Planted-bad fixtures fire per new ERROR class; good twins pass; schema test pins the rel map. | key findings: inert-engine, exemplar scale | [ac-7001](../../../plan.dd.md#acceptance-criteria), [ac-7003](../../../plan.dd.md#acceptance-criteria), [ac-7004](../../../plan.dd.md#acceptance-criteria), [ac-7005](../../../plan.dd.md#acceptance-criteria) |
-| tk-7021 | Contradiction engine over rels | — | ph-7001 | [ ] unchecked | — | — | [ ] 0/2 [tk-7021](#tk-7021) | Planted-bad per rel path fires; silent cells stay silent. | — | [ac-7006](../../../plan.dd.md#acceptance-criteria) |
-| tk-7022 | Summary info line (non---complete) | — | ph-7001 | [ ] unchecked | — | — | [ ] 0/1 [tk-7022](#tk-7022) | One info line, zero per-row warns mid-flight. | carried LEAN — see open_questions | [ac-7007](../../../plan.dd.md#acceptance-criteria) |
-| tk-7023 | --complete: per-row opens + orphan ACs + strict-zero green | — | ph-7001 | [ ] unchecked | — | — | [ ] 0/2 [tk-7023](#tk-7023) | Green ⇔ 0/0; orphan fixture fires. | — | [ac-7007](../../../plan.dd.md#acceptance-criteria) |
-| tk-7024 | --address scoped closure | — | ph-7001 | [ ] unchecked | — | — | [ ] 0/2 [tk-7024](#tk-7024) | Phase scope excludes other phases' opens; AC scope shows the full proof tree. | — | [ac-7008](../../../plan.dd.md#acceptance-criteria) |
-| tk-7025 | E450–E459 block + manifest row + 50-pin adjustment | — | ph-7001 | [ ] unchecked | — | — | [ ] 0/2 [tk-7025](#tk-7025) | dd-surface.test.ts green with the new count; JSDoc discipline. | key finding: E-blocks full | — |
-| tk-7026 | dd validate regression pin (byte-for-byte mechanical) | — | ph-7001 | [ ] unchecked | — | — | [ ] 0/1 [tk-7026](#tk-7026) | Byte-identical behaviour on existing corpora. | — | — |
-| tk-7027 | Synthetic corpus factory + lifecycle-mutation suites | — | ph-7001 | [ ] unchecked | — | — | [ ] 0/2 [tk-7027](#tk-7027) | Factory builds mock plans/phases/task files; suites drive tick/untick/block/human-skip/JIT-birth/basis-drift mutations asserting validate + gate verdicts at each step; shared by ph-7002 and ph-7003 test suites. | Jordan's explicit unit-coverage expectation | [ac-7006](../../../plan.dd.md#acceptance-criteria), [ac-7007](../../../plan.dd.md#acceptance-criteria), [ac-7008](../../../plan.dd.md#acceptance-criteria), [ac-7009](../../../plan.dd.md#acceptance-criteria) |
+| tk-7028 | dd read/write verb family: get / set / add / rm + CLI id minting | — | ph-7001 | [x] checked | — | — | [x] 5/5 [tk-7028](#tk-7028) | get returns values at any address kind; set/add/rm validate against the schema BEFORE writing and rebuild the sibling; add --mint &lt;prefix&gt; yields collision-free four-hex ids; surface manifest carries the four rows. | FIRST TASK by Jordan's ruling — lands before everything else so the rest of this journey mutates dd through the CLI, never python. Born from the journey: DF-012 — agents were hand-editing .dd.json (dw-id collisions, stale siblings) | [ac-7019](../../../plan.dd.md#acceptance-criteria) |
+| tk-7011 | rel on link shapes: parse, allow-list, resolved-schema exposure | — | ph-7001 | [x] checked | — | — | [x] 3/3 [tk-7011](#tk-7011) | Declarations round-trip rel; unknown rel accepted as ref; pin in declarations.test.ts/parse.test.ts. | key finding: OD-8 allow-list | [ac-7001](../../../plan.dd.md#acceptance-criteria) |
+| tk-7012 | Frozen-five registry: manifest row + surface test | — | ph-7001 | [x] checked | — | — | [x] 2/2 [tk-7012](#tk-7012) | Manifest names the five rels; surface test counts them. | — | [ac-7001](../../../plan.dd.md#acceptance-criteria) |
+| tk-7013 | Links bucket: shape treatment + renderer final-column | — | ph-7001 | [x] checked | — | — | [x] 2/2 [tk-7013](#tk-7013) | Column appears only when populated; absent ⇒ byte-identical goldens. | — | [ac-7002](../../../plan.dd.md#acceptance-criteria) |
+| tk-7014 | dd graph map / dd links rel labels + filter | — | ph-7001 | [x] checked | — | — | [x] 2/2 [tk-7014](#tk-7014) | Edges labelled; --rel filter works. | — | [ac-7001](../../../plan.dd.md#acceptance-criteria), [ac-7002](../../../plan.dd.md#acceptance-criteria) |
+| tk-7015 | builder/* schema upgrades: done_when, satisfies, mandatory pressure, rel declarations | — | ph-7001 | [x] checked | — | — | [x] 4/4 [tk-7015](#tk-7015) | Planted-bad fixtures fire per new ERROR class; good twins pass; schema test pins the rel map. | key findings: inert-engine, exemplar scale | [ac-7001](../../../plan.dd.md#acceptance-criteria), [ac-7003](../../../plan.dd.md#acceptance-criteria), [ac-7004](../../../plan.dd.md#acceptance-criteria), [ac-7005](../../../plan.dd.md#acceptance-criteria) |
+| tk-7021 | Contradiction engine over rels | — | ph-7001 | [x] checked | — | — | [x] 2/2 [tk-7021](#tk-7021) | Planted-bad per rel path fires; silent cells stay silent. | — | [ac-7006](../../../plan.dd.md#acceptance-criteria) |
+| tk-7022 | Summary info line (non---complete) | — | ph-7001 | [x] checked | — | — | [x] 1/1 [tk-7022](#tk-7022) | One info line, zero per-row warns mid-flight. | carried LEAN — see open_questions | [ac-7007](../../../plan.dd.md#acceptance-criteria) |
+| tk-7023 | --complete: per-row opens + orphan ACs + strict-zero green | — | ph-7001 | [x] checked | — | — | [x] 2/2 [tk-7023](#tk-7023) | Green ⇔ 0/0; orphan fixture fires. | — | [ac-7007](../../../plan.dd.md#acceptance-criteria) |
+| tk-7024 | --address scoped closure | — | ph-7001 | [x] checked | — | — | [x] 2/2 [tk-7024](#tk-7024) | Phase scope excludes other phases' opens; AC scope shows the full proof tree. | — | [ac-7008](../../../plan.dd.md#acceptance-criteria) |
+| tk-7025 | E450–E459 block + manifest row + 50-pin adjustment | — | ph-7001 | [x] checked | — | — | [x] 2/2 [tk-7025](#tk-7025) | dd-surface.test.ts green with the new count; JSDoc discipline. | key finding: E-blocks full | — |
+| tk-7026 | dd validate regression pin (byte-for-byte mechanical) | — | ph-7001 | [x] checked | — | — | [x] 1/1 [tk-7026](#tk-7026) | Byte-identical behaviour on existing corpora. | — | — |
+| tk-7027 | Synthetic corpus factory + lifecycle-mutation suites | — | ph-7001 | [x] checked | — | — | [x] 2/2 [tk-7027](#tk-7027) | Factory builds mock plans/phases/task files; suites drive tick/untick/block/human-skip/JIT-birth/basis-drift mutations asserting validate + gate verdicts at each step; shared by ph-7002 and ph-7003 test suites. | Jordan's explicit unit-coverage expectation | [ac-7006](../../../plan.dd.md#acceptance-criteria), [ac-7007](../../../plan.dd.md#acceptance-criteria), [ac-7008](../../../plan.dd.md#acceptance-criteria), [ac-7009](../../../plan.dd.md#acceptance-criteria) |
 
 <a id="evidence"></a>
 
@@ -59,93 +59,93 @@ Hand-authored as the JIT dogfood — this file is the fixture ph-7002's 5 tasks 
 
 | id | assertion | state |
 | --- | --- | --- |
-| dw-0111 | Declarations round-trip a rel on single and array link shapes; resolved schema exposes it. | [ ] unchecked |
-| dw-0112 | The parse-layer allow-list carries rel — pinned in declarations.test.ts/parse.test.ts, not the renderer suite. | [ ] unchecked |
-| dw-0113 | An unknown rel string is accepted and behaves as ref. | [ ] unchecked |
+| dw-0111 | Declarations round-trip a rel on single and array link shapes; resolved schema exposes it. | [x] checked |
+| dw-0112 | The parse-layer allow-list carries rel — pinned in declarations.test.ts/parse.test.ts, not the renderer suite. | [x] checked |
+| dw-0113 | An unknown rel string is accepted and behaves as ref. | [x] checked |
 
 ### tk-7012
 
 | id | assertion | state |
 | --- | --- | --- |
-| dw-0121 | The surface manifest names exactly the five built-in rels. | [ ] unchecked |
-| dw-0122 | The surface test counts them and fails on any sixth. | [ ] unchecked |
+| dw-0121 | The surface manifest names exactly the five built-in rels. | [x] checked |
+| dw-0122 | The surface test counts them and fails on any sixth. | [x] checked |
 
 ### tk-7013
 
 | id | assertion | state |
 | --- | --- | --- |
-| dw-0131 | A populated links bucket renders as a final Links column. | [ ] unchecked |
-| dw-0132 | An absent bucket renders byte-identical to today (golden pin). | [ ] unchecked |
+| dw-0131 | A populated links bucket renders as a final Links column. | [x] checked |
+| dw-0132 | An absent bucket renders byte-identical to today (golden pin). | [x] checked |
 
 ### tk-7014
 
 | id | assertion | state |
 | --- | --- | --- |
-| dw-0141 | dd graph map labels edges with their rel. | [ ] unchecked |
-| dw-0142 | --rel filters the walk to matching edges. | [ ] unchecked |
+| dw-0141 | dd graph map labels edges with their rel. | [x] checked |
+| dw-0142 | --rel filters the walk to matching edges. | [x] checked |
 
 ### tk-7015
 
 | id | assertion | state |
 | --- | --- | --- |
-| dw-0151 | done_when rename lands in builder schemas; dw- ids unchanged. | [ ] unchecked |
-| dw-0152 | satisfies declared always-array; a non-array fails validation (planted-bad). | [ ] unchecked |
-| dw-0153 | An assertion without pressure is a validation ERROR (planted-bad); not-applicable validates and renders. | [ ] unchecked |
-| dw-0154 | Every existing builder/* link field declares its rel — schema test pins the map. | [ ] unchecked |
+| dw-0151 | done_when rename lands in builder schemas; dw- ids unchanged. | [x] checked |
+| dw-0152 | satisfies declared always-array; a non-array fails validation (planted-bad). | [x] checked |
+| dw-0153 | An assertion without pressure is a validation ERROR (planted-bad); not-applicable validates and renders. | [x] checked |
+| dw-0154 | Every existing builder/* link field declares its rel — schema test pins the map. | [x] checked |
 
 ### tk-7021
 
 | id | assertion | state |
 | --- | --- | --- |
-| dw-0211 | Each rel path (proven_by/satisfies/derives) has a planted-bad fixture that FIRES. | [ ] unchecked |
-| dw-0212 | Consistent-open and evidence-ready-unclaimed cells stay silent (good twins). | [ ] unchecked |
+| dw-0211 | Each rel path (proven_by/satisfies/derives) has a planted-bad fixture that FIRES. | [x] checked |
+| dw-0212 | Consistent-open and evidence-ready-unclaimed cells stay silent (good twins). | [x] checked |
 
 ### tk-7022
 
 | id | assertion | state |
 | --- | --- | --- |
-| dw-0221 | Mid-flight run emits one info summary line and zero per-row warnings. | [ ] unchecked |
+| dw-0221 | Mid-flight run emits one info summary line and zero per-row warnings. | [x] checked |
 
 ### tk-7023
 
 | id | assertion | state |
 | --- | --- | --- |
-| dw-0231 | --complete green means exactly 0 errors and 0 warnings. | [ ] unchecked |
-| dw-0232 | An orphan AC (no incoming satisfies) warns under --complete (planted fixture). | [ ] unchecked |
+| dw-0231 | --complete green means exactly 0 errors and 0 warnings. | [x] checked |
+| dw-0232 | An orphan AC (no incoming satisfies) warns under --complete (planted fixture). | [x] checked |
 
 ### tk-7024
 
 | id | assertion | state |
 | --- | --- | --- |
-| dw-0241 | A phase-scoped run excludes other phases' open items. | [ ] unchecked |
-| dw-0242 | An AC-scoped run shows the full proof tree including incoming satisfies. | [ ] unchecked |
+| dw-0241 | A phase-scoped run excludes other phases' open items. | [x] checked |
+| dw-0242 | An AC-scoped run shows the full proof tree including incoming satisfies. | [x] checked |
 
 ### tk-7025
 
 | id | assertion | state |
 | --- | --- | --- |
-| dw-0251 | E450-E459 allocated with JSDoc discipline; manifest row added. | [ ] unchecked |
-| dw-0252 | dd-surface.test.ts green with the adjusted code count. | [ ] unchecked |
+| dw-0251 | E450-E459 allocated with JSDoc discipline; manifest row added. | [x] checked |
+| dw-0252 | dd-surface.test.ts green with the adjusted code count. | [x] checked |
 
 ### tk-7026
 
 | id | assertion | state |
 | --- | --- | --- |
-| dw-0261 | dd validate behaviour byte-identical on existing corpora (regression pin). | [ ] unchecked |
+| dw-0261 | dd validate behaviour byte-identical on existing corpora (regression pin). | [x] checked |
 
 ### tk-7027
 
 | id | assertion | state |
 | --- | --- | --- |
-| dw-0271 | The factory builds mock plans/phases/task files on demand. | [ ] unchecked |
-| dw-0272 | Mutation suites cover tick/untick/block/human-skip/JIT-birth/basis-drift with validator+gate verdicts asserted at each step. | [ ] unchecked |
+| dw-0271 | The factory builds mock plans/phases/task files on demand. | [x] checked |
+| dw-0272 | Mutation suites cover tick/untick/block/human-skip/JIT-birth/basis-drift with validator+gate verdicts asserted at each step. | [x] checked |
 
 ### tk-7028
 
 | id | assertion | state |
 | --- | --- | --- |
-| dw-0281 | dd get resolves section, instance, and part addresses and returns the value (json + human). | [ ] unchecked |
-| dw-0282 | A set/add violating the schema is refused with the validation issue and writes NOTHING. | [ ] unchecked |
-| dw-0283 | Every successful mutation rebuilds the .dd.md sibling in the same operation. | [ ] unchecked |
-| dw-0284 | add --mint produces the next collision-free id under the registered prefix (the DF-008 bug class is unrepresentable). | [ ] unchecked |
-| dw-0285 | The dd surface manifest names get/set/add/rm; the surface test counts them. | [ ] unchecked |
+| dw-0281 | dd get resolves section, instance, and part addresses and returns the value (json + human). | [x] checked |
+| dw-0282 | A set/add violating the schema is refused with the validation issue and writes NOTHING. | [x] checked |
+| dw-0283 | Every successful mutation rebuilds the .dd.md sibling in the same operation. | [x] checked |
+| dw-0284 | add --mint produces the next collision-free id under the registered prefix (the DF-008 bug class is unrepresentable). | [x] checked |
+| dw-0285 | The dd surface manifest names get/set/add/rm; the surface test counts them. | [x] checked |

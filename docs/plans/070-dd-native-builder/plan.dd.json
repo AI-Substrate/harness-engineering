@@ -79,42 +79,42 @@
         {
           "id": "ac-7001",
           "claim": "Relations: a schema may declare rel on any link field (single or array items); the five built-in rels parse, resolve, and are exposed on the resolved schema; an unknown rel string is accepted and behaves as ref; dd graph map labels edges with their rel and can filter by it; the built-in set is frozen in the surface manifest (docs/plans/065-deterministic-documents/tasks/phase-1-dd-core-foundations/dd-surface.md, one-line renegotiation to extend); AND every existing builder/* link field declares its rel (pressure→pressure, proven_by→proven_by, done→derives, satisfies→satisfies), pinned by a schema test, so the engine is live on real plans from day one.",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "ac-7002",
           "claim": "Links bucket: any list-item shape may carry a links bucket (array of rel-ref links) without per-schema bespoke fields; rendered as a final Links column only when at least one item in that list has entries; edges appear in dd links / dd graph map; absent bucket renders byte-identical to today.",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "ac-7003",
           "claim": "Pressure mandatory: in the builder/done_when schema, an assertion without pressure is a validation ERROR (planted-bad fixture proves it fires); pressure not-applicable validates, renders honestly, and is queryable (a stock jq one-liner lists every not-applicable assertion — documented).",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "ac-7004",
           "claim": "done_when rename: builder schemas and the exemplar use done_when (unchanged dw- ids); renderer titles read naturally; no evidence-named section remains in living builder schemas; frozen historical corpora are signposted, not rewritten.",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "ac-7005",
           "claim": "satisfies: task rows carry satisfies as an always-array of rel-typed links to AC rows; dd graph map on an AC shows the incoming work-accounting; a non-array satisfies fails validation.",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "ac-7006",
           "claim": "Contradiction engine: harness plan validate warns whenever a gate-terminal item links (via proven_by, satisfies, or derives) to a checkable target that is not gate-terminal — written once against rels, never field names; planted-bad fixtures prove each rel path fires; consistent-open and evidence-ready-unclaimed stay silent.",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "ac-7007",
           "claim": "--complete mode: adds per-row warnings for every open completable and every orphan AC (no incoming satisfies); green means zero errors and zero warnings; without --complete, opens appear only as a summary info line; envelope semantics follow house degrade rules.",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "ac-7008",
           "claim": "Scoped validate: --address <address> scopes the semantic checks to the address's reachable closure (outbound + incoming satisfies for AC rows), reusing the P7 graph-map traversal; scoped runs are always per-row (strict implied); green = in-scope terminal + no contradictions + no stale bases in scope; the phase gate itself stays on the cheap completion read.",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "ac-7009",
@@ -169,7 +169,7 @@
         {
           "id": "ac-7019",
           "claim": "dd read/write verb family: harness dd get returns the value at any address; dd set / dd add / dd rm mutate documents with schema validation BEFORE write, automatic sibling rebuild, and CLI-minted collision-free ids (add --mint <prefix>); the frozen dd surface manifest gains the four rows via the one-line renegotiation; agents never hand-edit .dd.json again — the CLI is the writer, matching the flow doctrine.",
-          "state": "unchecked"
+          "state": "checked"
         }
       ]
     },
@@ -427,7 +427,7 @@
             "Synthetic corpus factory + lifecycle-mutation suites; dd validate regression pin"
           ],
           "key_risks": "The OD-8 allow-list silently dropping rel — first task pins it at the parse layer. --address closure semantics — settle in tests before wiring.",
-          "state": "unchecked",
+          "state": "checked",
           "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
         },
         {
@@ -911,6 +911,5 @@
         "Historical corpora are never rewritten to satisfy new rules — living corpora upgrade; frozen ones get signposts."
       ]
     }
-  ],
-  "references": []
+  ]
 }

@@ -24,7 +24,7 @@
           "id": "tk-7028",
           "title": "dd read/write verb family: get / set / add / rm + CLI id minting",
           "phase": "ph-7001",
-          "state": "unchecked",
+          "state": "checked",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-7019"
           ],
@@ -36,7 +36,7 @@
           "id": "tk-7011",
           "title": "rel on link shapes: parse, allow-list, resolved-schema exposure",
           "phase": "ph-7001",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Declarations round-trip rel; unknown rel accepted as ref; pin in declarations.test.ts/parse.test.ts.",
           "notes": "key finding: OD-8 allow-list",
           "satisfies": [
@@ -48,7 +48,7 @@
           "id": "tk-7012",
           "title": "Frozen-five registry: manifest row + surface test",
           "phase": "ph-7001",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Manifest names the five rels; surface test counts them.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-7001"
@@ -59,7 +59,7 @@
           "id": "tk-7013",
           "title": "Links bucket: shape treatment + renderer final-column",
           "phase": "ph-7001",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Column appears only when populated; absent ⇒ byte-identical goldens.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-7002"
@@ -70,7 +70,7 @@
           "id": "tk-7014",
           "title": "dd graph map / dd links rel labels + filter",
           "phase": "ph-7001",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Edges labelled; --rel filter works.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-7001",
@@ -82,7 +82,7 @@
           "id": "tk-7015",
           "title": "builder/* schema upgrades: done_when, satisfies, mandatory pressure, rel declarations",
           "phase": "ph-7001",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Planted-bad fixtures fire per new ERROR class; good twins pass; schema test pins the rel map.",
           "notes": "key findings: inert-engine, exemplar scale",
           "satisfies": [
@@ -97,7 +97,7 @@
           "id": "tk-7021",
           "title": "Contradiction engine over rels",
           "phase": "ph-7001",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Planted-bad per rel path fires; silent cells stay silent.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-7006"
@@ -108,7 +108,7 @@
           "id": "tk-7022",
           "title": "Summary info line (non---complete)",
           "phase": "ph-7001",
-          "state": "unchecked",
+          "state": "checked",
           "success": "One info line, zero per-row warns mid-flight.",
           "notes": "carried LEAN — see open_questions",
           "satisfies": [
@@ -120,7 +120,7 @@
           "id": "tk-7023",
           "title": "--complete: per-row opens + orphan ACs + strict-zero green",
           "phase": "ph-7001",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Green ⇔ 0/0; orphan fixture fires.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-7007"
@@ -131,7 +131,7 @@
           "id": "tk-7024",
           "title": "--address scoped closure",
           "phase": "ph-7001",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Phase scope excludes other phases' opens; AC scope shows the full proof tree.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-7008"
@@ -142,7 +142,7 @@
           "id": "tk-7025",
           "title": "E450–E459 block + manifest row + 50-pin adjustment",
           "phase": "ph-7001",
-          "state": "unchecked",
+          "state": "checked",
           "success": "dd-surface.test.ts green with the new count; JSDoc discipline.",
           "notes": "key finding: E-blocks full",
           "done": "#evidence/tk-7025"
@@ -151,7 +151,7 @@
           "id": "tk-7026",
           "title": "dd validate regression pin (byte-for-byte mechanical)",
           "phase": "ph-7001",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Byte-identical behaviour on existing corpora.",
           "done": "#evidence/tk-7026"
         },
@@ -159,7 +159,7 @@
           "id": "tk-7027",
           "title": "Synthetic corpus factory + lifecycle-mutation suites",
           "phase": "ph-7001",
-          "state": "unchecked",
+          "state": "checked",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-7006",
             "../../../plan.dd.json#acceptance_criteria/ac-7007",
@@ -179,180 +179,179 @@
           {
             "id": "dw-0111",
             "assertion": "Declarations round-trip a rel on single and array link shapes; resolved schema exposes it.",
-            "state": "unchecked"
+            "state": "checked"
           },
           {
             "id": "dw-0112",
             "assertion": "The parse-layer allow-list carries rel — pinned in declarations.test.ts/parse.test.ts, not the renderer suite.",
-            "state": "unchecked"
+            "state": "checked"
           },
           {
             "id": "dw-0113",
             "assertion": "An unknown rel string is accepted and behaves as ref.",
-            "state": "unchecked"
+            "state": "checked"
           }
         ],
         "tk-7012": [
           {
             "id": "dw-0121",
             "assertion": "The surface manifest names exactly the five built-in rels.",
-            "state": "unchecked"
+            "state": "checked"
           },
           {
             "id": "dw-0122",
             "assertion": "The surface test counts them and fails on any sixth.",
-            "state": "unchecked"
+            "state": "checked"
           }
         ],
         "tk-7013": [
           {
             "id": "dw-0131",
             "assertion": "A populated links bucket renders as a final Links column.",
-            "state": "unchecked"
+            "state": "checked"
           },
           {
             "id": "dw-0132",
             "assertion": "An absent bucket renders byte-identical to today (golden pin).",
-            "state": "unchecked"
+            "state": "checked"
           }
         ],
         "tk-7014": [
           {
             "id": "dw-0141",
             "assertion": "dd graph map labels edges with their rel.",
-            "state": "unchecked"
+            "state": "checked"
           },
           {
             "id": "dw-0142",
             "assertion": "--rel filters the walk to matching edges.",
-            "state": "unchecked"
+            "state": "checked"
           }
         ],
         "tk-7015": [
           {
             "id": "dw-0151",
             "assertion": "done_when rename lands in builder schemas; dw- ids unchanged.",
-            "state": "unchecked"
+            "state": "checked"
           },
           {
             "id": "dw-0152",
             "assertion": "satisfies declared always-array; a non-array fails validation (planted-bad).",
-            "state": "unchecked"
+            "state": "checked"
           },
           {
             "id": "dw-0153",
             "assertion": "An assertion without pressure is a validation ERROR (planted-bad); not-applicable validates and renders.",
-            "state": "unchecked"
+            "state": "checked"
           },
           {
             "id": "dw-0154",
             "assertion": "Every existing builder/* link field declares its rel — schema test pins the map.",
-            "state": "unchecked"
+            "state": "checked"
           }
         ],
         "tk-7021": [
           {
             "id": "dw-0211",
             "assertion": "Each rel path (proven_by/satisfies/derives) has a planted-bad fixture that FIRES.",
-            "state": "unchecked"
+            "state": "checked"
           },
           {
             "id": "dw-0212",
             "assertion": "Consistent-open and evidence-ready-unclaimed cells stay silent (good twins).",
-            "state": "unchecked"
+            "state": "checked"
           }
         ],
         "tk-7022": [
           {
             "id": "dw-0221",
             "assertion": "Mid-flight run emits one info summary line and zero per-row warnings.",
-            "state": "unchecked"
+            "state": "checked"
           }
         ],
         "tk-7023": [
           {
             "id": "dw-0231",
             "assertion": "--complete green means exactly 0 errors and 0 warnings.",
-            "state": "unchecked"
+            "state": "checked"
           },
           {
             "id": "dw-0232",
             "assertion": "An orphan AC (no incoming satisfies) warns under --complete (planted fixture).",
-            "state": "unchecked"
+            "state": "checked"
           }
         ],
         "tk-7024": [
           {
             "id": "dw-0241",
             "assertion": "A phase-scoped run excludes other phases' open items.",
-            "state": "unchecked"
+            "state": "checked"
           },
           {
             "id": "dw-0242",
             "assertion": "An AC-scoped run shows the full proof tree including incoming satisfies.",
-            "state": "unchecked"
+            "state": "checked"
           }
         ],
         "tk-7025": [
           {
             "id": "dw-0251",
             "assertion": "E450-E459 allocated with JSDoc discipline; manifest row added.",
-            "state": "unchecked"
+            "state": "checked"
           },
           {
             "id": "dw-0252",
             "assertion": "dd-surface.test.ts green with the adjusted code count.",
-            "state": "unchecked"
+            "state": "checked"
           }
         ],
         "tk-7026": [
           {
             "id": "dw-0261",
             "assertion": "dd validate behaviour byte-identical on existing corpora (regression pin).",
-            "state": "unchecked"
+            "state": "checked"
           }
         ],
         "tk-7027": [
           {
             "id": "dw-0271",
             "assertion": "The factory builds mock plans/phases/task files on demand.",
-            "state": "unchecked"
+            "state": "checked"
           },
           {
             "id": "dw-0272",
             "assertion": "Mutation suites cover tick/untick/block/human-skip/JIT-birth/basis-drift with validator+gate verdicts asserted at each step.",
-            "state": "unchecked"
+            "state": "checked"
           }
         ],
         "tk-7028": [
           {
             "id": "dw-0281",
             "assertion": "dd get resolves section, instance, and part addresses and returns the value (json + human).",
-            "state": "unchecked"
+            "state": "checked"
           },
           {
             "id": "dw-0282",
             "assertion": "A set/add violating the schema is refused with the validation issue and writes NOTHING.",
-            "state": "unchecked"
+            "state": "checked"
           },
           {
             "id": "dw-0283",
             "assertion": "Every successful mutation rebuilds the .dd.md sibling in the same operation.",
-            "state": "unchecked"
+            "state": "checked"
           },
           {
             "id": "dw-0284",
             "assertion": "add --mint produces the next collision-free id under the registered prefix (the DF-008 bug class is unrepresentable).",
-            "state": "unchecked"
+            "state": "checked"
           },
           {
             "id": "dw-0285",
             "assertion": "The dd surface manifest names get/set/add/rm; the surface test counts them.",
-            "state": "unchecked"
+            "state": "checked"
           }
         ]
       }
     }
-  ],
-  "references": []
+  ]
 }
