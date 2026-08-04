@@ -21,7 +21,7 @@
           "mode": "EXTEND",
           "tier": "computational",
           "proof": "Planted-bad + good-twin fixtures in the dd schema suites; rel-map schema test pins builder/* declarations; graph-map label/filter cases.",
-          "state": "unchecked",
+          "state": "checked",
           "probe": "npx vitest run harness/cli/test/services/dd"
         },
         {
@@ -31,7 +31,7 @@
           "mode": "EXTEND",
           "tier": "computational",
           "proof": "Renderer golden pair (populated/absent) + graph-map traversal cases added to existing render/links suites.",
-          "state": "unchecked",
+          "state": "checked",
           "probe": "npx vitest run harness/cli/test/services/dd/render"
         },
         {
@@ -41,7 +41,7 @@
           "mode": "EXTEND",
           "tier": "computational",
           "proof": "Planted-bad fixture (missing pressure) fires; good twin with not-applicable passes; jq one-liner documented and exercised.",
-          "state": "unchecked",
+          "state": "checked",
           "probe": "npx vitest run harness/cli/test/services/dd"
         },
         {
@@ -51,7 +51,7 @@
           "mode": "EXTEND",
           "tier": "computational",
           "proof": "Schema tests + repo-wide dd doctor sweep green after rename.",
-          "state": "unchecked",
+          "state": "checked",
           "probe": "harness dd doctor --json"
         },
         {
@@ -61,7 +61,7 @@
           "mode": "EXTEND",
           "tier": "computational",
           "proof": "Schema planted-bad (non-array) + graph-map incoming-arm case over the 071 corpus itself.",
-          "state": "unchecked",
+          "state": "checked",
           "probe": "npx vitest run harness/cli/test/services/dd"
         },
         {
@@ -71,7 +71,7 @@
           "mode": "EXTEND",
           "tier": "computational",
           "proof": "Per-rel planted-bad fixtures + silent good twins in the plan-validate suite.",
-          "state": "unchecked",
+          "state": "checked",
           "probe": "npx vitest run harness/cli/test/acts/plan.test.ts harness/cli/test/acts/plan-semantics.test.ts"
         },
         {
@@ -81,7 +81,7 @@
           "mode": "EXTEND",
           "tier": "computational",
           "proof": "Mode tests: strict-zero pin, orphan fixture, summary-line snapshot.",
-          "state": "unchecked",
+          "state": "checked",
           "probe": "npx vitest run harness/cli/test/acts/plan.test.ts harness/cli/test/acts/plan-semantics.test.ts"
         },
         {
@@ -91,7 +91,7 @@
           "mode": "EXTEND",
           "tier": "computational",
           "proof": "Scope-closure tests over a multi-phase synthetic corpus (factory).",
-          "state": "unchecked",
+          "state": "checked",
           "probe": "npx vitest run harness/cli/test/acts/plan.test.ts harness/cli/test/acts/plan-semantics.test.ts"
         },
         {
@@ -101,7 +101,7 @@
           "mode": "EXTEND",
           "tier": "computational",
           "proof": "Check-gate cases added to the existing flow gate suites (refuse/force/untrusted matrix).",
-          "state": "unchecked",
+          "state": "checked",
           "probe": "npx vitest run harness/cli/test/services/flow"
         },
         {
@@ -111,7 +111,7 @@
           "mode": "EXTEND",
           "tier": "computational",
           "proof": "Template/expander tests + the pre-JIT refusal pin.",
-          "state": "unchecked",
+          "state": "checked",
           "probe": "npx vitest run harness/cli/test/services/flow"
         },
         {
@@ -121,7 +121,7 @@
           "mode": "BUILD",
           "tier": "computational",
           "proof": "Phase-2 exit dry-run: scripted create→JIT→refuse→green→depart with the CLI as actor (tk-7147 builds it).",
-          "state": "unchecked",
+          "state": "checked",
           "probe": "BUILD: tk-7147 dry-run script; then `npx vitest run harness/cli/test/acts/dd-native-dryrun.int.test.ts` (proposed)"
         },
         {
@@ -131,7 +131,7 @@
           "mode": "EXTEND",
           "tier": "computational",
           "proof": "Renderer goldens over the exemplar + refusal fixture; live PR click-through is the human tail.",
-          "state": "unchecked",
+          "state": "checked",
           "probe": "npx vitest run harness/cli/test/acts"
         },
         {
@@ -141,7 +141,7 @@
           "mode": "BUILD",
           "tier": "computational",
           "proof": "Archive-move fixture: git mv in a temp repo, doctor sweep + flow link resolution asserted (tk-7165 builds it).",
-          "state": "unchecked",
+          "state": "checked",
           "probe": "BUILD: tk-7165 fixture; then `npx vitest run harness/cli/test/acts` (proposed)"
         },
         {
@@ -151,7 +151,7 @@
           "mode": "EXISTS",
           "tier": "computational",
           "proof": "The repo's composed gate already proves this class end-to-end.",
-          "state": "unchecked",
+          "state": "checked",
           "probe": "just checks"
         },
         {
@@ -161,7 +161,7 @@
           "mode": "BUILD",
           "tier": "computational",
           "proof": "Legacy-folder detection fixture (tk-7146 builds it).",
-          "state": "unchecked",
+          "state": "checked",
           "probe": "BUILD: tk-7146 fixture; then `npx vitest run harness/cli/test/services/flow` (proposed)"
         },
         {
@@ -171,7 +171,7 @@
           "mode": "ABSENT",
           "tier": "human-judgement",
           "proof": "22 coverage cases (builder-dd-teaching.test.ts) prove the commands are PRESENT where a reader would look — a coverage instrument, not a sufficiency one. Mode stays ABSENT/human-judgement: whether the teaching suffices is judged by the blind subject (bp-7118).",
-          "state": "unchecked",
+          "state": "checked",
           "probe": "npx vitest run harness/cli/test/acts/builder-dd-teaching.test.ts"
         },
         {
@@ -181,7 +181,7 @@
           "mode": "BUILD",
           "tier": "computational",
           "proof": "The self-hosting audit (tk-7167) + tk-7169's refusal-evidence capture; final proof is plan validate --complete on THIS plan.",
-          "state": "unchecked",
+          "state": "checked",
           "probe": "BUILD: tk-7169 capture; then `harness plan validate docs/plans/071-dd-native-builder/plan.dd.json --complete` (proposed)"
         },
         {
@@ -191,7 +191,7 @@
           "mode": "BUILD",
           "tier": "computational",
           "proof": "The flow-eval scenario (tk-7168) reusing the shipped scorer/ledger; assertions per the research dossier reuse list.",
-          "state": "unchecked",
+          "state": "checked",
           "probe": "BUILD: tk-7168 scenario; then `harness flow-eval score --scenario dd-native-builder --session <pij-id>` (proposed)"
         },
         {
@@ -201,7 +201,7 @@
           "mode": "EXTEND",
           "tier": "computational",
           "proof": "Verb suites in the dd act tests: refusal fixture (invalid set writes nothing), sibling-rebuild assertion, mint collision test, manifest pin.",
-          "state": "unchecked",
+          "state": "checked",
           "probe": "npx vitest run harness/cli/test/acts"
         },
         {
@@ -211,7 +211,7 @@
           "mode": "BUILD",
           "tier": "computational",
           "proof": "tk-7171 planted-bad fixture + check run over a real fence doc.",
-          "state": "unchecked",
+          "state": "checked",
           "probe": "BUILD: tk-7171"
         },
         {
@@ -221,7 +221,7 @@
           "mode": "BUILD",
           "tier": "computational",
           "proof": "review-3 of this plan authored as dd (tk-7172).",
-          "state": "unchecked",
+          "state": "checked",
           "probe": "BUILD: tk-7172"
         }
       ]

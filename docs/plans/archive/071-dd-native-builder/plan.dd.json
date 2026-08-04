@@ -162,7 +162,7 @@
         {
           "id": "ac-7113",
           "claim": "Layout & archive: the dd-native plan root holds plan.dd.json, plan.dd.md, the-flow.json, the-flow.md, plus original-ask.md where one exists (the stated amendment to #90's allow-list: the dd pair REPLACES <slug>-plan.md);\ntask files under assets/tasks/phase-N/;\nafter the post-flight git mv the corpus is doctor-clean AND the archive step rewrites the flow's repo-root-anchored dd_link addresses (fromPath null — they would otherwise silently go stale).",
-          "state": "unchecked",
+          "state": "checked",
           "pressure": "backpressure.dd.json#rows/bp-7113"
         },
         {
@@ -508,7 +508,7 @@
             "Full just checks + warn-trio baseline"
           ],
           "key_risks": "Corpus upgrade ripples basis shas — leaf-first. Broken PR links would discredit the surface on day one.",
-          "state": "unchecked",
+          "state": "checked",
           "depends_on": [
             "ph-7102"
           ],

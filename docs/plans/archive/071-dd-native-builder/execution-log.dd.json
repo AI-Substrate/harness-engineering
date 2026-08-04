@@ -82,6 +82,14 @@
           "links": [
             "plan.dd.json#acceptance_criteria/ac-7118"
           ]
+        },
+        {
+          "id": "lg-0009",
+          "at": "2026-08-05T03:07+10:00",
+          "text": "THE GATE REFUSED — live, on this plan's own journey. Departing review-3 for ship: E440, 'gates on plan-validate ... which is not green — 32 finding(s)', quoting the 5 standing contradictions verbatim (checked tasks satisfying the three ship-time ACs 7112/7113/7117) plus the open completables. The refusal is correct: those ACs are provable only by ship's own work (PR render, archive move, final audit tail). This is the genuine refusal ac-7117 requires — the journey that built the gates finally stopped by one. Departure proceeds via the DEFENDED OVERRIDE path (--force, the ac-7109 design): defense = the remaining findings are ship-provable by construction and ship's completion gate re-checks every AC before post-flight.",
+          "links": [
+            "plan.dd.json#acceptance_criteria/ac-7117"
+          ]
         }
       ]
     }

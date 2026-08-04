@@ -3,7 +3,7 @@
   "kind": "flight-plan",
   "slug": "dd-native-builder",
   "nav": {
-    "now": "phase-3",
+    "now": "review-3",
     "next": "review-1",
     "intent": "Make the builder pipeline dd-native: plans and task files as .dd.json, flow gates driven by document state, typed rels, semantic validate with strict-zero --complete, PR evidence surface — the flow that delivers this plan is the feature itself",
     "bag": {
@@ -699,6 +699,109 @@
           "dd_link"
         ]
       }
+    },
+    {
+      "id": "UPD-027",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-04T16:59:35.171Z",
+      "details": {
+        "node": "observe-3",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-017",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-04T16:59:35.590Z",
+      "details": {
+        "node": "observe-3",
+        "from": "known",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-028",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-04T16:59:35.991Z",
+      "details": {
+        "node": "retro-3",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-018",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-04T16:59:36.408Z",
+      "details": {
+        "node": "retro-3",
+        "from": "known",
+        "to": "done"
+      }
+    },
+    {
+      "id": "UPD-029",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-04T16:59:36.807Z",
+      "details": {
+        "node": "phase-3",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-019",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-04T16:59:37.186Z",
+      "details": {
+        "node": "phase-3",
+        "from": "known",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-006",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-08-04T16:59:37.559Z",
+      "details": {
+        "from": "phase-3",
+        "to": "review-3"
+      }
+    },
+    {
+      "id": "UPD-030",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-04T17:01:09.424Z",
+      "details": {
+        "node": "review-3",
+        "fields": [
+          "dd_link"
+        ]
+      }
+    },
+    {
+      "id": "UPD-031",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-04T17:01:09.424Z",
+      "details": {
+        "node": "ship",
+        "fields": [
+          "dd_link"
+        ]
+      }
     }
   ],
   "nodes": [
@@ -836,10 +939,10 @@
         "Done when the PR is open and its checks are green (or the failures are reported with a fix-loop offer); a diverged base hands off to 8c reconcile."
       ],
       "dd_link": {
-        "address": "docs/plans/071-dd-native-builder/plan.dd.json#acceptance_criteria",
+        "address": "docs/plans/archive/071-dd-native-builder/plan.dd.json#acceptance_criteria",
         "gate": true
       },
-      "modified_at": "2026-08-04T14:44:32.124Z"
+      "modified_at": "2026-08-04T17:01:09.424Z"
     },
     {
       "id": "backpressure",
@@ -1033,12 +1136,21 @@
       "id": "phase-3",
       "type": "phase",
       "label": "P3: Close-out — PR surface, corpus, eval",
-      "status": "known",
+      "status": "done",
       "next": [
         "review-3"
       ],
       "created_at": "2026-08-04T08:18:21.559Z",
-      "modified_at": "2026-08-04T08:22:48.025Z"
+      "modified_at": "2026-08-04T16:59:37.186Z",
+      "comments": [
+        {
+          "at": "2026-08-04T16:59:36.807Z",
+          "text": "verdict:complete reason:14/14 tasks (tk-7152 click-through held for ship), 18 commits 3f3db39d..0b18d74b, 302/4251 green, trio baseline-identical, review APPROVE after 4 rounds time:2026-08-05T03:06Z",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-04T16:59:37.186Z"
     },
     {
       "id": "review-3",
@@ -1049,10 +1161,10 @@
         "post-flight"
       ],
       "created_at": "2026-08-04T08:18:21.559Z",
-      "modified_at": "2026-08-04T14:44:32.124Z",
+      "modified_at": "2026-08-04T17:01:09.424Z",
       "zone": "flight",
       "dd_link": {
-        "address": "docs/plans/071-dd-native-builder/plan.dd.json",
+        "address": "docs/plans/archive/071-dd-native-builder/plan.dd.json",
         "check": "plan-validate",
         "gate": true
       }
@@ -1145,25 +1257,43 @@
       "id": "observe-3",
       "type": "observe",
       "label": "Observe (phase 3)",
-      "status": "known",
+      "status": "done",
       "next": [
         "phase-3"
       ],
       "created_at": "2026-08-04T08:18:21.559Z",
-      "modified_at": "2026-08-04T08:18:21.559Z",
-      "branch_of": "phase-3"
+      "modified_at": "2026-08-04T16:59:35.590Z",
+      "branch_of": "phase-3",
+      "comments": [
+        {
+          "at": "2026-08-04T16:59:35.171Z",
+          "text": "decision:done reason:11 real captures across 2 buckets (agent 4, pij-sole-snipe 7) — drained to .harness/records/retro/2026-08-04/004+005-071-*-phase-3-*.md time:2026-08-05T03:06Z",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-04T16:59:35.590Z"
     },
     {
       "id": "retro-3",
       "type": "harness-retro",
       "label": "Retro drain (phase 3)",
-      "status": "known",
+      "status": "done",
       "next": [
         "phase-3"
       ],
       "created_at": "2026-08-04T08:18:21.559Z",
-      "modified_at": "2026-08-04T08:18:21.559Z",
-      "branch_of": "phase-3"
+      "modified_at": "2026-08-04T16:59:36.408Z",
+      "branch_of": "phase-3",
+      "comments": [
+        {
+          "at": "2026-08-04T16:59:35.991Z",
+          "text": "decision:done reason:real post-coding drain — 11 entries, dispositions incl 2 fixed-now (runbook order 3fc4cd5f; gates retrofit bdfaf690) + 4 task-class (2 prime-ledgered), buffer cleared time:2026-08-05T03:06Z",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-04T16:59:36.408Z"
     },
     {
       "id": "backpressure-1f1d8db67e6c",
