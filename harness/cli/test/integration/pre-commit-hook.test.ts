@@ -134,7 +134,12 @@ function commit(
 ): string {
   writeFileSync(join(box.repo, file), `${file}\n`);
   git(box.repo, ['add', '-A'], env);
-  git(box.repo, ['commit', '-q', '-m', file, ...args], env);
+  // Extra flags go in FLAG POSITION, before `-m`, because that is how humans and
+  // scripts write them (`git commit --amend --no-edit`) and because the hook can
+  // only scan the argv prefix ahead of the message. The reverse ordering is a
+  // real, deliberately-degraded case — it has its own test, so it must not also
+  // be smuggled in here as the default.
+  git(box.repo, ['commit', '-q', ...args, '-m', file], env);
   return git(box.repo, ['rev-parse', 'HEAD'], env).trim();
 }
 
@@ -213,8 +218,8 @@ describe.skipIf(process.platform === 'win32')(
       expect(segments(box).length).toBe(before + 1);
     }, 60_000);
 
-    it('C2 — the abbreviated `--am` amend is deduped too, and a message MENTIONING --am is not', () => {
-    /*
+    it('C2 — all four amend abbreviations dedupe in flag position, and a message MENTIONING --am is not one', () => {
+      /*
     Test Doc:
     - Why: git accepts any unambiguous prefix (`--am`/`--ame`/`--amen`/`--amend` all amend;
       `--a` is ambiguous and rejected — measured), so a full-spelling-only matcher would let
@@ -222,24 +227,109 @@ describe.skipIf(process.platform === 'win32')(
       positive: the invoking argv carries the commit MESSAGE, so a substring matcher would let
       `-m "use --among other flags"` silently disarm the hook on an ordinary commit. Tokens,
       not substrings.
-    - Contract: `git commit --am` → no capture; an ordinary commit whose message contains
-      `--among` → captures normally.
+    - Contract: every accepted abbreviation, in flag position, spools nothing; an ordinary
+      commit whose message contains `--among` captures normally.
     */
-    const box = sandbox();
-    commit(box, 'a.txt', sessionEnv(box));
-    const before = segments(box).length;
-    advanceWindow(box);
-    writeFileSync(join(box.repo, 'b.txt'), 'b\n');
-    git(box.repo, ['add', '-A'], sessionEnv(box));
-    git(box.repo, ['commit', '-q', '--am', '--no-edit'], sessionEnv(box));
-    expect(segments(box).length).toBe(before);
-    writeFileSync(join(box.repo, 'c.txt'), 'c\n');
-    git(box.repo, ['add', '-A'], sessionEnv(box));
-    git(box.repo, ['commit', '-q', '-m', 'use --among other flags'], sessionEnv(box));
-    expect(segments(box).length).toBe(before + 1);
-  }, 60_000);
+      const box = sandbox();
+      commit(box, 'a.txt', sessionEnv(box));
+      const before = segments(box).length;
+      for (const abbreviation of ['--am', '--ame', '--amen', '--amend']) {
+        advanceWindow(box);
+        writeFileSync(join(box.repo, `b-${abbreviation}.txt`), 'b\n');
+        git(box.repo, ['add', '-A'], sessionEnv(box));
+        git(box.repo, ['commit', '-q', abbreviation, '--no-edit'], sessionEnv(box));
+        expect(segments(box).length).toBe(before);
+      }
+      writeFileSync(join(box.repo, 'c.txt'), 'c\n');
+      git(box.repo, ['add', '-A'], sessionEnv(box));
+      git(box.repo, ['commit', '-q', '-m', 'use --among other flags'], sessionEnv(box));
+      expect(segments(box).length).toBe(before + 1);
+    }, 60_000);
 
-  it('C4 — each fire records its own wall duration where doctor can read it', () => {
+    it('C2 — a message CONTAINING the real `--amend` token still captures (terra reproduction)', () => {
+      /*
+    Test Doc:
+    - Why: this is the reviewed HIGH, verbatim. `ps -o args=` renders the invoking argv
+      SPACE-JOINED, so a commit message is indistinguishable from a flag; a whole-token
+      matcher over the whole string therefore deduped the ORDINARY commit
+      `-m "use --amend in a message"`. The `--among` case above does NOT exercise this —
+      that string never contains the real token — which is precisely why the bug survived
+      a test that looked like it covered the area.
+    - Consequence being prevented: a skipped capture on a plain commit, so the pending
+      window anchors to a LATER HEAD. That is the attribution skew this hook exists to
+      remove, produced by the hook itself.
+    - Contract: the commit captures — two segments, not one — and the message is preserved
+      verbatim, proving the guard was exercised rather than the message being mangled.
+    */
+      const box = sandbox();
+      commit(box, 'a.txt', sessionEnv(box));
+      const before = segments(box).length;
+      advanceWindow(box);
+      writeFileSync(join(box.repo, 'b.txt'), 'b\n');
+      git(box.repo, ['add', '-A'], sessionEnv(box));
+      git(box.repo, ['commit', '-q', '-m', 'use --amend in a message'], sessionEnv(box));
+      expect(segments(box).length).toBe(before + 1);
+      expect(git(box.repo, ['log', '-1', '--pretty=%s'], sessionEnv(box)).trim()).toBe(
+        'use --amend in a message',
+      );
+    }, 60_000);
+
+    it('C2 — a genuine `--amend` written AFTER -m degrades to CAPTURE, the declared safe direction', () => {
+      /*
+    Test Doc:
+    - Why: the matcher can only scan the argv prefix BEFORE the first message-bearing flag,
+      because everything after it may be prose. A real amend written after `-m` therefore
+      falls outside the scanned prefix and is NOT recognised. This test exists to name that
+      residual error rather than let it be discovered later as a surprise.
+    - Which way it fails matters, and this asserts the direction: we CAPTURE. The cost is
+      noise — one segment anchored to a SHA that is about to be discarded — versus the
+      opposite error's cost, a silently skipped capture on an ordinary commit. Noise is
+      recoverable; a missing anchor is the fault we were hired to fix.
+    - Contract: the amend really amends (history does not grow), and a segment IS spooled.
+    */
+      const box = sandbox();
+      commit(box, 'a.txt', sessionEnv(box));
+      const before = segments(box).length;
+      const heightBefore = git(box.repo, ['rev-list', '--count', 'HEAD'], sessionEnv(box)).trim();
+      advanceWindow(box);
+      writeFileSync(join(box.repo, 'b.txt'), 'b\n');
+      git(box.repo, ['add', '-A'], sessionEnv(box));
+      git(box.repo, ['commit', '-q', '-m', 'amended subject', '--amend'], sessionEnv(box));
+      expect(git(box.repo, ['rev-list', '--count', 'HEAD'], sessionEnv(box)).trim()).toBe(
+        heightBefore,
+      );
+      expect(segments(box).length).toBe(before + 1);
+    }, 60_000);
+
+    it('C2 — an amend flag sitting IMMEDIATELY before -m still dedupes (truncation boundary)', () => {
+      /*
+    Test Doc:
+    - Why: the fix cuts the scanned argv at the first message-bearing flag, and the step-2
+      patterns match whole tokens by requiring a space on BOTH sides. Cutting removes the
+      separator, so an amend flag in the LAST prefix position loses its right-hand space and
+      stops matching — a real amend would then be captured. Nothing else in this file pins
+      that boundary: every other amend case has a following token (`--no-edit`) or no `-m`
+      at all, so the defect survived the whole suite. Found by mutation, not by reading.
+    - Contract: `git commit --amend -m <msg>` — amend flag directly abutting the cut point —
+      spools nothing, for every accepted abbreviation.
+    */
+      const box = sandbox();
+      commit(box, 'a.txt', sessionEnv(box));
+      const before = segments(box).length;
+      for (const abbreviation of ['--am', '--ame', '--amen', '--amend']) {
+        advanceWindow(box);
+        writeFileSync(join(box.repo, `b-${abbreviation}.txt`), 'b\n');
+        git(box.repo, ['add', '-A'], sessionEnv(box));
+        git(
+          box.repo,
+          ['commit', '-q', abbreviation, '-m', `amended via ${abbreviation}`],
+          sessionEnv(box),
+        );
+        expect(segments(box).length).toBe(before);
+      }
+    }, 60_000);
+
+    it('C4 — each fire records its own wall duration where doctor can read it', () => {
       const box = sandbox();
       commit(box, 'a.txt', sessionEnv(box));
       const samples = join(box.repo, '.harness/temp/precommit-latency.tsv');

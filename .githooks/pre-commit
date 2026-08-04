@@ -49,9 +49,27 @@
 # DISCARDED, so capturing there would anchor evidence to an object that is about
 # to become unreachable. Skipping is LOSSLESS: the transcript-window cursor only
 # advances when a segment is spooled, so the very same work is still captured by
-# the next fire — against a commit that exists. Detection reads the invoking
-# `git` process's own argv (this hook's parent); if that read fails we fall
-# through and capture, which is the safe direction (noise, never loss).
+# the next fire — against a commit that exists.
+#
+# DETECTION IS A HEURISTIC OVER A LOSSY SOURCE — say it plainly, because the
+# first version of it was wrong in the unsafe direction. The only portable amend
+# signal is the invoking `git` process's argv (measured: NO environment variable
+# and nothing in `$GIT_DIR` distinguishes an amend from a plain commit — amend
+# even preserves `GIT_AUTHOR_DATE`). But `ps -o args=` renders that argv
+# SPACE-JOINED: the argument boundaries are destroyed BY CONSTRUCTION, so the
+# commit message is indistinguishable from a flag, and no pattern over that
+# string can ever be exact. Linux `/proc/PID/cmdline` is NUL-separated and would
+# be exact; macOS has no equivalent, so the paved path stays lossy.
+#
+# What we therefore do: scan only the argv prefix BEFORE the first
+# message-bearing flag, since everything after it may be prose. Residual error
+# is deliberately steered ONE WAY — a real `--amend` written AFTER `-m`, or a
+# `git -c …` global flag, truncates the prefix early and we CAPTURE. That is the
+# safe direction: capture-as-noise (a segment anchored to a soon-dangling SHA),
+# never a skipped capture. The reverse — treating a plain commit as an amend —
+# skews attribution to a LATER HEAD, which is the exact fault this hook exists
+# to remove, so it is the one error class the matcher must not make. A failed
+# argv read falls through to capture for the same reason.
 #
 # Enable once per clone:   just install-hooks   (sets core.hooksPath=.githooks)
 # Disarm just this hook:   export HARNESS_NO_TELEMETRY_PRECOMMIT=1
@@ -69,12 +87,37 @@ trap 'exit 0' EXIT
 [ "${HARNESS_NO_TELEMETRY:-}" = "1" ] && exit 0
 [ "${HARNESS_NO_TELEMETRY_PRECOMMIT:-}" = "1" ] && exit 0
 
-# C2 — dedupe the amend fire (see AMEND DISPOSITION above). Matched as whole
-# TOKENS, not a substring: the invoking argv contains the commit MESSAGE too, and
-# `git commit -m "use --among other flags"` must not silently disarm the hook.
-# The abbreviations are listed because git accepts any unambiguous prefix and
-# `--am*` has exactly one expansion (verified: `git commit --amen` is accepted).
-case " $(ps -o args= -p "$PPID" 2>/dev/null | tr '\n' ' ') " in
+# C2 — dedupe the amend fire (see AMEND DISPOSITION above for WHY this is a
+# heuristic and which way its errors are steered).
+#
+# Step 1: take the argv rendering and cut it at the first message-bearing flag.
+# Everything from there on may be prose the committer wrote, and prose can
+# contain anything — terra's reproduction was the ordinary commit
+# `git commit -m "use --amend in a message"`, which the previous whole-token
+# matcher deduped, silently skipping a real capture. Short flags are cut on
+# their PREFIX so the attached forms (`-mmsg`, `-m"a msg"`) are cut too; long
+# flags likewise, which covers `--message=…`, `--fixup=…` and `--squash=…`.
+scanned=" $(ps -o args= -p "$PPID" 2>/dev/null | tr '\n' ' ') "
+for flag in ' -m' ' -F' ' -t' ' -c' ' -C' ' --message' ' --file' ' --template' \
+            ' --fixup' ' --squash' ' --reuse-message' ' --reedit-message'; do
+  case "$scanned" in
+    *"$flag"*) scanned="${scanned%%$flag*} " ;;
+  esac
+done
+# The re-appended trailing space is LOAD-BEARING: the step-2 patterns match whole
+# tokens by requiring a space on BOTH sides, so without it a flag sitting in the
+# last prefix position (`git commit --amend -m msg`) would stop matching and a
+# real amend would be captured. Caught by mutation, not by reading.
+# (Truncation only ever shortens, and each flag is applied to the already-cut
+# string, so the result is the cut at the EARLIEST-occurring flag regardless of
+# the order they are listed in.)
+#
+# Step 2: match whole TOKENS in the surviving prefix — never a substring, so
+# `git commit --amongst-friends` is not an amend. The abbreviations are listed
+# because git accepts any unambiguous prefix and `--am*` has exactly one
+# expansion (measured: `--am`, `--ame`, `--amen`, `--amend` are all accepted;
+# `--a` is ambiguous and rejected).
+case "$scanned" in
   *' --amend '*|*' --amen '*|*' --ame '*|*' --am '*) exit 0 ;;
 esac
 
