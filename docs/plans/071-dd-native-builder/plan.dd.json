@@ -8,7 +8,7 @@
       "value": {
         "title": "dd-native builder — the structural proof graph, wired end to end",
         "slug": "dd-native-builder",
-        "ordinal": 70,
+        "ordinal": 71,
         "mode": "Full",
         "plan_version": "2.0.0",
         "created": "2026-08-04",
@@ -70,104 +70,104 @@
       "name": "documentation_strategy",
       "value": {
         "location": "docs/how/dd/ chapters extended in place (relations, done_when, satisfies, links bucket, --complete/--address); structural-proof-graph.md promotes from builder-tuning/ into docs/how/dd/ once schemas land; baked dd docs regenerated via gen:dd-docs wherever the schema surface changes.",
-        "rationale": "Agents discover dd through the CLI (dd docs, orient instructions[], refusal next_actions); humans get the deep reference in docs/how/dd/. ac-7016 makes the builder flow itself teach the commands positionally."
+        "rationale": "Agents discover dd through the CLI (dd docs, orient instructions[], refusal next_actions); humans get the deep reference in docs/how/dd/. ac-7116 makes the builder flow itself teach the commands positionally."
       }
     },
     {
       "name": "acceptance_criteria",
       "value": [
         {
-          "id": "ac-7001",
+          "id": "ac-7101",
           "claim": "Relations: a schema may declare rel on any link field (single or array items); the five built-in rels parse, resolve, and are exposed on the resolved schema; an unknown rel string is accepted and behaves as ref; dd graph map labels edges with their rel and can filter by it; the built-in set is frozen in the surface manifest (docs/plans/065-deterministic-documents/tasks/phase-1-dd-core-foundations/dd-surface.md, one-line renegotiation to extend); AND every existing builder/* link field declares its rel (pressure→pressure, proven_by→proven_by, done→derives, satisfies→satisfies), pinned by a schema test, so the engine is live on real plans from day one.",
           "state": "checked"
         },
         {
-          "id": "ac-7002",
+          "id": "ac-7102",
           "claim": "Links bucket: any list-item shape may carry a links bucket (array of rel-ref links) without per-schema bespoke fields; rendered as a final Links column only when at least one item in that list has entries; edges appear in dd links / dd graph map; absent bucket renders byte-identical to today.",
           "state": "checked"
         },
         {
-          "id": "ac-7003",
+          "id": "ac-7103",
           "claim": "Pressure mandatory: in the builder/done_when schema, an assertion without pressure is a validation ERROR (planted-bad fixture proves it fires); pressure not-applicable validates, renders honestly, and is queryable (a stock jq one-liner lists every not-applicable assertion — documented).",
           "state": "checked"
         },
         {
-          "id": "ac-7004",
+          "id": "ac-7104",
           "claim": "done_when rename: builder schemas and the exemplar use done_when (unchanged dw- ids); renderer titles read naturally; no evidence-named section remains in living builder schemas; frozen historical corpora are signposted, not rewritten.",
           "state": "checked"
         },
         {
-          "id": "ac-7005",
+          "id": "ac-7105",
           "claim": "satisfies: task rows carry satisfies as an always-array of rel-typed links to AC rows; dd graph map on an AC shows the incoming work-accounting; a non-array satisfies fails validation.",
           "state": "checked"
         },
         {
-          "id": "ac-7006",
+          "id": "ac-7106",
           "claim": "Contradiction engine: harness plan validate warns whenever a gate-terminal item links (via proven_by, satisfies, or derives) to a checkable target that is not gate-terminal — written once against rels, never field names; planted-bad fixtures prove each rel path fires; consistent-open and evidence-ready-unclaimed stay silent.",
           "state": "checked"
         },
         {
-          "id": "ac-7007",
+          "id": "ac-7107",
           "claim": "--complete mode: adds per-row warnings for every open completable and every orphan AC (no incoming satisfies); green means zero errors and zero warnings; without --complete, opens appear only as a summary info line; envelope semantics follow house degrade rules.",
           "state": "checked"
         },
         {
-          "id": "ac-7008",
+          "id": "ac-7108",
           "claim": "Scoped validate: --address <address> scopes the semantic checks to the address's reachable closure (outbound + incoming satisfies for AC rows), reusing the P7 graph-map traversal; scoped runs are always per-row (strict implied); green = in-scope terminal + no contradictions + no stale bases in scope; the phase gate itself stays on the cheap completion read.",
           "state": "checked"
         },
         {
-          "id": "ac-7009",
+          "id": "ac-7109",
           "claim": "Check-kind gate: a flow node may carry dd_link {check: plan-validate, address}; departure evaluates the semantic validator live, refuses on non-green quoting the findings verbatim, records --force as a defended override exactly as the completion gate does; the completion-kind gate is unchanged; both kinds share the untrusted-reading discipline.",
           "state": "unchecked"
         },
         {
-          "id": "ac-7010",
+          "id": "ac-7110",
           "claim": "Template authors the gates: the template + expander emit dd_links — each phase node gating on assets/tasks/phase-N/tasks.dd.json#tasks (bare ordinal — a stated dd-native amendment to #90's phase-N-<kebab-title> convention: a static template can bake an ordinal address before titles exist, and retitling a phase must never move its task-file address), the last review node carrying the check gate; a pre-JIT departure refuses target-invalid, pinned by test.",
           "state": "unchecked"
         },
         {
-          "id": "ac-7011",
-          "claim": "dd-native authoring: 1b plan emits plan.dd.json (+ built sibling plan.dd.md) as THE plan document — no -plan.md exists in a dd-native plan folder — and 5 tasks emits assets/tasks/phase-N/tasks.dd.json with done_when lists and satisfies edges, adding the phase row's tasks link in the same stroke; the flow discovers both; the scripted end-to-end dry-run (create → JIT → refuse → green → depart) runs as the wiring phase’s exit (ph-7002).",
+          "id": "ac-7111",
+          "claim": "dd-native authoring: 1b plan emits plan.dd.json (+ built sibling plan.dd.md) as THE plan document — no -plan.md exists in a dd-native plan folder — and 5 tasks emits assets/tasks/phase-N/tasks.dd.json with done_when lists and satisfies edges, adding the phase row's tasks link in the same stroke; the flow discovers both; the scripted end-to-end dry-run (create → JIT → refuse → green → depart) runs as the wiring phase’s exit (ph-7102).",
           "state": "unchecked"
         },
         {
-          "id": "ac-7012",
+          "id": "ac-7112",
           "claim": "PR surface: ship renders the dd-derived AC table into the PR body — state marks + resolved proven_by / pressure / incoming-satisfies as clickable references — generated from the corpus under docs/plans/archive/<ord>-<slug>/ (7b has already archived; the #90 read-from-archive rule); refuses to fabricate on an unclosed corpus.",
           "state": "unchecked"
         },
         {
-          "id": "ac-7013",
+          "id": "ac-7113",
           "claim": "Layout & archive: the dd-native plan root holds plan.dd.json, plan.dd.md, the-flow.json, the-flow.md, plus original-ask.md where one exists (the stated amendment to #90's allow-list: the dd pair REPLACES <slug>-plan.md); task files under assets/tasks/phase-N/; after the post-flight git mv the corpus is doctor-clean AND the archive step rewrites the flow's repo-root-anchored dd_link addresses (fromPath null — they would otherwise silently go stale).",
           "state": "unchecked"
         },
         {
-          "id": "ac-7014",
+          "id": "ac-7114",
           "claim": "Exemplar & docs: the exemplar upgrades to the new schemas — 18 of 26 dw- rows currently lack pressure and each gets a real link or not-applicable; the exemplar keeps its teaching layout at docs/how/dd/exemplar/ (a corpus, not a plan folder — NOT re-homed); docs/how/dd/ + baked docs cover the new surface; just checks green; warn trio at baseline.",
           "state": "unchecked"
         },
         {
-          "id": "ac-7015",
+          "id": "ac-7115",
           "claim": "Legacy read path retained: dd-native is the only write path; the legacy markdown read/adopt/resume path stays unchanged — every in-flight markdown plan still detects, adopts, and resumes; pinned by a detection test over a legacy-folder fixture.",
           "state": "unchecked"
         },
         {
-          "id": "ac-7016",
+          "id": "ac-7116",
           "claim": "Tooling taught where it's needed: the dd/plan command surface is documented at BOTH builder layers — (a) node instructions[] baked by template/expander so harness flow orient (re-read every turn) surfaces the right command positionally (phase nodes: scoped rehearsal + state updates; last review: --complete, closure, verify-basis; gates print their own --force etiquette on refusal); (b) stage modules teach their seam's commands (5 tasks: authoring; 6/6a: state flips + rehearsal; 7: closure + --complete; 8: PR render). A dry-run reader following only orient output + the current stage module never lacks a command this plan introduced.",
           "state": "unchecked"
         },
         {
-          "id": "ac-7017",
+          "id": "ac-7117",
           "claim": "Self-hosting: by the final review, plan 070's own corpus is fully dogfooded — backpressure.dd.json and execution-log.dd.json exist with AC rows carrying pressure/proven_by links; per-phase task files exist with done_when lists (mandatory pressure honoured); tasks carry rel-typed satisfies; the flight plan carries real dd_link gates exercised by the actual journey with the evidence RECORDED where each side lives: at least one genuine refusal captured in telemetry (command_exit carrying the gate E-code — refusals write nothing to the flow by pinned invariant) and any force as the existing dd-gate-override flow event; plan validate --complete runs green at the last review node's gate; ship's PR renders this plan's own AC table. The corpus is indistinguishable from one authored entirely by the finished feature — the plan is its own acceptance fixture.",
           "state": "unchecked"
         },
         {
-          "id": "ac-7018",
-          "claim": "Flow-eval conformance: the flow-eval extension carries a single-phase dd-native builder scenario — a BLIND subject peer (pij) runs the new flow end-to-end on a scaffolded repo, and telemetry-scored assertions prove correct tool use: plan authored as plan.dd.json with no -plan.md, task file JIT-born with done_when + mandatory pressure + satisfies, at least one gate refusal evidenced in telemetry (command_exit gate E-code — tk-7069) followed by a pass, plan validate --complete green before ship-ward departure, states mutated through dd surfaces (never hand-edited generated md). Scenario prompting/instructions updated to match; scored via harness flow-eval score and ledgered. Multi-phase deferred.",
+          "id": "ac-7118",
+          "claim": "Flow-eval conformance: the flow-eval extension carries a single-phase dd-native builder scenario — a BLIND subject peer (pij) runs the new flow end-to-end on a scaffolded repo, and telemetry-scored assertions prove correct tool use: plan authored as plan.dd.json with no -plan.md, task file JIT-born with done_when + mandatory pressure + satisfies, at least one gate refusal evidenced in telemetry (command_exit gate E-code — tk-7169) followed by a pass, plan validate --complete green before ship-ward departure, states mutated through dd surfaces (never hand-edited generated md). Scenario prompting/instructions updated to match; scored via harness flow-eval score and ledgered. Multi-phase deferred.",
           "state": "unchecked"
         },
         {
-          "id": "ac-7019",
+          "id": "ac-7119",
           "claim": "dd read/write verb family: harness dd get returns the value at any address; dd set / dd add / dd rm mutate documents with schema validation BEFORE write, automatic sibling rebuild, and CLI-minted collision-free ids (add --mint <prefix>); the frozen dd surface manifest gains the four rows via the one-line renegotiation; agents never hand-edit .dd.json again — the CLI is the writer, matching the flow doctrine.",
           "state": "checked"
         }
@@ -181,9 +181,9 @@
       "name": "open_questions",
       "value": [
         {
-          "question": "ac-7007 non---complete posture (open completables as one summary info line, per-row warnings only under --complete) is a carried LEAN — koala's warning-fatigue proposal, narratively walked with Jordan but not explicitly confirmed. One-line confirm or veto flips the wording; nothing else depends on it.",
+          "question": "ac-7107 non---complete posture (open completables as one summary info line, per-row warnings only under --complete) is a carried LEAN — koala's warning-fatigue proposal, narratively walked with Jordan but not explicitly confirmed. One-line confirm or veto flips the wording; nothing else depends on it.",
           "state": "checked",
-          "note": "RULED (Jordan, 2026-08-04): \"yeah we don't warn\" — summary info line only mid-flight; --address (ac-7008) is the on-demand scoped read; per-row accounting reserved for --complete."
+          "note": "RULED (Jordan, 2026-08-04): \"yeah we don't warn\" — summary info line only mid-flight; --address (ac-7108) is the on-demand scoped read; per-row accounting reserved for --complete."
         }
       ]
     },
@@ -270,7 +270,7 @@
         {
           "artifact": "065/builder-tuning/structural-proof-graph.md",
           "present": "y",
-          "effect": "The design doc; promotes to docs/how/dd in ph-7003."
+          "effect": "The design doc; promotes to docs/how/dd in ph-7103."
         },
         {
           "artifact": "070/original-ask.md",
@@ -283,7 +283,7 @@
           "effect": "Folded; the load-bearing findings promoted to key_findings."
         },
         {
-          "artifact": "Resolved: ac-7007 posture ruled",
+          "artifact": "Resolved: ac-7107 posture ruled",
           "present": "—",
           "effect": "Confirmed — no mid-flight warns; summary line + --address scoped read; see open_questions receipt."
         },
@@ -351,62 +351,62 @@
         {
           "impact": "Critical",
           "finding": "A static flight-plan template cannot bake gate addresses containing phase-N-<kebab-title> slugs it can't know (validation F1).",
-          "action": "Bare-ordinal task dirs for dd-native plans (assets/tasks/phase-N/) — stated amendment to #90; ac-7010."
+          "action": "Bare-ordinal task dirs for dd-native plans (assets/tasks/phase-N/) — stated amendment to #90; ac-7110."
         },
         {
           "impact": "Critical",
           "finding": "Shipped builder/* schemas declare NO rels; without declaring them the contradiction engine ships inert on every real plan (validation F2).",
-          "action": "ac-7001 declare-clause; tk-7015; schema test pin."
+          "action": "ac-7101 declare-clause; tk-7115; schema test pin."
         },
         {
           "impact": "High",
           "finding": "E430–E439 AND E440–E449 are both complete allocations; dd-surface.test.ts pins exactly 50 E4xx codes against the manifest (validation F6).",
-          "action": "E450–E459 via surface-manifest renegotiation, inside ph-7001 scope (tk-7025)."
+          "action": "E450–E459 via surface-manifest renegotiation, inside ph-7101 scope (tk-7125)."
         },
         {
           "impact": "High",
           "finding": "Flow dd_link addresses anchor at repo root (fromPath: null) — the post-flight archive git mv silently stales them; dd doctor cannot see it (scans only *.dd.json) (validation F8).",
-          "action": "Archive step rewrites dd_link addresses; ac-7013; pinned in tk-7065."
+          "action": "Archive step rewrites dd_link addresses; ac-7113; pinned in tk-7165."
         },
         {
           "impact": "High",
           "finding": "7b post-flight archives the plan folder BEFORE ship — ship must read the corpus from the archive path (validation F7).",
-          "action": "ac-7012 reads docs/plans/archive/<ord>-<slug>/."
+          "action": "ac-7112 reads docs/plans/archive/<ord>-<slug>/."
         },
         {
           "impact": "Medium",
           "finding": "Builder detection keys hard on <slug>-plan.md (63 references); deleting the markdown read path strands every in-flight plan (validation F4).",
-          "action": "ac-7015: dd-native is write-path-only; legacy reader retained + pinned (tk-7046)."
+          "action": "ac-7115: dd-native is write-path-only; legacy reader retained + pinned (tk-7146)."
         },
         {
           "impact": "Medium",
           "finding": "The OD-8 parser allow-list silently drops unknown schema keys — rel will vanish without a parse-layer pin.",
-          "action": "tk-7011; pin in declarations.test.ts/parse.test.ts, never the renderer suite."
+          "action": "tk-7111; pin in declarations.test.ts/parse.test.ts, never the renderer suite."
         },
         {
           "impact": "Medium",
           "finding": "18 of 26 exemplar dw- rows lack pressure — the mandatory rule breaks the corpus as-is.",
-          "action": "tk-7061; each row gets a real link or not-applicable; ledger walked leaf-first."
+          "action": "tk-7161; each row gets a real link or not-applicable; ledger walked leaf-first."
         },
         {
           "impact": "Medium",
           "finding": "Dogfood (this document): the dd id-prefix registry is a CLI constant (ID_PREFIXES in core/constants.ts) — a schema cannot mint new item kinds, so full-spec sections (key findings, gate rows, open questions) were designed without id fields; and the builder/plan schema had to be extended with 15 new sections to carry the full builder spec.",
-          "action": "ph-7001 revisits (same phase): either register prefixes in schema declarations or bless id-less rows as the pattern for non-addressable sections; the schema extension ships as part of this plan."
+          "action": "ph-7101 revisits (same phase): either register prefixes in schema declarations or bless id-less rows as the pattern for non-addressable sections; the schema extension ships as part of this plan."
         },
         {
           "impact": "Critical",
-          "finding": "Gate refusals are currently unprovable from evidence — a triple loss: the refusal writes nothing to the flow (pinned P6 invariant, flow-mutations.ts:126-127), outcome-events never reads envelope.error.code, and flow failures collapse to verb 'flow'. Only a FORCE is durable (dd-gate-override flow event). ac-7017/ac-7018 depend on refusal evidence existing.",
-          "action": "tk-7069: capture envelope.error.code in command_exit (fixed-vocab, privacy-precedented by checks.gates/mark.verdict) — refusal lands in telemetry, the nothing-written flow invariant survives untouched."
+          "finding": "Gate refusals are currently unprovable from evidence — a triple loss: the refusal writes nothing to the flow (pinned P6 invariant, flow-mutations.ts:126-127), outcome-events never reads envelope.error.code, and flow failures collapse to verb 'flow'. Only a FORCE is durable (dd-gate-override flow event). ac-7117/ac-7118 depend on refusal evidence existing.",
+          "action": "tk-7169: capture envelope.error.code in command_exit (fixed-vocab, privacy-precedented by checks.gates/mark.verdict) — refusal lands in telemetry, the nothing-written flow invariant survives untouched."
         },
         {
           "impact": "High",
           "finding": "SessionEvidence deliberately excludes command_exit, file, artifact, and mark events (session-evidence.ts:311-333), and the flow-eval resolvers mirror must stay lock-step (a CLI test asserts it). Any new assertion keying on those needs the single seam widened on both sides.",
-          "action": "tk-7069 widens SessionEvidence + resolvers lock-step; everything else in the dd scenario reuses existing assertion types (harness-verb-ran takes full two-token verbs like 'dd validate'; file-created/forbidden-state/file-content-matches/command-succeeds cover the fs lane — planted-friction A6-A9 is the exact precedent)."
+          "action": "tk-7169 widens SessionEvidence + resolvers lock-step; everything else in the dd scenario reuses existing assertion types (harness-verb-ran takes full two-token verbs like 'dd validate'; file-created/forbidden-state/file-content-matches/command-succeeds cover the fs lane — planted-friction A6-A9 is the exact precedent)."
         },
         {
           "impact": "High",
-          "finding": "Dogfood (journey): dd documents have NO writer surface — every structural edit in this plan's own authoring was ad-hoc python read-modify-write, causing the dw-id collisions and stale-sibling risk; tk-7043's '6/6a mutate states through dd surfaces' implied verbs that do not exist.",
-          "action": "ac-7019 / tk-7028: dd get/set/add/rm + minting, schema-validated before write, auto sibling rebuild; surface renegotiation."
+          "finding": "Dogfood (journey): dd documents have NO writer surface — every structural edit in this plan's own authoring was ad-hoc python read-modify-write, causing the dw-id collisions and stale-sibling risk; tk-7143's '6/6a mutate states through dd surfaces' implied verbs that do not exist.",
+          "action": "ac-7119 / tk-7128: dd get/set/add/rm + minting, schema-validated before write, auto sibling rebuild; surface renegotiation."
         }
       ]
     },
@@ -414,10 +414,10 @@
       "name": "phases",
       "value": [
         {
-          "id": "ph-7001",
+          "id": "ph-7101",
           "title": "dd core — relations, buckets, and the semantic validator",
           "objective": "The schema layer learns rel, the renderer learns the links bucket, the builder/* schemas gain every field this design needs, and harness plan validate grows its opinions.",
-          "brief": "TASK ONE (Jordan): tk-7028 — the dd read/write verb family (get/set/add/rm + minting) lands FIRST, so every later task and the journey itself mutates documents through the CLI instead of ad-hoc JSON edits. Then: rel declaration parsing + frozen-five manifest row; bucket render column; done_when rename; satisfies; mandatory pressure + not-applicable; rel declarations on every existing builder link field; then the rel-generic contradiction engine, summary info line, --complete (strict-zero green), --address scoping, and the E450–E459 block via manifest renegotiation. Planted-bad fixtures per failure class; the synthetic corpus factory + lifecycle-mutation suites land here and serve the next phase too; dd validate regression-pinned byte-for-byte mechanical.",
+          "brief": "TASK ONE (Jordan): tk-7128 — the dd read/write verb family (get/set/add/rm + minting) lands FIRST, so every later task and the journey itself mutates documents through the CLI instead of ad-hoc JSON edits. Then: rel declaration parsing + frozen-five manifest row; bucket render column; done_when rename; satisfies; mandatory pressure + not-applicable; rel declarations on every existing builder link field; then the rel-generic contradiction engine, summary info line, --complete (strict-zero green), --address scoping, and the E450–E459 block via manifest renegotiation. Planted-bad fixtures per failure class; the synthetic corpus factory + lifecycle-mutation suites land here and serve the next phase too; dd validate regression-pinned byte-for-byte mechanical.",
           "delivers": [
             "dd get/set/add/rm + CLI id minting — built first, used by everything after",
             "rel on link shapes: parse, allow-list, resolved-schema exposure; unknown rel behaves as ref",
@@ -431,7 +431,7 @@
           "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
         },
         {
-          "id": "ph-7002",
+          "id": "ph-7102",
           "title": "Wire the flow — check-kind gate + dd-native authoring",
           "objective": "Departure gates on the semantic validator, the template authors every gate, and the builder pipeline authors and mutates dd documents natively while teaching its own tooling.",
           "brief": "DdLink check variant behind deps.gate (live evaluation, verbatim-findings refusal, --force records); template/expander emit per-phase completion gates (bare-ordinal addresses) + last-review check gate; pre-JIT target-invalid refusal pinned as intended; barrel discipline extended; renderer/orient/rail surfacing. Then the prompt-ware: 1b plan authors plan.dd.json (no -plan.md), 5 tasks authors the task file + phase-row link in one stroke, 6/6a mutate states through dd, node instructions[] baked, stage modules teach their seam's commands, legacy read path retained. EXIT: the scripted end-to-end dry-run (create → JIT → refuse → green → depart), CLI as actor — this phase does not close without it.",
@@ -445,14 +445,14 @@
           "key_risks": "Barrel discipline (flow reaches the validator through an exported seam, never past one). Prompt-ware cannot be compile-checked — the exit dry-run is the proof; keep every module change behind it.",
           "state": "unchecked",
           "depends_on": [
-            "ph-7001"
+            "ph-7101"
           ]
         },
         {
-          "id": "ph-7003",
+          "id": "ph-7103",
           "title": "Close-out — PR surface, corpus, docs, self-hosting audit, flow-eval",
           "objective": "The human checkpoint sees claims with evidence, the reference corpus and docs tell the truth, and the flow proves itself twice over — self-hosted and blind-evaluated.",
-          "brief": "Ship renders the dd-derived AC table from the archive path (refuses an unclosed corpus; head-SHA links). Exemplar upgraded (18 dw rows pressured; satisfies; done_when; leaf-first ledger walk); docs/how/dd chapters + justfile recipes; structural-proof-graph promoted with a signpost; baked docs regenerated; archive-move proof (doctor-clean + dd_link rewrite). The self-hosting audit (ac-7017) and the single-phase blind flow-eval scenario (ac-7018) close the plan.",
+          "brief": "Ship renders the dd-derived AC table from the archive path (refuses an unclosed corpus; head-SHA links). Exemplar upgraded (18 dw rows pressured; satisfies; done_when; leaf-first ledger walk); docs/how/dd chapters + justfile recipes; structural-proof-graph promoted with a signpost; baked docs regenerated; archive-move proof (doctor-clean + dd_link rewrite). The self-hosting audit (ac-7117) and the single-phase blind flow-eval scenario (ac-7118) close the plan.",
           "delivers": [
             "Corpus → PR-body AC table renderer + ship integration (archive path, head-SHA links)",
             "Exemplar schema upgrade; docs/how/dd chapters + recipes; proof-graph promotion; baked docs regen",
@@ -463,7 +463,7 @@
           "key_risks": "Corpus upgrade ripples basis shas — leaf-first. Broken PR links would discredit the surface on day one.",
           "state": "unchecked",
           "depends_on": [
-            "ph-7002"
+            "ph-7102"
           ]
         }
       ]
@@ -472,234 +472,234 @@
       "name": "tasks",
       "value": [
         {
-          "id": "tk-7031",
+          "id": "tk-7131",
           "title": "DdLink check-variant model + sanitize + untrusted-reading rules",
-          "phase": "ph-7002",
+          "phase": "ph-7102",
           "state": "unchecked",
           "success": "Hand-edited check links refused/dropped per F004/F007 discipline.",
           "satisfies": [
-            "#acceptance_criteria/ac-7009"
+            "#acceptance_criteria/ac-7109"
           ]
         },
         {
-          "id": "tk-7032",
+          "id": "tk-7132",
           "title": "Check evaluator behind deps.gate; act wiring",
-          "phase": "ph-7002",
+          "phase": "ph-7102",
           "state": "unchecked",
           "success": "Non-green refuses, findings quoted verbatim; nothing written; --force records.",
           "satisfies": [
-            "#acceptance_criteria/ac-7009"
+            "#acceptance_criteria/ac-7109"
           ]
         },
         {
-          "id": "tk-7033",
+          "id": "tk-7133",
           "title": "Template/expander author gates (bare-ordinal addresses)",
-          "phase": "ph-7002",
+          "phase": "ph-7102",
           "state": "unchecked",
           "success": "Fresh flow carries phase gates + last-review check gate; pre-JIT departure refuses target-invalid.",
           "notes": "key finding: static template",
           "satisfies": [
-            "#acceptance_criteria/ac-7010"
+            "#acceptance_criteria/ac-7110"
           ]
         },
         {
-          "id": "tk-7034",
+          "id": "tk-7134",
           "title": "Barrel/seam extension + dep-cruiser rule + seam test",
-          "phase": "ph-7002",
+          "phase": "ph-7102",
           "state": "unchecked",
           "success": "Arch test refuses module-path reach."
         },
         {
-          "id": "tk-7035",
+          "id": "tk-7135",
           "title": "Renderer/orient/rail surfacing for check gates",
-          "phase": "ph-7002",
+          "phase": "ph-7102",
           "state": "unchecked",
           "success": "Badge + rail callout render; legend only when present."
         },
         {
-          "id": "tk-7041",
+          "id": "tk-7141",
           "title": "1b plan authors plan.dd.json + sibling; dd-native root stated",
-          "phase": "ph-7002",
+          "phase": "ph-7102",
           "state": "unchecked",
           "success": "Fresh plan validates 0/0 and renders; no -plan.md emitted.",
           "satisfies": [
-            "#acceptance_criteria/ac-7011",
-            "#acceptance_criteria/ac-7013"
+            "#acceptance_criteria/ac-7111",
+            "#acceptance_criteria/ac-7113"
           ]
         },
         {
-          "id": "tk-7042",
+          "id": "tk-7142",
           "title": "5 tasks authors task file + phase-row link in one stroke",
-          "phase": "ph-7002",
+          "phase": "ph-7102",
           "state": "unchecked",
           "success": "JIT file validates; plan link lands in the same change.",
           "satisfies": [
-            "#acceptance_criteria/ac-7011"
+            "#acceptance_criteria/ac-7111"
           ]
         },
         {
-          "id": "tk-7043",
+          "id": "tk-7143",
           "title": "6/6a mutate dd states; execution-log linkage",
-          "phase": "ph-7002",
+          "phase": "ph-7102",
           "state": "unchecked",
           "success": "State flips visible in dd; no hand-edited generated md.",
-          "notes": "depends on tk-7028 (dd mutation verbs are the surface 6/6a mutates through)"
+          "notes": "depends on tk-7128 (dd mutation verbs are the surface 6/6a mutates through)"
         },
         {
-          "id": "tk-7044",
+          "id": "tk-7144",
           "title": "Node instructions[] baked (template + expander)",
-          "phase": "ph-7002",
+          "phase": "ph-7102",
           "state": "unchecked",
           "success": "orient at each node prints its dd commands.",
-          "notes": "ac-7016 layer a",
+          "notes": "ac-7116 layer a",
           "satisfies": [
-            "#acceptance_criteria/ac-7016"
+            "#acceptance_criteria/ac-7116"
           ]
         },
         {
-          "id": "tk-7045",
+          "id": "tk-7145",
           "title": "Stage modules teach their seam's commands",
-          "phase": "ph-7002",
+          "phase": "ph-7102",
           "state": "unchecked",
           "success": "Dry-run reader gap check passes.",
-          "notes": "ac-7016 layer b",
+          "notes": "ac-7116 layer b",
           "satisfies": [
-            "#acceptance_criteria/ac-7016"
+            "#acceptance_criteria/ac-7116"
           ]
         },
         {
-          "id": "tk-7046",
+          "id": "tk-7146",
           "title": "Legacy read/adopt path retained + detection test",
-          "phase": "ph-7002",
+          "phase": "ph-7102",
           "state": "unchecked",
           "success": "Legacy-folder fixture adopts/resumes.",
           "notes": "key finding: 63 markdown refs",
           "satisfies": [
-            "#acceptance_criteria/ac-7015"
+            "#acceptance_criteria/ac-7115"
           ]
         },
         {
-          "id": "tk-7047",
+          "id": "tk-7147",
           "title": "Joint-exit dry-run: create → JIT → refuse → green → depart",
-          "phase": "ph-7002",
+          "phase": "ph-7102",
           "state": "unchecked",
-          "success": "Scripted, CLI as actor; exercises ph-7003's refusal through ph-7004's artifacts; neither phase closes before this is green.",
-          "notes": "PHASE EXIT for ph-7002 — the phase does not close without this green",
+          "success": "Scripted, CLI as actor; exercises ph-7103's refusal through ph-7104's artifacts; neither phase closes before this is green.",
+          "notes": "PHASE EXIT for ph-7102 — the phase does not close without this green",
           "satisfies": [
-            "#acceptance_criteria/ac-7011"
+            "#acceptance_criteria/ac-7111"
           ]
         },
         {
-          "id": "tk-7051",
+          "id": "tk-7151",
           "title": "Corpus → PR-body AC table renderer",
-          "phase": "ph-7003",
+          "phase": "ph-7103",
           "state": "unchecked",
           "success": "Goldens over the exemplar; refuses unclosed corpus.",
           "satisfies": [
-            "#acceptance_criteria/ac-7012"
+            "#acceptance_criteria/ac-7112"
           ]
         },
         {
-          "id": "tk-7052",
+          "id": "tk-7152",
           "title": "Ship stage integration (archive path, head-SHA links)",
-          "phase": "ph-7003",
+          "phase": "ph-7103",
           "state": "unchecked",
           "success": "Links click through on a real PR.",
           "notes": "key finding: archive-before-ship",
           "satisfies": [
-            "#acceptance_criteria/ac-7012"
+            "#acceptance_criteria/ac-7112"
           ]
         },
         {
-          "id": "tk-7061",
+          "id": "tk-7161",
           "title": "Exemplar schema upgrade (pressure, satisfies, done_when)",
-          "phase": "ph-7003",
+          "phase": "ph-7103",
           "state": "unchecked",
           "success": "Doctor-clean 0/0; leaf-first re-verify.",
           "notes": "key finding: 18/26 rows",
           "satisfies": [
-            "#acceptance_criteria/ac-7004",
-            "#acceptance_criteria/ac-7014"
+            "#acceptance_criteria/ac-7104",
+            "#acceptance_criteria/ac-7114"
           ]
         },
         {
-          "id": "tk-7062",
+          "id": "tk-7162",
           "title": "docs/how/dd chapters + justfile recipes for new commands",
-          "phase": "ph-7003",
+          "phase": "ph-7103",
           "state": "unchecked",
           "success": "Every new command has a runnable recipe.",
           "satisfies": [
-            "#acceptance_criteria/ac-7014"
+            "#acceptance_criteria/ac-7114"
           ]
         },
         {
-          "id": "tk-7063",
+          "id": "tk-7163",
           "title": "Promote structural-proof-graph into docs/how/dd",
-          "phase": "ph-7003",
+          "phase": "ph-7103",
           "state": "unchecked",
           "success": "Links repaired; builder-tuning keeps a signpost."
         },
         {
-          "id": "tk-7064",
+          "id": "tk-7164",
           "title": "Baked docs regen + drift gate",
-          "phase": "ph-7003",
+          "phase": "ph-7103",
           "state": "unchecked",
           "success": "check:dd-docs green both ways.",
           "satisfies": [
-            "#acceptance_criteria/ac-7014"
+            "#acceptance_criteria/ac-7114"
           ]
         },
         {
-          "id": "tk-7065",
+          "id": "tk-7165",
           "title": "Archive-move proof: git mv fixture + dd_link rewrite",
-          "phase": "ph-7003",
+          "phase": "ph-7103",
           "state": "unchecked",
           "success": "Doctor-clean post-move; flow links resolve.",
           "notes": "key finding: repo-root anchoring",
           "satisfies": [
-            "#acceptance_criteria/ac-7013"
+            "#acceptance_criteria/ac-7113"
           ]
         },
         {
-          "id": "tk-7066",
+          "id": "tk-7166",
           "title": "Full just checks + warn-trio baseline verification",
-          "phase": "ph-7003",
+          "phase": "ph-7103",
           "state": "unchecked",
           "success": "Exit 0; trio byte-identical.",
           "satisfies": [
-            "#acceptance_criteria/ac-7014"
+            "#acceptance_criteria/ac-7114"
           ]
         },
         {
-          "id": "tk-7067",
+          "id": "tk-7167",
           "title": "Self-hosting retrofit + proof: plan 070's corpus fully dd-native",
-          "phase": "ph-7003",
+          "phase": "ph-7103",
           "state": "unchecked",
           "satisfies": [
-            "#acceptance_criteria/ac-7017"
+            "#acceptance_criteria/ac-7117"
           ],
           "success": "backpressure + execution-log docs linked from every AC; task files with done_when; rel-typed satisfies; flight-plan gate events show a real refusal and a real pass; plan validate --complete green; doctor-clean.",
           "notes": "The journey itself produces most of this; the task is the final audit that nothing was hand-waved."
         },
         {
-          "id": "tk-7068",
+          "id": "tk-7168",
           "title": "Flow-eval scenario: single-phase dd-native journey (blind subject, telemetry-scored)",
-          "phase": "ph-7003",
+          "phase": "ph-7103",
           "state": "unchecked",
           "satisfies": [
-            "#acceptance_criteria/ac-7018"
+            "#acceptance_criteria/ac-7118"
           ],
-          "success": "Scenario bundle (live-testing/scenarios/) + prompts pair authored; base-ref pinned to include 070's own code (else the telemetry lane goes blind); assertions reuse existing types (skill-called builder, harness-verb-ran dd/plan validate, file-created plan.dd.json glob, forbidden-state on *-plan.md, file-content-matches for pressure/satisfies, command-succeeds --complete, refusal via tk-7069's evidence); scored via harness flow-eval score, judged lane filled, rendered, ledgered; instructions.md + flow-eval-run SKILL updated.",
+          "success": "Scenario bundle (live-testing/scenarios/) + prompts pair authored; base-ref pinned to include 070's own code (else the telemetry lane goes blind); assertions reuse existing types (skill-called builder, harness-verb-ran dd/plan validate, file-created plan.dd.json glob, forbidden-state on *-plan.md, file-content-matches for pressure/satisfies, command-succeeds --complete, refusal via tk-7169's evidence); scored via harness flow-eval score, judged lane filled, rendered, ledgered; instructions.md + flow-eval-run SKILL updated.",
           "notes": "Research report: assets/research-flow-eval-history.md — reuse list §6"
         },
         {
-          "id": "tk-7069",
+          "id": "tk-7169",
           "title": "Refusal evidence: envelope.error.code into command_exit + SessionEvidence/resolvers widening (lock-step)",
-          "phase": "ph-7002",
+          "phase": "ph-7102",
           "state": "unchecked",
           "satisfies": [
-            "#acceptance_criteria/ac-7017",
-            "#acceptance_criteria/ac-7018"
+            "#acceptance_criteria/ac-7117",
+            "#acceptance_criteria/ac-7118"
           ],
           "success": "A refused nav set lands in telemetry as command_exit with the gate E-code (fixed vocab, no free text); SessionEvidence exposes it and the flow-eval resolvers mirror stays lock-step (CLI test green); the flow file remains untouched on refusal (invariant pin unchanged).",
           "notes": "Research: refusal-evidence triple loss; force already durable via dd-gate-override"
@@ -710,157 +710,157 @@
       "name": "acceptance_coverage",
       "value": [
         {
-          "ac": "ac-7001",
+          "ac": "ac-7101",
           "covered_by": [
-            "tk-7011",
-            "tk-7012",
-            "tk-7014",
-            "tk-7015"
+            "tk-7111",
+            "tk-7112",
+            "tk-7114",
+            "tk-7115"
           ],
           "verified_in": "schema tests + graph-map tests"
         },
         {
-          "ac": "ac-7002",
+          "ac": "ac-7102",
           "covered_by": [
-            "tk-7013",
-            "tk-7014"
+            "tk-7113",
+            "tk-7114"
           ],
           "verified_in": "renderer goldens + traversal tests"
         },
         {
-          "ac": "ac-7003",
+          "ac": "ac-7103",
           "covered_by": [
-            "tk-7015"
+            "tk-7115"
           ],
           "verified_in": "planted-bad fixture + jq doc"
         },
         {
-          "ac": "ac-7004",
+          "ac": "ac-7104",
           "covered_by": [
-            "tk-7015",
-            "tk-7061"
+            "tk-7115",
+            "tk-7161"
           ],
           "verified_in": "schema tests + doctor sweep"
         },
         {
-          "ac": "ac-7005",
+          "ac": "ac-7105",
           "covered_by": [
-            "tk-7015"
+            "tk-7115"
           ],
           "verified_in": "schema tests + graph-map incoming"
         },
         {
-          "ac": "ac-7006",
+          "ac": "ac-7106",
           "covered_by": [
-            "tk-7021",
-            "tk-7027"
+            "tk-7121",
+            "tk-7127"
           ],
           "verified_in": "per-rel planted-bad fixtures"
         },
         {
-          "ac": "ac-7007",
+          "ac": "ac-7107",
           "covered_by": [
-            "tk-7022",
-            "tk-7023",
-            "tk-7027"
+            "tk-7122",
+            "tk-7123",
+            "tk-7127"
           ],
           "verified_in": "mode tests + strict-zero pin"
         },
         {
-          "ac": "ac-7008",
+          "ac": "ac-7108",
           "covered_by": [
-            "tk-7024",
-            "tk-7027"
+            "tk-7124",
+            "tk-7127"
           ],
           "verified_in": "scope-closure tests"
         },
         {
-          "ac": "ac-7009",
+          "ac": "ac-7109",
           "covered_by": [
-            "tk-7031",
-            "tk-7032",
-            "tk-7027"
+            "tk-7131",
+            "tk-7132",
+            "tk-7127"
           ],
           "verified_in": "gate suite (refuse/force/untrusted)"
         },
         {
-          "ac": "ac-7010",
+          "ac": "ac-7110",
           "covered_by": [
-            "tk-7033"
+            "tk-7133"
           ],
           "verified_in": "template tests + pre-JIT refusal pin"
         },
         {
-          "ac": "ac-7011",
+          "ac": "ac-7111",
           "covered_by": [
-            "tk-7041",
-            "tk-7042",
-            "tk-7047"
+            "tk-7141",
+            "tk-7142",
+            "tk-7147"
           ],
           "verified_in": "scripted end-to-end dry-run"
         },
         {
-          "ac": "ac-7012",
+          "ac": "ac-7112",
           "covered_by": [
-            "tk-7051",
-            "tk-7052"
+            "tk-7151",
+            "tk-7152"
           ],
           "verified_in": "goldens + live PR check"
         },
         {
-          "ac": "ac-7013",
+          "ac": "ac-7113",
           "covered_by": [
-            "tk-7041",
-            "tk-7065"
+            "tk-7141",
+            "tk-7165"
           ],
           "verified_in": "root allow-list + archive-move proof"
         },
         {
-          "ac": "ac-7014",
+          "ac": "ac-7114",
           "covered_by": [
-            "tk-7061",
-            "tk-7062",
-            "tk-7064",
-            "tk-7066"
+            "tk-7161",
+            "tk-7162",
+            "tk-7164",
+            "tk-7166"
           ],
           "verified_in": "checks green + baseline"
         },
         {
-          "ac": "ac-7015",
+          "ac": "ac-7115",
           "covered_by": [
-            "tk-7046"
+            "tk-7146"
           ],
           "verified_in": "legacy-fixture detection test"
         },
         {
-          "ac": "ac-7016",
+          "ac": "ac-7116",
           "covered_by": [
-            "tk-7044",
-            "tk-7045"
+            "tk-7144",
+            "tk-7145"
           ],
           "verified_in": "orient output + dry-run reader gap check"
         },
         {
-          "ac": "ac-7017",
+          "ac": "ac-7117",
           "covered_by": [
-            "tk-7067",
-            "tk-7047",
-            "tk-7069"
+            "tk-7167",
+            "tk-7147",
+            "tk-7169"
           ],
           "verified_in": "recorded flow events + --complete green + PR render of this plan's own AC table"
         },
         {
-          "ac": "ac-7018",
+          "ac": "ac-7118",
           "covered_by": [
-            "tk-7068",
-            "tk-7069"
+            "tk-7168",
+            "tk-7169"
           ],
           "verified_in": "flow-eval report + ledger from a real blind-subject run"
         },
         {
-          "ac": "ac-7019",
+          "ac": "ac-7119",
           "covered_by": [
-            "tk-7028"
+            "tk-7128"
           ],
           "verified_in": "verb suites: pre-write validation refusal, sibling rebuild, mint collision test, surface-manifest pin"
         }
@@ -879,7 +879,7 @@
           "risk": "--address closure semantics surprise (what counts as in scope).",
           "likelihood": "Medium",
           "impact": "Medium",
-          "mitigation": "Settle in tk-7024's tests first; document the closure rule in the chapter."
+          "mitigation": "Settle in tk-7124's tests first; document the closure rule in the chapter."
         },
         {
           "risk": "Corpus upgrade breaks downstream goldens broadly.",
@@ -897,7 +897,7 @@
           "risk": "Layout amendments diverge from #90 silently.",
           "likelihood": "Low",
           "impact": "High",
-          "mitigation": "Amendments STATED in builder docs (ac-7010/ac-7013) — divergence is documented, never discovered."
+          "mitigation": "Amendments STATED in builder docs (ac-7110/ac-7113) — divergence is documented, never discovered."
         }
       ]
     },

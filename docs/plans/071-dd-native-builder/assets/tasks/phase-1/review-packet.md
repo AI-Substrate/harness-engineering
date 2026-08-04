@@ -23,8 +23,8 @@ wire discipline, first line = verdict.
 ## Mission
 
 Adversarial review of Phase 1 — "dd core: relations, buckets, and the semantic
-validator" — 13 tasks (`tk-7028` + `tk-7011..7015`, `tk-7027`, `tk-7021..7026`)
-against ACs `ac-7001..ac-7008` + `ac-7019`. You are the cross-model check: your
+validator" — 13 tasks (`tk-7128` + `tk-7111..7015`, `tk-7127`, `tk-7121..7026`)
+against ACs `ac-7101..ac-7108` + `ac-7119`. You are the cross-model check: your
 job is to find what the coder missed, not to summarize what it did.
 
 ## Read first (in order)
@@ -70,14 +70,14 @@ suite counts. Quote the commands and codes you saw.
 ## Verify independently
 
 Run `just test` and `just checks` yourself; run the per-AC probes from
-`backpressure.dd.md` for ac-7001..7008 + ac-7019. Quote counts — never accept
+`backpressure.dd.md` for ac-7101..7008 + ac-7119. Quote counts — never accept
 the coder's numbers unreproduced.
 
 ## Your fence
 
 Read-only on the repo plus running tests/probes. No commits, no push, no file
 edits outside your own scratch. Forbidden: `the-flow.json` / `the-flow.md` /
-`.the-flow-state.json`, `docs/plans/070-dd-native-builder/**` writes.
+`.the-flow-state.json`, `docs/plans/071-dd-native-builder/**` writes.
 
 ## Report shape (pij send back to pij-related-koala)
 

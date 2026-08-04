@@ -9,20 +9,20 @@ send — first line = status, then delta + proof pointers (wire discipline).
 Implement **every task** of Phase 1 — "dd core: relations, buckets, and the
 semantic validator" — in one run. The authoritative task list with per-task
 evidence assertions is `tasks.dd.md` **in this folder** (source:
-`tasks.dd.json`). 13 tasks, `tk-7028` **FIRST** (Jordan's explicit ruling —
+`tasks.dd.json`). 13 tasks, `tk-7128` **FIRST** (Jordan's explicit ruling —
 build the dd writer verbs before everything else, then *use them* for the
 rest of the phase).
 
 ## Read first (in order)
 
-1. `../../plan.dd.md` — the plan: ACs `ac-7001..ac-7008` + `ac-7019` are
+1. `../../plan.dd.md` — the plan: ACs `ac-7101..ac-7108` + `ac-7119` are
    yours; Key Findings 01–03, 07, 10, 11 bind design choices.
 2. `tasks.dd.md` (this folder) — your tasks + evidence assertions (the
    done-when bar per task).
 3. `../../backpressure.dd.md` — the proof selection per AC (`bp-70xx` rows);
    your fixtures land where those probes point.
 4. `../../assets/dogfood-log.md` — DF-002 (prefix registry), DF-007/008 (JIT
-   + id minting), DF-012 (why tk-7028 exists). These are constraints, not
+   + id minting), DF-012 (why tk-7128 exists). These are constraints, not
    history.
 5. `docs/how/dd/` + the surface manifest
    (`docs/plans/065-deterministic-documents/tasks/phase-1-dd-core-foundations/dd-surface.md`)
@@ -32,10 +32,10 @@ rest of the phase).
 
 ## Task order
 
-`tk-7028` (writer verbs + mint) → `tk-7011` (rel parse — pin the OD-8
-allow-list at the parse layer FIRST) → `tk-7012..7015` (manifest row, bucket,
-graph labels, builder schema upgrades) → `tk-7027` (synthetic corpus factory)
-→ `tk-7021..7026` (semantic layer: contradiction engine, summary line,
+`tk-7128` (writer verbs + mint) → `tk-7111` (rel parse — pin the OD-8
+allow-list at the parse layer FIRST) → `tk-7112..7015` (manifest row, bucket,
+graph labels, builder schema upgrades) → `tk-7127` (synthetic corpus factory)
+→ `tk-7121..7026` (semantic layer: contradiction engine, summary line,
 --complete, --address, E450–E459, dd-validate regression pin).
 
 ## Hard constraints
@@ -47,7 +47,7 @@ graph labels, builder schema upgrades) → `tk-7027` (synthetic corpus factory)
   `docs/plans/065-deterministic-documents/tasks/phase-1-dd-core-foundations/dd-surface.md`
   (manifest rows only). Nothing else. If a task seems to need a file outside
   the fence, STOP and report — do not improvise.
-- **Forbidden absolutely**: `docs/plans/070-dd-native-builder/**` (the plan
+- **Forbidden absolutely**: `docs/plans/071-dd-native-builder/**` (the plan
   corpus is the orchestrator's), any `the-flow.json` / `the-flow.md` /
   `.the-flow-state.json`, `skills/**`, any push. Never hand-edit a generated
   `.dd.md` (build regenerates them).

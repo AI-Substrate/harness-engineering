@@ -15,9 +15,9 @@
       "name": "rows",
       "value": [
         {
-          "id": "bp-7001",
+          "id": "bp-7101",
           "criterion": "Rel declarations parse, resolve, expose, and label graph edges; unknown rels behave as ref; builder/* fields declare their rels.",
-          "phase": "ph-7001",
+          "phase": "ph-7101",
           "mode": "EXTEND",
           "tier": "computational",
           "proof": "Planted-bad + good-twin fixtures in the dd schema suites; rel-map schema test pins builder/* declarations; graph-map label/filter cases.",
@@ -25,9 +25,9 @@
           "probe": "npx vitest run harness/cli/test/services/dd"
         },
         {
-          "id": "bp-7002",
+          "id": "bp-7102",
           "criterion": "Links bucket renders only when populated; absent bucket byte-identical; edges traversed.",
-          "phase": "ph-7001",
+          "phase": "ph-7101",
           "mode": "EXTEND",
           "tier": "computational",
           "proof": "Renderer golden pair (populated/absent) + graph-map traversal cases added to existing render/links suites.",
@@ -35,9 +35,9 @@
           "probe": "npx vitest run harness/cli/test/services/dd/render"
         },
         {
-          "id": "bp-7003",
+          "id": "bp-7103",
           "criterion": "An assertion without pressure is a validation ERROR; not-applicable validates and is queryable.",
-          "phase": "ph-7001",
+          "phase": "ph-7101",
           "mode": "EXTEND",
           "tier": "computational",
           "proof": "Planted-bad fixture (missing pressure) fires; good twin with not-applicable passes; jq one-liner documented and exercised.",
@@ -45,9 +45,9 @@
           "probe": "npx vitest run harness/cli/test/services/dd"
         },
         {
-          "id": "bp-7004",
+          "id": "bp-7104",
           "criterion": "done_when rename lands with dw- ids unchanged; no evidence-named section in living builder schemas.",
-          "phase": "ph-7001",
+          "phase": "ph-7101",
           "mode": "EXTEND",
           "tier": "computational",
           "proof": "Schema tests + repo-wide dd doctor sweep green after rename.",
@@ -55,9 +55,9 @@
           "probe": "harness dd doctor --json"
         },
         {
-          "id": "bp-7005",
+          "id": "bp-7105",
           "criterion": "satisfies is always-array, rel-typed; non-array fails; incoming work-accounting visible on an AC.",
-          "phase": "ph-7001",
+          "phase": "ph-7101",
           "mode": "EXTEND",
           "tier": "computational",
           "proof": "Schema planted-bad (non-array) + graph-map incoming-arm case over the 070 corpus itself.",
@@ -65,9 +65,9 @@
           "probe": "npx vitest run harness/cli/test/services/dd"
         },
         {
-          "id": "bp-7006",
+          "id": "bp-7106",
           "criterion": "Contradiction engine fires per rel path and stays silent on the honest cells.",
-          "phase": "ph-7001",
+          "phase": "ph-7101",
           "mode": "EXTEND",
           "tier": "computational",
           "proof": "Per-rel planted-bad fixtures + silent good twins in the plan-validate suite.",
@@ -75,9 +75,9 @@
           "probe": "npx vitest run harness/cli/test/acts/plan.test.ts harness/cli/test/acts/plan-semantics.test.ts"
         },
         {
-          "id": "bp-7007",
+          "id": "bp-7107",
           "criterion": "--complete green means exactly 0/0; orphan ACs warn; mid-flight is one info line.",
-          "phase": "ph-7001",
+          "phase": "ph-7101",
           "mode": "EXTEND",
           "tier": "computational",
           "proof": "Mode tests: strict-zero pin, orphan fixture, summary-line snapshot.",
@@ -85,9 +85,9 @@
           "probe": "npx vitest run harness/cli/test/acts/plan.test.ts harness/cli/test/acts/plan-semantics.test.ts"
         },
         {
-          "id": "bp-7008",
+          "id": "bp-7108",
           "criterion": "--address scopes to the reachable closure incl. incoming satisfies; other phases' opens invisible.",
-          "phase": "ph-7001",
+          "phase": "ph-7101",
           "mode": "EXTEND",
           "tier": "computational",
           "proof": "Scope-closure tests over a multi-phase synthetic corpus (factory).",
@@ -95,9 +95,9 @@
           "probe": "npx vitest run harness/cli/test/acts/plan.test.ts harness/cli/test/acts/plan-semantics.test.ts"
         },
         {
-          "id": "bp-7009",
+          "id": "bp-7109",
           "criterion": "Check-kind gate refuses on non-green quoting findings; --force records; nothing written on refusal.",
-          "phase": "ph-7002",
+          "phase": "ph-7102",
           "mode": "EXTEND",
           "tier": "computational",
           "proof": "Check-gate cases added to the existing flow gate suites (refuse/force/untrusted matrix).",
@@ -105,9 +105,9 @@
           "probe": "npx vitest run harness/cli/test/services/flow"
         },
         {
-          "id": "bp-7010",
+          "id": "bp-7110",
           "criterion": "Template/expander author bare-ordinal gates; pre-JIT departure refuses target-invalid.",
-          "phase": "ph-7002",
+          "phase": "ph-7102",
           "mode": "EXTEND",
           "tier": "computational",
           "proof": "Template/expander tests + the pre-JIT refusal pin.",
@@ -115,19 +115,19 @@
           "probe": "npx vitest run harness/cli/test/services/flow"
         },
         {
-          "id": "bp-7011",
+          "id": "bp-7111",
           "criterion": "1b plan emits plan.dd.json (no -plan.md); 5 tasks emits the task file + phase link; flow discovers both.",
-          "phase": "ph-7002",
+          "phase": "ph-7102",
           "mode": "BUILD",
           "tier": "computational",
-          "proof": "Phase-2 exit dry-run: scripted create→JIT→refuse→green→depart with the CLI as actor (tk-7047 builds it).",
+          "proof": "Phase-2 exit dry-run: scripted create→JIT→refuse→green→depart with the CLI as actor (tk-7147 builds it).",
           "state": "unchecked",
-          "probe": "BUILD: tk-7047 dry-run script; then `npx vitest run harness/cli/test/acts/dd-native-dryrun.int.test.ts` (proposed)"
+          "probe": "BUILD: tk-7147 dry-run script; then `npx vitest run harness/cli/test/acts/dd-native-dryrun.int.test.ts` (proposed)"
         },
         {
-          "id": "bp-7012",
+          "id": "bp-7112",
           "criterion": "Ship renders the AC/evidence table from the archive path; refuses an unclosed corpus.",
-          "phase": "ph-7003",
+          "phase": "ph-7103",
           "mode": "EXTEND",
           "tier": "computational",
           "proof": "Renderer goldens over the exemplar + refusal fixture; live PR click-through is the human tail.",
@@ -135,19 +135,19 @@
           "probe": "npx vitest run harness/cli/test/acts"
         },
         {
-          "id": "bp-7013",
+          "id": "bp-7113",
           "criterion": "dd-native root allow-list holds; archive git mv leaves the corpus doctor-clean and rewrites flow dd_links.",
-          "phase": "ph-7003",
+          "phase": "ph-7103",
           "mode": "BUILD",
           "tier": "computational",
-          "proof": "Archive-move fixture: git mv in a temp repo, doctor sweep + flow link resolution asserted (tk-7065 builds it).",
+          "proof": "Archive-move fixture: git mv in a temp repo, doctor sweep + flow link resolution asserted (tk-7165 builds it).",
           "state": "unchecked",
-          "probe": "BUILD: tk-7065 fixture; then `npx vitest run harness/cli/test/acts` (proposed)"
+          "probe": "BUILD: tk-7165 fixture; then `npx vitest run harness/cli/test/acts` (proposed)"
         },
         {
-          "id": "bp-7014",
+          "id": "bp-7114",
           "criterion": "Exemplar upgraded; docs/how/dd + baked docs cover the new surface; checks green; warn trio at baseline.",
-          "phase": "ph-7003",
+          "phase": "ph-7103",
           "mode": "EXISTS",
           "tier": "computational",
           "proof": "The repo's composed gate already proves this class end-to-end.",
@@ -155,49 +155,49 @@
           "probe": "just checks"
         },
         {
-          "id": "bp-7015",
+          "id": "bp-7115",
           "criterion": "Legacy markdown plans still detect, adopt, and resume.",
-          "phase": "ph-7002",
+          "phase": "ph-7102",
           "mode": "BUILD",
           "tier": "computational",
-          "proof": "Legacy-folder detection fixture (tk-7046 builds it).",
+          "proof": "Legacy-folder detection fixture (tk-7146 builds it).",
           "state": "unchecked",
-          "probe": "BUILD: tk-7046 fixture; then `npx vitest run harness/cli/test/services/flow` (proposed)"
+          "probe": "BUILD: tk-7146 fixture; then `npx vitest run harness/cli/test/services/flow` (proposed)"
         },
         {
-          "id": "bp-7016",
+          "id": "bp-7116",
           "criterion": "Every dd command this plan introduces is taught at the node and stage-module layers.",
-          "phase": "ph-7002",
+          "phase": "ph-7102",
           "mode": "ABSENT",
           "tier": "human-judgement",
-          "proof": "Orient output cases cover the instructions[] half mechanically; whether the teaching actually suffices is judged by the blind subject (bp-7018) and the dry-run reader check — inference, honestly.",
+          "proof": "Orient output cases cover the instructions[] half mechanically; whether the teaching actually suffices is judged by the blind subject (bp-7118) and the dry-run reader check — inference, honestly.",
           "state": "unchecked",
           "probe": "—"
         },
         {
-          "id": "bp-7017",
+          "id": "bp-7117",
           "criterion": "This plan's own corpus ends fully dogfooded: recorded refusal in telemetry, --complete green, evidence linked.",
-          "phase": "ph-7003",
+          "phase": "ph-7103",
           "mode": "BUILD",
           "tier": "computational",
-          "proof": "The self-hosting audit (tk-7067) + tk-7069's refusal-evidence capture; final proof is plan validate --complete on THIS plan.",
+          "proof": "The self-hosting audit (tk-7167) + tk-7169's refusal-evidence capture; final proof is plan validate --complete on THIS plan.",
           "state": "unchecked",
-          "probe": "BUILD: tk-7069 capture; then `harness plan validate docs/plans/070-dd-native-builder/plan.dd.json --complete` (proposed)"
+          "probe": "BUILD: tk-7169 capture; then `harness plan validate docs/plans/071-dd-native-builder/plan.dd.json --complete` (proposed)"
         },
         {
-          "id": "bp-7018",
+          "id": "bp-7118",
           "criterion": "A blind subject runs the new flow correctly, proven from telemetry, scored and ledgered.",
-          "phase": "ph-7003",
+          "phase": "ph-7103",
           "mode": "BUILD",
           "tier": "computational",
-          "proof": "The flow-eval scenario (tk-7068) reusing the shipped scorer/ledger; assertions per the research dossier reuse list.",
+          "proof": "The flow-eval scenario (tk-7168) reusing the shipped scorer/ledger; assertions per the research dossier reuse list.",
           "state": "unchecked",
-          "probe": "BUILD: tk-7068 scenario; then `harness flow-eval score --scenario dd-native-builder --session <pij-id>` (proposed)"
+          "probe": "BUILD: tk-7168 scenario; then `harness flow-eval score --scenario dd-native-builder --session <pij-id>` (proposed)"
         },
         {
-          "id": "bp-7019",
+          "id": "bp-7119",
           "criterion": "dd mutation verbs validate before write, rebuild siblings, mint collision-free ids.",
-          "phase": "ph-7001",
+          "phase": "ph-7101",
           "mode": "EXTEND",
           "tier": "computational",
           "proof": "Verb suites in the dd act tests: refusal fixture (invalid set writes nothing), sibling-rebuild assertion, mint collision test, manifest pin.",
@@ -232,7 +232,7 @@
         },
         {
           "id": "sensor-plan-validate",
-          "name": "plan-aware validator (grows the semantic layer in ph-7001)",
+          "name": "plan-aware validator (grows the semantic layer in ph-7101)",
           "command": "harness plan validate <plan.dd.json>",
           "dimension": "document health",
           "found_in": "harness/cli/src/acts/plan"

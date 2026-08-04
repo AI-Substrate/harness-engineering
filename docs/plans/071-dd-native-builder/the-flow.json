@@ -494,6 +494,39 @@
         "from": "review-1",
         "to": "phase-2"
       }
+    },
+    {
+      "id": "NOD-011",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-08-04T10:22:13.972Z",
+      "details": {
+        "node": "backpressure-1f1d8db67e6c",
+        "type": "chore"
+      }
+    },
+    {
+      "id": "UPD-018",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-04T10:22:14.387Z",
+      "details": {
+        "node": "backpressure-1f1d8db67e6c",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-010",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-04T10:22:14.770Z",
+      "details": {
+        "node": "backpressure-1f1d8db67e6c",
+        "from": "known",
+        "to": "done"
+      }
     }
   ],
   "nodes": [
@@ -895,6 +928,27 @@
       "created_at": "2026-08-04T08:18:21.559Z",
       "modified_at": "2026-08-04T08:18:21.559Z",
       "branch_of": "phase-3"
+    },
+    {
+      "id": "backpressure-1f1d8db67e6c",
+      "type": "chore",
+      "label": "Backpressure survey (071 re-basis)",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-08-04T10:22:13.972Z",
+      "modified_at": "2026-08-04T10:22:14.770Z",
+      "branch_of": "plan",
+      "comments": [
+        {
+          "at": "2026-08-04T10:22:14.387Z",
+          "text": "decision:done verdict:renumber-only-delta reason:070->071 rename sweep (ids 70xx->71xx, ordinal 71, path strings); coverage substance unchanged from the b4814527 survey — 18 bp rows renumbered bp-71xx, probes/sensors identical. basis_sha256:1f1d8db67e6c61217bc53dc2227a8dc38e9b757afa4fc53c215a0589642efa2a time:2026-08-04T10:22Z",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-04T10:22:14.770Z"
     }
   ],
   "title": "070 dd-native builder"

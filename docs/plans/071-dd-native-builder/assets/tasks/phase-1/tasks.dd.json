@@ -10,172 +10,172 @@
         "slug": "phase-1-dd-core",
         "ordinal": 1,
         "status": "in-progress",
-        "summary": "Phase-1 task detail for ph-7001 — hand-JIT dogfood fixture."
+        "summary": "Phase-1 task detail for ph-7101 — hand-JIT dogfood fixture."
       }
     },
     {
       "name": "summary",
-      "value": "Task detail for ph-7001. Each task row carries one done link to its own evidence list; task state is computed from that list, never typed.\n\nHand-authored as the JIT dogfood — this file is the fixture ph-7002's 5 tasks verb must reproduce. Section is named evidence under today's schema; the done_when rename is this phase's own deliverable (tk-7015)."
+      "value": "Task detail for ph-7101. Each task row carries one done link to its own evidence list; task state is computed from that list, never typed.\n\nHand-authored as the JIT dogfood — this file is the fixture ph-7102's 5 tasks verb must reproduce. Section is named evidence under today's schema; the done_when rename is this phase's own deliverable (tk-7115)."
     },
     {
       "name": "tasks",
       "value": [
         {
-          "id": "tk-7028",
+          "id": "tk-7128",
           "title": "dd read/write verb family: get / set / add / rm + CLI id minting",
-          "phase": "ph-7001",
+          "phase": "ph-7101",
           "state": "checked",
           "satisfies": [
-            "../../../plan.dd.json#acceptance_criteria/ac-7019"
+            "../../../plan.dd.json#acceptance_criteria/ac-7119"
           ],
-          "done": "#evidence/tk-7028",
+          "done": "#evidence/tk-7128",
           "success": "get returns values at any address kind; set/add/rm validate against the schema BEFORE writing and rebuild the sibling; add --mint <prefix> yields collision-free four-hex ids; surface manifest carries the four rows.",
           "notes": "FIRST TASK by Jordan's ruling — lands before everything else so the rest of this journey mutates dd through the CLI, never python. Born from the journey: DF-012 — agents were hand-editing .dd.json (dw-id collisions, stale siblings)"
         },
         {
-          "id": "tk-7011",
+          "id": "tk-7111",
           "title": "rel on link shapes: parse, allow-list, resolved-schema exposure",
-          "phase": "ph-7001",
+          "phase": "ph-7101",
           "state": "checked",
           "success": "Declarations round-trip rel; unknown rel accepted as ref; pin in declarations.test.ts/parse.test.ts.",
           "notes": "key finding: OD-8 allow-list",
           "satisfies": [
-            "../../../plan.dd.json#acceptance_criteria/ac-7001"
+            "../../../plan.dd.json#acceptance_criteria/ac-7101"
           ],
-          "done": "#evidence/tk-7011"
+          "done": "#evidence/tk-7111"
         },
         {
-          "id": "tk-7012",
+          "id": "tk-7112",
           "title": "Frozen-five registry: manifest row + surface test",
-          "phase": "ph-7001",
+          "phase": "ph-7101",
           "state": "checked",
           "success": "Manifest names the five rels; surface test counts them.",
           "satisfies": [
-            "../../../plan.dd.json#acceptance_criteria/ac-7001"
+            "../../../plan.dd.json#acceptance_criteria/ac-7101"
           ],
-          "done": "#evidence/tk-7012"
+          "done": "#evidence/tk-7112"
         },
         {
-          "id": "tk-7013",
+          "id": "tk-7113",
           "title": "Links bucket: shape treatment + renderer final-column",
-          "phase": "ph-7001",
+          "phase": "ph-7101",
           "state": "checked",
           "success": "Column appears only when populated; absent ⇒ byte-identical goldens.",
           "satisfies": [
-            "../../../plan.dd.json#acceptance_criteria/ac-7002"
+            "../../../plan.dd.json#acceptance_criteria/ac-7102"
           ],
-          "done": "#evidence/tk-7013"
+          "done": "#evidence/tk-7113"
         },
         {
-          "id": "tk-7014",
+          "id": "tk-7114",
           "title": "dd graph map / dd links rel labels + filter",
-          "phase": "ph-7001",
+          "phase": "ph-7101",
           "state": "checked",
           "success": "Edges labelled; --rel filter works.",
           "satisfies": [
-            "../../../plan.dd.json#acceptance_criteria/ac-7001",
-            "../../../plan.dd.json#acceptance_criteria/ac-7002"
+            "../../../plan.dd.json#acceptance_criteria/ac-7101",
+            "../../../plan.dd.json#acceptance_criteria/ac-7102"
           ],
-          "done": "#evidence/tk-7014"
+          "done": "#evidence/tk-7114"
         },
         {
-          "id": "tk-7015",
+          "id": "tk-7115",
           "title": "builder/* schema upgrades: done_when, satisfies, mandatory pressure, rel declarations",
-          "phase": "ph-7001",
+          "phase": "ph-7101",
           "state": "checked",
           "success": "Planted-bad fixtures fire per new ERROR class; good twins pass; schema test pins the rel map.",
           "notes": "key findings: inert-engine, exemplar scale",
           "satisfies": [
-            "../../../plan.dd.json#acceptance_criteria/ac-7001",
-            "../../../plan.dd.json#acceptance_criteria/ac-7003",
-            "../../../plan.dd.json#acceptance_criteria/ac-7004",
-            "../../../plan.dd.json#acceptance_criteria/ac-7005"
+            "../../../plan.dd.json#acceptance_criteria/ac-7101",
+            "../../../plan.dd.json#acceptance_criteria/ac-7103",
+            "../../../plan.dd.json#acceptance_criteria/ac-7104",
+            "../../../plan.dd.json#acceptance_criteria/ac-7105"
           ],
-          "done": "#evidence/tk-7015"
+          "done": "#evidence/tk-7115"
         },
         {
-          "id": "tk-7021",
+          "id": "tk-7121",
           "title": "Contradiction engine over rels",
-          "phase": "ph-7001",
+          "phase": "ph-7101",
           "state": "checked",
           "success": "Planted-bad per rel path fires; silent cells stay silent.",
           "satisfies": [
-            "../../../plan.dd.json#acceptance_criteria/ac-7006"
+            "../../../plan.dd.json#acceptance_criteria/ac-7106"
           ],
-          "done": "#evidence/tk-7021"
+          "done": "#evidence/tk-7121"
         },
         {
-          "id": "tk-7022",
+          "id": "tk-7122",
           "title": "Summary info line (non---complete)",
-          "phase": "ph-7001",
+          "phase": "ph-7101",
           "state": "checked",
           "success": "One info line, zero per-row warns mid-flight.",
           "notes": "carried LEAN — see open_questions",
           "satisfies": [
-            "../../../plan.dd.json#acceptance_criteria/ac-7007"
+            "../../../plan.dd.json#acceptance_criteria/ac-7107"
           ],
-          "done": "#evidence/tk-7022"
+          "done": "#evidence/tk-7122"
         },
         {
-          "id": "tk-7023",
+          "id": "tk-7123",
           "title": "--complete: per-row opens + orphan ACs + strict-zero green",
-          "phase": "ph-7001",
+          "phase": "ph-7101",
           "state": "checked",
           "success": "Green ⇔ 0/0; orphan fixture fires.",
           "satisfies": [
-            "../../../plan.dd.json#acceptance_criteria/ac-7007"
+            "../../../plan.dd.json#acceptance_criteria/ac-7107"
           ],
-          "done": "#evidence/tk-7023"
+          "done": "#evidence/tk-7123"
         },
         {
-          "id": "tk-7024",
+          "id": "tk-7124",
           "title": "--address scoped closure",
-          "phase": "ph-7001",
+          "phase": "ph-7101",
           "state": "checked",
           "success": "Phase scope excludes other phases' opens; AC scope shows the full proof tree.",
           "satisfies": [
-            "../../../plan.dd.json#acceptance_criteria/ac-7008"
+            "../../../plan.dd.json#acceptance_criteria/ac-7108"
           ],
-          "done": "#evidence/tk-7024"
+          "done": "#evidence/tk-7124"
         },
         {
-          "id": "tk-7025",
+          "id": "tk-7125",
           "title": "E450–E459 block + manifest row + 50-pin adjustment",
-          "phase": "ph-7001",
+          "phase": "ph-7101",
           "state": "checked",
           "success": "dd-surface.test.ts green with the new count; JSDoc discipline.",
           "notes": "key finding: E-blocks full",
-          "done": "#evidence/tk-7025"
+          "done": "#evidence/tk-7125"
         },
         {
-          "id": "tk-7026",
+          "id": "tk-7126",
           "title": "dd validate regression pin (byte-for-byte mechanical)",
-          "phase": "ph-7001",
+          "phase": "ph-7101",
           "state": "checked",
           "success": "Byte-identical behaviour on existing corpora.",
-          "done": "#evidence/tk-7026"
+          "done": "#evidence/tk-7126"
         },
         {
-          "id": "tk-7027",
+          "id": "tk-7127",
           "title": "Synthetic corpus factory + lifecycle-mutation suites",
-          "phase": "ph-7001",
+          "phase": "ph-7101",
           "state": "checked",
           "satisfies": [
-            "../../../plan.dd.json#acceptance_criteria/ac-7006",
-            "../../../plan.dd.json#acceptance_criteria/ac-7007",
-            "../../../plan.dd.json#acceptance_criteria/ac-7008",
-            "../../../plan.dd.json#acceptance_criteria/ac-7009"
+            "../../../plan.dd.json#acceptance_criteria/ac-7106",
+            "../../../plan.dd.json#acceptance_criteria/ac-7107",
+            "../../../plan.dd.json#acceptance_criteria/ac-7108",
+            "../../../plan.dd.json#acceptance_criteria/ac-7109"
           ],
-          "success": "Factory builds mock plans/phases/task files; suites drive tick/untick/block/human-skip/JIT-birth/basis-drift mutations asserting validate + gate verdicts at each step; shared by ph-7002 and ph-7003 test suites.",
+          "success": "Factory builds mock plans/phases/task files; suites drive tick/untick/block/human-skip/JIT-birth/basis-drift mutations asserting validate + gate verdicts at each step; shared by ph-7102 and ph-7103 test suites.",
           "notes": "Jordan's explicit unit-coverage expectation",
-          "done": "#evidence/tk-7027"
+          "done": "#evidence/tk-7127"
         }
       ]
     },
     {
       "name": "evidence",
       "value": {
-        "tk-7011": [
+        "tk-7111": [
           {
             "id": "dw-0111",
             "assertion": "Declarations round-trip a rel on single and array link shapes; resolved schema exposes it.",
@@ -192,7 +192,7 @@
             "state": "checked"
           }
         ],
-        "tk-7012": [
+        "tk-7112": [
           {
             "id": "dw-0121",
             "assertion": "The surface manifest names exactly the five built-in rels.",
@@ -204,7 +204,7 @@
             "state": "checked"
           }
         ],
-        "tk-7013": [
+        "tk-7113": [
           {
             "id": "dw-0131",
             "assertion": "A populated links bucket renders as a final Links column.",
@@ -216,7 +216,7 @@
             "state": "checked"
           }
         ],
-        "tk-7014": [
+        "tk-7114": [
           {
             "id": "dw-0141",
             "assertion": "dd graph map labels edges with their rel.",
@@ -228,7 +228,7 @@
             "state": "checked"
           }
         ],
-        "tk-7015": [
+        "tk-7115": [
           {
             "id": "dw-0151",
             "assertion": "done_when rename lands in builder schemas; dw- ids unchanged.",
@@ -250,7 +250,7 @@
             "state": "checked"
           }
         ],
-        "tk-7021": [
+        "tk-7121": [
           {
             "id": "dw-0211",
             "assertion": "Each rel path (proven_by/satisfies/derives) has a planted-bad fixture that FIRES.",
@@ -262,14 +262,14 @@
             "state": "checked"
           }
         ],
-        "tk-7022": [
+        "tk-7122": [
           {
             "id": "dw-0221",
             "assertion": "Mid-flight run emits one info summary line and zero per-row warnings.",
             "state": "checked"
           }
         ],
-        "tk-7023": [
+        "tk-7123": [
           {
             "id": "dw-0231",
             "assertion": "--complete green means exactly 0 errors and 0 warnings.",
@@ -281,7 +281,7 @@
             "state": "checked"
           }
         ],
-        "tk-7024": [
+        "tk-7124": [
           {
             "id": "dw-0241",
             "assertion": "A phase-scoped run excludes other phases' open items.",
@@ -293,7 +293,7 @@
             "state": "checked"
           }
         ],
-        "tk-7025": [
+        "tk-7125": [
           {
             "id": "dw-0251",
             "assertion": "E450-E459 allocated with JSDoc discipline; manifest row added.",
@@ -305,14 +305,14 @@
             "state": "checked"
           }
         ],
-        "tk-7026": [
+        "tk-7126": [
           {
             "id": "dw-0261",
             "assertion": "dd validate behaviour byte-identical on existing corpora (regression pin).",
             "state": "checked"
           }
         ],
-        "tk-7027": [
+        "tk-7127": [
           {
             "id": "dw-0271",
             "assertion": "The factory builds mock plans/phases/task files on demand.",
@@ -324,7 +324,7 @@
             "state": "checked"
           }
         ],
-        "tk-7028": [
+        "tk-7128": [
           {
             "id": "dw-0281",
             "assertion": "dd get resolves section, instance, and part addresses and returns the value (json + human).",

@@ -1,10 +1,10 @@
-# Flow-eval + telemetry deterministic-checking capability: history, current surface, and the tk-7068 reuse map
+# Flow-eval + telemetry deterministic-checking capability: history, current surface, and the tk-7168 reuse map
 
-> Research dossier for plan 070's close-out phase (ph-7003, tk-7068/tk-7069).
+> Research dossier for plan 070's close-out phase (ph-7103, tk-7168/tk-7169).
 > Produced 2026-08-04 by an independent research subagent (Opus), cross-checked
 > against the extension, scenarios, ledgers, and skill. Consumed by:
 > `plan.dd.json` key findings (refusal-evidence triple loss, SessionEvidence
-> exclusions) and the tk-7068 reuse list.
+> exclusions) and the tk-7168 reuse list.
 
 Repo root (all citations relative to it unless absolute): `/Users/jordanknight/substrate/harness-engineering-worktrees/s065-deterministic-documents`
 
@@ -40,7 +40,7 @@ No `docs/plans/archive/` exists. Plan 069 exists only on `origin/main` (`docs/pl
 | 067 | telemetry-sync-cost | Killed the 2-minute empty sync (18k git subprocesses) (`067/…plan.md:5-26`) | Shipped (PR #89) |
 | 068 | telemetry-read-path-honesty | Read path degrades-and-names, never throws/fabricates (`068/…plan.md:3-30`) | Shipped (PR #91) |
 | 069 | discipline-signal-capture | Fixed FX001 chain-head bug (97.1% of pushes mis-signatured); `ToolsEvent.control`; `checks` from all adapters (`origin/main:docs/plans/069-…plan.md:8-23`) | Shipped on origin/main (PR #92) — **not in this worktree** |
-| 070 | dd-native-builder | dd-native plans/tasks, `plan validate` semantic layer, check-kind gate — **carries tk-7068, the flow-eval scenario** | Draft; all tasks unchecked |
+| 070 | dd-native-builder | dd-native plans/tasks, `plan validate` semantic layer, check-kind gate — **carries tk-7168, the flow-eval scenario** | Draft; all tasks unchecked |
 
 ## 2. Current flow-eval extension surface (`.harness/extensions/flow-eval/`)
 
@@ -85,7 +85,7 @@ Four scenarios, 25 ledgered runs (all 2026-06-30 → 07-04): `md-to-pdf` (blind 
 
 **Did evals feed dd?** Two chains, one direct, one not:
 - **Direct eval→plan**: the 07-03 four-cohort batch produced plan 057's H-02 cost triangle (`docs/plans/057-flow-token-efficiency/research-dossier.md:40`, citing `scratch/evals/2026-07-03-md-to-pdf/README.md` — that scratch dir no longer exists; the ledgers are the surviving artifact).
-- **065's dd motivation was a manual plan-corpus survey**, not a flow-eval run (`docs/plans/065-deterministic-documents/research/survey-recent-plans.md:8-16,121-123`; original ask `initial-brief.md:10-34` has no eval provenance). The direction then **reverses**: the RULED decision that the flow-eval harness gains a dd-native scenario is `docs/plans/065-deterministic-documents/builder-tuning/notes.md` ("the flow evaluates its own delivery … Encoded ac-7018 + tk-7068").
+- **065's dd motivation was a manual plan-corpus survey**, not a flow-eval run (`docs/plans/065-deterministic-documents/research/survey-recent-plans.md:8-16,121-123`; original ask `initial-brief.md:10-34` has no eval provenance). The direction then **reverses**: the RULED decision that the flow-eval harness gains a dd-native scenario is `docs/plans/065-deterministic-documents/builder-tuning/notes.md` ("the flow evaluates its own delivery … Encoded ac-7118 + tk-7168").
 
 ## 5. Prompting inventory
 
@@ -94,18 +94,18 @@ Four scenarios, 25 ledgered runs (all 2026-06-30 → 07-04): `md-to-pdf` (blind 
 - Per-scenario `prompts/orchestrator.md` (gate-conduct policy, no stage nudges, spawn-inside-worktree mechanics — `live-testing/scenarios/md-to-pdf-flow/prompts/orchestrator.md:1-60`) and `prompts/subject.md` (the blind packet; assertions never leak, the mandate itself is the variable under test).
 - `docs/how/flow-conformance-eval.md` — full method doc incl. "Reading the numbers", analysis-report contract, scenario-authoring checklist (§ headings at lines 72-415).
 
-## 6. What ph-7003/tk-7068 can reuse vs must build
+## 6. What ph-7103/tk-7168 can reuse vs must build
 
 **Reuse as-is (nothing to reinvent):**
 1. The whole scorer/report/ledger/supersede machinery + `scaffold` (which also registers scenario `intent {reason,vibe}` per plan 051 AC-05).
 2. Scenario-bundle format + `placeholder_policy:"unknown"` + per-run `--resolve` for the subject-specific `plan validate` invocation.
-3. Assertion types covering most of ac-7018 today: `skill-called {skill:"builder"}`; `harness-verb-ran {verb:"dd validate"}` / `{verb:"plan validate"}` (full two-token verbs are live keys); `file-created {glob:"docs/plans/*/plan.dd.json"}` and the JIT task file; `forbidden-state {forbidden_glob:"…/*-plan.md", require_glob:"…/plan.dd.json"}` for "no -plan.md" (safety axis, caps); `file-content-matches {glob, pattern}` for `pressure:`/`satisfies` fields in the task dd (planted-friction A6-A9 is the exact precedent); `command-succeeds` resolved per-run to `harness plan validate --complete` (exit-0 = green gate) — this sidesteps the command_exit gap entirely.
+3. Assertion types covering most of ac-7118 today: `skill-called {skill:"builder"}`; `harness-verb-ran {verb:"dd validate"}` / `{verb:"plan validate"}` (full two-token verbs are live keys); `file-created {glob:"docs/plans/*/plan.dd.json"}` and the JIT task file; `forbidden-state {forbidden_glob:"…/*-plan.md", require_glob:"…/plan.dd.json"}` for "no -plan.md" (safety axis, caps); `file-content-matches {glob, pattern}` for `pressure:`/`satisfies` fields in the task dd (planted-friction A6-A9 is the exact precedent); `command-succeeds` resolved per-run to `harness plan validate --complete` (exit-0 = green gate) — this sidesteps the command_exit gap entirely.
 4. The blind-subject run mechanics: `/flow-eval-run` beats, spawn-inside-worktree, `--subject-*`/`--base-ref` honesty flags, worktree telemetry sync before teardown.
 5. The judged-lane registry (e.g. `explanation-matches-telemetry`) + render workflow.
 6. Base-ref discipline: pin a base that includes 070's own dd-gate code, or the telemetry lane goes blind (`instructions.md:214-219`).
 
 **Must build (the true delta):**
-1. **Refusal evidence** — "at least one gate refusal evidenced" is currently unprovable from telemetry: refusals write nothing (`flow-mutations.ts:126-127`), error codes are never captured (`outcome-events.ts:69-90`). Chosen shape (tk-7069): capture `envelope.error.code` in `command_exit` (fixed-vocab, privacy-precedented via `checks.gates`/`mark.verdict`) — refusal lands in telemetry, the nothing-written flow invariant survives. Fallback if descoped: "no `dd-gate-override` force + gate green", assertable today but not literally "refusal recorded".
+1. **Refusal evidence** — "at least one gate refusal evidenced" is currently unprovable from telemetry: refusals write nothing (`flow-mutations.ts:126-127`), error codes are never captured (`outcome-events.ts:69-90`). Chosen shape (tk-7169): capture `envelope.error.code` in `command_exit` (fixed-vocab, privacy-precedented via `checks.gates`/`mark.verdict`) — refusal lands in telemetry, the nothing-written flow invariant survives. Fallback if descoped: "no `dd-gate-override` force + gate green", assertable today but not literally "refusal recorded".
 2. **SessionEvidence widening** for `command_exit` (and any of `file`/`artifact`/`mark` a new assertion wants) — all captured but deliberately excluded at `session-evidence.ts:311-333`; the extension's mirror at `resolvers.ts:40-68` must stay lock-step (a CLI test asserts this).
 3. **"dd-surface mutations only"** ("never hand-edited generated md") — no existing assertion type distinguishes *who* wrote a file; nearest precedents: `command-succeeds` running a `dd build --check`-style drift verification, or a judged criterion cross-checking `file` events against dd verbs.
 4. A new scenario bundle + prompts pair (dd-native builder single-phase) and one line-level update each to `instructions.md` and `flow-eval-run/SKILL.md` (the skill's own note says to iterate it after each real run, `SKILL.md:132-133`).

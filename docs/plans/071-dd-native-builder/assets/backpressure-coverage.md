@@ -8,7 +8,7 @@
 > not a second copy.
 
 **Plan**: [plan.dd.json](../plan.dd.json)
-**Basis (plan SHA-256)**: b4814527f6326e385c902742039c830b4c112a3ef46d53bd4e4599b7f42aeb3f
+**Basis (plan SHA-256)**: 1f1d8db67e6c61217bc53dc2227a8dc38e9b757afa4fc53c215a0589642efa2a
 **Generated**: 2026-08-04
 **Certainty**: Partial
 
@@ -18,8 +18,8 @@
 
 Counts (behaviour/architecture rows): **1 RUN · 11 EXTEND · 5 BUILD · 1 ABSENT**
 Recommended next move (per-task lookup): **the BUILD gaps are already plan
-tasks** (tk-7047 dry-run, tk-7065 archive fixture, tk-7046 legacy fixture,
-tk-7067+tk-7069 self-hosting, tk-7068 flow-eval) — no separate Phase 0
+tasks** (tk-7147 dry-run, tk-7165 archive fixture, tk-7146 legacy fixture,
+tk-7167+tk-7169 self-hosting, tk-7168 flow-eval) — no separate Phase 0
 needed; propose the EXTEND cases inside each owning task's fixtures.
 
 Certainty rationale: 1 of 18 rows runs today (`just checks` covers the

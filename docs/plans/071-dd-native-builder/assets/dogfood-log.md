@@ -31,7 +31,7 @@
   need instance addressing. Loss: a gate-matrix row or key finding is not
   individually addressable.
 - **Landed**: `harness observe` (buffer id DL-001, kind difficulty) + plan
-  key finding + ph-7001 revisit note (register prefixes in schema
+  key finding + ph-7101 revisit note (register prefixes in schema
   declarations, or bless id-less rows as the pattern).
 
 ## DF-003 — full builder spec required 15 new schema sections; zero CLI change
@@ -50,22 +50,22 @@
   sight-unseen — object → field grid, array-of-objects → table, text →
   paragraph, enums validated. Schema-as-data held.
 - **Caveat (flagged to Jordan)**: the extension was drafted in one pass;
-  ph-7002 (tk-7041's formalization) owes it planted-bad fixtures per new
+  ph-7102 (tk-7141's formalization) owes it planted-bad fixtures per new
   section and a section-ordering test.
 - **Landed**: schema committed with the plan; plan key finding row 9.
 
 ## DF-004 — `satisfies` wired TODAY with shipped machinery
 
 - **When**: Jordan asked "tasks and ACs don't talk to each other yet?"
-- **What**: the edge didn't need ph-7001. Typed link arrays
+- **What**: the edge didn't need ph-7101. Typed link arrays
   (`{type:'array',items:{type:'link',target:…}}`) + bare-`#` same-doc
   addresses shipped in #87. Added `satisfies` to the tasks schema, inverted
   the coverage map onto task rows.
-- **Proof**: `dd graph map …#acceptance_criteria/ac-7011` → 3 incoming
-  edges (tk-7041/7042/7047) each with exact source location
+- **Proof**: `dd graph map …#acceptance_criteria/ac-7111` → 3 incoming
+  edges (tk-7141/7042/7047) each with exact source location
   (`$.sections[tasks].value[16].satisfies[0]`).
 - **Deferred honestly**: only the `rel: "satisfies"` annotation (machine
-  semantics) waits for ph-7001.
+  semantics) waits for ph-7101.
 - **Landed**: commit `1bed0dae`; the plan's own graph is traversable.
 
 ## DF-005 — ordinal collision: renumber is a real workflow
@@ -73,10 +73,10 @@
 - **What**: drafted as plan 069; `069-discipline-signal-capture` (PR #92)
   landed on main the same day. Renumbered: `git mv` folder, ordinal 70, all
   ids `ac-70xx`/`ph-70xx`/`tk-70xx`, text refs.
-- **Note for ph-7002**: `1b plan` dd-native must pick its ordinal at CREATE
+- **Note for ph-7102**: `1b plan` dd-native must pick its ordinal at CREATE
   time against origin/main, not the local checkout — same-day collisions
   are real.
-- **Landed**: this entry only (candidate prompting line for tk-7041).
+- **Landed**: this entry only (candidate prompting line for tk-7141).
 
 ## DF-006 — `harness flow apply` op vocabulary is undiscoverable
 
@@ -92,13 +92,13 @@
   (`flow-mutations.ts:1233-1252`) to learn the vocabulary.
 - **Landed**: `harness observe` candidate — an `ops` example in
   `flow apply --help` or a baked doc would have cost zero. NOT yet a plan
-  task; candidate for ph-7002's instructions[] work (tk-7044) since gate
+  task; candidate for ph-7102's instructions[] work (tk-7144) since gate
   authoring uses the same surface.
 
 ## DF-007 — hand-JIT of phase-1: the exact shape `5 tasks` must reproduce
 
 - **What**: performed the JIT expansion manually as the fixture for
-  tk-7042. The moves, in order:
+  tk-7142. The moves, in order:
   1. Seed task rows move **OUT** of `plan.dd.json#tasks` into
      `assets/tasks/phase-1/tasks.dd.json#tasks` — never duplicated (dual
      truth = contradiction risk the moment states diverge).
@@ -109,9 +109,9 @@
   4. The plan's phase row gains `tasks: "assets/tasks/phase-1/tasks.dd.json#tasks"`
      in the same stroke.
   5. Section is named `evidence` under today's schema — the `done_when`
-     rename is this phase's own deliverable (tk-7015); the file says so in
+     rename is this phase's own deliverable (tk-7115); the file says so in
      its meta.summary.
-- **Landed**: commit `a33fa4f7`; tk-7042's fixture.
+- **Landed**: commit `a33fa4f7`; tk-7142's fixture.
 
 ## DF-008 — dw-id mint collided; the validator caught it (19 dup errors)
 
@@ -119,7 +119,7 @@
   slice) produced identical ids across all 12 tasks. `dd validate` refused
   with per-location duplicate-id errors before anything shipped.
 - **Fix**: `tk-70XY` → `dw-0XY{i}` (unique 4-hex tails).
-- **Note for tk-7042**: the verb needs a deterministic, collision-free dw
+- **Note for tk-7142**: the verb needs a deterministic, collision-free dw
   mint — this exact bug class is what it must design against.
 - **Landed**: this entry; fix in `a33fa4f7`.
 
@@ -128,7 +128,7 @@
 - **What**: post-JIT validate warned the plan's new `tasks` link targeted an
   untracked file. Correct — the target existed on disk but not in git; the
   commit itself cleared it (post-commit validate 0/0).
-- **Note**: `1b plan`/`5 tasks` (tk-7041/7042) should expect this warning in
+- **Note**: `1b plan`/`5 tasks` (tk-7141/7042) should expect this warning in
   the authored-but-not-yet-committed window and NOT suppress it — it is the
   basis ledger's honesty about what a fresh clone would see.
 
@@ -138,10 +138,10 @@
   first, status second); nav sits at `plan` because the **backpressure
   chore is due** there — the pre-coding survey is the genuine next beat,
   and it will produce `backpressure.dd.json`, the toolbelt this plan's
-  evidence lists cite from ph-7001 onward.
+  evidence lists cite from ph-7101 onward.
 - **Chicken-and-egg resolved**: today's template has no dd_links (gate
-  authoring is ph-7002's deliverable). Per ac-7017 the flight plan
-  retrofits itself mid-journey — ph-7002 lands, THIS flow gains real gates
+  authoring is ph-7102's deliverable). Per ac-7117 the flight plan
+  retrofits itself mid-journey — ph-7102 lands, THIS flow gains real gates
   for its remaining nodes.
 
 ## DF-013 — prose sections authored without paragraph breaks = wall-of-text
@@ -155,9 +155,9 @@
   meta.summary were all single newline-free strings.
 - **Fix**: inserted `\n\n` at topic boundaries, `harness dd build` both
   siblings, validate 0/0.
-- **Landed**: observation DL-005; prompting requirement for tk-7041/7042
+- **Landed**: observation DL-005; prompting requirement for tk-7141/7042
   (authoring verbs must write paragraph-broken prose); candidate semantic
-  warn (long prose, zero breaks) for the ph-7001 validator — LEAN only, not
+  warn (long prose, zero breaks) for the ph-7101 validator — LEAN only, not
   ruled.
 
 ## DF-014 — required `summary` section: forced in schema, and it bit immediately
@@ -173,12 +173,12 @@
 - **Fix**: gave tasks.dd.json its own summary section (prose out of
   meta.summary, strapline left behind) — same move as the plan.
 - **Landed**: evidence that task files need their OWN schema
-  (`builder/tasks`), not a borrowed plan schema — feeds tk-7042's 5-tasks
+  (`builder/tasks`), not a borrowed plan schema — feeds tk-7142's 5-tasks
   design directly.
 
 ## DF-015 — my required-summary commit broke the repo corpus; the coder caught it
 
-- **When**: the coder measured the checks baseline before its tk-7015 commit
+- **When**: the coder measured the checks baseline before its tk-7115 commit
   (`git stash` → `dd doctor`) and found the tree ALREADY red: 2× E402 on the
   exemplar corpus + E422 render drift, all inherited from my commits.
 - **Root cause**: I flipped `required: true` on `summary` after validating
@@ -197,7 +197,7 @@
 - **Process debt owned**: I also committed schema.json inside the coder's
   declared fence mid-flight. Standing rule for the rest of phase 1: I do NOT
   touch `.dd/schemas/builder/**`; needs route through the coder.
-- **Landed**: this entry; prompting candidate for tk-7041 (schema edits
+- **Landed**: this entry; prompting candidate for tk-7141 (schema edits
   demand a doctor sweep pre-commit).
 
 ## Open dogfood threads (check before ship)
@@ -217,26 +217,26 @@
       explicit pathspec, confirm path+SHA to prime. Notify coder of the id
       mapping before its next phase touches the corpus.
 
-- [ ] DF-002 revisit lands in ph-7001 (prefix registry vs id-less pattern).
-- [ ] DF-003 schema extension gets its fixtures + ordering test (tk-7041).
-- [ ] DF-005 ordinal-at-create rule reaches tk-7041's prompting.
-- [ ] DF-006 ops-vocabulary doc reaches tk-7044's instructions[] work.
-- [ ] DF-008 collision-free dw mint reaches tk-7042's design.
+- [ ] DF-002 revisit lands in ph-7101 (prefix registry vs id-less pattern).
+- [ ] DF-003 schema extension gets its fixtures + ordering test (tk-7141).
+- [ ] DF-005 ordinal-at-create rule reaches tk-7141's prompting.
+- [ ] DF-006 ops-vocabulary doc reaches tk-7144's instructions[] work.
+- [ ] DF-008 collision-free dw mint reaches tk-7142's design.
 - [ ] Backpressure survey (flow chore) → `backpressure.dd.json` → evidence
-      lists gain `pressure` links (mandatory once tk-7015 lands).
+      lists gain `pressure` links (mandatory once tk-7115 lands).
 - [ ] **MIGRATE 070's tasks.dd.json** `evidence` → `done_when` + per-row
       `pressure` links (bp-70xx or `not-applicable`) — MINE, using the
-      tk-7028 writer verbs, as soon as tk-7015 lands (fence ruling A,
+      tk-7128 writer verbs, as soon as tk-7115 lands (fence ruling A,
       2026-08-04: coder ships a deprecated `evidence` alias; the alias DROP
-      rides tk-7061's exemplar migration commit in ph-7003).
+      rides tk-7161's exemplar migration commit in ph-7103).
 
 ## DF-011 — the reconcile pass and module contracts are dd-blind
 
 - **What**: builder's spine-reconcile reads `#### Phase Index` from markdown;
   the backpressure module's contract names `<slug>-plan.md`; the plan node's
   baked `instructions[]` speak `Status: READY` markdown. All satisfied in
-  *intent* by the dd plan, but every read is markdown-shaped. ph-7002's
-  prompting work (tk-7041/7044/7045) owns the re-point.
+  *intent* by the dd plan, but every read is markdown-shaped. ph-7102's
+  prompting work (tk-7141/7044/7045) owns the re-point.
 - **Also**: the `builder/backpressure` schema enums (`BUILD`,
   `human-judgement`) diverge from the module prose (`BUILDABLE`,
   `inferential`) — the schema refused the prose vocabulary; schema won.
@@ -248,9 +248,9 @@
   rebuild manual, ids hand-minted (the DF-008 collisions). Jordan spotted
   the pattern live ("you keep running python… is there something we can
   bake into harness?").
-- **Ruled**: `dd get/set/add/rm` + `--mint` — ac-7019, tk-7028, bp-7019 —
+- **Ruled**: `dd get/set/add/rm` + `--mint` — ac-7119, tk-7128, bp-7119 —
   and **built FIRST in phase 1** ("do it early on") so the journey itself
-  stops hand-editing the moment the verbs exist. tk-7043 (6/6a state
+  stops hand-editing the moment the verbs exist. tk-7143 (6/6a state
   mutation) explicitly depends on it.
 
 ## DF-016 — best-effort sibling regen = silent drift; same defect sighted in flow.ts
@@ -271,3 +271,20 @@
   is a refusal; a best-effort tail turns a writer verb into a drift factory
   with a green exit code. Best-effort is honest only for pure repair of an
   already-correct source (the transclusion watcher).
+
+## DF-017 — the 070→071 rename executed (prime's ordinal ruling)
+
+- **What**: full corpus rename at the phase-1 boundary per prime's collision
+  ruling. Mapping is mechanical: folder `070-dd-native-builder` →
+  `071-dd-native-builder`; ids `tk|ac|ph|bp-70xx → -71xx` (same two-hex
+  suffix); `dw-` ids carry no ordinal — untouched; `meta.ordinal` 70→71 via
+  `dd set`; siblings rebuilt; coverage Basis re-recorded
+  (`b4814527…` → `1f1d8db6…`) with a renumber-only-delta re-receipt on node
+  `backpressure-1f1d8db67e6c`. Historical surfaces stay 070 by design: flow
+  receipt comments (append-only), the phase-1 retro record, this log's own
+  earlier entries.
+- **Gap found**: `the-flow.json` root `title`/`provenance.plan_id` have NO
+  CLI setter (nav meta = session bag; set-node = node-scoped) and hand-editing
+  is forbidden — both stay at 070 until a root-meta verb lands (captured
+  DL-001 in the new buffer; candidate early-phase-2 task, flow wiring is in
+  scope).
