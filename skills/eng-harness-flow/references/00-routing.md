@@ -235,7 +235,7 @@ The router exposes its loop to host flows as a **closed set of five neutral life
 | `pre-coding` | spec settled, before building | fire | backpressure survey |
 | `coding` | mid-build, in flight | **silent** — one capture per call | in-flight capture (`harness observe`) |
 | `post-coding` | a phase / work-unit just ended | fire | per-phase retro drain |
-| `post-flight` | all phases + reviews are done — the host's pre-ship close-out (a ship may follow later, or never) | fire | terminal close-out — harvest + present improvements + encode |
+| `post-flight` | the whole plan / journey is complete | fire | terminal close-out — harvest + present improvements + encode |
 
 **`--event` seam → `--hook` mapping** (the six host seams alias onto the five hooks — `session-start` and `pre-implement` both open onto `pre-flight`):
 
@@ -374,7 +374,7 @@ All five entries pin the **same nine fields** (`hook`, `intent`, `run_at`, `kind
     {
       "hook": "post-flight",
       "intent": "close out the whole plan — harvest, present improvements, encode",
-      "run_at": "all phases + reviews done — the host's pre-ship close-out",
+      "run_at": "the whole plan / journey is complete",
       "kind": "fire",
       "invoke": "/eng-harness-flow --hook post-flight --json",
       "aliases": ["plan-complete"],
@@ -405,7 +405,7 @@ P → H: end-of-phase      (--event phase-end --plan-dir <p>)  → retro verb --
 P → H: plan-complete     (--event plan-complete)             → retro verb --harvest (buffer now empty)
 ```
 
-Each seam aliases onto a lifecycle hook — `session-start`/`pre-implement` → `pre-flight`, `post-spec` → `pre-coding`, `task-pause` → `coding`, `phase-end` → `post-coding`, `plan-complete` → `post-flight` (§ Lifecycle hooks).
+Each seam aliases onto a lifecycle hook — `session-start`/`pre-implement` → `pre-flight`, `post-spec` → `pre-coding`, `task-pause` → `coding`, `phase-end` → `post-coding`, `plan-complete` → `post-flight` (§ Lifecycle hooks). Note on `post-flight` timing: "the whole plan / journey is complete" means **the work is complete**, not that it shipped — the-flow fires it at its **pre-ship `post-flight` close-out stage** (all phases + reviews done, before the plan folder archives; a ship may follow later, or never). The hook's frozen wording is host-neutral; where in its own lifecycle a host places the close-out is the host's call.
 
 This is the inversion of `the-flow`'s hard-coded harness cues: instead of a parent hard-coding *which* harness verb to mention at each seam, it can simply call `/eng-harness-flow --hook <name>` (or the `--event <seam>` alias) and let this skill own the harness-routing logic in **one** place.
 
