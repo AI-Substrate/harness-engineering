@@ -245,10 +245,18 @@ function restoreFlowSource(fs: FsPort, path: string, previous: string | null): b
  * honest rather than merely loud.
  *
  * Of the two arms, the WRITE arm is the one under test (`flow-auto-render.test.ts`
- * plants an fs that refuses `.md`). The RENDER arm is a belt: `renderFlow` is pure
- * and contains no `throw`, so today it can only fail on a runtime error from a doc
- * that schema validation already rejects — it is caught anyway rather than left as
- * an uncaught exception the caller would report as a crash instead of a refusal.
+ * plants an fs that refuses `.md`, and one that half-writes it). The RENDER arm is
+ * a belt: `renderFlow` is pure and contains no `throw`, so today it can only fail
+ * on a runtime error from a doc that schema validation already rejects — it is
+ * caught anyway rather than left as an uncaught exception the caller would report
+ * as a crash instead of a refusal.
+ *
+ * The sibling is STAGED (`.md.tmp` then `rename`), the same crash-safe shape
+ * `writeFlowAtomic` gives the source. Writing the live `.md` directly made the
+ * refusal a liar in exactly one case, and it is the case that matters: a write
+ * that emits half its bytes before it fails leaves the source rolled back and the
+ * sibling truncated — drift, manufactured by the guard against drift. "It threw"
+ * never implied "it wrote nothing"; staging is what makes the two the same claim.
  */
 function persistSibling(
   fs: FsPort,
@@ -257,7 +265,15 @@ function persistSibling(
   previousSource: string | null,
 ): { ok: true; target: string } | FlowFailure {
   const target = `${sourcePath.replace(/\.json$/, '')}.md`;
+  const staged = `${target}.tmp`;
   const refuse = (stage: 'rendered' | 'written', err: unknown): FlowFailure => {
+    // Whatever the staged write managed to emit is scrap: drop it, so a refusal
+    // leaves no half-rendered file for the next reader (or `git status`) to find.
+    try {
+      fs.deleteFile(staged);
+    } catch {
+      /* best effort — the staged temp is not the promise, the two live files are */
+    }
     const restored = restoreFlowSource(fs, sourcePath, previousSource);
     const reason = err instanceof Error ? err.message : String(err);
     return fail(
@@ -277,7 +293,8 @@ function persistSibling(
   }
   try {
     fs.mkdirp(posixDirname(target));
-    fs.writeText(target, markdown);
+    fs.writeText(staged, markdown);
+    fs.rename(staged, target);
   } catch (err) {
     return refuse('written', err);
   }

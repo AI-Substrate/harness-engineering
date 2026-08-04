@@ -15,25 +15,62 @@ const EMPTY: VerbRegistry = { verbs: [], records: [] };
 const FLOW = '/repo/.harness/flows/demo.json';
 const RENDER = '/repo/.harness/flows/demo.md';
 
+/**
+ * An fs on which the sibling markdown cannot be written at all.
+ *
+ * The match covers `demo.md` AND `demo.md.<anything>` on purpose. The sibling is
+ * staged through a temp, so a fake that only knows the final name would let every
+ * write succeed and these controls would go green while proving nothing — the
+ * failure they exist to inject would simply stop happening. The fake models "this
+ * fs will not accept the sibling", not "this fs will not accept one filename".
+ */
 class MdFailFs extends FakeFs {
   /** Flipped ON only once the fixture is in the state a control needs. */
   failMd = true;
   override writeText(path: string, contents: string): void {
-    if (this.failMd && path.endsWith('.md')) throw new Error('read-only render');
+    if (this.failMd && /\.md(\.[^/]+)?$/.test(path)) throw new Error('read-only render');
+    super.writeText(path, contents);
+  }
+}
+
+/**
+ * The failure `MdFailFs` CANNOT model, and the reason it had to be joined by this
+ * one: a write that emits some bytes and only then gives way — ENOSPC part-way
+ * through, a truncating writer, a process killed mid-`write(2)`. An all-or-nothing
+ * throw leaves the sibling untouched by luck, so a control built from one proves
+ * nothing about a partial. This one leaves HALF a sibling on disk before it
+ * throws, which is the only way to see whether the refusal path stages its write
+ * or simply hopes the failure was clean.
+ *
+ * The match is deliberately `demo.md` AND `demo.md.<anything>`: the staging temp
+ * is exactly the byte-path a fix would introduce, so the same control keeps
+ * failing the write after the fix instead of quietly going green because the
+ * writes moved to a name it stopped looking at.
+ */
+class PartialSiblingFs extends FakeFs {
+  /** Flipped ON only once the fixture is in the state a control needs. */
+  failSibling = true;
+  override writeText(path: string, contents: string): void {
+    if (this.failSibling && /\.md(\.[^/]+)?$/.test(path)) {
+      super.writeText(path, contents.slice(0, Math.max(1, Math.floor(contents.length / 2))));
+      throw new Error('ENOSPC: no space left on device, write');
+    }
     super.writeText(path, contents);
   }
 }
 
 /**
  * The worse case: the sibling cannot be written AND neither can the rollback.
- * `.tmp` writes still land, so `writeFlowAtomic`'s temp-write + rename succeeds
- * and the failure lands where this control needs it — on the sibling, with the
- * restore then blocked too.
+ * The one write that must still land is the flow SOURCE's own temp, so
+ * `writeFlowAtomic`'s temp-write + rename succeeds and the failure lands where
+ * this control needs it — on the sibling, with the restore then blocked too.
+ * (Named by suffix rather than "not a temp": the sibling stages through a temp of
+ * its own now, and that one has to keep failing.)
  */
 class RollbackFailFs extends FakeFs {
   failFinalWrites = true;
   override writeText(path: string, contents: string): void {
-    if (this.failFinalWrites && !path.endsWith('.tmp')) throw new Error('read-only volume');
+    if (this.failFinalWrites && !path.endsWith('.json.tmp')) throw new Error('read-only volume');
     super.writeText(path, contents);
   }
 }
@@ -239,5 +276,106 @@ describe('dw-000f — a failed sibling render refuses the flow operation', () =>
     expect(created.code).toBe(0);
     expect(created.env.status).toBe('ok');
     expect(fs.readText(RENDER)).not.toBeNull();
+  });
+});
+
+/**
+ * PHASE3 fix round 1, finding 1 — a refusal that leaves a HALF-WRITTEN sibling is
+ * still drift.
+ *
+ * The controls above restore the source and call the contract kept. They can only
+ * see failures that throw before touching the sibling, so they were satisfied by
+ * a `persistSibling` that wrote the live `.md` directly: on a mid-write failure
+ * the source rolled back and the sibling stayed half-written — a `.json` and a
+ * `.md` that disagree, produced by the verb whose entire purpose is to make that
+ * state unreachable. "The write threw" is not the same claim as "the write left
+ * nothing behind", and only a partial-byte failure can tell them apart.
+ *
+ * So these assert the stronger contract: a refusal leaves BOTH files exactly as
+ * they were, and leaves no staging temp behind either.
+ */
+describe('dw-000f — a MID-WRITE sibling failure still leaves both files untouched', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('create leaves no partial sibling — not even the half the fs managed to write', async () => {
+    const fs = new PartialSiblingFs();
+    const deps = fakeDeps(fs);
+
+    const created = await runFlow(deps, ['flow', 'create', 'harness-loop', '--slug', 'demo']);
+
+    expect(created.code).not.toBe(0);
+    expect(created.env.error?.code).toBe('E302');
+    expect(fs.exists(FLOW)).toBe(false);
+    // Pre-fix this is the half-written render: present, truncated, and trusted.
+    expect(fs.exists(RENDER)).toBe(false);
+  });
+
+  it('a mutation restores the sibling BYTE-for-byte, not merely the source', async () => {
+    const fs = new PartialSiblingFs();
+    fs.failSibling = false;
+    const deps = fakeDeps(fs);
+    await runFlow(deps, ['flow', 'create', 'harness-loop', '--slug', 'demo']);
+    const sourceBefore = fs.readText(FLOW);
+    const siblingBefore = fs.readText(RENDER);
+    fs.failSibling = true;
+
+    const mutated = await runFlow(deps, [
+      'flow',
+      'status',
+      '--slug',
+      'demo',
+      '--node',
+      'boot',
+      '--to',
+      'in_progress',
+    ]);
+
+    expect(mutated.code).not.toBe(0);
+    expect(mutated.env.error?.code).toBe('E302');
+    expect(mutated.env.next_action).toContain('Nothing was changed');
+    expect(fs.readText(FLOW)).toBe(sourceBefore);
+    // The load-bearing assertion: pre-fix the sibling is truncated in place.
+    expect(fs.readText(RENDER)).toBe(siblingBefore);
+  });
+
+  it('the drift gate agrees the sibling survived — the refusal is provable, not asserted', async () => {
+    const fs = new PartialSiblingFs();
+    fs.failSibling = false;
+    const deps = fakeDeps(fs);
+    await runFlow(deps, ['flow', 'create', 'harness-loop', '--slug', 'demo']);
+    fs.failSibling = true;
+
+    await runFlow(deps, ['flow', 'event', 'test-run', '--slug', 'demo']);
+
+    // `flow render --check` is the repo's own drift authority: it, not this test's
+    // string compare, is what a reader would consult after the refusal.
+    fs.failSibling = false;
+    const checked = await runFlow(deps, ['flow', 'render', '--slug', 'demo', '--check']);
+    expect(checked.code).toBe(0);
+    expect((checked.env.data as { drift: boolean }).drift).toBe(false);
+  });
+
+  it('leaves no staging temp behind next to the flow — a refusal is not litter', async () => {
+    const fs = new PartialSiblingFs();
+    fs.failSibling = false;
+    const deps = fakeDeps(fs);
+    await runFlow(deps, ['flow', 'create', 'harness-loop', '--slug', 'demo']);
+    fs.failSibling = true;
+
+    await runFlow(deps, [
+      'flow',
+      'status',
+      '--slug',
+      'demo',
+      '--node',
+      'boot',
+      '--to',
+      'in_progress',
+    ]);
+
+    const strays = Object.keys(fs.files).filter((p) => p.includes('demo.md') && p !== RENDER);
+    expect(strays).toEqual([]);
   });
 });
