@@ -31,14 +31,14 @@ tools read the JSON, and neither has to trust prose.
 An element earns an **id** when it carries state or is a link target. Minted ids use a
 registered prefix and four lowercase hex digits — `ph-`, `tk-`, `ac-`, `bp-`, `lg-`, `dw-`, e.g.
 `tk-9f2a`. Ids are born once and are unique per file. An instance may instead carry an
-*explicitly named* id where meaning demands it (an evidence list named for the task it belongs
-to); the same born-once and uniqueness rules apply.
+*explicitly named* id where meaning demands it (a `done_when` assertion list named for the task
+it belongs to); the same born-once and uniqueness rules apply.
 
 Addresses are `file#name/id/name/id…` — one `#`, then alternating names and ids:
 
 ```
 docs/plans/065/tasks/phase-2/tasks.dd.json#tasks/tk-9f2a
-#phase-2-evidence/tk-9f2a/dw-a9c4      ← bare "#": same document, survives a rename
+#done_when/tk-9f2a/dw-a9c4             ← bare "#": same document, survives a rename
 ```
 
 ## Completion states and the gate
@@ -58,11 +58,11 @@ with their own `gate_terminal` sets — for any field, so "done" means what that
 means, not what a hard-coded list says.
 
 A task's completion **summary** is derived: it reads gate-terminal when every one of its
-evidence entries is. That summary is computed, never typed.
+`done_when` assertions is. That summary is computed, never typed.
 
 An explicit `state` field on the task itself is a **separate claim, and is not reconciled
-against the evidence it points at** — a task may say `checked` while its evidence says
-`unchecked`, and validation will not object. When the two disagree, trust the derived summary:
+against the assertions it points at** — a task may say `checked` while its `done_when` list says
+`unchecked`, and `dd validate` will not object (`harness plan validate` does, as a contradiction). When the two disagree, trust the derived summary:
 it is the one backed by rows. Prefer not to store both as competing authorities.
 
 ## Schema resolution
