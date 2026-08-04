@@ -440,3 +440,133 @@ overstated what the control tested, which is the same defect class as the envelo
   and asserts the envelope does NOT contain "BOTH surfaces were checked"
 - act: E100 after a thrown read → `details {ref_checked:false, resolution:'resolution_failed'}`
   so state 3 cannot silently re-collapse into state 1
+
+## FX001-R2 — enumerate the surface, then fix it
+
+Three passes over one error path, each finding new members of the same class (pass 1: two
+states collapsed into one envelope; pass 2: a third on the `catch` branch; pass 3: two more
+*inside the fix for the first three*). A fourth round patching exactly what pass 3 named
+would be followed by pass 4. So this round enumerates the whole surface first.
+
+### The rule the enumeration applies
+
+Two kinds of empty arrive at the same `catch` today, and they mean opposite things:
+
+- a **malformed RECORD** inside a readable surface → **skip it and keep reading.** The
+  documented fail-safe (AC-03), and correct: one corrupt line must not blind a session.
+- a **PORT READ FAILURE** — the git command itself failed → **`resolution_failed`.** Nothing
+  about that surface was established, so no miss over it may be reported as established.
+
+Skipping is still skipping. What changes is that the skip is now COUNTED, and a failure is no
+longer indistinguishable from an absence.
+
+### Every path to `evidence: null` or an empty fold
+
+`resolveSessionEvidence` and everything it calls. "must map to" is the resolution the path is
+required to produce; `→` marks what it produced before this round.
+
+| # | path | swallows | class | must map to | before |
+|---|---|---|---|---|---|
+| 1 | `pijFolder` → `env.home()` / `fs.readText` throws (facade ports; `session-evidence.ts:182`) | exception | port failure | `resolution_failed` (outer catch) | ✓ already |
+| 2 | `pijFolder` → state file absent / unparseable JSON (`:190`) | corrupt record | malformed | next candidate root; a miss stays a miss **over the roots it could resolve** | ✓ already, see BOUNDARY-3 |
+| 3 | `candidateRoots` → `proc.cwd()` throws | exception | port failure | `resolution_failed` (outer catch) | ✓ already |
+| 4 | `readBufferedSegments` → `fs.readdir` throws (facade) | exception | port failure | `resolution_failed` (outer catch) | ✓ already — the ONE throw source R1's state-3 control exercised |
+| 5 | `readBufferedSegments` → `fs.readText` returns `null` (`:295`) | unreadable file | malformed record | skip + **count** | ✗ count destroyed |
+| 6 | `readBufferedSegments` → `JSON.parse` throws (`:299`) | corrupt file | malformed record | skip + **count** | ✗ count destroyed |
+| 7 | `readFlushedWatermark` → absent / NaN watermark | absent marker | benign | `0` (nothing flushed) | ✓ already |
+| 8 | `telemetryRefsPresent` → `listTelemetryRefs` throws (`ref-source.ts:182`, pre-R2) | exception | **port failure** | `resolution_failed` | ✗ **reported `ref_unavailable` — "there was NO local namespace", a claim about a surface never read** |
+| 9 | `readRefSegments` → `listTelemetryRefs` throws (`:201`, pre-R2) | exception | **port failure** | `resolution_failed` | ✗ **empty map → `both_empty`** |
+| 10 | `readRefSegments` → `readShardTree(ref)` throws (`:211`, pre-R2) | exception | **port failure** | `resolution_failed` | ✗ **`continue` → `both_empty`; the reviewer executed this one** |
+| 11 | `segmentsFromBlobs` → `JSON.parse(line)` throws | corrupt rolled record | malformed | skip + **count** | ✗ count destroyed |
+| 12 | `segmentsFromBlobs` → `reconstructSegmentFromOtlpLogs` not ok | rejected by wire contract | malformed | skip + **count** | ✗ count destroyed |
+| 13 | `segmentsFromBlobs` → `decodeLooseSegment` returns `null` | corrupt loose segment | malformed | skip + **count** | ✗ count destroyed |
+| 14 | `readRefSegments` → a ref decoding to zero segments (`:216`) | whole tree rejected | malformed | `continue` + count | ✗ count destroyed |
+| 15 | `sessionIdOfRef` returns `null` | unnameable ref | benign | `continue` (unreachable in practice — `split('/').pop()`) | ✓ already |
+| 16 | ref tier join filter finds no matching `PIJ_SESSION_ID` | genuine empty join | **real miss** | `both_empty` | ✓ already — this is the ONLY honest `both_empty` |
+| 17 | `foldDurable` → union folds to ZERO segments after the watermark drop + join filter | supersession | **hollow answer** | a miss, never `resolved` | ✗ **returned `resolved` with `segments: 0`** |
+| 18 | `durableSegments` → ref unreachable while the BUFFER matched (`:579`) | ref half missing | degraded, stated | keep the buffer answer; `token_evidence.reason = flushed_segments_unreadable` | ✓ already correct |
+| 19 | `deps.gitRead === undefined` (the extension facade's shape) | no port | absence | `ref_unavailable` | ✓ already, see BOUNDARY-4 |
+| 20 | `resolveSessionEvidence` outer `catch` | anything unforeseen | port failure | `resolution_failed`, `ref_checked: false` | ✓ already (R1) |
+
+Rows 5–6, 8–14 and 17 are fixed this round; rows 1–4, 7, 15–16, 18–20 were already correct and
+are now pinned by controls rather than by reading.
+
+### What the fix does
+
+- **`GitReadPort` gains two OPTIONAL strict reads** — `listTelemetryRefsStrict` /
+  `readShardTreeStrict` — which THROW on a failed git command and still return `[]` for a
+  genuinely empty or absent tree. `ExecGitRead` already had the bit: `readFlatTree` returns
+  `ok | absent | failed` and `readTreeAt` flattened all three to `[]`. The fail-safe forms are
+  unchanged, so every other reader (sync, `session save`, the migration walk) keeps its
+  current behaviour; a port without the strict form degrades to the old read.
+- **`telemetryRefsPresent` → `telemetryRefNamespace`**, returning `present | absent |
+  unreadable`. The boolean could not hold the third answer, which is exactly how a failure
+  came to be reported as an absence.
+- **`readRefSegmentsOutcome`** returns `{ status: 'ok' | 'port_failed', segments, skipped }`.
+  A malformed record increments `skipped` and the read continues; a failed port read sets
+  `port_failed` and the read continues too — partial data is still returned, it simply may no
+  longer be reported as an established miss.
+- **`resolveSessionEvidence`** maps them: a `port_failed` ref read or an `unreadable`
+  namespace resolves `resolution_failed`; a zero-segment durable fold is no longer returned as
+  an answer; `records_skipped` rides on the outcome and reaches the E100 envelope
+  (`details.records_skipped`, plus a `next_action` sentence) whenever it is non-zero.
+- **Ordering matters and is pinned by a control**: the namespace probe runs FIRST, so letting
+  it throw would have sunk a perfectly good buffer read with it. A ref failure costs the ref
+  surface and nothing else.
+
+### Honest boundaries — where the enumeration stops
+
+1. **`ExecGitRead` was, until this round, the last word.** `listTelemetryRefs` returns `[]` on
+   any non-zero status and `readShardTree` returns `[]` on a failed tree walk, so in
+   PRODUCTION a git failure had already become an empty read one layer below the service —
+   the service could only ever have detected a *throwing* port (which is what the reviewer's
+   fakes did). The strict variants close this for the two calls the evidence path makes. They
+   do NOT close it for `readRefLanes` (the fleet path), which still uses the fail-safe reads.
+   That path reports lanes, not an established miss, so it is out of R2's scope — recorded
+   here rather than silently widened.
+2. **`FsPort` is fail-safe BY CONTRACT**: `readText` returns `null` and `readdir` returns `[]`
+   for missing *or unreadable* paths, and never throws. So a permission-denied buffer
+   directory is indistinguishable from an empty one at the port, and `both_empty`'s buffer
+   half can never be stronger than "the port reported nothing". Changing that contract
+   touches every fs consumer in the CLI; it is a finding for prime, not a fix I may make
+   inside this fence.
+3. **The locator can silently degrade** (row 2): a corrupt `~/.pij/<id>.json` drops the
+   worktree candidate, so the read may look only at `cwd`. `both_empty` therefore means "over
+   the roots I could resolve", not "over every root that exists". Bounded, stated, unfixed —
+   fixing it means reporting which roots were scanned, which is envelope surface I did not
+   widen without a ruling.
+4. **`getSessionEvidenceFromContext` builds deps with NO `gitRead`**, so any extension calling
+   the facade directly always gets `ref_unavailable` — the FX001 fallback is unreachable
+   through it. The flow-eval scorer is unaffected because it consumes the CLI act's envelope
+   (which has a real port), but a `VerbContext` carries no git port, so this cannot be fixed
+   from inside the facade. Finding for prime.
+
+### Controls — one per path, and each proved able to fail
+
+10 new controls (28 in the file, up from 18). Every one was run against a re-simulated pre-R2
+build (`port_failed` → `ok`, hollow-fold guard removed, `unreadable` mapping removed,
+`records_skipped` forced to 0): **8 of the 10 failed**, quoted below. The other two are
+regression guards that were already true and must stay true.
+
+```text
+× a FAILED ref enumeration is resolution_failed, never "no namespace"
+    AssertionError: expected 'ref_unavailable' to be 'resolution_failed'
+× a FAILED tree read is resolution_failed, never both_empty
+    AssertionError: expected 'both_empty' to be 'resolution_failed'
+× a durable union that folds to NOTHING is a miss, never a hollow answer
+    AssertionError: expected { Object (pij_session_id, harness_session_id, …) } to be null
+× a MALFORMED record inside a readable ref is skipped, not fatal        (records_skipped)
+× a MALFORMED buffer record is skipped; its readable sibling still answers
+× a miss over records it could not READ says how many it rejected
+× the act envelope reports a FAILED tree read as such (E100, resolution_failed)
+× the act envelope reports records it could not read
+✓ a failing git port must NOT destroy a good buffer answer          (regression guard)
+✓ a port WITHOUT the strict reads still works — degraded, never broken (regression guard)
+```
+
+The malformed-record controls are the ones that keep the fail-safe *alive*: a corrupt rolled
+record inside an otherwise readable tree is skipped and the good record still answers
+(`resolved`, `segments: 1`, `records_skipped: 1`). Making a malformed record fatal would have
+"fixed" rows 11–14 by breaking the behaviour they exist to protect.
+
+Full suite: 303 files / 4279 tests green.

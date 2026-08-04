@@ -5,7 +5,12 @@ import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { posixJoin, toPosix } from '../shared/posix-path.js';
 import { telemetryDir } from './cursor.js';
 import type { ChecksStatus } from './events.js';
-import { readRefSegments, telemetryRefsPresent } from './ref-source.js';
+import {
+  type RefNamespaceState,
+  readRefSegments,
+  readRefSegmentsOutcome,
+  telemetryRefNamespace,
+} from './ref-source.js';
 import type { Segment } from './segment.js';
 import { type TokenEvidence, transcriptEvidenceReason } from './token-evidence.js';
 import {
@@ -46,8 +51,14 @@ import {
  * buffer yields no segments for the session (absent OR flushed-markers-only), the read
  * falls back to the committed refs and folds them the same way, joined on the same
  * `PIJ_SESSION_ID` key. The evidence SAYS which surface answered (`source`) and
- * whether a ref namespace existed to check (`ref_checked`); `null` — the act's `E100`
- * — is reserved for BOTH surfaces being empty. Local refs only: never a fetch.
+ * whether a ref namespace existed to check (`ref_checked`). Local refs only: never a
+ * fetch.
+ *
+ * A `null` — the act's `E100` — is NOT one statement. It carries a
+ * {@link SessionEvidenceResolution} saying which of the misses it was, because a read
+ * that FAILED and a read that COMPLETED AND FOUND NOTHING send an operator to
+ * different places, and only one of them licenses "this session produced no
+ * telemetry" (R1/R2).
  *
  * NO CACHE — reads fresh on every call so a downstream fs resolver always observes
  * the latest buffer state.
@@ -129,10 +140,13 @@ export interface SessionEvidence {
   /**
    * Whether a `refs/harness-telemetry/*` namespace was visible locally to check.
    *
-   * `false` means the ref surface could not contribute — no git read port, or a clone
-   * that has never fetched the namespace. NOT the same as "the ref had nothing for
-   * this session": that is an empty join, and it still reports `true`. Read-only —
-   * this never triggers a network fetch.
+   * `false` means the ref surface could not contribute — no git read port, a clone that
+   * has never fetched the namespace, or a ref read that FAILED (R2). NOT the same as
+   * "the ref had nothing for this session": that is an empty join, and it still reports
+   * `true`. Read-only — this never triggers a network fetch.
+   *
+   * A boolean cannot separate "absent" from "unreadable"; when a MISS has to be
+   * explained, {@link SessionEvidenceOutcome.resolution} carries that distinction.
    */
   ref_checked: boolean;
 }
@@ -240,13 +254,27 @@ export interface BufferedSegment {
   seq: number;
 }
 
+/** A mutable tally of records the read had to REJECT (FX001 · R2). */
+export interface RecordSkips {
+  /** Buffer files listed but unreadable or unparseable — real records, not port errors. */
+  skipped: number;
+}
+
 /**
  * {@link readSegments} with each segment's buffer coordinates retained, so a reader can
  * tell the UNFLUSHED delta (seq > watermark) from seqs the prune has not got to yet
  * (seq <= watermark, whose bytes the committed ref already owns). Same scan, same
  * fail-safe skips.
+ *
+ * `skips` (optional, additive) collects how many buffer records were rejected, so a
+ * caller can tell an empty buffer from one whose every record was corrupt — the skip
+ * itself stays fail-safe (FX001 · R2).
  */
-export function readBufferedSegments(fs: EvidenceFs, telDir: string): BufferedSegment[] {
+export function readBufferedSegments(
+  fs: EvidenceFs,
+  telDir: string,
+  skips?: RecordSkips,
+): BufferedSegment[] {
   const out: BufferedSegment[] = [];
   const subs = fs
     .readdir(telDir)
@@ -262,11 +290,15 @@ export function readBufferedSegments(fs: EvidenceFs, telDir: string): BufferedSe
       .sort((a, b) => a.seq - b.seq);
     for (const f of seqs) {
       const raw = fs.readText(posixJoin(subDir, f.name));
-      if (raw === null) continue;
+      if (raw === null) {
+        if (skips) skips.skipped += 1; // listed but unreadable — a record, not an absence
+        continue;
+      }
       try {
         out.push({ seg: JSON.parse(raw) as Segment, session: sub, seq: f.seq });
       } catch {
         // a corrupt buffer file is skipped, never fatal (fail-safe; AC-03)
+        if (skips) skips.skipped += 1;
       }
     }
   }
@@ -592,13 +624,22 @@ function foldDurable(
  * `refs/harness-telemetry/*`. This joins those rolled segments by the SAME key the
  * buffer read uses — `captured_env.PIJ_SESSION_ID` — so a ref belonging to another
  * session can never satisfy the join. `null` when the ref surface holds nothing for
- * this pij id, which is what keeps `E100` meaning something.
+ * this pij id, which is what keeps `E100` meaning something — and `status` says whether
+ * that `null` is a real miss or a read that never happened (R2).
  */
-function foldFromRefs(pijSessionId: string, gitRead: GitReadPort): SessionEvidence | null {
-  const matched = [...readRefSegments(gitRead).values()]
+function foldFromRefs(
+  pijSessionId: string,
+  gitRead: GitReadPort,
+): { evidence: SessionEvidence | null; status: 'ok' | 'port_failed'; skipped: number } {
+  const read = readRefSegmentsOutcome(gitRead);
+  const matched = [...read.segments.values()]
     .flat()
     .filter((s) => s.captured_env?.[PIJ_SESSION_ENV] === pijSessionId);
-  return matched.length > 0 ? fold(pijSessionId, matched, 'ref') : null;
+  return {
+    evidence: matched.length > 0 ? fold(pijSessionId, matched, 'ref') : null,
+    status: read.status,
+    skipped: read.skipped,
+  };
 }
 
 /**
@@ -625,6 +666,13 @@ export interface SessionEvidenceOutcome {
   /** Whether a local `refs/harness-telemetry/*` namespace was there to consult. */
   ref_checked: boolean;
   resolution: SessionEvidenceResolution;
+  /**
+   * Records the read REJECTED as malformed (buffer files + rolled ref records).
+   * Skipping them is the documented fail-safe and stays that way — but a miss with
+   * `records_skipped > 0` is "I could not read what was there", not "there was
+   * nothing there", and only the count can tell those apart (R2).
+   */
+  records_skipped: number;
 }
 
 /**
@@ -639,42 +687,80 @@ export async function resolveSessionEvidence(
   deps: SessionEvidenceDeps,
   opts?: SessionEvidenceOpts,
 ): Promise<SessionEvidenceOutcome> {
+  const skips: RecordSkips = { skipped: 0 };
   try {
     // Is there a ref namespace at all? Answered once, up front, so the provenance is
-    // the same statement whichever tier ends up answering — including a miss.
-    const refChecked = deps.gitRead !== undefined && telemetryRefsPresent(deps.gitRead);
+    // the same statement whichever tier ends up answering — including a miss. THREE
+    // answers, not two: `unreadable` is the one that used to pass as `absent` (R2).
+    const namespace: RefNamespaceState =
+      deps.gitRead === undefined ? 'absent' : telemetryRefNamespace(deps.gitRead);
+    const refChecked = namespace === 'present';
 
     for (const telDir of candidateRoots(pijSessionId, deps, opts)) {
-      const matched = readBufferedSegments(deps.fs, telDir).filter(
+      const matched = readBufferedSegments(deps.fs, telDir, skips).filter(
         (e) => e.seg.captured_env?.[PIJ_SESSION_ENV] === pijSessionId,
       );
-      if (matched.length > 0) {
-        const evidence = foldDurable(pijSessionId, matched, telDir, deps);
-        evidence.ref_checked = refChecked;
-        return { evidence, ref_checked: refChecked, resolution: 'resolved' };
-      }
+      if (matched.length === 0) continue;
+      const evidence = foldDurable(pijSessionId, matched, telDir, deps);
+      // The durable union can come out EMPTY even though the buffer matched — every
+      // matched seq at/below the flush watermark, and the ref's copy of them not
+      // carrying the join key. A zero-segment evidence object is the hollow answer
+      // this fix exists to abolish; keep looking rather than dress it up as one (R2).
+      if (evidence.segments === 0) continue;
+      evidence.ref_checked = refChecked;
+      return { evidence, ref_checked: refChecked, resolution: 'resolved', ...tally(skips) };
     }
 
     // The buffer is absent or flushed-markers-only. The ref is not a consolation
     // prize here — after the first commit it is the ONLY place the session exists.
     if (deps.gitRead !== undefined) {
-      const evidence = foldFromRefs(pijSessionId, deps.gitRead);
-      if (evidence !== null) {
-        evidence.ref_checked = refChecked;
-        return { evidence, ref_checked: refChecked, resolution: 'resolved' };
+      const ref = foldFromRefs(pijSessionId, deps.gitRead);
+      skips.skipped += ref.skipped;
+      if (ref.evidence !== null) {
+        ref.evidence.ref_checked = refChecked;
+        return {
+          evidence: ref.evidence,
+          ref_checked: refChecked,
+          resolution: 'resolved',
+          ...tally(skips),
+        };
+      }
+      // The read did not complete — a git command failed. Whatever came back empty
+      // was never consulted, so no miss may be reported as established.
+      if (ref.status === 'port_failed') {
+        return {
+          evidence: null,
+          ref_checked: false,
+          resolution: 'resolution_failed',
+          ...tally(skips),
+        };
       }
     }
-    // A miss. WHICH miss is the whole point: "checked and empty" and "there was
-    // nothing to check" send a reader to two different places.
+    // A miss. WHICH miss is the whole point: "checked and empty", "there was nothing
+    // to check", and "the check itself failed" send a reader to three different places.
+    if (namespace === 'unreadable') {
+      return {
+        evidence: null,
+        ref_checked: false,
+        resolution: 'resolution_failed',
+        ...tally(skips),
+      };
+    }
     return {
       evidence: null,
       ref_checked: refChecked,
       resolution: refChecked ? 'both_empty' : 'ref_unavailable',
+      ...tally(skips),
     };
   } catch {
     // Nothing was established — not the buffer, not the ref. Say exactly that.
-    return { evidence: null, ref_checked: false, resolution: 'resolution_failed' };
+    return { evidence: null, ref_checked: false, resolution: 'resolution_failed', ...tally(skips) };
   }
+}
+
+/** Carry the rejected-record count onto an outcome (one spelling, every branch). */
+function tally(skips: RecordSkips): { records_skipped: number } {
+  return { records_skipped: skips.skipped };
 }
 
 /**

@@ -48,6 +48,25 @@ export interface GitReadPort {
    */
   readShardTree(ref: string): ShardBlob[];
   /**
+   * {@link listTelemetryRefs}, but a FAILED enumeration THROWS instead of returning
+   * `[]` (FX001 · R2). The fail-safe form cannot tell "this clone holds no telemetry
+   * refs" from "`for-each-ref` itself failed", so a reader that reports an
+   * ESTABLISHED miss — "checked, and empty" — has no way to know it established
+   * nothing. An empty namespace is still `[]`; only a failure throws.
+   *
+   * OPTIONAL: an implementation that genuinely cannot distinguish the two omits it,
+   * and callers fall back to {@link listTelemetryRefs} (fail-safe, less precise).
+   */
+  listTelemetryRefsStrict?(glob: string): string[];
+  /**
+   * {@link readShardTree}, but a FAILED tree read THROWS instead of returning `[]`
+   * (FX001 · R2). An ABSENT or genuinely EMPTY tree still returns `[]` — the
+   * distinction is failure vs emptiness, not presence vs absence.
+   *
+   * OPTIONAL, as {@link listTelemetryRefsStrict}.
+   */
+  readShardTreeStrict?(ref: string): ShardBlob[];
+  /**
    * Which of `refs` carry a blob at path `name` in their TIP tree — the CHEAP shape
    * probe (plan 067). Answers "is this ref already rolled?" (`manifest.json` present)
    * for the WHOLE set in ONE `cat-file --batch-check`: header-only, no content, no

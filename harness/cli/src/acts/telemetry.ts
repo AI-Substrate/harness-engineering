@@ -1032,14 +1032,24 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
             : outcome.resolution === 'ref_unavailable'
               ? 'The live buffer held nothing and there was NO local refs/harness-telemetry/* namespace to check (ref_checked: false) — this is NOT proof the ref surface is empty. Fetch the namespace (`git fetch <remote> "refs/harness-telemetry/*:refs/harness-telemetry/*"`) and retry, or check the id (`pij list`). Use --worktree <path> if it ran from a git worktree.'
               : 'Resolution FAILED before either surface could be established (ref_checked: false) — neither the buffer nor the ref was proven empty, so this is an absence of evidence, not evidence of absence. Re-run; if it persists, check read access to the worktree buffer and the local git refs.';
+        // A miss that had to REJECT records is not the same claim as a miss over an
+        // empty surface: something was there and could not be read (R2).
+        const skipped =
+          outcome.records_skipped > 0
+            ? ` ${outcome.records_skipped} record(s) were present but UNREADABLE and skipped, so this miss is partly unread rather than empty — inspect the buffer/ref records before concluding the session produced nothing.`
+            : '';
         const envelope = formatError(
           'telemetry',
           ErrorCodes.UNKNOWN,
           `no telemetry found for pij session '${pijSessionId}'`,
           deps.clock,
           {
-            details: { ref_checked: outcome.ref_checked, resolution: outcome.resolution },
-            next_action: nextAction,
+            details: {
+              ref_checked: outcome.ref_checked,
+              resolution: outcome.resolution,
+              ...(outcome.records_skipped > 0 ? { records_skipped: outcome.records_skipped } : {}),
+            },
+            next_action: `${nextAction}${skipped}`,
           },
         );
         const port: OutputPort =
@@ -1074,7 +1084,7 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
               emit: () => {
                 const gaps = evidence.gaps.length ? `, gaps: ${evidence.gaps.join(',')}` : '';
                 io.writers.out(
-                  `telemetry get: ${evidence.segments} segment(s), ${evidence.skill_order.length} skill(s), ${Object.keys(evidence.tools).length} tool(s)${gaps} [source: ${evidence.source}${evidence.ref_checked ? '' : ', ref namespace absent'}]\n`,
+                  `telemetry get: ${evidence.segments} segment(s), ${evidence.skill_order.length} skill(s), ${Object.keys(evidence.tools).length} tool(s)${gaps} [source: ${evidence.source}${evidence.ref_checked ? '' : ', ref surface not consulted'}]\n`,
                 );
               },
             };

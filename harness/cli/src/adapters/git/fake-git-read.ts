@@ -92,6 +92,20 @@ export class FakeGitRead implements GitReadPort {
   }
 
   /**
+   * The strict variants (FX001 · R2). An in-memory map cannot FAIL to be read — an
+   * absent ref is genuinely absent — so both delegate, and a control that needs a port
+   * failure overrides either form on the instance (the delegation makes overriding the
+   * plain method enough).
+   */
+  listTelemetryRefsStrict(glob: string): string[] {
+    return this.listTelemetryRefs(glob);
+  }
+
+  readShardTreeStrict(ref: string): ShardBlob[] {
+    return this.readShardTree(ref);
+  }
+
+  /**
    * Faithful to the real `cat-file --batch-check` probe: ONE call classifies the whole
    * set from the seeded TIP trees, WITHOUT reading any blob content — so it is recorded
    * as a single `refsWithBlob` call and never appears in {@link readRefs} (plan 067's
