@@ -1,6 +1,7 @@
 import { isAddressFailure, normalizeFilePath, parseAddress } from './address.js';
 import { COMPLETION_STATES, ID_PREFIXES, MINTED_ID_PATTERN } from './constants.js';
 import type { DdDoc, DdShape, ResolvedDdSchema } from './model.js';
+import { relOf } from './rel.js';
 import { isRecord } from './value.js';
 
 export type DdSeverity = 'ERROR' | 'WARN';
@@ -44,6 +45,12 @@ export interface DdLinkCell {
   raw: string;
   location: string;
   target?: string;
+  /**
+   * The declared relation, resolved through `relOf` so a cell always carries one.
+   * Consumers reason about MEANING here — never about the field name the cell
+   * happened to sit under.
+   */
+  rel: string;
 }
 
 interface ValidationContext {
@@ -184,7 +191,12 @@ function collectShapeLinks(
 ): void {
   if (shape.type === 'link') {
     if (typeof value === 'string') {
-      links.push({ raw: value, location, ...(shape.target && { target: shape.target }) });
+      links.push({
+        raw: value,
+        location,
+        ...(shape.target && { target: shape.target }),
+        rel: relOf(shape),
+      });
     }
     return;
   }

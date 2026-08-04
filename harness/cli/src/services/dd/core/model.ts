@@ -71,6 +71,16 @@ export interface DdShape {
   values?: readonly string[];
   enum?: string;
   target?: string;
+  /**
+   * The link RELATION this field's edges carry (`pressure`, `proven_by`,
+   * `satisfies`, `derives`, `ref`, or an unknown string that behaves as `ref`).
+   *
+   * Only meaningful on `type: 'link'` — including a link nested in an array's
+   * `items`, which is how `satisfies` (always an array) declares itself. The
+   * semantics live HERE and never on the field name, so every consumer that
+   * reasons about meaning reads one property instead of a list of blessed names.
+   */
+  rel?: string;
   gate_terminal?: readonly string[];
   allowAdditional?: boolean;
   /**

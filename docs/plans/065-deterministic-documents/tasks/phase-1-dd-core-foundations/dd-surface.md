@@ -53,6 +53,22 @@ string.
 | `dd link verify-basis` explicit re-verification mutation semantics | RESERVED — Phase 4 leaf decision. Read-only `<address> --sha <sha>` remains frozen; any mutation option is additive only. **GRANTED 2026-08-03 (PM renegotiation, P4 T007a)**: `--update <doc>` — no separate re-verify verb; re-verification IS verify-basis plus this explicit write flag, updating the recorded sha in the REFERENCING doc's ledger entry (both `live` and `pinned` modes; an entry's mode never changes as a side effect). Read-only form byte-identical when absent. |
 | `dd address validate --resolve` segment classification | RESERVED — Phase 4 resolves optional instance ids versus shape-part names against the schema. P1 parser `kind` values are positional hints only; the frozen command and option do not change. **RULED 2026-08-03 (PM renegotiation, P4 T007d)**: no new option — with `--resolve`, each segment is classified against the resolved schema shape + data as section \| part \| instance (shape-directed, never positional guessing). |
 
+## Frozen link relations
+
+**GRANTED 2026-08-04 (one-line renegotiation, plan 070 Phase 1)**: a schema may
+declare `rel` on any `link` shape (including an array's `items`). The built-in
+set is FROZEN at five; the namespace is OPEN — an unknown rel is accepted and
+behaves as `ref`. Extending the built-in set is a one-line renegotiation of this
+table, and `dd-surface.test.ts` counts the rows.
+
+| Relation | Meaning |
+|---|---|
+| `pressure` | this assertion names the instrument that checks it |
+| `proven_by` | this claim points at the record that evidences it |
+| `satisfies` | this work accounts for that acceptance criterion |
+| `derives` | this item's state is computed FROM the target |
+| `ref` | a plain reference, carrying no further semantics |
+
 ## Error allocation
 
 ### E400-E409 — core/validate
@@ -131,7 +147,6 @@ string.
 | E449 | `DD_GATE_LINK_MISSING` | gate-enabled node lacks link data |
 
 ### E450-E459 — dd writer verbs & the plan semantic layer
-
 **GRANTED 2026-08-04 (one-line renegotiation, plan 070 Phase 1)**: E430-E439 and
 E440-E449 are both complete allocations, so the writer family (`dd get/set/add/rm`)
 and `harness plan validate`'s semantic layer open the next block. Complete

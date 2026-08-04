@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ErrorCodes } from '../../src/output/error-codes.js';
+import { BUILTIN_RELS } from '../../src/services/dd/core/constants.js';
 
 const MANIFEST = readFileSync(
   new URL(
@@ -128,6 +129,15 @@ describe('dd frozen surface manifest', () => {
     for (const [name, value] of entries) {
       expect(MANIFEST).toContain(`| ${value} | \`${name}\``);
     }
+  });
+
+  it('freezes exactly the five built-in link relations, and fails on a sixth', () => {
+    // The manifest is the registry; the code follows it. Counting the rows is what
+    // makes adding a rel a DELIBERATE renegotiation rather than an import away.
+    const table = MANIFEST.split('## Frozen link relations')[1]?.split('## Error allocation')[0];
+    const rows = [...(table ?? '').matchAll(/^\| `([a-z_]+)` \|/gm)].map((match) => match[1]);
+    expect(rows).toStrictEqual([...BUILTIN_RELS]);
+    expect(rows).toHaveLength(5);
   });
 
   it('records the one-way extension reservations', () => {

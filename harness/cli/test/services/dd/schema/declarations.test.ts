@@ -221,3 +221,75 @@ describe('dd schema declarations', () => {
     expect(firstIssue(result).class).toBe('package-invalid');
   });
 });
+
+/**
+ * The OD-8 pin the key finding demanded (tk-7011 / dw-0112).
+ *
+ * `parseShape` is an ALLOW-LIST: a key it does not name is silently discarded,
+ * which is exactly how `valuesShape` was lost once before. So `rel` is pinned
+ * HERE, at the parse layer, and not in the renderer suite — a renderer test
+ * passes just as happily against a shape whose relation never survived
+ * declaration, and the contradiction engine would then ship inert on every real
+ * plan with a green build.
+ */
+describe('dd schema declarations — link relations', () => {
+  const withShape = (shape: unknown) => parse({ ...MINIMAL, sections: { body: { shape } } });
+
+  it('round-trips a rel on a single link shape', () => {
+    const result = withShape({ type: 'link', rel: 'proven_by', target: 'builder/log/section/e' });
+    expect(result.ok && result.declaration.schema.sections.body?.shape.rel).toBe('proven_by');
+  });
+
+  it('round-trips a rel on an ARRAY of links, declared on items', () => {
+    const result = withShape({
+      type: 'array',
+      items: { type: 'link', rel: 'satisfies', target: 'builder/plan/section/acceptance_criteria' },
+    });
+    expect(result.ok && result.declaration.schema.sections.body?.shape.items?.rel).toBe(
+      'satisfies',
+    );
+  });
+
+  it('round-trips a rel on a link nested inside an object and a valuesShape map', () => {
+    const result = withShape({
+      type: 'object',
+      fields: { pressure: { type: 'link', rel: 'pressure' } },
+      valuesShape: { type: 'link', rel: 'derives' },
+    });
+    expect(result.ok && result.declaration.schema.sections.body?.shape.fields?.pressure?.rel).toBe(
+      'pressure',
+    );
+    expect(result.ok && result.declaration.schema.sections.body?.shape.valuesShape?.rel).toBe(
+      'derives',
+    );
+  });
+
+  it('accepts an UNKNOWN rel — the built-in set is frozen, the namespace is open', () => {
+    const result = withShape({ type: 'link', rel: 'blesses' });
+    expect(result.ok).toBe(true);
+    expect(result.ok && result.declaration.schema.sections.body?.shape.rel).toBe('blesses');
+  });
+
+  it('refuses a rel that is not a non-empty string', () => {
+    for (const rel of [3, '', '   ', null]) {
+      const result = withShape({ type: 'link', rel });
+      expect(result.ok).toBe(false);
+      expect(firstIssue(result)).toMatchObject({
+        class: 'rel-invalid',
+        location: '$.sections.body.shape.rel',
+      });
+    }
+  });
+
+  it('refuses a rel on a shape that is not a link', () => {
+    const result = withShape({ type: 'string', rel: 'satisfies' });
+    expect(result.ok).toBe(false);
+    expect(firstIssue(result)).toMatchObject({ class: 'rel-invalid' });
+    expect(firstIssue(result).message).toContain('only meaningful on a link');
+  });
+
+  it('leaves a link with no rel undeclared, so `relOf` can answer for it', () => {
+    const result = withShape({ type: 'link' });
+    expect(result.ok && result.declaration.schema.sections.body?.shape.rel).toBeUndefined();
+  });
+});
