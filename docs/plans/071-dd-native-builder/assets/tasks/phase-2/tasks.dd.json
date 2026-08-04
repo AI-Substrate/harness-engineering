@@ -9,7 +9,7 @@
         "title": "Phase 2 — Wire the flow: check-kind gate + dd-native authoring",
         "slug": "phase-2-wire-the-flow",
         "ordinal": 2,
-        "status": "in-progress",
+        "status": "shipped",
         "summary": "Phase-2 task detail for ph-7102 — JIT-expanded at the phase boundary."
       }
     },
@@ -24,7 +24,7 @@
           "id": "tk-7131",
           "title": "DdLink check-variant model + sanitize + untrusted-reading rules",
           "phase": "ph-7102",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Hand-edited check links refused/dropped per F004/F007 discipline.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-7109"
@@ -35,7 +35,7 @@
           "id": "tk-7132",
           "title": "Check evaluator behind deps.gate; act wiring",
           "phase": "ph-7102",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Non-green refuses, findings quoted verbatim; nothing written; --force records.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-7109"
@@ -46,7 +46,7 @@
           "id": "tk-7133",
           "title": "Template/expander author gates (bare-ordinal addresses)",
           "phase": "ph-7102",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Fresh flow carries phase gates + last-review check gate; pre-JIT departure refuses target-invalid.",
           "notes": "key finding: static template",
           "satisfies": [
@@ -58,7 +58,7 @@
           "id": "tk-7134",
           "title": "Barrel/seam extension + dep-cruiser rule + seam test",
           "phase": "ph-7102",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Arch test refuses module-path reach.",
           "done": "#done_when/tk-7134"
         },
@@ -66,7 +66,7 @@
           "id": "tk-7135",
           "title": "Renderer/orient/rail surfacing for check gates",
           "phase": "ph-7102",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Badge + rail callout render; legend only when present.",
           "done": "#done_when/tk-7135"
         },
@@ -74,7 +74,7 @@
           "id": "tk-7141",
           "title": "1b plan authors plan.dd.json + sibling; dd-native root stated",
           "phase": "ph-7102",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Fresh plan validates 0/0 and renders; no -plan.md emitted.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-7111",
@@ -86,7 +86,7 @@
           "id": "tk-7142",
           "title": "5 tasks authors task file + phase-row link in one stroke",
           "phase": "ph-7102",
-          "state": "unchecked",
+          "state": "checked",
           "success": "JIT file validates; plan link lands in the same change.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-7111"
@@ -97,7 +97,7 @@
           "id": "tk-7143",
           "title": "6/6a mutate dd states; execution-log linkage",
           "phase": "ph-7102",
-          "state": "unchecked",
+          "state": "checked",
           "success": "State flips visible in dd; no hand-edited generated md.",
           "notes": "depends on tk-7128 (dd mutation verbs are the surface 6/6a mutates through)",
           "done": "#done_when/tk-7143"
@@ -106,7 +106,7 @@
           "id": "tk-7144",
           "title": "Node instructions[] baked (template + expander)",
           "phase": "ph-7102",
-          "state": "unchecked",
+          "state": "checked",
           "success": "orient at each node prints its dd commands.",
           "notes": "ac-7116 layer a",
           "satisfies": [
@@ -118,7 +118,7 @@
           "id": "tk-7145",
           "title": "Stage modules teach their seam's commands",
           "phase": "ph-7102",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Dry-run reader gap check passes.",
           "notes": "ac-7116 layer b",
           "satisfies": [
@@ -130,7 +130,7 @@
           "id": "tk-7146",
           "title": "Legacy read/adopt path retained + detection test",
           "phase": "ph-7102",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Legacy-folder fixture adopts/resumes.",
           "notes": "key finding: 63 markdown refs",
           "satisfies": [
@@ -142,7 +142,7 @@
           "id": "tk-7147",
           "title": "Joint-exit dry-run: create → JIT → refuse → green → depart",
           "phase": "ph-7102",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Scripted, CLI as actor; exercises ph-7102's refusal through ph-7103's artifacts; neither phase closes before this is green.",
           "notes": "PHASE EXIT for ph-7102 — the phase does not close without this green",
           "satisfies": [
@@ -154,7 +154,7 @@
           "id": "tk-7169",
           "title": "Refusal evidence: envelope.error.code into command_exit + SessionEvidence/resolvers widening (lock-step)",
           "phase": "ph-7102",
-          "state": "unchecked",
+          "state": "checked",
           "success": "A refused nav set lands in telemetry as command_exit with the gate E-code (fixed vocab, no free text); SessionEvidence exposes it and the flow-eval resolvers mirror stays lock-step (CLI test green); the flow file remains untouched on refusal (invariant pin unchanged).",
           "notes": "Research: refusal-evidence triple loss; force already durable via dd-gate-override",
           "satisfies": [
@@ -172,13 +172,13 @@
           {
             "id": "dw-0001",
             "assertion": "DdLink check variant parses and validates; a hand-edited or malformed check link is refused or dropped per the F004/F007 sanitize discipline (planted-bad fires).",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../../backpressure.dd.json#rows/bp-7109"
           },
           {
             "id": "dw-0002",
             "assertion": "Untrusted-reading rules pinned by test: gate evaluation never executes or trusts document-supplied text.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../../backpressure.dd.json#rows/bp-7109"
           }
         ],
@@ -186,13 +186,13 @@
           {
             "id": "dw-0003",
             "assertion": "A non-green check gate refuses departure quoting the validator findings verbatim; nothing is written on refusal.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../../backpressure.dd.json#rows/bp-7109"
           },
           {
             "id": "dw-0004",
             "assertion": "--force departs and records a defended override exactly as the completion gate does.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../../backpressure.dd.json#rows/bp-7109"
           }
         ],
@@ -200,13 +200,13 @@
           {
             "id": "dw-0005",
             "assertion": "A fresh flow from the template carries per-phase gates plus the last-review check gate, authored with bare-ordinal addresses.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../../backpressure.dd.json#rows/bp-7110"
           },
           {
             "id": "dw-0006",
             "assertion": "Pre-JIT departure (target document not yet born) refuses target-invalid rather than passing vacuously.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../../backpressure.dd.json#rows/bp-7110"
           }
         ],
@@ -214,7 +214,7 @@
           {
             "id": "dw-0007",
             "assertion": "Dep-cruiser rule + seam test refuse a module-path reach past the barrel (planted-bad import fires).",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable",
             "note": "instrument is the arch gate itself (dep-cruiser + seam test), not a backpressure row"
           }
@@ -223,7 +223,7 @@
           {
             "id": "dw-0008",
             "assertion": "Check-gate badge and rail callout render when a gate exists; absence renders byte-identical with no legend entry.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable",
             "note": "instrument is the flow render golden suite, not a backpressure row"
           }
@@ -232,13 +232,13 @@
           {
             "id": "dw-0009",
             "assertion": "1b plan authors plan.dd.json with built sibling; a fresh plan validates 0/0 and renders; no -plan.md is emitted.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../../backpressure.dd.json#rows/bp-7111"
           },
           {
             "id": "dw-000a",
             "assertion": "The dd-native root allow-list is stated and holds; the flow discovers the dd plan.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../../backpressure.dd.json#rows/bp-7113"
           }
         ],
@@ -246,7 +246,7 @@
           {
             "id": "dw-000b",
             "assertion": "The 5-tasks verb births a valid done_when-shaped task file with minted ids AND lands the phase-row tasks link in the same change.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../../backpressure.dd.json#rows/bp-7111"
           }
         ],
@@ -254,7 +254,7 @@
           {
             "id": "dw-000c",
             "assertion": "Stage 6/6a state flips go through the dd verbs, visible in source and rebuilt sibling; no hand-edited generated md.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../../backpressure.dd.json#rows/bp-7117"
           }
         ],
@@ -262,7 +262,7 @@
           {
             "id": "dw-000d",
             "assertion": "orient at each node prints that node's dd commands from baked instructions[] (template and expander).",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../../backpressure.dd.json#rows/bp-7116"
           }
         ],
@@ -270,7 +270,7 @@
           {
             "id": "dw-000e",
             "assertion": "Stage modules teach their seam's dd commands; the dry-run reader gap check passes.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../../backpressure.dd.json#rows/bp-7116"
           }
         ],
@@ -278,7 +278,7 @@
           {
             "id": "dw-000f",
             "assertion": "A legacy markdown plan folder fixture still detects, adopts, and resumes (detection test green).",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../../backpressure.dd.json#rows/bp-7115"
           }
         ],
@@ -286,7 +286,7 @@
           {
             "id": "dw-0010",
             "assertion": "Scripted joint-exit dry-run with the CLI as actor: create, JIT, refuse (findings quoted), green, depart — exercising the refusal through real artifacts.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../../backpressure.dd.json#rows/bp-7111"
           }
         ],
@@ -294,13 +294,13 @@
           {
             "id": "dw-0011",
             "assertion": "A refused nav set lands in telemetry as command_exit carrying the gate E-code (fixed vocabulary, no free text); the flow file is untouched on refusal.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../../backpressure.dd.json#rows/bp-7117"
           },
           {
             "id": "dw-0012",
             "assertion": "SessionEvidence exposes the refusal and the flow-eval resolvers mirror stays lock-step (CLI test green).",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../../backpressure.dd.json#rows/bp-7118"
           }
         ]

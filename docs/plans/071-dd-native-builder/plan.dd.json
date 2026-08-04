@@ -119,17 +119,17 @@
         {
           "id": "ac-7109",
           "claim": "Check-kind gate: a flow node may carry dd_link {check: plan-validate, address};\ndeparture evaluates the semantic validator live, refuses on non-green quoting the findings verbatim, records --force as a defended override exactly as the completion gate does;\nthe completion-kind gate is unchanged;\nboth kinds share the untrusted-reading discipline.",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "ac-7110",
           "claim": "Template authors the gates: the template + expander emit dd_links — each phase node gating on assets/tasks/phase-N/tasks.dd.json#tasks (bare ordinal — a stated dd-native amendment to #90's phase-N-<kebab-title> convention: a static template can bake an ordinal address before titles exist, and retitling a phase must never move its task-file address), the last review node carrying the check gate;\na pre-JIT departure refuses target-invalid, pinned by test.",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "ac-7111",
           "claim": "dd-native authoring: 1b plan emits plan.dd.json (+ built sibling plan.dd.md) as THE plan document — no -plan.md exists in a dd-native plan folder — and 5 tasks emits assets/tasks/phase-N/tasks.dd.json with done_when lists and satisfies edges, adding the phase row's tasks link in the same stroke;\nthe flow discovers both;\nthe scripted end-to-end dry-run (create → JIT → refuse → green → depart) runs as the wiring phase’s exit (ph-7102).",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "ac-7112",
@@ -139,7 +139,7 @@
         {
           "id": "ac-7113",
           "claim": "Layout & archive: the dd-native plan root holds plan.dd.json, plan.dd.md, the-flow.json, the-flow.md, plus original-ask.md where one exists (the stated amendment to #90's allow-list: the dd pair REPLACES <slug>-plan.md);\ntask files under assets/tasks/phase-N/;\nafter the post-flight git mv the corpus is doctor-clean AND the archive step rewrites the flow's repo-root-anchored dd_link addresses (fromPath null — they would otherwise silently go stale).",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "ac-7114",
@@ -149,22 +149,22 @@
         {
           "id": "ac-7115",
           "claim": "Legacy read path retained: dd-native is the only write path; the legacy markdown read/adopt/resume path stays unchanged — every in-flight markdown plan still detects, adopts, and resumes; pinned by a detection test over a legacy-folder fixture.",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "ac-7116",
           "claim": "Tooling taught where it's needed: the dd/plan command surface is documented at BOTH builder layers — (a) node instructions[] baked by template/expander so harness flow orient (re-read every turn) surfaces the right command positionally (phase nodes: scoped rehearsal + state updates;\nlast review: --complete, closure, verify-basis;\ngates print their own --force etiquette on refusal);\n(b) stage modules teach their seam's commands (5 tasks: authoring;\n6/6a: state flips + rehearsal;\n7: closure + --complete;\n8: PR render).\n\nA dry-run reader following only orient output + the current stage module never lacks a command this plan introduced.",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "ac-7117",
           "claim": "Self-hosting: by the final review, plan 071's own corpus is fully dogfooded — backpressure.dd.json and execution-log.dd.json exist with AC rows carrying pressure/proven_by links;\nper-phase task files exist with done_when lists (mandatory pressure honoured);\ntasks carry rel-typed satisfies;\nthe flight plan carries real dd_link gates exercised by the actual journey with the evidence RECORDED where each side lives: at least one genuine refusal captured in telemetry (command_exit carrying the gate E-code — refusals write nothing to the flow by pinned invariant) and any force as the existing dd-gate-override flow event;\nplan validate --complete runs green at the last review node's gate;\nship's PR renders this plan's own AC table.\n\nThe corpus is indistinguishable from one authored entirely by the finished feature — the plan is its own acceptance fixture.",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "ac-7118",
           "claim": "Flow-eval conformance: the flow-eval extension carries a single-phase dd-native builder scenario — a BLIND subject peer (pij) runs the new flow end-to-end on a scaffolded repo, and telemetry-scored assertions prove correct tool use: plan authored as plan.dd.json with no -plan.md, task file JIT-born with done_when + mandatory pressure + satisfies, at least one gate refusal evidenced in telemetry (command_exit gate E-code — tk-7169) followed by a pass, plan validate --complete green before ship-ward departure, states mutated through dd surfaces (never hand-edited generated md).\n\nScenario prompting/instructions updated to match; scored via harness flow-eval score and ledgered. Multi-phase deferred.",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "ac-7119",
@@ -453,7 +453,7 @@
             "EXIT: the end-to-end dry-run green"
           ],
           "key_risks": "Barrel discipline (flow reaches the validator through an exported seam, never past one). Prompt-ware cannot be compile-checked — the exit dry-run is the proof; keep every module change behind it.",
-          "state": "unchecked",
+          "state": "checked",
           "depends_on": [
             "ph-7101"
           ],

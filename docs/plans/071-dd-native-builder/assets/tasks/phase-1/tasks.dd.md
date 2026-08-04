@@ -12,7 +12,7 @@
 | title | Phase 1 — dd core: relations, buckets, and the semantic validator |
 | slug | phase-1-dd-core |
 | ordinal | 1 |
-| status | in-progress |
+| status | shipped |
 | complexity | — |
 | summary | Phase-1 task detail for ph-7101 — hand-JIT dogfood fixture. |
 | backpressure | — |
