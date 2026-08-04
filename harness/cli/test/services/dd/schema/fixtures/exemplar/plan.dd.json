@@ -1,0 +1,151 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Deterministic documents",
+        "slug": "deterministic-documents",
+        "ordinal": 65,
+        "status": "in-progress",
+        "complexity": "CS-5",
+        "summary": "Plans, coverage surveys and logs become data a gate can read.",
+        "backpressure": "backpressure.dd.json#rows",
+        "log": "execution-log.dd.json#entries"
+      }
+    },
+    {
+      "name": "goals",
+      "value": [
+        "Make done a computed fact instead of a self-report.",
+        "Give every assertion its own state and its own evidence link."
+      ]
+    },
+    {
+      "name": "non_goals",
+      "value": [
+        "Replacing markdown for humans \u2014 the .dd.md is generated."
+      ]
+    },
+    {
+      "name": "acceptance_criteria",
+      "value": [
+        {
+          "id": "ac-01a2",
+          "claim": "Every invalid fixture fails with its exact issue class.",
+          "state": "checked",
+          "pressure": "backpressure.dd.json#rows/bp-11c2",
+          "proven_by": "execution-log.dd.json#entries/lg-3301"
+        },
+        {
+          "id": "ac-02b4",
+          "claim": "A qualified schema resolves through all four roots, shadows visible.",
+          "state": "checked",
+          "pressure": "backpressure.dd.json#rows/bp-4e01",
+          "proven_by": "execution-log.dd.json#entries/lg-3307"
+        },
+        {
+          "id": "ac-03c6",
+          "claim": "The exemplar reads well to a human who has never seen dd.",
+          "state": "na",
+          "note": "human-judgement row; no mechanical proof applies",
+          "pressure": "backpressure.dd.json#rows/bp-77b3"
+        }
+      ]
+    },
+    {
+      "name": "phases",
+      "value": [
+        {
+          "id": "ph-1f00",
+          "title": "dd-core foundations",
+          "state": "checked",
+          "brief": "Model, parser, address grammar, validate engine, derived state, the frozen surface."
+        },
+        {
+          "id": "ph-2a10",
+          "title": "Schema layer & baked docs",
+          "state": "unchecked",
+          "brief": "Deep-scan resolution with precedence and loud clashes, declarable enums, baked docs.",
+          "depends_on": [
+            "ph-1f00"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-1a2b",
+          "title": "Schema package model + deep-scan resolution",
+          "domain": "harness-cli",
+          "phase": "ph-2a10",
+          "state": "checked",
+          "done": "#evidence/tk-1a2b"
+        },
+        {
+          "id": "tk-3c4d",
+          "title": "Baked docs + drift scripts",
+          "domain": "harness-cli",
+          "phase": "ph-2a10",
+          "state": "unchecked",
+          "done": "#evidence/tk-3c4d"
+        }
+      ]
+    },
+    {
+      "name": "evidence",
+      "value": {
+        "tk-1a2b": [
+          {
+            "id": "dw-11c2",
+            "assertion": "Precedence is doc-folder -> gitroot -> harness -> home.",
+            "state": "checked",
+            "proven_by": "execution-log.dd.json#entries/lg-3307"
+          },
+          {
+            "id": "dw-4e01",
+            "assertion": "A duplicate name inside one root is a hard error.",
+            "state": "checked",
+            "proven_by": "execution-log.dd.json#entries/lg-3307"
+          },
+          {
+            "id": "dw-77b3",
+            "assertion": "A shadowed copy is reported with its path, not swallowed.",
+            "state": "checked",
+            "pressure": "backpressure.dd.json#rows/bp-4e01"
+          }
+        ],
+        "tk-3c4d": [
+          {
+            "id": "dw-a9c4",
+            "assertion": "check:dd-docs exits 1 on injected drift.",
+            "state": "checked",
+            "proven_by": "execution-log.dd.json#entries/lg-3311"
+          },
+          {
+            "id": "dw-e210",
+            "assertion": "The how-to was re-read by a second human.",
+            "state": "human-skipped",
+            "receipt": "Jordan, 2026-08-03: skip the second read, the worked sample is the proof."
+          },
+          {
+            "id": "dw-b013",
+            "assertion": "Baked docs are byte-identical after a clean regenerate.",
+            "state": "unchecked"
+          }
+        ]
+      }
+    }
+  ],
+  "references": [
+    {
+      "path": "backpressure.dd.json",
+      "sha": "9419fb2c5dc21072dc3fb9afc11bcd0821f391db630958acdee00edcbee13a17",
+      "mode": "live"
+    }
+  ]
+}

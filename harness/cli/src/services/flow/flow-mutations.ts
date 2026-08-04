@@ -1,12 +1,19 @@
 import type { Clock } from '../../adapters/clock/clock-port.js';
 import { ErrorCodes } from '../../output/error-codes.js';
+import type { DdGateResult } from './flow-dd-gate.js';
+import { readingOf } from './flow-dd-gate.js';
 import {
   buildBuiltinEvent,
   buildComment,
+  buildManualEvent,
   type Chore,
+  type DdLink,
+  ddLinkGates,
+  ddLinkOf,
   type FlowDoc,
   type FlowNode,
   type Nav,
+  sanitizeDdLink,
 } from './flow-events.js';
 import { type FlowFailure, fail } from './flow-service.js';
 
@@ -25,9 +32,38 @@ import { type FlowFailure, fail } from './flow-service.js';
 
 export interface MutationDeps {
   clock: Clock;
+  /**
+   * The dd gate seam (plan 065 P6). ABSENT ⇒ no gate is ever evaluated, so every
+   * caller that has not wired dd — and every flow whose nodes carry no `dd_link` —
+   * behaves exactly as it did before the gate existed.
+   */
+  gate?: GateEvaluator;
 }
 
-export type MutationResult = { ok: true; doc: FlowDoc } | FlowFailure;
+/**
+ * The one thing the mutation layer needs from dd: given a node's link, is it
+ * complete? Injected rather than imported so this layer keeps no filesystem, and
+ * so the gate matrix can drive every row without a repository on disk.
+ */
+export interface GateEvaluator {
+  evaluate(link: DdLink): DdGateResult;
+}
+
+/**
+ * A mutation that SUCCEEDED but must not be reported as a clean `ok`.
+ *
+ * The only producer today is a `--force`d dd-gate override. Making it a degraded
+ * envelope with a REQUIRED `next_action` is the mechanism behind workshop-002's
+ * ruling: an agent cannot force a gate and receive an unremarkable success. The
+ * override is on the event log, and the envelope says whose decision it had to be.
+ */
+export interface MutationNotice {
+  status: 'degraded';
+  next_action: string;
+  data: Record<string, unknown>;
+}
+
+export type MutationResult = { ok: true; doc: FlowDoc; notice?: MutationNotice } | FlowFailure;
 
 /** The two write-time statuses that stamp `ran_at` (ws-002 §E5/state machine). */
 const RAN_AT_STATUSES = new Set(['done', 'blocked']);
@@ -58,15 +94,164 @@ function navOf(doc: FlowDoc): Nav {
   return doc.nav;
 }
 
+/**
+ * The agent-etiquette line every forced gate override carries (workshop-002
+ * Ruling 1, Jordan-ruled). Pinned by value in the gate matrix: `--force` is the
+ * override lever of last resort, and an agent may not reach for it on its own
+ * judgment. `human-skipped`/`na` on the ITEMS are the legitimate ways a gate
+ * passes without the work being done.
+ */
+const FORCE_ETIQUETTE =
+  "Record why departing was the human's decision — an agent may not force a dd gate on its own judgment (workshop-002). `human-skipped` or `na` on the individual items is the legitimate way a gate passes without the work.";
+
+/** Gate-failure reason → the E44x it answers to. Exhaustive by construction. */
+const GATE_FAILURE_CODES: Record<string, string> = {
+  'link-missing': ErrorCodes.DD_GATE_LINK_MISSING,
+  'target-invalid': ErrorCodes.DD_GATE_TARGET_INVALID,
+  'schema-unresolvable': ErrorCodes.DD_GATE_SCHEMA_UNRESOLVABLE,
+};
+
+/**
+ * The departure gate — the repo's first mechanical refusal (workshop-002 Ruling 1).
+ *
+ * It runs on the node being LEFT, not the one being entered: departure is the
+ * completion claim, so the gate protects the position you are standing on. The
+ * node you move TO is gated when you later leave IT.
+ *
+ * The evaluation is always LIVE. `dd_link.reading` is never consulted here — it is
+ * a display record, and consulting it would mean ticking the last box in a linked
+ * document did not open the gate (and un-ticking one did not close it). Both
+ * directions are pinned by the matrix.
+ *
+ * Returns `null` when there is nothing to gate, a `FlowFailure` when the gate
+ * refuses (the caller then writes NOTHING), or the recorded effects to apply.
+ */
+function departureGate(
+  doc: FlowDoc,
+  deps: MutationDeps,
+  force: boolean,
+): null | FlowFailure | { node: FlowNode; result: DdGateResult; forced: boolean } {
+  if (deps.gate === undefined) return null;
+  const fromId = doc.nav?.now;
+  if (typeof fromId !== 'string' || fromId.length === 0) return null;
+  const node = findNode(doc, fromId);
+  if (node === undefined) return null;
+  const link = ddLinkOf(node);
+  if (!ddLinkGates(link)) return null;
+
+  const result = deps.gate.evaluate(link);
+  if (result.ok && result.complete) return { node, result, forced: false };
+  if (force) return { node, result, forced: true };
+
+  if (!result.ok) {
+    return fail(
+      GATE_FAILURE_CODES[result.reason] ?? ErrorCodes.DD_GATE_EVALUATION_FAILED,
+      `node "${fromId}" gates on "${result.address}", which could not be evaluated: ${result.message}`,
+      `Fix the node's dd_link address (\`harness dd link resolve "${result.address}"\` shows what it resolves to), or pass --force to record a defended override. Nothing was written.`,
+    );
+  }
+  // Every incomplete item is named, never a count and never a truncated head: the
+  // whole point of a computed gate is that you do not have to go and look up what
+  // is outstanding. Each one carries its STATE, because `blocked` and `unchecked`
+  // send the reader to two different places — one is work to do, the other is
+  // someone to unblock — and the gate already knows which is which.
+  const items = result.items
+    .filter((item) => !item.terminal)
+    .map((item) => `${item.id} (${item.state})`)
+    .join(', ');
+  return fail(
+    ErrorCodes.DD_GATE_UNSATISFIED,
+    `node "${fromId}" gates on "${result.address}": ${result.incomplete.length} of ${result.total} items are not complete (${items}).`,
+    `Complete or state the listed items in ${result.path} (gate-terminal states: ${result.gate_terminal.join(', ')}), then retry. If departing anyway is the human's decision, re-run with --force to record a defended override. Nothing was written.`,
+  );
+}
+
+/**
+ * Record the live reading on the node so the PURE renderer can badge it (T005).
+ *
+ * `modified_at` is deliberately NOT bumped: a computed reading is machine
+ * bookkeeping, not an authored edit, and restamping it would make every nav move
+ * look like someone changed the node.
+ *
+ * An UNEVALUABLE result CLEARS the stored reading rather than leaving the old one
+ * standing (P6 review F002, "kill it everywhere"). This only ever runs on a path
+ * that is already writing — a `--force` departure through a gate that could not be
+ * read — and leaving a stale `⛨3/3 ✓` on a node the CLI has just said it cannot
+ * evaluate persists the same contradiction into the committed diagram, where the
+ * next reader meets it with no error message beside it. `basis_sha` survives: it is
+ * an anchor for a later drift check, not a completion claim.
+ *
+ * A REFUSAL never reaches here, so the "nothing was written" invariant is intact.
+ */
+function recordReading(node: FlowNode, result: DdGateResult, at: string): void {
+  const link = ddLinkOf(node);
+  if (link === undefined) return;
+  if (!result.ok) {
+    if (link.reading === undefined) return;
+    const { reading: _stale, ...kept } = link;
+    node.dd_link = kept;
+    return;
+  }
+  node.dd_link = { ...link, basis_sha: result.sha, reading: readingOf(result, at) };
+}
+
+/** Build the defended-override event + the degraded notice that carries the etiquette. */
+function overrideNotice(
+  doc: FlowDoc,
+  fromId: string,
+  to: string,
+  result: DdGateResult,
+  deps: MutationDeps,
+): MutationNotice {
+  const details: Record<string, unknown> = result.ok
+    ? {
+        node: fromId,
+        to,
+        // The repo-relative ADDRESS only, never the resolved absolute path. Flow
+        // documents are committed, so an absolute path would bake one machine's
+        // home directory into the repository — different on every checkout, noisy
+        // in every diff, and a username leak for nothing: `address` already says
+        // which document, portably.
+        address: result.address,
+        incomplete: [...result.incomplete],
+        terminal: result.terminal,
+        total: result.total,
+      }
+    : { node: fromId, to, address: result.address, reason: result.reason };
+  const description = result.ok
+    ? `--force override: departed "${fromId}" with ${result.incomplete.length} of ${result.total} dd gate items incomplete. ${FORCE_ETIQUETTE}`
+    : `--force override: departed "${fromId}" with an unevaluable dd gate (${result.reason}). ${FORCE_ETIQUETTE}`;
+  const event = buildManualEvent('dd-gate-override', doc.events, deps.clock, {
+    description,
+    details,
+  });
+  doc.events.push(event);
+  return {
+    status: 'degraded',
+    next_action: FORCE_ETIQUETTE,
+    data: { dd_gate_override: { event: event.id, ...details } },
+  };
+}
+
 /** `flow nav set --now X` — move position, firing `cursor-moved {from,to}` (reuses the ws-002 kind). */
-export function setNow(doc: FlowDoc, to: string, deps: MutationDeps): MutationResult {
+export function setNow(
+  doc: FlowDoc,
+  to: string,
+  deps: MutationDeps,
+  opts: { force?: boolean } = {},
+): MutationResult {
   const next = clone(doc);
   if (findNode(next, to) === undefined) return nodeNotFound(to);
+  const gated = departureGate(next, deps, opts.force === true);
+  if (gated !== null && 'ok' in gated) return gated; // refusal — nothing written
   const nav = navOf(next);
   const from = nav.now;
   nav.now = to;
   next.events.push(buildBuiltinEvent('cursor-moved', { from, to }, next.events, deps.clock));
-  return { ok: true, doc: next };
+  if (gated === null) return { ok: true, doc: next };
+  recordReading(gated.node, gated.result, deps.clock.nowIso());
+  if (!gated.forced) return { ok: true, doc: next };
+  return { ok: true, doc: next, notice: overrideNotice(next, from, to, gated.result, deps) };
 }
 
 /**
@@ -308,6 +493,8 @@ export interface NodeSpec {
   command?: string;
   /** Orthogonal chore marker (Phase 4 — assembled from `--chore-kind`/`--importance`). */
   chore?: Chore;
+  /** The dd gate link (plan 065 P6) — settable at creation through `apply --ops`. */
+  dd_link?: DdLink;
 }
 
 function materialize(spec: NodeSpec, now: string): FlowNode {
@@ -329,11 +516,12 @@ function materialize(spec: NodeSpec, now: string): FlowNode {
     ...(spec.zone !== undefined && { zone: spec.zone }),
     ...(spec.command !== undefined && { command: spec.command }),
     ...(spec.chore !== undefined && { chore: { ...spec.chore } }),
+    ...(spec.dd_link !== undefined && { dd_link: { ...spec.dd_link } }),
   };
 }
 
-/** The closed shared-core zone enum (ws-002); an invalid explicit `--zone` is rejected pre-write. */
-const ZONE_VALUES = new Set(['preflight', 'flight', 'postflight']);
+/** The closed shared-core zone enum (ws-002); an invalid explicit `--zone` is rejected pre-write. */ const ZONE_VALUES =
+  new Set(['preflight', 'flight', 'postflight']);
 function badZone(spec: NodeSpec): FlowFailure | null {
   if (spec.zone !== undefined && !ZONE_VALUES.has(spec.zone)) {
     return fail(
@@ -343,6 +531,32 @@ function badZone(spec: NodeSpec): FlowFailure | null {
     );
   }
   return null;
+}
+
+/**
+ * Refuse a `dd_link` that is not a `dd_link` — the mutation-boundary half of the
+ * untrusted-reading defence (P6 review F004).
+ *
+ * `dd_link` is the only node field a caller can hand in as an arbitrary nested
+ * object, and both of its recorded counts are interpolated into a mermaid label
+ * downstream. So it is checked HERE, before anything is written, not merely
+ * defended at the renderer: the file is the artifact people commit, review and
+ * diff, and letting `{"total": "1\\"] --> EVIL"}` land in it is a durable problem
+ * that a render-time escape only hides.
+ *
+ * `sanitizeDdLink` draws the AUTHORED/RECORDED distinction: a bad `address` or
+ * `gate` is a mistake the author must be told about (this `E108`), while a bad
+ * `basis_sha`/`reading` is dropped on the way in — nobody authored it, and the gate
+ * recomputes it live on the next departure.
+ */
+function badDdLink(value: unknown): FlowFailure | null {
+  if (value === undefined) return null;
+  if (sanitizeDdLink(value) !== null) return null;
+  return fail(
+    ErrorCodes.INVALID_ARGS,
+    'invalid dd_link — it needs a non-empty string "address", and "gate" (if present) must be a boolean.',
+    'Write {"address": "<path>.dd.json#<section>", "gate": true|false}. `basis_sha` and `reading` are recorded BY the gate — do not author them.',
+  );
 }
 
 /**
@@ -463,16 +677,23 @@ export function setNode(
   if (fields.zone !== undefined && zoneErr !== null) return zoneErr;
   const choreErr = badChore({ chore: fields.chore } as NodeSpec);
   if (fields.chore !== undefined && choreErr !== null) return choreErr;
+  // Same pre-write guard for `dd_link` (F004) — and the value that lands is the
+  // SANITIZED one, so a hand-supplied `reading` full of mermaid syntax never
+  // reaches the file even when the authored half is well-formed.
+  const linkErr = badDdLink(fields.dd_link);
+  if (linkErr !== null) return linkErr;
+  const safeFields =
+    fields.dd_link === undefined ? fields : { ...fields, dd_link: sanitizeDdLink(fields.dd_link) };
   // Idempotent no-op (AC-07): if every requested field already equals the node's
   // current value, return the doc UNCHANGED — no `modified_at` restamp, no
   // `node-updated` event. This makes re-flagging an already-correct chore (the
   // R-1 re-injection path) byte-identical. Validation above still runs first.
-  const unchanged = Object.entries(fields).every(
+  const unchanged = Object.entries(safeFields).every(
     ([key, value]) => key === 'id' || JSON.stringify(node[key]) === JSON.stringify(value),
   );
   if (unchanged) return { ok: true, doc };
   const applied: string[] = [];
-  for (const [key, value] of Object.entries(fields)) {
+  for (const [key, value] of Object.entries(safeFields)) {
     if (key === 'id') continue; // identity is immutable
     node[key] = value;
     applied.push(key);
@@ -948,6 +1169,12 @@ function specFrom(raw: Record<string, unknown>): NodeSpec {
   if (typeof raw.command === 'string') spec.command = raw.command;
   // The shape is validated at runtime by `badChore`; the cast only satisfies TS.
   if (isObject(raw.chore)) spec.chore = raw.chore as unknown as NodeSpec['chore'];
+  // Sanitized on the way in (F004) — `parseOp`'s `badDdLink` has already refused a
+  // malformed AUTHORED half, so this only ever strips an untrustworthy recorded one.
+  if (isObject(raw.dd_link)) {
+    const link = sanitizeDdLink(raw.dd_link);
+    if (link !== null) spec.dd_link = link;
+  }
   if (Array.isArray(raw.artifacts)) spec.artifacts = raw.artifacts as string[];
   if (Array.isArray(raw.instructions)) spec.instructions = raw.instructions as string[];
   if (typeof raw.user_input === 'string') spec.user_input = raw.user_input;
@@ -959,6 +1186,14 @@ const OP_CONTROL_KEYS = new Set(['op', 'id', 'after', 'before', 'branch_of', 're
 function fieldsFrom(raw: Record<string, unknown>): Record<string, unknown> {
   const fields: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(raw)) if (!OP_CONTROL_KEYS.has(k)) fields[k] = v;
+  // F004: the same sanitize the creating ops get. `parseOp` refuses a malformed
+  // authored link before this runs, so a `null` here is unreachable — the delete is
+  // the honest handling of "unreachable" rather than a cast that pretends otherwise.
+  if (fields.dd_link !== undefined) {
+    const link = sanitizeDdLink(fields.dd_link);
+    if (link === null) delete fields.dd_link;
+    else fields.dd_link = link;
+  }
   return fields;
 }
 
@@ -989,6 +1224,11 @@ function parseOp(raw: unknown, i: number): NormOp | FlowFailure {
     );
   }
   const id = raw.id;
+  // Every op that can carry a node field can carry a `dd_link` (F004) — checked
+  // once here, before the op is normalized, so no code path reaches a write with
+  // an unvalidated one.
+  const linkErr = badDdLink(raw.dd_link);
+  if (linkErr !== null) return linkErr;
   switch (raw.op) {
     case 'add':
     case 'insert': {

@@ -1,0 +1,46 @@
+{
+  "dd": {
+    "schema": "builder/execution-log"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Execution log \u2014 Phase 2",
+        "plan": "plan.dd.json#meta",
+        "phase": "ph-2a10"
+      }
+    },
+    {
+      "name": "entries",
+      "value": [
+        {
+          "id": "lg-3301",
+          "at": "2026-08-03T10:05:00+10:00",
+          "text": "Fixture corpus landed: nine worlds, every schema-layer failure class with a good twin.",
+          "links": [
+            "plan.dd.json#tasks/tk-1a2b"
+          ]
+        },
+        {
+          "id": "lg-3307",
+          "at": "2026-08-03T11:20:00+10:00",
+          "text": "Resolver green across the four-root precedence chain; shadows carry their paths.",
+          "links": [
+            "plan.dd.json#evidence/tk-1a2b",
+            "backpressure.dd.json#rows/bp-4e01"
+          ]
+        },
+        {
+          "id": "lg-3311",
+          "at": "2026-08-03T12:40:00+10:00",
+          "text": "check:dd-docs proved both ways \u2014 clean on a fresh generate, exit 1 on injected drift.",
+          "links": [
+            "plan.dd.json#evidence/tk-3c4d"
+          ]
+        }
+      ]
+    }
+  ],
+  "references": []
+}

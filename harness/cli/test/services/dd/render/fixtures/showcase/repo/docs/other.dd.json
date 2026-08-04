@@ -1,0 +1,14 @@
+{
+  "dd": { "schema": "render/showcase", "spec": "dd@1" },
+  "sections": [
+    {
+      "name": "meta",
+      "value": { "title": "Neighbour document", "status": "draft" }
+    },
+    {
+      "name": "tasks",
+      "value": [{ "id": "tk-z9y8", "title": "Upstream task", "state": "checked" }]
+    }
+  ],
+  "references": []
+}

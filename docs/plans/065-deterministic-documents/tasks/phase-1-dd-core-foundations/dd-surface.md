@@ -1,0 +1,127 @@
+# Deterministic Documents — Frozen P1 Surface
+
+**Plan**: 065 · **Freeze owner**: Phase 1 · **Status**: one-way extensible
+
+Phases 2-4 fill command bodies. They may not rename a command, change a frozen
+positional, remove an option, change the placeholder exit contract, or edit the
+E400-E449 allocation. A RESERVED row may gain options only through a one-line PM
+renegotiation.
+
+`--json` is the existing global harness output option and applies to every command.
+
+## Commands
+
+| Frozen signature | Owner | P1 placeholder |
+|---|---|---|
+| `dd validate <path> [--depth <n>] [--json]` | Phase 2: Schema layer & baked docs | `unconfigured`, exit 2; default depth `3` |
+| `dd schema list [--json]` | Phase 2: Schema layer & baked docs | `unconfigured`, exit 2 |
+| `dd schema show <name> [--json]` | Phase 2: Schema layer & baked docs | `unconfigured`, exit 2 |
+| `dd docs list [--json]` | Phase 2: Schema layer & baked docs | `unconfigured`, exit 2 |
+| `dd docs get <id> [--json]` | Phase 2: Schema layer & baked docs | `unconfigured`, exit 2 |
+| `dd build <path> [--check] [--json]` | Phase 3: Render, adapters & freshness | `unconfigured`, exit 2 |
+| `dd address generate <interior> [--path <path>] [--json]` | Phase 4: Links, ledger & doctor | `unconfigured`, exit 2 |
+| `dd address validate <address> [--resolve] [--json]` | Phase 4: Links, ledger & doctor | `unconfigured`, exit 2 |
+| `dd link resolve <address> [--json]` | Phase 4: Links, ledger & doctor | `unconfigured`, exit 2 |
+| `dd link verify-basis <address> --sha <sha> [--json]` | Phase 4: Links, ledger & doctor | `unconfigured`, exit 2 |
+| `dd links <target> [--json]` | Phase 4: Links, ledger & doctor | `unconfigured`, exit 2 |
+| `dd graph [--json]` | Phase 4: Links, ledger & doctor | `unconfigured`, exit 2 |
+| `dd doctor [--json]` | Phase 4: Links, ledger & doctor | `unconfigured`, exit 2 |
+
+Every placeholder `next_action` names its owning phase exactly. `dd validate`
+remains a placeholder until Phase 2 supplies the real convention-based schema
+resolver (OD-2).
+
+### Phase 1 leaf ruling — address generation inputs
+
+`generate` accepts one canonical alternating `name/id/...` interior and an
+optional `--path`. Omitting `--path` produces the bare-`#` same-document form.
+This is the smallest input that maps directly to the closed workshop-001 grammar;
+it avoids a second set of section/id flags that would merely reconstruct the same
+string.
+
+## RESERVED extension rows
+
+| Surface | Reservation |
+|---|---|
+| `dd doctor` scope/options | RESERVED — Phase 4 leaf decision. Options may be added; command name and zero frozen positionals may not change. **GRANTED 2026-08-03 (PM renegotiation, P4 T007b)**: `--path <dir>` — scopes the sweep ROOT SET to a subtree; radius stays infinite. |
+| `dd graph` emit/scope options | RESERVED — Phase 4 leaf decision. Options may be added; command name and zero frozen positionals may not change. **GRANTED 2026-08-03 (PM renegotiation, P4 T007c)**: `--path <dir>` — same root-set semantics as doctor, deliberately the same word. No emit option (global `--json` + human mermaid already cover both modes). |
+| `dd graph` subcommand namespace | RESERVED — extended for Phase 7. **GRANTED 2026-08-04 (PM renegotiation, P7 T001; requested by Jordan)**: `dd graph map <address>` — a NAMED SUBCOMMAND, not a positional on bare `dd graph`. Bare `dd graph` keeps zero positionals and byte-identical output, so the P4 freeze is intact rather than amended: `map` is a sibling verb under the same noun. Options granted with it: `--depth <n>` (default 3), `--max-nodes <n>` (default 20), `--direction in\|out\|both` (default both). **No new E-codes** — E430-E439 is full, and a bad seed address is already `E430 DD_LINK_UNRESOLVED` while a traversal failure is already `E436 DD_LINK_SCAN_FAILED`. Opening E450+ for this would be a block extension bought for nothing. |
+| `dd link verify-basis` explicit re-verification mutation semantics | RESERVED — Phase 4 leaf decision. Read-only `<address> --sha <sha>` remains frozen; any mutation option is additive only. **GRANTED 2026-08-03 (PM renegotiation, P4 T007a)**: `--update <doc>` — no separate re-verify verb; re-verification IS verify-basis plus this explicit write flag, updating the recorded sha in the REFERENCING doc's ledger entry (both `live` and `pinned` modes; an entry's mode never changes as a side effect). Read-only form byte-identical when absent. |
+| `dd address validate --resolve` segment classification | RESERVED — Phase 4 resolves optional instance ids versus shape-part names against the schema. P1 parser `kind` values are positional hints only; the frozen command and option do not change. **RULED 2026-08-03 (PM renegotiation, P4 T007d)**: no new option — with `--resolve`, each segment is classified against the resolved schema shape + data as section \| part \| instance (shape-directed, never positional guessing). |
+
+## Error allocation
+
+### E400-E409 — core/validate
+
+| Code | Name | Failure class |
+|---|---|---|
+| E400 | `DD_DOCUMENT_INVALID` | invalid JSON or dd envelope |
+| E401 | `DD_SCHEMA_UNRESOLVABLE` | document schema cannot resolve |
+| E402 | `DD_SCHEMA_SHAPE_INVALID` | data violates resolved shape |
+| E403 | `DD_ID_INVALID` | minted/explicit id rule violation |
+| E404 | `DD_ID_DUPLICATE` | duplicate per-file id |
+| E405 | `DD_ADDRESS_INVALID` | malformed locked grammar |
+| E406 | `DD_LINK_TYPE_MISMATCH` | cell target differs from declared type path |
+| E407 | `DD_ENUM_INVALID` | value outside declared enum |
+| E408 | `DD_STATE_NOTE_REQUIRED` | `blocked`/`na` note absent |
+| E409 | `DD_HUMAN_SKIP_RECEIPT_REQUIRED` | human-skip verbatim receipt absent |
+
+### E410-E419 — schema/docs
+
+| Code | Name | Failure class |
+|---|---|---|
+| E410 | `DD_SCHEMA_NOT_FOUND` | qualified schema absent |
+| E411 | `DD_SCHEMA_PACKAGE_INVALID` | malformed schema package |
+| E412 | `DD_SCHEMA_NAME_CONFLICT` | duplicate name in one root |
+| E413 | `DD_SCHEMA_SHADOWED` | lower-precedence duplicate |
+| E414 | `DD_SCHEMA_VERSION_UNSUPPORTED` | unsupported schema version |
+| E415 | `DD_SCHEMA_ENUM_INVALID` | invalid enum/gate-terminal declaration |
+| E416 | `DD_SCHEMA_SCAN_FAILED` | schema-root discovery failed |
+| E417 | `DD_SCHEMA_PATH_ESCAPE` | schema path escapes discovery root |
+| E418 | `DD_SCHEMA_WRITE_FAILED` | schema-owned artifact write failed |
+| E419 | `DD_DOCS_ENTRY_NOT_FOUND` | baked dd doc id absent |
+
+### E420-E429 — render/adapters
+
+| Code | Name | Failure class |
+|---|---|---|
+| E420 | `DD_RENDER_FAILED` | deterministic render failed |
+| E421 | `DD_RENDER_WRITE_FAILED` | sibling markdown write failed |
+| E422 | `DD_RENDER_DRIFT` | `build --check` byte drift |
+| E423 | `DD_ADAPTER_NOT_FOUND` | custom type adapter absent |
+| E424 | `DD_ADAPTER_LOAD_FAILED` | adapter load failed |
+| E425 | `DD_ADAPTER_RUNTIME_FAILED` | adapter threw |
+| E426 | `DD_ADAPTER_OUTPUT_INVALID` | adapter returned invalid output |
+| E427 | `DD_LIVE_BASIS_REFRESH_FAILED` | live ledger refresh failed |
+| E428 | `DD_WATCH_FAILED` | watcher/regeneration failed |
+| E429 | `DD_BUILD_INPUT_INVALID` | build input unreadable/unsupported |
+
+### E430-E439 — links/doctor
+
+| Code | Name | Failure class |
+|---|---|---|
+| E430 | `DD_LINK_UNRESOLVED` | address target cannot resolve |
+| E431 | `DD_LINK_TARGET_MISSING` | target file missing |
+| E432 | `DD_LINK_TARGET_UNTRACKED` | target file untracked |
+| E433 | `DD_LINK_PATH_ESCAPE` | target resolves outside repo |
+| E434 | `DD_BASIS_STALE` | recorded sha differs |
+| E435 | `DD_BASIS_VERIFY_FAILED` | basis verification/re-verification failed |
+| E436 | `DD_LINK_SCAN_FAILED` | inbound/outbound scan failed |
+| E437 | `DD_GRAPH_FAILED` | mermaid graph construction failed |
+| E438 | `DD_DOCTOR_FINDINGS` | doctor found ERROR-class issues |
+| E439 | `DD_DOCTOR_SCAN_FAILED` | doctor sweep machinery failed |
+
+### E440-E449 — flow gate
+
+| Code | Name | Failure class |
+|---|---|---|
+| E440 | `DD_GATE_UNSATISFIED` | linked gate incomplete |
+| E441 | `DD_GATE_TARGET_INVALID` | target not completable |
+| E442 | `DD_GATE_SCHEMA_UNRESOLVABLE` | gate schema cannot resolve |
+| E443 | `DD_GATE_BASIS_STALE` | gate basis stale |
+| E444 | `DD_GATE_EVALUATION_FAILED` | unclassified evaluation failure |
+| E445 | `DD_GATE_OVERRIDE_INVALID` | override malformed/not permitted |
+| E446 | `DD_GATE_STATE_INVALID` | item state outside schema vocabulary |
+| E447 | `DD_GATE_EVENT_WRITE_FAILED` | force event receipt write failed |
+| E448 | `DD_GATE_SURFACE_FAILED` | orient/rail/render gate output failed |
+| E449 | `DD_GATE_LINK_MISSING` | gate-enabled node lacks link data |

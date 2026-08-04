@@ -1,0 +1,19 @@
+{
+  "dd": { "schema": "test/plan", "spec": "dd@1" },
+  "sections": [
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-a1b2",
+          "title": "Build the core",
+          "state": "checked",
+          "dependency": "#tasks/tk-a1b2"
+        }
+      ]
+    },
+    { "name": "mode", "value": "high" }
+  ],
+  "references": []
+}
+

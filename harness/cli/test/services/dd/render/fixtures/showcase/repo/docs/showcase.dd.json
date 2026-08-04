@@ -1,0 +1,92 @@
+{
+  "dd": { "schema": "render/showcase", "spec": "dd@1" },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Render showcase",
+        "status": "ready",
+        "risk": "high",
+        "weight": 3,
+        "ratio": 0.5,
+        "released": false,
+        "summary": "Every render feature in one document.\nSecond line proves newline folding.",
+        "budget": 135,
+        "coverage": "#evidence/tk-a1b2"
+      }
+    },
+    {
+      "name": "goals",
+      "value": [
+        "Prove the banner, the heading anchors, and the visible ids.",
+        "Prove a `pipe | inside` text survives a table cell."
+      ]
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-a1b2",
+          "title": "Wire capture",
+          "state": "unchecked",
+          "note": "a pipe | and a <tag> inside a cell",
+          "spent": 90,
+          "tags": ["render", "core"],
+          "done": "#evidence/tk-a1b2"
+        },
+        {
+          "id": "tk-b2c3",
+          "title": "Prove drift",
+          "state": "checked",
+          "note": "landed",
+          "done": "#evidence/tk-b2c3",
+          "upstream": "../docs/other.dd.json#tasks/tk-z9y8"
+        },
+        {
+          "id": "tk-c3d4",
+          "title": "Hold the gate",
+          "state": "blocked",
+          "note": "waiting on P4",
+          "done": "#evidence/tk-c3d4",
+          "risk": "high"
+        }
+      ]
+    },
+    {
+      "name": "evidence",
+      "value": {
+        "tk-a1b2": [
+          {
+            "id": "dw-1111",
+            "assertion": "renderer emits the banner",
+            "state": "checked",
+            "proven_by": "#tasks/tk-a1b2"
+          },
+          { "id": "dw-2222", "assertion": "golden files are hand-authored", "state": "checked" },
+          { "id": "dw-3333", "assertion": "adapters load through jiti", "state": "checked" },
+          { "id": "dw-4444", "assertion": "drift is byte-exact", "state": "unchecked" },
+          { "id": "dw-5555", "assertion": "watcher contract proven", "state": "unchecked" }
+        ],
+        "tk-b2c3": [
+          { "id": "dw-6666", "assertion": "sibling write is atomic enough", "state": "checked" },
+          {
+            "id": "dw-7777",
+            "assertion": "human waived the perf claim",
+            "state": "human-skipped",
+            "receipt": "not measuring perf this phase"
+          }
+        ],
+        "tk-c3d4": [
+          { "id": "dw-8888", "assertion": "gate refuses", "state": "blocked", "note": "P6 owns it" }
+        ]
+      }
+    },
+    {
+      "name": "notes",
+      "value": "Free text renders as a block, not a table.\n\nBlank lines are preserved."
+    }
+  ],
+  "references": [
+    { "path": "../docs/other.dd.json", "sha": "sha-other", "mode": "live" }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "dd": { "schema": "test/plan", "spec": "dd@1" },
+  "sections": [
+    {
+      "name": "tasks",
+      "value": [
+        { "id": "tk-a1b2", "title": "Valid enum", "state": "checked" }
+      ]
+    },
+    { "name": "mode", "value": "low" }
+  ],
+  "references": []
+}
+

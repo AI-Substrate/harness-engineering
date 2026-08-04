@@ -5,6 +5,9 @@ import type { GitPort } from '../../adapters/git/git-port.js';
 import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { type Envelope, formatDegraded, formatOk } from '../../output/envelope.js';
 import { ErrorCodes } from '../../output/error-codes.js';
+import { parse as parseDd } from '../dd/core/parse.js';
+import { shouldExcludeFromSweep } from '../dd/core/walk.js';
+import { DD_SUFFIX, scanCorpus } from '../dd/links/scan.js';
 import type { ExtensionRecord } from '../extensions/contract.js';
 import type { VerbRegistry } from '../extensions/registry.js';
 import type { RecordRegistry, RecordTypeEntry } from '../record/registry.js';
@@ -470,6 +473,74 @@ function checkSensorWatcher(
 }
 
 /**
+ * Deterministic-document health, as the SHIPPED core sees it (AC-07's consumer
+ * half).
+ *
+ * `harness checks` is this repository's own unpublished extension, so a consumer
+ * repo gets nothing from it. This layer is what a consumer actually installs, and
+ * it answers the one dd question a doctor is allowed to answer: **is every
+ * committed document's rendered sibling present?** That is the breakage people
+ * really ship — a `.dd.json` edited and committed without its `.dd.md` — and it is
+ * knowable from `exists()` alone.
+ *
+ * It NEVER runs the sweep (P7): the deep answer is `harness dd doctor`, and the
+ * next_action says so rather than this row pretending to have asked. A repo with
+ * no dd documents stays ok and silent — the same "don't pester a repo the feature
+ * doesn't apply to" posture as the quality-gate and telemetry rows.
+ *
+ * The sweep's exclusion contract is honoured exactly, by asking dd-core rather
+ * than re-deriving it: a known-bad fixture and a `sweep_exclude` document are not
+ * missing a render, they are deliberately not participating (AC-15).
+ */
+function checkDd(fs: FsPort, proc: ProcessPort): LayerReport {
+  const name = 'dd-documents';
+  const cwd = toPosix(proc.cwd());
+  const scan = scanCorpus(fs, cwd);
+  if (scan.issues.length > 0) {
+    return {
+      name,
+      ok: false,
+      detail: `deterministic documents could not be enumerated: ${scan.issues[0]?.message ?? 'unknown'}`,
+      next_action:
+        'Fix the unreadable path, then re-run `harness doctor`. `harness dd doctor` gives the full sweep.',
+    };
+  }
+
+  const swept: string[] = [];
+  for (const path of scan.paths) {
+    const text = fs.readText(path);
+    if (text === null) continue;
+    const doc = parseDd(text);
+    if (Array.isArray(doc) || shouldExcludeFromSweep(path, doc)) continue;
+    swept.push(path);
+  }
+  if (swept.length === 0) {
+    return { name, ok: true, detail: `no ${DD_SUFFIX} documents here — dd not in use` };
+  }
+
+  const unrendered = swept.filter(
+    (path) => !fs.exists(`${path.slice(0, -DD_SUFFIX.length)}.dd.md`),
+  );
+  if (unrendered.length === 0) {
+    return {
+      name,
+      ok: true,
+      detail: `${swept.length} deterministic document(s), each with its rendered sibling — run \`harness dd doctor\` for the full sweep`,
+    };
+  }
+  return {
+    name,
+    ok: false,
+    detail: `${unrendered.length} of ${swept.length} deterministic document(s) have no rendered sibling: ${unrendered
+      .map((path) => posixRelative(cwd, path) || path)
+      .slice(0, 3)
+      .join(', ')}${unrendered.length > 3 ? ', …' : ''}`,
+    next_action:
+      'Regenerate with `harness dd build <path>` (or `harness plan render <plan>`) and commit the sibling beside its document. `harness dd doctor` reports the deeper findings this row cannot.',
+  };
+}
+
+/**
  * The core agent briefing ships baked into the CLI, so this row is always
  * present and always ok (plan 014 D2) — it exists to make the briefing channel
  * discoverable from doctor output.
@@ -596,6 +667,7 @@ export function buildDoctorReport(
     checkQualityGate(registry),
     checkSensorWatcher(deps.fs, deps.clock, deps.proc, registry),
     checkTelemetryHook(deps.fs, deps.proc, deps.git, deps.env),
+    checkDd(deps.fs, deps.proc),
     checkCoreInstructions(),
     checkRecordTypes(recordTypes),
   ];

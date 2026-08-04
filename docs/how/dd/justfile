@@ -1,0 +1,119 @@
+# Runnable examples for deterministic documents.
+#
+#   cd docs/how/dd && just            # list every example
+#   cd docs/how/dd && just graph-ac   # run one
+#
+# EVERY recipe cds to the repository root before running. That is not tidiness —
+# `dd` currently derives the repository root from the process working directory
+# (open defect FU-4), so a dd command run from this folder resolves its schema
+# roots here and fails. Running from the root is the documented operating rule,
+# and these recipes bake it in so you do not have to remember it.
+#
+# When FU-4 lands, the `cd` becomes redundant rather than wrong — leave it.
+
+root := justfile_directory() / "../../.."
+ex   := "docs/how/dd/exemplar"
+
+# List the examples (default).
+default:
+    @just --list --unsorted --justfile {{justfile()}}
+
+# ── Seeing the graph ─────────────────────────────────────────────────────────
+
+# The headline: everything flowing in and out of one acceptance-criteria row.
+graph-ac:
+    cd {{root}} && harness dd graph map "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201"
+
+# The same row, bounded hard — shows the truncation warning doing its job.
+graph-truncated:
+    cd {{root}} && harness dd graph map "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201" --max-nodes 8
+
+# Only what this row points AT (its proof chain).
+graph-out:
+    cd {{root}} && harness dd graph map "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201" --direction out
+
+# Only what points AT this row (who depends on it).
+graph-in:
+    cd {{root}} && harness dd graph map "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201" --direction in
+
+# Reach further, and allow more nodes.
+graph-deep:
+    cd {{root}} && harness dd graph map "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201" --depth 4 --max-nodes 40
+
+# A row in the self-contained corpus — links reach across folders.
+graph-custom:
+    cd {{root}} && harness dd graph map "{{ex}}/custom-render/release.dd.json#gates/gt-0101"
+
+# The whole corpus as a mermaid diagram. stdout is ONLY the diagram, so:
+#   just mermaid > corpus.mmd
+mermaid:
+    @cd {{root}} && harness dd graph --path {{ex}}
+
+# ── Checking documents ───────────────────────────────────────────────────────
+
+# Validate one document and everything it links to, three hops out.
+validate:
+    cd {{root}} && harness dd validate {{ex}}/plan.dd.json --depth 3
+
+# Validate the document alone, ignoring what it links to.
+validate-shallow:
+    cd {{root}} && harness dd validate {{ex}}/plan.dd.json --depth 0
+
+# Sweep every dd document in the repository.
+doctor:
+    cd {{root}} && harness dd doctor
+
+# Are the generated .dd.md siblings in sync with their .dd.json sources?
+drift:
+    cd {{root}} && harness dd build {{ex}}/plan.dd.json --check
+
+# Regenerate every .dd.md in the corpus.
+build:
+    cd {{root}} && for f in plan backpressure execution-log tasks/phase-2/tasks custom-render/release; do \
+        harness dd build {{ex}}/$f.dd.json; \
+    done
+
+# ── Schemas and adapters ─────────────────────────────────────────────────────
+
+# Every schema that resolves, and any shadowed duplicates.
+schemas:
+    cd {{root}} && harness dd schema list
+
+# One schema in full — its path, shapes, enums and gate-terminal set.
+schema-plan:
+    cd {{root}} && harness dd schema show builder/plan
+
+# The custom schema that ships with its own adapters.
+schema-custom:
+    cd {{root}} && harness dd schema show release/gate
+
+# ── Asking questions with jq ─────────────────────────────────────────────────
+
+# Which acceptance criteria are still holding the gate?
+q-open:
+    cd {{root}} && jq -r '.sections[] | select(.name=="acceptance_criteria") | .value[] | select(.state != "checked") | "\(.id)  \(.claim)"' {{ex}}/plan.dd.json
+
+# Every task and its state, from the phase-2 task document.
+q-tasks:
+    cd {{root}} && jq -r '.sections[] | select(.name=="tasks") | .value[] | "\(.state)  \(.id)  \(.title)"' {{ex}}/tasks/phase-2/tasks.dd.json
+
+# What does one AC row cite as its proof?
+q-proof:
+    cd {{root}} && jq -r '.sections[] | select(.name=="acceptance_criteria") | .value[] | select(.id=="ac-0201") | {pressure, proven_by}' {{ex}}/plan.dd.json
+
+# Machine-readable graph: every node the map walk reached, with its direction.
+q-graph:
+    cd {{root}} && harness dd graph map "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201" --json | jq -r '.data.nodes[] | "\(.arm)\t\(.distance)\t\(.address)"'
+
+# ── The known defect, demonstrated ───────────────────────────────────────────
+
+# FU-4 in one command: the SAME document, three verdicts, by cwd alone.
+# ok from the repository root; degraded from its own folder; error from its parent.
+# This is deliberate and is left reproducing until FU-4 is fixed.
+fu4:
+    @echo "--- from the repository root ---"
+    -@cd {{root}} && harness dd validate {{ex}}/custom-render/release.dd.json --json | jq -c '{status, counts: .data.counts}'
+    @echo "--- from the document's own folder ---"
+    -@cd {{root}}/{{ex}}/custom-render && harness dd validate release.dd.json --json | jq -c '{status, counts: .data.counts}'
+    @echo "--- from its parent folder ---"
+    -@cd {{root}}/{{ex}} && harness dd validate custom-render/release.dd.json --json | jq -c '{status, error: .error.code}'

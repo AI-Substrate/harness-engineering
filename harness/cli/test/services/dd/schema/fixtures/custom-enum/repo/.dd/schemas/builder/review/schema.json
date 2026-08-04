@@ -1,0 +1,69 @@
+{
+  "dd_schema": 1,
+  "description": "review schema declaring a custom completion enum with its own gate-terminal set",
+  "sections": {
+    "meta": {
+      "required": true,
+      "shape": {
+        "type": "object",
+        "required": [
+          "title"
+        ],
+        "fields": {
+          "title": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "enum",
+            "enum": "severity"
+          }
+        }
+      }
+    },
+    "tasks": {
+      "shape": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "id",
+            "state"
+          ],
+          "fields": {
+            "id": {
+              "type": "string"
+            },
+            "state": {
+              "type": "state",
+              "enum": "review"
+            },
+            "note": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "enums": {
+    "review": {
+      "values": [
+        "draft",
+        "in-review",
+        "approved",
+        "waived"
+      ],
+      "gate_terminal": [
+        "approved",
+        "waived"
+      ]
+    },
+    "severity": {
+      "values": [
+        "info",
+        "warn",
+        "error"
+      ]
+    }
+  }
+}

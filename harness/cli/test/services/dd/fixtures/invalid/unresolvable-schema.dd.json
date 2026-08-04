@@ -1,0 +1,13 @@
+{
+  "dd": { "schema": "test/missing", "spec": "dd@1" },
+  "sections": [
+    {
+      "name": "tasks",
+      "value": [
+        { "id": "tk-a1b2", "title": "Unknown schema", "state": "checked" }
+      ]
+    }
+  ],
+  "references": []
+}
+

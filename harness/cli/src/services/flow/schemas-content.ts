@@ -28,6 +28,7 @@ export const BUNDLED_FLOW_SCHEMAS: Record<string, unknown> = {
         'phase',
         'reconstructed',
         'zone',
+        'dd_link',
       ],
     },
     comment: { required: ['at', 'text'], optional: ['source', 'kind', 'refs'] },

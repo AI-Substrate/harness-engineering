@@ -703,6 +703,52 @@ describe('flow-renderer · D5 visual vocabulary (colour=type, badges, importance
     expect(out).not.toContain('🧰 chore (upkeep)'); // chore is no longer a colour
   });
 
+  it('the ⛨ dd-gate legend clause appears ONLY when a node carries a dd_link (F006)', () => {
+    const plain = renderFlow(
+      doc([{ id: 'a', type: 'phase', label: 'A', status: 'done', next: [] }]),
+    );
+    // Opt-in means invisible: a flow that has never heard of dd renders the legend
+    // it rendered before the gate existed, terminating at the chore clause.
+    expect(plain).toContain('✓ done · ✕ skipped).');
+    expect(plain).not.toContain('⛨');
+    expect(plain).not.toContain('dd gate');
+
+    const gated = renderFlow(
+      doc([
+        {
+          id: 'a',
+          type: 'phase',
+          label: 'A',
+          status: 'done',
+          next: [],
+          dd_link: { address: 'docs/tasks.dd.json#tasks' },
+        },
+      ]),
+    );
+    expect(gated).toContain(
+      '✓ done · ✕ skipped) · ⛨ dd gate (terminal/total from the last evaluation; ✓ = open).',
+    );
+  });
+
+  it('a NON-gating dd_link still earns the legend clause — the badge is still drawn (F006)', () => {
+    // `gate: false` suppresses the refusal, not the badge: the node genuinely does
+    // point at that document. A drawn glyph must always have a legend entry.
+    const out = renderFlow(
+      doc([
+        {
+          id: 'a',
+          type: 'phase',
+          label: 'A',
+          status: 'done',
+          next: [],
+          dd_link: { address: 'docs/tasks.dd.json#tasks', gate: false },
+        },
+      ]),
+    );
+    expect(out).toContain('a["A ⛨"]');
+    expect(out).toContain('⛨ dd gate (terminal/total from the last evaluation; ✓ = open).');
+  });
+
   it('renderRailLine surfaces due chores with a `🧰`+importance marker (rail parity, AC-03)', () => {
     const d = doc(
       [

@@ -1,0 +1,14 @@
+{
+  "dd": {
+    "schema": "builder/nowhere"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "x"
+      }
+    }
+  ],
+  "references": []
+}

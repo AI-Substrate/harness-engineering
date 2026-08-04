@@ -1,0 +1,49 @@
+{
+  "dd_schema": 1,
+  "description": "plan schema from the doc-folder root",
+  "sections": {
+    "meta": {
+      "required": true,
+      "shape": {
+        "type": "object",
+        "required": [
+          "title"
+        ],
+        "fields": {
+          "title": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "tasks": {
+      "shape": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": [
+            "id",
+            "state"
+          ],
+          "fields": {
+            "id": {
+              "type": "string"
+            },
+            "state": {
+              "type": "state"
+            },
+            "note": {
+              "type": "string"
+            },
+            "receipt": {
+              "type": "string"
+            },
+            "link": {
+              "type": "link"
+            }
+          }
+        }
+      }
+    }
+  }
+}

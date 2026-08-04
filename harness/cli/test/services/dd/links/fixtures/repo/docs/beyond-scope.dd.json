@@ -1,0 +1,8 @@
+{
+  "dd": { "schema": "links/plan", "spec": "dd@1" },
+  "sections": [
+    { "name": "phases", "value": [{ "id": "ph-0a1b", "brief": "Reached only by link when the root set is scoped to nested/ — and broken on its own terms" }] },
+    { "name": "citations", "value": [{ "id": "ct-1b2c", "cite": "evidence.dd.json#nosuchsection" }] }
+  ],
+  "references": []
+}

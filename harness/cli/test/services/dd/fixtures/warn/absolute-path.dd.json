@@ -1,0 +1,18 @@
+{
+  "dd": { "schema": "test/plan", "spec": "dd@1" },
+  "sections": [
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-a1b2",
+          "title": "Absolute path",
+          "state": "checked",
+          "dependency": "/repo/other.dd.json#tasks/tk-b2c3"
+        }
+      ]
+    }
+  ],
+  "references": []
+}
+

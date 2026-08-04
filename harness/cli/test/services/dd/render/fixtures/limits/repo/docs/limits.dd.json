@@ -1,0 +1,21 @@
+{
+  "dd": { "schema": "render/limits", "spec": "dd@1" },
+  "sections": [
+    {
+      "name": "rows",
+      "value": [
+        {
+          "id": "at-limit",
+          "config": { "a": 1, "nested": { "b": 2 } },
+          "trail": ["one", "two"]
+        },
+        {
+          "id": "crosses-limit",
+          "config": { "a": 1, "nested": { "b": 2, "deeper": { "c": 3 } } },
+          "trail": ["one", ["two", "three"]]
+        }
+      ]
+    }
+  ],
+  "references": []
+}

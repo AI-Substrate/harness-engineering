@@ -34,6 +34,7 @@ const EXPECTED_SENSORS = [
   'windows-check',
   'coverage-branch',
   'todo-debt',
+  'dd-doctor',
   'lock-hygiene',
 ];
 
@@ -65,7 +66,7 @@ function sensors() {
 }
 
 describe('repo real sensors', () => {
-  it('declares the exact bounded twelve-sensor set', () => {
+  it('declares the exact bounded thirteen-sensor set', () => {
     const declarations = sensors();
 
     expect(Object.keys(declarations)).toEqual(EXPECTED_SENSORS);
@@ -97,7 +98,7 @@ describe('repo real sensors', () => {
       readings.push(await declaration.run(fake.context));
     }
 
-    expect(fake.calls).toHaveLength(12);
+    expect(fake.calls).toHaveLength(13);
     expect(fake.calls.every((call) => call.command !== 'npx')).toBe(true);
     expect(fake.calls.every((call) => !call.args.some((arg) => /^(?:install|audit|exec)$/.test(arg)))).toBe(
       true,

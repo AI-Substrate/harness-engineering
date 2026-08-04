@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "dd-gate",
+  "title": "dd gate render surface",
+  "nav": { "now": "p2", "next": "p3", "intent": "demo the dd-gate badge + rail callout", "bag": {} },
+  "created_at": "2026-01-01T00:00:00Z",
+  "provenance": {
+    "record_kind": "flow",
+    "harness_version": "0.4.0",
+    "branch": null,
+    "repo": "git+https://github.com/AI-Substrate/harness-engineering.git",
+    "created_at": "2026-01-01T00:00:00Z",
+    "agent": "the-flow",
+    "plan_id": null
+  },
+  "events": [
+    {
+      "id": "CRT-001",
+      "kind": "created",
+      "origin": "engine",
+      "fired_at": "2026-01-01T00:00:00Z",
+      "details": { "kind": "flight-plan", "slug": "dd-gate" }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "p1",
+      "type": "phase",
+      "label": "Phase 1",
+      "status": "done",
+      "next": ["p2"],
+      "dd_link": {
+        "address": "docs/plans/demo/tasks/phase-1/tasks.dd.json#tasks",
+        "gate": true,
+        "basis_sha": "1111111111111111111111111111111111111111111111111111111111111111",
+        "reading": {
+          "status": "complete",
+          "terminal": 3,
+          "total": 3,
+          "incomplete": [],
+          "at": "2026-01-02T00:00:00Z"
+        }
+      }
+    },
+    {
+      "id": "p2",
+      "type": "phase",
+      "label": "Phase 2",
+      "status": "in_progress",
+      "next": ["p3"],
+      "dd_link": {
+        "address": "docs/plans/demo/tasks/phase-2/tasks.dd.json#tasks",
+        "gate": true,
+        "basis_sha": "2222222222222222222222222222222222222222222222222222222222222222",
+        "reading": {
+          "status": "incomplete",
+          "terminal": 1,
+          "total": 3,
+          "incomplete": ["tk-2", "tk-3"],
+          "at": "2026-01-02T00:00:00Z"
+        }
+      }
+    },
+    {
+      "id": "p3",
+      "type": "phase",
+      "label": "Phase 3",
+      "status": "known",
+      "next": ["ref"],
+      "dd_link": {
+        "address": "docs/plans/demo/tasks/phase-3/tasks.dd.json#tasks",
+        "gate": true
+      }
+    },
+    {
+      "id": "ref",
+      "type": "review",
+      "label": "Review",
+      "status": "known",
+      "next": [],
+      "dd_link": {
+        "address": "docs/plans/demo/evidence.dd.json#findings",
+        "gate": false,
+        "reading": {
+          "status": "incomplete",
+          "terminal": 0,
+          "total": 2,
+          "incomplete": ["f-1", "f-2"],
+          "at": "2026-01-02T00:00:00Z"
+        }
+      }
+    }
+  ]
+}

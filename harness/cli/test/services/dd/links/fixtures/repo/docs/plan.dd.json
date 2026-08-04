@@ -1,0 +1,32 @@
+{
+  "dd": { "schema": "links/plan", "spec": "dd@1" },
+  "sections": [
+    { "name": "preamble", "value": "The canonical valid plan every good twin resolves against." },
+    {
+      "name": "meta",
+      "value": { "owner": "harness", "audit": { "by": "phase-4", "at": "2026-08-03" } }
+    },
+    {
+      "name": "phases",
+      "value": [
+        {
+          "id": "ph-1a2b",
+          "brief": "Links, ledger and doctor",
+          "tasks": [
+            {
+              "id": "tk-3c4d",
+              "title": "Resolve every address form",
+              "state": "checked",
+              "evidence": "evidence.dd.json#entries"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "citations",
+      "value": [{ "id": "ct-7a8b", "cite": "evidence.dd.json#entries/ev-5e6f" }]
+    }
+  ],
+  "references": [{ "path": "evidence.dd.json", "sha": "sha-evidence", "mode": "pinned" }]
+}

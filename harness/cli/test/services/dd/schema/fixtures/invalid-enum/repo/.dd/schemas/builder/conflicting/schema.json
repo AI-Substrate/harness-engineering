@@ -1,0 +1,48 @@
+{
+  "dd_schema": 1,
+  "description": "two state fields bind enums with different gate-terminal sets",
+  "sections": {
+    "left": {
+      "shape": {
+        "type": "object",
+        "fields": {
+          "state": {
+            "type": "state",
+            "enum": "a"
+          }
+        }
+      }
+    },
+    "right": {
+      "shape": {
+        "type": "object",
+        "fields": {
+          "state": {
+            "type": "state",
+            "enum": "b"
+          }
+        }
+      }
+    }
+  },
+  "enums": {
+    "a": {
+      "values": [
+        "open",
+        "done"
+      ],
+      "gate_terminal": [
+        "done"
+      ]
+    },
+    "b": {
+      "values": [
+        "open",
+        "shipped"
+      ],
+      "gate_terminal": [
+        "shipped"
+      ]
+    }
+  }
+}

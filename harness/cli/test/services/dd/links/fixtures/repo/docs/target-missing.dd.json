@@ -1,0 +1,8 @@
+{
+  "dd": { "schema": "links/plan", "spec": "dd@1" },
+  "sections": [
+    { "name": "phases", "value": [{ "id": "ph-2738", "brief": "Points at a file that is not there" }] },
+    { "name": "citations", "value": [{ "id": "ct-3849", "cite": "missing.dd.json#entries" }] }
+  ],
+  "references": []
+}

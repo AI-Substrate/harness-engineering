@@ -1,0 +1,68 @@
+{
+  "dd_schema": 1,
+  "description": "Render showcase: one schema exercising every section shape, cell type, and derived-state summary the renderer emits.",
+  "enums": {
+    "plan_status": {
+      "values": ["draft", "ready", "shipped"],
+      "gate_terminal": ["shipped"]
+    },
+    "severity": {
+      "values": ["low", "high"]
+    }
+  },
+  "sections": {
+    "meta": {
+      "required": true,
+      "shape": {
+        "type": "object",
+        "required": ["title", "status"],
+        "fields": {
+          "title": { "type": "string" },
+          "status": { "type": "enum", "enum": "plan_status" },
+          "risk": { "type": "enum", "enum": "severity" },
+          "weight": { "type": "int" },
+          "ratio": { "type": "number" },
+          "released": { "type": "bool" },
+          "summary": { "type": "text" },
+          "budget": { "type": "duration" },
+          "coverage": { "type": "link", "target": "render/showcase/section/evidence" }
+        }
+      }
+    },
+    "goals": {
+      "shape": {
+        "type": "array",
+        "items": { "type": "text" }
+      }
+    },
+    "tasks": {
+      "shape": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["id", "title", "state"],
+          "fields": {
+            "id": { "type": "string" },
+            "title": { "type": "string" },
+            "state": { "type": "state" },
+            "note": { "type": "string" },
+            "spent": { "type": "duration" },
+            "tags": { "type": "array", "items": { "type": "string" } },
+            "done": { "type": "link", "target": "render/showcase/section/evidence" },
+            "upstream": { "type": "link" }
+          }
+        }
+      }
+    },
+    "evidence": {
+      "shape": {
+        "type": "object",
+        "allowAdditional": true,
+        "fields": {}
+      }
+    },
+    "notes": {
+      "shape": { "type": "text" }
+    }
+  }
+}

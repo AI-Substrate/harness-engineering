@@ -1,0 +1,118 @@
+{
+  "dd": { "schema": "release/gate" },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Release gate — harness 0.14.0",
+        "release": "0.14.0",
+        "owner": "release captain",
+        "window": 2610,
+        "footprint": 1572864,
+        "burndown": [41, 38, 33, 27, 27, 19, 11, 6, 2],
+        "summary": "A release gate authored as a deterministic document.\nThe schema, its adapters and this file all live in one folder — nothing here resolves through the repository root.",
+        "plan": "../plan.dd.json#phases/ph-0005"
+      }
+    },
+    {
+      "name": "gates",
+      "value": [
+        {
+          "id": "gt-0101",
+          "claim": "Every public CLI verb has a frozen surface row and a test that pins it.",
+          "state": "approved",
+          "surface": "cli",
+          "budget": 180,
+          "artifact": 48210,
+          "trend": [3, 3, 2, 1, 0, 0],
+          "note": "surface manifest unchanged since rc2",
+          "evidence": [
+            "../plan.dd.json#acceptance_criteria/ac-0201",
+            "../backpressure.dd.json#rows/bp-0201"
+          ]
+        },
+        {
+          "id": "gt-0102",
+          "claim": "The published package installs clean from the registry, not merely from a local pack.",
+          "state": "in-review",
+          "surface": "api",
+          "budget": 95,
+          "artifact": 2411724,
+          "trend": [0, 1, 4, 2, 1],
+          "note": "proxy lag means a green tag is not a published package",
+          "evidence": ["../execution-log.dd.json#entries/lg-0801"]
+        },
+        {
+          "id": "gt-0103",
+          "claim": "Telemetry payloads carry counts only — no file contents, no prompts, no secrets.",
+          "state": "waived",
+          "surface": "telemetry",
+          "budget": 45,
+          "artifact": 1180,
+          "trend": [2, 2, 1, 1, 1, 0, 0],
+          "receipt": "Jordan, 2026-08-04: waived for this release — the allowlist gate landed in 0.13.2 and has not moved since.",
+          "evidence": []
+        },
+        {
+          "id": "gt-0104",
+          "claim": "Every how-to page renders its own worked example rather than describing one.",
+          "state": "rejected",
+          "surface": "docs",
+          "budget": 240,
+          "artifact": 96500,
+          "trend": [8, 9, 9, 11, 12],
+          "note": "three pages still describe a corpus instead of shipping it",
+          "evidence": ["../plan.dd.json#acceptance_criteria/ac-0801"]
+        },
+        {
+          "id": "gt-0105",
+          "claim": "The upgrade path from 0.13.x is proven on a real checkout, not reasoned about.",
+          "state": "pending",
+          "surface": "cli",
+          "budget": 0,
+          "artifact": 0,
+          "trend": [],
+          "note": "not started — this row is what an honest unstarted gate looks like"
+        }
+      ]
+    },
+    {
+      "name": "sign_offs",
+      "value": {
+        "gt-0101": [
+          {
+            "id": "so-0111",
+            "who": "release captain",
+            "state": "approved",
+            "at": "2026-08-04T09:10+10:00"
+          },
+          {
+            "id": "so-0112",
+            "who": "cli owner",
+            "state": "approved",
+            "at": "2026-08-04T09:40+10:00"
+          }
+        ],
+        "gt-0103": [
+          {
+            "id": "so-0131",
+            "who": "Jordan",
+            "state": "waived",
+            "at": "2026-08-04T10:05+10:00",
+            "receipt": "waived for this release — the allowlist gate landed in 0.13.2 and has not moved since"
+          }
+        ],
+        "gt-0104": [
+          {
+            "id": "so-0141",
+            "who": "docs owner",
+            "state": "rejected",
+            "at": "2026-08-04T10:30+10:00",
+            "receipt": "three pages still describe a corpus instead of shipping one"
+          }
+        ]
+      }
+    }
+  ],
+  "references": []
+}

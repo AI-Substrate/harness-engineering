@@ -1,0 +1,48 @@
+{
+  "dd": { "schema": "test/evidence-plan" },
+  "sections": [
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-1a2b",
+          "title": "Wire the capture path",
+          "state": "unchecked",
+          "done": "#evidence/tk-1a2b"
+        }
+      ]
+    },
+    {
+      "name": "evidence",
+      "value": {
+        "tk-1a2b": [
+          {
+            "id": "dw-11c2",
+            "assertion": "capture fires on commit",
+            "state": "checked",
+            "proven_by": "#tasks/tk-1a2b"
+          },
+          {
+            "id": "dw-4e01",
+            "assertion": "council review",
+            "state": "na",
+            "note": "no council on this repo"
+          },
+          {
+            "id": "dw-77b3",
+            "assertion": "manual smoke on Windows",
+            "state": "human-skipped",
+            "receipt": "Jordan: skip it, we have no Windows box this week"
+          }
+        ]
+      }
+    },
+    {
+      "name": "mixed",
+      "value": {
+        "owner": "jordan",
+        "row-a": { "state": "checked" }
+      }
+    }
+  ]
+}

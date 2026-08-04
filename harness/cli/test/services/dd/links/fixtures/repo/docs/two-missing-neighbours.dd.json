@@ -1,0 +1,14 @@
+{
+  "dd": { "schema": "links/plan", "spec": "dd@1" },
+  "sections": [
+    { "name": "phases", "value": [{ "id": "ph-b5c6", "brief": "Points at two distinct in-repo documents that are not there" }] },
+    {
+      "name": "citations",
+      "value": [
+        { "id": "ct-c6d7", "cite": "gone-one.dd.json#entries" },
+        { "id": "ct-d7e8", "cite": "gone-two.dd.json#entries" }
+      ]
+    }
+  ],
+  "references": []
+}

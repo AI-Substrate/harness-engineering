@@ -21,7 +21,8 @@
       "artifacts",
       "phase",
       "reconstructed",
-      "zone"
+      "zone",
+      "dd_link"
     ]
   },
   "comment": {

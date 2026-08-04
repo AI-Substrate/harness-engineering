@@ -1,0 +1,20 @@
+{
+  "dd": { "schema": "test/plan", "spec": "dd@1" },
+  "sections": [
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-c3d4",
+          "title": "Chain C",
+          "state": "checked",
+          "dependency": "chain-d-invalid.dd.json#tasks/tk-d4e5"
+        }
+      ]
+    }
+  ],
+  "references": [
+    { "path": "chain-d-invalid.dd.json", "sha": "sha-d-invalid", "mode": "pinned" }
+  ]
+}
+

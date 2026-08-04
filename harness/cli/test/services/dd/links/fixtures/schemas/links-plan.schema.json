@@ -1,0 +1,80 @@
+{
+  "name": "links/plan",
+  "sections": {
+    "preamble": { "shape": { "type": "text" } },
+    "meta": {
+      "shape": {
+        "type": "object",
+        "required": ["owner"],
+        "fields": {
+          "owner": { "type": "text" },
+          "audit": {
+            "type": "object",
+            "fields": { "by": { "type": "text" }, "at": { "type": "text" } }
+          }
+        }
+      }
+    },
+    "phases": {
+      "required": true,
+      "shape": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["id", "brief"],
+          "fields": {
+            "id": { "type": "string" },
+            "brief": { "type": "text" },
+            "tasks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["id", "title", "state"],
+                "fields": {
+                  "id": { "type": "string" },
+                  "title": { "type": "text" },
+                  "state": { "type": "state" },
+                  "note": { "type": "text" },
+                  "receipt": { "type": "text" },
+                  "evidence": { "type": "link", "target": "links/evidence/section/entries" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "citations": {
+      "shape": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["id", "cite"],
+          "fields": { "id": { "type": "string" }, "cite": { "type": "link" } }
+        }
+      }
+    },
+    "evidence": {
+      "shape": {
+        "type": "object",
+        "allowAdditional": true,
+        "fields": {},
+        "valuesShape": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "state"],
+            "fields": {
+              "id": { "type": "string" },
+              "state": { "type": "state" },
+              "proof": { "type": "link", "target": "links/evidence/section/entries" }
+            }
+          }
+        }
+      }
+    },
+    "opaque": {
+      "shape": { "type": "object", "allowAdditional": true, "fields": {} }
+    }
+  }
+}

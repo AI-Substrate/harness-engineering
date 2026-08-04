@@ -1,0 +1,15 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>known-bad: eaten gt + unclosed figure</title></head>
+<body>
+  <figure class="scene">
+    <div class="grid">
+      <div class="col" style="color:blue"oops-eaten-gt</div>
+      <div class="col">fine</div>
+    </div>
+  <!-- figure never closes; everything below nests inside it -->
+  <section>
+    <p>tail content</p>
+  </section>
+</body>
+</html>

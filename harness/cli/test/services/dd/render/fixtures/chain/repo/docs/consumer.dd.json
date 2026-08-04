@@ -1,0 +1,13 @@
+{
+  "dd": { "schema": "render/chain", "spec": "dd@1" },
+  "sections": [
+    {
+      "name": "meta",
+      "value": { "title": "Chain consumer", "upstream": "source.dd.json#items" }
+    },
+    { "name": "items", "value": [] }
+  ],
+  "references": [
+    { "path": "source.dd.json", "sha": "sha-source-v1", "mode": "live" }
+  ]
+}

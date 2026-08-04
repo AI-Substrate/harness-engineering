@@ -1,0 +1,8 @@
+{
+  "dd": { "schema": "links/plan", "spec": "dd@1" },
+  "sections": [
+    { "name": "phases", "value": [{ "id": "ph-92a3", "brief": "The other half of the two-document loop" }] },
+    { "name": "citations", "value": [{ "id": "ct-5263", "cite": "cycle-a.dd.json#phases/ph-8192" }] }
+  ],
+  "references": [{ "path": "cycle-a.dd.json", "sha": "sha-cycle-a", "mode": "live" }]
+}

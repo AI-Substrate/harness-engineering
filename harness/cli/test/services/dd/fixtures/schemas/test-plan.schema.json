@@ -1,0 +1,39 @@
+{
+  "name": "test/plan",
+  "sections": {
+    "tasks": {
+      "required": true,
+      "shape": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["id", "title", "state"],
+          "fields": {
+            "id": { "type": "string" },
+            "title": { "type": "text" },
+            "state": { "type": "state" },
+            "note": { "type": "text" },
+            "receipt": { "type": "text" },
+            "dependency": {
+              "type": "link",
+              "target": "test/plan/section/tasks"
+            }
+          }
+        }
+      }
+    },
+    "mode": {
+      "shape": {
+        "type": "enum",
+        "enum": "certainty"
+      }
+    }
+  },
+  "enums": {
+    "certainty": {
+      "values": ["low", "high"],
+      "gate_terminal": ["high"]
+    }
+  }
+}
+

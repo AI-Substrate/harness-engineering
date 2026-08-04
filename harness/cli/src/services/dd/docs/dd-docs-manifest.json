@@ -1,0 +1,19 @@
+{
+  "$comment": "Baked `harness dd docs` corpus (plan 065 D15). Content is compiled INTO the CLI so an agent can read it with no repo checkout and no network. `sourcePath` is relative to the repo root; `scripts/gen-dd-docs.mjs` inlines each file into docs-content.ts, and `scripts/check-dd-docs.mjs` fails when the committed module drifts from these sources.",
+  "docs": [
+    {
+      "id": "dd-overview",
+      "title": "Deterministic documents (dd)",
+      "summary": "The envelope, ids and addresses, completion states and the gate, schema resolution, and the CLI family.",
+      "audience": "both",
+      "sourcePath": "harness/cli/src/services/dd/docs/content/dd-overview.md"
+    },
+    {
+      "id": "how-to-add-a-schema",
+      "title": "How to add a schema (and an adapter)",
+      "summary": "A worked schema package with custom enums and gate_terminal, the human-skipped receipt convention, and a custom-type adapter.",
+      "audience": "both",
+      "sourcePath": "harness/cli/src/services/dd/docs/content/how-to-add-a-schema.md"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "dd_schema": 1,
+  "description": "A minimal schema for the hand-edit drift fixture.",
+  "sections": {
+    "meta": {
+      "required": true,
+      "shape": {
+        "type": "object",
+        "required": ["title"],
+        "fields": {
+          "title": { "type": "string" },
+          "status": { "type": "state" }
+        }
+      }
+    },
+    "items": {
+      "shape": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "required": ["id"],
+          "fields": {
+            "id": { "type": "string" },
+            "label": { "type": "string" },
+            "state": { "type": "state" }
+          }
+        }
+      }
+    }
+  }
+}

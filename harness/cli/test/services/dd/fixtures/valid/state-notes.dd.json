@@ -1,0 +1,16 @@
+{
+  "dd": { "schema": "test/plan", "spec": "dd@1" },
+  "sections": [
+    {
+      "name": "tasks",
+      "value": [
+        { "id": "tk-a1b2", "title": "Blocked item", "state": "blocked", "note": "Waiting on input" },
+        { "id": "tk-b2c3", "title": "Skipped item", "state": "human-skipped", "receipt": "Skip this item" },
+        { "id": "tk-c3d4", "title": "Not applicable", "state": "na", "note": "No adapter in this phase" }
+      ]
+    },
+    { "name": "mode", "value": "high" }
+  ],
+  "references": []
+}
+

@@ -1,0 +1,94 @@
+{
+  "dd": { "schema": "builder/backpressure" },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Backpressure coverage — deterministic documents (dd)",
+        "plan": "plan.dd.json#meta",
+        "certainty": "Partial"
+      }
+    },
+    {
+      "name": "rows",
+      "value": [
+        {
+          "id": "bp-0201",
+          "criterion": "Schema resolution honours precedence across all four roots and reports every shadowed duplicate with its path.",
+          "phase": "ph-0002",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "Fake-fs multi-root fixture corpus with one package planted in each root, asserting first-hit-wins order and the full shadow chain.",
+          "state": "checked",
+          "probe": "npx vitest run test/services/dd/schema"
+        },
+        {
+          "id": "bp-0801",
+          "criterion": "The baked docs corpus cannot silently drift from its markdown sources.",
+          "phase": "ph-0002",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "A regenerate-and-diff gate: the generator runs in-process and the committed module is compared byte-for-byte, so an edited source with a stale module fails.",
+          "state": "checked",
+          "probe": "npm run check:dd-docs"
+        },
+        {
+          "id": "bp-0901",
+          "criterion": "A plan authored as a deterministic document validates, renders byte-stably, and answers questions through stock jq rather than through reading.",
+          "phase": "ph-0005",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "This corpus is the subject: validate it at depth 3, prove the rendered siblings do not drift, sweep it with the doctor, and answer a real question with jq.",
+          "state": "unchecked",
+          "probe": "harness dd validate docs/how/dd/exemplar/plan.dd.json --depth 3"
+        },
+        {
+          "id": "bp-1201",
+          "criterion": "dd-core stays a pure library: no envelope vocabulary, no act imports, no Node adapters.",
+          "phase": "ph-0001",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "Dependency-cruiser rule sets plus an architecture test that reads the import graph — a boundary a reviewer cannot forget to check.",
+          "state": "checked",
+          "probe": "harness arch-check --json"
+        },
+        {
+          "id": "bp-0902",
+          "criterion": "The exemplar uses dd primitives cleverly and renders well for a human reader.",
+          "phase": "ph-0005",
+          "mode": "ABSENT",
+          "tier": "human-judgement",
+          "proof": "No machine proves taste. This row exists so the judgement is visible as an open item rather than assumed — a human reads the rendered siblings and says yes or no.",
+          "state": "unchecked",
+          "note": "Deliberately human-judgement tier: the standing constraint is a person's call, and pretending otherwise would be the dishonest kind of green."
+        }
+      ]
+    },
+    {
+      "name": "sensors",
+      "value": [
+        {
+          "id": "sensor-suite",
+          "name": "full unit and architecture suite",
+          "command": "just test",
+          "dimension": "behaviour + architecture",
+          "found_in": "root recipe -> harness/cli"
+        },
+        {
+          "id": "sensor-checks",
+          "name": "composed quality gate",
+          "command": "harness checks",
+          "dimension": "all",
+          "found_in": ".harness/extensions/checks/"
+        },
+        {
+          "id": "sensor-dd-doctor",
+          "name": "dd corpus sweep at infinite radius",
+          "command": "harness dd doctor --json",
+          "dimension": "document health",
+          "found_in": "harness/cli/src/acts/dd/doctor.ts"
+        }
+      ]
+    }
+  ]
+}

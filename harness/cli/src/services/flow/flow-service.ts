@@ -153,9 +153,13 @@ export function writeFlowAtomic(
   const p = toPosix(path);
   const root = toPosix(repoRoot);
   if (!isWithin(root, p)) {
+    // Both sides of the comparison are named, deliberately. On macOS `/var` is a
+    // symlink to `/private/var`, so a temp-dir path and the process's own resolved
+    // cwd can look identical to a reader and still fail containment — naming only
+    // the rejected path leaves no way to see why.
     return fail(
       ErrorCodes.FLOW_PATH_ESCAPE,
-      `flow write path escapes the repo root: ${p}`,
+      `flow write path escapes the repo root: ${p} is not inside ${root}`,
       `Write inside the repository (e.g. ${FLOWS_DIR}/<slug>.json). --schema/--template may be out-of-repo; the flow file may not.`,
     );
   }
