@@ -65,6 +65,7 @@ import {
   listFlows,
   newFlowSchema,
   readFlowDoc,
+  relocateFlow,
   resolveCreateTarget,
   showFlow,
   writeFlowAtomic,
@@ -1099,6 +1100,50 @@ export function registerFlowAct(
         );
       },
     );
+
+  // --- relocate ----------------------------------------------------------
+  flow
+    .command('relocate')
+    .description(
+      "Re-anchor a flow's dd_link gate addresses after its plan folder moved (the post-flight archive)",
+    )
+    .option('--path <path>', 'flow file (default: .harness/flows/<slug>.json)')
+    .option('--slug <slug>', 'flow slug')
+    .requiredOption(
+      '--to <dir>',
+      'the repo-relative plan folder the gates now live in (absolute or `..`-escaping values are REFUSED)',
+    )
+    .action((opts: { path?: string; slug?: string; to: string }) => {
+      const resolved = resolveFlowPath(opts, repoRoot());
+      if (!resolved.ok) return emit(io, failureEnvelope(needPath(), deps.clock));
+      const previous = svc.fs.readText(resolved.path);
+      const res = relocateFlow({ path: resolved.path, repoRoot: repoRoot(), to: opts.to }, svc);
+      if (!res.ok) return emit(io, failureEnvelope(res, deps.clock));
+      const written = writeFlowAtomic(resolved.path, repoRoot(), res.doc, svc);
+      if (!written.ok) return emit(io, failureEnvelope(written, deps.clock));
+      const sibling = persistSibling(svc.fs, written.path, res.doc, previous);
+      if (!sibling.ok) return emit(io, failureEnvelope(sibling, deps.clock));
+      emit(
+        io,
+        formatOk(
+          'flow',
+          {
+            path: written.path,
+            plan_dir: { from: res.from, to: res.to },
+            rewritten: res.rewritten,
+            count: res.rewritten.length,
+          },
+          deps.clock,
+          {
+            evidence: [{ label: 'flow', path: written.path }],
+            next_action:
+              res.rewritten.length === 0
+                ? 'No gate address pointed inside the old folder — plan_dir was re-pointed and nothing else needed to move.'
+                : `Verify the gates resolve: \`harness dd link resolve ${res.rewritten[0]?.to}\`.`,
+          },
+        ),
+      );
+    });
 
   // --- render ------------------------------------------------------------
   flow

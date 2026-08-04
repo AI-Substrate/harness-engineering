@@ -556,6 +556,13 @@ export interface FlowSummary {
   kind: string;
   now: string | null;
   path: string;
+  /**
+   * The plan folder this flow was created against, or null when it was created
+   * without `--plan-dir`. Listed because it is the only mechanical way to answer
+   * "which flow belongs to the plan I am about to archive" — the question the
+   * post-flight relocate has to answer before it can re-point anything.
+   */
+  plan_dir: string | null;
 }
 
 /**
@@ -579,7 +586,91 @@ export function listFlows(
       kind: typeof doc.kind === 'string' ? doc.kind : 'unknown',
       now: typeof doc.nav?.now === 'string' ? doc.nav.now : null,
       path: posixJoin(dir, name),
+      plan_dir: typeof doc.plan_dir === 'string' ? doc.plan_dir : null,
     });
   }
   return { ok: true, flows };
+}
+
+// ---------------------------------------------------------------------------
+// relocate — the plan folder moved; the gates have to move with it.
+// ---------------------------------------------------------------------------
+
+/** One address the relocation rewrote, reported so the move is auditable. */
+export interface RelocatedGate {
+  node: string;
+  from: string;
+  to: string;
+}
+
+/**
+ * Re-anchor a flow's `dd_link` gate addresses after its plan folder moved
+ * (ac-7113, key finding F8).
+ *
+ * A flow's gate addresses are REPO-ROOT anchored (`fromPath: null`). That is the
+ * right choice — it means a gate says the same thing to a reviewer, a CI job, and
+ * a clone — but it has one consequence: the post-flight `git mv` into
+ * `docs/plans/archive/` silently stales every one of them. Nothing catches it.
+ * `dd doctor` sweeps `*.dd.json` and a flow is `.harness/flows/<slug>.json`, so
+ * the corpus reads clean while the gates quietly point at a folder that no longer
+ * exists. The failure surfaces later as an E441 at a departure, or never, because
+ * an archived plan has no departures left to refuse.
+ *
+ * The rewrite is MECHANICAL for the same reason the anchoring was: the flow
+ * already records the folder it belongs to (`plan_dir`), so "which addresses moved"
+ * is a fact in the document rather than a judgement a model makes at archive time.
+ * A prompt that reassembles addresses is a gate that fails the day the prompt is
+ * paraphrased.
+ *
+ * Refuses rather than guesses in two cases: a flow with no `plan_dir` has no
+ * anchor to rewrite FROM, and a `--to` that is absolute or repo-escaping is the
+ * same bad address `--plan-dir` already refuses at create time. Same guard, same
+ * words — one rule about what a plan folder may be.
+ */
+export function relocateFlow(
+  opts: { path: string; repoRoot: string; to: string },
+  deps: FlowServiceDeps,
+): { ok: true; doc: FlowDoc; from: string; to: string; rewritten: RelocatedGate[] } | FlowFailure {
+  const target = normalizePlanDir(opts.to);
+  if (target.kind === 'invalid') {
+    return fail(ErrorCodes.INVALID_ARGS, target.reason.replace('--plan-dir', '--to'), target.hint);
+  }
+  if (target.kind === 'absent') {
+    return fail(
+      ErrorCodes.INVALID_ARGS,
+      '--to is required: relocating a flow means naming the folder its gates now live in',
+      'Pass the new repo-relative plan folder, e.g. --to docs/plans/archive/071-my-plan.',
+    );
+  }
+
+  const read = readFlowDoc(toPosix(opts.path), deps);
+  if (!read.ok) return read;
+  const doc = read.doc;
+
+  const from = typeof doc.plan_dir === 'string' ? doc.plan_dir.replace(/\/+$/, '') : null;
+  if (from === null || from.length === 0) {
+    return fail(
+      ErrorCodes.INVALID_ARGS,
+      `this flow records no plan_dir, so there is no anchor to re-point: ${opts.path}`,
+      'A flow created without --plan-dir has unanchored gate addresses; re-point them by hand, or recreate the flow with --plan-dir.',
+    );
+  }
+
+  const rewritten: RelocatedGate[] = [];
+  const nodes = doc.nodes.map((node) => {
+    const link = ddLinkOf(node);
+    if (link === undefined || typeof link.address !== 'string') return node;
+    const address = link.address;
+    // Only addresses INSIDE the folder that moved are re-pointed. A gate that
+    // deliberately cites something elsewhere in the repo did not move, and
+    // rewriting it would break a working address to fix a stale one.
+    if (address !== from && !address.startsWith(`${from}/`)) return node;
+    const next = `${target.value}${address.slice(from.length)}`;
+    rewritten.push({ node: node.id, from: address, to: next });
+    return { ...node, dd_link: { ...link, address: next } };
+  });
+
+  doc.nodes = nodes;
+  doc.plan_dir = target.value;
+  return { ok: true, doc, from, to: target.value, rewritten };
 }
