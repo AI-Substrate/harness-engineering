@@ -446,7 +446,8 @@
           "state": "unchecked",
           "depends_on": [
             "ph-7101"
-          ]
+          ],
+          "tasks": "assets/tasks/phase-2/tasks.dd.json#tasks"
         },
         {
           "id": "ph-7103",
@@ -471,124 +472,6 @@
     {
       "name": "tasks",
       "value": [
-        {
-          "id": "tk-7131",
-          "title": "DdLink check-variant model + sanitize + untrusted-reading rules",
-          "phase": "ph-7102",
-          "state": "unchecked",
-          "success": "Hand-edited check links refused/dropped per F004/F007 discipline.",
-          "satisfies": [
-            "#acceptance_criteria/ac-7109"
-          ]
-        },
-        {
-          "id": "tk-7132",
-          "title": "Check evaluator behind deps.gate; act wiring",
-          "phase": "ph-7102",
-          "state": "unchecked",
-          "success": "Non-green refuses, findings quoted verbatim; nothing written; --force records.",
-          "satisfies": [
-            "#acceptance_criteria/ac-7109"
-          ]
-        },
-        {
-          "id": "tk-7133",
-          "title": "Template/expander author gates (bare-ordinal addresses)",
-          "phase": "ph-7102",
-          "state": "unchecked",
-          "success": "Fresh flow carries phase gates + last-review check gate; pre-JIT departure refuses target-invalid.",
-          "notes": "key finding: static template",
-          "satisfies": [
-            "#acceptance_criteria/ac-7110"
-          ]
-        },
-        {
-          "id": "tk-7134",
-          "title": "Barrel/seam extension + dep-cruiser rule + seam test",
-          "phase": "ph-7102",
-          "state": "unchecked",
-          "success": "Arch test refuses module-path reach."
-        },
-        {
-          "id": "tk-7135",
-          "title": "Renderer/orient/rail surfacing for check gates",
-          "phase": "ph-7102",
-          "state": "unchecked",
-          "success": "Badge + rail callout render; legend only when present."
-        },
-        {
-          "id": "tk-7141",
-          "title": "1b plan authors plan.dd.json + sibling; dd-native root stated",
-          "phase": "ph-7102",
-          "state": "unchecked",
-          "success": "Fresh plan validates 0/0 and renders; no -plan.md emitted.",
-          "satisfies": [
-            "#acceptance_criteria/ac-7111",
-            "#acceptance_criteria/ac-7113"
-          ]
-        },
-        {
-          "id": "tk-7142",
-          "title": "5 tasks authors task file + phase-row link in one stroke",
-          "phase": "ph-7102",
-          "state": "unchecked",
-          "success": "JIT file validates; plan link lands in the same change.",
-          "satisfies": [
-            "#acceptance_criteria/ac-7111"
-          ]
-        },
-        {
-          "id": "tk-7143",
-          "title": "6/6a mutate dd states; execution-log linkage",
-          "phase": "ph-7102",
-          "state": "unchecked",
-          "success": "State flips visible in dd; no hand-edited generated md.",
-          "notes": "depends on tk-7128 (dd mutation verbs are the surface 6/6a mutates through)"
-        },
-        {
-          "id": "tk-7144",
-          "title": "Node instructions[] baked (template + expander)",
-          "phase": "ph-7102",
-          "state": "unchecked",
-          "success": "orient at each node prints its dd commands.",
-          "notes": "ac-7116 layer a",
-          "satisfies": [
-            "#acceptance_criteria/ac-7116"
-          ]
-        },
-        {
-          "id": "tk-7145",
-          "title": "Stage modules teach their seam's commands",
-          "phase": "ph-7102",
-          "state": "unchecked",
-          "success": "Dry-run reader gap check passes.",
-          "notes": "ac-7116 layer b",
-          "satisfies": [
-            "#acceptance_criteria/ac-7116"
-          ]
-        },
-        {
-          "id": "tk-7146",
-          "title": "Legacy read/adopt path retained + detection test",
-          "phase": "ph-7102",
-          "state": "unchecked",
-          "success": "Legacy-folder fixture adopts/resumes.",
-          "notes": "key finding: 63 markdown refs",
-          "satisfies": [
-            "#acceptance_criteria/ac-7115"
-          ]
-        },
-        {
-          "id": "tk-7147",
-          "title": "Joint-exit dry-run: create → JIT → refuse → green → depart",
-          "phase": "ph-7102",
-          "state": "unchecked",
-          "success": "Scripted, CLI as actor; exercises ph-7103's refusal through ph-7104's artifacts; neither phase closes before this is green.",
-          "notes": "PHASE EXIT for ph-7102 — the phase does not close without this green",
-          "satisfies": [
-            "#acceptance_criteria/ac-7111"
-          ]
-        },
         {
           "id": "tk-7151",
           "title": "Corpus → PR-body AC table renderer",
@@ -691,18 +574,6 @@
           ],
           "success": "Scenario bundle (live-testing/scenarios/) + prompts pair authored; base-ref pinned to include 070's own code (else the telemetry lane goes blind); assertions reuse existing types (skill-called builder, harness-verb-ran dd/plan validate, file-created plan.dd.json glob, forbidden-state on *-plan.md, file-content-matches for pressure/satisfies, command-succeeds --complete, refusal via tk-7169's evidence); scored via harness flow-eval score, judged lane filled, rendered, ledgered; instructions.md + flow-eval-run SKILL updated.",
           "notes": "Research report: assets/research-flow-eval-history.md — reuse list §6"
-        },
-        {
-          "id": "tk-7169",
-          "title": "Refusal evidence: envelope.error.code into command_exit + SessionEvidence/resolvers widening (lock-step)",
-          "phase": "ph-7102",
-          "state": "unchecked",
-          "satisfies": [
-            "#acceptance_criteria/ac-7117",
-            "#acceptance_criteria/ac-7118"
-          ],
-          "success": "A refused nav set lands in telemetry as command_exit with the gate E-code (fixed vocab, no free text); SessionEvidence exposes it and the flow-eval resolvers mirror stays lock-step (CLI test green); the flow file remains untouched on refusal (invariant pin unchanged).",
-          "notes": "Research: refusal-evidence triple loss; force already durable via dd-gate-override"
         }
       ]
     },
