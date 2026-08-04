@@ -321,3 +321,20 @@
   newlines and long cells without them are a defect — the renderer's
   capability is invisible to an author who has never seen it used, which is
   exactly how both DF-013 and this recurrence happened.
+
+## DF-020 — ruled: `flow create --plan-dir` (deterministic gate addresses over prompt-ware)
+
+- **Design call (coder, phase 2, tk-7133)**: a static template cannot know
+  the plan folder, so it cannot bake repo-root-anchored gate addresses.
+  Option A (prompt-ware fills the prefix at create/expand) vs option B
+  (`harness flow create --plan-dir <dir>`: records `plan_dir` on the root,
+  prefixes the template's relative dd_link addresses at create; absent flag
+  = byte-identical to today).
+- **Ruled B** (2026-08-04): a gate address assembled by prompt-ware fails
+  silently the day a model paraphrases — this phase's whole point is
+  mechanical refusal. Eval-time relative resolution was correctly rejected:
+  ac-7113/tk-7165 own repo-root anchoring + the archive rewrite.
+- **Surface note**: flow verbs have no surface manifest (dd-surface is
+  dd-scoped). Recorded here instead; --help documents the flag; a test pins
+  absent-flag byte-identity. A flow-surface manifest is a candidate for a
+  future plan, not this one.
