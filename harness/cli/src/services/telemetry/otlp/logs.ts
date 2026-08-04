@@ -12,6 +12,7 @@
  * round-trip is byte-faithful and `computeRollup` of the result equals the
  * stored rollup.
  */
+import { CONTROL_SIGNATURES } from '../command-signature.js';
 import {
   type ApiErrorEvent,
   ARTIFACT_COUNT_KEYS,
@@ -109,7 +110,12 @@ export type LogStringRole =
   | 'path'
   | 'command'
   | 'slug';
-export type LogKvRole = 'gates' | 'artifact-counts' | 'artifact-enums' | 'mark-counts';
+export type LogKvRole =
+  | 'gates'
+  | 'artifact-counts'
+  | 'artifact-enums'
+  | 'mark-counts'
+  | 'control-signatures';
 
 export interface LogAttributeDefinition {
   key: string;
@@ -265,6 +271,7 @@ export const LOG_EVENT_DEFINITIONS: readonly LogEventDefinition[] = [
     requiredInt(A.TOOL_COUNT),
     requiredNumber(A.TOOL_SPAN_S),
     optionalString(A.TOOL_SIG, 'signature'),
+    optionalKv(A.TOOL_CONTROL, 'kv-int', 'control-signatures'),
     optionalInt(A.TOOL_RESULT_TOKENS),
   ]),
   defineEvent('skill', [
@@ -414,6 +421,12 @@ function validStringRole(role: LogStringRole | undefined, value: string): boolea
 }
 
 function validKvEntry(role: LogKvRole | undefined, key: string, value: AnyValue): boolean {
+  // plan 069: the control-signature keys are the 2-member closed allowlist and
+  // contain a space, so they are gated HERE — before the generic extension-string
+  // grammar, which admits only space-free atoms.
+  if (role === 'control-signatures') {
+    return CONTROL_SIGNATURES.has(key) && exactAnyValue(value, 'intValue');
+  }
   if (!isTelemetryExtensionString(key)) return false;
   if (role === 'artifact-counts' && !(ARTIFACT_COUNT_KEYS as readonly string[]).includes(key)) {
     return false;
@@ -600,6 +613,15 @@ function encodeEventOrNull(e: Event): LogRecord | null {
         kv(A.TOOL_SPAN_S, nv(e.span_s)),
       );
       if (e.signature !== undefined) attrs.push(kv(A.TOOL_SIG, sv(e.signature)));
+      if (e.control !== undefined) {
+        attrs.push(
+          kv(A.TOOL_CONTROL, {
+            kvlistValue: {
+              values: Object.entries(e.control).map(([key, value]) => kv(key, nv(value))),
+            },
+          }),
+        );
+      }
       if (e.result_tokens !== undefined) attrs.push(kv(A.TOOL_RESULT_TOKENS, nv(e.result_tokens)));
       break;
     case 'skill':
@@ -782,6 +804,12 @@ function decodeEvent(rec: LogRecord): Event {
       };
       const sig = readStr(m.get(A.TOOL_SIG));
       if (sig !== undefined) ev.signature = sig;
+      const controlEntries = m.get(A.TOOL_CONTROL)?.kvlistValue?.values ?? [];
+      if (controlEntries.length > 0) {
+        const control: Record<string, number> = {};
+        for (const entry of controlEntries) control[entry.key] = readNum(entry.value) ?? 0;
+        ev.control = control;
+      }
       const resultTokens = readNum(m.get(A.TOOL_RESULT_TOKENS));
       if (resultTokens !== undefined) ev.result_tokens = resultTokens;
       return ev;

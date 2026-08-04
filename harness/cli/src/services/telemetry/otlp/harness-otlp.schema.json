@@ -37,6 +37,7 @@
     "harness.tool.count",
     "harness.tool.span_s",
     "harness.tool.signature",
+    "harness.tool.control",
     "harness.tool.result_tokens",
     "harness.skill.name",
     "harness.skill.status",

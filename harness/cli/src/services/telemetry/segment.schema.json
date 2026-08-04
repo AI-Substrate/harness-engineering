@@ -237,6 +237,12 @@
           "exit": { "type": "integer" },
           "gates": { "type": "object", "additionalProperties": { "type": "string" } },
           "signature": { "type": "string" },
+          "control": {
+            "type": "object",
+            "description": "plan 069 — a `tools` event's per-signature counts of the CLOSED control-command allowlist run anywhere in the burst's command lines. The chain-HEAD `signature` drops these (a `cd repo && git push` reads `cd`), and they are what the report's `bash` control-timeline markers are built from.",
+            "propertyNames": { "enum": ["git push", "git commit"] },
+            "additionalProperties": { "type": "integer", "minimum": 1 }
+          },
           "arg": { "type": "string" },
           "result_tokens": { "type": "integer" },
           "path": { "type": "string" },

@@ -1,6 +1,7 @@
 import type { EnvPort } from '../../../adapters/env/env-port.js';
 import {
   commandSignatures,
+  controlSignatures,
   harnessSubcommand,
   observeKindFromCommand,
   shellSignature,
@@ -347,8 +348,11 @@ export const cursorAdapter: HarnessAdapter = {
           const input = (b.input ?? {}) as Record<string, unknown>;
           // FX001-A: keep a shell call's non-harness command signature (keys its burst).
           let signature: string | undefined;
+          let control: Record<string, number> | undefined;
           if ((name === 'Shell' || name === 'Bash') && typeof input.command === 'string') {
             signature = shellSignature(input.command);
+            // plan 069: the git push/commit the chain HEAD signature drops.
+            control = controlSignatures(input.command);
             if (at !== undefined) commandObs.push({ cmd: input.command, t: at });
           } else if (name === 'Skill' && typeof input.skill === 'string') {
             skills[input.skill] = (skills[input.skill] ?? 0) + 1;
@@ -363,6 +367,7 @@ export const cursorAdapter: HarnessAdapter = {
           if (at !== undefined) {
             const call: ToolCall = { name, t: at };
             if (signature !== undefined) call.signature = signature;
+            if (control !== undefined) call.control = control;
             toolCalls.push(call);
           }
         }

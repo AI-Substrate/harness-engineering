@@ -77,7 +77,7 @@ export interface CaptureDeps {
   adapters?: HarnessAdapter[];
 }
 
-interface DetectedHarness {
+export interface DetectedHarness {
   harness: string;
   sessionId: string;
 }
@@ -99,10 +99,10 @@ const HARNESS_ENV_CHAIN: readonly { env: string; harness: string }[] = [
  * The env chain covers harnesses that publish a session-id env var. VS Code
  * Copilot **Chat** is the exception: it sets `AI_AGENT=github_copilot_vscode_agent`
  * but NO session-id var, so it's recognized here with an EMPTY `sessionId` — a
- * "resolve me from the store by cwd" marker that {@link captureUnsafe} fills via
- * {@link resolveCopilotVscodeSessionId} (it needs cwd + the db, neither available
- * to this pure env-only function). `TERM_PROGRAM=vscode` is deliberately NOT
- * consulted — a `copilot-cli` run inside VS Code's terminal must not false-match.
+ * "resolve me from the store by cwd" marker that {@link resolveDetectedSession}
+ * fills via {@link resolveCopilotVscodeSessionId} (it needs cwd + the db, neither
+ * available to this pure env-only function). `TERM_PROGRAM=vscode` is deliberately
+ * NOT consulted — a `copilot-cli` run inside VS Code's terminal must not false-match.
  */
 export function detectHarness(env: EnvPort): DetectedHarness | null {
   for (const { env: key, harness } of HARNESS_ENV_CHAIN) {
@@ -112,9 +112,36 @@ export function detectHarness(env: EnvPort): DetectedHarness | null {
     }
   }
   if (env.get('AI_AGENT') === COPILOT_VSCODE_AI_AGENT) {
-    return { harness: COPILOT_VSCODE_HARNESS, sessionId: '' }; // db-resolved by cwd in captureUnsafe
+    return { harness: COPILOT_VSCODE_HARNESS, sessionId: '' }; // db-resolved by cwd
   }
   return null;
+}
+
+/**
+ * Complete a {@link detectHarness} result into a session the buffer can be keyed
+ * by, or `null` when there is no attributable lane (→ a clean no-op, AC-21).
+ *
+ * Only VS Code Copilot Chat needs completing: it publishes no session-id env var,
+ * so detection leaves `sessionId` EMPTY and the active session is read from the
+ * chat store BY CWD. Every env-chain harness passes straight through unchanged.
+ *
+ * SHARED ON PURPOSE. Both writers of a session lane — the kernel's capture
+ * preamble ({@link captureUnsafe}) and the `checks` exit-chokepoint marker
+ * (`captureChecksOutcome`) — resolve through this ONE function. If they resolved
+ * differently, a VS Code run's `checks` verdict would land on a different lane
+ * than the command marker it is supposed to be joined with, and the discipline
+ * panel would silently mis-attribute (or lose) the pairing.
+ */
+export function resolveDetectedSession(
+  detected: DetectedHarness,
+  deps: { env: EnvPort; db?: DbPort },
+  cwd: string,
+): DetectedHarness | null {
+  if (detected.sessionId.length > 0) return detected;
+  if (detected.harness !== COPILOT_VSCODE_HARNESS) return null;
+  const sessionId =
+    deps.db !== undefined ? resolveCopilotVscodeSessionId(deps.db, deps.env, cwd) : null;
+  return sessionId === null ? null : { harness: detected.harness, sessionId };
 }
 
 /**
@@ -583,16 +610,12 @@ function captureUnsafe(deps: CaptureDeps): void {
   const cwd = toPosix(deps.proc.cwd());
 
   // VS Code Copilot Chat carries no session-id env var (detection left it ''); the
-  // active session is resolved from the store BY CWD (latest `updated_at`). This is
-  // the ONE detection-time db read — done here, before the cursor/branch/buffer
-  // paths consume `detected.sessionId`. No match → clean no-op (AC-21), never a
-  // forced segment. Best-effort: a missing db / no `deps.db` resolves to null.
-  if (detected.harness === COPILOT_VSCODE_HARNESS && detected.sessionId === '') {
-    const sessionId =
-      deps.db !== undefined ? resolveCopilotVscodeSessionId(deps.db, deps.env, cwd) : null;
-    if (sessionId === null) return;
-    detected = { harness: detected.harness, sessionId };
-  }
+  // active session is resolved from the store BY CWD (latest `updated_at`) through
+  // the shared resolver — done here, before the cursor/branch/buffer paths consume
+  // `detected.sessionId`. No match → clean no-op (AC-21), never a forced segment.
+  const resolved = resolveDetectedSession(detected, deps, cwd);
+  if (resolved === null) return;
+  detected = resolved;
   const standardClaude =
     detected.harness === 'claude-code'
       ? (() => {
