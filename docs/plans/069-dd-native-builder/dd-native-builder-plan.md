@@ -1,10 +1,13 @@
 # dd-native builder — the structural proof graph, wired end to end
 
-> Plan 069. Drafted by koala from the 2026-08-04 design session; every design
-> decision below is a Jordan ruling recorded in
+> Plan 069. Drafted by koala from the 2026-08-04 design session; the design
+> decisions below are recorded in
 > `docs/plans/065-deterministic-documents/builder-tuning/notes.md` (the ruling
-> ledger) and `structural-proof-graph.md` (the design doc). This plan
-> implements those rulings and does not re-litigate them.
+> ledger — RULED items are Jordan's, and the one carried LEAN is flagged in
+> § Clarifications) and `structural-proof-graph.md` (the design doc). This
+> plan implements those rulings and does not re-litigate them. Validated by
+> an independent Opus pass (NEEDS ATTENTION, 10 findings) — all folded into
+> this version.
 
 ## Business Specification
 
@@ -117,8 +120,13 @@ journey autonomously; the human reviews claims-with-evidence at the PR.
    or array items); the five built-in rels parse, resolve, and are exposed on
    the resolved schema; an unknown rel string is accepted and behaves as
    `ref`; `dd graph map` labels edges with their rel and can filter by it.
-   The built-in set is frozen in the surface manifest (one-line renegotiation
-   to extend).
+   The built-in set is frozen in the surface manifest
+   (`docs/plans/065-deterministic-documents/tasks/phase-1-dd-core-foundations/dd-surface.md`;
+   one-line renegotiation to extend). **And the existing `builder/*` link
+   fields DECLARE their rels** — `pressure`→`pressure`,
+   `proven_by`→`proven_by`, `done`→`derives`, `satisfies`→`satisfies` —
+   pinned by a schema test, so the engine is live on real plans from day
+   one, never capability-only.
 2. **AC-02 Links bucket**: any list-item shape may carry a `links` bucket
    (array of `rel: "ref"` links) without per-schema bespoke fields; rendered
    as a final `Links` column only when at least one item in that list has
@@ -156,27 +164,52 @@ journey autonomously; the human reviews claims-with-evidence at the PR.
    emit `dd_link`s — each phase node gating on its phase task section, the
    last review node carrying the check-kind gate; a pre-JIT departure
    attempt refuses with `target-invalid` (the you-never-tasked-this-phase
-   refusal, pinned by test).
+   refusal, pinned by test). **Address form for dd-native plans is bare
+   ordinal — `assets/tasks/phase-N/tasks.dd.json` — an explicit, stated
+   amendment to #90's `phase-N-<kebab-title>/` convention**: a static
+   template can bake an ordinal address before any title exists, and
+   retitling a phase must never move its task-file address (the same
+   stability rule that pinned section anchors in #87). The builder docs
+   state the amendment where the #90 layout is defined.
 10. **AC-10 dd-native authoring**: `1b plan` emits `plan.dd.json` (+ built
-    sibling) as the plan artifact and `5 tasks` emits
+    sibling `plan.dd.md`) as the plan artifact and `5 tasks` emits
     `assets/tasks/phase-N/tasks.dd.json` with done_when lists and
     `satisfies` edges, adding the phase row's `tasks` link in the same
-    stroke; the flow discovers both; a scripted end-to-end dry-run proves
-    create → JIT → refuse → green → depart.
+    stroke; the flow discovers both. A scripted end-to-end dry-run proves
+    create → JIT → refuse → green → depart — **run at the P3+P4 join**
+    (see phase graph), since the refusal it exercises is P3's gate.
 11. **AC-11 PR surface**: ship renders a dd-derived AC table into the PR
     body — each row with its state mark and resolved links (proven_by,
     pressure, incoming satisfies) as clickable references — generated from
-    the corpus, never hand-written; a plan with an unclosed AC cannot reach
-    this point (AC-08) and the renderer refuses rather than fabricates if
-    handed one.
-12. **AC-12 Layout & archive**: the dd corpus lives inside the #90 assets/
-    convention (plan doc at root, task files under `assets/tasks/`); after a
-    post-flight `git mv` to `docs/plans/archive/<ord>-<slug>/`, the corpus
-    is still doctor-clean (relative addresses survive; shas unchanged).
+    the corpus, never hand-written. **Ship runs after 7b post-flight has
+    archived the plan folder, so it resolves the corpus under
+    `docs/plans/archive/<ord>-<slug>/`** (the #90 read-from-archive rule).
+    A plan with an unclosed AC cannot reach this point (AC-08) and the
+    renderer refuses rather than fabricates if handed one.
+12. **AC-12 Layout & archive**: the dd-native plan-folder root holds exactly
+    five files — `plan.dd.json`, `plan.dd.md`, `the-flow.json`,
+    `the-flow.md`, `original-ask.md` (the stated dd-native amendment to
+    #90's four-file allow-list, replacing `<slug>-plan.md` with the dd
+    pair); task files live under `assets/tasks/phase-N/`. After the
+    post-flight `git mv` to `docs/plans/archive/<ord>-<slug>/`, the dd
+    corpus is doctor-clean (relative addresses survive; shas unchanged) —
+    **and the archive step rewrites the flow's `dd_link` addresses**, which
+    anchor at repo root (`fromPath: null`) and would otherwise go stale;
+    the rewrite is part of the 7b stage and pinned by the dry-run.
 13. **AC-13 Exemplar & docs**: the exemplar corpus upgrades to the new
     schemas (rels, done_when, mandatory pressure, satisfies) and validates
-    doctor-clean; `docs/how/dd/` chapters and the baked docs corpus cover
-    the new surface; `just checks` green; warn trio at baseline.
+    doctor-clean — **18 of 26 `dw-*` rows currently lack `pressure`** and
+    each gets a real link or `not-applicable`; the exemplar keeps its own
+    teaching layout at `docs/how/dd/exemplar/` (it is a corpus, not a plan
+    folder — explicitly NOT re-homed under assets/); `docs/how/dd/` chapters
+    and the baked docs corpus cover the new surface; `just checks` green;
+    warn trio at baseline.
+14. **AC-14 Legacy read path retained**: dd-native is the only **write**
+    path; the legacy markdown **read/adopt/resume** path stays unchanged —
+    every in-flight markdown plan (058–069 itself included) still detects,
+    adopts, and resumes; pinned by a detection test over a legacy-folder
+    fixture. "No dual path" means no dual *authoring* path, never deleting
+    the reader.
 
 ### Clarifications (all Jordan, 2026-08-04 — see original-ask.md)
 
@@ -184,8 +217,13 @@ journey autonomously; the human reviews claims-with-evidence at the PR.
 - BP toolbelt model; `pressure: not-applicable`; toolbelt never gates.
 - Strict-zero `--complete`; `--force` (human-authorized, recorded) is the
   only bypass.
-- Builder fully dd-native — no dual markdown path.
+- Builder fully dd-native — no dual markdown *authoring* path (the legacy
+  read/adopt path is retained: AC-14).
 - Links bucket explicitly in scope; PR surface explicitly "now".
+- **Carried lean, not yet ruled**: the non-`--complete` posture (open
+  completables as a summary info line, per-row warnings only under
+  `--complete`) is koala's proposal tagged LEAN in the ledger — awaiting
+  Jordan's one-line confirm; AC-07 encodes it pending that.
 
 ## Implementation Plan
 
@@ -195,8 +233,14 @@ journey autonomously; the human reviews claims-with-evidence at the PR.
 P1 (dd core: rels, bucket, schemas) ──► P2 (plan validate semantic layer)
                                           ├──► P3 (flow check-gate + template gates)
                                           └──► P4 (builder dd-native authoring)
-P3 + P4 ──► P5 (ship PR surface) ──► P6 (exemplar upgrade, docs, checks join)
+P3 + P4 ──► JOINT EXIT: AC-10 end-to-end dry-run (create → JIT → refuse → green → depart)
+        ──► P5 (ship PR surface) ──► P6 (exemplar upgrade, docs, checks join)
 ```
+
+P3 ∥ P4 holds for the *build* (P4 is prompt-ware over P1 schemas + P2
+validate; P3 is CLI over the same) — but AC-10's dry-run exercises P3's
+refusal through P4's authored artifacts, so it is a **joint exit gate**:
+neither phase closes its final AC until the join runs green.
 
 ### Phase 1 — Relations, buckets, and schema surface (dd core)
 
@@ -204,8 +248,10 @@ The schema layer learns `rel` (declaration parsing, resolved-schema exposure,
 frozen-five registry in the surface manifest, unknown-rel-as-ref); the
 renderer learns the `links` bucket column (reusing the array-of-link
 machinery from #87); `builder/*` schemas gain `done_when` (rename),
-`satisfies` (always-array, rel-typed), and mandatory `pressure` with the
-`not-applicable` literal. Every new failure class gets its planted-bad
+`satisfies` (always-array, rel-typed), mandatory `pressure` with the
+`not-applicable` literal, **and rel declarations on every existing link
+field** (AC-01's live-on-real-plans clause — the engine must never ship
+capability-only). Every new failure class gets its planted-bad
 fixture and good twin. Watch item from OD-8: the declaration parser's
 allow-list silently drops unknown keys — `rel` must be added there, and the
 pin lives in `declarations.test.ts`/`parse.test.ts` (not the renderer suite).
@@ -214,10 +260,13 @@ pin lives in `declarations.test.ts`/`parse.test.ts` (not the renderer suite).
 
 The doc-type-aware consumer grows opinions: open-completables summary line
 (always), the rel-generic contradiction engine (always), `--complete` mode
-(per-row opens + orphan ACs + strict-zero green). New E-code block allocated
-for semantic findings (E430–E439 is full — leaf decision: next free block,
-recorded in the error-code JSDoc discipline). `dd validate` stays byte-for-
-byte mechanical — regression-pinned.
+(per-row opens + orphan ACs + strict-zero green). Semantic findings get the
+**E450–E459** block (E430–E439 AND E440–E449 are both complete allocations —
+verified in `error-codes.ts`). This is a **surface-manifest renegotiation,
+not a leaf decision**: `dd-surface.test.ts` pins exactly 50 `E4xx` codes and
+requires every code to appear in the manifest doc, so P2's scope includes
+the manifest row and the length-pin adjustment alongside the code block.
+`dd validate` stays byte-for-byte mechanical — regression-pinned.
 
 ### Phase 3 — The check-kind flow gate
 
@@ -238,15 +287,17 @@ never past one (extend `flow-consumes-dd-sdk-only` accordingly).
 satisfies + pressure) and adds the phase row's `tasks` link; `6 implement` /
 `6a progress` update states through dd surfaces; discovery/readers
 re-pointed. The doctrine-parity block is untouched; where prompt-ware
-behaviour can't be compile-checked, the P4/P3 joint end-to-end dry-run is
-the proof (AC-10).
+behaviour can't be compile-checked, the joint-exit dry-run is the proof
+(AC-10, run at the P3+P4 join per the phase graph).
 
 ### Phase 5 — The PR surface (ship)
 
 Ship assembles the dd-derived AC table (state marks + resolved proven_by /
 pressure / incoming-satisfies links) into the PR body; refuses to fabricate
-when handed an unclosed corpus. Repo-relative links render as clickable
-GitHub URLs at the recorded head SHA.
+when handed an unclosed corpus. **Ship reads the plan from its archive path**
+(`docs/plans/archive/<ord>-<slug>/` — 7b post-flight has already moved it,
+per #90); repo-relative links render as clickable GitHub URLs at the
+recorded head SHA.
 
 ### Phase 6 — Exemplar, docs, checks join
 
