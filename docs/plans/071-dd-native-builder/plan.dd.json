@@ -475,139 +475,14 @@
           "state": "unchecked",
           "depends_on": [
             "ph-7102"
-          ]
+          ],
+          "tasks": "assets/tasks/phase-3/tasks.dd.json#tasks"
         }
       ]
     },
     {
       "name": "tasks",
-      "value": [
-        {
-          "id": "tk-7151",
-          "title": "Corpus → PR-body AC table renderer",
-          "phase": "ph-7103",
-          "state": "unchecked",
-          "success": "Goldens over the exemplar; refuses unclosed corpus.",
-          "satisfies": [
-            "#acceptance_criteria/ac-7112"
-          ]
-        },
-        {
-          "id": "tk-7152",
-          "title": "Ship stage integration (archive path, head-SHA links)",
-          "phase": "ph-7103",
-          "state": "unchecked",
-          "success": "Links click through on a real PR.",
-          "notes": "key finding: archive-before-ship",
-          "satisfies": [
-            "#acceptance_criteria/ac-7112"
-          ]
-        },
-        {
-          "id": "tk-7161",
-          "title": "Exemplar schema upgrade (pressure, satisfies, done_when)",
-          "phase": "ph-7103",
-          "state": "unchecked",
-          "success": "Doctor-clean 0/0; leaf-first re-verify.",
-          "notes": "key finding: 18/26 rows",
-          "satisfies": [
-            "#acceptance_criteria/ac-7104",
-            "#acceptance_criteria/ac-7114"
-          ]
-        },
-        {
-          "id": "tk-7162",
-          "title": "docs/how/dd chapters + justfile recipes for new commands",
-          "phase": "ph-7103",
-          "state": "unchecked",
-          "success": "Every new command has a runnable recipe.",
-          "satisfies": [
-            "#acceptance_criteria/ac-7114"
-          ]
-        },
-        {
-          "id": "tk-7163",
-          "title": "Promote structural-proof-graph to docs/how/dd/11-the-builder-proof-graph.md",
-          "phase": "ph-7103",
-          "state": "unchecked",
-          "success": "Doc lands as docs/how/dd/11-the-builder-proof-graph.md (Jordan's ruling 2026-08-04: builder graph joins the dd chapter set, not a new docs/how/builder dir), updated to the shipped surface (rels, pressure, done_when, writer verbs, semantic validate, check gates) and framed as the work-graph/knowledge-graph join per the graph-engineering concepts (work graph expires, knowledge graph compounds, joined via deterministic typed citations with recorded freshness). README chapter index updated; links repaired; builder-tuning keeps a signpost."
-        },
-        {
-          "id": "tk-7164",
-          "title": "Baked docs regen + drift gate",
-          "phase": "ph-7103",
-          "state": "unchecked",
-          "success": "check:dd-docs green both ways.",
-          "satisfies": [
-            "#acceptance_criteria/ac-7114"
-          ]
-        },
-        {
-          "id": "tk-7165",
-          "title": "Archive-move proof: git mv fixture + dd_link rewrite",
-          "phase": "ph-7103",
-          "state": "unchecked",
-          "success": "Doctor-clean post-move; flow links resolve.",
-          "notes": "key finding: repo-root anchoring",
-          "satisfies": [
-            "#acceptance_criteria/ac-7113"
-          ]
-        },
-        {
-          "id": "tk-7166",
-          "title": "Full just checks + warn-trio baseline verification",
-          "phase": "ph-7103",
-          "state": "unchecked",
-          "success": "Exit 0; trio byte-identical.",
-          "satisfies": [
-            "#acceptance_criteria/ac-7114"
-          ]
-        },
-        {
-          "id": "tk-7167",
-          "title": "Self-hosting retrofit + proof: plan 071's corpus fully dd-native",
-          "phase": "ph-7103",
-          "state": "unchecked",
-          "satisfies": [
-            "#acceptance_criteria/ac-7117"
-          ],
-          "success": "backpressure + execution-log docs linked from every AC; task files with done_when; rel-typed satisfies; flight-plan gate events show a real refusal and a real pass; plan validate --complete green; doctor-clean.",
-          "notes": "The journey itself produces most of this; the task is the final audit that nothing was hand-waved."
-        },
-        {
-          "id": "tk-7168",
-          "title": "Flow-eval scenario: single-phase dd-native journey (blind subject, telemetry-scored)",
-          "phase": "ph-7103",
-          "state": "unchecked",
-          "satisfies": [
-            "#acceptance_criteria/ac-7118"
-          ],
-          "success": "Scenario bundle (live-testing/scenarios/) + prompts pair authored;\nbase-ref pinned to include 071's own code (else the telemetry lane goes blind);\nassertions reuse existing types (skill-called builder, harness-verb-ran dd/plan validate, file-created plan.dd.json glob, forbidden-state on *-plan.md, file-content-matches for pressure/satisfies, command-succeeds --complete, refusal via tk-7169's evidence);\nscored via harness flow-eval score, judged lane filled, rendered, ledgered;\ninstructions.md + flow-eval-run SKILL updated.",
-          "notes": "Research report: assets/research-flow-eval-history.md — reuse list §6"
-        },
-        {
-          "id": "tk-7171",
-          "title": "Fences as data: builder/fence schema + mechanical out-of-fence check",
-          "phase": "ph-7103",
-          "state": "unchecked",
-          "success": "A fence doc validates; the check refuses an out-of-fence change naming path + fence row (planted-bad fixture fires); an amendment is a row edit with owner/cause/expiry; a dispatch brief can cite its fence by address.",
-          "notes": "Jordan ruled IN 2026-08-04. Born from phase-1 review finding 1 (fence violation caught only by human review) and the expiry-ownership gap — a fence row that carries cause AND expiry cannot quietly outlive its reason.",
-          "satisfies": [
-            "#acceptance_criteria/ac-7120"
-          ]
-        },
-        {
-          "id": "tk-7172",
-          "title": "Reviews as dd: builder/review schema + verdict linkage, dogfooded on review-3",
-          "phase": "ph-7103",
-          "state": "unchecked",
-          "success": "builder/review schema lands; review-3 of THIS plan is authored as a .dd.json (findings rows, verdict links, pressure on Dim-0 results); doctor-clean; a jq recipe answers which findings were refuted.",
-          "notes": "Jordan ruled IN 2026-08-04. First dogfood is this plan's own final review — the review that closes the plan is itself rows in the graph.",
-          "satisfies": [
-            "#acceptance_criteria/ac-7121"
-          ]
-        }
-      ]
+      "value": []
     },
     {
       "name": "acceptance_coverage",
