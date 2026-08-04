@@ -232,6 +232,45 @@ function writeJsonLine(fs: FsPort, path: string, obj: unknown): void {
   fs.rename(tmp, path);
 }
 
+/**
+ * Write a serialized segment into a session's buffer as the next `<seq>.json`
+ * PLUS its two OTLP sidecars, atomically (temp + rename).
+ *
+ * Transport-agnostic OTLP spool (plan 038 T010 · WS-B S4): the SAME serialized
+ * segment is emitted as OTLP/JSON Lines beside the buffer entry — one `LogsData`
+ * line + one `MetricsData` line (the fileexporter idiom; one file per signal,
+ * research A1). Written from the serialized segment only, so the counts-only
+ * allowlist is inherited. The transport (sync) ships these — the serializer
+ * carries no transport knowledge.
+ *
+ * SHARED by the live capture path and the orphan-lane reconciler (plan 070) so
+ * the two can never drift in what a buffered segment consists of: a recovered
+ * segment must ride exactly the same rails, or "recovered" would quietly mean
+ * "recovered into a shape only some consumers can see".
+ */
+export function writeCapturedSegment(
+  deps: { fs: FsPort; proc: ProcessPort },
+  cwd: string,
+  sessionId: string,
+  segment: Segment,
+): string {
+  ensureTemp({ fs: deps.fs, proc: deps.proc });
+  const sessionDir = sessionDirFor(cwd, sessionId);
+  deps.fs.mkdirp(sessionDir);
+  const seq = nextSeq(deps.fs, sessionDir);
+  const entryPath = posixJoin(sessionDir, `${seq}.json`);
+  const tmp = `${entryPath}.tmp`;
+  deps.fs.writeText(tmp, `${JSON.stringify(segment, null, 2)}\n`);
+  deps.fs.rename(tmp, entryPath);
+  writeJsonLine(deps.fs, posixJoin(sessionDir, `${seq}.logs.jsonl`), segmentToOtlpLogs(segment));
+  writeJsonLine(
+    deps.fs,
+    posixJoin(sessionDir, `${seq}.metrics.jsonl`),
+    rollupToOtlpMetrics(segment),
+  );
+  return entryPath;
+}
+
 /** Next `<seq>.json` index, seeded above the durable flushed high-water. */
 function nextSeq(fs: FsPort, sessionDir: string): number {
   let max = 0;
@@ -787,28 +826,7 @@ function captureUnsafe(deps: CaptureDeps, probe: CaptureProbe = newCaptureProbe(
 
   // Ensure the self-ignoring temp tree (writes temp/.gitignore = `*`), then write
   // the buffer entry atomically (temp + rename — mirror flow-service, not observe).
-  ensureTemp({ fs: deps.fs, proc: deps.proc });
-  const sessionDir = sessionDirFor(cwd, detected.sessionId);
-  deps.fs.mkdirp(sessionDir);
-  const seq = nextSeq(deps.fs, sessionDir);
-  const entryPath = posixJoin(sessionDir, `${seq}.json`);
-  const tmp = `${entryPath}.tmp`;
-  deps.fs.writeText(tmp, `${JSON.stringify(segment, null, 2)}\n`);
-  deps.fs.rename(tmp, entryPath);
-
-  // Transport-agnostic OTLP spool (plan 038 T010 · WS-B S4): emit the SAME
-  // serialized segment as OTLP/JSON Lines beside the buffer entry — one `LogsData`
-  // line + one `MetricsData` line per capture (the fileexporter idiom; one file
-  // per signal, research A1). Written from the serialized segment only, so the
-  // counts-only allowlist is inherited; atomic temp+rename. The transport (sync)
-  // ships these — the serializer carries no transport knowledge. (Segment JSON is
-  // kept until the sync publisher + scraper migrate to `.jsonl` in T011/T013.)
-  writeJsonLine(deps.fs, posixJoin(sessionDir, `${seq}.logs.jsonl`), segmentToOtlpLogs(segment));
-  writeJsonLine(
-    deps.fs,
-    posixJoin(sessionDir, `${seq}.metrics.jsonl`),
-    rollupToOtlpMetrics(segment),
-  );
+  writeCapturedSegment(deps, cwd, detected.sessionId, segment);
 
   // Advance the high-water mark crash-safely, then remember this capture's branch
   // so the NEXT capture can detect a switch, and advance the flow-log offset so

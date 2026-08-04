@@ -88,6 +88,26 @@ export interface SessionExportSummary {
    * of dropping it. OMITTED when no segment carried a path list.
    */
   files_observed?: { written: string[]; edited: string[] };
+  /**
+   * plan 070 — the instant ranges covered by RECONCILED segments: windows that were
+   * recovered LATE from an orphaned capture lane, after the session had stopped
+   * running harness commands. Nobody watched that work happen; it was reconstructed
+   * from the harness's own transcript afterwards.
+   *
+   * Carried as TIME RANGES, not a flag, because this combine collapses every
+   * segment into ONE session-level resource — per-segment provenance would be lost
+   * at exactly the moment a reader needs it. The bounds are the reconciled events'
+   * OWN first and last instants (nothing derived, nothing widened), so a read
+   * surface can say which part of the timeline was reconstructed rather than only
+   * that some of it was. A live event sharing an instant with a reconciled one is
+   * flagged too — conservative in the safe direction: it under-claims observation,
+   * never over-claims it.
+   *
+   * OMITTED when no segment was reconciled, which is every ordinary session.
+   */
+  reconciled_windows?: { from: string; to: string }[];
+  /** plan 070 — how many contributing segments were reconciled. Omitted when none. */
+  reconciled_segments?: number;
 }
 
 export interface SessionExportSignals {
@@ -504,6 +524,19 @@ export function combineSession(
     }
   }
 
+  // plan 070 — the reconstructed slices of this session's timeline, taken from the
+  // recovered events' own instants before the per-segment resources are collapsed.
+  const reconciledWindows: { from: string; to: string }[] = [];
+  for (const r of reads) {
+    if (r.seg.capture_mode !== 'reconciled' || r.events.length === 0) continue;
+    const times = r.events.map((e) => e.t).filter((t) => typeof t === 'string' && t.length > 0);
+    if (times.length === 0) continue;
+    reconciledWindows.push({
+      from: times.reduce((a, b) => (a < b ? a : b)),
+      to: times.reduce((a, b) => (a > b ? a : b)),
+    });
+  }
+
   // Unify through the event stream: merge all events, order by `t`.
   const allEvents = reads
     .flatMap((r) => r.events)
@@ -517,7 +550,7 @@ export function combineSession(
     opts?.kind === 'git-ref' ? 'ref' : 'live',
   );
   const sessionSchemaVersion = allEvents.some((event) => event.kind === 'usage')
-    ? '2.6'
+    ? '2.7'
     : (reads[0]?.seg.schema_version ?? 'unknown');
   if (hasV1) degraded.push('v1_segments');
 
@@ -580,6 +613,12 @@ export function combineSession(
       degraded,
       ...(filesWritten.length > 0 || filesEdited.length > 0
         ? { files_observed: { written: filesWritten, edited: filesEdited } }
+        : {}),
+      ...(reconciledWindows.length > 0
+        ? {
+            reconciled_windows: reconciledWindows,
+            reconciled_segments: reconciledWindows.length,
+          }
         : {}),
     },
     signals: {

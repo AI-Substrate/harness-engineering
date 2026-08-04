@@ -1,4 +1,5 @@
 import type { Clock } from '../../adapters/clock/clock-port.js';
+import type { DbPort } from '../../adapters/db/db-port.js';
 import type { EnvPort } from '../../adapters/env/env-port.js';
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { GitReadPort } from '../../adapters/git/git-read-port.js';
@@ -9,7 +10,9 @@ import {
 } from '../../adapters/git/git-write-port.js';
 import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { posixJoin, toPosix } from '../shared/posix-path.js';
+import type { HarnessAdapter } from './adapters/harness-adapter.js';
 import { LIVENESS_SUFFIX } from './capture-liveness.js';
+import { reconcileOrphanLanes } from './capture-reconcile.js';
 import { KILL_SWITCH_ENV } from './capture-service.js';
 import { readFlushed, telemetryDir } from './cursor.js';
 import { reconstructSegmentFromOtlpLogs } from './otlp/logs.js';
@@ -77,6 +80,24 @@ export interface SyncDeps {
    * scan. Absent ⇒ no migration; start date falls back to the buffer timecode.
    */
   gitRead?: GitReadPort;
+  /**
+   * OPTIONAL — enables the orphan-lane RECONCILIATION pass (plan 070). Present only
+   * on the explicit `harness telemetry sync` verb, which also supplies a {@link Clock}.
+   *
+   * Sync is the right host for it: it already runs on the post-commit hook (so the
+   * cadence needs nobody to remember it), it is already the thing that ships buffered
+   * segments, and running BEFORE the flush means a recovered segment leaves in the
+   * same pass instead of waiting for the next one. The `checks` auto-sync path
+   * deliberately omits it — that path is on the latency-critical gate.
+   */
+  reconcile?: {
+    /** Per-harness adapters; a lane whose harness has no adapter is left untouched. */
+    adapters: HarnessAdapter[];
+    /** The producing CLI version → the recovered segment's `harness_version`. */
+    version?: string;
+    /** Read-only SQLite for adapters whose timing/model signal lives in a local db. */
+    db?: DbPort;
+  };
 }
 
 export interface SyncResult {
@@ -98,8 +119,25 @@ export interface SyncResult {
   plans: string[];
   /** Present ONLY when the one-time old-ref migration pass ran this sync (plan 049 T004). */
   migration?: MigrationSummary;
+  /**
+   * Present ONLY when the orphan-lane reconciliation pass ran (plan 070). Lanes
+   * recovered are surfaced so a late recovery is announced, never silent — the
+   * whole point of the deliverable is that a capture nobody watched stops being
+   * invisible.
+   */
+  reconciled?: ReconciledLanes;
   /** Set on a failure (a roll's push failed / ref-update exhausted / migration error). */
   message?: string;
+}
+
+/** What the orphan-lane reconciliation pass recovered this run (plan 070). */
+export interface ReconciledLanes {
+  /** Lanes recovered this pass. */
+  lanes: number;
+  /** Source units (transcript lines) recovered across those lanes. */
+  units: number;
+  /** Flagged lanes deliberately NOT recovered, by reason — a skip is never silent. */
+  skipped: number;
 }
 
 /** What the one-time migration pass did this run (surfaced in the sync summary). */
@@ -114,8 +152,20 @@ export interface MigrationSummary {
 
 const REF_UPDATE_RETRIES = 3;
 
-/** A fully-flushed session dir idle longer than this is forgotten whole (T007 age-out). */
-const AGE_OUT_MS = 14 * 24 * 60 * 60 * 1000;
+/**
+ * A fully-flushed session dir idle longer than this is forgotten whole (T007 age-out).
+ *
+ * EXPORTED because this constant is what OWNS the liveness marker's lifetime
+ * (plan 070). `pruneFlushedBuffer` is the only deleter of a `.liveness.json`, and
+ * it deletes one only in the age-out branch — so the orphan-lane reconciler, which
+ * is a LATER READER of a file this prune policy is entitled to remove on its own
+ * schedule, can only recover a lane inside the window
+ * `[LIVENESS_RESIDUE_IDLE_MS, AGE_OUT_MS)`. That ordering is the CONTROL, not a
+ * coincidence: `capture-reconcile.test.ts` pins it, so narrowing the prune below
+ * the residue idle gate fails a test instead of silently making recovery
+ * unreachable.
+ */
+export const AGE_OUT_MS = 14 * 24 * 60 * 60 * 1000;
 
 /** Fallback ref date bucket when a session's start timecode can't be parsed (keeps ref depth uniform). */
 const UNDATED = '0000/00/00';
@@ -473,6 +523,35 @@ interface RollOutcome {
  * Flush the telemetry buffer to the rolled ref namespace. The named entry the
  * `telemetry sync` verb calls. Best-effort + fail-safe — never throws.
  */
+/**
+ * Run the orphan-lane reconciliation pass when this sync was wired for it, and
+ * summarize what it recovered. Requires a {@link Clock}: the residue detector's
+ * idle gate — the thing that separates "the session is over and left work behind"
+ * from "the session is mid-batch and will consume its own window" — is a question
+ * about NOW, and a sync with no clock cannot ask it. No clock or no adapters ⇒
+ * `undefined`, and the pass never runs.
+ */
+function runReconcile(deps: SyncDeps): ReconciledLanes | undefined {
+  const wiring = deps.reconcile;
+  const clock = deps.clock;
+  if (wiring === undefined || clock === undefined) return undefined;
+  const result = reconcileOrphanLanes({
+    fs: deps.fs,
+    env: deps.env,
+    proc: deps.proc,
+    clock,
+    adapters: wiring.adapters,
+    ...(wiring.version !== undefined && { version: wiring.version }),
+    ...(wiring.db !== undefined && { db: wiring.db }),
+  });
+  if (result.reconciled.length === 0 && result.skipped.length === 0) return undefined;
+  return {
+    lanes: result.reconciled.length,
+    units: result.reconciled.reduce((sum, lane) => sum + lane.recovered, 0),
+    skipped: result.skipped.length,
+  };
+}
+
 export function syncTelemetry(deps: SyncDeps): SyncResult {
   const empty: SyncResult = { ok: true, pushed: false, segments: 0, sessions: 0, plans: [] };
   try {
@@ -491,6 +570,12 @@ function syncUnsafe(deps: SyncDeps): SyncResult {
   // no-op unless a local old-shape ref dated < today exists with no `.migrated`
   // sentinel. Steady-state keeps its fetch-free promise (AC-03).
   const migration = maybeMigrate(deps, telDir);
+
+  // Orphan-lane reconciliation (plan 070) — BEFORE the session scan below, so any
+  // segment it recovers is picked up and shipped by THIS pass rather than sitting
+  // in the buffer until the next one. Its own fail-safe (never throws), and a pure
+  // no-op unless a liveness marker flags a lane holding unconsumed residue.
+  const reconciled = runReconcile(deps);
 
   // Session dirs have sanitized (dot-free) names; `.cursor`/`.flushed`/`.startdate`/
   // `.gitignore`/`.migrated` are metadata files — skip anything with a dot. Missing dir → [].
@@ -602,6 +687,7 @@ function syncUnsafe(deps: SyncDeps): SyncResult {
         segments: migration.segments,
       },
     }),
+    ...(reconciled !== undefined && { reconciled }),
     ...((anyFailure || migFailed) && { message: failMessage ?? migration.message }),
   };
 }

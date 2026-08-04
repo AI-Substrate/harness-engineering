@@ -362,6 +362,13 @@ export interface ResidueSession {
   extent: number;
   /** `extent - cursor` — source units captured by nobody. */
   residue: number;
+  /**
+   * The source file the residue was measured in — carried so a CONSUMER of this
+   * verdict (the orphan-lane reconciler) can recover the window without ever
+   * re-deriving a path from the environment it happens to be running in. The
+   * marker is the only attribution authority: no marker, no source, no recovery.
+   */
+  source: string;
   last_attempt_at: string;
   idle_hours: number;
 }
@@ -470,6 +477,7 @@ export function evaluateCaptureLiveness(
       cursor: record.cursor,
       extent,
       residue: extent - record.cursor,
+      source: record.source,
       last_attempt_at: record.last_attempt_at,
       idle_hours: Math.floor(idleMs / (60 * 60 * 1000)),
     });

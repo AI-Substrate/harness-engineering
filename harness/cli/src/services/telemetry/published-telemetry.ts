@@ -418,6 +418,7 @@ const SCHEMA_URLS = {
   '2.4': 'https://github.com/AI-Substrate/harness-engineering/schemas/telemetry/v0.1.0',
   '2.5': 'https://github.com/AI-Substrate/harness-engineering/schemas/telemetry/v0.2.0',
   '2.6': 'https://github.com/AI-Substrate/harness-engineering/schemas/telemetry/v0.3.0',
+  '2.7': 'https://github.com/AI-Substrate/harness-engineering/schemas/telemetry/v0.4.0',
 } as const;
 type PublishedSegmentVersion = keyof typeof SCHEMA_URLS;
 const EVENT_KINDS = new Set([
@@ -435,9 +436,10 @@ const EVENT_KINDS = new Set([
 function safeKnownString(key: string | null, value: string): boolean {
   if (!safeString(value, false)) return false;
   if (key === 'schema_version') {
-    return value === '2.4' || value === '2.5' || value === '2.6';
+    return value === '2.4' || value === '2.5' || value === '2.6' || value === '2.7';
   }
   if (key === 'product_commit') return FULL_OID.test(value) && value === value.toLowerCase();
+  if (key === 'capture_mode') return value === 'reconciled';
   if (key === 'timecode' || key === 't') return isTelemetryTime(value);
   if (key === 'kind') return EVENT_KINDS.has(value);
   if (key === 'since')
@@ -580,7 +582,7 @@ function validEvent(value: unknown, version: PublishedSegmentVersion): boolean {
   if (event.kind === 'usage') {
     const buckets = ['in', 'out', 'cache_read', 'cache_create', 'nano_aiu'] as const;
     return (
-      version === '2.6' &&
+      (version === '2.6' || version === '2.7') &&
       hasExactKeys(event, ['t', 'kind', 'observation_kind'], ['t_precision', ...buckets]) &&
       typeof event.observation_kind === 'string' &&
       (USAGE_OBSERVATION_KINDS as readonly string[]).includes(event.observation_kind) &&
@@ -744,7 +746,7 @@ function validSegmentKnownField(
 ): boolean {
   switch (key) {
     case 'schema_version':
-      return value === '2.4' || value === '2.5' || value === '2.6';
+      return value === '2.4' || value === '2.5' || value === '2.6' || value === '2.7';
     case 'command':
       return typeof value === 'string' && isTelemetryCommand(value);
     case 'harness':
@@ -900,7 +902,8 @@ function validSegment(value: unknown): boolean {
     segment === null ||
     (segment.schema_version !== '2.4' &&
       segment.schema_version !== '2.5' &&
-      segment.schema_version !== '2.6')
+      segment.schema_version !== '2.6' &&
+      segment.schema_version !== '2.7')
   ) {
     return false;
   }
@@ -920,6 +923,8 @@ function validSegment(value: unknown): boolean {
   ];
   if (required.some((key) => !(key in segment))) return false;
   if (segment.product_commit !== undefined && segment.schema_version === '2.4') return false;
+  // v2.7 provenance cannot appear on a wire version that never had the field.
+  if (segment.capture_mode !== undefined && segment.schema_version !== '2.7') return false;
   for (const [key, child] of Object.entries(segment)) {
     if ((SEGMENT_FIELD_KEYS as readonly string[]).includes(key)) {
       if (!validSegmentKnownField(key, child, segment.schema_version)) return false;
@@ -1079,7 +1084,7 @@ function resourceVersion(value: unknown): PublishedSegmentVersion | null {
     !isTelemetryHarness(harness) ||
     command === null ||
     !isTelemetryCommand(command) ||
-    (version !== '2.4' && version !== '2.5' && version !== '2.6')
+    (version !== '2.4' && version !== '2.5' && version !== '2.6' && version !== '2.7')
   ) {
     return null;
   }
@@ -1150,7 +1155,7 @@ function validLogs(value: unknown): boolean {
     if (attributeList === null) return false;
     const eventKind = attributeList.find((item) => item.key === 'harness.event.kind')?.value
       .stringValue;
-    if (version !== '2.6' && eventKind === 'usage') return false;
+    if (version !== '2.6' && version !== '2.7' && eventKind === 'usage') return false;
     const recordValue: LogRecord = {
       timeUnixNano: log.timeUnixNano,
       severityNumber: log.severityNumber,

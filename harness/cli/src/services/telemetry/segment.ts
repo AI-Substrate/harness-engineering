@@ -39,8 +39,15 @@ import { normalizeUsageObservation, type UsageObservation } from './usage-observ
  * tool payloads) to the `event_stream` union — no new top-level segment field.
  * v2.5 (plan 060): adds optional product_commit (the product HEAD observed for
  * this activity window); old 2.4 records remain readable.
+ * v2.6 (plan 069): adds the closed typed `usage` event kind to the stream union.
+ * v2.7 (plan 070): adds optional {@link Segment.capture_mode} — the field that
+ * lets a LATE, reconciled segment declare itself instead of being wire-identical
+ * to an in-session capture. It is additive and optional, so every 2.4–2.6 record
+ * stays readable; the version moves because the field SET moved, which is the
+ * point: a consumer that has never heard of reconciliation sees a version it does
+ * not know rather than a late segment it silently reads as live.
  */
-export const SEGMENT_SCHEMA_VERSION = '2.6';
+export const SEGMENT_SCHEMA_VERSION = '2.7';
 
 /** Exact Segment-2.6 pij environment vocabulary. The producer never glob-captures `PIJ_*`. */
 export const CURRENT_CAPTURED_ENV_KEYS = [
@@ -210,7 +217,7 @@ export function isTelemetryTime(value: string): boolean {
 export function isCapturedEnvEntry(
   name: string,
   value: string,
-  version: '2.4' | '2.5' | '2.6',
+  version: '2.4' | '2.5' | '2.6' | '2.7',
 ): boolean {
   const allowed =
     version === '2.4'
@@ -369,6 +376,25 @@ export interface Segment {
   captured_env?: Record<string, string>;
   /** v2.5 — lowercase full product Git OID observed during this activity window. */
   product_commit?: string;
+  /**
+   * v2.7 — HOW this segment was produced. OMITTED for the normal in-session
+   * capture (the overwhelming majority), so every pre-2.7 record and every live
+   * capture is byte-identical to before.
+   *
+   * `reconciled` marks a LATE segment: the window was recovered from an ORPHANED
+   * lane by {@link ../capture-reconcile}, after the session that did the work had
+   * already stopped running harness commands. It is the difference between "an
+   * agent ran this command and we watched" and "nobody was watching, and we went
+   * back for the evidence afterwards" — a distinction that must survive to every
+   * consumer, because a reconciled segment's `timecode` is the RECOVERY time, its
+   * event instants are interval-grade, and no live process ever observed it.
+   *
+   * A reconciled segment NEVER masquerades: it also carries the reserved
+   * `telemetry reconcile` command, and every event it contributes is stamped
+   * `t_precision: 'interval'` so it can never accrue active time it did not
+   * measure.
+   */
+  capture_mode?: 'reconciled';
 }
 
 /**
@@ -401,6 +427,7 @@ export const SEGMENT_FIELD_KEYS = [
   'thinking',
   'captured_env',
   'product_commit',
+  'capture_mode',
 ] as const;
 
 /**
@@ -454,6 +481,12 @@ export interface SegmentInput {
   event_stream?: readonly Event[];
   /** v2.5 — optional product HEAD; invalid values are omitted, never echoed. */
   product_commit?: string | null;
+  /**
+   * v2.7 — set to `reconciled` ONLY by the orphan-lane reconciler. Any other value
+   * (including `live`) is dropped by the serializer, so the field cannot be used to
+   * assert liveness — its ABSENCE is what means live, and absence cannot be forged.
+   */
+  capture_mode?: string | null;
 }
 
 const ABSOLUTE_LOGICAL = /^([A-Za-z]:)?\//;
@@ -785,7 +818,10 @@ export function decodeSegment(value: unknown): Segment | null {
   const raw = value as Record<string, unknown>;
   if (typeof raw.schema_version !== 'string') return null;
   const currentVersion =
-    raw.schema_version === '2.4' || raw.schema_version === '2.5' || raw.schema_version === '2.6';
+    raw.schema_version === '2.4' ||
+    raw.schema_version === '2.5' ||
+    raw.schema_version === '2.6' ||
+    raw.schema_version === '2.7';
   const intermediateVersion =
     raw.schema_version === '2.0' ||
     raw.schema_version === '2.1' ||
@@ -1040,7 +1076,7 @@ export function decodeSegment(value: unknown): Segment | null {
       for (const [key, entry] of Object.entries(raw.captured_env)) {
         if (
           typeof entry !== 'string' ||
-          !isCapturedEnvEntry(key, entry, raw.schema_version as '2.4' | '2.5' | '2.6')
+          !isCapturedEnvEntry(key, entry, raw.schema_version as '2.4' | '2.5' | '2.6' | '2.7')
         ) {
           return null;
         }
@@ -1051,6 +1087,14 @@ export function decodeSegment(value: unknown): Segment | null {
       (raw.schema_version === '2.4' ||
         typeof raw.product_commit !== 'string' ||
         !/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(raw.product_commit))
+    ) {
+      return null;
+    }
+    // v2.7 — a reconciled marker on a pre-2.7 record is a forgery (the field did
+    // not exist), and `reconciled` is the only value the vocabulary has.
+    if (
+      raw.capture_mode !== undefined &&
+      (raw.schema_version !== '2.7' || raw.capture_mode !== 'reconciled')
     ) {
       return null;
     }
@@ -1108,7 +1152,11 @@ export function decodeSegment(value: unknown): Segment | null {
       }
       eventStream.push(serialized);
     }
-    if (raw.schema_version !== '2.6' && eventStream.some((event) => event.kind === 'usage')) {
+    if (
+      raw.schema_version !== '2.6' &&
+      raw.schema_version !== '2.7' &&
+      eventStream.some((event) => event.kind === 'usage')
+    ) {
       return null;
     }
   }
@@ -1244,6 +1292,10 @@ export function serializeSegment(input: SegmentInput, repoRoot: string): Segment
   if (productCommit !== undefined && /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(productCommit)) {
     seg.product_commit = productCommit;
   }
+  // v2.7 — the ONE accepted value. A caller cannot stamp `live` (or anything else)
+  // onto a segment: liveness is expressed by the field's ABSENCE, so the honest
+  // default survives every path that forgets to set it.
+  if (input.capture_mode === 'reconciled') seg.capture_mode = 'reconciled';
 
   // v2.0 substrate — always present (the event stream; the rollup it derives).
   seg.event_stream = eventStream;

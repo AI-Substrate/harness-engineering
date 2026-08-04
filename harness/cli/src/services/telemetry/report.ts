@@ -33,6 +33,7 @@
  */
 
 import { CONTROL_SIGNATURES } from './command-signature.js';
+import type { Event } from './events.js';
 import { otlpLogsToEvents } from './otlp/logs.js';
 import type { PublishedDataCoverage } from './published-telemetry.js';
 import {
@@ -235,6 +236,21 @@ export interface ReportProvenance {
    * is VISIBLE rather than a silently shorter clock (plan 068 item 2).
    */
   interval_events: number;
+  /**
+   * Events that arrived on a RECONCILED segment (plan 070): a window recovered
+   * LATE from an orphaned lane after its session had stopped running commands.
+   * Nobody watched this work happen — it was reconstructed from the harness's own
+   * transcript afterwards.
+   *
+   * Surfaced beside {@link interval_events} and for the same reason: an honesty
+   * fact that would otherwise be invisible. A non-zero count means part of this
+   * report's evidence is recovered rather than observed, its instants are
+   * interval-grade, and it contributed COUNTS but no measured time. Zero on every
+   * report built from live capture alone, so nothing changes for the normal case.
+   */
+  reconciled_events: number;
+  /** Sessions that contributed at least one reconciled event. */
+  reconciled_sessions: number;
   /** Present only for bundle-derived full/partial/identity inputs. */
   input_coverage?: ReportInputCoverage;
 }
@@ -399,6 +415,19 @@ export interface TimelineMarker {
   kind: TimelineKind;
   key: string;
   t: string;
+  /**
+   * Present ONLY on a marker whose event arrived on a RECONCILED segment (plan
+   * 070) — recovered late from an orphaned lane, never observed by a live process.
+   * Omitted otherwise, so a live timeline is byte-identical to before.
+   *
+   * It exists because the timeline is exactly where a late window is most
+   * dangerous: a `bash git push` marker recovered hours after the fact reads as a
+   * push that happened at that instant, and the discipline panel would score
+   * checks-before-push against it as if someone had watched. The marker's `t` is
+   * the best instant the source itself carried, but nothing about the marker
+   * otherwise says the observation was reconstructed — so this does.
+   */
+  reconciled?: true;
 }
 
 /**
@@ -425,24 +454,33 @@ const TIMELINE_BASH_SIGNATURES = CONTROL_SIGNATURES;
  * chain-HEAD `signature` only for PRE-069 shards, which carry no `control`. Never
  * both, so a lone `git push` (head AND control) is not double-counted.
  */
-function buildControlTimeline(events: SessionView['events']): TimelineMarker[] {
+function buildControlTimeline(
+  events: SessionView['events'],
+  reconciled: ReadonlySet<Event>,
+): TimelineMarker[] {
   const out: TimelineMarker[] = [];
+  // Stamp the recovery flag at the point of CONSTRUCTION rather than letting each
+  // branch remember it: a new marker kind added later inherits the honesty by
+  // default instead of silently rendering as live.
+  const push = (marker: TimelineMarker, event: Event): void => {
+    out.push(reconciled.has(event) ? { ...marker, reconciled: true } : marker);
+  };
   for (const e of events) {
-    if (e.kind === 'harness') out.push({ kind: 'harness', key: e.verb, t: e.t });
-    else if (e.kind === 'checks') out.push({ kind: 'checks', key: e.status, t: e.t });
-    else if (e.kind === 'subagent') out.push({ kind: 'subagent', key: e.name, t: e.t });
-    else if (e.kind === 'branch') out.push({ kind: 'branch', key: e.to, t: e.t });
+    if (e.kind === 'harness') push({ kind: 'harness', key: e.verb, t: e.t }, e);
+    else if (e.kind === 'checks') push({ kind: 'checks', key: e.status, t: e.t }, e);
+    else if (e.kind === 'subagent') push({ kind: 'subagent', key: e.name, t: e.t }, e);
+    else if (e.kind === 'branch') push({ kind: 'branch', key: e.to, t: e.t }, e);
     else if (e.kind === 'tools' && e.control !== undefined) {
       for (const [key, count] of Object.entries(e.control)) {
         if (!TIMELINE_BASH_SIGNATURES.has(key)) continue;
-        for (let i = 0; i < count; i += 1) out.push({ kind: 'bash', key, t: e.t });
+        for (let i = 0; i < count; i += 1) push({ kind: 'bash', key, t: e.t }, e);
       }
     } else if (
       e.kind === 'tools' &&
       e.signature !== undefined &&
       TIMELINE_BASH_SIGNATURES.has(e.signature)
     ) {
-      out.push({ kind: 'bash', key: e.signature, t: e.t });
+      push({ kind: 'bash', key: e.signature, t: e.t }, e);
     }
   }
   return out;
@@ -469,10 +507,30 @@ interface SessionView {
    * flow_stage lens's last-transition LOOKUP; never re-enters the event stream.
    */
   cursorMarks: readonly { t: string; to: string }[];
+  /**
+   * The events that came from a RECONCILED segment (plan 070) — a window recovered
+   * late from an orphaned lane, which no live process ever watched.
+   *
+   * Resolved from the export's `reconciled_windows` (the recovered events' own
+   * instants), because {@link combineSession} collapses every segment into ONE
+   * session-level resource and per-segment provenance does not survive that. Held
+   * as an IDENTITY set so it survives the sort/filter above without widening
+   * `Event` with a read-path-only field that would then have to be kept out of
+   * every serializer. Every rendered surface that would otherwise draw these
+   * identically to live capture consults it.
+   */
+  reconciled: ReadonlySet<Event>;
 }
 
 function viewOf(exp: SessionExport): SessionView {
   const all = otlpLogsToEvents(exp.signals.logs);
+  const windows = exp.summary.reconciled_windows ?? [];
+  const reconciled = new Set<Event>();
+  if (windows.length > 0) {
+    for (const e of all) {
+      if (windows.some((w) => e.t >= w.from && e.t <= w.to)) reconciled.add(e);
+    }
+  }
   const cursorMarks = all
     .filter(
       (e): e is Extract<(typeof all)[number], { kind: 'flow_log' }> =>
@@ -484,7 +542,7 @@ function viewOf(exp: SessionExport): SessionView {
   const events = all
     .filter((e) => e.kind !== 'flow_log')
     .sort((a, b) => parseIso(a.t) - parseIso(b.t));
-  return { export: exp, events, rollup: computeRollup(events), cursorMarks };
+  return { export: exp, events, rollup: computeRollup(events), cursorMarks, reconciled };
 }
 
 // ── Accumulator (mutable per-dimension row map, folded across sessions) ──────
@@ -1043,6 +1101,9 @@ export function buildReport(
   // Plan 068 item 2 — how many events were excluded from active-time accrual for
   // carrying an interval, not an instant. Visible, never silent.
   let intervalEvents = 0;
+  // Plan 070 — how much of this report is RECOVERED rather than observed.
+  let reconciledEvents = 0;
+  let reconciledSessions = 0;
   const retroDispositions: Record<string, number> = {};
 
   for (const exp of included) {
@@ -1072,6 +1133,10 @@ export function buildReport(
     mechanism.unlabeled += sums.mechanism.unlabeled;
     mechanism.flow_log += sums.mechanism.flow_log;
     intervalEvents += sums.intervalEvents;
+    if (view.reconciled.size > 0) {
+      reconciledEvents += view.reconciled.size;
+      reconciledSessions += 1;
+    }
     const coverage = exp.summary.token_evidence?.coverage;
     if (coverage === 'measured' || (coverage === undefined && sums.tokenMeasured)) {
       tokenCoverage.measured += 1;
@@ -1097,7 +1162,7 @@ export function buildReport(
     if (l !== null && (to === null || l > to)) to = l;
     // The ordered control timeline is a SINGLE-session artifact (scope.single):
     // build it only for a one-session report, from that session's ordered stream.
-    if (included.length === 1) controlTimeline = buildControlTimeline(view.events);
+    if (included.length === 1) controlTimeline = buildControlTimeline(view.events, view.reconciled);
     // plan 056: collect this session's file events for the cohort authorship view.
     for (const e of view.events) if (e.kind === 'file') fileEventsAll.push(e);
     // plan 068 item 3: and the path-only evidence beside them.
@@ -1163,6 +1228,15 @@ export function buildReport(
         'harness_command counts in-stream harness verbs; bash_command excludes co-timed harness invocations to avoid double-count.',
         // T1.4/D3: flow_stage semantic projection + per-window mechanism provenance.
         `flow_stage rows carry a semantic_stage (${FLOW_STAGE_MAP_VERSION}: nav node id \u2192 research/plan/implement/review/ship; unmapped labels omit it); provenance.flow_stage_mechanism counts how many windows each mechanism (flow/digit/unlabeled) labeled.`,
+        // Plan 070 — only when some of this report's evidence was RECOVERED. The
+        // attribution table is where a reader goes to ask "what are these numbers
+        // made of"; a report part-built from late reconstruction must answer that
+        // there, not only in a provenance field nobody reads.
+        ...(reconciledEvents > 0
+          ? [
+              `${reconciledEvents} event(s) across ${reconciledSessions} session(s) were RECONCILED, not observed: their windows were recovered from an orphaned capture lane after the session had already ended (the harness wrote its transcript after its last command). Their counts are real and read from the harness's own transcript; their instants are interval-grade, so they contribute to counts but NEVER to totals.time_s or any row's time_s. Look for control_timeline markers flagged \u201creconciled\u201d.`,
+            ]
+          : []),
       ],
     },
     provenance: {
@@ -1178,6 +1252,8 @@ export function buildReport(
       flow_stage_mechanism: mechanism,
       token_coverage: tokenCoverage,
       interval_events: intervalEvents,
+      reconciled_events: reconciledEvents,
+      reconciled_sessions: reconciledSessions,
     },
     ...(controlTimeline !== undefined ? { control_timeline: controlTimeline } : {}),
     ...(fileEventsAll.length > 0 || observedPaths.length > 0

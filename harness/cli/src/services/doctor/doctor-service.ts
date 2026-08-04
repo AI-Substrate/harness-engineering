@@ -713,11 +713,14 @@ function checkCaptureLiveness(
         ` on \`${s.last_command}\` at ${s.last_attempt_at}`,
     )
     .join('; ');
+  // Residue lanes are OWED, not lost: the source still exists on disk, so the next
+  // `harness telemetry sync` reconciles them. Naming the state is the point — an
+  // operator must be able to tell "recovery is pending" from "this is gone".
   const residues = verdict.residue
     .map(
       (r) =>
         `${r.session} (${r.harness}): captured ${r.cursor} of ${r.extent} source lines, ` +
-        `${r.residue} never captured, idle ${r.idle_hours}h`,
+        `${r.residue} OWED, idle ${r.idle_hours}h, recoverable from ${r.source}`,
     )
     .join('; ');
   const parts: string[] = [];
@@ -726,7 +729,7 @@ function checkCaptureLiveness(
   }
   if (verdict.residue.length > 0) {
     parts.push(
-      `${verdict.residue.length} finished lane(s) left more uncaptured than they captured: ${residues}`,
+      `${verdict.residue.length} finished lane(s) are OWED telemetry they never captured: ${residues}`,
     );
   }
   return {

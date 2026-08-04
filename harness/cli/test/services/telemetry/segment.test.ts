@@ -65,7 +65,7 @@ describe('T001 — serializeSegment: key-set is the allowlist', () => {
   it('pins schema_version to "2.6"', () => {
     const seg = serializeSegment(baseInput(), REPO);
     expect(seg.schema_version).toBe(SEGMENT_SCHEMA_VERSION);
-    expect(seg.schema_version).toBe('2.6');
+    expect(seg.schema_version).toBe('2.7');
   });
 
   it.each([

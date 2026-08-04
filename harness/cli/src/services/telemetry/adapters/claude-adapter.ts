@@ -196,7 +196,24 @@ function locateAt(
   if (matches.length > 1) return unavailable('multiple');
 
   const path = matches[0] as string;
-  const read = src.fs.readTextFileNoFollow(location.configRoot, path, MAX_CLAUDE_TRANSCRIPT_BYTES);
+  return readAndValidate(src, location.configRoot, path);
+}
+
+/**
+ * Read a KNOWN transcript path (no candidate discovery) and validate it the same
+ * way {@link locateAt} validates the one it found. Shared so the reconciliation
+ * path cannot drift from the live path's notion of "a usable transcript".
+ *
+ * The no-follow read stays rooted at the config root, so a recorded path outside
+ * it — or a symlink planted since — degrades to `unavailable` rather than reading
+ * an arbitrary file. Reconciliation NEVER relaxes the containment the live path has.
+ */
+function readAndValidate(
+  src: HarnessSource,
+  configRoot: string,
+  path: string,
+): ClaudeTranscriptResolution {
+  const read = src.fs.readTextFileNoFollow(configRoot, path, MAX_CLAUDE_TRANSCRIPT_BYTES);
   if (read.status === 'unavailable') {
     if (read.reason === 'missing' || read.reason === 'io-error') return unavailable('unresolved');
     return unavailable(read.reason);
@@ -213,6 +230,25 @@ function locateAt(
   return hasJsonObject ? { status: 'found', path, content: read.text } : unavailable('malformed');
 }
 
+/**
+ * Reconciliation read: the marker already recorded which transcript this lane was
+ * reading, so the path is taken verbatim — only the config root (a machine-level
+ * location, not a session identity) is re-derived, to keep the containment check.
+ */
+function readTranscriptAt(src: HarnessSource, path: string): ClaudeTranscriptResolution {
+  const location = locationFor(src);
+  if (
+    location === null ||
+    !isAbsolutePath(location.configRoot) ||
+    hasTraversal(location.configRoot) ||
+    !isAbsolutePath(path) ||
+    hasTraversal(path)
+  ) {
+    return unavailable('unresolved');
+  }
+  return readAndValidate(src, location.configRoot, path);
+}
+
 /** Resolve one transcript from explicit bounded candidates only. */
 export function locateClaudeTranscript(src: HarnessSource): ClaudeTranscriptResolution {
   const location = locationFor(src);
@@ -220,6 +256,10 @@ export function locateClaudeTranscript(src: HarnessSource): ClaudeTranscriptReso
 }
 
 function resolveClaudeTranscript(src: HarnessSource): ClaudeTranscriptResolution {
+  // Reconciliation bypasses discovery entirely: the marker already recorded the
+  // exact transcript this lane was reading, and re-deriving it from a recovery-time
+  // env/worktree set could resolve to a different session's file.
+  if (src.reconcile !== undefined) return readTranscriptAt(src, src.reconcile.sourcePath);
   const location = locationFor(src);
   if (location === null) return unavailable('unresolved');
   if (src.standardClaude === undefined) return locateAt(src, location);

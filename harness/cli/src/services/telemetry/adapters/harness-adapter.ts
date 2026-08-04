@@ -56,6 +56,23 @@ export interface HarnessSource {
     readonly configRoot: string;
     readonly projectRoots: readonly string[];
   };
+  /**
+   * RECONCILIATION mode (plan 070). When present, the adapter MUST read exactly
+   * this source for exactly this session and MUST NOT consult env for either.
+   *
+   * Set only by the orphan-lane reconciler, which runs LONG after the session
+   * ended — usually inside a *different, live* harness session. Env at that
+   * moment describes the reconciling process, not the lane being recovered, so an
+   * adapter that fell back to env would join one session's transcript to another
+   * session's model/timing store and silently produce a cross-lane fabrication.
+   * Both values come from the lane's own liveness marker; nothing is guessed.
+   */
+  readonly reconcile?: {
+    /** The session source file recorded on the marker when the lane was alive. */
+    readonly sourcePath: string;
+    /** The lane's own session id — the ONLY id this extraction may attribute to. */
+    readonly sessionId: string;
+  };
 }
 
 /** Read-only context an adapter extracts counts from (a source + the computed window). */
