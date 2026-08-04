@@ -140,9 +140,30 @@ compact target="harness-foundations":
 # (→ recursion). The link uses `--ignore-scripts` so it reuses the dist we just
 # built instead of rebuilding.
 #
-# Build the CLI (docs + tsc) and (re)link `harness` globally to this working tree.
+# Build the CLI (docs + tsc) for THIS working tree. Does NOT touch the global link.
+#
+# `build` used to run `npm link` too, which meant WHOEVER BUILT LAST CAPTURED THE
+# GLOBAL `harness` FOR THE WHOLE MACHINE. A worktree rebuilding its own branch
+# would silently repoint every seat's `harness`, and every git hook resolves its
+# own repo root anyway, so the steal bought nothing and cost correctness. Observed
+# live: the box ran a feature branch's build as `harness` for hours.
+#
+# Re-linking after a build was never needed: bin/harness.js is a LIVE SHIM
+# (`import '../dist/index.js'`), so refreshing dist refreshes what the existing
+# link already serves. Linking only matters when you want to CHANGE which tree is
+# linked — which is `just link`, and belongs to the root checkout.
+#
+# Build this working tree's CLI (docs + tsc). Does NOT touch the global link.
 build:
     npm run build
+
+# Point the global `harness` at THIS working tree. Root checkout only, by policy:
+# worktrees build with `just build` and invoke their own dist directly
+# (`node harness/cli/dist/index.js …`) rather than repointing the machine.
+# Verify at any time with: readlink -f "$(command -v harness)"
+#
+# Point the global `harness` at this working tree (root checkout only).
+link:
     npm link --ignore-scripts
     @echo "Linked: $(command -v harness) -> this working tree. Try: harness docs"
 
