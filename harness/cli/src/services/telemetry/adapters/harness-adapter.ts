@@ -118,6 +118,20 @@ export interface HarnessAdapter {
    * capture this command). Optional: the null-default has no source.
    */
   currentPosition?(src: HarnessSource): number | null;
+  /**
+   * The path whose extent {@link HarnessAdapter.currentPosition} measures — the
+   * session's own source file (plan 070). Optional: an adapter whose source is
+   * not a single file (or a null-default with no source at all) omits it, and
+   * liveness simply makes no residue claim about that harness.
+   *
+   * It exists so a lane's UNCONSUMED RESIDUE stays checkable AFTER the session
+   * stops running commands. Every in-flight signal is blind to the failure where
+   * the source itself lags: each attempt honestly sees "nothing new", captures
+   * nothing, and the transcript only reaches its full length once no further
+   * harness invocation will ever look at it. Recording the path lets `doctor`
+   * re-measure the source later and notice a watermark that never caught up.
+   */
+  sourcePath?(src: HarnessSource): string | null;
   /** Extract counts-only capabilities for the window; each capability `null` if unavailable. */
   extract(ctx: HarnessContext): HarnessCapabilities;
 }

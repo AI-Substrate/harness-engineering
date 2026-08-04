@@ -1,0 +1,18 @@
+{
+  "fixture": "capture-stall-1a501a09",
+  "plan": "070",
+  "kind": "known-bad-marker-pattern",
+  "session": "stalled-cursor-session",
+  "buffer_markers": {
+    "cursor": 2,
+    "flushed": 1,
+    "branch": "cursor-test",
+    "startdate": "2026/08/03"
+  },
+  "transcript": "fixtures/real/cursor/2026-08-03-applypatch-textstat/raw.jsonl",
+  "transcript_nonempty_lines": 56,
+  "provenance": "Reconstruction of the buffer-marker state left behind by a real cursor-agent session on 2026-08-03 (live fleet load). Capture fired exactly ONCE, on the session's first command at transcript line 2, and never again across ~10 further eligible invocations while the transcript grew to 56 lines. One thin segment was committed: plausible, internally consistent, non-zero, and under-representing the session ~27x on transcript lines. The defect produces a CONFIDENT WRONG NUMBER, not a gap, which is why nothing downstream could notice it.",
+  "privacy": "NO real session content lives in this directory. The marker VALUES are integers and a branch name; the session id is SYNTHETIC. The transcript this pattern is proven against is the already-scrubbed corpus copy referenced above (its meta.json records scrubbed: true, and it is guarded by the fixture privacy byte-scan) -- verified structurally identical, line for line and tool for tool, to the preserved raw session. The raw originals stay in the gitignored government/preserved-fixtures tree and are never committed.",
+  "why_it_exists": "The controlled repro of this session PASSES against the same transcript, same machine, same build -- so 'the repro passes after the fix' proves nothing. This is the known-bad input for the liveness DETECTOR: the detector must FIRE on this shape (a watermark frozen at 2 while the source runs to 56) before any fix is attempted, so that its later silence can mean something.",
+  "scrub_survival_contract": "The scrub must not flatten the property this fixture is kept for. Any test using it asserts the pattern IN THE FIXTURE ITSELF -- 56 non-empty lines, a watermark of 2 far below them, and the 9 ApplyPatch edits still present in the un-consumed window -- not merely that the detector said something."
+}

@@ -53,6 +53,7 @@ describe('registerDoctorAct', () => {
       'quality-gate',
       'sensor-watcher',
       'telemetry-flush-hook',
+      'capture-liveness',
       'dd-documents',
       'precommit-hook-latency',
       'instructions',

@@ -9,6 +9,7 @@ import {
 } from '../../adapters/git/git-write-port.js';
 import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { posixJoin, toPosix } from '../shared/posix-path.js';
+import { LIVENESS_SUFFIX } from './capture-liveness.js';
 import { KILL_SWITCH_ENV } from './capture-service.js';
 import { readFlushed, telemetryDir } from './cursor.js';
 import { reconstructSegmentFromOtlpLogs } from './otlp/logs.js';
@@ -136,6 +137,16 @@ function startDatePathFor(telDir: string, session: string): string {
 /** `<telemetryDir>/<session>.cursor` — the capture watermark sidecar (removed on age-out). */
 function cursorSidecarPathFor(telDir: string, session: string): string {
   return posixJoin(telDir, `${session}.cursor`);
+}
+
+/**
+ * `<telemetryDir>/<session>.liveness.json` — the capture-liveness marker (plan
+ * 070). Aged out WITH the session it describes: the marker is diagnostic state
+ * for a live lane, so once the lane is forgotten a lingering marker would only
+ * keep `doctor` reporting a stall nobody can act on any more.
+ */
+function livenessSidecarPathFor(telDir: string, session: string): string {
+  return posixJoin(telDir, `${session}${LIVENESS_SUFFIX}`);
 }
 
 /** Advance the watermark crash-safely (temp + rename, mirroring the cursor). */
@@ -715,6 +726,7 @@ export function pruneFlushedBuffer(
       deps.fs.deleteFile(flushedPathFor(telDir, session));
       deps.fs.deleteFile(startDatePathFor(telDir, session));
       deps.fs.deleteFile(cursorSidecarPathFor(telDir, session));
+      deps.fs.deleteFile(livenessSidecarPathFor(telDir, session));
     }
   } catch {
     // Best-effort: a prune failure never fails the sync (the bytes are pushed).

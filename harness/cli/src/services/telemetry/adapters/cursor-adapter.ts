@@ -252,6 +252,16 @@ export const cursorAdapter: HarnessAdapter = {
     return content === null ? null : nonEmptyLines(content).length;
   },
 
+  /** The conversation's own JSONL — the file whose non-empty lines `currentPosition` counts. */
+  sourcePath(src) {
+    const dir = src.env.get(CURSOR_TRANSCRIPTS_ENV);
+    const convId = src.env.get(CURSOR_SESSION_ENV);
+    if (dir === undefined || dir.length === 0 || convId === undefined || convId.length === 0) {
+      return null;
+    }
+    return cursorTranscriptPath(dir, convId);
+  },
+
   extract(ctx: HarnessContext) {
     const content = readTranscript(ctx);
     if (content === null) return nullCaps;

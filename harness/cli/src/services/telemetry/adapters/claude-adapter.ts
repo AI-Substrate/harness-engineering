@@ -294,6 +294,12 @@ export const claudeAdapter: HarnessAdapter = {
     return resolution.status === 'found' ? nonEmptyLines(resolution.content).length : null;
   },
 
+  /** The resolved transcript file — the source whose extent `currentPosition` counts. */
+  sourcePath(src) {
+    const resolution = resolveClaudeTranscript(src);
+    return resolution.status === 'found' ? resolution.path : null;
+  },
+
   extract(ctx) {
     const resolution = resolveClaudeTranscript(ctx);
     const content = resolution.status === 'found' ? resolution.content : null;

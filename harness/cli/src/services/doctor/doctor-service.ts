@@ -14,6 +14,11 @@ import type { RecordRegistry, RecordTypeEntry } from '../record/registry.js';
 import { SensorStateStore } from '../sensors/state-store.js';
 import { posixDirname, posixJoin, posixRelative, toPosix } from '../shared/posix-path.js';
 import { HARNESS_DIR, TEMP_DIR } from '../shared/temp.js';
+import {
+  evaluateCaptureLiveness,
+  readLivenessRecords,
+  sourceExtent,
+} from '../telemetry/capture-liveness.js';
 
 /** Adapters the doctor service depends on (injected — never constructed here). */
 export interface DoctorDeps {
@@ -648,6 +653,99 @@ function checkTelemetryHook(
 }
 
 /**
+ * The **capture-liveness** layer (plan 070 · AC-1) — the product's answer to a
+ * capture that silently stops happening.
+ *
+ * Session `1a501a09` captured once, then went quiet for ~10 further eligible
+ * invocations while its transcript grew 2 → 56 lines, and committed ONE thin,
+ * plausible, non-zero segment: **a confident wrong number, not a gap.** Nothing
+ * could see it, because capture failures are swallowed by contract. The capture
+ * path now writes down every eligible attempt that did NOT consume an available
+ * window ({@link recordCaptureAttempt}); this layer is where that absence
+ * becomes visible.
+ *
+ * Deliberately quiet for every healthy shape: the kill-switch (no marker is ever
+ * written — the switch keeps its zero-side-effect contract), a repo that has
+ * never captured, idle polls with no new transcript, adapters with no position
+ * sense, and lanes that recovered (an anomaly followed by a capture). It reads
+ * markers only — it NEVER invokes capture (P7) and never fabricates a segment.
+ */
+function checkCaptureLiveness(
+  fs: FsPort,
+  proc: ProcessPort,
+  env: EnvPort,
+  clock: Clock,
+): LayerReport {
+  const name = 'capture-liveness';
+  const cwd = toPosix(proc.cwd());
+  if (env.get(TELEMETRY_KILL_SWITCH) === '1') {
+    return {
+      name,
+      ok: true,
+      detail: 'telemetry disabled (HARNESS_NO_TELEMETRY=1) — nothing to prove live',
+    };
+  }
+  if (!fs.exists(posixJoin(cwd, HARNESS_DIR, TEMP_DIR, 'telemetry'))) {
+    return { name, ok: true, detail: 'no telemetry captured yet — no capture lane to watch' };
+  }
+  const verdict = evaluateCaptureLiveness(
+    readLivenessRecords(fs, cwd),
+    (path) => sourceExtent(fs, path),
+    clock.nowIso(),
+  );
+  if (verdict.stalled.length === 0 && verdict.residue.length === 0) {
+    const seen =
+      verdict.sessions === 0
+        ? 'no capture attempts recorded yet'
+        : `${verdict.sessions} session lane(s) recorded, none stalled`;
+    const past =
+      verdict.anomalies > 0
+        ? ` (${verdict.anomalies} un-captured window(s) seen earlier, since recovered)`
+        : '';
+    return { name, ok: true, detail: `${seen}${past}` };
+  }
+  const stalls = verdict.stalled
+    .map(
+      (s) =>
+        `${s.session} (${s.harness}): cursor ${s.cursor ?? 'none'} vs source ${s.position ?? 'unreadable'}, ` +
+        `${s.consecutive_uncaptured} un-captured attempt(s), last ${s.last_outcome}` +
+        (s.last_error_kind !== undefined ? ` [${s.last_error_kind}]` : '') +
+        ` on \`${s.last_command}\` at ${s.last_attempt_at}`,
+    )
+    .join('; ');
+  const residues = verdict.residue
+    .map(
+      (r) =>
+        `${r.session} (${r.harness}): captured ${r.cursor} of ${r.extent} source lines, ` +
+        `${r.residue} never captured, idle ${r.idle_hours}h`,
+    )
+    .join('; ');
+  const parts: string[] = [];
+  if (verdict.stalled.length > 0) {
+    parts.push(`CAPTURE STALLED on ${verdict.stalled.length} lane(s): ${stalls}`);
+  }
+  if (verdict.residue.length > 0) {
+    parts.push(
+      `${verdict.residue.length} finished lane(s) left more uncaptured than they captured: ${residues}`,
+    );
+  }
+  return {
+    name,
+    ok: false,
+    detail:
+      `${parts.join(' — ')} — telemetry for this work was LOST silently, so what IS committed ` +
+      `under-represents the session (a plausible non-zero number, not a visible gap)`,
+    next_action:
+      'Treat these sessions\u2019 committed telemetry as incomplete — do NOT read their counts as the ' +
+      'real volume of work. Preserve the marker files (.harness/temp/telemetry/*.liveness.json) as ' +
+      'evidence before the buffer is pruned; `last_outcome` names which stage of capture stopped ' +
+      '(error = a swallowed throw, source-unreadable = the transcript could not be read, ' +
+      'unread-window = a window was available and skipped), and a residue-only report with healthy ' +
+      'attempts points at the SOURCE lagging rather than at capture.',
+  };
+}
+
+/**
  * The p95 wall-time budget for the `pre-commit` telemetry-capture hook, in
  * milliseconds. Recorded as a CONSTANT, not a comment, because the hook sits on
  * the critical path of every commit: a plan that lands 84 commits pays this
@@ -759,6 +857,7 @@ export function buildDoctorReport(
     checkQualityGate(registry),
     checkSensorWatcher(deps.fs, deps.clock, deps.proc, registry),
     checkTelemetryHook(deps.fs, deps.proc, deps.git, deps.env),
+    checkCaptureLiveness(deps.fs, deps.proc, deps.env, deps.clock),
     checkDd(deps.fs, deps.proc),
     checkPrecommitLatency(deps.fs, deps.proc),
     checkCoreInstructions(),
