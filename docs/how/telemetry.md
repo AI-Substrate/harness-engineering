@@ -63,6 +63,14 @@ clobber-on-rewrite behaviour — rewrites them to the new start-date-keyed rolle
 refs, verifies the rollup, then deletes the old refs. Steady-state syncs after
 that are fetch-free.
 
+The migration is **self-retiring** (plan 067): once a scan finds nothing
+old-shape locally, sync records `.harness/temp/telemetry/.migrated` and never
+scans the corpus again — steady state reads one local file and touches no ref.
+The trade: a *later* manual fetch of an old-shape ref (only producible by
+pre-plan-049 CLIs) is not auto-detected. Recovery is one command:
+`rm .harness/temp/telemetry/.migrated` — the next sync re-scans and migrates
+it.
+
 Two properties make this safe to run on **every** command:
 
 - **Zero host impact.** Capture is wrapped so it can never change the host
@@ -250,11 +258,11 @@ by default when unset):
 | Variable | Effect |
 |---|---|
 | `HARNESS_NO_TELEMETRY=1` | **Off entirely** — no capture, no sync, no ref writes, zero side effects. The hard kill-switch. |
-| `HARNESS_NO_TELEMETRY_AUTOSYNC=1` | **Unprompted pushes off** — capture and **manual** `harness telemetry sync` still work, but pushes that happen *without you asking* — the `checks` auto-push, and the flow tooling's loop-close / `ship` flushes — are suppressed (`checks` falls back to a passive nudge). |
+| `HARNESS_NO_TELEMETRY_AUTOSYNC=1` | **Unprompted pushes off** — capture and **manual** `harness telemetry sync` still work, but pushes that happen *without you asking* — the `checks` auto-push, the post-commit hook's flush (plan 067), and the flow tooling's loop-close / `ship` flushes — are suppressed (`checks` falls back to a passive nudge). |
 
 ```bash
 export HARNESS_NO_TELEMETRY=1            # this shell captures and pushes nothing
-export HARNESS_NO_TELEMETRY_AUTOSYNC=1   # still captures; no unprompted pushes (checks/loop/ship) — sync manually
+export HARNESS_NO_TELEMETRY_AUTOSYNC=1   # still captures; no unprompted pushes (checks/hook/loop/ship) — sync manually
 ```
 
 ## Plan links

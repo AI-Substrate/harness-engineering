@@ -48,6 +48,16 @@ export interface GitReadPort {
    */
   readShardTree(ref: string): ShardBlob[];
   /**
+   * Which of `refs` carry a blob at path `name` in their TIP tree — the CHEAP shape
+   * probe (plan 067). Answers "is this ref already rolled?" (`manifest.json` present)
+   * for the WHOLE set in ONE `cat-file --batch-check`: header-only, no content, no
+   * per-ref spawn, cost independent of how many blobs each tree holds. Classifying by
+   * {@link readShardTree} instead re-read every blob of every ref — the 18,217-spawn
+   * empty sync. Returns the matching refs in input order; a ref that does not exist
+   * (or has no such path) is simply absent. LOCAL only — never contacts a remote.
+   */
+  refsWithBlob(refs: readonly string[], name: string): string[];
+  /**
    * List the commit shas in a ref's FULL history, tip-first (`rev-list <ref>`) — the
    * migration union walk (plan 049 · F-03 recovery). A multi-sync old-shape ref
    * clobbered earlier segments into non-tip commits; walking the whole history and
