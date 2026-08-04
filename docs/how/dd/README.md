@@ -1,33 +1,57 @@
 # Deterministic documents
 
-A **deterministic document** is structured JSON with a declared schema,
-addressable parts, and machine-queryable state. Its filename ends in
-`.dd.json`.
+It looks like a regular markdown doc — headings, tables, links, progress
+marks — and that is exactly what your teammates (and GitHub) see. Underneath
+it is something much sharper: a **typed, addressable, validated graph**.
+Every list is data. Every row has a permanent id and an address you can link
+to from any other document. Every link is a typed edge a tool can follow.
+Ask "which acceptance criteria still hold the gate?" and you get rows back.
+Markdown-adjacent on the surface; a queryable proof graph underneath.
 
-Beside it, `harness dd build` writes a `.dd.md` sibling:
+A deterministic document is structured JSON (`note.dd.json`) with a declared
+schema. Beside it, `harness dd build` generates a `.dd.md` sibling:
 
 ```text
 note.dd.json  source of truth for tools
 note.dd.md    generated view for people
 ```
 
-The markdown is always generated, never authored. This split turns questions
-such as "which acceptance criteria still hold the gate?" into queries over
-explicit rows rather than interpretations of prose.
+## Why this is different
 
-## Why use one
+- **Lists are data.** A task table's rows each carry a born-once id
+  (`tk-7128`), a completion state from a declared vocabulary, and
+  schema-validated fields.
+- **Everything has a permanent address.** `plan.dd.json#tasks/tk-7128/state`
+  names one field of one row, forever. Documents cite each other's rows by
+  address; renames and reorders don't break the name.
+- **Links are typed edges.** A task `satisfies` an acceptance criterion; an
+  assertion's `pressure` names the instrument that measures it; `proven_by`
+  points at the log entry that demonstrates it. "What proves this claim?"
+  is a single `harness dd graph` traversal.
+- **Deterministic gates ride on document state.** Because state is data, a
+  gate can *refuse mechanically*: `harness plan validate --complete` is
+  green only at exactly zero open items — anything else names every
+  unfinished row by id ("35 of 88 completable items are still open"). A
+  flow departure gated on a document cannot be sweet-talked past unproven
+  work; overriding is an explicit, recorded act.
+- **Validation that pushes back.** Schemas are data, ids follow a grammar,
+  required sections are enforced, contradictions surface as findings ("this
+  task is checked but the assertion it rests on is not"). `harness dd
+  doctor` sweeps the whole repository and answers 0/0 or a named list.
+- **The rendered view cannot lie.** The `.dd.md` sibling is regenerated on
+  every write, and drift between source and view fails CI
+  (`dd build --check`).
+- **Citations record freshness.** The basis ledger stores the SHA-256 of
+  what a conclusion was checked against; if the target moves, the citation
+  goes visibly stale until someone deliberately re-reads and re-records.
+- **A CLI writes it, so nothing else has to.** `harness dd get/set/add/rm`
+  mutate with validation *before* the write, rebuild the sibling in the
+  same operation, and mint collision-free ids (`add --mint`). Refusal
+  writes nothing.
 
-A deterministic document gives the same fact two deliberate surfaces:
-
-- JSON for validation, addressing, graph traversal, and `jq`;
-- markdown for headings, tables, links, progress marks, and review.
-
-Each assertion can carry its own id, state, note, receipt, and proof link.
-Schemas define the allowed structure and the state values that pass a gate.
-References record which target bytes a conclusion was checked against.
-
-The design does not make every claim true. It makes claims addressable and
-checkable, and it keeps missing proof or contradictory state visible.
+A false claim is expensive here: closing work dishonestly means fabricating
+rows in a diffable document, with the supposed evidence one click away at
+review time.
 
 ## Smallest self-contained example
 
