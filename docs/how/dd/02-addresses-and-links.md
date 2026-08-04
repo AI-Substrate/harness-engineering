@@ -46,7 +46,7 @@ For a same-document link, omit the file part:
 
 ```json
 {
-  "done": "#evidence/tk-0201"
+  "done": "#done_when/tk-0201"
 }
 ```
 
@@ -55,7 +55,7 @@ update. It only has meaning in a containing document. The CLI can validate its
 syntax:
 
 ```bash
-harness dd address validate "#evidence/tk-0201"
+harness dd address validate "#done_when/tk-0201"
 ```
 
 The CLI cannot resolve that bare address by itself because no containing file
@@ -63,7 +63,7 @@ was supplied. Use a qualified address at the command line:
 
 ```bash
 harness dd link resolve \
-  "docs/how/dd/exemplar/tasks/phase-2/tasks.dd.json#evidence/tk-0201"
+  "docs/how/dd/exemplar/tasks/phase-2/tasks.dd.json#done_when/tk-0201"
 ```
 
 Qualified paths entered on the command line are anchored at the repository
@@ -145,7 +145,7 @@ from its display title:
 ```
 
 Array instances link to the nearest section heading. Dynamic-key map entries
-receive their own heading, so `#evidence/tk-0201` can land on the `tk-0201`
+receive their own heading, so `#done_when/tk-0201` can land on the `tk-0201`
 subsection.
 
 ## Inspecting a document's edges

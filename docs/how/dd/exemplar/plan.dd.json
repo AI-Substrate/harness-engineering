@@ -54,7 +54,7 @@
         },
         {
           "id": "ac-0901",
-          "claim": "A real plan authored as plan.dd.json — with per-task evidence lists and AC rows carrying `pressure`/`proven_by` — validates, renders, and is queryable with stock jq.",
+          "claim": "A real plan authored as plan.dd.json — with per-task `done_when` assertion lists and AC rows carrying `pressure`/`proven_by` — validates, renders, and is queryable with stock jq.",
           "state": "unchecked",
           "note": "This corpus is that criterion's own subject: the row stays unchecked until the phase-5 proof run records it.",
           "pressure": "backpressure.dd.json#rows/bp-0901",
@@ -131,7 +131,7 @@
   "references": [
     {
       "path": "tasks/phase-2/tasks.dd.json",
-      "sha": "826906f58e22f12668695cb8321aff96dda51df40d9e67badebd2b6bb0b9d34c",
+      "sha": "bd74a7edad53603cb65169374bf8c8ec1067f93ac83fa3d13b9731b1bcf884b0",
       "mode": "live"
     },
     {

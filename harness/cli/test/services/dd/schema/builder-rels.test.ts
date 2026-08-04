@@ -34,8 +34,6 @@ describe('builder/* schemas — declared relations (dw-0154)', () => {
       'tasks[].satisfies[]=satisfies',
       'done_when.*[].proven_by=proven_by',
       'done_when.*[].pressure=pressure',
-      'evidence.*[].proven_by=proven_by',
-      'evidence.*[].pressure=pressure',
     ]);
     // Every one of them is a FROZEN relation — an unknown rel is legal in a
     // schema, but a builder schema shipping one would mean dd silently attaches

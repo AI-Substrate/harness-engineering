@@ -36,12 +36,12 @@ From [`exemplar/tasks/phase-2/tasks.dd.json`](exemplar/tasks/phase-2/tasks.dd.js
   "title": "Resolution fixture corpus covering every schema-layer failure class",
   "phase": "ph-0002",
   "state": "checked",
-  "done": "#evidence/tk-0201"
+  "done": "#done_when/tk-0201"
 }
 ```
 
 That `state` came from a vocabulary the schema declares, and `done` is a
-link to this task's own evidence list — not a checkbox someone typed.
+link to this task's own `done_when` list — not a checkbox someone typed.
 
 And the generated sibling is a markdown document, after all — that same row
 renders like this (columns trimmed):

@@ -46,12 +46,12 @@ jq -r '
 
 The phase-2 exemplar returns the `dw-0294` waiver and its recorded words.
 
-## Progress for one evidence list
+## Progress for one done_when list
 
 ```bash
 jq -r '
   .sections[]
-  | select(.name == "evidence")
+  | select(.name == "done_when")
   | .value["tk-0201"]
   | "\(map(
       select(.state as $state
@@ -68,7 +68,7 @@ The result is `3/3`.
 ```bash
 jq -r '
   .sections[]
-  | select(.name == "evidence")
+  | select(.name == "done_when")
   | .value
   | to_entries[]
   | .key as $task
@@ -110,13 +110,13 @@ jq -r '
 ```bash
 jq -r '
   .sections[]
-  | select(.name == "evidence")
+  | select(.name == "done_when")
   | .value
   | keys[]
 ' "$tasks"
 ```
 
-Each result is an addressable task id under `#evidence/<task-id>`.
+Each result is an addressable task id under `#done_when/<task-id>`.
 
 ## Query custom-type source values
 

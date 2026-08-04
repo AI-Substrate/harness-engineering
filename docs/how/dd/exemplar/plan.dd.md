@@ -52,7 +52,7 @@ A plan authored as a deterministic document. Every claim below is a row with its
 | --- | --- | --- | --- | --- | --- | --- |
 | ac-0201 | A schema named `builder/plan` resolves doc-folder -&gt; &lt;gitroot&gt;/.dd -&gt; .harness/.dd -&gt; ~/.dd with deep scan, and every shadowed duplicate is reported with its path. | [x] checked | — | — | [bp-0201](backpressure.dd.md#rows) | [lg-0201](execution-log.dd.md#entries) |
 | ac-0801 | `dd docs list` enumerates the baked docs with descriptions and `dd docs get how-to-add-a-schema` returns the worked schema+adapter guide, with a drift gate that fails when the committed module stops matching its sources. | [x] checked | — | — | [bp-0801](backpressure.dd.md#rows) | [lg-0801](execution-log.dd.md#entries) |
-| ac-0901 | A real plan authored as plan.dd.json — with per-task evidence lists and AC rows carrying `pressure`/`proven_by` — validates, renders, and is queryable with stock jq. | [ ] unchecked | This corpus is that criterion's own subject: the row stays unchecked until the phase-5 proof run records it. | — | [bp-0901](backpressure.dd.md#rows) | [lg-0901](execution-log.dd.md#entries) |
+| ac-0901 | A real plan authored as plan.dd.json — with per-task `done_when` assertion lists and AC rows carrying `pressure`/`proven_by` — validates, renders, and is queryable with stock jq. | [ ] unchecked | This corpus is that criterion's own subject: the row stays unchecked until the phase-5 proof run records it. | — | [bp-0901](backpressure.dd.md#rows) | [lg-0901](execution-log.dd.md#entries) |
 | ac-1201 | dep-cruiser rules and an architecture test prove services/dd/core/** imports no output/, no acts, and no node-* adapters. | [x] checked | — | — | [bp-1201](backpressure.dd.md#rows) | [lg-1201](execution-log.dd.md#entries) |
 
 <a id="phases"></a>
@@ -74,6 +74,6 @@ A plan authored as a deterministic document. Every claim below is a row with its
 
 | path | sha | mode |
 | --- | --- | --- |
-| tasks/phase-2/tasks.dd.json | 826906f58e22f12668695cb8321aff96dda51df40d9e67badebd2b6bb0b9d34c | live |
+| tasks/phase-2/tasks.dd.json | bd74a7edad53603cb65169374bf8c8ec1067f93ac83fa3d13b9731b1bcf884b0 | live |
 | backpressure.dd.json | 64fb9c9d29ead0712f33d122337fbc1156668bc1e9c15d6a9f8a5c9ef93025b9 | live |
 | execution-log.dd.json | 59be498a8d7ba8374a995658da81c295dc069a78399e0649453e254d0c336975 | pinned |

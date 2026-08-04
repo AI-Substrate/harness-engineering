@@ -27,7 +27,7 @@
 
 ## Summary
 
-The task detail for one phase. The plan document carries the overview and links here; each task row carries one link to its own evidence list, and the row's progress is computed from that list rather than typed into it.
+The task detail for one phase. The plan document carries the overview and links here; each task row carries one link to its own `done_when` assertion list, and the row's progress is computed from that list rather than typed into it. Every assertion names its instrument: a backpressure row, or the literal `not-applicable` with the real instrument in its note.
 
 <a id="tasks"></a>
 
@@ -35,67 +35,67 @@ The task detail for one phase. The plan document carries the overview and links 
 
 | id | title | domain | phase | state | note | receipt | done | success | notes | satisfies |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| tk-0201 | Resolution fixture corpus covering every schema-layer failure class, each with a good twin | harness-cli | ph-0002 | [x] checked | — | — | [x] 3/3 [tk-0201](#tk-0201) | — | — | — |
-| tk-0202 | Schema package model and deep-scan resolution with first-hit-wins precedence | harness-cli | ph-0002 | [x] checked | — | — | [x] 4/4 [tk-0202](#tk-0202) | — | — | — |
-| tk-0203 | Declarations: field-level custom enums and per-schema gate-terminal sets | harness-cli | ph-0002 | [x] checked | — | — | [x] 3/3 [tk-0203](#tk-0203) | — | — | — |
-| tk-0204 | Flip `dd validate` live over the real resolver, the core engine, and the depth walk | harness-cli | ph-0002 | [x] checked | — | — | [x] 3/3 [tk-0204](#tk-0204) | — | — | — |
-| tk-0205 | `dd schema list` and `dd schema show` bodies, with resolved paths always visible | harness-cli | ph-0002 | [x] checked | — | — | [x] 2/2 [tk-0205](#tk-0205) | — | — | — |
-| tk-0206 | Exemplar `builder/*` schema packages carrying the workshop shapes | substrate | ph-0002 | [x] checked | — | — | [x] 3/3 [tk-0206](#tk-0206) | — | — | — |
-| tk-0207 | Baked docs compiled into the CLI, with a two-way drift gate | harness-cli | ph-0002 | [x] checked | — | — | [x] 3/3 [tk-0207](#tk-0207) | — | — | — |
-| tk-0208 | Leaf rulings recorded before their consumers land | harness-cli | ph-0002 | [x] checked | — | — | [x] 1/1 [tk-0208](#tk-0208) | — | — | — |
-| tk-0209 | Validation and proof: slice suite, full suite, architecture baseline, recorded live run | harness-cli | ph-0002 | [x] checked | — | — | [x] 4/4 [tk-0209](#tk-0209) | — | — | — |
+| tk-0201 | Resolution fixture corpus covering every schema-layer failure class, each with a good twin | harness-cli | ph-0002 | [x] checked | — | — | [x] 3/3 [tk-0201](#tk-0201) | — | — | [ac-0201](../../plan.dd.md#acceptance-criteria) |
+| tk-0202 | Schema package model and deep-scan resolution with first-hit-wins precedence | harness-cli | ph-0002 | [x] checked | — | — | [x] 4/4 [tk-0202](#tk-0202) | — | — | [ac-0201](../../plan.dd.md#acceptance-criteria) |
+| tk-0203 | Declarations: field-level custom enums and per-schema gate-terminal sets | harness-cli | ph-0002 | [x] checked | — | — | [x] 3/3 [tk-0203](#tk-0203) | — | — | [ac-0201](../../plan.dd.md#acceptance-criteria) |
+| tk-0204 | Flip `dd validate` live over the real resolver, the core engine, and the depth walk | harness-cli | ph-0002 | [x] checked | — | — | [x] 3/3 [tk-0204](#tk-0204) | — | — | [ac-0201](../../plan.dd.md#acceptance-criteria) |
+| tk-0205 | `dd schema list` and `dd schema show` bodies, with resolved paths always visible | harness-cli | ph-0002 | [x] checked | — | — | [x] 2/2 [tk-0205](#tk-0205) | — | — | [ac-0201](../../plan.dd.md#acceptance-criteria) |
+| tk-0206 | Exemplar `builder/*` schema packages carrying the workshop shapes | substrate | ph-0002 | [x] checked | — | — | [x] 3/3 [tk-0206](#tk-0206) | — | — | [ac-0201](../../plan.dd.md#acceptance-criteria) |
+| tk-0207 | Baked docs compiled into the CLI, with a two-way drift gate | harness-cli | ph-0002 | [x] checked | — | — | [x] 3/3 [tk-0207](#tk-0207) | — | — | [ac-0801](../../plan.dd.md#acceptance-criteria) |
+| tk-0208 | Leaf rulings recorded before their consumers land | harness-cli | ph-0002 | [x] checked | — | — | [x] 1/1 [tk-0208](#tk-0208) | — | — | [ac-0201](../../plan.dd.md#acceptance-criteria) |
+| tk-0209 | Validation and proof: slice suite, full suite, architecture baseline, recorded live run | harness-cli | ph-0002 | [x] checked | — | — | [x] 4/4 [tk-0209](#tk-0209) | — | — | [ac-1201](../../plan.dd.md#acceptance-criteria) |
 
-<a id="evidence"></a>
+<a id="done-when"></a>
 
-## Evidence
+## Done when
 
 ### tk-0201
 
 | id | assertion | state | proven_by | pressure |
 | --- | --- | --- | --- | --- |
 | dw-0211 | Every schema-layer failure class has at least one bad fixture and one good twin. | [x] checked | [lg-0201](../../execution-log.dd.md#entries) | [bp-0201](../../backpressure.dd.md#rows) |
-| dw-0212 | A README maps each fixture to its class and its twin, so the corpus explains itself. | [x] checked | [lg-0201](../../execution-log.dd.md#entries) | — |
+| dw-0212 | A README maps each fixture to its class and its twin, so the corpus explains itself. | [x] checked | [lg-0201](../../execution-log.dd.md#entries) | [bp-0902](../../backpressure.dd.md#rows) |
 | dw-0213 | The precedence-chain fixture proves first-hit-wins order exactly, not merely that resolution succeeds. | [x] checked | [lg-0201](../../execution-log.dd.md#entries) | [bp-0201](../../backpressure.dd.md#rows) |
 
 ### tk-0202
 
 | id | assertion | state | proven_by | pressure | note |
 | --- | --- | --- | --- | --- | --- |
-| dw-0221 | A qualified name comes from the folder path, never from the file, so a copied package cannot misreport its identity. | [x] checked | [lg-0201](../../execution-log.dd.md#entries) | — | — |
+| dw-0221 | A qualified name comes from the folder path, never from the file, so a copied package cannot misreport its identity. | [x] checked | [lg-0201](../../execution-log.dd.md#entries) | [bp-0201](../../backpressure.dd.md#rows) | — |
 | dw-0222 | All hits are recorded, not just the winner: every shadowed duplicate is reported with its path. | [x] checked | [lg-0202](../../execution-log.dd.md#entries) | [bp-0201](../../backpressure.dd.md#rows) | — |
-| dw-0223 | A same-root duplicate is a hard error while a cross-root duplicate is a reported shadow. | [x] checked | [lg-0202](../../execution-log.dd.md#entries) | — | — |
-| dw-0224 | The scan's depth bound is a named constant with a recorded ruling and a fixture that crosses it. | [x] checked | [lg-0203](../../execution-log.dd.md#entries) | — | Found by review, not by the original pass: the bound existed and was silent. |
+| dw-0223 | A same-root duplicate is a hard error while a cross-root duplicate is a reported shadow. | [x] checked | [lg-0202](../../execution-log.dd.md#entries) | [bp-0201](../../backpressure.dd.md#rows) | — |
+| dw-0224 | The scan's depth bound is a named constant with a recorded ruling and a fixture that crosses it. | [x] checked | [lg-0203](../../execution-log.dd.md#entries) | [bp-0201](../../backpressure.dd.md#rows) | Found by review, not by the original pass: the bound existed and was silent. |
 
 ### tk-0203
 
-| id | assertion | state | proven_by |
-| --- | --- | --- | --- |
-| dw-0231 | A custom enum validates end-to-end through the real resolver. | [x] checked | [lg-0206](../../execution-log.dd.md#entries) |
-| dw-0232 | A declared gate-terminal set changes what derived state calls complete. | [x] checked | [lg-0206](../../execution-log.dd.md#entries) |
-| dw-0233 | Two different gate-terminal sets bound to state fields are refused at declaration time. | [x] checked | [lg-0206](../../execution-log.dd.md#entries) |
+| id | assertion | state | proven_by | pressure | note |
+| --- | --- | --- | --- | --- | --- |
+| dw-0231 | A custom enum validates end-to-end through the real resolver. | [x] checked | [lg-0206](../../execution-log.dd.md#entries) | not-applicable | the declarations suite drives a custom enum end to end through the real resolver; no backpressure row states the declaration layer |
+| dw-0232 | A declared gate-terminal set changes what derived state calls complete. | [x] checked | [lg-0206](../../execution-log.dd.md#entries) | not-applicable | the derived-state tests cover it; the toolbelt has no row for gate-terminal declarations |
+| dw-0233 | Two different gate-terminal sets bound to state fields are refused at declaration time. | [x] checked | [lg-0206](../../execution-log.dd.md#entries) | not-applicable | a planted-bad declaration fixture fires at resolution; not a backpressure criterion |
 
 ### tk-0204
 
-| id | assertion | state | proven_by |
-| --- | --- | --- | --- |
-| dw-0241 | A good document exits ok and an ERROR-class document exits with its own issue code. | [x] checked | [lg-0207](../../execution-log.dd.md#entries) |
-| dw-0242 | Depth 2 and depth 3 genuinely differ on a three-hop corpus, through the CLI. | [x] checked | [lg-0207](../../execution-log.dd.md#entries) |
-| dw-0243 | Direct invocation never skips a document: a known-bad fixture still fails when named explicitly. | [x] checked | [lg-0207](../../execution-log.dd.md#entries) |
+| id | assertion | state | proven_by | pressure | note |
+| --- | --- | --- | --- | --- | --- |
+| dw-0241 | A good document exits ok and an ERROR-class document exits with its own issue code. | [x] checked | [lg-0207](../../execution-log.dd.md#entries) | not-applicable | the validate act's good/bad fixture pair; bp-0901 is about a plan document, not the verb |
+| dw-0242 | Depth 2 and depth 3 genuinely differ on a three-hop corpus, through the CLI. | [x] checked | [lg-0207](../../execution-log.dd.md#entries) | not-applicable | the three-hop depth fixture in the CLI suite |
+| dw-0243 | Direct invocation never skips a document: a known-bad fixture still fails when named explicitly. | [x] checked | [lg-0207](../../execution-log.dd.md#entries) | not-applicable | the direct-invocation regression test |
 
 ### tk-0205
 
-| id | assertion | state | proven_by |
-| --- | --- | --- | --- |
-| dw-0251 | Both verbs print the resolved file path, always. | [x] checked | [lg-0201](../../execution-log.dd.md#entries) |
-| dw-0252 | Shadowing is visible in both verbs, with the full chain in `show`. | [x] checked | [lg-0202](../../execution-log.dd.md#entries) |
+| id | assertion | state | proven_by | pressure |
+| --- | --- | --- | --- | --- |
+| dw-0251 | Both verbs print the resolved file path, always. | [x] checked | [lg-0201](../../execution-log.dd.md#entries) | [bp-0201](../../backpressure.dd.md#rows) |
+| dw-0252 | Shadowing is visible in both verbs, with the full chain in `show`. | [x] checked | [lg-0202](../../execution-log.dd.md#entries) | [bp-0201](../../backpressure.dd.md#rows) |
 
 ### tk-0206
 
 | id | assertion | state | proven_by | pressure | note |
 | --- | --- | --- | --- | --- | --- |
-| dw-0261 | The packages resolve by real deep scan from the repository root. | [x] checked | [lg-0201](../../execution-log.dd.md#entries) | — | — |
+| dw-0261 | The packages resolve by real deep scan from the repository root. | [x] checked | [lg-0201](../../execution-log.dd.md#entries) | [bp-0201](../../backpressure.dd.md#rows) | — |
 | dw-0262 | The plan schema declares the two signpost link columns as typed links, not as text. | [x] checked | [lg-0901](../../execution-log.dd.md#entries) | [bp-0901](../../backpressure.dd.md#rows) | — |
-| dw-0263 | Each package ships the custom-type adapters its schema needs. | [x] na | — | — | The builder/* schemas declare no custom types, so there is no adapter to ship. Recorded rather than ticked: 'nothing to do' and 'done' are different answers. |
+| dw-0263 | Each package ships the custom-type adapters its schema needs. | [x] na | — | not-applicable | the render goldens fail if an adapter a schema names is missing |
 
 ### tk-0207
 
@@ -103,22 +103,22 @@ The task detail for one phase. The plan document carries the overview and links 
 | --- | --- | --- | --- | --- | --- |
 | dw-0271 | `dd docs list` shows every baked doc with its description and `dd docs get` returns the content. | [x] checked | [lg-0801](../../execution-log.dd.md#entries) | [bp-0801](../../backpressure.dd.md#rows) | — |
 | dw-0272 | The drift gate is proven in both directions: exit 0 on a clean tree, exit 1 on injected drift. | [x] checked | [lg-0801](../../execution-log.dd.md#entries) | [bp-0801](../../backpressure.dd.md#rows) | A control demonstrated only on a green tree is not a control. |
-| dw-0273 | An unknown doc id returns its own error code rather than an empty result. | [x] checked | [lg-0801](../../execution-log.dd.md#entries) | — | — |
+| dw-0273 | An unknown doc id returns its own error code rather than an empty result. | [x] checked | [lg-0801](../../execution-log.dd.md#entries) | not-applicable | the dd docs get error-path test; bp-0801 watches drift, not the unknown-id path |
 
 ### tk-0208
 
-| id | assertion | state | proven_by |
-| --- | --- | --- | --- |
-| dw-0281 | Every leaf ruling was recorded with its rationale before the code that consumes it landed. | [x] checked | [lg-0206](../../execution-log.dd.md#entries) |
+| id | assertion | state | proven_by | pressure | note |
+| --- | --- | --- | --- | --- | --- |
+| dw-0281 | Every leaf ruling was recorded with its rationale before the code that consumes it landed. | [x] checked | [lg-0206](../../execution-log.dd.md#entries) | not-applicable | human review of the ruling ledger's dates against the commits that consume them |
 
 ### tk-0209
 
-| id | assertion | state | proven_by | note | pressure | receipt |
+| id | assertion | state | proven_by | pressure | note | receipt |
 | --- | --- | --- | --- | --- | --- | --- |
-| dw-0291 | The phase's own slice suite is green with the parallel phases absent. | [x] checked | [lg-0201](../../execution-log.dd.md#entries) | — | — | — |
-| dw-0292 | Suites that spawn the CLI are proven from both sanctioned invocations. | [x] checked | [lg-0205](../../execution-log.dd.md#entries) | A fix proven from one invocation leaves the other unproven. | — | — |
-| dw-0293 | The architecture baseline is unmoved: dd adds no new violation. | [x] checked | [lg-1201](../../execution-log.dd.md#entries) | — | [bp-1201](../../backpressure.dd.md#rows) | — |
-| dw-0294 | The repository-root invocation of the suite is exercised by the quality gate, not merely sanctioned by a config file. | [x] human-skipped | — | The gap is real and named: two sanctioned invocations disagreed and only one ran. The waiver is visible here forever rather than dissolving into a passing suite. | — | Recorded in the phase-2 log: "left to the retro / P5 checks conversation, per the PM's ruling not to decide it inside a fix round". |
+| dw-0291 | The phase's own slice suite is green with the parallel phases absent. | [x] checked | [lg-0201](../../execution-log.dd.md#entries) | not-applicable | the slice suite is run with the parallel phases absent as a one-off demonstration; the durable residue is the suite itself | — |
+| dw-0292 | Suites that spawn the CLI are proven from both sanctioned invocations. | [x] checked | [lg-0205](../../execution-log.dd.md#entries) | not-applicable | both sanctioned invocations are exercised by the quality gate | — |
+| dw-0293 | The architecture baseline is unmoved: dd adds no new violation. | [x] checked | [lg-1201](../../execution-log.dd.md#entries) | [bp-1201](../../backpressure.dd.md#rows) | — | — |
+| dw-0294 | The repository-root invocation of the suite is exercised by the quality gate, not merely sanctioned by a config file. | [x] human-skipped | — | not-applicable | the quality gate runs the repository-root invocation on every commit | Recorded in the phase-2 log: "left to the retro / P5 checks conversation, per the PM's ruling not to decide it inside a fix round". |
 
 <a id="references"></a>
 

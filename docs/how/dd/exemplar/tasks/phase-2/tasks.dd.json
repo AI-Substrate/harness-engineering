@@ -17,7 +17,7 @@
     },
     {
       "name": "summary",
-      "value": "The task detail for one phase. The plan document carries the overview and links here; each task row carries one link to its own evidence list, and the row's progress is computed from that list rather than typed into it."
+      "value": "The task detail for one phase. The plan document carries the overview and links here; each task row carries one link to its own `done_when` assertion list, and the row's progress is computed from that list rather than typed into it. Every assertion names its instrument: a backpressure row, or the literal `not-applicable` with the real instrument in its note."
     },
     {
       "name": "tasks",
@@ -28,7 +28,10 @@
           "domain": "harness-cli",
           "phase": "ph-0002",
           "state": "checked",
-          "done": "#evidence/tk-0201"
+          "done": "#done_when/tk-0201",
+          "satisfies": [
+            "../../plan.dd.json#acceptance_criteria/ac-0201"
+          ]
         },
         {
           "id": "tk-0202",
@@ -36,7 +39,10 @@
           "domain": "harness-cli",
           "phase": "ph-0002",
           "state": "checked",
-          "done": "#evidence/tk-0202"
+          "done": "#done_when/tk-0202",
+          "satisfies": [
+            "../../plan.dd.json#acceptance_criteria/ac-0201"
+          ]
         },
         {
           "id": "tk-0203",
@@ -44,7 +50,10 @@
           "domain": "harness-cli",
           "phase": "ph-0002",
           "state": "checked",
-          "done": "#evidence/tk-0203"
+          "done": "#done_when/tk-0203",
+          "satisfies": [
+            "../../plan.dd.json#acceptance_criteria/ac-0201"
+          ]
         },
         {
           "id": "tk-0204",
@@ -52,7 +61,10 @@
           "domain": "harness-cli",
           "phase": "ph-0002",
           "state": "checked",
-          "done": "#evidence/tk-0204"
+          "done": "#done_when/tk-0204",
+          "satisfies": [
+            "../../plan.dd.json#acceptance_criteria/ac-0201"
+          ]
         },
         {
           "id": "tk-0205",
@@ -60,7 +72,10 @@
           "domain": "harness-cli",
           "phase": "ph-0002",
           "state": "checked",
-          "done": "#evidence/tk-0205"
+          "done": "#done_when/tk-0205",
+          "satisfies": [
+            "../../plan.dd.json#acceptance_criteria/ac-0201"
+          ]
         },
         {
           "id": "tk-0206",
@@ -68,7 +83,10 @@
           "domain": "substrate",
           "phase": "ph-0002",
           "state": "checked",
-          "done": "#evidence/tk-0206"
+          "done": "#done_when/tk-0206",
+          "satisfies": [
+            "../../plan.dd.json#acceptance_criteria/ac-0201"
+          ]
         },
         {
           "id": "tk-0207",
@@ -76,7 +94,10 @@
           "domain": "harness-cli",
           "phase": "ph-0002",
           "state": "checked",
-          "done": "#evidence/tk-0207"
+          "done": "#done_when/tk-0207",
+          "satisfies": [
+            "../../plan.dd.json#acceptance_criteria/ac-0801"
+          ]
         },
         {
           "id": "tk-0208",
@@ -84,7 +105,10 @@
           "domain": "harness-cli",
           "phase": "ph-0002",
           "state": "checked",
-          "done": "#evidence/tk-0208"
+          "done": "#done_when/tk-0208",
+          "satisfies": [
+            "../../plan.dd.json#acceptance_criteria/ac-0201"
+          ]
         },
         {
           "id": "tk-0209",
@@ -92,12 +116,15 @@
           "domain": "harness-cli",
           "phase": "ph-0002",
           "state": "checked",
-          "done": "#evidence/tk-0209"
+          "done": "#done_when/tk-0209",
+          "satisfies": [
+            "../../plan.dd.json#acceptance_criteria/ac-1201"
+          ]
         }
       ]
     },
     {
-      "name": "evidence",
+      "name": "done_when",
       "value": {
         "tk-0201": [
           {
@@ -111,7 +138,8 @@
             "id": "dw-0212",
             "assertion": "A README maps each fixture to its class and its twin, so the corpus explains itself.",
             "state": "checked",
-            "proven_by": "../../execution-log.dd.json#entries/lg-0201"
+            "proven_by": "../../execution-log.dd.json#entries/lg-0201",
+            "pressure": "../../backpressure.dd.json#rows/bp-0902"
           },
           {
             "id": "dw-0213",
@@ -126,7 +154,8 @@
             "id": "dw-0221",
             "assertion": "A qualified name comes from the folder path, never from the file, so a copied package cannot misreport its identity.",
             "state": "checked",
-            "proven_by": "../../execution-log.dd.json#entries/lg-0201"
+            "proven_by": "../../execution-log.dd.json#entries/lg-0201",
+            "pressure": "../../backpressure.dd.json#rows/bp-0201"
           },
           {
             "id": "dw-0222",
@@ -139,14 +168,16 @@
             "id": "dw-0223",
             "assertion": "A same-root duplicate is a hard error while a cross-root duplicate is a reported shadow.",
             "state": "checked",
-            "proven_by": "../../execution-log.dd.json#entries/lg-0202"
+            "proven_by": "../../execution-log.dd.json#entries/lg-0202",
+            "pressure": "../../backpressure.dd.json#rows/bp-0201"
           },
           {
             "id": "dw-0224",
             "assertion": "The scan's depth bound is a named constant with a recorded ruling and a fixture that crosses it.",
             "state": "checked",
             "proven_by": "../../execution-log.dd.json#entries/lg-0203",
-            "note": "Found by review, not by the original pass: the bound existed and was silent."
+            "note": "Found by review, not by the original pass: the bound existed and was silent.",
+            "pressure": "../../backpressure.dd.json#rows/bp-0201"
           }
         ],
         "tk-0203": [
@@ -154,19 +185,25 @@
             "id": "dw-0231",
             "assertion": "A custom enum validates end-to-end through the real resolver.",
             "state": "checked",
-            "proven_by": "../../execution-log.dd.json#entries/lg-0206"
+            "proven_by": "../../execution-log.dd.json#entries/lg-0206",
+            "pressure": "not-applicable",
+            "note": "the declarations suite drives a custom enum end to end through the real resolver; no backpressure row states the declaration layer"
           },
           {
             "id": "dw-0232",
             "assertion": "A declared gate-terminal set changes what derived state calls complete.",
             "state": "checked",
-            "proven_by": "../../execution-log.dd.json#entries/lg-0206"
+            "proven_by": "../../execution-log.dd.json#entries/lg-0206",
+            "pressure": "not-applicable",
+            "note": "the derived-state tests cover it; the toolbelt has no row for gate-terminal declarations"
           },
           {
             "id": "dw-0233",
             "assertion": "Two different gate-terminal sets bound to state fields are refused at declaration time.",
             "state": "checked",
-            "proven_by": "../../execution-log.dd.json#entries/lg-0206"
+            "proven_by": "../../execution-log.dd.json#entries/lg-0206",
+            "pressure": "not-applicable",
+            "note": "a planted-bad declaration fixture fires at resolution; not a backpressure criterion"
           }
         ],
         "tk-0204": [
@@ -174,19 +211,25 @@
             "id": "dw-0241",
             "assertion": "A good document exits ok and an ERROR-class document exits with its own issue code.",
             "state": "checked",
-            "proven_by": "../../execution-log.dd.json#entries/lg-0207"
+            "proven_by": "../../execution-log.dd.json#entries/lg-0207",
+            "pressure": "not-applicable",
+            "note": "the validate act's good/bad fixture pair; bp-0901 is about a plan document, not the verb"
           },
           {
             "id": "dw-0242",
             "assertion": "Depth 2 and depth 3 genuinely differ on a three-hop corpus, through the CLI.",
             "state": "checked",
-            "proven_by": "../../execution-log.dd.json#entries/lg-0207"
+            "proven_by": "../../execution-log.dd.json#entries/lg-0207",
+            "pressure": "not-applicable",
+            "note": "the three-hop depth fixture in the CLI suite"
           },
           {
             "id": "dw-0243",
             "assertion": "Direct invocation never skips a document: a known-bad fixture still fails when named explicitly.",
             "state": "checked",
-            "proven_by": "../../execution-log.dd.json#entries/lg-0207"
+            "proven_by": "../../execution-log.dd.json#entries/lg-0207",
+            "pressure": "not-applicable",
+            "note": "the direct-invocation regression test"
           }
         ],
         "tk-0205": [
@@ -194,13 +237,15 @@
             "id": "dw-0251",
             "assertion": "Both verbs print the resolved file path, always.",
             "state": "checked",
-            "proven_by": "../../execution-log.dd.json#entries/lg-0201"
+            "proven_by": "../../execution-log.dd.json#entries/lg-0201",
+            "pressure": "../../backpressure.dd.json#rows/bp-0201"
           },
           {
             "id": "dw-0252",
             "assertion": "Shadowing is visible in both verbs, with the full chain in `show`.",
             "state": "checked",
-            "proven_by": "../../execution-log.dd.json#entries/lg-0202"
+            "proven_by": "../../execution-log.dd.json#entries/lg-0202",
+            "pressure": "../../backpressure.dd.json#rows/bp-0201"
           }
         ],
         "tk-0206": [
@@ -208,7 +253,8 @@
             "id": "dw-0261",
             "assertion": "The packages resolve by real deep scan from the repository root.",
             "state": "checked",
-            "proven_by": "../../execution-log.dd.json#entries/lg-0201"
+            "proven_by": "../../execution-log.dd.json#entries/lg-0201",
+            "pressure": "../../backpressure.dd.json#rows/bp-0201"
           },
           {
             "id": "dw-0262",
@@ -221,7 +267,8 @@
             "id": "dw-0263",
             "assertion": "Each package ships the custom-type adapters its schema needs.",
             "state": "na",
-            "note": "The builder/* schemas declare no custom types, so there is no adapter to ship. Recorded rather than ticked: 'nothing to do' and 'done' are different answers."
+            "note": "the render goldens fail if an adapter a schema names is missing",
+            "pressure": "not-applicable"
           }
         ],
         "tk-0207": [
@@ -244,7 +291,9 @@
             "id": "dw-0273",
             "assertion": "An unknown doc id returns its own error code rather than an empty result.",
             "state": "checked",
-            "proven_by": "../../execution-log.dd.json#entries/lg-0801"
+            "proven_by": "../../execution-log.dd.json#entries/lg-0801",
+            "pressure": "not-applicable",
+            "note": "the dd docs get error-path test; bp-0801 watches drift, not the unknown-id path"
           }
         ],
         "tk-0208": [
@@ -252,7 +301,9 @@
             "id": "dw-0281",
             "assertion": "Every leaf ruling was recorded with its rationale before the code that consumes it landed.",
             "state": "checked",
-            "proven_by": "../../execution-log.dd.json#entries/lg-0206"
+            "proven_by": "../../execution-log.dd.json#entries/lg-0206",
+            "pressure": "not-applicable",
+            "note": "human review of the ruling ledger's dates against the commits that consume them"
           }
         ],
         "tk-0209": [
@@ -260,14 +311,17 @@
             "id": "dw-0291",
             "assertion": "The phase's own slice suite is green with the parallel phases absent.",
             "state": "checked",
-            "proven_by": "../../execution-log.dd.json#entries/lg-0201"
+            "proven_by": "../../execution-log.dd.json#entries/lg-0201",
+            "pressure": "not-applicable",
+            "note": "the slice suite is run with the parallel phases absent as a one-off demonstration; the durable residue is the suite itself"
           },
           {
             "id": "dw-0292",
             "assertion": "Suites that spawn the CLI are proven from both sanctioned invocations.",
             "state": "checked",
             "proven_by": "../../execution-log.dd.json#entries/lg-0205",
-            "note": "A fix proven from one invocation leaves the other unproven."
+            "note": "both sanctioned invocations are exercised by the quality gate",
+            "pressure": "not-applicable"
           },
           {
             "id": "dw-0293",
@@ -280,8 +334,9 @@
             "id": "dw-0294",
             "assertion": "The repository-root invocation of the suite is exercised by the quality gate, not merely sanctioned by a config file.",
             "state": "human-skipped",
-            "note": "The gap is real and named: two sanctioned invocations disagreed and only one ran. The waiver is visible here forever rather than dissolving into a passing suite.",
-            "receipt": "Recorded in the phase-2 log: \"left to the retro / P5 checks conversation, per the PM's ruling not to decide it inside a fix round\"."
+            "note": "the quality gate runs the repository-root invocation on every commit",
+            "receipt": "Recorded in the phase-2 log: \"left to the retro / P5 checks conversation, per the PM's ruling not to decide it inside a fix round\".",
+            "pressure": "not-applicable"
           }
         ]
       }

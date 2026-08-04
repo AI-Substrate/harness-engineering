@@ -1,6 +1,6 @@
 {
   "dd_schema": 1,
-  "description": "A builder plan: goals, acceptance criteria, phases, tasks, and one evidence list per task. Assertion lists live in `done_when`, where `pressure` is MANDATORY (a backpressure row, or the literal `not-applicable`). The `evidence` section is a DEPRECATED ALIAS kept only so frozen corpora keep validating while they migrate: it is dropped \u2014 and `tasks[].done` regains its `builder/plan/section/done_when` target pin \u2014 in tk-7061 (plan 070, ph-7003), which is the same commit that migrates the exemplar. Do not author a new `evidence` section.",
+  "description": "A builder plan: goals, acceptance criteria, phases, tasks, and one assertion list per task. Assertion lists live in `done_when`, where `pressure` is MANDATORY (a backpressure row, or the literal `not-applicable`), and `tasks[].done` is target-pinned at it so a task's state is derived from assertions and can be derived from nothing else. The deprecated `evidence` alias was dropped in tk-7161 (plan 071, ph-7103) — the same commit that migrated the exemplar — after serving its one purpose: letting frozen corpora keep validating while they moved.",
   "enums": {
     "plan_status": {
       "values": [
@@ -254,6 +254,7 @@
             },
             "done": {
               "type": "link",
+              "target": "builder/plan/section/done_when",
               "rel": "derives"
             },
             "success": {
@@ -320,51 +321,6 @@
         }
       },
       "title": "Done when"
-    },
-    "evidence": {
-      "shape": {
-        "type": "object",
-        "allowAdditional": true,
-        "fields": {},
-        "valuesShape": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": [
-              "id",
-              "assertion",
-              "state"
-            ],
-            "fields": {
-              "id": {
-                "type": "string"
-              },
-              "assertion": {
-                "type": "text"
-              },
-              "state": {
-                "type": "state"
-              },
-              "note": {
-                "type": "string"
-              },
-              "receipt": {
-                "type": "string"
-              },
-              "proven_by": {
-                "type": "link",
-                "target": "builder/execution-log/section/entries",
-                "rel": "proven_by"
-              },
-              "pressure": {
-                "type": "link",
-                "target": "builder/backpressure/section/rows",
-                "rel": "pressure"
-              }
-            }
-          }
-        }
-      }
     },
     "research_context": {
       "title": "Research Context",

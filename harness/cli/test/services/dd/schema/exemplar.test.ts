@@ -88,38 +88,42 @@ describe('exemplar builder/* schema packages', () => {
     });
 
     // Each task row points at ITS own assertion list, in this document. The
-    // `target` pin is DELIBERATELY absent for the duration of the `evidence`
-    // alias window — a corpus mid-migration may legally land in either section —
-    // and tk-7061 restores it pointed at `builder/plan/section/done_when` in the
-    // same commit that drops the alias.
+    // `target` pin was suspended for the duration of the `evidence` alias window
+    // — a corpus mid-migration could legally land in either section — and
+    // tk-7161 restored it when it dropped the alias. With the pin back, a `done`
+    // link into anything but `done_when` fails validation, so a task's state can
+    // be DERIVED from assertions and derived from nothing else.
     expect(record?.schema.sections.tasks?.shape.items?.fields?.done).toEqual({
       type: 'link',
+      target: 'builder/plan/section/done_when',
       rel: 'derives',
     });
   });
 
   /**
-   * The alias exists on sufferance, and this test is its leash: it names the task
-   * that must remove it, so the deprecation cannot quietly become permanent.
+   * The alias is GONE (tk-7161), and this test is what stops it coming back.
+   *
+   * It was introduced with a leash — a test naming the task that had to remove
+   * it — precisely so the deprecation could not quietly become permanent. That
+   * task has now run, so the leash inverts: `evidence` must not exist, and
+   * `done_when` must be the only place an assertion list can live. A schema
+   * carrying both again would make `tasks[].done` ambiguous, which is the
+   * ambiguity the target pin was suspended for and has now been restored to
+   * forbid.
    */
-  it('keeps `evidence` only as a signposted legacy alias of `done_when`', () => {
+  it('has DROPPED the `evidence` alias — done_when is the only assertion section', () => {
     const record = resolver.resolveDetailed('builder/plan').record;
     expect(record?.schema.sections.done_when).toBeDefined();
-    expect(record?.schema.sections.evidence).toBeDefined();
-    // The signpost lives in the schema DESCRIPTION, never in a section `title`:
-    // a title is the rendered heading, so a deprecation notice there would
-    // rewrite every legacy sibling's markdown and trip the drift gate.
-    expect(record?.schema.sections.evidence?.title).toBeUndefined();
-    expect(record?.description).toContain('DEPRECATED ALIAS');
-    expect(record?.description).toContain('tk-7061');
+    expect(record?.schema.sections.evidence).toBeUndefined();
+    // The description records what happened rather than pretending it never did:
+    // a reader meeting a frozen `evidence` corpus needs to know where it went.
+    expect(record?.description).toContain('deprecated `evidence` alias was dropped');
+    expect(record?.description).toContain('tk-7161');
 
-    // Mandatory pressure fires on the LIVING section only. That asymmetry is the
-    // whole reason the alias is safe: a frozen corpus keeps validating, while
-    // anything authored today must name its instrument.
+    // Mandatory pressure has nothing left to be asymmetric with — every assertion
+    // authored under this schema names its instrument or fails.
     const living = record?.schema.sections.done_when?.shape.valuesShape?.items?.required;
     expect(living).toContain('pressure');
-    const legacy = record?.schema.sections.evidence?.shape.valuesShape?.items?.required;
-    expect(legacy).not.toContain('pressure');
   });
 
   it('keys the done_when section by the owning task id — a map, not an id-bearing row', () => {
