@@ -1,5 +1,9 @@
 # The structural proof graph
 
+> SUPERSEDED, 2026-08-04. The stable version is
+> [docs/how/dd/11-the-builder-proof-graph.md](../../../how/dd/11-the-builder-proof-graph.md).
+> This rough-out is kept as the record of how the design formed; it is not maintained.
+
 > Rough-out, 2026-08-04. Lives in `builder-tuning/` while it forms; promotes
 > to `docs/how/dd/` when stable. Companion to `notes.md`, which carries the
 > per-item rulings and open questions.

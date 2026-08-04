@@ -6,6 +6,9 @@ Run dd commands from the repository root because of
 Add `--json` for a machine-readable envelope. On a human terminal, commands
 with dedicated human renderers print readable text or markdown.
 
+For what these verbs are collectively FOR, see
+[The builder proof graph](11-the-builder-proof-graph.md).
+
 ## Validate and render
 
 | Command | Effect |

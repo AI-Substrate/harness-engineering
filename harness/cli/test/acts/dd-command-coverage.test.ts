@@ -76,3 +76,47 @@ describe("dw-0005 — this plan's commands are covered by a chapter and a recipe
     expect(checked).toBeGreaterThanOrEqual(6);
   });
 });
+
+/**
+ * tk-7163 — the promoted chapter, and the signpost that stops the rough-out
+ * being cited instead of it.
+ *
+ * A design doc promoted without a signpost leaves two copies in the tree and no
+ * way to tell which one is current — and the stale one is usually the one a
+ * search finds first, because it has been there longer.
+ */
+describe('dw-0006 — the builder proof graph is promoted, indexed, and signposted', () => {
+  const CHAPTER = 'docs/how/dd/11-the-builder-proof-graph.md';
+  const ROUGH_OUT =
+    'docs/plans/065-deterministic-documents/builder-tuning/structural-proof-graph.md';
+
+  it('lands as a chapter that states the shipped surface, not the pending one', () => {
+    const chapter = readFileSync(`${ROOT}${CHAPTER}`, 'utf8');
+    // The rough-out hedged on everything this plan then shipped. If any of these
+    // markers survive the promotion, the chapter is describing a design rather
+    // than the system a reader is holding.
+    expect(chapter).not.toMatch(/rename pending|\(proposed\)|Pending features/);
+    for (const shipped of ['satisfies', 'done_when', 'plan pr-body', 'dd set', 'plan-validate']) {
+      expect(chapter).toContain(shipped);
+    }
+  });
+
+  it('is framed as the work-graph / knowledge-graph join, with recorded freshness', () => {
+    const chapter = readFileSync(`${ROOT}${CHAPTER}`, 'utf8');
+    expect(chapter).toContain('work graph');
+    expect(chapter).toContain('knowledge graph');
+    // The freshness half is the part that stops the knowledge graph becoming
+    // fiction, so it is named rather than implied.
+    expect(chapter).toMatch(/recorded freshness|basis ledger/i);
+  });
+
+  it('is reachable: indexed in the README, and the rough-out points at it', () => {
+    expect(readFileSync(`${ROOT}docs/how/dd/README.md`, 'utf8')).toContain(
+      '11-the-builder-proof-graph.md',
+    );
+    const roughOut = readFileSync(`${ROOT}${ROUGH_OUT}`, 'utf8');
+    expect(roughOut).toContain('SUPERSEDED');
+    expect(roughOut).toContain('11-the-builder-proof-graph.md');
+    expect(roughOut).toContain('not maintained');
+  });
+});
