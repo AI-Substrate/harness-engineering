@@ -47,8 +47,12 @@ describe('dd validate — byte-for-byte mechanical (dw-0261)', () => {
   });
 
   afterEach(() => {
-    process.chdir(previousCwd);
-    corpus.cleanup();
+    // Restore FIRST, and only if we actually moved: vitest reuses a worker across
+    // files, so a suite that leaves the process parked in a deleted temp
+    // directory poisons whatever file runs next in that worker.
+    if (previousCwd.length > 0) process.chdir(previousCwd);
+    previousCwd = '';
+    corpus?.cleanup();
   });
 
   it('reports ZERO findings on a corpus the semantic layer objects to', async () => {

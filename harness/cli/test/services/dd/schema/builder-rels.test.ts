@@ -66,8 +66,12 @@ describe('builder/plan — the new ERROR classes fire (dw-0151..dw-0153)', () =>
   };
 
   afterEach(() => {
-    process.chdir(previousCwd);
-    corpus.cleanup();
+    // Restore FIRST, and only if we actually moved: vitest reuses a worker across
+    // files, so a suite that leaves the process parked in a deleted temp
+    // directory poisons whatever file runs next in that worker.
+    if (previousCwd.length > 0) process.chdir(previousCwd);
+    previousCwd = '';
+    corpus?.cleanup();
   });
 
   const validate = () =>
