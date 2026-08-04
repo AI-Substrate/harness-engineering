@@ -111,7 +111,13 @@ describe('ExecGitRead — batched flat-tree reads (plan 067)', () => {
       spawnSync('grep', ['-c', 'built-in: git', trace], { encoding: 'utf8' }).stdout ?? '0'
     ).trim();
     expect(Number.parseInt(spawns, 10)).toBeLessThanOrEqual(5);
-  });
+    // 20s, not vitest's default 5s. This case PUBLISHES 150 blobs through real
+    // git before it can measure anything, and under full-suite load that setup
+    // alone has been seen at ~6s — so the default budget failed a test whose
+    // ASSERTION (at most five subprocesses) was never in doubt. The bound is
+    // unchanged; only the wallclock allowance is made honest about what the
+    // fixture costs.
+  }, 20_000);
 
   it('an absent ref reads as an empty tree (never a throw)', () => {
     const gr = new ExecGitRead(repo);

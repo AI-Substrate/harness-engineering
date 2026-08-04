@@ -13,7 +13,7 @@ import {
 import { createServer } from 'node:net';
 import { devNull, tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { FakeFs } from '../../../src/adapters/fs/fake-fs.js';
 import { ExecRemoteTelemetryGit } from '../../../src/adapters/git/exec-remote-telemetry-git.js';
 import type { RemoteRepository } from '../../../src/adapters/git/remote-telemetry-git-port.js';
@@ -46,6 +46,22 @@ function hermeticGitEnv(): NodeJS.ProcessEnv {
 
 const git = (cwd: string, args: string[]): string =>
   execFileSync('git', args, { cwd, encoding: 'utf8', env: hermeticGitEnv() }).trim();
+
+/**
+ * 20s per case, not vitest's 5s default.
+ *
+ * Every case in this file drives REAL git — spawning processes, initialising
+ * repositories, materialising credential config, talking to a loopback daemon.
+ * Uncontended that is comfortably under a second; under full-suite load, with
+ * every other worker competing for the same cores, cases have been measured at
+ * 4-6s. The default budget then failed tests whose ASSERTIONS were never in
+ * doubt, which reads as a flaky suite and is really a wallclock allowance that
+ * was never honest about what these fixtures cost.
+ *
+ * Set once for the file rather than sprinkled per case: the property is true of
+ * the whole file, and a per-case number invites the next author to guess.
+ */
+vi.setConfig({ testTimeout: 20_000, hookTimeout: 30_000 });
 
 /**
  * A PRIVATE temp namespace for this file (tk-7173 / DL-008 / COORD-001).
@@ -619,6 +635,26 @@ interface ObservedGitCommand {
   readonly env: Readonly<NodeJS.ProcessEnv> | undefined;
 }
 
+/**
+ * The leak invariant, stated as what it MEANS: this operation left no credential
+ * temp directory behind that was not already there.
+ *
+ * Sixteen assertions used to write this as set EQUALITY against a `before`
+ * listing, which is a stronger claim than the code makes and a different one than
+ * anybody wanted. Equality also fails when a directory DISAPPEARS — and no leak
+ * can cause a disappearance. Under load that is exactly what happened: an earlier
+ * test's cleanup landed inside a later test's measurement window, and a suite
+ * that had leaked nothing reported a leak.
+ *
+ * So the check is one-directional. A NEW directory after the operation is the
+ * defect (the adapter kept private credential material on disk); one that was
+ * present before and is gone now belongs to somebody else's teardown.
+ */
+function assertNoCredentialLeak(before: readonly string[]): void {
+  const leaked = credentialTempDirectories().filter((name) => !before.includes(name));
+  expect(leaked).toEqual([]);
+}
+
 function credentialTempDirectories(): string[] {
   return readdirSync(tmpdir())
     .filter((name) => name.startsWith('harness-git-credential-'))
@@ -800,7 +836,7 @@ describe('ExecRemoteTelemetryGit — HTTPS credential discovery RED cluster A', 
       expect(materialized).not.toContain('must-not-be-inherited');
       expect(sanitizedPath).toBeDefined();
       expect(existsSync(sanitizedPath as string)).toBe(false);
-      expect(credentialTempDirectories()).toEqual(beforeTemps);
+      assertNoCredentialLeak(beforeTemps);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -941,7 +977,7 @@ describe('ExecRemoteTelemetryGit — HTTPS credential discovery RED cluster A', 
       expect(result).toMatchObject({ ok: false, message: 'remote telemetry advertisement failed' });
       expect(writerCommands).toBe(caseIndex === 0 ? 4 : 64);
       expect(networkCommands).toBe(1);
-      expect(credentialTempDirectories()).toEqual(beforeTemps);
+      assertNoCredentialLeak(beforeTemps);
     }
   });
 
@@ -969,7 +1005,7 @@ describe('ExecRemoteTelemetryGit — HTTPS credential discovery RED cluster A', 
     });
     expect(queries).toBe(1);
     expect(networkCommands).toBe(0);
-    expect(credentialTempDirectories()).toEqual(beforeTemps);
+    assertNoCredentialLeak(beforeTemps);
     for (const { label, stdout: privateBytes } of NEGATIVE_CREDENTIAL_QUERY_CASES) {
       expect(JSON.stringify(result)).not.toContain(label);
       expect(JSON.stringify(result)).not.toContain(Buffer.from(privateBytes).toString('utf8'));
@@ -1039,7 +1075,7 @@ describe('ExecRemoteTelemetryGit — HTTPS credential subsection correction RED'
     expect(observed.sanitizedBytes?.byteLength).toBeGreaterThan(0);
     expect(JSON.stringify(observed.result)).not.toContain(subsection);
     expect(JSON.stringify(observed.result)).not.toContain(value);
-    expect(credentialTempDirectories()).toEqual(observed.beforeTemps);
+    assertNoCredentialLeak(observed.beforeTemps);
   });
 
   it('preserves provider records, an empty reset, and the following helper chain in query order', async () => {
@@ -1060,7 +1096,7 @@ describe('ExecRemoteTelemetryGit — HTTPS credential subsection correction RED'
     });
     expect(observed.writers).toEqual(records.map(([key, value]) => [key, value]));
     expect(observed.networkCommands).toBe(1);
-    expect(credentialTempDirectories()).toEqual(observed.beforeTemps);
+    assertNoCredentialLeak(observed.beforeTemps);
   });
 
   it.each([
@@ -1072,7 +1108,7 @@ describe('ExecRemoteTelemetryGit — HTTPS credential subsection correction RED'
     const observed = await exerciseQuery(credentialRecord(key, 'url-helper'));
     expect(observed.writers).toEqual([[key, 'url-helper']]);
     expect(observed.networkCommands).toBe(1);
-    expect(credentialTempDirectories()).toEqual(observed.beforeTemps);
+    assertNoCredentialLeak(observed.beforeTemps);
   });
 
   it('keeps an unrelated opaque helper private and lets Git decide it is not applicable', async () => {
@@ -1126,7 +1162,7 @@ describe('ExecRemoteTelemetryGit — HTTPS credential subsection correction RED'
       expect(JSON.stringify(result)).not.toContain(helper);
       expect(existsSync(marker)).toBe(false);
       expect(existsSync(sanitizedPath as string)).toBe(false);
-      expect(credentialTempDirectories()).toEqual(beforeTemps);
+      assertNoCredentialLeak(beforeTemps);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -1205,7 +1241,7 @@ describe('ExecRemoteTelemetryGit — HTTPS credential subsection correction RED'
     });
     expect(observed.writers).toHaveLength(0);
     expect(observed.networkCommands).toBe(0);
-    expect(credentialTempDirectories()).toEqual(observed.beforeTemps);
+    assertNoCredentialLeak(observed.beforeTemps);
   });
 });
 
@@ -1254,7 +1290,7 @@ describe('repair RED 5 — scoped and unscoped credential value Unicode controls
     expect(observed.writerCommands).toBe(0);
     expect(observed.networkCommands).toBe(0);
     expect(JSON.stringify(observed.result)).not.toContain(value);
-    expect(credentialTempDirectories()).toEqual(observed.beforeTemps);
+    assertNoCredentialLeak(observed.beforeTemps);
   });
 
   it('preserves safe Unicode/spaces, empty helper reset, and exact lowercase bool', async () => {
@@ -1275,7 +1311,7 @@ describe('repair RED 5 — scoped and unscoped credential value Unicode controls
     });
     expect(observed.writerCommands).toBe(records.length);
     expect(observed.networkCommands).toBe(1);
-    expect(credentialTempDirectories()).toEqual(observed.beforeTemps);
+    assertNoCredentialLeak(observed.beforeTemps);
   });
 });
 
@@ -1391,7 +1427,7 @@ describe('ExecRemoteTelemetryGit — HTTPS credential lease RED cluster B', () =
         expect(network?.env?.[name]).toBeUndefined();
       }
       expect(existsSync(sanitizedPath as string)).toBe(false);
-      expect(credentialTempDirectories()).toEqual(beforeCredentialTemps);
+      assertNoCredentialLeak(beforeCredentialTemps);
       expect(callerRepositoryState(caller)).toEqual(callerBefore);
     } finally {
       rmSync(root, { recursive: true, force: true });
@@ -1435,7 +1471,7 @@ describe('ExecRemoteTelemetryGit — HTTPS credential lease RED cluster B', () =
       expect(network?.env?.GIT_CONFIG_GLOBAL).toBe(devNull);
     }
     expect(queries).toBe(0);
-    expect(credentialTempDirectories()).toEqual(beforeTemps);
+    assertNoCredentialLeak(beforeTemps);
   });
 
   it.each([
@@ -1470,7 +1506,7 @@ describe('ExecRemoteTelemetryGit — HTTPS credential lease RED cluster B', () =
       repositoryKey: HTTPS_CREDENTIAL_PROBE_REPOSITORY.key,
     });
     expect(networkCommands).toBe(0);
-    expect(credentialTempDirectories()).toEqual(beforeTemps);
+    assertNoCredentialLeak(beforeTemps);
     expect(JSON.stringify(result)).not.toContain('private query');
   });
 
@@ -1515,7 +1551,7 @@ describe('ExecRemoteTelemetryGit — HTTPS credential lease RED cluster B', () =
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
-    expect(credentialTempDirectories()).toEqual(beforeTemps);
+    assertNoCredentialLeak(beforeTemps);
   });
 
   it('cleans partial materialization failure before network without exposing writer input', async () => {
@@ -1546,7 +1582,7 @@ describe('ExecRemoteTelemetryGit — HTTPS credential lease RED cluster B', () =
     expect(writers).toBe(2);
     expect(networkCommands).toBe(0);
     expect(JSON.stringify(result)).not.toContain(privateHelper);
-    expect(credentialTempDirectories()).toEqual(beforeTemps);
+    assertNoCredentialLeak(beforeTemps);
   });
 
   it('honors an HTTPS-only injected lease and maps resolver/cleanup failures statically', async () => {
@@ -2023,7 +2059,7 @@ describe('ExecRemoteTelemetryGit — real network-served Git', () => {
     expect(networkConfigPaths.filter((path) => path === leasePaths[1])).toHaveLength(2);
     expect(networkConfigPaths.filter((path) => path === leasePaths[2]).length).toBeGreaterThan(1);
     expect(networkConfigPaths.every((path) => leasePaths.includes(path))).toBe(true);
-    expect(credentialTempDirectories()).toEqual(beforeTemps);
+    assertNoCredentialLeak(beforeTemps);
   }, 30_000);
 
   it('detects whole-namespace movement so the service can restart the complete transaction', async () => {
