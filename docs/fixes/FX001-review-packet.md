@@ -12,7 +12,8 @@
 | Dispatch sha (dossier) | `57d9cda5` |
 | Ruling #1 amendment | `d2af7866` |
 | Orchestrator log note | `961d8bd6` |
-| Fix commits under review | *(filled at dispatch)* |
+| Fix commits under review | `1c01c255` (fallback + D2) · `3c47f58f` (fleet provenance) · `ca5ad283` (D4) |
+| **FROZEN CODE HEAD** | **`ca5ad283`** — the code under review, and only this. Nothing is pushed. My own **docs-only** commits (this packet, rulings) may land on top and do NOT rebind your verdict; if any **code** commit lands before you finish, I will tell you and the verdict re-binds to the new head. |
 | Baseline warn trio at `57d9cda5` | arch-check **2** · markdown-lint **196** · windows-check **6**; `just checks` exit 0, `degraded`, 48.1s |
 
 The baseline's markdown-lint count may move by a small amount purely from the two
@@ -100,6 +101,32 @@ Judge whether anything in the suite genuinely pins that, and say so if nothing d
 - The log must state plainly that historic refusal bytes are **unrecoverable** (never
   encoded) and the fix is **prospective**. Overclaiming here is a finding.
 
+## Dim-2b — D4, the refusal capture that never fired (Ruling #3)
+
+Found by the coder *upstream* of the defect it was sent to fix, and it is the most
+consequential thing in this branch. `parseEnvelope` demanded a leading `{`, but Claude
+Code wraps a failing Bash result as `Exit code 1\n{…}` — so **no outcome event was
+emitted at all** for any non-zero harness command, and every refusal is non-zero.
+
+- Fix must be at the **`claude-adapter.ts` call site**, not in `outcome-events.ts`.
+  `outcomeEvents` has exactly one caller today, so both placements behave identically —
+  which is exactly why the harness-agnostic module must stay clean for the second caller.
+  A fix that leaked Claude's wrapper convention into `outcome-events.ts` is a finding.
+- Strip must be **`isError`-only, anchored, single line, `\r?\n`-tolerant**. Verify the
+  **regression guard**: `isError` true with a bare JSON body still parses, so the strip
+  can never eat real content. Verify a **success** result is never stripped.
+- **The masking claim is the interesting one — test it.** The coder states D2's loss was
+  masked by D4: the zero-coded-exits count across 112 refs is explained by D4 *alone*, so
+  D2 was never needed to explain it, and neither fix repairs the lane by itself. Judge
+  whether that is actually true, because if it is, it means the first sufficient-looking
+  explanation on this path was wrong twice.
+
+**Known, recorded, NOT a defect — do not report it:** outcome events fire only when a Bash
+call's signature *is* a harness sub-command. `node <path>/harness.js flow nav set` signs as
+`node`, so it is never correlated. That is correct behaviour and a **third** independent
+reason this lane reads empty. If you re-run the T4b steps with `node …/harness.js` you will
+see zero captures and it will look like the fix failed — use the linked `harness` binary.
+
 ## Dim-3 — no regression
 
 - Full `just test` suite green.
@@ -126,6 +153,14 @@ T4 as originally written was unmeetable; the ruling re-scoped it to two legs:
 2. **Refusal leg** — a **fresh, post-fix** `E440` manufactured and round-tripped end to end
    (capture → roll → ref → `get` → refusals non-empty **with the code**).
 
+T4b is now reported proven in four steps (real E440 with the cursor unmoved → capture with
+the code → sync → `get` returning `refusals {"E440": 1}`). **The load-bearing control is
+step 4's negative**: at that moment the live buffer held zero `E440` bytes, so the count
+could only have come from the ref half. Verify that negative — without it, step 4 proves
+nothing, because a buffer hit would produce the same output. Note the envelope honestly
+says `buffer+ref` rather than `ref` (a capture landed after the sync); that is the
+provenance field doing its job, not a defect.
+
 Both envelopes quoted verbatim in the log. Judge whether the quoted output actually
 demonstrates the claim, and re-run at least one leg yourself. Do **not** accept
 `pij-related-koala`'s own lane as proof of anything — it has no PIJ join key on the ref
@@ -138,6 +173,12 @@ demonstrates the claim, and re-run at least one leg yourself. Do **not** accept
 - Historic telemetry refs lacking coded exits — unrecoverable by construction.
 - The flow-eval scorer bundle and the `dd-native-builder` scenario — unchanged by design.
 - PR #95's merge state and the historical `e4e08d42` CI green.
+- The CLI↔extension `SessionEvidence` lock-step test that **cannot fail to compile** (only
+  `src` is in tsconfig, and its SAMPLE literal already omits fields). The coder found and
+  reported it; it is pre-existing and batched to prime. Worth knowing while you review,
+  because it means the two new provenance fields have **no drift guard on the extension
+  side** — but do not raise it as a finding against this branch.
+- The stale `docs/how/telemetry-otlp.md:67-68` (v0.2.0 / scope 2.5 vs code v0.3.0 / 2.6).
 
 ## Report shape
 
