@@ -65,6 +65,41 @@ describe('scrubText — machine paths', () => {
     expect(out).not.toContain('-Users-alice');
   });
 
+  /**
+   * Plan 068 item 5 — Cursor's `projects/` mangle is the claude mangle WITHOUT the
+   * leading separator (observed live: `~/.cursor/projects/Users-<user>-<path>`).
+   * The bare-username sweep already caught the identity, so this gap was invisible:
+   * what survived verbatim into a committed fixture was the real DIRECTORY
+   * STRUCTURE below the username.
+   */
+  it('neutralizes the cursor project-dir mangle Users-<user>-... (no leading dash)', () => {
+    const out = scrubText(
+      'path ~/.cursor/projects/Users-alice-substrate-harness-engineering/agent-transcripts/x.jsonl',
+      CFG,
+    );
+    expect(out).not.toContain('alice');
+    expect(out).not.toContain('Users-alice');
+    // The repo structure below the username is gone too, not just the identity.
+    expect(out).not.toContain('substrate-harness-engineering');
+    expect(out).toContain(REPO_PLACEHOLDER);
+  });
+
+  it('scrubs the cursor mangle of the HOME dir to the home placeholder', () => {
+    const out = scrubText('dir ~/.cursor/projects/Users-alice/repo.json', CFG);
+    expect(out).not.toContain('alice');
+    expect(out).toContain(HOME_PLACEHOLDER);
+  });
+
+  it('leaves the claude mangle behaviour unchanged (no partial -Users- stub)', () => {
+    const out = scrubText(
+      'path ~/.claude/projects/-Users-alice-substrate-harness-engineering/s.jsonl',
+      CFG,
+    );
+    expect(out).not.toContain('alice');
+    expect(out).not.toContain('-Users-alice');
+    expect(out).not.toContain('Users-');
+  });
+
   it('replaces a bare username token anywhere', () => {
     const out = scrubText('user alice ran it', CFG);
     expect(out).not.toContain('alice');

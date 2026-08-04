@@ -366,7 +366,10 @@ export const cursorAdapter: HarnessAdapter = {
       : null;
 
     return {
-      harness_session_id: null,
+      // The conversation id IS this harness's session id (plan 068 item 6) — it was
+      // already in hand for every transcript/bubble read below, and reporting `null`
+      // while holding it made the adapter describe itself as less capable than it is.
+      harness_session_id: convId.length > 0 ? convId : null,
       tokens: null, // Cursor keeps per-request token CONSUMPTION server-side only
       models: convId.length > 0 ? buildModels(ctx, convId, assistantTurns) : null,
       effort: null,

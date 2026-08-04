@@ -180,3 +180,43 @@ describe('cursorAdapter.extract — null-on-absence', () => {
     expect(caps.bash_commands ?? null).toBeNull();
   });
 });
+
+/**
+ * Plan 068 item 6 — the adapter held `CURSOR_CONVERSATION_ID` in hand (it reads the
+ * transcript and the bubble timeline with it) and still reported
+ * `harness_session_id: null`, describing itself as less capable than it is.
+ */
+describe('cursorAdapter.extract — harness_session_id (plan 068 · item 6)', () => {
+  it('carries the conversation id as harness_session_id', () => {
+    const caps = cursorAdapter.extract({ ...source(seededFs()), window: WINDOW });
+    expect(caps.harness_session_id).toBe(CONV);
+  });
+
+  it('stays null when there is no conversation id (never invented)', () => {
+    const caps = cursorAdapter.extract({
+      env: new FakeEnv({ AGENT_TRANSCRIPTS: TDIR }),
+      fs: seededFs(),
+      repoRoot: REPO,
+      harness: 'cursor-agent',
+      window: WINDOW,
+    });
+    expect(caps.harness_session_id ?? null).toBeNull();
+  });
+
+  it('the id the adapter reports SURVIVES serialization — the allowlist already has the field', () => {
+    const caps = cursorAdapter.extract({ ...source(seededFs()), window: WINDOW });
+    const input: SegmentInput = {
+      command: 'flow',
+      harness: 'cursor-agent',
+      harness_session_id: caps.harness_session_id ?? '',
+      timecode: '2026-08-03T21:20:09Z',
+      window: { since: 'session-start', from: 0, to: 1 },
+      branch: 'main',
+      event_stream: caps.event_stream ?? [],
+    };
+    const segment = serializeSegment(input, REPO);
+    expect(segment.harness_session_id).toBe(CONV);
+    // Round-trips through the real serialized bytes, not just the in-memory object.
+    expect(JSON.parse(JSON.stringify(segment)).harness_session_id).toBe(CONV);
+  });
+});

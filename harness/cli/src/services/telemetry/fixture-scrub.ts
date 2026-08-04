@@ -45,12 +45,26 @@ function claudeMangle(absPath: string): string {
   return toPosix(absPath).replace(/[^A-Za-z0-9]/g, '-');
 }
 
+/**
+ * The cursor `projects/` dir mangle: the same char-for-char mangle as
+ * {@link claudeMangle} but WITHOUT the leading separator, so `/Users/x/p.d`
+ * becomes `Users-x-p-d` (observed live: `~/.cursor/projects/Users-<user>-<path>`).
+ * Without this variant the bare-username sweep still catches the identity, but the
+ * real directory structure rides into a committed fixture verbatim (plan 068 item 5).
+ */
+function cursorMangle(absPath: string): string {
+  return claudeMangle(absPath).replace(/^-+/, '');
+}
+
 /** All textual shapes a configured absolute path takes in a transcript. */
 function pathVariants(absPath: string): string[] {
   const native = absPath;
   const posix = toPosix(absPath);
   const mangle = claudeMangle(absPath);
-  return [...new Set([native, posix, mangle])].filter(Boolean);
+  const cursor = cursorMangle(absPath);
+  // Longest first: the cursor mangle is a SUFFIX of the claude mangle, so replacing
+  // the claude form first leaves no partial `-Users-…` stub behind.
+  return [...new Set([native, posix, mangle, cursor])].filter(Boolean);
 }
 
 function replaceAll(text: string, needle: string, replacement: string): string {
