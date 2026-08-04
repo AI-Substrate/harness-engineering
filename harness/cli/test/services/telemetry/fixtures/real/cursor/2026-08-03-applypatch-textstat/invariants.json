@@ -1,0 +1,106 @@
+{
+  "tokens": null,
+  "models": [],
+  "user_prompts": [
+    12
+  ],
+  "tools": {
+    "ReadFile": 9,
+    "Glob": 1,
+    "Shell": 37,
+    "AwaitShell": 6,
+    "ApplyPatch": 9,
+    "ReadLints": 1
+  },
+  "files": {
+    "written": [
+      "demo/textstat/lib.mjs",
+      "demo/textstat/lib.test.mjs",
+      "demo/textstat/cli.mjs",
+      "demo/textstat/fixtures/welcome.txt",
+      "demo/textstat/fixtures/unicode.txt",
+      "demo/textstat/README.md"
+    ],
+    "edited": [
+      "demo/textstat/lib.test.mjs",
+      "demo/textstat/cli.mjs"
+    ]
+  },
+  "file_deltas": [
+    {
+      "path": "demo/textstat/lib.mjs",
+      "change": "written",
+      "lines_added": 72,
+      "lines_removed": 0,
+      "bytes_added": 1809,
+      "bytes_removed": 0
+    },
+    {
+      "path": "demo/textstat/lib.test.mjs",
+      "change": "written",
+      "lines_added": 44,
+      "lines_removed": 0,
+      "bytes_added": 1452,
+      "bytes_removed": 0
+    },
+    {
+      "path": "demo/textstat/lib.test.mjs",
+      "change": "edited",
+      "lines_added": 1,
+      "lines_removed": 1,
+      "bytes_added": 47,
+      "bytes_removed": 48
+    },
+    {
+      "path": "demo/textstat/lib.test.mjs",
+      "change": "edited",
+      "lines_added": 1,
+      "lines_removed": 1,
+      "bytes_added": 63,
+      "bytes_removed": 63
+    },
+    {
+      "path": "demo/textstat/cli.mjs",
+      "change": "written",
+      "lines_added": 98,
+      "lines_removed": 0,
+      "bytes_added": 2568,
+      "bytes_removed": 0
+    },
+    {
+      "path": "demo/textstat/cli.mjs",
+      "change": "edited",
+      "lines_added": 10,
+      "lines_removed": 1,
+      "bytes_added": 211,
+      "bytes_removed": 91
+    },
+    {
+      "path": "demo/textstat/fixtures/welcome.txt",
+      "change": "written",
+      "lines_added": 3,
+      "lines_removed": 0,
+      "bytes_added": 101,
+      "bytes_removed": 0
+    },
+    {
+      "path": "demo/textstat/fixtures/unicode.txt",
+      "change": "written",
+      "lines_added": 3,
+      "lines_removed": 0,
+      "bytes_added": 114,
+      "bytes_removed": 0
+    },
+    {
+      "path": "demo/textstat/README.md",
+      "change": "written",
+      "lines_added": 44,
+      "lines_removed": 0,
+      "bytes_added": 837,
+      "bytes_removed": 0
+    }
+  ],
+  "event_count": 9,
+  "event_stream_present": true,
+  "timestamps": "interval"
+}

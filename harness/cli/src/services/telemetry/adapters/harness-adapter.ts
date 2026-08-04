@@ -62,6 +62,13 @@ export interface HarnessSource {
 export interface HarnessContext extends HarnessSource {
   /** The "since last command" window the cursor computed. */
   window: SegmentWindow;
+  /**
+   * Capture wall-clock (ISO) — the window's END anchor, threaded by the capture
+   * core so an adapter over an UNTIMED source (cursor's transcript carries no
+   * timestamps) can stamp events with `t_precision: 'interval'` instead of
+   * dropping them. Optional: timed sources never need it.
+   */
+  capturedAt?: string;
 }
 
 /**

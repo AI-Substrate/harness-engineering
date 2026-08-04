@@ -1,0 +1,176 @@
+{
+  "schema_version": "2.6",
+  "command": "flow",
+  "harness": "cursor-agent",
+  "harness_version": "0.0.0-fixture",
+  "harness_session_id": "1a501a09-236c-4378-9138-f196a8958aa9",
+  "timecode": "2026-08-03T22:30:00Z",
+  "window": {
+    "since": "session-start",
+    "from": 0,
+    "to": 56
+  },
+  "branch": null,
+  "tokens": null,
+  "effort": null,
+  "tools": {
+    "ReadFile": 9,
+    "Glob": 1,
+    "Shell": 37,
+    "AwaitShell": 6,
+    "ApplyPatch": 9,
+    "ReadLints": 1
+  },
+  "user_prompts": [
+    12
+  ],
+  "files": {
+    "written": [
+      "demo/textstat/lib.mjs",
+      "demo/textstat/lib.test.mjs",
+      "demo/textstat/cli.mjs",
+      "demo/textstat/fixtures/welcome.txt",
+      "demo/textstat/fixtures/unicode.txt",
+      "demo/textstat/README.md"
+    ],
+    "edited": [
+      "demo/textstat/lib.test.mjs",
+      "demo/textstat/cli.mjs"
+    ]
+  },
+  "event_stream": [
+    {
+      "t": "2026-08-03T22:30:00.000Z",
+      "t_precision": "interval",
+      "kind": "file",
+      "path": "demo/textstat/lib.mjs",
+      "change": "written",
+      "delta": {
+        "lines_added": 72,
+        "lines_removed": 0,
+        "bytes_added": 1809,
+        "bytes_removed": 0
+      }
+    },
+    {
+      "t": "2026-08-03T22:30:00.000Z",
+      "t_precision": "interval",
+      "kind": "file",
+      "path": "demo/textstat/lib.test.mjs",
+      "change": "written",
+      "delta": {
+        "lines_added": 44,
+        "lines_removed": 0,
+        "bytes_added": 1452,
+        "bytes_removed": 0
+      }
+    },
+    {
+      "t": "2026-08-03T22:30:00.000Z",
+      "t_precision": "interval",
+      "kind": "file",
+      "path": "demo/textstat/lib.test.mjs",
+      "change": "edited",
+      "delta": {
+        "lines_added": 1,
+        "lines_removed": 1,
+        "bytes_added": 47,
+        "bytes_removed": 48
+      }
+    },
+    {
+      "t": "2026-08-03T22:30:00.000Z",
+      "t_precision": "interval",
+      "kind": "file",
+      "path": "demo/textstat/lib.test.mjs",
+      "change": "edited",
+      "delta": {
+        "lines_added": 1,
+        "lines_removed": 1,
+        "bytes_added": 63,
+        "bytes_removed": 63
+      }
+    },
+    {
+      "t": "2026-08-03T22:30:00.000Z",
+      "t_precision": "interval",
+      "kind": "file",
+      "path": "demo/textstat/cli.mjs",
+      "change": "written",
+      "delta": {
+        "lines_added": 98,
+        "lines_removed": 0,
+        "bytes_added": 2568,
+        "bytes_removed": 0
+      }
+    },
+    {
+      "t": "2026-08-03T22:30:00.000Z",
+      "t_precision": "interval",
+      "kind": "file",
+      "path": "demo/textstat/cli.mjs",
+      "change": "edited",
+      "delta": {
+        "lines_added": 10,
+        "lines_removed": 1,
+        "bytes_added": 211,
+        "bytes_removed": 91
+      }
+    },
+    {
+      "t": "2026-08-03T22:30:00.000Z",
+      "t_precision": "interval",
+      "kind": "file",
+      "path": "demo/textstat/fixtures/welcome.txt",
+      "change": "written",
+      "delta": {
+        "lines_added": 3,
+        "lines_removed": 0,
+        "bytes_added": 101,
+        "bytes_removed": 0
+      }
+    },
+    {
+      "t": "2026-08-03T22:30:00.000Z",
+      "t_precision": "interval",
+      "kind": "file",
+      "path": "demo/textstat/fixtures/unicode.txt",
+      "change": "written",
+      "delta": {
+        "lines_added": 3,
+        "lines_removed": 0,
+        "bytes_added": 114,
+        "bytes_removed": 0
+      }
+    },
+    {
+      "t": "2026-08-03T22:30:00.000Z",
+      "t_precision": "interval",
+      "kind": "file",
+      "path": "demo/textstat/README.md",
+      "change": "written",
+      "delta": {
+        "lines_added": 44,
+        "lines_removed": 0,
+        "bytes_added": 837,
+        "bytes_removed": 0
+      }
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 0,
+      "agent_working_s": 0,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 0
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": null,
+    "tools": {},
+    "outcomes": {
+      "exits": {}
+    }
+  }
+}

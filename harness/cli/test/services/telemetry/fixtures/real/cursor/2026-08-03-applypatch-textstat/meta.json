@@ -1,0 +1,15 @@
+{
+  "surface": "cursor",
+  "captured_utc": "2026-08-03",
+  "harness": "cursor-agent",
+  "scrubbed": true,
+  "scrub_categories": [
+    "machine-paths",
+    "home-username",
+    "git-handles",
+    "person-names",
+    "emails",
+    "secrets"
+  ],
+  "note": "real headless cursor-agent session: builds a small text-statistics demo toolkit with 9 ApplyPatch edits (6 Add File, 3 Update File). No IDE bubbles exist for a headless CLI conversation, so there is no raw.rows.json and no model/timing join — file events take the capture wall-clock at t_precision \"interval\" (plan 066). Transcript verbatim; scrubbed with services/telemetry/fixture-scrub."
+}

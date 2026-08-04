@@ -118,7 +118,9 @@ const PATCH_ENCODER = new TextEncoder();
  * a counts-only measure, so no file text travels (P12). Context (` `), hunk (`@@`)
  * and `*** …` marker lines contribute nothing. One entry per `*** …File:` section.
  */
-function parseApplyPatchDeltas(patch: string): { path: string; add: boolean; delta: FileDelta }[] {
+export function parseApplyPatchDeltas(
+  patch: string,
+): { path: string; add: boolean; delta: FileDelta }[] {
   const out: { path: string; add: boolean; delta: FileDelta }[] = [];
   let cur: { path: string; add: boolean; delta: FileDelta } | null = null;
   for (const raw of patch.split('\n')) {
