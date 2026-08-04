@@ -53,6 +53,14 @@ Judge whether anything in the suite genuinely pins that, and say so if nothing d
   it lies to the next debugging session.
 - **Read-only, local refs only** — no network fetch may be implied or reachable.
 - `E100` must remain the answer when, and only when, **both** surfaces are empty.
+- **Two read paths now answer "what telemetry does this session have" — check they agree.**
+  I verified `readRefLanes` is gone from `session-evidence.ts` (comment reference only), so
+  D1 holds there. But it survives at `fleet-evidence.ts:1331`, feeding the fleet export's
+  durable union, while the session path now uses the full `foldFromRefs`. Establish whether
+  those two produce consistent answers for the same session, or whether the fleet surface
+  still returns the partial shape the session surface just stopped returning. If they
+  legitimately differ (fleet needs only token evidence), that is fine — but it should be
+  true by design and stated, not by accident.
 
 ## Dim-2 — D2, the OTLP round trip (in scope by Ruling #1)
 
