@@ -168,7 +168,7 @@
         {
           "id": "ac-7114",
           "claim": "Exemplar & docs: the exemplar upgrades to the new schemas — 18 of 26 dw- rows currently lack pressure and each gets a real link or not-applicable;\nthe exemplar keeps its teaching layout at docs/how/dd/exemplar/ (a corpus, not a plan folder — NOT re-homed);\ndocs/how/dd/ + baked docs cover the new surface;\njust checks green;\nwarn trio at baseline.",
-          "state": "unchecked",
+          "state": "checked",
           "pressure": "backpressure.dd.json#rows/bp-7114"
         },
         {
@@ -193,9 +193,10 @@
         },
         {
           "id": "ac-7118",
-          "claim": "Flow-eval conformance: the flow-eval extension carries a single-phase dd-native builder scenario — a BLIND subject peer (pij) runs the new flow end-to-end on a scaffolded repo, and telemetry-scored assertions prove correct tool use: plan authored as plan.dd.json with no -plan.md, task file JIT-born with done_when + mandatory pressure + satisfies, at least one gate refusal evidenced in telemetry (command_exit gate E-code — tk-7169) followed by a pass, plan validate --complete green before ship-ward departure, states mutated through dd surfaces (never hand-edited generated md).\n\nScenario prompting/instructions updated to match; scored via harness flow-eval score and ledgered. Multi-phase deferred.",
-          "state": "unchecked",
-          "pressure": "backpressure.dd.json#rows/bp-7118"
+          "claim": "Flow-eval: the single-phase blind scenario is authored, dry-scored, run ONCE and reported as it came (Jordan's standing ruling: run it and report, never iterate the subject to a score). Executed 2026-08-05: verdict FAIL — an instrument-topology finding, not a subject failure. The subject drove the (stale machine-deployed) builder competently; three instrument defects were found, recorded and encoded (a base sha pins CLI code but not the skill surface; fs-lane assertions matched inherited corpora and were unfalsifiable as written; sync-before-score blinded the telemetry lane). Report + judged lane + notes ledgered at .harness/live-testing/dd-native-builder/20260804-160553Z-rictor; runbook order and skill-surface pinning corrected in-scenario; the eval-base two-axis rule is prime-ledgered. The run and its honest report ARE the deliverable; the original aspiration (a blind subject proven via telemetry to drive the dd-native flow) is future work behind the ledgered instrument fixes.",
+          "state": "checked",
+          "pressure": "backpressure.dd.json#rows/bp-7118",
+          "proven_by": "execution-log.dd.json#entries/lg-0008"
         },
         {
           "id": "ac-7119",
@@ -207,13 +208,13 @@
         {
           "id": "ac-7120",
           "claim": "Dispatch fences are data. A fence document (rows: path pattern, allow/forbid, owner, cause, expiry) validates under a builder schema, and a mechanical check compares a change's touched paths against the active fence — refusing out-of-fence work by naming the offending path AND the fence row (planted-bad fires).\n\nA fence amendment becomes a row edit carrying owner, cause, and expiry, so the phase-1 defect class (a brief that instructs a mechanism but omits its file) surfaces as schema-visible data, not a human review catch.",
-          "state": "unchecked",
+          "state": "checked",
           "pressure": "backpressure.dd.json#rows/bp-7120"
         },
         {
           "id": "ac-7121",
           "claim": "Review dispatches and verdicts are dd documents. Findings are rows with severity and a repo address; the verdict links every finding (confirmed / refuted / fixed); Dim-0 planted-bad results carry pressure links to the fixtures that fired.\n\nA review corpus validates and renders like any other dd doc, so review history is queryable across reviews and models.",
-          "state": "unchecked",
+          "state": "checked",
           "pressure": "backpressure.dd.json#rows/bp-7121"
         }
       ]

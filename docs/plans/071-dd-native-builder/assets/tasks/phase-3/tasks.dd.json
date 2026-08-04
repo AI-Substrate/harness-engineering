@@ -9,7 +9,7 @@
         "title": "Phase 3 — Close-out: PR surface, corpus, docs, self-hosting audit, flow-eval",
         "slug": "phase-3-close-out",
         "ordinal": 3,
-        "status": "in-progress",
+        "status": "shipped",
         "summary": "Phase-3 task detail for ph-7103 — JIT-expanded at the phase-2 boundary."
       }
     },
@@ -24,7 +24,7 @@
           "id": "tk-7151",
           "title": "Corpus → PR-body AC table renderer",
           "phase": "ph-7103",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Goldens over the exemplar; refuses unclosed corpus.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-7112"
@@ -47,7 +47,7 @@
           "id": "tk-7161",
           "title": "Exemplar schema upgrade (pressure, satisfies, done_when)",
           "phase": "ph-7103",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Doctor-clean 0/0; leaf-first re-verify.",
           "notes": "key finding: 18/26 rows",
           "satisfies": [
@@ -60,7 +60,7 @@
           "id": "tk-7162",
           "title": "docs/how/dd chapters + justfile recipes for new commands",
           "phase": "ph-7103",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Every new command has a runnable recipe.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-7114"
@@ -71,7 +71,7 @@
           "id": "tk-7163",
           "title": "Promote structural-proof-graph to docs/how/dd/11-the-builder-proof-graph.md",
           "phase": "ph-7103",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Doc lands as docs/how/dd/11-the-builder-proof-graph.md (Jordan's ruling 2026-08-04: builder graph joins the dd chapter set, not a new docs/how/builder dir), updated to the shipped surface (rels, pressure, done_when, writer verbs, semantic validate, check gates) and framed as the work-graph/knowledge-graph join per the graph-engineering concepts (work graph expires, knowledge graph compounds, joined via deterministic typed citations with recorded freshness). README chapter index updated; links repaired; builder-tuning keeps a signpost.",
           "done": "#done_when/tk-7163",
           "satisfies": [
@@ -82,7 +82,7 @@
           "id": "tk-7164",
           "title": "Baked docs regen + drift gate",
           "phase": "ph-7103",
-          "state": "unchecked",
+          "state": "checked",
           "success": "check:dd-docs green both ways.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-7114"
@@ -93,7 +93,7 @@
           "id": "tk-7165",
           "title": "Archive-move proof: git mv fixture + dd_link rewrite",
           "phase": "ph-7103",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Doctor-clean post-move; flow links resolve.",
           "notes": "key finding: repo-root anchoring",
           "satisfies": [
@@ -105,7 +105,7 @@
           "id": "tk-7166",
           "title": "Full just checks + warn-trio baseline verification",
           "phase": "ph-7103",
-          "state": "unchecked",
+          "state": "checked",
           "success": "Exit 0; trio byte-identical.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-7114"
@@ -116,7 +116,7 @@
           "id": "tk-7167",
           "title": "Self-hosting retrofit + proof: plan 071's corpus fully dd-native",
           "phase": "ph-7103",
-          "state": "unchecked",
+          "state": "checked",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-7117"
           ],
@@ -128,7 +128,7 @@
           "id": "tk-7168",
           "title": "Flow-eval scenario: single-phase dd-native journey (blind subject, telemetry-scored)",
           "phase": "ph-7103",
-          "state": "unchecked",
+          "state": "checked",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-7118"
           ],
@@ -140,7 +140,7 @@
           "id": "tk-7171",
           "title": "Fences as data: builder/fence schema + mechanical out-of-fence check",
           "phase": "ph-7103",
-          "state": "unchecked",
+          "state": "checked",
           "success": "A fence doc validates; the check refuses an out-of-fence change naming path + fence row (planted-bad fixture fires); an amendment is a row edit with owner/cause/expiry; a dispatch brief can cite its fence by address.",
           "notes": "Jordan ruled IN 2026-08-04. Born from phase-1 review finding 1 (fence violation caught only by human review) and the expiry-ownership gap — a fence row that carries cause AND expiry cannot quietly outlive its reason.",
           "satisfies": [
@@ -152,7 +152,7 @@
           "id": "tk-7172",
           "title": "Reviews as dd: builder/review schema + verdict linkage, dogfooded on review-3",
           "phase": "ph-7103",
-          "state": "unchecked",
+          "state": "checked",
           "success": "builder/review schema lands; review-3 of THIS plan is authored as a .dd.json (findings rows, verdict links, pressure on Dim-0 results); doctor-clean; a jq recipe answers which findings were refuted.",
           "notes": "Jordan ruled IN 2026-08-04. First dogfood is this plan's own final review — the review that closes the plan is itself rows in the graph.",
           "satisfies": [
@@ -164,7 +164,7 @@
           "id": "tk-7173",
           "title": "Deflake exec-remote-telemetry-git.int.test.ts (DL-008/COORD-001)",
           "phase": "ph-7103",
-          "state": "unchecked",
+          "state": "checked",
           "success": "The known ~50%-under-load flake and git index.lock collisions no longer fail the suite: test isolated/serialized or root-caused; 20 consecutive full-suite-load runs green.",
           "notes": "Born from the phase-2 drain (COORD-001) and review flake notes. Exit bar is CI green — a known flake is a standing threat to it.",
           "satisfies": [
@@ -176,7 +176,7 @@
           "id": "tk-7174",
           "title": "flow.ts autoRenderSibling made strict (DF-016) — a failed render refuses, never drifts",
           "phase": "ph-7103",
-          "state": "unchecked",
+          "state": "checked",
           "success": "All 3 flow.ts callsites treat sibling-render failure as operation failure (refusal, source untouched) instead of best-effort swallow; planted failing render fires the refusal; regression test pins it.",
           "notes": "Born from dogfood-log DF-016. Best-effort regen is a drift factory that contradicts the E422 no-drift promise.",
           "satisfies": [
@@ -194,13 +194,13 @@
           {
             "id": "dw-0001",
             "assertion": "Corpus→PR-body AC table renderer produces the golden table from the exemplar corpus — state marks + resolved proven_by / pressure / incoming-satisfies rendered as clickable references; goldens pinned.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../../backpressure.dd.json#rows/bp-7112"
           },
           {
             "id": "dw-0002",
             "assertion": "Renderer refuses to fabricate on an unclosed corpus — the planted unclosed fixture fires the refusal.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../../backpressure.dd.json#rows/bp-7112"
           }
         ],
@@ -216,7 +216,7 @@
           {
             "id": "dw-0004",
             "assertion": "All 26 exemplar dw rows carry pressure (the 18 gaps get a real link or not-applicable+note); satisfies arrays typed; the evidence alias is dropped and tasks[].done target-pin restored (ruling A); leaf-first ledger walk; dd doctor 0/0.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../../backpressure.dd.json#rows/bp-7114"
           }
         ],
@@ -224,7 +224,7 @@
           {
             "id": "dw-0005",
             "assertion": "Every new command shipped by this plan (dd writer verbs, plan validate flags, flow create --plan-dir, the check-kind gate) is covered by a docs/how/dd chapter and a runnable justfile recipe.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable",
             "note": "human review is the instrument for coverage (enumerate new commands vs chapters/recipes in the review packet); just checks proves only baked-docs freshness + markdown lint"
           }
@@ -233,7 +233,7 @@
           {
             "id": "dw-0006",
             "assertion": "docs/how/dd/11-the-builder-proof-graph.md lands per the ruling — updated to the shipped surface, framed as the work-graph/knowledge-graph join (work graph expires, knowledge graph compounds, joined by deterministic typed citations with recorded freshness); README chapter index updated; builder-tuning keeps a signpost.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable",
             "note": "human review is the instrument for content/framing; markdown-lint + link check cover mechanics only"
           }
@@ -242,7 +242,7 @@
           {
             "id": "dw-0007",
             "assertion": "check:dd-docs is green both ways — regen produces zero diff, and a planted stale bake fails the gate.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../../backpressure.dd.json#rows/bp-7114"
           }
         ],
@@ -250,7 +250,7 @@
           {
             "id": "dw-0008",
             "assertion": "Archive-move proof: after git mv to docs/plans/archive/, the corpus is doctor-clean and flow dd_links are rewritten and resolve — the test fires on an unrewritten link.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../../backpressure.dd.json#rows/bp-7113"
           }
         ],
@@ -258,7 +258,7 @@
           {
             "id": "dw-0009",
             "assertion": "just checks exit 0 at the phase-3 exit sha; warn trio byte-identical to the 3ccc5531 baseline (arch 2 / markdown 196 / windows 6).",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../../backpressure.dd.json#rows/bp-7114"
           }
         ],
@@ -266,7 +266,7 @@
           {
             "id": "dw-000a",
             "assertion": "Self-hosting audit: every AC carries linked evidence; plan validate --complete is strict-zero on the closed corpus; flight-plan events show a real gate refusal AND a real pass; recorded refusal present in telemetry; doctor-clean.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../../backpressure.dd.json#rows/bp-7117"
           }
         ],
@@ -274,7 +274,7 @@
           {
             "id": "dw-000b",
             "assertion": "Flow-eval: scenario bundle + prompts pair authored; base-ref pinned to include 071 code; run scored via harness flow-eval score with the judged lane filled, rendered, ledgered; live-testing instructions.md and the flow-eval-run SKILL updated for the new scenario; results reported as-is per ruling (run it and report, no gold-plating).",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../../backpressure.dd.json#rows/bp-7118"
           }
         ],
@@ -282,7 +282,7 @@
           {
             "id": "dw-000c",
             "assertion": "builder/fence schema validates; the mechanical out-of-fence check refuses a change naming path + fence row (planted-bad fixture fires); an amendment is a row edit carrying owner/cause/expiry; a dispatch brief cites its fence by address.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../../backpressure.dd.json#rows/bp-7120"
           }
         ],
@@ -290,7 +290,7 @@
           {
             "id": "dw-000d",
             "assertion": "builder/review schema lands; review-3 of THIS plan is authored as .dd.json — findings rows, verdict links, pressure on Dim-0 results; doctor-clean; a jq recipe answers which findings were refuted.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../../backpressure.dd.json#rows/bp-7121"
           }
         ],
@@ -298,7 +298,7 @@
           {
             "id": "dw-000e",
             "assertion": "exec-remote-telemetry-git.int.test.ts no longer flakes under load (isolated/serialized or root-caused) and index.lock collisions no longer fail the suite — 20 consecutive loaded runs green.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable",
             "note": "the 20x loaded run is the acceptance demonstration; the DURABLE residue is the serialized/isolated test living under just checks (bp-7114) thereafter"
           }
@@ -307,7 +307,7 @@
           {
             "id": "dw-000f",
             "assertion": "All 3 flow.ts autoRenderSibling callsites are strict: a sibling-render failure refuses the operation (source untouched) instead of best-effort swallowing; the planted failing render fires; a regression test pins it.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../../backpressure.dd.json#rows/bp-7114",
             "note": "the regression test joins the suite just checks runs; planted failing render must FIRE before it pins"
           }

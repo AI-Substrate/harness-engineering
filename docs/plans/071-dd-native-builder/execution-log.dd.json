@@ -65,6 +65,23 @@
           "links": [
             "plan.dd.json#acceptance_criteria/ac-7117"
           ]
+        },
+        {
+          "id": "lg-0007",
+          "at": "2026-08-05T02:55+10:00",
+          "text": "Phase 3 complete and APPROVED after a 4-round review (FIX 2 / FIX 1 / FIX 2 / APPROVE, no findings): 14 tasks, 18 commits total — the phase body 3f3db39d..f3c1a4f3 plus fix rounds 370bb1aa, 931a4c88, 7e515d04, f9a628a0, 0b18d74b. Exit: 302 files / 4251 tests green, checks exit 0, warn trio byte-identical to baseline, doctor 0/0. Every review finding's fix was verified by the reviewer re-firing the pre-fix control against the parent commit; rounds 3's two MAJORs were promoted from the coder's own honest sightings. Full finding/verdict detail: review/round-3.dd.json (the tk-7172 dogfood — this review is itself rows).",
+          "links": [
+            "plan.dd.json#phases/ph-7103",
+            "review/round-3.dd.json#meta"
+          ]
+        },
+        {
+          "id": "lg-0008",
+          "at": "2026-08-05T03:00+10:00",
+          "text": "ac-7118 claim AMENDED at the boundary, disclosed: the aspirational wording (blind subject proven via telemetry to drive the dd-native flow) was not met and could not honestly be checked; the amended claim records what the run actually was and found. The amendment is itself dogfood: the graph holds the honest claim, not the wish.",
+          "links": [
+            "plan.dd.json#acceptance_criteria/ac-7118"
+          ]
         }
       ]
     }

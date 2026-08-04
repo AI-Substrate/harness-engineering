@@ -1,0 +1,109 @@
+{
+  "dd": {
+    "schema": "builder/review"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Review 3 — phase-3 close-out (4 rounds to APPROVE)",
+        "reviewer": "pij-widespread-gore (cross-model)",
+        "model": "gpt-5.6-terra (effort high)",
+        "round": "3",
+        "date": "2026-08-05",
+        "plan": "../plan.dd.json#meta",
+        "note": "The plan's own final review, authored as rows (tk-7172 dogfood). Four rounds: FIX(2) -> FIX(1) -> FIX(2, both promoted from the coder's own honest sightings) -> APPROVE with no findings. Dim-0 mutation gate ran first and blocking each round; every finding's fix was verified by the reviewer re-firing the pre-fix control against the parent commit. Verdict rows below decide EVERY finding."
+      }
+    },
+    {
+      "name": "findings",
+      "value": [
+        {
+          "id": "fd-0001",
+          "kind": "defect",
+          "severity": "MAJOR",
+          "address": "harness/cli/src/acts/flow.ts:278-283",
+          "finding": "persistSibling wrote the live .md directly and restored only the source on error — a mid-write failure left a drifted partial sibling; controls modeled only all-or-nothing throws.",
+          "state": "checked",
+          "proven_by": "../execution-log.dd.json#entries/lg-0007"
+        },
+        {
+          "id": "fd-0002",
+          "kind": "defect",
+          "severity": "MAJOR",
+          "address": "harness/cli/test/services/telemetry/publication-boundary.test.ts",
+          "finding": "Full-suite exit bar did not reproduce: 5s-default timeout under load (passes alone) — a load-sensitive flake breaking the claimed 4244/4244.",
+          "state": "checked",
+          "proven_by": "../execution-log.dd.json#entries/lg-0007"
+        },
+        {
+          "id": "fd-0003",
+          "kind": "defect",
+          "severity": "MAJOR",
+          "address": "harness/cli/test/services/telemetry/publication-boundary.test.ts:352-363",
+          "finding": "The round-1 replacement control was vacuous: resetCounts() cleared the cache it meant to count across, so the second scan was necessarily a cache hit — spawnless and constant-counter implementations both passed.",
+          "state": "checked",
+          "proven_by": "../execution-log.dd.json#entries/lg-0007"
+        },
+        {
+          "id": "fd-0004",
+          "kind": "defect",
+          "severity": "MAJOR",
+          "address": "harness/cli/src/acts/dd/build.ts:316-329",
+          "finding": "writeDocumentWithSibling carried the identical partial-write class in the dd writer path: mid-write failure could truncate the .dd.md while E452 falsely claimed the document unchanged. Promoted fix-now from the coder's own sighting.",
+          "state": "checked",
+          "proven_by": "../execution-log.dd.json#entries/lg-0007"
+        },
+        {
+          "id": "fd-0005",
+          "kind": "defect",
+          "severity": "MAJOR",
+          "address": "harness/cli/test/services/telemetry/git-read.test.ts:349",
+          "finding": "Observed 5s-default timeout in the coder's own loaded run; post-tk-7173 any git-suite flake is a finding. Fixture work sat inside the timed assertions.",
+          "state": "checked",
+          "proven_by": "../execution-log.dd.json#entries/lg-0007"
+        }
+      ]
+    },
+    {
+      "name": "verdict",
+      "value": [
+        {
+          "id": "vd-0001",
+          "finding": "#findings/fd-0001",
+          "resolution": "fixed",
+          "rationale": "370bb1aa stages .md.tmp+rename; PartialSiblingFs mid-write controls fired pre-fix (3/4, 4th honestly flagged unfireable); reviewer re-fired them against the parent.",
+          "state": "checked"
+        },
+        {
+          "id": "vd-0002",
+          "finding": "#findings/fd-0002",
+          "resolution": "fixed",
+          "rationale": "931a4c88 root-caused subprocess contention (git ls-files whole-tree scan, 16x tail); fixture-repo move + warmed scan + measured budget; pre-fix 5/6 loaded runs failed, post-fix 20/20 green.",
+          "state": "checked"
+        },
+        {
+          "id": "vd-0003",
+          "finding": "#findings/fd-0003",
+          "resolution": "fixed",
+          "rationale": "7e515d04 split the seam (resetCounts vs invalidateInventoryCache); three opposite-proofs each failing a different half (cache-free 2F, constant-counter 1F, spawnless-stale-list 7F); reviewer independently re-fired the constant-counter variant.",
+          "state": "checked"
+        },
+        {
+          "id": "vd-0004",
+          "finding": "#findings/fd-0004",
+          "resolution": "fixed",
+          "rationale": "f9a628a0 stages BOTH halves; shared partial-write seam covers the staging temp by matcher; both public-mutator controls fired pre-fix (2/26, truncated sibling lost its whole Tasks table while E452 claimed unchanged); reviewer reproduced against the parent.",
+          "state": "checked"
+        },
+        {
+          "id": "vd-0005",
+          "finding": "#findings/fd-0005",
+          "resolution": "fixed",
+          "rationale": "0b18d74b hoisted 10 git children to beforeAll, removed shell children, measured 20s budget (46-child count, 220->139ms); post-fix 8/8 at load ~111. The residual CLASS (14 unbudgeted spawn suites, firing relocates as the bar rises) is prime-ledgered OWNER: NONE — not a reopening.",
+          "state": "checked"
+        }
+      ]
+    }
+  ]
+}
