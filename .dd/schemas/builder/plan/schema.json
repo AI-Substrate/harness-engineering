@@ -317,6 +317,12 @@
         "type": "text"
       }
     },
+    "summary": {
+      "title": "Summary",
+      "shape": {
+        "type": "text"
+      }
+    },
     "testing_strategy": {
       "title": "Testing Strategy",
       "shape": {
