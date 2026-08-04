@@ -166,6 +166,32 @@ rule applies is an opinion.
 row later would silently unlock everything an earlier forbid row named. A fence
 with no `allow` rows at all is read as a blocklist, not as a total prohibition.
 
+## Reviews as documents
+
+A review round is a `builder/review` document: findings as addressed rows, and a
+verdict that links every one of them to what was decided — `confirmed`,
+`refuted`, `fixed` or `deferred`, each with its rationale.
+
+There is no verb for this, and there does not need to be one: a review corpus
+validates, renders and is queried like any other document.
+
+```bash
+harness dd validate docs/how/dd/exemplar/review/round-1.dd.json
+just review-refuted        # which findings were refuted, and on what grounds?
+just review-dim0           # what did Dim-0 probe, and what did it cite?
+just review-unresolved     # silence means every finding was decided
+```
+
+The queries are the reason. "Which findings were refuted?" is worth asking across
+rounds and across models — to stop the same finding being re-opened on reasoning
+that was already answered, and to see which reviewers find things that turn out
+to be real. Prose cannot answer that; rows can.
+
+`kind: dim0` rows record what happened when a reviewer mutated a control ON
+PURPOSE, and carry a `pressure` link to the fixture that fired. That is what turns
+"the tests would have caught it" from a claim into a citation — and a Dim-0 that
+did NOT fire is the most valuable row in the document.
+
 ## Gate a flow on the documents
 
 A flow node may carry a `dd_link`, and departure is refused until it reads

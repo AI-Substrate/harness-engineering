@@ -277,3 +277,33 @@ fence-refused:
 fence-expired:
     -cd {{root}} && harness plan fence {{ex}}/fence/dispatch.dd.json \
         --paths harness/cli/src/acts/plan/fence.ts --now 2099-01-01
+
+# ── Reviews as documents ─────────────────────────────────────────────────────
+
+# Every finding, with its severity and the address it points at.
+review-findings:
+    cd {{root}} && jq -r '.sections[] | select(.name=="findings") | .value[] | "\(.severity)\t\(.kind)\t\(.id)  \(.address // "—")"' {{ex}}/review/round-1.dd.json
+
+# The question prose cannot answer: which findings were REFUTED, and on what
+# grounds? Across rounds and across models, this is the query that stops the same
+# finding being re-opened on reasoning that was already answered.
+review-refuted:
+    cd {{root}} && jq -r '\
+      (.sections[] | select(.name=="findings") | .value) as $f \
+      | .sections[] | select(.name=="verdict") | .value[] \
+      | select(.resolution=="refuted") \
+      | (.finding | sub("^#findings/";"")) as $id \
+      | "\($id)\n  finding:   \(($f[] | select(.id==$id) | .finding))\n  rationale: \(.rationale)"' \
+      {{ex}}/review/round-1.dd.json
+
+# What did Dim-0 find? Each row cites the instrument that did (or did not) fire.
+review-dim0:
+    cd {{root}} && jq -r '.sections[] | select(.name=="findings") | .value[] | select(.kind=="dim0") | "\(.id)  pressure=\(.pressure // "none")\n  \(.finding)"' {{ex}}/review/round-1.dd.json
+
+# Nothing may be left undecided: every finding must appear in the verdict.
+review-unresolved:
+    cd {{root}} && jq -r '\
+      [.sections[] | select(.name=="verdict") | .value[] | .finding | sub("^#findings/";"")] as $decided \
+      | .sections[] | select(.name=="findings") | .value[] \
+      | select(.id as $i | $decided | index($i) | not) | .id' \
+      {{ex}}/review/round-1.dd.json

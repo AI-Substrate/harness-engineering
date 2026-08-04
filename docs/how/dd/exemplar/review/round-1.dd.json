@@ -1,0 +1,110 @@
+{
+  "dd": {
+    "schema": "builder/review"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Review round 1 — a worked example",
+        "reviewer": "an independent reviewing agent",
+        "model": "a capable model, named so results can be compared across them",
+        "round": "1",
+        "date": "2026-08-04",
+        "plan": "../plan.dd.json#meta",
+        "note": "A review as rows rather than prose. The point is not tidiness: 'which findings were refuted, and on what grounds' is a question worth asking across reviews and across models, and prose cannot answer it. Every finding carries an address, so a reader goes to the code rather than to the reviewer's description of the code."
+      }
+    },
+    {
+      "name": "findings",
+      "value": [
+        {
+          "id": "fd-0001",
+          "kind": "defect",
+          "severity": "MAJOR",
+          "address": "harness/cli/src/services/dd/schema/resolve.ts",
+          "finding": "Deep scan reports the first match and stops, so a shadowed duplicate in a later root is never reported — the precedence rule holds but its visibility half does not.",
+          "state": "checked",
+          "proven_by": "../execution-log.dd.json#entries/lg-0201"
+        },
+        {
+          "id": "fd-0002",
+          "kind": "defect",
+          "severity": "MINOR",
+          "address": "harness/cli/src/services/dd/docs/docs-content.ts",
+          "finding": "The generated module's header does not say how to regenerate it, so a reader who finds it first has no way back to the source.",
+          "state": "checked"
+        },
+        {
+          "id": "fd-0003",
+          "kind": "question",
+          "severity": "NA",
+          "address": "harness/cli/src/services/dd/core/constants.ts",
+          "finding": "Should the id-prefix registry be a schema declaration rather than a CLI constant?",
+          "state": "human-skipped",
+          "note": "Recorded as a question, not a defect: it is a design direction, and answering it inside a review round would be deciding it in the wrong room.",
+          "receipt": "Jordan, 2026-08-04: \"keep away from it — later iteration maybe, not now\""
+        },
+        {
+          "id": "fd-0004",
+          "kind": "dim0",
+          "severity": "NA",
+          "address": "harness/cli/test/services/dd/schema/resolution.test.ts",
+          "finding": "Dim-0: precedence was inverted in the resolver on purpose. The planted-bad fixture FIRED, so the control measures the behaviour it claims to.",
+          "state": "checked",
+          "pressure": "../backpressure.dd.json#rows/bp-0201"
+        },
+        {
+          "id": "fd-0005",
+          "kind": "dim0",
+          "severity": "MAJOR",
+          "address": "harness/cli/test/services/dd/docs/dd-docs.test.ts",
+          "finding": "Dim-0: the baked module was edited away from its source on purpose. NOTHING failed — the suite compared the module to itself, so the drift check had only ever been run against good input.",
+          "state": "checked",
+          "pressure": "../backpressure.dd.json#rows/bp-0801"
+        }
+      ]
+    },
+    {
+      "name": "verdict",
+      "value": [
+        {
+          "id": "vd-0001",
+          "finding": "#findings/fd-0001",
+          "resolution": "fixed",
+          "rationale": "Confirmed by reading the resolver and reproducing it against a two-root fixture. The scan now collects every match and reports the shadowed ones with their paths.",
+          "state": "checked"
+        },
+        {
+          "id": "vd-0002",
+          "finding": "#findings/fd-0002",
+          "resolution": "fixed",
+          "rationale": "The header now names the generator and the regeneration command.",
+          "state": "checked"
+        },
+        {
+          "id": "vd-0003",
+          "finding": "#findings/fd-0003",
+          "resolution": "deferred",
+          "rationale": "A real question with a real cost, but it changes an address surface. Recorded against the plan rather than answered here.",
+          "state": "human-skipped",
+          "receipt": "Jordan, 2026-08-04: \"keep away from it — later iteration maybe, not now\""
+        },
+        {
+          "id": "vd-0004",
+          "finding": "#findings/fd-0004",
+          "resolution": "confirmed",
+          "rationale": "The control fired as claimed. Recorded so the NEXT review can see this control was already probed and probe a different one.",
+          "state": "checked"
+        },
+        {
+          "id": "vd-0005",
+          "finding": "#findings/fd-0005",
+          "resolution": "refuted",
+          "rationale": "The reported mechanism was wrong — the suite does compare the module to its sources, and the mutation was applied to a stale copy in the reviewer's working tree. But the round-trip HAD only ever been proven one way, so a hermetic both-ways control was added anyway. A refuted finding that still improves the code is worth recording as refuted: the next reviewer should not re-open it on the same reasoning.",
+          "state": "checked"
+        }
+      ]
+    }
+  ]
+}
