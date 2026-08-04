@@ -45,6 +45,7 @@ export function buildEventStream(raw: RawEvents): Event[] {
   for (const b of collapseToolBursts(raw.toolCalls ?? [])) {
     const e: Event = { t: b.t, kind: 'tools', name: b.name, count: b.count, span_s: b.span_s };
     if (b.signature !== undefined) e.signature = b.signature;
+    if (b.control !== undefined) e.control = b.control;
     if (b.result_tokens !== undefined) e.result_tokens = b.result_tokens;
     if (p !== undefined) e.t_precision = p;
     events.push(e);

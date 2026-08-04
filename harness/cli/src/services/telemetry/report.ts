@@ -32,6 +32,7 @@
  * `generated_at` from its clock.
  */
 
+import { CONTROL_SIGNATURES } from './command-signature.js';
 import { otlpLogsToEvents } from './otlp/logs.js';
 import type { PublishedDataCoverage } from './published-telemetry.js';
 import {
@@ -405,8 +406,12 @@ export interface TimelineMarker {
  * non-harness commands the discipline panel needs (a real `push` signal for
  * checks-before-push; `commit` for retro cadence). Kept tiny + explicit so the
  * timeline never widens into a general shell log.
+ *
+ * Plan 069: this is now the SHARED grammar — the identical set the producer
+ * stamps onto `ToolsEvent.control` — imported, not re-declared, so the two sides
+ * of the seam cannot drift.
  */
-const TIMELINE_BASH_SIGNATURES = new Set(['git push', 'git commit']);
+const TIMELINE_BASH_SIGNATURES = CONTROL_SIGNATURES;
 
 /**
  * Project one session's ordered event stream onto the closed-allowlist
@@ -414,6 +419,11 @@ const TIMELINE_BASH_SIGNATURES = new Set(['git push', 'git commit']);
  * P12-safe field; a kind not in {@link TIMELINE_KINDS} (prompt/turn/tools[non-git]/
  * skill/flow/…) produces NOTHING. `events` is expected pre-sorted ascending by `t`
  * (as {@link viewOf} returns), so the output inherits that order.
+ *
+ * The `bash` lane prefers a `tools` event's `control` counts (plan 069) — the
+ * complete, chain-aware answer, one marker per invocation — and falls back to the
+ * chain-HEAD `signature` only for PRE-069 shards, which carry no `control`. Never
+ * both, so a lone `git push` (head AND control) is not double-counted.
  */
 function buildControlTimeline(events: SessionView['events']): TimelineMarker[] {
   const out: TimelineMarker[] = [];
@@ -422,7 +432,12 @@ function buildControlTimeline(events: SessionView['events']): TimelineMarker[] {
     else if (e.kind === 'checks') out.push({ kind: 'checks', key: e.status, t: e.t });
     else if (e.kind === 'subagent') out.push({ kind: 'subagent', key: e.name, t: e.t });
     else if (e.kind === 'branch') out.push({ kind: 'branch', key: e.to, t: e.t });
-    else if (
+    else if (e.kind === 'tools' && e.control !== undefined) {
+      for (const [key, count] of Object.entries(e.control)) {
+        if (!TIMELINE_BASH_SIGNATURES.has(key)) continue;
+        for (let i = 0; i < count; i += 1) out.push({ kind: 'bash', key, t: e.t });
+      }
+    } else if (
       e.kind === 'tools' &&
       e.signature !== undefined &&
       TIMELINE_BASH_SIGNATURES.has(e.signature)

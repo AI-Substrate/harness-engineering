@@ -1,5 +1,6 @@
 import {
   commandSignatures,
+  controlSignatures,
   harnessSubcommand,
   observeKindFromCommand,
   shellSignature,
@@ -443,6 +444,7 @@ export const claudeAdapter: HarnessAdapter = {
             // FX001-A: a shell tool's non-harness command signature (kept, not
             // discarded) → keys its burst; harness verbs stay separate below.
             let signature: string | undefined;
+            let control: Record<string, number> | undefined;
             if (name === 'Skill' && typeof tInput.skill === 'string') {
               increment(skills, tInput.skill);
               // FX001-B: only a LEADING pure-digit positional survives (P12).
@@ -489,6 +491,8 @@ export const claudeAdapter: HarnessAdapter = {
               }
             } else if (name === 'Bash' && typeof tInput.command === 'string') {
               signature = shellSignature(tInput.command);
+              // plan 069: the git push/commit the chain HEAD signature drops.
+              control = controlSignatures(tInput.command);
               if (ts !== null) commandObs.push({ cmd: tInput.command, t: ts });
               // Mark this Bash call as a harness invocation so ONLY its result is
               // parsed for outcome events (companion F003).
@@ -503,6 +507,7 @@ export const claudeAdapter: HarnessAdapter = {
             if (ts !== null) {
               const call: ToolCall = { name, t: ts };
               if (signature !== undefined) call.signature = signature;
+              if (control !== undefined) call.control = control;
               toolCalls.push(call);
               // FX003: register by tool_use id so the correlated tool_result can
               // back-fill its payload size onto this call.

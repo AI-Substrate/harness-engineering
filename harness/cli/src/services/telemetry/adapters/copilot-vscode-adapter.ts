@@ -47,6 +47,25 @@ import type { HarnessAdapter, HarnessContext, HarnessSource } from './harness-ad
  * Ports-only (P2): reads injected env/db/fs only — no `node:*`.
  */
 
+/**
+ * MODELS_JSON_RULING (plan 069, item 3) — `models` STAYS `null`; do not re-litigate.
+ *
+ * The rider asked whether `…/GitHub.copilot-chat/debug-logs/<session>/models.json`
+ * could un-null `models` for this harness. It cannot, and the file is a trap:
+ * inspected on two real sessions, it is the model **CATALOGUE** — 39 entries of
+ * everything the picker COULD offer (`id`, `billing`, `capabilities`,
+ * `model_picker_*`) — with no field naming what the session actually RAN on. Its
+ * only selection-shaped flags, `is_chat_default` / `is_chat_fallback`, mark the
+ * account's default (`gpt-5.3-codex` on both machines-under-test), not the user's
+ * pick; a session where the user chose another model would be reported as the
+ * default. The sibling `main.jsonl` carries a single `session_start` span and no
+ * model field either.
+ *
+ * Stamping the default would therefore assert a model that may never have run —
+ * precisely the fabricated outcome AC-4 forbids. An honest `null` beats a
+ * plausible lie, so the ceiling stands until the store exposes a per-turn model.
+ */
+
 export const COPILOT_VSCODE_HARNESS = 'copilot-vscode';
 /** The env marker the VS Code Copilot Chat extension sets (the only detection signal). */
 export const COPILOT_VSCODE_AI_AGENT = 'github_copilot_vscode_agent';
@@ -499,7 +518,7 @@ export const copilotVscodeAdapter: HarnessAdapter = {
     return {
       harness_session_id: null,
       tokens: null, // VS Code Copilot keeps token consumption server-side — never estimated
-      models: null, // the store carries no model column (honest ceiling)
+      models: null, // the store carries no model column (honest ceiling) — see MODELS_JSON_RULING
       effort: null,
       skills: null,
       // Per-FILE-FIRST-SEEN counts, NOT per-call: `UNIQUE(session_id, file_path)`

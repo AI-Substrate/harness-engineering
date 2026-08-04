@@ -5,6 +5,7 @@ import type { ProcessPort } from '../../adapters/process/process-port.js';
 import type { Envelope, HousekeepingNotice } from '../../output/envelope.js';
 import type { OutputMode, Writers } from '../../output/output-port.js';
 import { KILL_SWITCH_ENV } from './capture-service.js';
+import { captureChecksOutcome } from './checks-capture.js';
 import { pendingTelemetry, syncTelemetry } from './sync-service.js';
 
 /**
@@ -12,10 +13,14 @@ import { pendingTelemetry, syncTelemetry } from './sync-service.js';
  * exit-chokepoint decorator (composed alongside the update banner) that — and ONLY
  * when the command is one of these — surfaces telemetry housekeeping:
  *
- * - `checks` → **auto-pushes** buffered telemetry (best-effort), unless disabled.
- *   `checks` is the wrap-up gate; the kernel capture preamble has already recorded
- *   this run's segment BEFORE the body, so the auto-sync flushes it — capture
- *   strictly precedes push (no second capture here, which would only duplicate).
+ * - `checks` → records THIS run's gate **verdict** onto the session lane (plan 069
+ *   — the preamble capture could only record that `checks` *ran*), then
+ *   **auto-pushes** buffered telemetry (best-effort), unless disabled. `checks` is
+ *   the wrap-up gate; the kernel capture preamble has already recorded this run's
+ *   segment BEFORE the body, so the auto-sync flushes it along with the verdict
+ *   marker — capture strictly precedes push. The verdict marker is a self-contained
+ *   zero-width segment, so it adds no second transcript capture (which would only
+ *   duplicate).
  * - `boot` / `doctor` → a passive **nudge** only (warns if telemetry is unpushed).
  *   `doctor` is the health command, so an unpushed-telemetry warning belongs there.
  *
@@ -91,6 +96,17 @@ export function buildHousekeepingDecorator(
 
       // `checks` auto-pushes (capture already happened in the preamble) unless the
       // narrow opt-out is set, in which case it falls back to the passive nudge.
+      if (env.command === 'checks') {
+        // plan 069: record THIS run's gate verdict onto the session lane FIRST, so
+        // the auto-sync below ships it in the same breath. The preamble could only
+        // record that `checks` ran; only here is the outcome known. Isolated so a
+        // capture failure can never cost the auto-push.
+        try {
+          captureChecksOutcome({ fs: deps.fs, env: deps.env, proc: deps.proc }, env);
+        } catch {
+          // Defensive: an unwritable buffer must not break the gate or the push.
+        }
+      }
       if (env.command === 'checks' && deps.env.get(TELEMETRY_AUTOSYNC_OFF_ENV) !== '1') {
         const r = syncTelemetry({
           fs: deps.fs,

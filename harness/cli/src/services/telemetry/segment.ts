@@ -5,6 +5,7 @@ import {
   posixRelative,
   toPosix,
 } from '../shared/posix-path.js';
+import { CONTROL_SIGNATURES } from './command-signature.js';
 import type { Event, Rollup, TPrecision, UsageEvent } from './events.js';
 import { computeRollup } from './rollup.js';
 import { normalizeUsageObservation, type UsageObservation } from './usage-observation.js';
@@ -559,6 +560,24 @@ function num(v: unknown): number | undefined {
 }
 
 /**
+ * Rebuild a `tools` event's control-signature counts from the CLOSED allowlist
+ * (plan 069). Only keys in {@link CONTROL_SIGNATURES} with a positive integer count
+ * survive, so an unknown/free-form key or a garbage count can never reach the wire
+ * — the same allowlist-by-construction posture as the `artifact` counts. Returns
+ * `undefined` when nothing survives (honest omission, never `{}`).
+ */
+function serializeControl(v: unknown): Record<string, number> | undefined {
+  if (v === null || typeof v !== 'object') return undefined;
+  const out: Record<string, number> = {};
+  for (const [k, raw] of Object.entries(v as Record<string, unknown>)) {
+    if (!CONTROL_SIGNATURES.has(k)) continue;
+    const n = num(raw);
+    if (n !== undefined && Number.isInteger(n) && n > 0) out[k] = n;
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/**
  * Serialize ONE event into its allowlisted shape (AC-15). ALLOWLIST BY
  * CONSTRUCTION: each kind picks exactly its contract fields — the input is never
  * spread — so a planted secret / raw arg in a non-allowlisted field on any event
@@ -610,6 +629,10 @@ export function serializeEvent(e: Event, repoRoot?: string): Event {
     case 'tools': {
       const ev: Event = { ...base, kind: 'tools', name: e.name, count: e.count, span_s: e.span_s };
       if (typeof e.signature === 'string') ev.signature = e.signature;
+      // plan 069: REBUILD the control map from the closed allowlist (never spread
+      // the input) — an unknown key or a non-finite count can never survive.
+      const control = serializeControl(e.control);
+      if (control !== undefined) ev.control = control;
       if (typeof e.result_tokens === 'number') ev.result_tokens = e.result_tokens;
       return ev;
     }

@@ -54,6 +54,7 @@ export const A = {
   TOOL_COUNT: 'harness.tool.count',
   TOOL_SPAN_S: 'harness.tool.span_s',
   TOOL_SIG: 'harness.tool.signature',
+  TOOL_CONTROL: 'harness.tool.control',
   TOOL_RESULT_TOKENS: 'harness.tool.result_tokens',
   SKILL_NAME: 'harness.skill.name',
   SKILL_STATUS: 'harness.skill.status',

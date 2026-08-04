@@ -262,6 +262,16 @@ export interface ToolsEvent extends EventBase {
    */
   signature?: string;
   /**
+   * Per-signature COUNTS of the closed-allowlist control commands (`git push` /
+   * `git commit`) this burst's calls ran ANYWHERE in their command lines, summed
+   * across `count` (plan 069). Distinct from {@link ToolsEvent.signature}, which is
+   * only the chain HEAD: `cd repo && git push` has `signature:'cd'` and
+   * `control:{'git push':1}`. This is the field the report's `bash` control-timeline
+   * markers are built from — a 2-member closed vocabulary, so no free text can ride
+   * it. Absent when the burst ran no control command (honest omission, never `{}`).
+   */
+  control?: Record<string, number>;
+  /**
    * The total size (a token-count ESTIMATE, never payload text) of the
    * `tool_result` payload(s) this burst dumped back, summed across its `count`
    * calls (FX003). A privacy-safe number by construction — the size of what a
