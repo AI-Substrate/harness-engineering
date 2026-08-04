@@ -88,3 +88,15 @@ proof per AC with reproduced counts, per-assertion evidence mapping
 out-of-fence sightings (NOT touched), observations captured via
 `harness observe` (leave the buffer undrained — draining is the
 orchestrator's journey act).
+
+## Fence amendment 1 (post-dispatch, 2026-08-04 — pij-related-koala, fence issuer)
+
+`.harness/extensions/flow-eval/resolvers.ts` is ADDED to the allowed paths,
+scoped to the `SessionEvidence` re-declaration only (the one additive
+`refusals` field mirroring the CLI side). Rationale: dw-0012 requires the
+lock-step ("resolvers mirror stays lock-step, CLI test green") and the
+lock-step test asserts mutual assignability of BOTH declarations — the fence
+as written made the assertion unreachable. Same defect shape as phase-1
+Fence amendment 1: the brief instructs the mechanism and omitted the file it
+lives in. Option C (ship without widening) was rejected: it defers exactly
+the loss the plan's key finding flags.
