@@ -18,6 +18,7 @@ import { outcomeEvents } from '../../../src/services/telemetry/outcome-events.js
 import { type SegmentInput, serializeSegment } from '../../../src/services/telemetry/segment.js';
 import {
   getSessionEvidence,
+  resolveSessionEvidence,
   type SessionEvidenceDeps,
 } from '../../../src/services/telemetry/session-evidence.js';
 import { type SyncDeps, syncTelemetry } from '../../../src/services/telemetry/sync-service.js';
@@ -232,11 +233,46 @@ describe('FX001 T3 — the ref fallback, controls both ways', () => {
     expect(evidence?.refusals).toEqual({ E440: 2 });
   });
 
-  it('a ref namespace that is absent locally is reported, never fatal', async () => {
+  it('a ref namespace that is absent locally is REPORTED as such, never fatal', async () => {
     const { fs } = flushed([{ session: SESSION, pij: PIJ }]);
     // The refs live on a remote this clone never fetched: nothing local to read.
-    const evidence = await getSessionEvidence(PIJ, deps(fs, new FakeGitRead()));
-    expect(evidence).toBeNull(); // honest E100 — but the act still says ref_checked
+    const outcome = await resolveSessionEvidence(PIJ, deps(fs, new FakeGitRead()));
+    expect(outcome.evidence).toBeNull(); // honest miss…
+    // …and the miss says WHICH miss. "Checked and empty" would be a lie here.
+    expect(outcome.ref_checked).toBe(false);
+    expect(outcome.resolution).toBe('ref_unavailable');
+  });
+
+  it('a miss with the ref surface really consulted says both_empty', async () => {
+    // The distinguishing pair: same null, opposite provenance. A ref namespace IS
+    // present (a bystander's), it simply holds nothing for this session.
+    const { fs, git } = flushed([{ session: OTHER_SESSION, pij: OTHER_PIJ }]);
+    const outcome = await resolveSessionEvidence(PIJ, deps(fs, gitReadFor(git, [OTHER_REF])));
+    expect(outcome.evidence).toBeNull();
+    expect(outcome.ref_checked).toBe(true);
+    expect(outcome.resolution).toBe('both_empty');
+  });
+
+  it('a read that THROWS resolves to resolution_failed, claiming nothing', async () => {
+    // Fail-safe stays fail-safe — but failing safe is not licence to report a
+    // conclusion never reached. Nothing was established, so nothing is claimed.
+    const throwingFs = {
+      readText: () => {
+        throw new Error('fs exploded');
+      },
+      readdir: (): string[] => {
+        throw new Error('fs exploded');
+      },
+    };
+    const outcome = await resolveSessionEvidence(PIJ, {
+      fs: throwingFs,
+      env: new FakeEnv({}, '/home/u'),
+      proc: new FakeProcess({}, REPO),
+      gitRead: new FakeGitRead(),
+    });
+    expect(outcome.evidence).toBeNull();
+    expect(outcome.ref_checked).toBe(false);
+    expect(outcome.resolution).toBe('resolution_failed');
   });
 });
 
@@ -388,9 +424,49 @@ describe('FX001 T2 — the act envelope names its evidence source', () => {
   });
 
   it('`telemetry get` still errors E100 when BOTH surfaces are empty', async () => {
+    // A ref namespace IS present (a bystander's) — so "checked and empty" is TRUE here.
+    const { fs, git } = flushed([{ session: OTHER_SESSION, pij: OTHER_PIJ }]);
+    const { io, out, err } = actIo();
+    const code = await runGet(['pij-nobody'], io, fs, gitReadFor(git, [OTHER_REF]));
+    const envelope = JSON.parse(out() || err());
+
+    expect(code).toBe(1);
+    expect(envelope.error.code).toBe('E100');
+    expect(envelope.error.details).toEqual({ ref_checked: true, resolution: 'both_empty' });
+    expect(envelope.next_action).toContain('BOTH surfaces were checked');
+  });
+
+  it('E100 with NO local ref namespace says so — it must not claim a checked ref', async () => {
+    // R1: the error path owes the same provenance the success path does. The old
+    // envelope hardcoded "both surfaces were empty" here, which was a false
+    // diagnostic — the ref surface had never been reachable to be empty.
     const { io, out, err } = actIo();
     const code = await runGet(['pij-nobody'], io, new FakeFs({}, {}), new FakeGitRead());
+    const envelope = JSON.parse(out() || err());
+
     expect(code).toBe(1);
-    expect(JSON.parse(out() || err()).error.code).toBe('E100');
+    expect(envelope.error.code).toBe('E100');
+    expect(envelope.error.details).toEqual({ ref_checked: false, resolution: 'ref_unavailable' });
+    expect(envelope.next_action).toContain('NO local refs/harness-telemetry/* namespace');
+    expect(envelope.next_action).not.toContain('BOTH surfaces were checked');
+  });
+
+  it('E100 after a FAILED read claims nothing about either surface', async () => {
+    // The third state the two-state reading misses: an exception is swallowed by the
+    // fail-safe contract, and the envelope must not turn that into "checked and empty".
+    const throwingFs = new FakeFs({}, {});
+    throwingFs.readdir = () => {
+      throw new Error('fs exploded');
+    };
+    const { io, out, err } = actIo();
+    const code = await runGet(['pij-nobody'], io, throwingFs, new FakeGitRead());
+    const envelope = JSON.parse(out() || err());
+
+    expect(code).toBe(1);
+    expect(envelope.error.details).toEqual({
+      ref_checked: false,
+      resolution: 'resolution_failed',
+    });
+    expect(envelope.next_action).toContain('absence of evidence, not evidence of absence');
   });
 });

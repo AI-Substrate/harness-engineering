@@ -383,3 +383,60 @@ PATH rather than through the linked `harness` binary produces zero outcome event
 what D2 and D4 do. It cost me one failed T4b attempt. Anyone re-deriving these counts will hit
 it, so it belongs in the same enumeration as the other two causes: **three independent reasons
 this lane can read empty, and finding any one of them explains the whole observation.**
+
+## FX001-R1 — the E100 path owed the same provenance the success path did
+
+The review's MAJOR, and it is fair: `getSessionEvidence` computed `refChecked` up front,
+applied it to every success path, and then THREW IT AWAY on `return null` — while the act
+hardcoded "BOTH surfaces were empty" for every miss. FX001's own thesis is that provenance
+must be STATED rather than inferred, and the error path did precisely what the fix condemns,
+one branch away from the code that fixes it.
+
+The orchestrator's extension is the sharper half: the reviewer found two states, there are
+**three**, because `catch { return null }` produced the same envelope as a real miss.
+
+| state | pre-R1 envelope said | true? |
+|---|---|---|
+| buffer empty · ref namespace present · no match | "both empty" | yes |
+| buffer empty · ref namespace ABSENT locally | "both empty" | **no** — the ref was never reachable to BE empty |
+| an exception occurred, nothing established | "both empty" | **no** — no surface was proven anything |
+
+**The fix.** `resolveSessionEvidence()` is the real read now and returns
+`{ evidence, ref_checked, resolution }` with `resolution` one of `resolved` · `both_empty` ·
+`ref_unavailable` · `resolution_failed`. `getSessionEvidence()` stays exactly as it was — a
+thin wrapper returning `.evidence` — so no existing caller or the extension facade changes.
+The act reads the resolution form and emits `error.details = { ref_checked, resolution }` with
+a `next_action` that matches the state. The fail-safe contract is untouched: the read still
+never throws. Failing safe is simply no longer licence to report a conclusion never reached.
+
+**Before / after on real bytes** — same command, same throwaway git repo with no
+`refs/harness-telemetry/*` namespace, the only difference being the build:
+
+```text
+PRE-R1   {"error":{"code":"E100","message":"no telemetry found for pij session 'pij-nobody'"},
+          "next_action":"BOTH surfaces were empty — the live buffer and the committed
+                         refs/harness-telemetry/* rollup. …"}
+          ^ false: there was no ref namespace to check.
+
+POST-R1  {"error":{"code":"E100","message":"no telemetry found for pij session 'pij-nobody'",
+                   "details":{"ref_checked":false,"resolution":"ref_unavailable"}},
+          "next_action":"The live buffer held nothing and there was NO local
+                         refs/harness-telemetry/* namespace to check (ref_checked: false) —
+                         this is NOT proof the ref surface is empty. Fetch the namespace
+                         (`git fetch <remote> \"refs/harness-telemetry/*:refs/…/*\"`) …"}
+```
+
+**Controls** (18 tests in the file now, up from 14). The review's other real catch is fixed
+too: the old "ref namespace absent locally" control asserted only `null` while its COMMENT
+claimed "the act still says ref_checked" — a field the act did not have. The comment
+overstated what the control tested, which is the same defect class as the envelope itself.
+
+- service: `ref_unavailable` — absent namespace, `ref_checked: false`
+- service: `both_empty` — a BYSTANDER's ref really is present and consulted, `ref_checked: true`
+  (the distinguishing pair: same `null`, opposite provenance)
+- service: `resolution_failed` — a throwing fs claims nothing about either surface
+- act: E100 with a present namespace → `details {ref_checked:true, resolution:'both_empty'}`
+- act: E100 with no namespace → `details {ref_checked:false, resolution:'ref_unavailable'}`,
+  and asserts the envelope does NOT contain "BOTH surfaces were checked"
+- act: E100 after a thrown read → `details {ref_checked:false, resolution:'resolution_failed'}`
+  so state 3 cannot silently re-collapse into state 1

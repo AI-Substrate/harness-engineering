@@ -43,7 +43,7 @@ import {
   ROLLED_LOGS_NAME,
   ROLLED_MANIFEST_NAME,
 } from '../services/telemetry/rolled-shard.js';
-import { getSessionEvidence } from '../services/telemetry/session-evidence.js';
+import { resolveSessionEvidence } from '../services/telemetry/session-evidence.js';
 import { combineSession, type SessionExport } from '../services/telemetry/session-export.js';
 import {
   fingerprintBlobs,
@@ -1008,7 +1008,7 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
       'Worktree root whose buffer to read (overrides pij-folder resolution)',
     )
     .action(async (pijSessionId: string, options: { worktree?: string }) => {
-      const evidence = await getSessionEvidence(
+      const outcome = await resolveSessionEvidence(
         pijSessionId,
         {
           fs: deps.fs,
@@ -1018,17 +1018,28 @@ export function registerTelemetryAct(program: Command, io: CliIo, deps: Telemetr
         },
         options.worktree ? { worktree: options.worktree } : undefined,
       );
+      const evidence = outcome.evidence;
 
       // Unknown id → honest error envelope (exit 1); the buffer is never mutated.
       if (evidence === null) {
+        // The error path owes the same provenance the success path does. Saying
+        // "both surfaces were empty" when one of them was never reachable is the
+        // exact failure this fix exists to remove, one branch away from the code
+        // that removes it (R1).
+        const nextAction =
+          outcome.resolution === 'both_empty'
+            ? 'BOTH surfaces were checked and both were empty — the live buffer and the committed refs/harness-telemetry/* rollup. Check the id (`pij list`); telemetry is captured per command — run a harness command in that session, then retry. Use --worktree <path> if it ran from a git worktree.'
+            : outcome.resolution === 'ref_unavailable'
+              ? 'The live buffer held nothing and there was NO local refs/harness-telemetry/* namespace to check (ref_checked: false) — this is NOT proof the ref surface is empty. Fetch the namespace (`git fetch <remote> "refs/harness-telemetry/*:refs/harness-telemetry/*"`) and retry, or check the id (`pij list`). Use --worktree <path> if it ran from a git worktree.'
+              : 'Resolution FAILED before either surface could be established (ref_checked: false) — neither the buffer nor the ref was proven empty, so this is an absence of evidence, not evidence of absence. Re-run; if it persists, check read access to the worktree buffer and the local git refs.';
         const envelope = formatError(
           'telemetry',
           ErrorCodes.UNKNOWN,
           `no telemetry found for pij session '${pijSessionId}'`,
           deps.clock,
           {
-            next_action:
-              'BOTH surfaces were empty — the live buffer and the committed refs/harness-telemetry/* rollup. Check the id (`pij list`); telemetry is captured per command — run a harness command in that session, then retry. Use --worktree <path> if it ran from a git worktree.',
+            details: { ref_checked: outcome.ref_checked, resolution: outcome.resolution },
+            next_action: nextAction,
           },
         );
         const port: OutputPort =

@@ -602,20 +602,46 @@ function foldFromRefs(pijSessionId: string, gitRead: GitReadPort): SessionEviden
 }
 
 /**
- * Read + join + fold a pij session's telemetry into normalized {@link SessionEvidence},
- * or `null` when no segment carries this pij id. Scans the candidate buffer roots
- * (worktree → pij folder → cwd) and uses the FIRST that yields a match — the
- * dual-tree fallback. Fail-safe: any unexpected error resolves to `null` (a read
- * service never throws to its caller). No cache.
+ * How the read ENDED — provenance that survives a `null` (FX001 · R1).
+ *
+ * `null` used to be one word for three different states, and the act said "both
+ * surfaces were empty" for all of them. Two of those three were false, and one was a
+ * claim about a surface that had never been looked at. Failing safe is not licence to
+ * report a conclusion you never reached.
  */
-export async function getSessionEvidence(
+export type SessionEvidenceResolution =
+  /** Evidence was found; `evidence` is non-null. */
+  | 'resolved'
+  /** Both surfaces really were consulted and neither held this session. */
+  | 'both_empty'
+  /** The buffer held nothing and there was NO local ref namespace to check. */
+  | 'ref_unavailable'
+  /** The read failed before either surface could be established — nothing is known. */
+  | 'resolution_failed';
+
+/** A read outcome plus the provenance a `null` would otherwise destroy. */
+export interface SessionEvidenceOutcome {
+  evidence: SessionEvidence | null;
+  /** Whether a local `refs/harness-telemetry/*` namespace was there to consult. */
+  ref_checked: boolean;
+  resolution: SessionEvidenceResolution;
+}
+
+/**
+ * Read + join + fold a pij session's telemetry, KEEPING the provenance of a miss.
+ * Scans the candidate buffer roots (worktree → pij folder → cwd), then falls back to
+ * the committed refs. Fail-safe: any unexpected error resolves to
+ * `resolution_failed` with `ref_checked: false` — a read service never throws to its
+ * caller, and never claims a surface it did not reach. No cache.
+ */
+export async function resolveSessionEvidence(
   pijSessionId: string,
   deps: SessionEvidenceDeps,
   opts?: SessionEvidenceOpts,
-): Promise<SessionEvidence | null> {
+): Promise<SessionEvidenceOutcome> {
   try {
     // Is there a ref namespace at all? Answered once, up front, so the provenance is
-    // the same statement whichever tier ends up answering.
+    // the same statement whichever tier ends up answering — including a miss.
     const refChecked = deps.gitRead !== undefined && telemetryRefsPresent(deps.gitRead);
 
     for (const telDir of candidateRoots(pijSessionId, deps, opts)) {
@@ -625,7 +651,7 @@ export async function getSessionEvidence(
       if (matched.length > 0) {
         const evidence = foldDurable(pijSessionId, matched, telDir, deps);
         evidence.ref_checked = refChecked;
-        return evidence;
+        return { evidence, ref_checked: refChecked, resolution: 'resolved' };
       }
     }
 
@@ -635,13 +661,33 @@ export async function getSessionEvidence(
       const evidence = foldFromRefs(pijSessionId, deps.gitRead);
       if (evidence !== null) {
         evidence.ref_checked = refChecked;
-        return evidence;
+        return { evidence, ref_checked: refChecked, resolution: 'resolved' };
       }
     }
-    return null; // both surfaces empty — E100 keeps its meaning
+    // A miss. WHICH miss is the whole point: "checked and empty" and "there was
+    // nothing to check" send a reader to two different places.
+    return {
+      evidence: null,
+      ref_checked: refChecked,
+      resolution: refChecked ? 'both_empty' : 'ref_unavailable',
+    };
   } catch {
-    return null;
+    // Nothing was established — not the buffer, not the ref. Say exactly that.
+    return { evidence: null, ref_checked: false, resolution: 'resolution_failed' };
   }
+}
+
+/**
+ * {@link resolveSessionEvidence} narrowed to its evidence — `null` when no segment
+ * carries this pij id. The long-standing signature, kept for every caller that only
+ * needs the answer; reach for the resolution form when a MISS has to be explained.
+ */
+export async function getSessionEvidence(
+  pijSessionId: string,
+  deps: SessionEvidenceDeps,
+  opts?: SessionEvidenceOpts,
+): Promise<SessionEvidence | null> {
+  return (await resolveSessionEvidence(pijSessionId, deps, opts)).evidence;
 }
 
 /**
