@@ -55,6 +55,9 @@ const RECEIPT_KINDS = new Set<string>(['validation', 'decision']);
 /** `basis_sha256:<64 hex>` — the surveyed plan's bytes, recorded in the receipt. */
 const BASIS_PATTERN = /basis_sha256:([0-9a-fA-F]{64})/;
 
+/** The doctrine's completed-attempt marker when the harness router is unavailable. */
+const UNAVAILABLE_PATTERN = /^decision:unavailable reason:.+ time:.+$/;
+
 /**
  * The reading's SHAPE (`SurveyDimension`, `SurveyReason`) is declared by the
  * consumer, in `dd/plan`'s verdict model, and imported through dd's published
@@ -75,6 +78,8 @@ interface Receipt {
   kind: ReceiptKind;
   /** The `basis_sha256` this receipt records, or `null` when it carries none. */
   basis: string | null;
+  /** Whether this is the doctrine's agent-authored unavailable-attempt receipt. */
+  unavailable: boolean;
 }
 
 /**
@@ -99,8 +104,16 @@ function newestReceipt(node: FlowNode): Receipt | null {
     if (comment === undefined) continue;
     const kind = comment.kind;
     if (kind === undefined || !RECEIPT_KINDS.has(kind)) continue;
+    if (kind === 'decision' && (node.status !== 'skipped' || comment.source !== 'user')) continue;
     const match = BASIS_PATTERN.exec(comment.text);
-    return { kind: kind as ReceiptKind, basis: match?.[1]?.toLowerCase() ?? null };
+    return {
+      kind: kind as ReceiptKind,
+      basis: match?.[1]?.toLowerCase() ?? null,
+      unavailable:
+        kind === 'validation' &&
+        comment.source === 'agent' &&
+        UNAVAILABLE_PATTERN.test(comment.text),
+    };
   }
   return null;
 }
@@ -119,16 +132,11 @@ function newestReceipt(node: FlowNode): Receipt | null {
  *   would not mean anything: a decline is a decision about THE WORK, not about the
  *   bytes, so there is nothing for a later edit to invalidate.
  *
- * A `validation` receipt carrying no basis is `null` — CAN'T-TELL, not a failure.
- * That shape is the doctrine's router-missing detection receipt
- * (`decision:unavailable reason:… time:…`), and the doctrine's stated purpose for
- * it is that "a chore never sits outstanding forever blocking `nav` in an
- * un-harnessed repo". Reading it as not-ready would reinstate the exact block it
- * exists to remove — and it would be a block with no exit, because there is
- * nothing a user in a router-less repo could do to turn it green. "The work is not
- * ready" and "I cannot determine whether the work is ready" are different claims,
- * and this is the second one; a verdict nobody can act on is a dead end, not a
- * verdict.
+ * Only the doctrine's agent-authored router-missing receipt
+ * (`decision:unavailable reason:… time:…`) may omit a basis and read `null` /
+ * CAN'T-TELL. A different basis-less validation receipt is malformed and remains
+ * a known not-ready result. Shape alone is not evidence that the router was
+ * unavailable.
  */
 function judge(
   node: FlowNode,
@@ -140,7 +148,10 @@ function judge(
   if (receipt.kind === 'decision') {
     return { satisfied: true, reason: 'declined-with-receipt', basis };
   }
-  if (basis === null) return { satisfied: null, reason: 'missing-basis', basis };
+  if (basis === null && receipt.unavailable) {
+    return { satisfied: null, reason: 'missing-basis', basis };
+  }
+  if (basis === null) return { satisfied: false, reason: 'missing-receipt', basis };
   if (basis === expected) return { satisfied: true, reason: 'survey-done', basis };
   return { satisfied: false, reason: 'stale-basis', basis };
 }
@@ -157,6 +168,21 @@ interface Dissent {
   node: FlowNode;
   basis: string | null;
   ok: false | null;
+}
+
+/**
+ * The node that owns the current plan basis.
+ *
+ * Re-basis nodes are deterministic: `backpressure-<first 12 hex>`. If one for
+ * the current bytes exists it is the present, whatever historical terminal
+ * nodes say. Before re-basis exists, the plain `backpressure` node is current.
+ */
+function currentNode(nodes: readonly FlowNode[], expected: string): FlowNode | undefined {
+  const rebasedId = `backpressure-${expected.slice(0, 12)}`;
+  return (
+    nodes.find((node) => node.id.toLowerCase() === rebasedId) ??
+    nodes.find((node) => node.id.toLowerCase() === 'backpressure')
+  );
 }
 
 function reading(
@@ -190,11 +216,9 @@ function reading(
  * carries no basis and needs none: see `judge` for why the two are asymmetric.
  *
  * When several backpressure nodes exist (the doctrine mints one per re-basis), the
- * most informative reading wins: any node that is affirmatively satisfied, else
- * the loudest dissent (a stale receipt, then no receipt at all, then a receipt
- * that cannot say which bytes it saw), else "not run". A survey that happened for
- * the current bytes is the truth regardless of how many earlier ones are lying
- * around.
+ * node whose id names the current basis owns the answer; absent that node, the
+ * plain `backpressure` node does. Historical nodes are consulted only when neither
+ * current form exists, and their dissent ordering cannot override the present.
  */
 export function readBackpressureSurvey(
   flowPath: string,
@@ -211,6 +235,15 @@ export function readBackpressureSurvey(
 
   const nodes = backpressureNodes(Array.isArray(flow.doc.nodes) ? flow.doc.nodes : []);
   if (nodes.length === 0) return reading(null, 'no-survey-node', expected);
+
+  const current = currentNode(nodes, expected);
+  if (current !== undefined) {
+    if (!TERMINAL_STATUSES.has(current.status)) {
+      return reading(false, 'not-run', expected, current);
+    }
+    const verdict = judge(current, expected);
+    return reading(verdict.satisfied, verdict.reason, expected, current, verdict.basis);
+  }
 
   const terminal = nodes.filter((node) => TERMINAL_STATUSES.has(node.status));
   if (terminal.length === 0) {

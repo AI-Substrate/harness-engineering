@@ -69,9 +69,10 @@ elsewhere) carries the chore and its receipt.
 | Chore state | Reads |
 | --- | --- |
 | `done`, a `validation` receipt whose `basis_sha256` matches the plan's current bytes | satisfied |
-| a `decision` receipt (the human's decline) | **satisfied** — see below |
+| a `decision` receipt from `source: user` on a `skipped` node (the human's decline) | **satisfied** — see below |
 | a `validation` receipt for *other* bytes | `stale-basis` — never satisfied |
-| a `validation` receipt with no `basis_sha256` at all | `missing-basis` — **can't-tell**, see below |
+| the doctrine's `decision:unavailable …` validation receipt, with no basis | `missing-basis` — **can't-tell**, see below |
+| any other basis-less `validation` receipt | `missing-receipt` — malformed, never satisfied |
 | terminal, no receipt at all | `missing-receipt` — never satisfied |
 | not terminal | `not-run` |
 | no flight plan beside the plan | `cant-tell` |
@@ -80,12 +81,16 @@ A receipt is an **append-only comment** whose `kind` is explicitly `validation`
 or `decision`. A `note` is not a receipt (notes are overwritable, and a receipt
 you can quietly rewrite proves nothing), and neither is a comment with no
 `kind` — an allow-list that accepted the unstated case would be decorative.
+A decline additionally requires `source: user` and node status `skipped`; an
+agent-authored decision is not the human's decline.
 
 The survey node is found by its doctrine-pinned **id** — `backpressure`, or
 `backpressure-<first 12 hex of the surveyed plan's SHA-256>` on a re-basis — or
 by node `type: backpressure`. Either matches. The doctrine pins the id and says
 nothing about the type, so keying on type alone would depend on whoever mints
-the node picking the same one by coincidence.
+the node picking the same one by coincidence. When several nodes exist, the id
+for the current basis owns the answer; if it does not exist, the plain
+`backpressure` node does. Historical nodes never outrank the present.
 
 When a node carries several receipts, the **newest wins**. Comments are
 append-only, so a re-surveyed node holds its history: letting an older receipt
@@ -127,11 +132,12 @@ the plan has been edited since, the receipt is for a document that no longer
 exists, and the verdict is `stale-basis`. An edit made after the survey does
 not inherit the old green.
 
-A `validation` receipt with **no** basis is a completed *attempt* but not a
-completed survey — the doctrine's router-missing receipt
-(`decision:unavailable reason:… time:…`) is exactly this shape. It records that
-something happened; it cannot say which bytes were looked at, because none
-were.
+The doctrine's router-missing receipt
+(`decision:unavailable reason:… time:…`) is a completed *attempt* but not a
+completed survey. It records that something happened; it cannot say which
+bytes were looked at, because none were. Merely omitting a basis does not prove
+router unavailability: any other basis-less validation receipt is malformed and
+reads not-ready.
 
 That reads **`cant-tell`**, not `not-ready`. A repo with no harness router
 receipts its survey as an unavailable attempt, and this command answers "I

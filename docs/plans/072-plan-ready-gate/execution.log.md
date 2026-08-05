@@ -383,6 +383,14 @@ stated explicitly. Both the kind-less and the `note` cases are asserted.
 
 ### F001 (HIGH finding upheld; the reviewer's *reasoning* corrected)
 
+> **R3/F007 correction (2026-08-05): demonstrated, not hypothetical.**
+> `docs/plans/archive/071-dd-native-builder/the-flow.json` carries terminal node
+> `backpressure-1f1d8db67e6c` with `type: "chore"` (including its `node-created`
+> event). The earlier "not established" note below came from probing only plan 072,
+> where both backpressure nodes use `type: "backpressure"`; that probe could not
+> contain the counterexample. R1's id-based selection is therefore both the right
+> contract and a regression fix for a demonstrated persisted shape.
+
 The reviewer's stated mechanism was that doctrine-minted `backpressure-<hash>` nodes carry
 `type: chore` and were therefore invisible.
 
@@ -508,3 +516,183 @@ nothing the reader could do about a not-ready there.
 
 **Open Question 1** (`--strict` opt-in vs. not-ready always non-zero) remains open and is
 Jordan's. Deliberately **not** resolved in code.
+
+---
+
+## R3 — re-review fixes (F001-F004, F006-F007; F005 held)
+
+### RED-first controls
+
+Five defect controls went RED against the pre-fix reader. The F006 doctrine-anchor assertion
+passed on its first run; it is retained as a contract guard and is **not** counted as proof of a
+fixed defect.
+
+Failure output, verbatim:
+
+```text
+ ❯ test/services/dd/plan/ready.test.ts (34 tests | 5 failed) 261ms
+     × R3/F001 — an agent-authored decision cannot decline a skipped survey 8ms
+     × R3/F001 — even a user decision is not a decline on a done survey 5ms
+     × R3/F003 — a malformed basis-less validation is not a router-unavailable attempt 5ms
+     × R3/F004 — historical stale evidence cannot outrank the current unavailable node 5ms
+     × R3/F002 — a current todo re-basis node outranks a historical decline 5ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/services/dd/plan/ready.test.ts > plan ready — the survey dimension > R3/F001 — an agent-authored decision cannot decline a skipped survey
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ test/services/dd/plan/ready.test.ts:338:38
+    336|     const reading = readReady(corpus);
+    337|
+    338|     expect(reading.survey.satisfied).toBe(false);
+       |                                      ^
+    339|     expect(reading.survey.reason).toBe('missing-receipt');
+    340|     expect(reading.verdict).toBe('not-ready');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  test/services/dd/plan/ready.test.ts > plan ready — the survey dimension > R3/F001 — even a user decision is not a decline on a done survey
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ test/services/dd/plan/ready.test.ts:349:38
+    347|     const reading = readReady(corpus);
+    348|
+    349|     expect(reading.survey.satisfied).toBe(false);
+       |                                      ^
+    350|     expect(reading.survey.reason).toBe('missing-receipt');
+    351|     expect(reading.verdict).toBe('not-ready');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  test/services/dd/plan/ready.test.ts > plan ready — the survey dimension > R3/F003 — a malformed basis-less validation is not a router-unavailable attempt
+AssertionError: expected null to be false // Object.is equality
+
+- Expected:
+false
+
++ Received:
+null
+
+ ❯ test/services/dd/plan/ready.test.ts:442:38
+    440|     const reading = readReady(corpus);
+    441|
+    442|     expect(reading.survey.satisfied).toBe(false);
+       |                                      ^
+    443|     expect(reading.survey.reason).toBe('missing-receipt');
+    444|     expect(reading.verdict).toBe('not-ready');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  test/services/dd/plan/ready.test.ts > plan ready — the survey dimension > R3/F004 — historical stale evidence cannot outrank the current unavailable node
+AssertionError: expected 'backpressure' to be 'backpressure-572b939e33c1' // Object.is equality
+
+Expected: "backpressure-572b939e33c1"
+Received: "backpressure"
+
+ ❯ test/services/dd/plan/ready.test.ts:482:33
+    480|     const reading = readReady(corpus);
+    481|
+    482|     expect(reading.survey.node).toBe(`backpressure-${basis.slice(0, 12…
+       |                                 ^
+    483|     expect(reading.survey.reason).toBe('missing-basis');
+    484|     expect(reading.survey.satisfied).toBeNull();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  test/services/dd/plan/ready.test.ts > plan ready — the survey dimension > R3/F002 — a current todo re-basis node outranks a historical decline
+AssertionError: expected 'backpressure' to be 'backpressure-572b939e33c1' // Object.is equality
+
+Expected: "backpressure-572b939e33c1"
+Received: "backpressure"
+
+ ❯ test/services/dd/plan/ready.test.ts:525:33
+    523|     const reading = readReady(corpus);
+    524|
+    525|     expect(reading.survey.node).toBe(`backpressure-${basis.slice(0, 12…
+       |                                 ^
+    526|     expect(reading.survey.reason).toBe('not-run');
+    527|     expect(reading.survey.satisfied).toBe(false);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+ Test Files  1 failed (1)
+      Tests  5 failed | 29 passed (34)
+```
+
+### T011 / F001 — only the human can decline
+
+`decision` comments count only when the node is `skipped` and the comment source is `user`.
+Invalid decisions are ignored while scanning newest-first, so an agent comment cannot self-clear
+the chore or erase an earlier valid validation receipt. Controls cover both halves: agent source
+on `skipped`, and user source on `done`.
+
+### T012 + T014 / F002 + F004 — the current node owns the answer
+
+The reader now selects `backpressure-<first 12 of current basis>` first, falling back to plain
+`backpressure`. A current `todo` returns `not-run` even when an old node carries a decline, and a
+current unavailable attempt returns `missing-basis` even when an old node carries stale evidence.
+Historical dissent ordering remains only for documents with neither current node form.
+
+### T013 / F003 — unavailable is detected, not inferred
+
+Only an agent-authored validation matching `decision:unavailable reason:… time:…` may omit a
+basis and read `missing-basis` / can't-tell. A merely malformed basis-less validation is
+`missing-receipt` / not-ready.
+
+### T016 / F006 — the protocol pin is real
+
+The fixture test reads `skills/eng-harness-flow/SKILL.md` from the repository and asserts the
+doctrine's `--kind validation --source agent --text "decision:unavailable reason:<…> time:<…>"`
+shape, then asserts the fixture's kind, source, and text pattern. Production now reads the text
+marker as part of its unavailable decision. This test was GREEN before the reader fix: it proves
+the new cross-artifact contract, not a pre-existing runtime defect.
+
+### T015 / F007 — evidence correction
+
+Corrected in place under R1/F001 above. The original narrow plan-072 probe remains as history;
+the correction cites plan 071's terminal `backpressure-1f1d8db67e6c`, whose persisted
+`type: "chore"` demonstrates the shape.
+
+### Focused GREEN
+
+`npx vitest run test/services/dd/plan/ready.test.ts` → **34 passed / 1 file**, 0 failed.
+
+### Held rulings — unchanged
+
+- **F005**: `cant-tell` remains `unconfigured` / exit 2 in default and strict modes. No mapping,
+  `--strict`, or rationale change was made pending Jordan's ruling.
+- **Open Question 1**: default teeth remain untouched.
+
+### R3 gates
+
+`harness checks` went RED once: `biome:error` on import ordering in `ready.test.ts`; every other
+hard gate was green in that run. After sorting the two imports, the whole composite gate was
+rerun and exited 0.
+
+| Gate | Result |
+|------|--------|
+| `npm run test` | **4446 passed / 309 files**, 0 failed; coverage 89.43% statements / 80.37% branches / 92.27% functions / 91.92% lines |
+| `harness checks` (via `just checks`, after the recorded RED) | All hard gates **ok**: tests, biome, typecheck, check:docs, check:flows, check:telemetry-fixtures, check:doctrine-parity, check:dd-docs, root-invocation-smoke, dd doctor, skills-check |
+| `npm run check:docs` | `check:docs OK — no drift` |
+| `semantics.ts` guard | SHA-256 `3856153824f7fd3448aaf285197054a2f4a2524ed80c0fffe6dc9a3f8526f150`; byte diff empty |
+
+Warn trio, verbatim JSON envelopes:
+
+```json
+{"command":"arch-check","status":"degraded","timestamp":"2026-08-05T10:20:10.242Z","data":{"modules":273,"dependencies":1223,"violations":[{"from":"harness/cli/src/services/telemetry/ref-source.ts","to":"harness/cli/src/adapters/git/git-write-port.ts","rule":"services-ports-type-only","severity":"warn","comment":"Port imports from services must be type-only (the kernel injects the implementation)."},{"from":"harness/cli/src/services/telemetry/sync-service.ts","to":"harness/cli/src/adapters/git/git-write-port.ts","rule":"services-ports-type-only","severity":"warn","comment":"Port imports from services must be type-only (the kernel injects the implementation)."}]},"next_action":"Review 2 warn-severity architecture violation(s) (rules: services-ports-type-only). Promote a rule's severity to 'error' in .dependency-cruiser.cjs once it should block — and never weaken a rule in the same PR that trips it."}
+{"command":"markdown-lint","status":"degraded","timestamp":"2026-08-05T10:20:10.498Z","data":{"checks":[{"name":"markdownlint","outcome":"findings","findings":194,"examined":131,"summary":"harness-foundations/first-principles.md:7 error MD001/heading-increment Heading levels should only increment by one level at a time [Expected: h3; Actual: h4]"},{"name":"links","outcome":"findings","findings":1,"examined":131,"summary":"19:1-19:83 warning Cannot find file `../harness-presentations/missing-layer-101/intro-to-harness.md` missing-file remark-validate-links:missing-file"},{"name":"mermaid","outcome":"findings","findings":1,"examined":31,"summary":"invalid mermaid at skills/builder/references/stages/50-phase-tasks.md:215"}],"totals":{"findings":196,"filesLinted":131,"linksFilesChecked":131,"fencesParsed":31}},"next_action":"Review 196 markdown finding(s) (194 markdown lint, 1 in-repo links/anchors, 1 mermaid syntax) in `data.checks` — visible but non-blocking (warn-launch). Fix the authored docs, then promote the gate to error/exit 1 once they are clean (never widen the scope to dodge a finding)."}
+{"command":"windows-check","status":"degraded","timestamp":"2026-08-05T10:20:09.430Z","data":{"scanned":27,"findingCount":6,"byRule":{"WIN004":1,"WIN007":5},"findings":[{"rule":"WIN004","title":"single-separator basename split","file":".harness/extensions/html-snap/extension.ts","line":121,"snippet":"const base = (abs.split('/').pop() ?? 'page').replace(/\\.html?$/i, '');","message":"Splitting a path on '/' only drops the basename of a Windows backslash path. Split on /[/\\\\]/ instead."},{"rule":"WIN007","title":"POSIX absolute path or HOME env","file":".harness/extensions/html-snap/snap-core.ts","line":18,"snippet":"'/usr/bin/google-chrome',","message":"POSIX system paths (/usr, /bin, …) and $HOME do not exist on Windows. Read config via ctx.env.get (USERPROFILE/APPDATA on Windows) and avoid absolute system paths."},{"rule":"WIN007","title":"POSIX absolute path or HOME env","file":".harness/extensions/html-snap/snap-core.ts","line":19,"snippet":"'/usr/bin/google-chrome-stable',","message":"POSIX system paths (/usr, /bin, …) and $HOME do not exist on Windows. Read config via ctx.env.get (USERPROFILE/APPDATA on Windows) and avoid absolute system paths."},{"rule":"WIN007","title":"POSIX absolute path or HOME env","file":".harness/extensions/html-snap/snap-core.ts","line":20,"snippet":"'/usr/bin/chromium',","message":"POSIX system paths (/usr, /bin, …) and $HOME do not exist on Windows. Read config via ctx.env.get (USERPROFILE/APPDATA on Windows) and avoid absolute system paths."},{"rule":"WIN007","title":"POSIX absolute path or HOME env","file":".harness/extensions/html-snap/snap-core.ts","line":21,"snippet":"'/usr/bin/chromium-browser',","message":"POSIX system paths (/usr, /bin, …) and $HOME do not exist on Windows. Read config via ctx.env.get (USERPROFILE/APPDATA on Windows) and avoid absolute system paths."},{"rule":"WIN007","title":"POSIX absolute path or HOME env","file":".harness/extensions/html-snap/snap-core.ts","line":22,"snippet":"'/usr/bin/microsoft-edge',","message":"POSIX system paths (/usr, /bin, …) and $HOME do not exist on Windows. Read config via ctx.env.get (USERPROFILE/APPDATA on Windows) and avoid absolute system paths."}]},"next_action":"windows-check found 6 cross-platform hazard(s) in 2 rule class(es) [WIN004×1, WIN007×5] (warn-launch — non-blocking). First: .harness/extensions/html-snap/extension.ts:121 [WIN004] single-separator basename split. Fix per each finding's message, or add `// win-ok: <reason>` to intentionally allow a line. Rules: WIN001, WIN002, WIN003, WIN004, WIN005, WIN006, WIN007, WIN008. See `harness instructions windows-check`."}
+```

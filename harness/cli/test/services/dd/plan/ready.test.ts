@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { NodeSchemaFs } from '../../../../src/acts/dd/schema-fs.js';
 import { FsDocLoader } from '../../../../src/acts/dd/shared.js';
@@ -50,6 +51,7 @@ function runReady(target: SyntheticCorpus, ...args: string[]) {
 }
 
 const FLOW_FILE = 'the-flow.json';
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../../..');
 
 /** SHA-256 of a file's bytes — the same basis a receipt records. */
 function sha256(path: string): string {
@@ -325,6 +327,30 @@ describe('plan ready — the survey dimension', () => {
     expect(reading.verdict).toBe('ready');
   });
 
+  it('R3/F001 — an agent-authored decision cannot decline a skipped survey', () => {
+    corpus = createSyntheticPlan({ slug: 'synthetic-plan', ...CLAIMED });
+    writeFlow(corpus.folder, [
+      { status: 'skipped', comments: [{ ...decline(), source: 'agent' }] },
+    ]);
+
+    const reading = readReady(corpus);
+
+    expect(reading.survey.satisfied).toBe(false);
+    expect(reading.survey.reason).toBe('missing-receipt');
+    expect(reading.verdict).toBe('not-ready');
+  });
+
+  it('R3/F001 — even a user decision is not a decline on a done survey', () => {
+    corpus = createSyntheticPlan({ slug: 'synthetic-plan', ...CLAIMED });
+    writeFlow(corpus.folder, [{ status: 'done', comments: [decline()] }]);
+
+    const reading = readReady(corpus);
+
+    expect(reading.survey.satisfied).toBe(false);
+    expect(reading.survey.reason).toBe('missing-receipt');
+    expect(reading.verdict).toBe('not-ready');
+  });
+
   it('R1/F002 — a later matching receipt beats an earlier stale one on the same node', () => {
     // Comments are append-only, so a re-surveyed node holds its history: the stale
     // receipt FIRST, the current one after it. A first-match scan would report
@@ -387,7 +413,38 @@ describe('plan ready — the survey dimension', () => {
     expect(reading.verdict).toBe('not-ready');
   });
 
-  it('a validation receipt with no basis is CANT-TELL, not not-ready', () => {
+  it('F006 — the unavailable fixture is anchored to the in-repo doctrine', () => {
+    const doctrine = readFileSync(join(REPO_ROOT, 'skills/eng-harness-flow/SKILL.md'), 'utf8');
+
+    expect(doctrine).toContain(
+      '--kind validation --source agent --text "decision:unavailable reason:<…> time:<…>"',
+    );
+    expect(UNAVAILABLE_RECEIPT).toMatchObject({ kind: 'validation', source: 'agent' });
+    expect(UNAVAILABLE_RECEIPT.text).toMatch(/^decision:unavailable reason:.+ time:.+$/);
+  });
+
+  it('R3/F003 — a malformed basis-less validation is not a router-unavailable attempt', () => {
+    corpus = createSyntheticPlan({ slug: 'synthetic-plan', ...CLAIMED });
+    writeFlow(corpus.folder, [
+      {
+        status: 'done',
+        comments: [
+          {
+            ...UNAVAILABLE_RECEIPT,
+            text: 'decision:completed verdict:Pass time:2026-08-05T08:10:00Z',
+          },
+        ],
+      },
+    ]);
+
+    const reading = readReady(corpus);
+
+    expect(reading.survey.satisfied).toBe(false);
+    expect(reading.survey.reason).toBe('missing-receipt');
+    expect(reading.verdict).toBe('not-ready');
+  });
+
+  it('a doctrine-shaped unavailable validation is CANT-TELL, not not-ready', () => {
     // The doctrine's router-missing detection receipt has exactly this shape, and
     // its stated purpose is that "a chore never sits outstanding forever blocking
     // `nav` in an un-harnessed repo". Reading it as not-ready would reinstate the
@@ -408,24 +465,24 @@ describe('plan ready — the survey dimension', () => {
     expect(reading.decided_by).toBe('survey');
   });
 
-  it('a stale receipt on another node still outranks an unreadable one', () => {
-    // The verdict's own precedence, applied inside the dimension: a KNOWN failure
-    // beats an unknown. A router-less receipt must not mask a survey that really
-    // did go stale — that would downgrade an actionable not-ready to a shrug.
+  it('R3/F004 — historical stale evidence cannot outrank the current unavailable node', () => {
     corpus = createSyntheticPlan({ slug: 'synthetic-plan', ...CLAIMED });
+    const basis = sha256(corpus.plan);
     writeFlow(corpus.folder, [
-      { status: 'done', comments: [UNAVAILABLE_RECEIPT] },
+      { status: 'done', comments: [receipt('c'.repeat(64))] },
       {
         status: 'done',
-        id: 'backpressure-0123456789ab',
-        comments: [receipt('c'.repeat(64))],
+        id: `backpressure-${basis.slice(0, 12)}`,
+        comments: [UNAVAILABLE_RECEIPT],
       },
     ]);
 
     const reading = readReady(corpus);
 
-    expect(reading.survey.reason).toBe('stale-basis');
-    expect(reading.verdict).toBe('not-ready');
+    expect(reading.survey.node).toBe(`backpressure-${basis.slice(0, 12)}`);
+    expect(reading.survey.reason).toBe('missing-basis');
+    expect(reading.survey.satisfied).toBeNull();
+    expect(reading.verdict).toBe('cant-tell');
   });
 
   it('AC-05 — skipped with no receipt is not satisfied: nothing records what was decided', () => {
@@ -452,6 +509,22 @@ describe('plan ready — the survey dimension', () => {
     const reading = ready([{ status: 'todo' }]);
 
     expect(reading.survey.reason).toBe('not-run');
+    expect(reading.verdict).toBe('not-ready');
+  });
+
+  it('R3/F002 — a current todo re-basis node outranks a historical decline', () => {
+    corpus = createSyntheticPlan({ slug: 'synthetic-plan', ...CLAIMED });
+    const basis = sha256(corpus.plan);
+    writeFlow(corpus.folder, [
+      { status: 'skipped', comments: [decline()] },
+      { status: 'todo', id: `backpressure-${basis.slice(0, 12)}` },
+    ]);
+
+    const reading = readReady(corpus);
+
+    expect(reading.survey.node).toBe(`backpressure-${basis.slice(0, 12)}`);
+    expect(reading.survey.reason).toBe('not-run');
+    expect(reading.survey.satisfied).toBe(false);
     expect(reading.verdict).toBe('not-ready');
   });
 
@@ -502,10 +575,10 @@ describe('plan ready — the survey dimension', () => {
     // this repo's flows happen to use: a coincidence, not a contract. Both id
     // shapes are asserted here against a NON-matching type.
     //
-    // Honesty about what this covers: no code path that mints a backpressure node
-    // as `type: chore` has been demonstrated — the live plan-072 flight plan
-    // stamps `type: backpressure` on both the base node and the re-basis node.
-    // This is brittleness insurance, not a reproduction of an observed defect.
+    // Plan 071 demonstrates the historical shape: its terminal re-basis node
+    // `backpressure-1f1d8db67e6c` carries `type: chore`. The earlier plan-072-only
+    // probe could not reveal that counterexample because both of its nodes carry
+    // `type: backpressure`.
     corpus = createSyntheticPlan({ slug: 'synthetic-plan', ...CLAIMED });
     const basis = sha256(corpus.plan);
     writeFlow(corpus.folder, [
