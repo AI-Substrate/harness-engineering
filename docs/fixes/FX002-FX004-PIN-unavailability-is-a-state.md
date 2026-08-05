@@ -121,6 +121,60 @@ acceptance condition and not a review nicety.
 
 Both get controls, like everything else here.
 
+## Ruling #2 (2026-08-05) — FX004's stated mechanism was WRONG. Corrected by the coder.
+
+**The dossier above is wrong and stays wrong on the page, corrected here rather than
+edited away** — the retraction is the evidence.
+
+It claimed: *"Inside a repo — root checkout or linked worktree — it works. The
+variable is inside-vs-outside a repo."* Four probes falsify that:
+
+| cwd | result |
+|---|---|
+| `/tmp/fx004-norepo` (no repo) | `E108` — both faces reproduced |
+| `<worktree>/harness/cli` (**inside** a harness repo) | **`E108`, identical** |
+| `<worktree>/docs` (**inside** a harness repo) | **`E108`, identical** |
+| `/tmp/fx004-fake` (**not a repo**, `.harness` symlinked in) | **WORKS** |
+
+**The real discriminator**: `discovery.ts:63` joins `proc.cwd()` + `.harness/extensions`
+and reads it. Discovery is **cwd-relative** — it never walks up to a repo root and
+never consults git. `checks` is an extension verb, so the question is *"does
+`<cwd>/.harness/extensions` hold ≥1 loadable extension?"* — **not** *"am I in a repo?"*
+Git status is irrelevant in **both** directions.
+
+**Why the wrong mechanism survived three tellings** — the shim, then cross-worktree,
+then inside-vs-outside-a-repo. The two passing cases anyone tried (repo root, linked
+worktree) hold `cwd-has-extensions` and `is-a-repo` **perfectly confounded**: the root
+works *because* it is where `.harness/extensions` lives, not because it is a repo. The
+dossier's own guard ("test inside AND outside") is **necessary but not sufficient** —
+it cannot separate the two theories. Only inside-but-not-at-root (probes 2–3) and
+outside-but-has-extensions (probe 4) break the confound.
+
+### Rulings
+
+- **Q1 — CONFIRMED, and the message must NOT claim "not in a harness repo."** That
+  sentence is **false** from `<worktree>/harness/cli`: a user standing in a harness
+  repo, told they are not in one. Replacing a wrong diagnostic with a differently
+  wrong one is **this packet's own defect class, committed by the fix**. Assert only
+  what is established — no loadable extensions under `<cwd>/.harness/extensions` —
+  **name the cwd**, and offer the repo root as the likely **remedy**. The remedy may
+  be a guess; the **assertion may not**.
+- **Q2 — NEW CODE, not a reuse.** `E108` means *"you typed it wrong"*, and the entire
+  defect is that they did not. FX001's failure was an **undeclared** closed set;
+  adding to `error-codes.ts` is the declared registry, which is the opposite move.
+  **Constraint the coder must check**: FX003 (already approved in this PR) pins
+  refusal codes to `/^E\d{3}$/`. A new code outside that shape would be **silently
+  discarded by the refusal lane we just fixed** — three digits, no exceptions.
+- **Q3 — YES, probes 2/3 are REQUIRED controls.** They are the cases that
+  discriminate the two theories and the ones a "not in a repo" message would lie to.
+  A control set that omits them cannot see its own confound. Probe 4
+  (outside-a-repo-but-works) is required too, for the same reason in the other
+  direction.
+
+**Credit where it belongs**: the coder was handed a mechanism stated as verified,
+probed it anyway, and stopped rather than building on it. That is the behaviour this
+whole packet is about.
+
 ## Controls — planted-bad, every one must FIRE pre-fix
 
 Same discipline as FX001/FX003: **Dim-0 mutation gate first and blocking**. A control
