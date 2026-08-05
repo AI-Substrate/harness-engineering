@@ -17,6 +17,10 @@
       }
     },
     {
+      "name": "summary",
+      "value": "Plans, coverage surveys and logs become data a gate can read."
+    },
+    {
       "name": "goals",
       "value": [
         "Make done a computed fact instead of a self-report.",
@@ -84,7 +88,7 @@
           "domain": "harness-cli",
           "phase": "ph-2a10",
           "state": "checked",
-          "done": "#evidence/tk-1a2b"
+          "done": "#done_when/tk-1a2b"
         },
         {
           "id": "tk-3c4d",
@@ -92,25 +96,27 @@
           "domain": "harness-cli",
           "phase": "ph-2a10",
           "state": "unchecked",
-          "done": "#evidence/tk-3c4d"
+          "done": "#done_when/tk-3c4d"
         }
       ]
     },
     {
-      "name": "evidence",
+      "name": "done_when",
       "value": {
         "tk-1a2b": [
           {
             "id": "dw-11c2",
             "assertion": "Precedence is doc-folder -> gitroot -> harness -> home.",
             "state": "checked",
-            "proven_by": "execution-log.dd.json#entries/lg-3307"
+            "proven_by": "execution-log.dd.json#entries/lg-3307",
+            "pressure": "backpressure.dd.json#rows/bp-4e01"
           },
           {
             "id": "dw-4e01",
             "assertion": "A duplicate name inside one root is a hard error.",
             "state": "checked",
-            "proven_by": "execution-log.dd.json#entries/lg-3307"
+            "proven_by": "execution-log.dd.json#entries/lg-3307",
+            "pressure": "backpressure.dd.json#rows/bp-4e01"
           },
           {
             "id": "dw-77b3",
@@ -124,18 +130,21 @@
             "id": "dw-a9c4",
             "assertion": "check:dd-docs exits 1 on injected drift.",
             "state": "checked",
-            "proven_by": "execution-log.dd.json#entries/lg-3311"
+            "proven_by": "execution-log.dd.json#entries/lg-3311",
+            "pressure": "backpressure.dd.json#rows/bp-77b3"
           },
           {
             "id": "dw-e210",
             "assertion": "The how-to was re-read by a second human.",
             "state": "human-skipped",
-            "receipt": "Jordan, 2026-08-03: skip the second read, the worked sample is the proof."
+            "receipt": "Jordan, 2026-08-03: skip the second read, the worked sample is the proof.",
+            "pressure": "not-applicable"
           },
           {
             "id": "dw-b013",
             "assertion": "Baked docs are byte-identical after a clean regenerate.",
-            "state": "unchecked"
+            "state": "unchecked",
+            "pressure": "backpressure.dd.json#rows/bp-77b3"
           }
         ]
       }

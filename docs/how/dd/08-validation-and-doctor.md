@@ -136,3 +136,6 @@ commands from the repository root.
 This is open defect FU-4 in
 [`docs/plans/065-deterministic-documents/follow-ups.md`](../../plans/065-deterministic-documents/follow-ups.md).
 FU-4a separately covers `schema list` lacking a document-folder root.
+
+For the three enforcement tiers — how these mechanisms add up to an auditable claim — see
+[The builder proof graph](11-the-builder-proof-graph.md).

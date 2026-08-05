@@ -70,11 +70,19 @@ export type BuildResult = BuildSuccess | BuildFailure;
 
 /**
  * Everything up to (but not including) the write: read, parse, resolve the schema,
- * load adapters, render. Shared by the verb and by {@link autoRegenerateSibling},
- * so a mutating verb's best-effort regeneration can never drift from what
+ * load adapters, render. Shared by the verb, by {@link autoRegenerateSibling} and
+ * by {@link writeDocumentWithSibling}, so no caller's render can drift from what
  * `dd build` itself would have produced.
+ *
+ * `options.text` renders a document that is NOT (yet) the bytes on disk. That is
+ * what lets a mutating verb stage its sibling before it commits anything: the
+ * render is proven against the new content while the old content is still safe.
  */
-export async function renderDocument(documentPath: string, repoRoot: string): Promise<BuildResult> {
+export async function renderDocument(
+  documentPath: string,
+  repoRoot: string,
+  options: { text?: string } = {},
+): Promise<BuildResult> {
   const fs = new NodeSchemaFs();
   const home = new NodeEnv().home();
 
@@ -87,7 +95,7 @@ export async function renderDocument(documentPath: string, repoRoot: string): Pr
     };
   }
 
-  const text = fs.readText(documentPath);
+  const text = options.text ?? fs.readText(documentPath);
   if (text === null) {
     return {
       ok: false,
@@ -183,15 +191,16 @@ export async function renderDocument(documentPath: string, repoRoot: string): Pr
 }
 
 /**
- * Best-effort sibling regeneration for a MUTATING dd verb: warn on failure, never
- * block the verb (plan 3.2). It is the `autoRenderSibling` posture from
- * `acts/flow.ts`, kept honest — a verb that changed state has already succeeded,
- * and a stale render is a smaller harm than a rolled-back mutation.
+ * Best-effort sibling regeneration for a document whose SOURCE IS ALREADY
+ * CORRECT ON DISK — the transclusion watcher's case (plan 3.4): a dependent's
+ * `.dd.md` went stale because something it cites changed, so re-rendering it is
+ * pure repair and a failure leaves the world exactly as it found it.
  *
- * Exported and proven, with no call site yet: every dd verb shipped so far is
- * read-only. Phase 4's re-verification verb is the first candidate (its mutation
- * semantics are a RESERVED row), and it should call this rather than re-derive
- * the render path.
+ * NOT for a mutating verb. A verb that changes a document and then regenerates
+ * best-effort can report success while leaving source and sibling out of step —
+ * manufacturing the very drift `dd build --check` exists to catch. Mutating verbs
+ * use {@link writeDocumentWithSibling}, which stages the render first and rolls
+ * the source back if either write fails.
  */
 export async function autoRegenerateSibling(
   documentPath: string,
@@ -215,6 +224,145 @@ export async function autoRegenerateSibling(
     io.writers.err(`warning: dd sibling not regenerated for ${documentPath}: ${reason}\n`);
     return { regenerated: false, reason };
   }
+}
+
+/** Which half of the atomic write gave way — the caller reports it verbatim. */
+export type DocumentWriteStage = 'render' | 'source' | 'sibling';
+
+export interface DocumentWriteFailure {
+  ok: false;
+  stage: DocumentWriteStage;
+  code: string;
+  message: string;
+  next_action: string;
+  /**
+   * True when the source file on disk is byte-identical to before the call —
+   * the property that makes the refusal honest. False means the rollback itself
+   * failed, which is a louder problem than the original one.
+   */
+  restored: boolean;
+  details?: unknown;
+}
+
+export interface DocumentWriteSuccess {
+  ok: true;
+  path: string;
+  sibling: string;
+  warnings: Array<DdAdapterIssue & { code: string }>;
+}
+
+export type DocumentWriteResult = DocumentWriteSuccess | DocumentWriteFailure;
+
+function restoreSource(fs: NodeFs, path: string, previousText: string): boolean {
+  try {
+    fs.writeText(path, previousText);
+    return fs.readText(path) === previousText;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Persist a mutated dd document AND its sibling markdown as one operation, or
+ * persist neither.
+ *
+ * The order is the whole point. The render is staged from the new text while the
+ * old text is still the bytes on disk, so the expensive, failure-prone half
+ * (schema resolution, adapters, rendering) is proven before anything is
+ * committed. Only then are the two files written, and if the second write gives
+ * way the source is restored to `previousText`.
+ *
+ * A mutating verb therefore has exactly two outcomes a reader has to reason
+ * about: source and sibling both moved, or neither did. There is no third state
+ * in which the verb says `written: true` and the drift gate says otherwise.
+ *
+ * Both files are STAGED (`.tmp` then `rename`), the same crash-safe shape
+ * `writeFlowAtomic` gives a flow source and `persistSibling` gives a flow's
+ * sibling. Writing them live made the refusal a liar in exactly one case, and it
+ * is the case that matters: `writeFileSync` opens with `O_TRUNC`, so a write that
+ * gives way after emitting some of its bytes — ENOSPC, a disk error, a process
+ * killed mid-`write(2)` — leaves a TRUNCATED `.dd.md` on disk while the rollback
+ * puts only the `.dd.json` back. The verb then returned E452 saying "the document
+ * was left unchanged", which was false: the repo was left in precisely the drift
+ * state this function exists to make impossible, and `dd build --check` would
+ * later report it as a hand-edit. "It threw" never implied "it wrote nothing";
+ * staging is what makes those two the same claim.
+ */
+export async function writeDocumentWithSibling(options: {
+  documentPath: string;
+  /** The new source text to persist. */
+  text: string;
+  /** The bytes currently on disk, kept for rollback. */
+  previousText: string;
+  repoRoot: string;
+}): Promise<DocumentWriteResult> {
+  const { documentPath, text, previousText, repoRoot } = options;
+
+  const rendered = await renderDocument(documentPath, repoRoot, { text });
+  if (!rendered.ok) {
+    return {
+      ok: false,
+      stage: 'render',
+      code: rendered.code,
+      message: `the change was refused because its sibling markdown could not be rendered: ${rendered.message}`,
+      next_action: rendered.next_action,
+      restored: true,
+      ...(rendered.details !== undefined && { details: rendered.details }),
+    };
+  }
+
+  const fs = new NodeFs();
+  // Whatever a failed staged write managed to emit is scrap: drop it, so a
+  // refusal leaves no half-written file for the next reader (or `git status`).
+  const dropStaged = (staged: string): void => {
+    try {
+      fs.deleteFile(staged);
+    } catch {
+      /* best effort — the staged temp is not the promise, the two live files are */
+    }
+  };
+
+  const stagedSource = `${documentPath}.tmp`;
+  try {
+    fs.writeText(stagedSource, text);
+    fs.rename(stagedSource, documentPath);
+  } catch (error) {
+    dropStaged(stagedSource);
+    return {
+      ok: false,
+      stage: 'source',
+      code: ErrorCodes.DD_MUTATION_WRITE_FAILED,
+      message: `could not write ${documentPath}: ${error instanceof Error ? error.message : String(error)}`,
+      next_action: 'Check permissions on the document, then retry.',
+      restored: restoreSource(fs, documentPath, previousText),
+    };
+  }
+
+  const stagedSibling = `${rendered.sibling}.tmp`;
+  try {
+    fs.mkdirp(posixDirname(rendered.sibling));
+    fs.writeText(stagedSibling, rendered.markdown);
+    fs.rename(stagedSibling, rendered.sibling);
+  } catch (error) {
+    dropStaged(stagedSibling);
+    return {
+      ok: false,
+      stage: 'sibling',
+      code: ErrorCodes.DD_MUTATION_WRITE_FAILED,
+      message: `could not write the sibling markdown ${rendered.sibling}: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+      next_action: `Check permissions on ${rendered.sibling}, then retry — the document was left unchanged.`,
+      restored: restoreSource(fs, documentPath, previousText),
+    };
+  }
+
+  return {
+    ok: true,
+    path: documentPath,
+    sibling: rendered.sibling,
+    warnings: rendered.warnings,
+  };
 }
 
 /**

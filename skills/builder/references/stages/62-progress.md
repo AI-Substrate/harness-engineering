@@ -88,6 +88,19 @@ $ARGUMENTS
 
 This sub-skill is the **single source of truth** for progress updates. Always delegate here rather than manually editing task tables.
 
+### dd-native plans: mutate through the verbs (plan 071, ac-7111)
+
+When the phase's task file is `assets/tasks/phase-N/tasks.dd.json`, every status write goes through the CLI — there is no table to edit:
+
+```bash
+harness dd set "<task file>#tasks/tk-XXXX/state" checked      # completed
+harness dd set "<task file>#tasks/tk-XXXX/state" blocked      # blocked — note WHY on the row
+harness dd set "<task file>#tasks/tk-XXXX/note"  "<why>"
+harness dd set "<task file>#done_when/tk-XXXX/dw-XXXX/state" checked
+```
+
+The sibling `.dd.md` rebuilds in the same operation; a schema-invalid value is REFUSED and writes nothing. **Never edit the generated `.dd.md`** — `harness dd build --check` reports it as drift.
+
 ---
 
 > Note: this sub-skill writes no retro artifacts — progress tracking only. `docs/harness/agents/**` is frozen read-only history (nothing writes there anymore).

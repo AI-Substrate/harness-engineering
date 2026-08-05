@@ -38,7 +38,8 @@
           },
           "plan": {
             "type": "link",
-            "target": "builder/plan/section/meta"
+            "target": "builder/plan/section/meta",
+            "rel": "ref"
           },
           "basis_sha": {
             "type": "string"

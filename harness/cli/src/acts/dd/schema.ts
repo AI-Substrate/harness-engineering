@@ -6,6 +6,8 @@ import { type Envelope, formatDegraded, formatError, formatOk } from '../../outp
 import { ErrorCodes } from '../../output/error-codes.js';
 import { exitWithEnvelope } from '../../output/exit.js';
 import { type CliIo, createOutputPort, type OutputPort } from '../../output/output-port.js';
+import { BUILTIN_RELS } from '../../services/dd/core/constants.js';
+import { collectDeclaredRels } from '../../services/dd/core/rel.js';
 import { BUILTIN_COMPLETION_ENUM } from '../../services/dd/schema/declarations.js';
 import type {
   SchemaIssue,
@@ -23,6 +25,7 @@ const SCHEMA_ISSUE_CODES: Record<SchemaIssueClass, string> = {
   'name-conflict': ErrorCodes.DD_SCHEMA_NAME_CONFLICT,
   'package-invalid': ErrorCodes.DD_SCHEMA_PACKAGE_INVALID,
   'path-escape': ErrorCodes.DD_SCHEMA_PATH_ESCAPE,
+  'rel-invalid': ErrorCodes.DD_REL_INVALID,
   'scan-failed': ErrorCodes.DD_SCHEMA_SCAN_FAILED,
   'schema-not-found': ErrorCodes.DD_SCHEMA_NOT_FOUND,
   shadowed: ErrorCodes.DD_SCHEMA_SHADOWED,
@@ -59,6 +62,8 @@ function describe(record: SchemaRecord) {
       values: [...declared.values],
       ...(declared.gate_terminal && { gate_terminal: [...declared.gate_terminal] }),
     })),
+    relations: collectDeclaredRels(record.schema),
+    builtin_rels: [...BUILTIN_RELS],
     builtin_completion_enum: {
       values: [...BUILTIN_COMPLETION_ENUM.values],
       gate_terminal: [...(BUILTIN_COMPLETION_ENUM.gate_terminal ?? [])],
@@ -138,6 +143,15 @@ function renderShow(data: ShowData): string {
         ? ` — gate_terminal: ${declared.gate_terminal.join(', ')}`
         : '';
       lines.push(`  ${declared.name}: ${declared.values.join(', ')}${terminal}`);
+    }
+  }
+  if (data.relations.length > 0) {
+    lines.push('', `Link relations (built-in set: ${data.builtin_rels.join(', ')}):`);
+    for (const relation of data.relations) {
+      const target = relation.target ? ` -> ${relation.target}` : '';
+      lines.push(
+        `  ${relation.field}: ${relation.rel}${relation.builtin ? '' : ' (unknown — behaves as ref)'}${target}`,
+      );
     }
   }
   if (data.shadows.length > 0) {

@@ -15,7 +15,8 @@
           },
           "plan": {
             "type": "link",
-            "target": "builder/plan/section/meta"
+            "target": "builder/plan/section/meta",
+            "rel": "ref"
           },
           "phase": {
             "type": "string"
@@ -46,7 +47,8 @@
             "links": {
               "type": "array",
               "items": {
-                "type": "link"
+                "type": "link",
+                "rel": "ref"
               }
             }
           }

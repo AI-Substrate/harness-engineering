@@ -36,6 +36,7 @@ export type SchemaIssueClass =
   | 'shadowed'
   | 'version-unsupported'
   | 'enum-invalid'
+  | 'rel-invalid'
   | 'scan-failed'
   | 'path-escape';
 

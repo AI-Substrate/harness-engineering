@@ -1,0 +1,53 @@
+{
+  "dd": { "schema": "builder/fence" },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Dispatch fence — a worked example",
+        "issuer": "the orchestrator who wrote the brief",
+        "subject": "the delegated coder",
+        "note": "A fence as DATA. Prose fences fail two ways this one cannot: a brief that instructs a mechanism and omits the file it lives in is wrong in a way only a human reviewer catches, and a rule with no recorded cause or expiry outlives its reason with nobody able to say so. Every row here names the owner who may change it, the cause it exists for, and when it stops applying."
+      }
+    },
+    {
+      "name": "rows",
+      "value": [
+        {
+          "id": "fn-0001",
+          "pattern": "harness/cli/src/**",
+          "mode": "allow",
+          "owner": "orchestrator",
+          "cause": "the phase's implementation surface",
+          "expiry": "2026-12-31"
+        },
+        {
+          "id": "fn-0002",
+          "pattern": "harness/cli/test/**",
+          "mode": "allow",
+          "owner": "orchestrator",
+          "cause": "every change in this phase owes a control",
+          "expiry": "2026-12-31"
+        },
+        {
+          "id": "fn-0003",
+          "pattern": "docs/plans/**",
+          "mode": "forbid",
+          "owner": "orchestrator",
+          "cause": "the plan corpus is the orchestrator's to write; a coder editing it would be marking its own homework",
+          "expiry": "2026-12-31",
+          "note": "FORBID beats ALLOW, so this holds even though a later allow row is broader."
+        },
+        {
+          "id": "fn-0004",
+          "pattern": "**/the-flow.json",
+          "mode": "forbid",
+          "owner": "prime",
+          "cause": "the live flight plan is mutated through the CLI, never by hand",
+          "expiry": "2026-09-30",
+          "note": "A shorter expiry on purpose: this one exists for a migration and should be re-argued when it lapses, not renewed by inertia."
+        }
+      ]
+    }
+  ]
+}

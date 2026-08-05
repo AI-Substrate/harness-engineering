@@ -5,7 +5,12 @@ import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { posixJoin, toPosix } from '../shared/posix-path.js';
 import { telemetryDir } from './cursor.js';
 import type { ChecksStatus } from './events.js';
-import { readRefLanes, readRefSegments } from './ref-source.js';
+import {
+  type RefNamespaceState,
+  readRefSegments,
+  readRefSegmentsOutcome,
+  telemetryRefNamespace,
+} from './ref-source.js';
 import type { Segment } from './segment.js';
 import { type TokenEvidence, transcriptEvidenceReason } from './token-evidence.js';
 import {
@@ -38,8 +43,22 @@ import {
  * worktree key is the `folder` field of the peer STATE file (`~/.pij/<id>.json`,
  * == `pij path <id> --state`). We read it directly through {@link FsPort} (no
  * shell-out → stays `node:*`-free, P2). Candidate order: explicit `opts.worktree`
- * → pij `folder` → `proc.cwd()`. (A published-refs scan — `refs/harness-telemetry/**`
- * — is a deferred second tier; the buffer is the live source the scorer reads.)
+ * → pij `folder` → `proc.cwd()`.
+ *
+ * TWO SURFACES (FX001): the buffer is the live source, but the post-commit hook
+ * flushes it to `refs/harness-telemetry/*` on EVERY commit — so any subject that
+ * commits blinds its own telemetry lane before an orchestrator can score it. When the
+ * buffer yields no segments for the session (absent OR flushed-markers-only), the read
+ * falls back to the committed refs and folds them the same way, joined on the same
+ * `PIJ_SESSION_ID` key. The evidence SAYS which surface answered (`source`) and
+ * whether a ref namespace existed to check (`ref_checked`). Local refs only: never a
+ * fetch.
+ *
+ * A `null` — the act's `E100` — is NOT one statement. It carries a
+ * {@link SessionEvidenceResolution} saying which of the misses it was, because a read
+ * that FAILED and a read that COMPLETED AND FOUND NOTHING send an operator to
+ * different places, and only one of them licenses "this session produced no
+ * telemetry" (R1/R2).
  *
  * NO CACHE — reads fresh on every call so a downstream fs resolver always observes
  * the latest buffer state.
@@ -80,6 +99,21 @@ export interface SessionEvidence {
   compactions: number;
   /** Tool name → total invocation count (sum of each `tools` event's `count`). */
   tools: Record<string, number>;
+  /**
+   * Refusal E-code → count, from `command_exit` events that carried one
+   * (plan 071 tk-7169).
+   *
+   * A gate refusal writes NOTHING to the flow — that is a pinned invariant, not
+   * an oversight — so before this field a run that was correctly stopped and a
+   * run that never met a gate produced identical evidence, and only a `--force`
+   * left a durable trace. The record favoured the one outcome nobody wants.
+   * Counting the codes makes the refusal provable without weakening the
+   * nothing-written invariant by a single byte.
+   *
+   * Fixed vocabulary (`E###`), never message text. Kept in LOCK-STEP with the
+   * flow-eval extension's re-declared `SessionEvidence`.
+   */
+  refusals: Record<string, number>;
   /** Field names that were absent / unknown (e.g. `subagent_tokens`, `plans_touched`). */
   gaps: string[];
   /**
@@ -91,6 +125,30 @@ export interface SessionEvidence {
    * `SessionEvidence` (`.harness/extensions/flow-eval/resolvers.ts`).
    */
   duration_s: number | null;
+  /**
+   * Which surface this evidence was read from (FX001 · T2).
+   *
+   * `buffer` — the live `.harness/temp/telemetry` spool alone. `ref` — the committed
+   * `refs/harness-telemetry/*` rollup alone, which is where a session lives once a
+   * commit has flushed it. `buffer+ref` — the durable union: the ref's flushed half
+   * plus the buffer's unflushed delta, folded once.
+   *
+   * Provenance is stated, never inferred. A reader that silently merges two surfaces
+   * is how the next debugging session gets lied to about which one was empty.
+   */
+  source: 'buffer' | 'ref' | 'buffer+ref';
+  /**
+   * Whether a `refs/harness-telemetry/*` namespace was visible locally to check.
+   *
+   * `false` means the ref surface could not contribute — no git read port, a clone that
+   * has never fetched the namespace, or a ref read that FAILED (R2). NOT the same as
+   * "the ref had nothing for this session": that is an empty join, and it still reports
+   * `true`. Read-only — this never triggers a network fetch.
+   *
+   * A boolean cannot separate "absent" from "unreadable"; when a MISS has to be
+   * explained, {@link SessionEvidenceOutcome.resolution} carries that distinction.
+   */
+  ref_checked: boolean;
 }
 
 /** The two fs reads the evidence path uses — list buffer subdirs, read each segment. */
@@ -120,17 +178,47 @@ export interface SessionEvidenceOpts {
 /** The pij join key written into `captured_env` by the live capture (from `$PIJ_SESSION_ID`). */
 const PIJ_SESSION_ENV = 'PIJ_SESSION_ID';
 
-/** Read the pij peer's worktree `folder` from `~/.pij/<id>.json`, or null (never throws). */
-function pijFolder(deps: SessionEvidenceDeps, id: string): string | null {
+/**
+ * Whether the locator had to DROP a candidate buffer root for a reason it could not
+ * establish (FX001 · R3).
+ *
+ * A dropped root shrinks what "the buffer held nothing" covers, so a miss over the
+ * remaining roots asserts less than it sounds like it does. Disclosed as a flag rather
+ * than redesigned: the read still degrades to the next candidate exactly as before.
+ */
+export interface LocatorNotes {
+  /** `true` once any candidate root was dropped for an UNESTABLISHED reason. */
+  degraded: boolean;
+}
+
+/**
+ * Read the pij peer's worktree `folder` from `~/.pij/<id>.json` (never throws), saying
+ * whether the answer was ESTABLISHED.
+ *
+ * `degraded` marks the two cases where the drop proves nothing about the peer: no HOME
+ * to build the path from, and a state file that was read but is corrupt / carries no
+ * usable `folder`. An absent file (`readText` → `null`) is NOT flagged: `FsPort` returns
+ * `null` for missing AND unreadable alike, so flagging it would fire on every session
+ * that simply has no pij state file — that conflation is the fs-port contract boundary,
+ * routed rather than papered over here.
+ */
+function pijFolder(
+  deps: SessionEvidenceDeps,
+  id: string,
+): { folder: string | null; degraded: boolean } {
   const home = deps.env.home();
-  if (!home) return null;
+  if (!home) return { folder: null, degraded: true };
   const raw = deps.fs.readText(posixJoin(toPosix(home), '.pij', `${id}.json`));
-  if (raw === null) return null;
+  if (raw === null) return { folder: null, degraded: false };
   try {
     const folder = (JSON.parse(raw) as { folder?: unknown }).folder;
-    return typeof folder === 'string' && folder.length > 0 ? folder : null;
+    return typeof folder === 'string' && folder.length > 0
+      ? { folder, degraded: false }
+      : { folder: null, degraded: true };
   } catch {
-    return null; // a corrupt state file falls through to the next candidate
+    // A corrupt state file falls through to the next candidate — but SILENTLY doing so
+    // is how a later "both surfaces were empty" comes to cover fewer roots than it claims.
+    return { folder: null, degraded: true };
   }
 }
 
@@ -138,11 +226,15 @@ function pijFolder(deps: SessionEvidenceDeps, id: string): string | null {
  * Telemetry buffer dirs to try, in priority order (deduped): worktree → pij folder → cwd.
  * Exported (read-only) so the fleet-evidence service reuses the SAME worktree-safe
  * buffer-location logic instead of re-deriving it (plan 051 · T002).
+ *
+ * `notes` (optional, additive) records whether a candidate was dropped for a reason the
+ * locator could not establish (R3).
  */
 export function candidateRoots(
   id: string,
   deps: SessionEvidenceDeps,
   opts?: SessionEvidenceOpts,
+  notes?: LocatorNotes,
 ): string[] {
   const roots: string[] = [];
   const add = (root: string | null | undefined): void => {
@@ -151,7 +243,9 @@ export function candidateRoots(
     if (!roots.includes(dir)) roots.push(dir);
   };
   add(opts?.worktree);
-  add(pijFolder(deps, id));
+  const pij = pijFolder(deps, id);
+  if (pij.degraded && notes) notes.degraded = true;
+  add(pij.folder);
   add(deps.proc.cwd());
   return roots;
 }
@@ -196,13 +290,27 @@ export interface BufferedSegment {
   seq: number;
 }
 
+/** A mutable tally of records the read had to REJECT (FX001 · R2). */
+export interface RecordSkips {
+  /** Buffer files listed but unreadable or unparseable — real records, not port errors. */
+  skipped: number;
+}
+
 /**
  * {@link readSegments} with each segment's buffer coordinates retained, so a reader can
  * tell the UNFLUSHED delta (seq > watermark) from seqs the prune has not got to yet
  * (seq <= watermark, whose bytes the committed ref already owns). Same scan, same
  * fail-safe skips.
+ *
+ * `skips` (optional, additive) collects how many buffer records were rejected, so a
+ * caller can tell an empty buffer from one whose every record was corrupt — the skip
+ * itself stays fail-safe (FX001 · R2).
  */
-export function readBufferedSegments(fs: EvidenceFs, telDir: string): BufferedSegment[] {
+export function readBufferedSegments(
+  fs: EvidenceFs,
+  telDir: string,
+  skips?: RecordSkips,
+): BufferedSegment[] {
   const out: BufferedSegment[] = [];
   const subs = fs
     .readdir(telDir)
@@ -218,11 +326,15 @@ export function readBufferedSegments(fs: EvidenceFs, telDir: string): BufferedSe
       .sort((a, b) => a.seq - b.seq);
     for (const f of seqs) {
       const raw = fs.readText(posixJoin(subDir, f.name));
-      if (raw === null) continue;
+      if (raw === null) {
+        if (skips) skips.skipped += 1; // listed but unreadable — a record, not an absence
+        continue;
+      }
       try {
         out.push({ seg: JSON.parse(raw) as Segment, session: sub, seq: f.seq });
       } catch {
         // a corrupt buffer file is skipped, never fatal (fail-safe; AC-03)
+        if (skips) skips.skipped += 1;
       }
     }
   }
@@ -282,7 +394,17 @@ export function turnBuckets(
  * fold instead of reimplementing it (plan 051 · T002; dossier F-05 "reuse, don't
  * reimplement"). `pijSessionId` is echoed into `SessionEvidence.pij_session_id`.
  */
-export function fold(pijSessionId: string, segments: readonly Segment[]): SessionEvidence {
+export function fold(
+  pijSessionId: string,
+  segments: readonly Segment[],
+  /**
+   * Where these segments came from. `ref` stamps the token evidence `ref` and marks
+   * the legacy sum whole-session — a rolled ref holds every seq of the session in ONE
+   * tree by construction, which is the same rule `readRefLanes` (ref-source.ts)
+   * applies. Two readers, one number for one session.
+   */
+  origin: 'live' | 'ref' = 'live',
+): SessionEvidence {
   const skills: Record<string, number> = {};
   const skillOrder: string[] = [];
   const tools: Record<string, number> = {};
@@ -292,6 +414,7 @@ export function fold(pijSessionId: string, segments: readonly Segment[]): Sessio
   const written: string[] = [];
   const edited: string[] = [];
   let compactions = 0;
+  const refusals: Record<string, number> = {};
   let subagentTokensKnown = true;
   let anyPlans = false;
   // F13 (plan 046 · AC-08): the run's wall-span, tracked as min/max event epoch.
@@ -327,6 +450,14 @@ export function fold(pijSessionId: string, segments: readonly Segment[]): Sessio
           break;
         case 'compaction':
           compactions += 1;
+          break;
+        case 'command_exit':
+          // Only a code-carrying exit is evidence of a REFUSAL. A plain non-zero
+          // exit is a failure of some other kind, and conflating the two would
+          // make "the gate stopped me" unprovable all over again.
+          if (typeof ev.code === 'string' && ev.code.length > 0) {
+            refusals[ev.code] = (refusals[ev.code] ?? 0) + 1;
+          }
           break;
         default:
           break; // other kinds are not part of the evidence surface
@@ -381,8 +512,12 @@ export function fold(pijSessionId: string, segments: readonly Segment[]): Sessio
   }
   const tokenEvidence =
     usageObservation !== null
-      ? tokenEvidenceFromObservation(usageObservation, 'live')
-      : tokenEvidenceFromLegacyTokens(legacyMeasured ? legacy : null, 'live');
+      ? tokenEvidenceFromObservation(usageObservation, origin)
+      : tokenEvidenceFromLegacyTokens(
+          legacyMeasured ? legacy : null,
+          origin,
+          origin === 'ref' ? { wholeSession: true } : undefined,
+        );
   if (usageObservation === null && legacyMeasured && legacyMissing) {
     tokenEvidence.coverage = 'partial';
     tokenEvidence.reason = 'source_unavailable';
@@ -414,10 +549,16 @@ export function fold(pijSessionId: string, segments: readonly Segment[]): Sessio
     checks,
     compactions,
     tools,
+    refusals,
     gaps,
     // A span needs ≥ 2 timestamped events; otherwise the duration is honestly
     // unknown (null), never 0. Rounded to whole seconds.
     duration_s: timestamped >= 2 && maxT > minT ? Math.round((maxT - minT) / 1000) : null,
+    // Provenance the CALLER owns — `fold` only knows which segments it was handed,
+    // not whether a ref surface existed to check. Both are overwritten by the read
+    // path below; these are the honest defaults for a bare fold.
+    source: origin === 'ref' ? 'ref' : 'buffer',
+    ref_checked: origin === 'ref',
   };
 }
 
@@ -496,7 +637,7 @@ function foldDurable(
   telDir: string,
   deps: SessionEvidenceDeps,
 ): SessionEvidence {
-  const { segments, flushedUnreachable } = durableSegments(matched, telDir, deps);
+  const { segments, flushedUnreachable, refRecovered } = durableSegments(matched, telDir, deps);
   const evidence = fold(
     pijSessionId,
     segments.filter((s) => s.captured_env?.[PIJ_SESSION_ENV] === pijSessionId),
@@ -505,44 +646,201 @@ function foldDurable(
     evidence.token_evidence.coverage = 'partial';
     evidence.token_evidence.reason = 'flushed_segments_unreadable';
   }
+  // The union really did read both surfaces — say so rather than let `buffer` imply
+  // the ref contributed nothing.
+  evidence.source = refRecovered.length > 0 ? 'buffer+ref' : 'buffer';
   return evidence;
 }
 
 /**
- * Read + join + fold a pij session's telemetry into normalized {@link SessionEvidence},
- * or `null` when no segment carries this pij id. Scans the candidate buffer roots
- * (worktree → pij folder → cwd) and uses the FIRST that yields a match — the
- * dual-tree fallback. Fail-safe: any unexpected error resolves to `null` (a read
- * service never throws to its caller). No cache.
+ * Tier 2 — the session as its COMMITTED ref knows it (FX001 · T1).
+ *
+ * The post-commit hook flushes on every commit, so a subject that commits blinds its
+ * own telemetry lane: the buffer keeps markers and the segments live only on
+ * `refs/harness-telemetry/*`. This joins those rolled segments by the SAME key the
+ * buffer read uses — `captured_env.PIJ_SESSION_ID` — so a ref belonging to another
+ * session can never satisfy the join. `null` when the ref surface holds nothing for
+ * this pij id, which is what keeps `E100` meaning something — and `status` says whether
+ * that `null` is a real miss or a read that never happened (R2).
+ */
+function foldFromRefs(
+  pijSessionId: string,
+  gitRead: GitReadPort,
+): { evidence: SessionEvidence | null; status: 'ok' | 'port_failed'; skipped: number } {
+  const read = readRefSegmentsOutcome(gitRead);
+  const matched = [...read.segments.values()]
+    .flat()
+    .filter((s) => s.captured_env?.[PIJ_SESSION_ENV] === pijSessionId);
+  return {
+    evidence: matched.length > 0 ? fold(pijSessionId, matched, 'ref') : null,
+    status: read.status,
+    skipped: read.skipped,
+  };
+}
+
+/**
+ * How the read ENDED — provenance that survives a `null` (FX001 · R1).
+ *
+ * `null` used to be one word for three different states, and the act said "both
+ * surfaces were empty" for all of them. Two of those three were false, and one was a
+ * claim about a surface that had never been looked at. Failing safe is not licence to
+ * report a conclusion you never reached.
+ */
+export type SessionEvidenceResolution =
+  /** Evidence was found; `evidence` is non-null. */
+  | 'resolved'
+  /** Both surfaces really were consulted and neither held this session. */
+  | 'both_empty'
+  /**
+   * The buffer held nothing and the ref surface could not be CONSULTED — either no
+   * local namespace exists, or there was no git read port to look with. Which one is
+   * in {@link SessionEvidenceOutcome.ref_namespace}; they send a reader to different
+   * fixes (fetch the namespace vs use a caller that has a port).
+   */
+  | 'ref_unavailable'
+  /** The read failed before either surface could be established — nothing is known. */
+  | 'resolution_failed';
+
+/** A read outcome plus the provenance a `null` would otherwise destroy. */
+export interface SessionEvidenceOutcome {
+  evidence: SessionEvidence | null;
+  /** Whether a local `refs/harness-telemetry/*` namespace was there to consult. */
+  ref_checked: boolean;
+  resolution: SessionEvidenceResolution;
+  /**
+   * WHY the ref surface could or could not contribute — the precise reason behind the
+   * coarse `resolution` (R3). `not_checked` is the one `ref_checked: false` used to
+   * hide: no git read port existed, so nothing was looked at.
+   */
+  ref_namespace: RefNamespaceState;
+  /**
+   * `true` when the buffer LOCATOR dropped a candidate root for a reason it could not
+   * establish (no HOME, or a corrupt `~/.pij/<id>.json`) — so a miss covers the roots
+   * that were reachable, not every root that exists (R3).
+   */
+  locator_degraded: boolean;
+  /**
+   * Records the read REJECTED as malformed (buffer files + rolled ref records).
+   * Skipping them is the documented fail-safe and stays that way — but a miss with
+   * `records_skipped > 0` is "I could not read what was there", not "there was
+   * nothing there", and only the count can tell those apart (R2).
+   */
+  records_skipped: number;
+}
+
+/**
+ * Read + join + fold a pij session's telemetry, KEEPING the provenance of a miss.
+ * Scans the candidate buffer roots (worktree → pij folder → cwd), then falls back to
+ * the committed refs. Fail-safe: any unexpected error resolves to
+ * `resolution_failed` with `ref_checked: false` — a read service never throws to its
+ * caller, and never claims a surface it did not reach. No cache.
+ */
+export async function resolveSessionEvidence(
+  pijSessionId: string,
+  deps: SessionEvidenceDeps,
+  opts?: SessionEvidenceOpts,
+): Promise<SessionEvidenceOutcome> {
+  const skips: RecordSkips = { skipped: 0 };
+  const notes: LocatorNotes = { degraded: false };
+  // Hoisted so even the catch reports the namespace it HAD established rather than
+  // resetting to a value it did not observe.
+  let namespace: RefNamespaceState = 'not_checked';
+  const provenance = (): Pick<
+    SessionEvidenceOutcome,
+    'ref_namespace' | 'locator_degraded' | 'records_skipped'
+  > => ({
+    ref_namespace: namespace,
+    locator_degraded: notes.degraded,
+    records_skipped: skips.skipped,
+  });
+  try {
+    // Is there a ref namespace at all? Answered once, up front, so the provenance is
+    // the same statement whichever tier ends up answering — including a miss. FOUR
+    // answers, not two: `unreadable` is the one that used to pass as `absent` (R2), and
+    // `not_checked` — no port to look WITH — is the one this branch itself used to
+    // mislabel as `absent` (R3). "I have no port" is not "there is nothing there".
+    namespace = deps.gitRead === undefined ? 'not_checked' : telemetryRefNamespace(deps.gitRead);
+    const refChecked = namespace === 'present';
+
+    for (const telDir of candidateRoots(pijSessionId, deps, opts, notes)) {
+      const matched = readBufferedSegments(deps.fs, telDir, skips).filter(
+        (e) => e.seg.captured_env?.[PIJ_SESSION_ENV] === pijSessionId,
+      );
+      if (matched.length === 0) continue;
+      const evidence = foldDurable(pijSessionId, matched, telDir, deps);
+      // The durable union can come out EMPTY even though the buffer matched — every
+      // matched seq at/below the flush watermark, and the ref's copy of them not
+      // carrying the join key. A zero-segment evidence object is the hollow answer
+      // this fix exists to abolish; keep looking rather than dress it up as one (R2).
+      if (evidence.segments === 0) continue;
+      evidence.ref_checked = refChecked;
+      return { evidence, ref_checked: refChecked, resolution: 'resolved', ...provenance() };
+    }
+
+    // The buffer is absent or flushed-markers-only. The ref is not a consolation
+    // prize here — after the first commit it is the ONLY place the session exists.
+    if (deps.gitRead !== undefined) {
+      const ref = foldFromRefs(pijSessionId, deps.gitRead);
+      skips.skipped += ref.skipped;
+      if (ref.evidence !== null) {
+        ref.evidence.ref_checked = refChecked;
+        return {
+          evidence: ref.evidence,
+          ref_checked: refChecked,
+          resolution: 'resolved',
+          ...provenance(),
+        };
+      }
+      // The read did not complete — a git command failed. Whatever came back empty
+      // was never consulted, so no miss may be reported as established.
+      if (ref.status === 'port_failed') {
+        return {
+          evidence: null,
+          ref_checked: false,
+          resolution: 'resolution_failed',
+          ...provenance(),
+        };
+      }
+    }
+    // A miss. WHICH miss is the whole point: "checked and empty", "there was nothing
+    // to check", "no port to check with", and "the check itself failed" send a reader
+    // to four different places.
+    if (namespace === 'unreadable') {
+      return {
+        evidence: null,
+        ref_checked: false,
+        resolution: 'resolution_failed',
+        ...provenance(),
+      };
+    }
+    return {
+      evidence: null,
+      ref_checked: refChecked,
+      resolution: refChecked ? 'both_empty' : 'ref_unavailable',
+      ...provenance(),
+    };
+  } catch {
+    // Nothing was established — not the buffer, not the ref. Say exactly that.
+    return {
+      evidence: null,
+      ref_checked: false,
+      resolution: 'resolution_failed',
+      ...provenance(),
+    };
+  }
+}
+
+/**
+ * {@link resolveSessionEvidence} narrowed to its evidence — `null` when no segment
+ * carries this pij id. The long-standing signature, kept for every caller that only
+ * needs the answer; reach for the resolution form when a MISS has to be explained.
  */
 export async function getSessionEvidence(
   pijSessionId: string,
   deps: SessionEvidenceDeps,
   opts?: SessionEvidenceOpts,
 ): Promise<SessionEvidence | null> {
-  try {
-    for (const telDir of candidateRoots(pijSessionId, deps, opts)) {
-      const matched = readBufferedSegments(deps.fs, telDir).filter(
-        (e) => e.seg.captured_env?.[PIJ_SESSION_ENV] === pijSessionId,
-      );
-      if (matched.length > 0) return foldDurable(pijSessionId, matched, telDir, deps);
-    }
-    if (deps.gitRead !== undefined) {
-      const ref = [...readRefLanes(deps.gitRead).values()].find(
-        (lane) => lane.pij_session_id === pijSessionId,
-      );
-      if (ref !== undefined) {
-        const evidence = fold(pijSessionId, []);
-        evidence.harness_session_id = ref.harness_session_id;
-        evidence.segments = ref.segments;
-        evidence.token_evidence = ref.token_evidence;
-        return evidence;
-      }
-    }
-    return null;
-  } catch {
-    return null;
-  }
+  return (await resolveSessionEvidence(pijSessionId, deps, opts)).evidence;
 }
 
 /**

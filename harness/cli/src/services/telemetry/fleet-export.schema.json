@@ -240,8 +240,11 @@
         "checks",
         "compactions",
         "tools",
+        "refusals",
         "gaps",
-        "duration_s"
+        "duration_s",
+        "source",
+        "ref_checked"
       ],
       "properties": {
         "pij_session_id": {
@@ -342,6 +345,17 @@
           },
           "description": "tool name \u2192 total invocation count (histogram)."
         },
+        "refusals": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^E\\d{3}$"
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "description": "refusal E-code \u2192 count (histogram). The KEY SPACE is pinned to `E###` so this open map cannot become a free-text channel \u2014 the one histogram here whose keys are a closed vocabulary rather than repo-supplied names."
+        },
         "gaps": {
           "type": "array",
           "items": {
@@ -354,6 +368,19 @@
             "null"
           ],
           "minimum": 0
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "buffer",
+            "ref",
+            "buffer+ref"
+          ],
+          "description": "Which surface this evidence was read from (FX001): the live temp buffer, the committed refs/harness-telemetry/* rollup, or the durable union of both. Provenance is stated, never inferred — a silent merge is how the next reader gets lied to about which surface was empty."
+        },
+        "ref_checked": {
+          "type": "boolean",
+          "description": "Whether a refs/harness-telemetry/* namespace was visible locally to check. `false` means the ref surface could not contribute (no git read port, or a clone that never fetched it) — NOT that the ref had nothing for this session, which is an empty join and still reports `true`."
         },
         "token_evidence": {
           "$ref": "#/$defs/tokenEvidence"

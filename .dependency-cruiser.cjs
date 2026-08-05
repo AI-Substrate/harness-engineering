@@ -116,6 +116,60 @@ module.exports = {
       to: { path: '^harness/cli/src/acts', reachable: true },
     },
     {
+      name: 'dd-mutate-never-imports-output',
+      comment:
+        'The dd writer layer returns structured refusals and never imports harness envelopes or exits — the act maps a refusal reason to an E-code, exactly as it does for dd-core and links.',
+      severity: 'warn',
+      from: { path: '^harness/cli/src/services/dd/mutate' },
+      to: { path: '^harness/cli/src/output', reachable: true },
+    },
+    {
+      name: 'dd-mutate-never-imports-acts',
+      comment: 'The dd writer layer is a library boundary and never imports command handlers.',
+      severity: 'warn',
+      from: { path: '^harness/cli/src/services/dd/mutate' },
+      to: { path: '^harness/cli/src/acts', reachable: true },
+    },
+    {
+      name: 'dd-mutate-never-imports-node-adapters',
+      comment:
+        'The dd writer layer is `(doc, address, value) => doc | refusal`. Reading and writing files belongs to the act, so a mutation is testable — and a refusal provable — without a filesystem.',
+      severity: 'warn',
+      from: { path: '^harness/cli/src/services/dd/mutate' },
+      to: { path: '^harness/cli/src/adapters', reachable: true },
+    },
+    {
+      name: 'dd-plan-never-imports-output',
+      comment:
+        'The plan semantic layer returns structured findings and never imports harness envelopes or exits — the act maps a finding class to an E-code, exactly as every other dd layer does.',
+      severity: 'warn',
+      from: { path: '^harness/cli/src/services/dd/plan' },
+      to: { path: '^harness/cli/src/output', reachable: true },
+    },
+    {
+      name: 'dd-plan-never-imports-acts',
+      comment: 'The plan semantic layer is a library boundary and never imports command handlers.',
+      severity: 'warn',
+      from: { path: '^harness/cli/src/services/dd/plan' },
+      to: { path: '^harness/cli/src/acts', reachable: true },
+    },
+    {
+      name: 'dd-plan-never-imports-node-adapters',
+      comment:
+        'The plan semantic layer takes already-loaded documents and already-walked edges. Reading files belongs to the act, so a contradiction is provable without a filesystem.',
+      severity: 'warn',
+      from: { path: '^harness/cli/src/services/dd/plan' },
+      to: { path: '^harness/cli/src/adapters', reachable: true },
+    },
+    {
+      name: 'dd-plan-never-imports-render',
+      comment:
+        'The plan semantic layer reads structure, never markdown — the same boundary that keeps dd graph independent of the renderer.',
+      severity: 'warn',
+      from: { path: '^harness/cli/src/services/dd/plan' },
+      to: { path: '^harness/cli/src/services/dd/render', reachable: true },
+    },
+    {
       name: 'dd-render-never-imports-output',
       comment: 'The dd renderer is pure — it returns markdown and never imports harness envelopes or exits.',
       severity: 'warn',
@@ -139,7 +193,7 @@ module.exports = {
     {
       name: 'flow-consumes-dd-sdk-only',
       comment:
-        'The flow spine is an EXTERNAL consumer of dd, not a co-resident: it may import ONLY dd\'s published SDK barrels (services/dd/links/index.ts and services/dd/schema/index.ts), never a dd module path. That line is the whole difference between an SDK and a shared folder. When the flow needs something dd does not export, EXPOSE a named seam on a barrel deliberately (as `deriveSchemaItems` was) — never reach past one. Covers TYPE-ONLY imports too (see tsPreCompilationDeps above): a type reaching past the barrel couples the flow to an internal shape just as hard as a value does, and breaks the same way when dd moves it.',
+        'The flow spine is an EXTERNAL consumer of dd, not a co-resident: it may import ONLY dd\'s published SDK barrels (services/dd/links/index.ts, services/dd/schema/index.ts and services/dd/plan/index.ts), never a dd module path. That line is the whole difference between an SDK and a shared folder. When the flow needs something dd does not export, EXPOSE a named seam on a barrel deliberately (as `deriveSchemaItems` was, and as `readPlanCheck` is for the check-kind gate) — never reach past one. Covers TYPE-ONLY imports too (see tsPreCompilationDeps above): a type reaching past the barrel couples the flow to an internal shape just as hard as a value does, and breaks the same way when dd moves it.',
       severity: 'warn',
       // Both flow consumers: the service layer AND the act that composes it. The act
       // is the composition root, so it legitimately constructs dd's adapters — but it
@@ -147,7 +201,7 @@ module.exports = {
       from: { path: '^harness/cli/src/(services/flow|acts/flow\\.ts$)' },
       to: {
         path: '^harness/cli/src/services/dd',
-        pathNot: '^harness/cli/src/services/dd/(links|schema)/index\\.ts$',
+        pathNot: '^harness/cli/src/services/dd/(links|schema|plan)/index\\.ts$',
       },
     },
     {

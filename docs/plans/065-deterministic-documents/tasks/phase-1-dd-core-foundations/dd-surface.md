@@ -26,6 +26,10 @@ renegotiation.
 | `dd links <target> [--json]` | Phase 4: Links, ledger & doctor | `unconfigured`, exit 2 |
 | `dd graph [--json]` | Phase 4: Links, ledger & doctor | `unconfigured`, exit 2 |
 | `dd doctor [--json]` | Phase 4: Links, ledger & doctor | `unconfigured`, exit 2 |
+| `dd get <address> [--json]` | plan 070 Phase 1: dd writer verbs | shipped |
+| `dd set <address> <value> [--value-json] [--json]` | plan 070 Phase 1: dd writer verbs | shipped |
+| `dd add <address> <json> [--mint <prefix>] [--json]` | plan 070 Phase 1: dd writer verbs | shipped |
+| `dd rm <address> [--json]` | plan 070 Phase 1: dd writer verbs | shipped |
 
 Every placeholder `next_action` names its owning phase exactly. `dd validate`
 remains a placeholder until Phase 2 supplies the real convention-based schema
@@ -45,9 +49,54 @@ string.
 |---|---|
 | `dd doctor` scope/options | RESERVED — Phase 4 leaf decision. Options may be added; command name and zero frozen positionals may not change. **GRANTED 2026-08-03 (PM renegotiation, P4 T007b)**: `--path <dir>` — scopes the sweep ROOT SET to a subtree; radius stays infinite. |
 | `dd graph` emit/scope options | RESERVED — Phase 4 leaf decision. Options may be added; command name and zero frozen positionals may not change. **GRANTED 2026-08-03 (PM renegotiation, P4 T007c)**: `--path <dir>` — same root-set semantics as doctor, deliberately the same word. No emit option (global `--json` + human mermaid already cover both modes). |
-| `dd graph` subcommand namespace | RESERVED — extended for Phase 7. **GRANTED 2026-08-04 (PM renegotiation, P7 T001; requested by Jordan)**: `dd graph map <address>` — a NAMED SUBCOMMAND, not a positional on bare `dd graph`. Bare `dd graph` keeps zero positionals and byte-identical output, so the P4 freeze is intact rather than amended: `map` is a sibling verb under the same noun. Options granted with it: `--depth <n>` (default 3), `--max-nodes <n>` (default 20), `--direction in\|out\|both` (default both). **No new E-codes** — E430-E439 is full, and a bad seed address is already `E430 DD_LINK_UNRESOLVED` while a traversal failure is already `E436 DD_LINK_SCAN_FAILED`. Opening E450+ for this would be a block extension bought for nothing. |
+| `dd graph` subcommand namespace | RESERVED — extended for Phase 7. **GRANTED 2026-08-04 (PM renegotiation, P7 T001; requested by Jordan)**: `dd graph map <address>` — a NAMED SUBCOMMAND, not a positional on bare `dd graph`. Bare `dd graph` keeps zero positionals and byte-identical output, so the P4 freeze is intact rather than amended: `map` is a sibling verb under the same noun. Options granted with it: `--depth <n>` (default 3), `--max-nodes <n>` (default 20), `--direction in\|out\|both` (default both). **GRANTED 2026-08-04 (plan 070 Phase 1, tk-7014)**: `--rel <rel>` — repeatable; follows only edges carrying one of the named relations. No default: an absent flag means EVERY relation, because a filter that defaulted to a set would answer a narrower question than the one asked while looking like a complete map. **No new E-codes** — E430-E439 is full, and a bad seed address is already `E430 DD_LINK_UNRESOLVED` while a traversal failure is already `E436 DD_LINK_SCAN_FAILED`. Opening E450+ for this would be a block extension bought for nothing. |
 | `dd link verify-basis` explicit re-verification mutation semantics | RESERVED — Phase 4 leaf decision. Read-only `<address> --sha <sha>` remains frozen; any mutation option is additive only. **GRANTED 2026-08-03 (PM renegotiation, P4 T007a)**: `--update <doc>` — no separate re-verify verb; re-verification IS verify-basis plus this explicit write flag, updating the recorded sha in the REFERENCING doc's ledger entry (both `live` and `pinned` modes; an entry's mode never changes as a side effect). Read-only form byte-identical when absent. |
 | `dd address validate --resolve` segment classification | RESERVED — Phase 4 resolves optional instance ids versus shape-part names against the schema. P1 parser `kind` values are positional hints only; the frozen command and option do not change. **RULED 2026-08-03 (PM renegotiation, P4 T007d)**: no new option — with `--resolve`, each segment is classified against the resolved schema shape + data as section \| part \| instance (shape-directed, never positional guessing). |
+
+## Frozen link relations
+
+**GRANTED 2026-08-04 (one-line renegotiation, plan 070 Phase 1)**: a schema may
+declare `rel` on any `link` shape (including an array's `items`). The built-in
+set is FROZEN at five; the namespace is OPEN — an unknown rel is accepted and
+behaves as `ref`. Extending the built-in set is a one-line renegotiation of this
+table, and `dd-surface.test.ts` counts the rows.
+
+| Relation | Meaning |
+|---|---|
+| `pressure` | this assertion names the instrument that checks it |
+| `proven_by` | this claim points at the record that evidences it |
+| `satisfies` | this work accounts for that acceptance criterion |
+| `derives` | this item's state is computed FROM the target |
+| `ref` | a plain reference, carrying no further semantics |
+
+## Frozen flow gate kinds
+
+**GRANTED 2026-08-04 (one-line renegotiation, plan 071 ph-7102, tk-7131/tk-7132)**:
+a flow node's `dd_link` may carry an optional `check`, naming WHICH question the
+departure gate asks. Absent `check` is the completion kind and is byte-identical
+to what shipped in 065 — the opt-in guarantee is unchanged, and a flow with no
+`check` anywhere behaves exactly as before. The vocabulary is FROZEN; an unknown
+value is REFUSED (authoring → `E108`; a file already on disk → `E444` at the
+gate), never defaulted, because both plausible defaults lie: running a check
+nobody asked for, or silently downgrading a gate the author believed they had.
+Extending the set is a one-line renegotiation of this table, and
+`dd-surface.test.ts` counts the rows.
+
+| Gate kind | `dd_link` shape | Question it asks |
+|---|---|---|
+| completion | `{address}` (no `check`) | are every item at the address gate-terminal? |
+| `plan-validate` | `{address, check: "plan-validate"}` | does `harness plan validate --complete` come back green for the plan at the address? |
+
+**No new E-codes.** A non-green check is `E440 DD_GATE_UNSATISFIED` — a gate that
+is not satisfied, which is what it is; an unresolvable address is `E441`; an
+unimplemented `check` is `E444 DD_GATE_EVALUATION_FAILED`, because "this CLI
+cannot answer that question" is precisely a gate that could not be evaluated. An
+agent that already handles a gate refusal handles the second kind without
+learning anything, and E440–E449 stays a complete allocation.
+
+The check gate's `address` accepts BOTH a bare document path and a full
+`path#interior` address; an interior scopes the check to that address's closure
+(the `--address` read), and its absence checks the whole plan.
 
 ## Error allocation
 
@@ -125,3 +174,33 @@ string.
 | E447 | `DD_GATE_EVENT_WRITE_FAILED` | force event receipt write failed |
 | E448 | `DD_GATE_SURFACE_FAILED` | orient/rail/render gate output failed |
 | E449 | `DD_GATE_LINK_MISSING` | gate-enabled node lacks link data |
+
+### E450-E459 — dd writer verbs & the plan semantic layer
+**GRANTED 2026-08-04 (one-line renegotiation, plan 070 Phase 1)**: E430-E439 and
+E440-E449 are both complete allocations, so the writer family (`dd get/set/add/rm`)
+and `harness plan validate`'s semantic layer open the next block. Complete
+allocation; the surface test counts sixty E4xx codes.
+
+| Code | Name | Failure class |
+|---|---|---|
+| E450 | `DD_MUTATION_TARGET_INVALID` | address names no target the verb can act on |
+| E451 | `DD_MUTATION_SCHEMA_REFUSED` | mutation would break the schema; nothing written |
+| E452 | `DD_MUTATION_WRITE_FAILED` | writing the mutated document failed |
+| E453 | `DD_MUTATION_VALUE_INVALID` | value unreadable as the declared type |
+| E454 | `DD_ID_MINT_FAILED` | no collision-free id under the requested prefix |
+| E455 | `DD_REL_INVALID` | schema declares a malformed link relation |
+| E456 | `DD_PLAN_CONTRADICTION` | gate-terminal item links to a non-terminal target |
+| E457 | `DD_PLAN_INCOMPLETE` | `--complete` found open completables or orphan ACs |
+| E458 | `DD_PLAN_SCOPE_UNRESOLVED` | `--address` scope did not resolve |
+| E459 | `DD_PLAN_VALIDATE_FAILED` | the semantic validation pass itself failed |
+
+### E460-E469 — builder fence and review documents
+**GRANTED 2026-08-04 (one-line renegotiation, plan 071 ph-7103)**: E450-E459 is a
+complete allocation, so the fence check (`harness plan fence`, ac-7120) and the
+review corpus (ac-7121) open the next block. Partial allocation — E462-E469 are
+free. The surface test counts sixty-two E4xx codes.
+
+| Code | Name | Failure class |
+|---|---|---|
+| E460 | `DD_FENCE_VIOLATION` | a touched path is refused by an active fence row |
+| E461 | `DD_FENCE_INVALID` | the fence document cannot be read as a fence |

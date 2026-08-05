@@ -104,3 +104,6 @@ which changes the SHA the other file records. The pair cannot settle.
 The validator does not prohibit this structure. Keep basis dependencies
 acyclic by design. A log can link back to a plan without recording the plan as
 a basis if the log's meaning does not depend on transcluding plan state.
+
+For why freshness matters — how these mechanisms add up to an auditable claim — see
+[The builder proof graph](11-the-builder-proof-graph.md).

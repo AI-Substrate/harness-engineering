@@ -1,6 +1,7 @@
 import type { Clock } from '../../adapters/clock/clock-port.js';
 import { ErrorCodes } from '../../output/error-codes.js';
-import type { DdGateResult } from './flow-dd-gate.js';
+import { PLAN_CHECK_KINDS } from '../dd/plan/index.js';
+import type { DdGateFailureReason, DdGateResult } from './flow-dd-gate.js';
 import { readingOf } from './flow-dd-gate.js';
 import {
   buildBuiltinEvent,
@@ -105,10 +106,15 @@ const FORCE_ETIQUETTE =
   "Record why departing was the human's decision — an agent may not force a dd gate on its own judgment (workshop-002). `human-skipped` or `na` on the individual items is the legitimate way a gate passes without the work.";
 
 /** Gate-failure reason → the E44x it answers to. Exhaustive by construction. */
-const GATE_FAILURE_CODES: Record<string, string> = {
+const GATE_FAILURE_CODES: Record<DdGateFailureReason, string> = {
   'link-missing': ErrorCodes.DD_GATE_LINK_MISSING,
   'target-invalid': ErrorCodes.DD_GATE_TARGET_INVALID,
   'schema-unresolvable': ErrorCodes.DD_GATE_SCHEMA_UNRESOLVABLE,
+  // A flow asking for a check this binary does not have is a gate that cannot be
+  // evaluated — not a gate that failed, and emphatically not a gate that passed.
+  // `E444` already means exactly that, so the check kind needed no new code: an
+  // agent handling "could not evaluate" handles this without learning anything.
+  'check-unknown': ErrorCodes.DD_GATE_EVALUATION_FAILED,
 };
 
 /**
@@ -150,6 +156,25 @@ function departureGate(
       `Fix the node's dd_link address (\`harness dd link resolve "${result.address}"\` shows what it resolves to), or pass --force to record a defended override. Nothing was written.`,
     );
   }
+  // A CHECK gate refuses in the validator's own words. Its "items" are one
+  // assertion, so naming them the way a completion gate does would say
+  // "1 of 1 items are not complete" and stop — true, useless, and one command
+  // short of the answer. Every finding is quoted instead, in full: the reader gets
+  // what `plan validate --complete` would have told them, at the moment they were
+  // stopped, without running it again.
+  if (result.kind === 'check') {
+    const quoted = result.findings
+      .map(
+        (finding) =>
+          `  ${finding.severity} ${finding.class} ${finding.address}: ${finding.message}`,
+      )
+      .join('\n');
+    return fail(
+      ErrorCodes.DD_GATE_UNSATISFIED,
+      `node "${fromId}" gates on "${result.check}" for "${result.address}", which is not green — ${result.findings.length} finding(s):\n${quoted}`,
+      `Resolve every finding above (\`${checkCommand(result.address)}\` re-reads them), then retry. If departing anyway is the human's decision, re-run with --force to record a defended override. Nothing was written.`,
+    );
+  }
   // Every incomplete item is named, never a count and never a truncated head: the
   // whole point of a computed gate is that you do not have to go and look up what
   // is outstanding. Each one carries its STATE, because `blocked` and `unchecked`
@@ -164,6 +189,24 @@ function departureGate(
     `node "${fromId}" gates on "${result.address}": ${result.incomplete.length} of ${result.total} items are not complete (${items}).`,
     `Complete or state the listed items in ${result.path} (gate-terminal states: ${result.gate_terminal.join(', ')}), then retry. If departing anyway is the human's decision, re-run with --force to record a defended override. Nothing was written.`,
   );
+}
+
+/**
+ * The exact command that reproduces a check-gate refusal.
+ *
+ * The address is split on `#` rather than passed whole: `plan validate` takes a
+ * DOCUMENT and scopes with `--address`, so handing it the address as a target
+ * would fail with a second, unrelated error and teach the reader nothing. A gate's
+ * next_action has to be runnable — a next_action you have to debug is a next
+ * question.
+ */
+function checkCommand(address: string): string {
+  const hash = address.indexOf('#');
+  const file = hash < 0 ? address : address.slice(0, hash);
+  const interior = hash < 0 ? '' : address.slice(hash + 1);
+  return interior.length > 0
+    ? `harness plan validate ${file} --complete --address "${address}"`
+    : `harness plan validate ${file} --complete`;
 }
 
 /**
@@ -213,13 +256,23 @@ function overrideNotice(
         // in every diff, and a username leak for nothing: `address` already says
         // which document, portably.
         address: result.address,
+        ...(result.kind === 'check' && {
+          check: result.check,
+          // The COUNT of findings, not their text. A forced override is a durable
+          // flow event that lands in a committed document; the findings are
+          // validator prose about rows that will have changed by the time anyone
+          // reads it, and re-running the check is both cheap and current.
+          findings: result.findings.length,
+        }),
         incomplete: [...result.incomplete],
         terminal: result.terminal,
         total: result.total,
       }
     : { node: fromId, to, address: result.address, reason: result.reason };
   const description = result.ok
-    ? `--force override: departed "${fromId}" with ${result.incomplete.length} of ${result.total} dd gate items incomplete. ${FORCE_ETIQUETTE}`
+    ? result.kind === 'check'
+      ? `--force override: departed "${fromId}" with a non-green ${result.check} gate (${result.findings.length} finding(s)). ${FORCE_ETIQUETTE}`
+      : `--force override: departed "${fromId}" with ${result.incomplete.length} of ${result.total} dd gate items incomplete. ${FORCE_ETIQUETTE}`
     : `--force override: departed "${fromId}" with an unevaluable dd gate (${result.reason}). ${FORCE_ETIQUETTE}`;
   const event = buildManualEvent('dd-gate-override', doc.events, deps.clock, {
     description,
@@ -544,18 +597,18 @@ function badZone(spec: NodeSpec): FlowFailure | null {
  * diff, and letting `{"total": "1\\"] --> EVIL"}` land in it is a durable problem
  * that a render-time escape only hides.
  *
- * `sanitizeDdLink` draws the AUTHORED/RECORDED distinction: a bad `address` or
- * `gate` is a mistake the author must be told about (this `E108`), while a bad
- * `basis_sha`/`reading` is dropped on the way in — nobody authored it, and the gate
- * recomputes it live on the next departure.
+ * `sanitizeDdLink` draws the AUTHORED/RECORDED distinction: a bad `address`,
+ * `check` or `gate` is a mistake the author must be told about (this `E108`), while
+ * a bad `basis_sha`/`reading` is dropped on the way in — nobody authored it, and the
+ * gate recomputes it live on the next departure.
  */
 function badDdLink(value: unknown): FlowFailure | null {
   if (value === undefined) return null;
   if (sanitizeDdLink(value) !== null) return null;
   return fail(
     ErrorCodes.INVALID_ARGS,
-    'invalid dd_link — it needs a non-empty string "address", and "gate" (if present) must be a boolean.',
-    'Write {"address": "<path>.dd.json#<section>", "gate": true|false}. `basis_sha` and `reading` are recorded BY the gate — do not author them.',
+    `invalid dd_link — it needs a non-empty string "address", "gate" (if present) must be a boolean, and "check" (if present) must be one of: ${PLAN_CHECK_KINDS.join(', ')}.`,
+    'Write {"address": "<path>.dd.json#<section>", "gate": true|false} for a completion gate, or add {"check": "plan-validate"} for the semantic one. `basis_sha` and `reading` are recorded BY the gate — do not author them.',
   );
 }
 

@@ -857,6 +857,15 @@ export function buildFleetEvidence(
   const buildLane = (sid: string, segs: Segment[]): FleetLane => {
     const { tokens, measured, token_evidence } = laneTokens(segs, refRecovered);
     const evidence = fold(sid, segs);
+    // The nested evidence states its OWN provenance (FX001): a lane folded from the
+    // durable union really did read the committed ref, and leaving the `buffer`
+    // default here would assert the ref contributed nothing to a number it produced.
+    const fromRef = segs.filter((seg) => refRecovered?.has(seg) === true).length;
+    evidence.source = fromRef === 0 ? 'buffer' : fromRef === segs.length ? 'ref' : 'buffer+ref';
+    // `refRecovered` is supplied only by the caller that performed the durable
+    // union — its presence IS the statement that the ref surface was consulted,
+    // whether or not this particular lane got anything from it.
+    evidence.ref_checked = refRecovered !== undefined;
     return {
       pij_id: sid,
       role: roleOf.get(sid) ?? null,

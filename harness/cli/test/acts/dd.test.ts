@@ -85,6 +85,11 @@ describe('harness dd act surface', () => {
       'links',
       'graph',
       'doctor',
+      // The writer family, added by the plan 070 Phase 1 surface renegotiation.
+      'get',
+      'set',
+      'add',
+      'rm',
     ]);
     expect(
       dd?.commands.find((command) => command.name() === 'schema')?.commands.map((c) => c.name()),

@@ -1,5 +1,6 @@
 import { resolveInRepo } from '../../shared/posix-path.js';
 import { isAddressFailure, parseAddress } from '../core/address.js';
+import { DEFAULT_REL } from '../core/constants.js';
 import { resolveAddressFile } from '../core/validate.js';
 import type { DdMapMark, DdMapNode, DdMapResult } from './map.js';
 import type { DdCorpusGraph, DdLinkEdge } from './model.js';
@@ -590,9 +591,9 @@ export function renderMapTree(
       if (edge.arm !== arm) return [];
       if ((arm === 'out' ? edge.from : edge.to) !== node.key) return [];
       const other = byKey.get(arm === 'out' ? edge.to : edge.from);
-      return other ? [other] : [];
+      return other ? [{ node: other, rel: edge.rel }] : [];
     });
-    steps.forEach((other, index) => {
+    steps.forEach(({ node: other, rel }, index) => {
       const last = index === steps.length - 1;
       const connector = `${prefix}${last ? '\u2514\u2500' : '\u251c\u2500'}`;
       // Indentation is the only width this render cannot shorten, so it stops
@@ -601,8 +602,11 @@ export function renderMapTree(
       const nested =
         cellWidth(prefix) >= MAX_INDENT ? prefix : `${prefix}${last ? '  ' : '\u2502 '}`;
       if (other.parent === node.key && other.key !== node.key) {
+        // The relation rides on the arrow, and only when it carries meaning: a
+        // `ref` label on every line would be noise on every line.
+        const labelled = rel === DEFAULT_REL ? arrow : `${arrow.trimEnd()}${rel} `;
         lines.push(
-          ...nodeRow(other, shorten(other.address), connector, nested, arrow, palette, false),
+          ...nodeRow(other, shorten(other.address), connector, nested, labelled, palette, false),
         );
         branch(other, arm, nested, arrow);
         return;

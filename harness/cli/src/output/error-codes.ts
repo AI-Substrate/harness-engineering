@@ -219,6 +219,33 @@ export const ErrorCodes = {
   DD_GATE_SURFACE_FAILED: 'E448',
   /** A gate-enabled flow node is missing its required dd link data. */
   DD_GATE_LINK_MISSING: 'E449',
+  // --- dd writer verbs + the plan semantic layer (plan 070 Phase 1; E450-E459 complete allocation) ---
+  /** An address does not name a target the requested mutation can act on. */
+  DD_MUTATION_TARGET_INVALID: 'E450',
+  /** The mutation would introduce a schema violation; nothing was written. */
+  DD_MUTATION_SCHEMA_REFUSED: 'E451',
+  /** Writing the mutated document (or its regenerated sibling) failed. */
+  DD_MUTATION_WRITE_FAILED: 'E452',
+  /** A supplied value cannot be read as the type the schema declares for that cell. */
+  DD_MUTATION_VALUE_INVALID: 'E453',
+  /** No collision-free id could be minted under the requested registered prefix. */
+  DD_ID_MINT_FAILED: 'E454',
+  /** A schema declares a link relation that is not a non-empty string. */
+  DD_REL_INVALID: 'E455',
+  /** A gate-terminal item links to a target that is not itself gate-terminal. */
+  DD_PLAN_CONTRADICTION: 'E456',
+  /** `plan validate --complete` found open completables or unclaimed acceptance criteria. */
+  DD_PLAN_INCOMPLETE: 'E457',
+  /** A `--address` scope did not resolve to an item inside the plan. */
+  DD_PLAN_SCOPE_UNRESOLVED: 'E458',
+  /** The plan semantic validation pass itself could not complete. */
+  DD_PLAN_VALIDATE_FAILED: 'E459',
+
+  // --- builder fence + review documents (plan 071 ph-7103; E460-E469) ---
+  /** `harness plan fence`: a touched path is refused by an active fence row. */
+  DD_FENCE_VIOLATION: 'E460',
+  /** `harness plan fence`: the fence document itself cannot be read as a fence. */
+  DD_FENCE_INVALID: 'E461',
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];

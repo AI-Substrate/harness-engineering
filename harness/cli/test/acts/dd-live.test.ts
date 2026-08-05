@@ -189,7 +189,7 @@ describe('harness dd schema / docs — live bodies', () => {
     expect(data.root).toBe('gitroot');
     expect(data.gate_terminal).toEqual(['checked', 'human-skipped', 'na']);
     expect(data.sections.map((section) => section.name)).toEqual(
-      expect.arrayContaining(['meta', 'acceptance_criteria', 'phases', 'tasks', 'evidence']),
+      expect.arrayContaining(['meta', 'acceptance_criteria', 'phases', 'tasks', 'done_when']),
     );
     expect(data.enums.map((declared) => declared.name)).toEqual(
       expect.arrayContaining(['plan_status', 'complexity']),

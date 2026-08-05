@@ -60,6 +60,28 @@ function toolResultText(content: unknown): string {
 }
 
 /**
+ * Claude Code prefixes a FAILING Bash tool_result with its own `Exit code N` line
+ * before the command's output (FX001 · D4). `outcomeEvents` guards on the trimmed
+ * text starting with `{` — deliberately strict, so rail-mode prose is never
+ * mis-read as an envelope — so that one wrapper line made every non-zero harness
+ * command invisible to the outcome lane. Every REFUSAL exits non-zero, which is
+ * why a gate refusal's `E###` had never once been captured despite the field
+ * existing: the loss was upstream of the wire, not on it.
+ *
+ * The strip lives HERE and not in `outcome-events.ts` because the prefix is a
+ * Claude Code tool-result convention, not a harness envelope convention — today
+ * this adapter is the only caller, and that is exactly why: the next adapter must
+ * not inherit a Claude-specific strip it never needed.
+ *
+ * Deliberately narrow: only when the harness itself flagged the result an error,
+ * only anchored at the very start, only ONE line, and never touching a body that
+ * already begins with the envelope.
+ */
+export function unwrapFailedBashResult(text: string, isError: boolean): string {
+  return isError ? text.replace(/^Exit code \d+\r?\n/, '') : text;
+}
+
+/**
  * A privacy-safe token-count ESTIMATE of a `tool_result` payload (FX003) — a
  * char/4 heuristic over its size, NEVER the content and NEVER a tokenizer (per
  * memory: tiktoken mis-counts for Claude, and this is a proxy, not a billing
@@ -610,10 +632,11 @@ export const claudeAdapter: HarnessAdapter = {
           // call (companion F003). Reads only codes/verdicts; non-envelope output
           // (rail mode, no `--json`) yields nothing.
           if (ts !== null && harnessBashIds.has(refId)) {
+            const isError = block.is_error === true;
             for (const e of outcomeEvents(
-              toolResultText(block.content),
+              unwrapFailedBashResult(toolResultText(block.content), isError),
               ts,
-              block.is_error === true,
+              isError,
             )) {
               direct.push(e);
             }

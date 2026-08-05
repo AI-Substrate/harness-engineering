@@ -1,9 +1,17 @@
 import { spawnSync } from 'node:child_process';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { homedir } from 'node:os';
-import { join } from 'node:path';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
+import { homedir, tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { Event } from '../../../src/services/telemetry/events.js';
 import { serializeEvent } from '../../../src/services/telemetry/segment.js';
 
@@ -35,6 +43,14 @@ const REPO_ROOT = spawnSync('git', ['rev-parse', '--show-toplevel'], {
   encoding: 'utf8',
 }).stdout.trim();
 
+/**
+ * A budget sized for REAL git, not for pure computation — see the `beforeAll`
+ * below for the measurement. Set once for the file: the property is true of every
+ * case that touches the owning scan, and a per-case number invites the next author
+ * to guess. The assertions themselves are milliseconds; this covers the children.
+ */
+vi.setConfig({ testTimeout: 20_000, hookTimeout: 30_000 });
+
 const CLI_SRC = fileURLToPath(new URL('../../../src/', import.meta.url));
 
 interface Artifact {
@@ -49,28 +65,40 @@ interface GitOperationCounts {
 }
 
 interface PublicationGitOperations {
+  /** The repo this operations object scans — the live repo, or a bounded fixture. */
+  readonly root: string;
   readonly counts: GitOperationCounts;
+  /** Zero the counters ONLY — the inventory cache is untouched. */
   resetCounts(): void;
+  /**
+   * Drop the inventory cache ONLY — the counters keep their history. These are two
+   * seams, not one, on purpose: a control that clears both at once can never
+   * observe a SECOND child, because the count it reads afterwards started at zero.
+   */
+  invalidateInventoryCache(): void;
   committableFiles(): string[];
   ignoredPaths(paths: readonly string[]): Set<string>;
 }
 
-function createPublicationGitOperations(): PublicationGitOperations {
+function createPublicationGitOperations(root: string = REPO_ROOT): PublicationGitOperations {
   const counts: GitOperationCounts = { inventory: 0, checkIgnore: 0 };
   let cachedCommittableFiles: readonly string[] | undefined;
 
   return {
+    root,
     counts,
     resetCounts() {
       counts.inventory = 0;
       counts.checkIgnore = 0;
+    },
+    invalidateInventoryCache() {
       cachedCommittableFiles = undefined;
     },
     committableFiles() {
       if (cachedCommittableFiles === undefined) {
         counts.inventory += 1;
         const result = spawnSync('git', ['ls-files', '-co', '--exclude-standard'], {
-          cwd: REPO_ROOT,
+          cwd: root,
           encoding: 'utf8',
           maxBuffer: 64 * 1024 * 1024,
         });
@@ -91,7 +119,7 @@ function createPublicationGitOperations(): PublicationGitOperations {
       }
 
       const result = spawnSync('git', ['check-ignore', '-z', '--stdin'], {
-        cwd: REPO_ROOT,
+        cwd: root,
         encoding: 'utf8',
         input: `${paths.join('\0')}\0`,
         maxBuffer: 64 * 1024 * 1024,
@@ -122,13 +150,37 @@ function createPublicationGitOperations(): PublicationGitOperations {
 
 const gitOperations = createPublicationGitOperations();
 
+/**
+ * The owning scan is paid ONCE, here, as setup — not lazily inside whichever
+ * assertion happens to run first.
+ *
+ * `git ls-files -co --exclude-standard` stats the entire working tree, and this
+ * file blocks on it with `spawnSync`. Sixteen other suites in this repo spawn real
+ * subprocesses (a git daemon, hook integrations, real `init`/`commit` fixtures),
+ * so in a full run that child competes with them for the same cores. Measured on
+ * this box: p50 73ms, MAX 1202ms for the spawn alone, and the first assertion —
+ * 138ms uncontended — was observed taking 6339ms and failing vitest's 5s default.
+ * Its subject was never in doubt; the budget was. That is the flake the reviewer
+ * hit, and it is a wallclock allowance problem, not an assertion problem.
+ *
+ * Warming it in a hook makes every `it` below pure computation over an in-memory
+ * list, so the assertions stop being a function of machine weather. The budget is
+ * then declared honestly for the one irreducible real-git call, the same way
+ * `exec-remote-telemetry-git.int.test.ts` does — a privacy HARD RAIL must scan the
+ * whole committable set, so the work itself cannot be made smaller without
+ * narrowing the rail, which would trade a flake for a silent hole.
+ */
+beforeAll(() => {
+  gitOperations.committableFiles();
+});
+
 /** Every file git would consider committable (tracked OR untracked-not-ignored). */
 function committableFiles(operations: PublicationGitOperations = gitOperations): string[] {
   return operations.committableFiles();
 }
 
-function read(rel: string): Artifact {
-  return { path: rel, content: readFileSync(join(REPO_ROOT, rel), 'utf8') };
+function read(rel: string, root: string = REPO_ROOT): Artifact {
+  return { path: rel, content: readFileSync(join(root, rel), 'utf8') };
 }
 
 /** The committed 047 DATA artifacts — saved leaves + the central-layout fixtures. */
@@ -141,7 +193,7 @@ function dataArtifacts(operations: PublicationGitOperations = gitOperations): Ar
         /\.session\.html$/.test(p) ||
         p.startsWith('harness/cli/test/services/telemetry/fixtures/central/'),
     )
-    .map(read);
+    .map((p) => read(p, operations.root));
 }
 
 /** Every tracked 047 artifact incl. docs + the render surface (the widest publish set). */
@@ -156,7 +208,7 @@ function all047Artifacts(operations: PublicationGitOperations = gitOperations): 
         /\.report\.json$/.test(p) ||
         /\.session\.html$/.test(p),
     )
-    .map(read);
+    .map((p) => read(p, operations.root));
 }
 
 /** ANY absolute home path — never legitimate inside a committed DATA leaf. */
@@ -226,9 +278,68 @@ describe('publication boundary — the `*.log` gitignore trap is dodged (T001, K
     // docs/report filenames deliberately dodge.
     expect(ignoredPaths.has(ignoredControl)).toBe(true);
   });
+});
+
+/**
+ * PHASE3 fix round 1, finding 2 — the child-count property, measured where its
+ * cost is bounded.
+ *
+ * What this asserts is a property of the SCAN, not of this repo: an owning scan
+ * spends exactly one inventory child and one check-ignore child no matter how
+ * often the artifact sets are asked for. It used to prove that by running a
+ * second, uncached, whole-repo `git ls-files -co --exclude-standard` — and `-co`
+ * stats the entire working tree. Measured on this box during a full-suite run,
+ * that one spawn has a p50 of 73ms and a MAX of 1202ms: a 16x tail set by
+ * whole-machine contention, most of it from this repo's own real-git suites,
+ * which the test blocks on with `spawnSync` and cannot influence. Its own work is
+ * ~123ms; the rest of the 5s budget was weather. That is why it passed alone and
+ * timed out in the full suite.
+ *
+ * So the fixture is a disposable repo of a handful of files. Real git, real
+ * subprocesses, the same factory and the same cache — only the tree is bounded,
+ * which is the one input that made the wallclock a function of the machine. The
+ * repo-wide claims this test also happened to make are not lost: its two siblings
+ * above assert them against the live repo through the shared scan.
+ */
+describe('publication boundary — an owning scan spends exactly two git children (T001)', () => {
+  const ignoredControl = 'docs/how/telemetry-reports.log';
+  let fixtureRoot: string;
+
+  /** A disposable repo with both halves of `-co`: one tracked, one untracked-not-ignored. */
+  const createFixtureRepo = (): string => {
+    const root = mkdtempSync(join(tmpdir(), 'harness-pubscan-'));
+    const write = (rel: string, content: string): void => {
+      mkdirSync(dirname(join(root, rel)), { recursive: true });
+      writeFileSync(join(root, rel), content);
+    };
+    const git = (args: string[]): void => {
+      const r = spawnSync('git', args, { cwd: root, encoding: 'utf8' });
+      if (r.status !== 0) throw new Error(`fixture git ${args.join(' ')} failed: ${r.stderr}`);
+    };
+    write('.gitignore', '*.log\n');
+    write('docs/how/telemetry-reports.md', 'a doc\n');
+    write('harness/cli/src/services/telemetry/render/r.ts', 'export const r = 1;\n');
+    write('a.session.json', '{}\n');
+    write('b.report.json', '{}\n');
+    write(ignoredControl, 'trapped\n');
+    git(['init', '-q', '-b', 'main']);
+    git(['add', '-A']);
+    // `-co` must see BOTH halves: `a.session.json` stays untracked-not-ignored, so
+    // a scan that only listed tracked files would come back short.
+    git(['reset', '-q', '--', 'a.session.json']);
+    return root;
+  };
+
+  beforeAll(() => {
+    fixtureRoot = createFixtureRepo();
+  });
+
+  afterAll(() => {
+    if (fixtureRoot !== undefined) rmSync(fixtureRoot, { recursive: true, force: true });
+  });
 
   it('uses exactly one inventory child and one check-ignore child for an owning scan', () => {
-    const operations = createPublicationGitOperations();
+    const operations = createPublicationGitOperations(fixtureRoot);
     operations.resetCounts();
 
     const firstDataArtifacts = dataArtifacts(operations);
@@ -239,10 +350,51 @@ describe('publication boundary — the `*.log` gitignore trap is dodged (T001, K
     expect(firstAll047Artifacts).toEqual(secondAll047Artifacts);
 
     const ownedArtifactPaths = firstAll047Artifacts.map((artifact) => artifact.path);
+    // NON-VACUITY: a fixture that matched no filter would make every assertion
+    // below true by emptiness — the same trap the sibling scans guard against.
+    expect(ownedArtifactPaths).toEqual([
+      'a.session.json',
+      'b.report.json',
+      'docs/how/telemetry-reports.md',
+      'harness/cli/src/services/telemetry/render/r.ts',
+    ]);
     const ownedIgnoredPaths = operations.ignoredPaths([...ownedArtifactPaths, ignoredControl]);
     expect(ownedArtifactPaths.filter((path) => ownedIgnoredPaths.has(path))).toEqual([]);
     expect(ownedIgnoredPaths.has(ignoredControl)).toBe(true);
     expect(operations.counts).toEqual({ inventory: 1, checkIgnore: 1 });
+  });
+
+  it('CONTROL: dropping the cache spends a SECOND inventory child — the count is live', () => {
+    // Its OWN repo: this case ADDS a file mid-test to prove the second child really
+    // re-read the tree, and a mutation its sibling above could see would make that
+    // sibling depend on execution order.
+    const controlRoot = createFixtureRepo();
+    try {
+      const operations = createPublicationGitOperations(controlRoot);
+      operations.resetCounts();
+
+      const first = dataArtifacts(operations).map((artifact) => artifact.path);
+      expect([...first].sort()).toEqual(['a.session.json', 'b.report.json']);
+      expect(operations.counts.inventory).toBe(1);
+
+      // Half one — a repeat WITHOUT invalidation must be absorbed by the cache.
+      // A cache-free implementation spends a child here and reads 2.
+      dataArtifacts(operations);
+      expect(operations.counts.inventory).toBe(1);
+
+      // Half two — drop the CACHE ONLY. The counter keeps its history, so a real
+      // spawn has to show up as a SECOND child. An implementation that never
+      // spawned, or whose counter was wired to a constant, still reads 1 here.
+      writeFileSync(join(controlRoot, 'c.session.json'), '{}\n');
+      operations.invalidateInventoryCache();
+      const second = dataArtifacts(operations).map((artifact) => artifact.path);
+      expect(operations.counts.inventory).toBe(2);
+      // ...and that second child re-read the TREE — otherwise the count is just a
+      // number being bumped beside a stale list.
+      expect([...second].sort()).toEqual(['a.session.json', 'b.report.json', 'c.session.json']);
+    } finally {
+      rmSync(controlRoot, { recursive: true, force: true });
+    }
   });
 });
 

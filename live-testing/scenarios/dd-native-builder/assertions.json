@@ -1,0 +1,127 @@
+{
+  "scenario": "dd-native-builder",
+  "assertions": [
+    {
+      "id": "A1",
+      "type": "skill-called",
+      "source": "telemetry",
+      "required": true,
+      "params": {
+        "skill": "builder",
+        "min": 1
+      },
+      "describe": "drove the work through the builder skill rather than free-handing it — everything below is only meaningful if this is how the plan was made"
+    },
+    {
+      "id": "A2",
+      "type": "file-created",
+      "source": "fs",
+      "required": true,
+      "params": {
+        "glob": "docs/plans/*/plan.dd.json"
+      },
+      "describe": "the plan is a deterministic document — the dd-native authoring path was actually taken (ac-7111)"
+    },
+    {
+      "id": "A3",
+      "type": "forbidden-state",
+      "source": "fs",
+      "required": true,
+      "params": {
+        "forbidden_glob": "docs/plans/*/*-plan.md",
+        "require_glob": "docs/plans/*/plan.dd.json"
+      },
+      "describe": "NO markdown plan document exists beside the dd one. The dd pair REPLACES `<slug>-plan.md`; a subject that wrote both hedged, and a hedged plan is two sources of truth"
+    },
+    {
+      "id": "A4",
+      "type": "file-created",
+      "source": "fs",
+      "required": true,
+      "params": {
+        "glob": "docs/plans/*/assets/tasks/phase-*/tasks.dd.json"
+      },
+      "describe": "the phase task file was JIT-born as a dd document at the phase boundary, not scaffolded up front"
+    },
+    {
+      "id": "A5",
+      "type": "file-content-matches",
+      "source": "fs",
+      "required": true,
+      "params": {
+        "glob": "docs/plans/*/assets/tasks/phase-*/tasks.dd.json",
+        "pattern": "\"pressure\""
+      },
+      "describe": "every assertion names its instrument — mandatory pressure was honoured rather than worked around (ac-7103)"
+    },
+    {
+      "id": "A6",
+      "type": "file-content-matches",
+      "source": "fs",
+      "params": {
+        "glob": "docs/plans/*/assets/tasks/phase-*/tasks.dd.json",
+        "pattern": "\"satisfies\""
+      },
+      "describe": "task rows carry the criteria they serve, so the work-accounting leg of the proof graph exists (ac-7105). Not required: a single-phase scenario may legitimately have one task and one criterion"
+    },
+    {
+      "id": "A7",
+      "type": "harness-verb-ran",
+      "source": "telemetry",
+      "params": {
+        "verb": "dd set",
+        "min": 1
+      },
+      "describe": "states were mutated through the dd WRITER VERBS. Not required, and deliberately so: `dd add`/`dd rm` are equally correct, and A9 catches the failure this is really about"
+    },
+    {
+      "id": "A8",
+      "type": "harness-verb-ran",
+      "source": "telemetry",
+      "required": true,
+      "params": {
+        "verb": "plan validate",
+        "min": 1
+      },
+      "describe": "asked the plan whether its own story hangs together, at least once"
+    },
+    {
+      "id": "A9",
+      "type": "command-succeeds",
+      "source": "fs",
+      "required": true,
+      "params": {
+        "cmd": "node harness/cli/bin/harness.js dd doctor"
+      },
+      "describe": "the corpus is doctor-clean AFTER the run — which is the honest test of 'never hand-edited the generated markdown'. A hand-edited sibling shows up here as drift no matter how it was made"
+    },
+    {
+      "id": "A10",
+      "type": "gate-refused",
+      "source": "telemetry",
+      "required": true,
+      "params": {
+        "min": 1
+      },
+      "describe": "at least one departure was REFUSED by a gate. This is the assertion the scenario exists for: a run whose gates never fired has not shown the gates work, only that the subject happened to stay ahead of them (tk-7169's evidence capture is what makes this provable at all)"
+    },
+    {
+      "id": "A11",
+      "type": "command-succeeds",
+      "source": "fs",
+      "params": {
+        "cmd": "SUBJECT_PLAN_VALIDATE_COMPLETE"
+      },
+      "describe": "the close-out question came back green — strict zero errors and zero warnings. A placeholder resolved per-run (`--resolve SUBJECT_PLAN_VALIDATE_COMPLETE=...`), because only the subject knows where its plan landed; unresolved it scores `unknown` under this scenario's placeholder_policy, never a silent pass or a spurious fail. Not required: a single-phase run may legitimately stop before close-out"
+    },
+    {
+      "id": "A12",
+      "type": "judged",
+      "source": "judged",
+      "params": {
+        "criterion": "explanation-matches-telemetry"
+      },
+      "describe": "does the subject's own account of what it did match what telemetry says it did? The one thing no resolver can answer, and the one most worth knowing"
+    }
+  ]
+}

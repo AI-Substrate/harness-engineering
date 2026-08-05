@@ -1,6 +1,13 @@
 import { isAddressFailure, normalizeFilePath, parseAddress } from './address.js';
-import { COMPLETION_STATES, ID_PREFIXES, MINTED_ID_PATTERN } from './constants.js';
+import { LINKS_BUCKET_FIELD, readLinksBucket } from './bucket.js';
+import {
+  COMPLETION_STATES,
+  ID_PREFIXES,
+  MINTED_ID_PATTERN,
+  PRESSURE_NOT_APPLICABLE,
+} from './constants.js';
 import type { DdDoc, DdShape, ResolvedDdSchema } from './model.js';
+import { relOf } from './rel.js';
 import { isRecord } from './value.js';
 
 export type DdSeverity = 'ERROR' | 'WARN';
@@ -44,6 +51,12 @@ export interface DdLinkCell {
   raw: string;
   location: string;
   target?: string;
+  /**
+   * The declared relation, resolved through `relOf` so a cell always carries one.
+   * Consumers reason about MEANING here — never about the field name the cell
+   * happened to sit under.
+   */
+  rel: string;
 }
 
 interface ValidationContext {
@@ -124,6 +137,12 @@ function nonEmptyString(value: unknown): value is string {
 }
 
 function validateLink(raw: string, shape: DdShape, location: string, ctx: ValidationContext) {
+  // `not-applicable` is the explicit out for an assertion no instrument checks.
+  // It is keyed on the RELATION, never on a field name, so any schema that
+  // declares `rel: "pressure"` inherits the escape — and silence still fails,
+  // which is the whole bargain: saying "nothing checks this" is legal, saying
+  // nothing at all is not.
+  if (raw === PRESSURE_NOT_APPLICABLE && relOf(shape) === 'pressure') return;
   const address = parseAddress(raw);
   if (isAddressFailure(address)) {
     addIssue(ctx, 'address-malformed', 'ERROR', location, address.message);
@@ -184,7 +203,12 @@ function collectShapeLinks(
 ): void {
   if (shape.type === 'link') {
     if (typeof value === 'string') {
-      links.push({ raw: value, location, ...(shape.target && { target: shape.target }) });
+      links.push({
+        raw: value,
+        location,
+        ...(shape.target && { target: shape.target }),
+        rel: relOf(shape),
+      });
     }
     return;
   }
@@ -199,6 +223,24 @@ function collectShapeLinks(
     for (const [field, fieldShape] of Object.entries(shape.fields ?? {})) {
       if (field in value) {
         collectShapeLinks(value[field], fieldShape, `${location}.${field}`, links);
+      }
+    }
+    // The links BUCKET (ac-7002): edges an author attached to a row without the
+    // schema growing a field for them. Collected here so they are validated,
+    // traversed and graphed exactly like a declared cell — a bucket edge that
+    // only the renderer could see would be a second class of link, and the
+    // whole point of the bucket is that it is not one.
+    if (!shape.fields || !(LINKS_BUCKET_FIELD in shape.fields)) {
+      const bucket = readLinksBucket(
+        value[LINKS_BUCKET_FIELD],
+        `${location}.${LINKS_BUCKET_FIELD}`,
+      );
+      for (const entry of bucket.entries) {
+        links.push({
+          raw: entry.ref,
+          location: `${location}.${LINKS_BUCKET_FIELD}[${entry.index}].ref`,
+          rel: entry.rel,
+        });
       }
     }
     // OD-8: a dynamic-key map's interiors carry real link cells too — an evidence
@@ -246,20 +288,23 @@ function validateShape(
         });
       }
       return;
-    case 'object':
+    case 'object': {
       if (!isRecord(value)) {
         addIssue(ctx, 'schema-shape', 'ERROR', location, 'value must be an object');
         return;
       }
       for (const field of shape.required ?? []) {
         if (!(field in value)) {
-          addIssue(
-            ctx,
-            'schema-shape',
-            'ERROR',
-            `${location}.${field}`,
-            `missing required field "${field}"`,
-          );
+          // A missing REQUIRED PRESSURE link earns its own sentence. "missing
+          // required field" is true and useless; the rule this breaks is a
+          // design decision an author needs to be told about, including the way
+          // out of it.
+          const missing = shape.fields?.[field];
+          const message =
+            missing?.type === 'link' && relOf(missing) === 'pressure'
+              ? `"${field}" names no instrument — link a backpressure row, or say "${PRESSURE_NOT_APPLICABLE}" on purpose`
+              : `missing required field "${field}"`;
+          addIssue(ctx, 'schema-shape', 'ERROR', `${location}.${field}`, message);
         }
       }
       for (const [field, fieldShape] of Object.entries(shape.fields ?? {})) {
@@ -270,6 +315,26 @@ function validateShape(
             `${location}.${field}`,
             ctx,
             fieldShape.type === 'state',
+          );
+        }
+      }
+      // The bucket is a reserved convention, so a closed shape must not reject it
+      // — and it is still SHAPED rather than waved through.
+      const bucketDeclared = shape.fields !== undefined && LINKS_BUCKET_FIELD in shape.fields;
+      if (!bucketDeclared && LINKS_BUCKET_FIELD in value) {
+        const bucket = readLinksBucket(
+          value[LINKS_BUCKET_FIELD],
+          `${location}.${LINKS_BUCKET_FIELD}`,
+        );
+        for (const problem of bucket.problems) {
+          addIssue(ctx, 'schema-shape', 'ERROR', problem.location, problem.message);
+        }
+        for (const entry of bucket.entries) {
+          validateLink(
+            entry.ref,
+            { type: 'link' },
+            `${location}.${LINKS_BUCKET_FIELD}[${entry.index}].ref`,
+            ctx,
           );
         }
       }
@@ -291,6 +356,7 @@ function validateShape(
         }
       } else if (shape.allowAdditional === false && shape.fields) {
         for (const field of Object.keys(value)) {
+          if (field === LINKS_BUCKET_FIELD) continue;
           if (!(field in shape.fields)) {
             addIssue(
               ctx,
@@ -304,6 +370,7 @@ function validateShape(
       }
       validateStateNotes(value, location, ctx);
       return;
+    }
     case 'bool':
       if (typeof value !== 'boolean') {
         addIssue(ctx, 'schema-shape', 'ERROR', location, 'value must be a boolean');

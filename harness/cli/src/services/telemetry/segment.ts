@@ -721,6 +721,11 @@ export function serializeEvent(e: Event, repoRoot?: string): Event {
     case 'command_exit': {
       const ev: Event = { ...base, kind: 'command_exit', verb: e.verb, exit: e.exit };
       if (typeof e.status === 'string') ev.status = e.status;
+      // Re-validated on the way THROUGH, not merely at capture: this layer
+      // rebuilds every field explicitly rather than spreading, and a fixed
+      // vocabulary that is only checked once is a fixed vocabulary until the
+      // next writer.
+      if (typeof e.code === 'string' && /^E\d{3}$/.test(e.code)) ev.code = e.code;
       return ev;
     }
     case 'subagent': {

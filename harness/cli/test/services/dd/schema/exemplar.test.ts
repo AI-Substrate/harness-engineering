@@ -73,30 +73,64 @@ describe('exemplar builder/* schema packages', () => {
     expect(issues).toEqual([]);
   });
 
-  it('declares D2 link columns on AC rows and on every evidence entry', () => {
+  it('declares D2 link columns on AC rows and on every done_when entry', () => {
     const record = resolver.resolveDetailed('builder/plan').record;
     const acRow = record?.schema.sections.acceptance_criteria?.shape.items?.fields;
     expect(acRow?.pressure).toEqual({
       type: 'link',
       target: 'builder/backpressure/section/rows',
+      rel: 'pressure',
     });
     expect(acRow?.proven_by).toEqual({
       type: 'link',
       target: 'builder/execution-log/section/entries',
+      rel: 'proven_by',
     });
 
-    // Each task row points at ITS own evidence list, in this document.
+    // Each task row points at ITS own assertion list, in this document. The
+    // `target` pin was suspended for the duration of the `evidence` alias window
+    // — a corpus mid-migration could legally land in either section — and
+    // tk-7161 restored it when it dropped the alias. With the pin back, a `done`
+    // link into anything but `done_when` fails validation, so a task's state can
+    // be DERIVED from assertions and derived from nothing else.
     expect(record?.schema.sections.tasks?.shape.items?.fields?.done).toEqual({
       type: 'link',
-      target: 'builder/plan/section/evidence',
+      target: 'builder/plan/section/done_when',
+      rel: 'derives',
     });
   });
 
-  it('keys the evidence section by the owning task id — a map, not an id-bearing row', () => {
+  /**
+   * The alias is GONE (tk-7161), and this test is what stops it coming back.
+   *
+   * It was introduced with a leash — a test naming the task that had to remove
+   * it — precisely so the deprecation could not quietly become permanent. That
+   * task has now run, so the leash inverts: `evidence` must not exist, and
+   * `done_when` must be the only place an assertion list can live. A schema
+   * carrying both again would make `tasks[].done` ambiguous, which is the
+   * ambiguity the target pin was suspended for and has now been restored to
+   * forbid.
+   */
+  it('has DROPPED the `evidence` alias — done_when is the only assertion section', () => {
+    const record = resolver.resolveDetailed('builder/plan').record;
+    expect(record?.schema.sections.done_when).toBeDefined();
+    expect(record?.schema.sections.evidence).toBeUndefined();
+    // The description records what happened rather than pretending it never did:
+    // a reader meeting a frozen `evidence` corpus needs to know where it went.
+    expect(record?.description).toContain('deprecated `evidence` alias was dropped');
+    expect(record?.description).toContain('tk-7161');
+
+    // Mandatory pressure has nothing left to be asymmetric with — every assertion
+    // authored under this schema names its instrument or fails.
+    const living = record?.schema.sections.done_when?.shape.valuesShape?.items?.required;
+    expect(living).toContain('pressure');
+  });
+
+  it('keys the done_when section by the owning task id — a map, not an id-bearing row', () => {
     // workshop-002 Ruling 3: `tk-9f2a:` is a KEY. As an id-bearing array entry it
     // would collide with the task row's own id (ids are unique per FILE), which is
     // exactly what a live `dd validate` reported before this shape was adopted.
-    const evidence = section(doc('plan'), 'evidence').value as Record<string, unknown>;
+    const evidence = section(doc('plan'), 'done_when').value as Record<string, unknown>;
     expect(Array.isArray(evidence)).toBe(false);
     const taskIds = (section(doc('plan'), 'tasks').value as { id: string }[]).map(
       (task) => task.id,
@@ -115,7 +149,7 @@ describe('exemplar builder/* schema packages', () => {
   it('still derives the gate through the map — ownership kept, nothing self-reported', () => {
     const record = resolver.resolveDetailed('builder/plan').record;
     if (!record) throw new Error('expected builder/plan to resolve');
-    const evidence = section(doc('plan'), 'evidence');
+    const evidence = section(doc('plan'), 'done_when');
 
     // Six assertions across two tasks; `human-skipped` passes, the one `unchecked`
     // entry is what holds the gate — and it is named, not merely counted.
@@ -129,7 +163,7 @@ describe('exemplar builder/* schema packages', () => {
   });
 
   it('carries a human-skipped receipt with the human words, as the convention requires', () => {
-    const evidence = section(doc('plan'), 'evidence').value as Record<
+    const evidence = section(doc('plan'), 'done_when').value as Record<
       string,
       { id: string; state: string; receipt?: string }[]
     >;

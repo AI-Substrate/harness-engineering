@@ -8,7 +8,9 @@
  *   • `checks` — for `harness checks`: the overall verdict + per-gate verdicts.
  *
  * CODES / VERDICTS ONLY (AC-15): the gate `note` (free text) and every other
- * envelope field are dropped — the envelope is never spread. Commits are
+ * envelope field are dropped — the envelope is never spread. `error.code` joins
+ * that set at plan 071 (tk-7169): an `E###` is a fixed vocabulary, and it is what
+ * makes a REFUSAL provable from evidence. Commits are
  * intentionally NOT events (git is queryable later — AC-19). Pure (no I/O); the
  * adapter supplies the result text + timestamp it observed.
  */
@@ -19,6 +21,22 @@ interface RawEnvelope {
   command?: unknown;
   status?: unknown;
   data?: unknown;
+  error?: unknown;
+}
+
+/**
+ * An `E###` code, or `null`.
+ *
+ * The whole capture rests on this predicate, so it is deliberately the tightest
+ * thing that can be written: three digits after an `E`, anchored both ends. A
+ * value that does not match is DROPPED rather than trimmed — the moment this
+ * function starts salvaging almost-codes it becomes a free-text channel, and the
+ * privacy argument for capturing it at all (a fixed vocabulary, exactly like
+ * `checks.gates` and `mark.verdict`) stops being true.
+ */
+function errorCode(raw: unknown): string | null {
+  const code = (raw as { code?: unknown } | null | undefined)?.code;
+  return typeof code === 'string' && /^E\d{3}$/.test(code) ? code : null;
 }
 
 /** Narrow a raw envelope `status` to the coarse checks verdict, or `null`. */
@@ -100,6 +118,11 @@ export function outcomeEvents(resultText: string, t: string, isError = false): E
   const exit = isError || status === 'error' ? 1 : 0;
   const ce: Event = { t, kind: 'command_exit', verb, exit };
   if (typeof env.status === 'string') ce.status = env.status;
+  // The refusal's own code. Without it a gate refusal is invisible in evidence:
+  // the flow file is untouched by design, so `flow nav set` exiting 1 with E440
+  // and exiting 1 for any other reason were the same event.
+  const code = errorCode(env.error);
+  if (code !== null) ce.code = code;
   events.push(ce);
 
   // checks — overall verdict + per-gate verdicts (names/statuses only), via the

@@ -117,3 +117,193 @@ fu4:
     -@cd {{root}}/{{ex}}/custom-render && harness dd validate release.dd.json --json | jq -c '{status, counts: .data.counts}'
     @echo "--- from its parent folder ---"
     -@cd {{root}}/{{ex}} && harness dd validate custom-render/release.dd.json --json | jq -c '{status, error: .error.code}'
+
+# ── Writing documents (the CLI is the writer) ────────────────────────────────
+#
+# These are the only recipes here that MUTATE. Each works on a throwaway copy of
+# the exemplar under /tmp, never the committed corpus — a documentation example
+# that edits the thing it documents is a documentation example that breaks the
+# repository the first time somebody runs it twice.
+
+scratch := "/tmp/dd-writer-demo"
+
+# Make the throwaway copy the writer examples act on.
+[private]
+scratch-corpus:
+    @rm -rf {{scratch}} && mkdir -p {{scratch}}
+    @cd {{root}} && cp -R .dd {{scratch}}/.dd
+    @cd {{root}} && mkdir -p {{scratch}}/{{ex}} && cp -R {{ex}}/. {{scratch}}/{{ex}}/
+
+# Read the value at any address.
+w-get:
+    cd {{root}} && harness dd get "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201"
+
+# Read one field rather than the whole row.
+w-get-field:
+    cd {{root}} && harness dd get "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201/state"
+
+# Change a value. Validates BEFORE writing, and rebuilds the .dd.md sibling.
+w-set: scratch-corpus
+    cd {{scratch}} && harness dd set "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201/note" "touched by the writer demo"
+    @cd {{scratch}} && harness dd get "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201/note"
+
+# Non-string values need --value-json: arrays, objects, numbers, booleans.
+w-set-json: scratch-corpus
+    cd {{scratch}} && harness dd set "{{ex}}/tasks/phase-2/tasks.dd.json#tasks/tk-0201/satisfies" '["../../plan.dd.json#acceptance_criteria/ac-0201"]' --value-json
+
+# Append a row with a CLI-minted, collision-free id.
+w-add: scratch-corpus
+    cd {{scratch}} && harness dd add "{{ex}}/backpressure.dd.json#rows" '{"criterion":"A demo row added by the writer example.","phase":"ph-0002","mode":"ABSENT","tier":"human-judgement","proof":"the writer demo","state":"unchecked"}' --mint bp
+
+# Remove a row.
+w-rm: scratch-corpus
+    cd {{scratch}} && harness dd rm "{{ex}}/backpressure.dd.json#rows/bp-0902"
+
+# The refusal, on purpose: an invalid value is rejected and NOTHING is written.
+w-refuse: scratch-corpus
+    -cd {{scratch}} && harness dd set "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201/state" "definitely-not-a-state"
+    @echo "--- the document is untouched: ---"
+    @cd {{scratch}} && harness dd get "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201/state"
+
+# ── Asking whether the plan's story hangs together ───────────────────────────
+
+# The semantic layer: contradictions always, opens as ONE summary line.
+p-validate:
+    cd {{root}} && harness plan validate {{ex}}/plan.dd.json
+
+# Close-out mode: per-row accounting, and green means exactly 0 errors, 0 warnings.
+p-complete:
+    -cd {{root}} && harness plan validate {{ex}}/plan.dd.json --complete
+
+# Scope the semantic checks to one address's reachable closure.
+p-address:
+    cd {{root}} && harness plan validate {{ex}}/plan.dd.json --address "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201"
+
+# Follow only ONE relation out of a row — who accounted for this criterion?
+graph-satisfies:
+    cd {{root}} && harness dd graph map "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201" --direction in --rel satisfies
+
+# ── The PR surface ───────────────────────────────────────────────────────────
+
+# The acceptance table a pull request carries. REFUSES on this corpus, by design:
+# the exemplar deliberately leaves ac-0901 open, and a proof table that rendered
+# anyway would be claiming more than the documents say.
+pr-body:
+    -cd {{root}} && harness plan pr-body {{ex}}/plan.dd.json
+
+# The same command against a CLOSED copy — this one renders.
+pr-body-closed: scratch-corpus
+    @cd {{scratch}} && sed -i.bak 's/"state": "unchecked"/"state": "checked"/g' {{ex}}/plan.dd.json && rm -f {{ex}}/plan.dd.json.bak
+    @cd {{scratch}} && harness plan pr-body {{ex}}/plan.dd.json --json | jq -r '.data.markdown'
+
+# Every reference pinned at the origin remote and HEAD commit, so the links keep
+# meaning what they meant when the PR was opened. The scratch copy is given a
+# real remote and a real commit because --pin-head REFUSES to guess a URL — which
+# is the behaviour worth seeing, so `pr-body-unpinnable` shows that half too.
+pr-body-pinned: scratch-corpus
+    @cd {{scratch}} && sed -i.bak 's/"state": "unchecked"/"state": "checked"/g' {{ex}}/plan.dd.json && rm -f {{ex}}/plan.dd.json.bak
+    @cd {{scratch}} && git init -q && git add -A \
+        && git -c user.name=demo -c user.email=demo@example.invalid commit -qm "writer demo" \
+        && git remote add origin git@github.com:example-org/example-repo.git
+    @cd {{scratch}} && harness plan pr-body {{ex}}/plan.dd.json --pin-head --json | jq -r '.data.link_base'
+
+# The refusal: no remote to build links against, so it says so instead of
+# emitting a URL that would 404 in a pull request.
+pr-body-unpinnable: scratch-corpus
+    @cd {{scratch}} && sed -i.bak 's/"state": "unchecked"/"state": "checked"/g' {{ex}}/plan.dd.json && rm -f {{ex}}/plan.dd.json.bak
+    -@cd {{scratch}} && harness plan pr-body {{ex}}/plan.dd.json --pin-head
+
+# ── Gating a flow on the documents ───────────────────────────────────────────
+#
+# A flight plan carries `dd_link` gates, and a departure is refused until the
+# documents say the work is done. These run against the throwaway corpus, and
+# pass the flight-plan schema and template explicitly because they ship in
+# `skills/builder/references/` rather than bundled in the CLI.
+
+refs := justfile_directory() / "../../../skills/builder/references"
+
+# Create a flight plan ANCHORED at a plan folder. The template's addresses are
+# relative (`assets/tasks/phase-1/tasks.dd.json#tasks`); --plan-dir prefixes them,
+# so a static template can gate on a folder it could not have known.
+f-create: scratch-corpus
+    @cd {{scratch}} && harness flow create flight-plan --slug demo \
+        --path .harness/flows/demo.json \
+        --schema {{refs}}/flight-plan.schema.json \
+        --template {{refs}}/flight-plan.template.json \
+        --plan-dir {{ex}} --json | jq -r '.data.path'
+    @echo "--- the gate addresses, now anchored: ---"
+    @cd {{scratch}} && jq -r '.nodes[] | select(.dd_link) | "\(.id)\t\(.dd_link.check // "completion")\t\(.dd_link.address)"' .harness/flows/demo.json
+
+# The refusal: --plan-dir is REJECTED, never quietly dropped, when it is absolute
+# or escapes the repository. A dropped value is indistinguishable from an absent
+# one, and the flow it writes fails much later, at a departure, far from the typo.
+f-plan-dir-refused: scratch-corpus
+    -@cd {{scratch}} && harness flow create flight-plan --slug bad \
+        --path .harness/flows/bad.json \
+        --schema {{refs}}/flight-plan.schema.json \
+        --template {{refs}}/flight-plan.template.json \
+        --plan-dir /absolute/somewhere
+    @echo "--- and nothing was written: ---"
+    @test ! -f {{scratch}}/.harness/flows/bad.json && echo "no flow at .harness/flows/bad.json"
+
+# The archive move. A flow's gate addresses are anchored at the REPO ROOT, so the
+# post-flight `git mv` would strand every one of them — `flow relocate` re-points
+# only the addresses inside the folder that moved.
+f-relocate: f-create
+    @cd {{scratch}} && mkdir -p docs/plans/archive && git init -q 2>/dev/null; true
+    @cd {{scratch}} && mkdir -p docs/plans/archive && cp -R {{ex}} docs/plans/archive/exemplar && rm -rf {{ex}}
+    @echo "--- after the move, before the relocate (dead addresses): ---"
+    @cd {{scratch}} && jq -r '.nodes[] | select(.dd_link) | .dd_link.address' .harness/flows/demo.json
+    @cd {{scratch}} && harness flow relocate --path .harness/flows/demo.json --to docs/plans/archive/exemplar --json | jq -r '.data.rewritten[] | "\(.node)\t\(.from)\n\t-> \(.to)"'
+
+# ── Fences as data ───────────────────────────────────────────────────────────
+
+# The worked fence document: rows with owner, cause and expiry.
+fence-show:
+    cd {{root}} && harness dd get "{{ex}}/fence/dispatch.dd.json#rows"
+
+# In fence — the paths this dispatch's allow rows cover.
+fence-ok:
+    cd {{root}} && harness plan fence {{ex}}/fence/dispatch.dd.json \
+        --paths harness/cli/src/acts/plan/fence.ts harness/cli/test/acts/plan-fence.test.ts
+
+# The refusal: an out-of-fence path is refused BY NAME, and the row that refused
+# it is named too — so the answer to "why?" is data, not an argument.
+fence-refused:
+    -cd {{root}} && harness plan fence {{ex}}/fence/dispatch.dd.json \
+        --paths docs/plans/071-dd-native-builder/plan.dd.json
+
+# A rule that has outlived its cause is visible rather than remembered.
+fence-expired:
+    -cd {{root}} && harness plan fence {{ex}}/fence/dispatch.dd.json \
+        --paths harness/cli/src/acts/plan/fence.ts --now 2099-01-01
+
+# ── Reviews as documents ─────────────────────────────────────────────────────
+
+# Every finding, with its severity and the address it points at.
+review-findings:
+    cd {{root}} && jq -r '.sections[] | select(.name=="findings") | .value[] | "\(.severity)\t\(.kind)\t\(.id)  \(.address // "—")"' {{ex}}/review/round-1.dd.json
+
+# The question prose cannot answer: which findings were REFUTED, and on what
+# grounds? Across rounds and across models, this is the query that stops the same
+# finding being re-opened on reasoning that was already answered.
+review-refuted:
+    cd {{root}} && jq -r '\
+      (.sections[] | select(.name=="findings") | .value) as $f \
+      | .sections[] | select(.name=="verdict") | .value[] \
+      | select(.resolution=="refuted") \
+      | (.finding | sub("^#findings/";"")) as $id \
+      | "\($id)\n  finding:   \(($f[] | select(.id==$id) | .finding))\n  rationale: \(.rationale)"' \
+      {{ex}}/review/round-1.dd.json
+
+# What did Dim-0 find? Each row cites the instrument that did (or did not) fire.
+review-dim0:
+    cd {{root}} && jq -r '.sections[] | select(.name=="findings") | .value[] | select(.kind=="dim0") | "\(.id)  pressure=\(.pressure // "none")\n  \(.finding)"' {{ex}}/review/round-1.dd.json
+
+# Nothing may be left undecided: every finding must appear in the verdict.
+review-unresolved:
+    cd {{root}} && jq -r '\
+      [.sections[] | select(.name=="verdict") | .value[] | .finding | sub("^#findings/";"")] as $decided \
+      | .sections[] | select(.name=="findings") | .value[] \
+      | select(.id as $i | $decided | index($i) | not) | .id' \
+      {{ex}}/review/round-1.dd.json

@@ -1,12 +1,11 @@
 import type { Command } from 'commander';
-import { NodeFs } from '../../adapters/fs/node-fs.js';
 import { formatDegraded, formatError, formatOk } from '../../output/envelope.js';
 import { ErrorCodes } from '../../output/error-codes.js';
 import { exitWithEnvelope } from '../../output/exit.js';
 import type { CliIo } from '../../output/output-port.js';
 import { resolveLink, updateLedgerEntry, verifyBasis } from '../../services/dd/links/index.js';
 import { resolveInRepo } from '../../services/shared/posix-path.js';
-import { autoRegenerateSibling } from './build.js';
+import { writeDocumentWithSibling } from './build.js';
 import {
   codedLinkIssues,
   createLinkContext,
@@ -117,7 +116,7 @@ export function registerLinkCommands(dd: Command, io: CliIo, deps: DdActDeps): v
         );
       }
 
-      await updateBasis(ctx, resolveInRepo(opts.update, ctx.repoRoot), verdict, address, io);
+      await updateBasis(ctx, resolveInRepo(opts.update, ctx.repoRoot), verdict, address);
     });
 }
 
@@ -133,19 +132,18 @@ export function registerLinkCommands(dd: Command, io: CliIo, deps: DdActDeps): v
  * citing file and not in the target. One option therefore carries both the
  * decision to mutate and the answer to "whose basis moves".
  *
- * This is also `autoRegenerateSibling`'s FIRST call site (P5 T004). Phase 3 built
- * and proved that helper with no consumer, because every dd verb shipped until
- * now was read-only; this is the first dd verb that mutates a document, so it is
- * the first that owes its `.dd.md` a regeneration. The posture is Phase 3's, not
- * a new one: warn on failure, never roll back — the ledger move already
- * succeeded, and a stale render is a smaller harm than a reverted mutation.
+ * This is the first dd verb that MUTATES a document, so it is the first that owes
+ * its `.dd.md` a regeneration — and it owes it atomically. The ledger move and
+ * the sibling render land together or not at all (see
+ * {@link writeDocumentWithSibling}): a "warn and keep going" posture would report
+ * a successful re-verification while leaving behind exactly the source/sibling
+ * drift the build gate is pointed at.
  */
 async function updateBasis(
   ctx: DdLinkContext,
   docPath: string,
   verdict: { state: string; path: string; actual: string },
   address: string,
-  io: CliIo,
 ): Promise<never> {
   const fail = (message: string, next_action?: string): never =>
     exitWithEnvelope(
@@ -172,20 +170,33 @@ async function updateBasis(
     );
   }
 
-  try {
-    new NodeFs().writeText(docPath, update.text);
-  } catch (error) {
-    return fail(
-      `could not write the updated ledger to ${docPath}: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
+  // The ledger move and the sibling render are one operation: stage the render
+  // from the updated text, then write both, or roll the document back. Leaving
+  // `dd build --check` to discover the drift later — and call it a hand-edit —
+  // is not an option a mutating verb gets to take.
+  const write = await writeDocumentWithSibling({
+    documentPath: docPath,
+    text: update.text,
+    previousText: text,
+    repoRoot: ctx.repoRoot,
+  });
+  if (!write.ok) {
+    return exitWithEnvelope(
+      formatError('dd link verify-basis', write.code, write.message, ctx.clock, {
+        details: {
+          document: docPath,
+          path: verdict.path,
+          stage: write.stage,
+          updated: false,
+          source_restored: write.restored,
+        },
+        next_action: write.restored
+          ? write.next_action
+          : `The document could not be restored after a failed ${write.stage} write — recover ${docPath} from git before retrying.`,
+      }),
+      ctx.port,
     );
   }
-
-  // The document just changed on disk, so its sibling markdown is now stale by
-  // construction. Regenerate it here rather than leaving `dd build --check` to
-  // discover the drift later and call it a hand-edit.
-  const regeneration = await autoRegenerateSibling(docPath, ctx.repoRoot, io);
 
   exitWithEnvelope(
     formatOk(
@@ -199,16 +210,14 @@ async function updateBasis(
         previous: update.previous,
         sha: update.entry.sha,
         mode: update.entry.mode,
-        sibling_regenerated: regeneration.regenerated,
-        ...(regeneration.reason !== undefined && { sibling_reason: regeneration.reason }),
+        sibling_regenerated: true,
       },
       ctx.clock,
       {
-        next_action: regeneration.regenerated
-          ? verdict.state === 'stale'
+        next_action:
+          verdict.state === 'stale'
             ? `Recompute anything that derived state through ${address} — the basis moved. Commit the document and its regenerated sibling together.`
-            : 'The basis already matched; the ledger is unchanged in substance.'
-          : `The ledger moved but the sibling markdown did not regenerate (${regeneration.reason ?? 'unknown'}) — run \`harness dd build ${docPath}\` before committing.`,
+            : 'The basis already matched; the ledger is unchanged in substance.',
       },
     ),
     ctx.port,

@@ -5,6 +5,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import * as ddLinks from '../../../src/services/dd/links/index.js';
+import * as ddPlan from '../../../src/services/dd/plan/index.js';
 import * as ddSchema from '../../../src/services/dd/schema/index.js';
 
 /**
@@ -68,11 +69,19 @@ function requireConfig(): DepcruiseConfig {
 const DD_SERVICE = join(SRC, 'services', 'dd');
 
 /**
- * The ONLY two modules inside that tree a flow consumer may import. Adding a third
- * is a design decision, not a convenience — that is the whole point of the list.
+ * The ONLY modules inside that tree a flow consumer may import. Adding one is a
+ * design decision, not a convenience — that is the whole point of the list.
+ *
+ * `plan/index.ts` joined at plan 071 tk-7134, for the check-kind gate: the gate
+ * asks "does this plan pass its own validator?", and the ONE implementation of
+ * that answer is `readPlanCheck`. The alternative was the flow re-deriving a
+ * verdict `harness plan validate` already computes — a second opinion about the
+ * same documents, drifting silently. So the seam was EXPOSED rather than reached
+ * past, which is the rule working, not the rule bending.
  */
 const PERMITTED_DD_MODULES: readonly string[] = [
   join(DD_SERVICE, 'links', 'index.ts'),
+  join(DD_SERVICE, 'plan', 'index.ts'),
   join(DD_SERVICE, 'schema', 'index.ts'),
 ];
 
@@ -212,6 +221,7 @@ describe('flow → dd: published SDK seams only (F001, F008)', () => {
     const ok = [
       "import { resolveLink } from '../dd/links/index.js';",
       "import type { SchemaRecord } from '../dd/schema/index.js';",
+      "import { readPlanCheck } from '../dd/plan/index.js';",
     ].join('\n');
     expect(fromFlow(ok)).toEqual([]);
     // The act names the same two barrels from one directory further out, plus its
@@ -224,10 +234,14 @@ describe('flow → dd: published SDK seams only (F001, F008)', () => {
     expect(offendingSpecifiers(act, dirname(ACT_CONSUMER))).toEqual([]);
   });
 
-  it('the gate reaches dd through exactly the two barrels', () => {
+  it('the gate reaches dd through exactly the published barrels', () => {
     const gate = readFileSync(join(FLOW_SRC, 'flow-dd-gate.ts'), 'utf8');
     const dd = specifiersOf(gate).filter((s) => s.includes('/dd/'));
-    expect([...new Set(dd)].sort()).toEqual(['../dd/links/index.js', '../dd/schema/index.js']);
+    expect([...new Set(dd)].sort()).toEqual([
+      '../dd/links/index.js',
+      '../dd/plan/index.js',
+      '../dd/schema/index.js',
+    ]);
   });
 
   it('the barrels export every value seam the flow consumes', () => {
@@ -240,6 +254,9 @@ describe('flow → dd: published SDK seams only (F001, F008)', () => {
     expect(typeof ddSchema.deriveSchemaState).toBe('function');
     expect(typeof ddSchema.deriveSchemaItems).toBe('function');
     expect(typeof ddSchema.ConventionSchemaResolver).toBe('function');
+    expect(typeof ddPlan.readPlanCheck).toBe('function');
+    expect(typeof ddPlan.isPlanCheckKind).toBe('function');
+    expect(ddPlan.PLAN_CHECK_KINDS).toEqual(['plan-validate']);
   });
 
   it('deriveSchemaItems and deriveSchemaState project the SAME collector', () => {
@@ -294,7 +311,7 @@ describe('flow → dd: published SDK seams only (F001, F008)', () => {
     expect(rule).toBeDefined();
     // The boundary itself, from the parsed rule rather than from prose about it.
     expect(rule?.to?.path).toBe('^harness/cli/src/services/dd');
-    expect(rule?.to?.pathNot).toBe('^harness/cli/src/services/dd/(links|schema)/index\\.ts$');
+    expect(rule?.to?.pathNot).toBe('^harness/cli/src/services/dd/(links|schema|plan)/index\\.ts$');
     expect(rule?.from?.path).toBe('^harness/cli/src/(services/flow|acts/flow\\.ts$)');
   });
 
@@ -317,6 +334,11 @@ describe('flow → dd: published SDK seams only (F001, F008)', () => {
     expect(forbidden('harness/cli/src/services/dd/schema/resolve.ts')).toBe(true);
     expect(forbidden('harness/cli/src/services/dd/links/index.ts')).toBe(false);
     expect(forbidden('harness/cli/src/services/dd/schema/index.ts')).toBe(false);
+    expect(forbidden('harness/cli/src/services/dd/plan/index.ts')).toBe(false);
+    // The barrel is permitted; the modules BEHIND it are not — which is the whole
+    // difference between exposing a seam and widening the boundary.
+    expect(forbidden('harness/cli/src/services/dd/plan/check.ts')).toBe(true);
+    expect(forbidden('harness/cli/src/services/dd/plan/semantics.ts')).toBe(true);
     expect(forbidden('harness/cli/src/acts/dd/shared.ts')).toBe(false); // not the dd SERVICE
   });
 });

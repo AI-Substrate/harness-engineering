@@ -150,25 +150,100 @@ function tokensFromBlobs(blobs: readonly ShardBlob[]): {
   };
 }
 
-/** Decode one ref's blobs back into whole {@link Segment}s (rolled OTLP + loose json). */
-function segmentsFromBlobs(blobs: readonly ShardBlob[]): Segment[] {
+/**
+ * Decode one ref's blobs back into whole {@link Segment}s (rolled OTLP + loose json),
+ * counting the records it had to REJECT.
+ *
+ * A malformed record is skipped and the read continues — the documented fail-safe, and
+ * the right call: one corrupt line must not blind a whole session. But "I read nothing"
+ * and "I rejected everything I read" are different statements, so the count travels
+ * with the result instead of being destroyed here (FX001 · R2).
+ */
+function segmentsFromBlobs(blobs: readonly ShardBlob[]): { segments: Segment[]; skipped: number } {
   const out: Segment[] = [];
+  let skipped = 0;
   for (const b of blobs) {
     if (b.name.endsWith('.logs.jsonl')) {
       for (const line of splitJsonl(b.content)) {
         try {
           const reconstructed = reconstructSegmentFromOtlpLogs(JSON.parse(line) as never);
           if (reconstructed.ok) out.push(reconstructed.segment);
+          else skipped += 1;
         } catch {
           // a corrupt rolled record is skipped, never fatal
+          skipped += 1;
         }
       }
     } else if (/^\d+\.json$/.test(b.name)) {
       const seg = decodeLooseSegment(b.content);
       if (seg !== null) out.push(seg);
+      else skipped += 1;
     }
   }
-  return out;
+  return { segments: out, skipped };
+}
+
+/**
+ * Prefer the port's STRICT read when it has one, so a failed git command raises instead
+ * of arriving as an empty tree (FX001 · R2). A port without the strict form degrades to
+ * the fail-safe one — less precise, never worse.
+ */
+function listRefsStrict(gitRead: GitReadPort): string[] {
+  return gitRead.listTelemetryRefsStrict !== undefined
+    ? gitRead.listTelemetryRefsStrict(TELEMETRY_REF_GLOB)
+    : gitRead.listTelemetryRefs(TELEMETRY_REF_GLOB);
+}
+
+function readShardStrict(gitRead: GitReadPort, ref: string): readonly ShardBlob[] {
+  return gitRead.readShardTreeStrict !== undefined
+    ? gitRead.readShardTreeStrict(ref)
+    : gitRead.readShardTree(ref);
+}
+
+/**
+ * Whether a `refs/harness-telemetry/*` namespace exists to read in this clone — the
+ * answers a boolean could not hold (FX001 · R2/R3).
+ *
+ * `present` / `absent` are established facts. The other two are the ones that used to
+ * masquerade as `absent`, each a different reason the surface was never established:
+ *
+ * - `unreadable` — the enumeration itself FAILED, so any downstream "checked and empty"
+ *   is a fabrication (R2).
+ * - `not_checked` — there was no git read port to look WITH. "I have no port" is not
+ *   "there is nothing there", and the caller that had to say so was reaching for
+ *   `absent` because this value did not exist (R3). Only a CALLER can produce it — the
+ *   probe below always has a port by construction.
+ *
+ * The type being too small to express the truth is the defect; the branch that then
+ * picks the wrong value is only its symptom.
+ */
+export type RefNamespaceState = 'present' | 'absent' | 'unreadable' | 'not_checked';
+
+/**
+ * Probe the ref namespace (FX001 · T2/R2). Never throws — the failure is REPORTED
+ * (`unreadable`) rather than swallowed into a false `absent`, which is the whole
+ * difference between "fetch the namespace" and "nothing is known".
+ */
+export function telemetryRefNamespace(gitRead: GitReadPort): RefNamespaceState {
+  try {
+    return listRefsStrict(gitRead).length > 0 ? 'present' : 'absent';
+  } catch {
+    return 'unreadable';
+  }
+}
+
+/** A ref-surface read that keeps WHY it came back empty (FX001 · R2). */
+export interface RefSegmentsRead {
+  /**
+   * `ok` — every ref this read touched was actually read, whatever it held.
+   * `port_failed` — a git read itself failed, so the surface was never established and
+   * an empty result proves nothing.
+   */
+  status: 'ok' | 'port_failed';
+  /** Whatever WAS decoded, keyed by harness session id (possibly partial on failure). */
+  segments: Map<string, Segment[]>;
+  /** Records rejected as malformed — never a port failure, always a real record. */
+  skipped: number;
 }
 
 /**
@@ -177,32 +252,51 @@ function segmentsFromBlobs(blobs: readonly ShardBlob[]): Segment[] {
  * unflushed delta and fold ONCE, which is the same reconstruction `sync` itself performs
  * and the only way a post-prune read still equals the pre-prune whole.
  *
- * Fail-safe: any error → empty map (never throws).
+ * Never throws. The two kinds of empty are kept APART (FX001 · R2): a malformed record
+ * is skipped and counted (fail-safe, by design), a failed git read sets
+ * `status: 'port_failed'` — because a caller reporting an established miss must be able
+ * to tell "the ref did not hold it" from "the ref was never read".
  */
-export function readRefSegments(gitRead: GitReadPort): Map<string, Segment[]> {
+export function readRefSegmentsOutcome(gitRead: GitReadPort): RefSegmentsRead {
   const out = new Map<string, Segment[]>();
+  let skipped = 0;
   let refs: string[];
   try {
-    refs = gitRead.listTelemetryRefs(TELEMETRY_REF_GLOB);
+    refs = listRefsStrict(gitRead);
   } catch {
-    return out;
+    return { status: 'port_failed', segments: out, skipped };
   }
+  let portFailed = false;
   for (const ref of refs) {
     const session = sessionIdOfRef(ref);
     if (session === null) continue;
     let blobs: readonly ShardBlob[];
     try {
-      blobs = gitRead.readShardTree(ref);
+      blobs = readShardStrict(gitRead, ref);
     } catch {
+      // This ref was never read. Keep going — the others may still answer — but the
+      // read as a whole can no longer claim to have consulted the surface.
+      portFailed = true;
       continue;
     }
-    const segments = segmentsFromBlobs(blobs);
-    if (segments.length === 0) continue;
+    const decoded = segmentsFromBlobs(blobs);
+    skipped += decoded.skipped;
+    if (decoded.segments.length === 0) continue;
     const prior = out.get(session);
-    if (prior === undefined) out.set(session, segments);
-    else prior.push(...segments);
+    if (prior === undefined) out.set(session, decoded.segments);
+    else prior.push(...decoded.segments);
   }
-  return out;
+  return { status: portFailed ? 'port_failed' : 'ok', segments: out, skipped };
+}
+
+/**
+ * {@link readRefSegmentsOutcome} narrowed to its segments — the fail-safe form for
+ * callers that only union the ref's bytes into a larger read and report their own
+ * degradation (the durable buffer union). Reach for the outcome form when an EMPTY
+ * result has to be explained.
+ */
+export function readRefSegments(gitRead: GitReadPort): Map<string, Segment[]> {
+  return readRefSegmentsOutcome(gitRead).segments;
 }
 
 /**

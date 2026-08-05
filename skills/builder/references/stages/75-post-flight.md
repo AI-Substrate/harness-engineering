@@ -27,9 +27,10 @@ $ARGUMENTS
 
 1) **Input resolution**
 
-   - `PLAN_DIR` = provided `--plan` OR auto-detect from cwd (look for `*-plan.md`, or a legacy `*-spec.md`)
+   - `PLAN_DIR` = provided `--plan` OR auto-detect from cwd (look for `*-plan.md`, or a legacy `*-spec.md`; a dd-native plan has `plan.dd.json` and NO `*-plan.md`)
    - `ORD_SLUG` = the plan folder's basename (e.g. `035-flow-ship-stage`)
    - `DEST` = `docs/plans/archive/${ORD_SLUG}`
+   - `FLOW_SLUG` = the flight plan driving this journey — `harness flow list --json` and take the flow whose `plan_dir` is `${PLAN_DIR}`. Empty (no dd-native flow) → skip the relocate in step 4 and say so.
    - Already under `docs/plans/archive/` → report "already archived", print the close-out note path if present, STOP (idempotent re-run, not an error).
    - `DEST` already exists with different content → STOP and report the collision; never overwrite an archived plan.
 
@@ -72,9 +73,12 @@ $ARGUMENTS
    ```
    mkdir -p docs/plans/archive
    git mv "${PLAN_DIR}" "${DEST}"
+   harness flow relocate --slug "${FLOW_SLUG}" --to "${DEST}"   # dd-native plans only
    ```
 
    Untracked files inside the folder ride along with a plain `mv` if `git mv` leaves them. The folder's internal layout is untouched, so every relative link inside it keeps working. Print `old → new` path.
+
+   **The relocate is not optional on a dd-native plan.** A flow's `dd_link` gate addresses are anchored at the REPO ROOT, so the `git mv` strands every one of them — and nothing catches it: `dd doctor` sweeps `*.dd.json`, a flow is `.harness/flows/<slug>.json`, so the corpus reads perfectly clean while the gates point at a folder that no longer exists. On an archived plan there are no departures left to refuse, so the breakage has no discovery moment at all. `flow relocate` reads the folder the flow recorded at create time (`plan_dir`) and re-points only the addresses inside it, rebuilding the sibling in the same operation. Do **not** hand-edit the addresses: an address assembled by a model is a gate that fails the day the wording changes. A flow with no `plan_dir` refuses rather than guessing — say so in the report instead of patching it by hand.
 
 5) **Report** (terminal summary):
 

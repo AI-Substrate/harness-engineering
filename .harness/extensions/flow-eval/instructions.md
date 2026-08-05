@@ -36,6 +36,19 @@ If `--worktree <path>` is given, `score` also detects the worktree's HEAD
 never a silent pass. A HEAD it cannot detect (missing/empty) yields no warning (honest, not a
 false alarm).
 
+### `gate-refused` — proving a gate actually did something
+
+`gate-refused {code?, min?}` reads `evidence.refusals`, the map of gate E-codes captured on
+`command_exit`. It answers the question no other assertion can: was the subject ever
+**stopped**?
+
+That matters more than it sounds. A dd gate refusal deliberately writes NOTHING to the flow —
+a refused departure must not leave a trace that looks like a departure — so before that capture
+existed, the only durable record of meeting a gate was a `--force`, which is the FAILURE case.
+A scenario whose gates never fire has not demonstrated that the gates work; it has demonstrated
+that the subject stayed ahead of them. Assert a specific `code` (`E441` completion, `E443`
+check-kind) when the scenario is about one gate, and no code when any refusal will do.
+
 ### Per-run assertion resolution (`--resolve`) + `placeholder_policy`
 
 Some scenarios author a `command-succeeds` assertion as a **placeholder token** (a bare
@@ -52,6 +65,13 @@ the committed bundle:
     resolves the assertion **`unknown`** with a visible envelope warning — honest "not run",
     **never a silent pass and never a raw exec** of the literal token.
   - `"raw"` (default when the key is absent — legacy) → the literal token is executed as-is.
+
+⚠ **A placeholder must be the WHOLE `cmd`.** A screaming-snake token is recognised only when it
+is the entire command; an embedded `${VAR}` inside a real command line is not a placeholder, so it
+is executed literally and the assertion **false-fails** rather than scoring `unknown`. Authoring a
+new scenario, dry-score it once (`--session <a session that does not exist>`) and check that every
+placeholder row reads `?` before spending a subject run on it — the `dd-native-builder` bundle was
+authored with exactly this mistake and a dry score caught it.
 
 ⚠ **Failure mode of a legacy `"raw"` scenario (e.g. the frozen `md-to-pdf`):** because there is
 no `placeholder_policy`, a **forgotten `--resolve`** executes the bare placeholder token, which
@@ -89,7 +109,7 @@ detects a prior run of the **same session** already in the ledger.
 3. **Resolve each assertion** by `type` to a **three-valued verdict** (`pass` / `fail` /
    `unknown`) via the lane-tagged resolver registry:
    - **telemetry** lane (`skill-called`, `skill-sequence`, `flow-seam-fired`,
-     `harness-verb-ran`, `checks-ran`, `tool-used`, `compaction-occurred`) — reads the
+     `harness-verb-ran`, `gate-refused`, `checks-ran`, `tool-used`, `compaction-occurred`) — reads the
      shared evidence. **If telemetry is unavailable, these resolve `unknown`, never
      `fail`** (the *determinism boundary*: a capability gap is not a conformance
      failure).

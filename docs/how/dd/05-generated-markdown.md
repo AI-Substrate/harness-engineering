@@ -167,7 +167,7 @@ becomes:
 
 The visible link text is the last address segment. Array instances land on
 their section anchor. Dynamic-key map entries receive their own `###` heading,
-so same-document links such as `#evidence/tk-0201` land on `#tk-0201`.
+so same-document links such as `#done_when/tk-0201` land on `#tk-0201`.
 
 Arrays of declared links render each element as a clickable link.
 

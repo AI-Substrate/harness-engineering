@@ -73,8 +73,14 @@ describe('plan scaffold — pure', () => {
   it('splits every plan by phase, even a single-phase one', () => {
     const scaffold = buildPlanScaffold({ slug: 'demo', phases: ['Only phase'] });
     expect(scaffold.plan.relativePath).toBe('plan.dd.json');
+    // BARE ORDINAL under `assets/` — moved DELIBERATELY at plan 071 ac-7110.
+    // The flight-plan template bakes this exact address as a departure gate
+    // before any phase has a title, so a title-derived directory is unknowable
+    // when the gate is authored; and retitling a phase must never relocate the
+    // document a gate points at. The phase-2 joint-exit dry-run is what proved
+    // the two halves have to agree.
     expect(scaffold.taskFiles.map((file) => file.relativePath)).toEqual([
-      'tasks/phase-1-only-phase/tasks.dd.json',
+      'assets/tasks/phase-1/tasks.dd.json',
     ]);
   });
 
@@ -101,11 +107,11 @@ describe('plan scaffold — pure', () => {
 
     expect(phases[0]?.depends_on).toBeUndefined();
     expect(phases[1]?.depends_on).toEqual([phases[0]?.id]);
-    expect(phases[0]?.tasks).toBe('tasks/phase-1-first/tasks.dd.json#tasks');
-    expect(phases[1]?.tasks).toBe('tasks/phase-2-second/tasks.dd.json#tasks');
+    expect(phases[0]?.tasks).toBe('assets/tasks/phase-1/tasks.dd.json#tasks');
+    expect(phases[1]?.tasks).toBe('assets/tasks/phase-2/tasks.dd.json#tasks');
   });
 
-  it('gives every task file its evidence section up front', () => {
+  it('gives every task file its done_when section up front', () => {
     // So the first task added has somewhere to put its proof, instead of having
     // to invent a section that workshop-002 already named.
     const scaffold = buildPlanScaffold({ slug: 'demo', phases: ['A'] });
@@ -113,8 +119,13 @@ describe('plan scaffold — pure', () => {
       name: string;
       value: unknown;
     }>;
-    expect(sections.map((section) => section.name)).toEqual(['meta', 'tasks', 'evidence']);
-    expect(sections[2]?.value).toEqual({});
+    expect(sections.map((section) => section.name)).toEqual([
+      'meta',
+      'summary',
+      'tasks',
+      'done_when',
+    ]);
+    expect(sections[3]?.value).toEqual({});
   });
 
   it('records no basis for documents nobody has verified yet', () => {
@@ -204,7 +215,7 @@ describe('harness plan — live over a real corpus', () => {
 
   it('catches drift in a task file when the plan document itself is untouched', async () => {
     await run(['plan', 'new', 'drifty', '--phase', 'Only', '--dir', 'plans']);
-    const sibling = join(repo, 'plans/drifty/tasks/phase-1-only/tasks.dd.md');
+    const sibling = join(repo, 'plans/drifty/assets/tasks/phase-1/tasks.dd.md');
     writeFileSync(sibling, '# hand-edited\n', 'utf8');
 
     const checked = await run(['plan', 'render', 'plans/drifty', '--check']);

@@ -53,24 +53,57 @@ export class ExecGitRead implements GitReadPort {
   }
 
   listTelemetryRefs(glob: string): string[] {
-    // `for-each-ref` is a pure enumeration — no ref is created, moved, or fetched.
-    // Its pattern is PREFIX-matched (a trailing `/*` fnmatch does NOT cross `/`, so
-    // `refs/harness-telemetry/*` would miss the deep `…/<YYYY>/<MM>/<DD>/<session>`
-    // refs). Strip the refspec-style `/*` to the namespace prefix — the same set,
-    // matched recursively.
+    const listed = this.forEachRef(glob);
+    return listed.ok ? listed.refs : [];
+  }
+
+  /** {@link listTelemetryRefs} with a failed enumeration surfaced, not swallowed (FX001 · R2). */
+  listTelemetryRefsStrict(glob: string): string[] {
+    const listed = this.forEachRef(glob);
+    if (!listed.ok) throw new Error(`git for-each-ref failed (status ${String(listed.status)})`);
+    return listed.refs;
+  }
+
+  /**
+   * The shared `for-each-ref` enumeration, keeping the ONE bit both callers differ on:
+   * whether the command itself succeeded. A pure enumeration — no ref is created,
+   * moved, or fetched. Its pattern is PREFIX-matched (a trailing `/*` fnmatch does NOT
+   * cross `/`, so `refs/harness-telemetry/*` would miss the deep
+   * `…/<YYYY>/<MM>/<DD>/<session>` refs). Strip the refspec-style `/*` to the namespace
+   * prefix — the same set, matched recursively.
+   */
+  private forEachRef(
+    glob: string,
+  ): { ok: true; refs: string[] } | { ok: false; status: number | null } {
     const pattern = glob.endsWith('/*') ? glob.slice(0, -2) : glob;
     const r = this.run(['for-each-ref', '--format=%(refname)', pattern]);
-    if (r.status !== 0) return [];
-    return r.stdout
-      .split('\n')
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0);
+    if (r.status !== 0) return { ok: false, status: r.status };
+    return {
+      ok: true,
+      refs: r.stdout
+        .split('\n')
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0),
+    };
   }
 
   readShardTree(ref: string): ShardBlob[] {
     // Walk the ref's tree with `cat-file -p <ref>^{tree}` — LOCAL peel, no remote
     // contact — then read its blobs in ONE `cat-file --batch`. Only `cat-file` verbs.
     return this.readTreeAt(`${ref}^{tree}`);
+  }
+
+  /**
+   * {@link readShardTree} with a FAILED read raised instead of flattened to `[]`
+   * (FX001 · R2). `readFlatTree` already separates `absent` from `failed`; the
+   * fail-safe form throws that bit away, and a caller that then reports "the ref held
+   * nothing for this session" states a conclusion no read ever reached. An absent or
+   * empty tree is still `[]`.
+   */
+  readShardTreeStrict(ref: string): ShardBlob[] {
+    const result = readFlatTree((args, input) => this.runBytes(args, input), `${ref}^{tree}`);
+    if (result.kind === 'failed') throw new Error(`git cat-file failed: ${result.message}`);
+    return result.kind === 'ok' ? result.blobs : [];
   }
 
   /**

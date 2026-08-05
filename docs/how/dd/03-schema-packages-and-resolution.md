@@ -133,7 +133,7 @@ The exemplar task document stores one evidence list per task:
 
 ```json
 {
-  "name": "evidence",
+  "name": "done_when",
   "value": {
     "tk-0201": [
       {

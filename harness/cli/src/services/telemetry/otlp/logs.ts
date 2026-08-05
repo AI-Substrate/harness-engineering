@@ -110,7 +110,9 @@ export type LogStringRole =
   | 'signature'
   | 'path'
   | 'command'
-  | 'slug';
+  | 'slug'
+  /** A harness error code and nothing else — `E` followed by three digits. */
+  | 'e-code';
 export type LogKvRole =
   | 'gates'
   | 'artifact-counts'
@@ -322,6 +324,7 @@ export const LOG_EVENT_DEFINITIONS: readonly LogEventDefinition[] = [
       requiredString(A.CMD_VERB, 'command'),
       requiredInt(A.CMD_EXIT, 0, 255),
       optionalString(A.CMD_STATUS, 'identifier', ['ok', 'degraded', 'error', 'fatal']),
+      optionalString(A.CMD_CODE, 'e-code'),
     ],
     [SEV_INFO, SEV_ERROR],
   ),
@@ -395,6 +398,12 @@ const ARTIFACT_ENUM_VALUES: Readonly<Record<string, ReadonlySet<string>>> = {
   pr_state: new Set(['OPEN', 'MERGED', 'CLOSED', 'DRAFT', 'other']),
 };
 const GATE_STATUS_VALUES = new Set(['ok', 'degraded', 'error', 'fail', 'timeout', 'skipped', 'na']);
+/**
+ * The refusal vocabulary, re-validated on the way THROUGH the wire in both
+ * directions — an encoder and a decoder that trust each other are one writer away
+ * from putting prose in a counts-only field.
+ */
+const E_CODE = /^E\d{3}$/;
 
 function exactAnyValue(value: AnyValue, key: keyof AnyValue): boolean {
   return Object.keys(value).length === 1 && key in value;
@@ -416,6 +425,8 @@ function validStringRole(role: LogStringRole | undefined, value: string): boolea
       return isTelemetryCommand(value);
     case 'slug':
       return /^[a-z][a-z0-9-]{0,31}$/.test(value);
+    case 'e-code':
+      return E_CODE.test(value);
     default:
       return isTelemetryExtensionString(value);
   }
@@ -669,6 +680,10 @@ function encodeEventOrNull(e: Event): LogRecord | null {
     case 'command_exit':
       attrs.push(kv(A.CMD_VERB, sv(e.verb)), kv(A.CMD_EXIT, nv(e.exit)));
       if (e.status !== undefined) attrs.push(kv(A.CMD_STATUS, sv(e.status)));
+      // FX001 · D2: the refusal's code goes ON THE WIRE. Without it the roll to
+      // `refs/harness-telemetry/*` erased every gate refusal the moment a commit
+      // flushed the buffer — the evidence existed only until the first commit.
+      if (e.code !== undefined && E_CODE.test(e.code)) attrs.push(kv(A.CMD_CODE, sv(e.code)));
       sev = e.exit !== 0 ? SEV_ERROR : SEV_INFO;
       break;
     case 'subagent':
@@ -889,6 +904,10 @@ function decodeEvent(rec: LogRecord): Event {
       };
       const status = readStr(m.get(A.CMD_STATUS));
       if (status !== undefined) ev.status = status;
+      // Re-validated on the way back, exactly as `decodeSegment` does on the way in:
+      // a fixed vocabulary checked once is a fixed vocabulary until the next writer.
+      const code = readStr(m.get(A.CMD_CODE));
+      if (code !== undefined && E_CODE.test(code)) ev.code = code;
       return ev;
     }
     case 'subagent': {

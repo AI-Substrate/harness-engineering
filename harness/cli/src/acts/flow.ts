@@ -15,6 +15,7 @@ import { ConventionSchemaResolver } from '../services/dd/schema/index.js';
 import {
   type DdGateDeps,
   type DdGateDrift,
+  type DdGateFinding,
   type DdGateResult,
   ddGateDrift,
   evaluateDdGate,
@@ -60,9 +61,12 @@ import {
   FLOWS_DIR,
   type FlowFailure,
   type FlowServiceDeps,
+  fail,
   listFlows,
   newFlowSchema,
   readFlowDoc,
+  relocateFlow,
+  resolveCreateTarget,
   showFlow,
   writeFlowAtomic,
 } from '../services/flow/flow-service.js';
@@ -200,16 +204,101 @@ function summary(doc: FlowDoc, path: string): Record<string, unknown> {
   };
 }
 
-function autoRenderSibling(io: CliIo, fs: FsPort, path: string, doc: FlowDoc): void {
-  const target = `${path.replace(/\.json$/, '')}.md`;
+/**
+ * Restore a flow source to the bytes it held before the operation — or remove it
+ * if it had none. Returns whether the world was actually put back, because a
+ * failed rollback is a louder problem than the failure that triggered it and the
+ * caller has to be able to say so.
+ */
+function restoreFlowSource(fs: FsPort, path: string, previous: string | null): boolean {
+  try {
+    if (previous === null) {
+      fs.deleteFile(path);
+      return !fs.exists(path);
+    }
+    fs.writeText(path, previous);
+    return fs.readText(path) === previous;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Persist a flow's sibling markdown as the second half of ONE operation — or undo
+ * the first half (DF-016, tk-7174).
+ *
+ * This used to warn and carry on. A best-effort regen is a drift factory: the verb
+ * reports success, the `.json` has moved, the `.md` has not, and the next reader
+ * trusts a document the repo's own `flow render --check` would refuse. That
+ * directly contradicts the no-drift promise the drift gate exists to keep, and it
+ * hides the failure in a warning line nobody greps for.
+ *
+ * So the sibling is not optional decoration; it is half of the write. If the render
+ * throws, or the `.md` cannot be written, the source is put back the way it was
+ * (deleted, if the operation created it) and the operation REFUSES — the same
+ * either-both-or-neither contract `writeDocumentWithSibling` gives dd's mutating
+ * verbs, and the same phase-1 law: validate/render before write, failure = refusal
+ * with the source untouched.
+ *
+ * `previousSource` is the bytes at `sourcePath` BEFORE the operation wrote it, or
+ * `null` when the file did not exist. It is the only thing that makes the refusal
+ * honest rather than merely loud.
+ *
+ * Of the two arms, the WRITE arm is the one under test (`flow-auto-render.test.ts`
+ * plants an fs that refuses `.md`, and one that half-writes it). The RENDER arm is
+ * a belt: `renderFlow` is pure and contains no `throw`, so today it can only fail
+ * on a runtime error from a doc that schema validation already rejects — it is
+ * caught anyway rather than left as an uncaught exception the caller would report
+ * as a crash instead of a refusal.
+ *
+ * The sibling is STAGED (`.md.tmp` then `rename`), the same crash-safe shape
+ * `writeFlowAtomic` gives the source. Writing the live `.md` directly made the
+ * refusal a liar in exactly one case, and it is the case that matters: a write
+ * that emits half its bytes before it fails leaves the source rolled back and the
+ * sibling truncated — drift, manufactured by the guard against drift. "It threw"
+ * never implied "it wrote nothing"; staging is what makes the two the same claim.
+ */
+function persistSibling(
+  fs: FsPort,
+  sourcePath: string,
+  doc: FlowDoc,
+  previousSource: string | null,
+): { ok: true; target: string } | FlowFailure {
+  const target = `${sourcePath.replace(/\.json$/, '')}.md`;
+  const staged = `${target}.tmp`;
+  const refuse = (stage: 'rendered' | 'written', err: unknown): FlowFailure => {
+    // Whatever the staged write managed to emit is scrap: drop it, so a refusal
+    // leaves no half-rendered file for the next reader (or `git status`) to find.
+    try {
+      fs.deleteFile(staged);
+    } catch {
+      /* best effort — the staged temp is not the promise, the two live files are */
+    }
+    const restored = restoreFlowSource(fs, sourcePath, previousSource);
+    const reason = err instanceof Error ? err.message : String(err);
+    return fail(
+      ErrorCodes.FLOW_WRITE_FAILED,
+      `the flow change was refused because its sibling markdown could not be ${stage} (${target}): ${reason}`,
+      restored
+        ? `Nothing was changed — ${sourcePath} is exactly as it was. Fix the cause and retry.`
+        : `WARNING: the rollback of ${sourcePath} also failed — inspect it before retrying, it may be out of step with ${target}.`,
+    );
+  };
+
+  let markdown: string;
+  try {
+    markdown = renderFlow(doc);
+  } catch (err) {
+    return refuse('rendered', err);
+  }
   try {
     fs.mkdirp(posixDirname(target));
-    fs.writeText(target, renderFlow(doc));
+    fs.writeText(staged, markdown);
+    fs.rename(staged, target);
   } catch (err) {
-    io.writers.err(
-      `warning: flow state saved but auto-render failed for ${target}: ${err instanceof Error ? err.message : String(err)}\n`,
-    );
+    return refuse('written', err);
   }
+  return { ok: true, target };
 }
 
 /** Resolve a flow file path: `--path` › `.harness/flows/<slug>.json` (workshop 001 D4). */
@@ -257,6 +346,10 @@ export function registerFlowAct(
     .option('--template <path>', 'create-seed override (may be out-of-repo)')
     .option('--bare', 'root-only — copy no template nodes')
     .option(
+      '--plan-dir <dir>',
+      "the repo-relative plan folder this flow belongs to; anchors the template's relative dd_link gate addresses at it (absolute or `..`-escaping values are REFUSED, never dropped)",
+    )
+    .option(
       '--agent <name>',
       'stamp provenance.agent (the rail-title source); the only source — no env fallback',
     )
@@ -271,11 +364,17 @@ export function registerFlowAct(
           schema?: string;
           template?: string;
           bare?: boolean;
+          planDir?: string;
           agent?: string;
           planId?: string;
           title?: string;
         },
       ) => {
+        // The bytes at the write target BEFORE the create — the rollback anchor if
+        // the sibling render gives way. `null` (the usual case) means "no flow
+        // here", and a refusal must therefore leave none.
+        const target = resolveCreateTarget({ path: opts.path, slug: opts.slug }, repoRoot());
+        const previous = svc.fs.readText(target);
         const res = createFlow(
           {
             type,
@@ -286,6 +385,7 @@ export function registerFlowAct(
             schemaPath: opts.schema,
             templatePath: opts.template,
             bare: opts.bare,
+            planDir: opts.planDir,
             agent: opts.agent,
             planId: opts.planId,
             title: opts.title,
@@ -293,7 +393,8 @@ export function registerFlowAct(
           svc,
         );
         if (!res.ok) return emit(io, failureEnvelope(res, deps.clock));
-        autoRenderSibling(io, svc.fs, res.path, res.doc);
+        const sibling = persistSibling(svc.fs, res.path, res.doc, previous);
+        if (!sibling.ok) return emit(io, failureEnvelope(sibling, deps.clock));
         emit(
           io,
           formatOk('flow', summary(res.doc, res.path), deps.clock, {
@@ -1001,9 +1102,11 @@ export function registerFlowAct(
                 description: opts.description,
               });
         doc.events.push(event);
+        const previous = svc.fs.readText(resolved.path);
         const written = writeFlowAtomic(resolved.path, repoRoot(), doc, svc);
         if (!written.ok) return emit(io, failureEnvelope(written, deps.clock));
-        autoRenderSibling(io, svc.fs, written.path, doc);
+        const sibling = persistSibling(svc.fs, written.path, doc, previous);
+        if (!sibling.ok) return emit(io, failureEnvelope(sibling, deps.clock));
         emit(
           io,
           formatOk(
@@ -1014,6 +1117,50 @@ export function registerFlowAct(
         );
       },
     );
+
+  // --- relocate ----------------------------------------------------------
+  flow
+    .command('relocate')
+    .description(
+      "Re-anchor a flow's dd_link gate addresses after its plan folder moved (the post-flight archive)",
+    )
+    .option('--path <path>', 'flow file (default: .harness/flows/<slug>.json)')
+    .option('--slug <slug>', 'flow slug')
+    .requiredOption(
+      '--to <dir>',
+      'the repo-relative plan folder the gates now live in (absolute or `..`-escaping values are REFUSED)',
+    )
+    .action((opts: { path?: string; slug?: string; to: string }) => {
+      const resolved = resolveFlowPath(opts, repoRoot());
+      if (!resolved.ok) return emit(io, failureEnvelope(needPath(), deps.clock));
+      const previous = svc.fs.readText(resolved.path);
+      const res = relocateFlow({ path: resolved.path, repoRoot: repoRoot(), to: opts.to }, svc);
+      if (!res.ok) return emit(io, failureEnvelope(res, deps.clock));
+      const written = writeFlowAtomic(resolved.path, repoRoot(), res.doc, svc);
+      if (!written.ok) return emit(io, failureEnvelope(written, deps.clock));
+      const sibling = persistSibling(svc.fs, written.path, res.doc, previous);
+      if (!sibling.ok) return emit(io, failureEnvelope(sibling, deps.clock));
+      emit(
+        io,
+        formatOk(
+          'flow',
+          {
+            path: written.path,
+            plan_dir: { from: res.from, to: res.to },
+            rewritten: res.rewritten,
+            count: res.rewritten.length,
+          },
+          deps.clock,
+          {
+            evidence: [{ label: 'flow', path: written.path }],
+            next_action:
+              res.rewritten.length === 0
+                ? 'No gate address pointed inside the old folder — plan_dir was re-pointed and nothing else needed to move.'
+                : `Verify the gates resolve: \`harness dd link resolve ${res.rewritten[0]?.to}\`.`,
+          },
+        ),
+      );
+    });
 
   // --- render ------------------------------------------------------------
   flow
@@ -1282,6 +1429,8 @@ interface OrientGate {
   address: string;
   /** Whether departure from this node is actually gated on it. */
   gates: boolean;
+  /** Which question the gate asks — absent for the completion kind. */
+  check?: string;
   status: 'complete' | 'incomplete' | 'unevaluable';
   terminal: number;
   total: number;
@@ -1289,6 +1438,8 @@ interface OrientGate {
   path: string | null;
   /** Every item, in document order — complete AND incomplete (see below). */
   items: OrientGateItem[];
+  /** Check-kind only: what the validator said, verbatim. Empty when green. */
+  findings?: DdGateFinding[];
   /** Why the gate could not be evaluated; absent when it could. */
   problem?: string;
   /** A stale recorded basis — INFORMATION, never a refusal (workshop-001). */
@@ -1349,11 +1500,13 @@ function orientGate(node: FlowNode, deps: DdGateDeps, repoRoot: string): OrientG
   return {
     address: result.address,
     gates,
+    ...(result.kind === 'check' && result.check !== undefined && { check: result.check }),
     status: result.complete ? 'complete' : 'incomplete',
     terminal: result.terminal,
     total: result.total,
     path: result.path,
     items,
+    ...(result.kind === 'check' && { findings: result.findings }),
     ...(drift !== null && { drift }),
   };
 }
@@ -1479,6 +1632,17 @@ function renderOrientGate(gate: OrientGate): string[] {
   const verb = gate.gates ? 'gate' : 'link (not gating)';
   if (gate.status === 'unevaluable') {
     lines.push(`  dd ${verb}: ${gate.address}`, `    ! could not evaluate — ${gate.problem ?? ''}`);
+  } else if (gate.check !== undefined) {
+    // The check block prints FINDINGS, not pips. Its one item would render as a
+    // single square saying nothing a reader could act on, whereas the findings are
+    // exactly the work standing between them and departure — the same list the
+    // refusal would print, shown BEFORE they hit it.
+    const mark = gate.status === 'complete' ? '✓ open' : '✕ holds';
+    lines.push(`  dd ${verb} (${gate.check}): ${gate.address}  ${mark}`);
+    for (const finding of gate.findings ?? []) {
+      lines.push(`    □ ${finding.severity} ${finding.class} ${finding.address}`);
+      lines.push(`      ${finding.message}`);
+    }
   } else {
     const mark = gate.status === 'complete' ? '✓ open' : '✕ holds';
     lines.push(`  dd ${verb}: ${gate.address}  ${gate.terminal}/${gate.total} ${mark}`);
@@ -1571,9 +1735,11 @@ function runMutation(
   // --schema not re-passed here), skip validation — the create already validated.
   const invalid = validateMutatedDoc(result.doc, root, svc);
   if (invalid !== null) return emit(io, failureEnvelope(invalid, deps.clock));
+  const previous = svc.fs.readText(resolved.path);
   const written = writeFlowAtomic(resolved.path, root, result.doc, svc);
   if (!written.ok) return emit(io, failureEnvelope(written, deps.clock));
-  autoRenderSibling(io, svc.fs, written.path, result.doc);
+  const sibling = persistSibling(svc.fs, written.path, result.doc, previous);
+  if (!sibling.ok) return emit(io, failureEnvelope(sibling, deps.clock));
   // Plan 057 (D1/AC-02): `--quiet` slims the repeated per-mutation summary echo
   // to `{path}` — mutation verbs only; create/show/read verbs keep the frozen
   // full shape, and the default (no flag) stays byte-identical.

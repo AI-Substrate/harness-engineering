@@ -1,4 +1,5 @@
 import type { Clock } from '../../adapters/clock/clock-port.js';
+import { isPlanCheckKind } from '../dd/plan/index.js';
 import type { ProvenanceFields } from '../record/provenance.js';
 
 /**
@@ -110,7 +111,8 @@ export interface DdLinkReading {
 
 /**
  * A node's link to the dd document section whose completion it gates on (plan 065
- * P6; workshop-002 Ruling 1, AC-10/AC-11).
+ * P6; workshop-002 Ruling 1, AC-10/AC-11), or to the plan whose SEMANTIC verdict it
+ * gates on (plan 071 ac-7109).
  *
  * **Opt-in, absolutely.** A node WITHOUT `dd_link` behaves exactly as it did
  * before this field existed — no resolution, no evaluation, no refusal, no new
@@ -118,15 +120,33 @@ export interface DdLinkReading {
  * repo's first mechanical gate into the machinery every existing flow already
  * runs on, and it is regression-pinned by test.
  *
- * Two authored keys and two machine-recorded ones:
- *   - AUTHORED: `address` (the dd address whose items must be gate-terminal) and
- *     `gate` (whether that link actually gates departure, or is a plain reference).
+ * TWO KINDS, one field. Absent `check` is the COMPLETION kind: the address's items
+ * must all be gate-terminal. `check: "plan-validate"` is the CHECK kind: the plan
+ * at the address must pass `harness plan validate --complete`. They share
+ * everything that matters — the same opt-in, the same live re-evaluation, the same
+ * `--force` etiquette, the same untrusted-reading discipline — because a reader
+ * should not have to learn a second gate to read a flow.
+ *
+ * Two authored keys, one authored-optional kind, and two machine-recorded ones:
+ *   - AUTHORED: `address` (what the gate reads), `check` (which question it asks)
+ *     and `gate` (whether that link actually gates departure, or is a plain
+ *     reference).
  *   - RECORDED: `basis_sha` + `reading`, both written by the gate evaluation and
  *     never by hand.
  */
 export interface DdLink {
   /** The dd address this node gates on, e.g. `tasks/phase-2/tasks.dd.json#tasks`. */
   address: string;
+  /**
+   * Which question the gate asks. Absent = the completion read (are the address's
+   * items gate-terminal?). `plan-validate` = the semantic read (does
+   * `harness plan validate --complete` come back green for the plan at this
+   * address?).
+   *
+   * The vocabulary is FROZEN in `dd/plan`'s `PLAN_CHECK_KINDS`, and an unknown
+   * value is refused rather than defaulted — see {@link sanitizeDdLink}.
+   */
+  check?: string;
   /**
    * Whether departure from this node is GATED on that address being complete.
    * Absent is treated as `true`: a node that carries a link to its evidence and
@@ -138,6 +158,12 @@ export interface DdLink {
   basis_sha?: string;
   /** The last computed reading — display/record only (see {@link DdLinkReading}). */
   reading?: DdLinkReading;
+}
+
+/** Whether a link asks the SEMANTIC question rather than the completion one. */
+export function ddLinkCheck(link: DdLink | undefined): string | undefined {
+  if (link === undefined) return undefined;
+  return typeof link.check === 'string' && link.check.length > 0 ? link.check : undefined;
 }
 
 /**
@@ -216,8 +242,16 @@ export function sanitizeDdLink(raw: unknown): DdLink | null {
   const src = raw as Record<string, unknown>;
   if (typeof src.address !== 'string' || src.address.trim().length === 0) return null;
   if (src.gate !== undefined && typeof src.gate !== 'boolean') return null;
+  // The check kind is AUTHORED, so an unrecognised one is refused here rather than
+  // defaulted anywhere downstream. Both plausible defaults lie: running
+  // `plan-validate` performs a check nobody asked for, and ignoring the key
+  // silently downgrades a semantic gate to no gate at all — the failure mode where
+  // an author believes the flow is protected and it is not. The vocabulary comes
+  // from `dd/plan`, through the barrel, so there is exactly one list.
+  if (src.check !== undefined && !isPlanCheckKind(src.check)) return null;
 
   const link: DdLink = { address: src.address };
+  if (src.check !== undefined) link.check = src.check as string;
   if (src.gate !== undefined) link.gate = src.gate;
   if (typeof src.basis_sha === 'string' && /^[0-9a-f]{4,128}$/i.test(src.basis_sha)) {
     link.basis_sha = src.basis_sha;

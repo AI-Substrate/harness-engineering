@@ -1,33 +1,214 @@
 # Deterministic documents
 
-A **deterministic document** is structured JSON with a declared schema,
-addressable parts, and machine-queryable state. Its filename ends in
-`.dd.json`.
+It renders like a regular markdown doc — headings, tables, links, progress
+marks — and that's what your teammates (and GitHub) see. Under the hood it's
+a **typed, addressable graph**. Every list is data. Every row has a
+permanent id you can link to from any other doc. Every link is a typed edge
+a tool can walk. Ask "which acceptance criteria still hold the gate?" and
+you get rows back, with ids. Markdown on the surface, a queryable proof
+graph underneath.
 
-Beside it, `harness dd build` writes a `.dd.md` sibling:
+A deterministic document is structured JSON (`note.dd.json`) with a declared
+schema. Beside it lives a generated `.dd.md` sibling:
 
 ```text
 note.dd.json  source of truth for tools
 note.dd.md    generated view for people
 ```
 
-The markdown is always generated, never authored. This split turns questions
-such as "which acceptance criteria still hold the gate?" into queries over
-explicit rows rather than interpretations of prose.
+Edit through the CLI (`dd set/add/rm`) and the sibling regenerates in the
+same operation — you never think about it. `harness dd build` exists for the
+other cases: you hand-edited the JSON, you just created a new file, or CI is
+running `dd build --check` as the drift gate.
 
-## Why use one
+## Why this is different
 
-A deterministic document gives the same fact two deliberate surfaces:
+### Lists are data
 
-- JSON for validation, addressing, graph traversal, and `jq`;
-- markdown for headings, tables, links, progress marks, and review.
+A task table's rows each carry a born-once id, a completion state from a
+declared vocabulary, and schema-validated fields.
 
-Each assertion can carry its own id, state, note, receipt, and proof link.
-Schemas define the allowed structure and the state values that pass a gate.
-References record which target bytes a conclusion was checked against.
+From [`exemplar/tasks/phase-2/tasks.dd.json`](exemplar/tasks/phase-2/tasks.dd.json):
 
-The design does not make every claim true. It makes claims addressable and
-checkable, and it keeps missing proof or contradictory state visible.
+```json
+{
+  "id": "tk-0201",
+  "title": "Resolution fixture corpus covering every schema-layer failure class",
+  "phase": "ph-0002",
+  "state": "checked",
+  "done": "#done_when/tk-0201"
+}
+```
+
+That `state` came from a vocabulary the schema declares, and `done` is a
+link to this task's own `done_when` list — not a checkbox someone typed.
+
+And the generated sibling is a markdown document, after all — that same row
+renders like this (columns trimmed):
+
+| id | title | state | done |
+| --- | --- | --- | --- |
+| tk-0201 | Resolution fixture corpus ... | [x] checked | [x] 3/3 [tk-0201](exemplar/tasks/phase-2/tasks.dd.md#tk-0201) |
+
+The `done` cell is derived — three of three assertions in the evidence list
+it points at are checked, counted at render time, and the cell links to
+them. Nobody maintains that number.
+
+### Everything has an address
+
+`plan.dd.json#acceptance_criteria/ac-0201/state` names one field of one row,
+forever. Docs cite each other's rows by address; renames and reorders don't
+break it.
+
+```bash
+harness dd get docs/how/dd/exemplar/plan.dd.json#acceptance_criteria/ac-0201/state
+# → "checked"
+```
+
+And because an address is just a value, any field can reference any row in
+any document. A task in one file citing the acceptance criterion it serves
+in another:
+
+```json
+{
+  "id": "tk-7142",
+  "title": "5 tasks authors task file + phase-row link in one stroke",
+  "satisfies": ["../../../plan.dd.json#acceptance_criteria/ac-7111"]
+}
+```
+
+That's a relative path to a different document, then `#` into one row of one
+section. The validator resolves it, the graph walks it, and the rendered
+sibling turns it into a clickable link.
+
+Stable addresses are what everything else builds on: a UI can deep-link a
+dashboard straight to one failing row, a workflow gate can watch
+`#tasks/tk-7142/state` and refuse to advance until it flips, a bot can
+comment on a PR with the exact rows that block it. Anything that can hold a
+string can point at one precise piece of one document — and be pointed at.
+
+### Links are typed edges
+
+A task `satisfies` an acceptance criterion; an assertion's `pressure` names
+the instrument that measures it; `proven_by` points at the log entry that
+demonstrates it. "What proves this claim?" is one `harness dd graph` walk.
+
+A real acceptance criterion from [`exemplar/plan.dd.json`](exemplar/plan.dd.json):
+
+```json
+{
+  "id": "ac-0201",
+  "claim": "A schema named `builder/plan` resolves doc-folder -> <gitroot>/.dd -> ...",
+  "state": "checked",
+  "pressure": "backpressure.dd.json#rows/bp-0201",
+  "proven_by": "execution-log.dd.json#entries/lg-0201"
+}
+```
+
+And rendered, those links are just links — the same row in the generated
+sibling (columns trimmed):
+
+| id | claim | state | pressure | proven_by |
+| --- | --- | --- | --- | --- |
+| ac-0201 | A schema named `builder/plan` resolves doc-folder -> ... | [x] checked | [bp-0201](exemplar/backpressure.dd.md#rows) | [lg-0201](exemplar/execution-log.dd.md#entries) |
+
+The claim, how it's measured, and where it was demonstrated — three
+documents, one traversal (`just graph-ac` runs it), and a human just clicks
+through.
+
+### Gates you can't sweet-talk
+
+State is data, so gates refuse mechanically: `harness plan validate
+--complete` goes green at exactly zero open items and nothing else. A
+refusal names every unfinished row by id. Forcing past one is an explicit,
+recorded override.
+
+Mid-flight output from this repo's own plan:
+
+```text
+35 of 88 completable item(s) are still open — run with --complete for the
+per-row list, or --address <address> to scope the read.
+```
+
+### Validation pushes back
+
+Schemas are data, ids follow a grammar, required sections are enforced, and
+contradictions surface as findings. `harness dd doctor` sweeps the whole
+repo and answers 0/0 or a named list.
+
+A real contradiction warning, caught the day this feature shipped — a task
+ticked over a criterion that wasn't:
+
+```text
+tk-7027 (Synthetic corpus factory + lifecycle-mutation suites) is "checked"
+but satisfies ac-7009 (Check-kind gate: ...), which is still "unchecked"
+```
+
+### The rendered view can't drift
+
+The `.dd.md` sibling regenerates on every CLI write; hand-edits owe a
+`dd build`, and drift between source and view fails CI:
+
+```bash
+harness dd build note.dd.json --check
+# stale sibling → E422 DD_RENDER_DRIFT, exit 1
+```
+
+### Citations know when they're stale
+
+The basis ledger records the SHA-256 of whatever a conclusion was checked
+against. Target moves, the citation goes visibly stale (E434) until someone
+re-reads and re-records it.
+
+From [`exemplar/plan.dd.json`](exemplar/plan.dd.json)'s ledger:
+
+```json
+{
+  "path": "tasks/phase-2/tasks.dd.json",
+  "sha": "826906f58e22f12668695cb8321aff96dda51df40d9e67badebd2b6bb0b9d34c",
+  "mode": "live"
+}
+```
+
+### The CLI does the writing
+
+`harness dd get/set/add/rm` validate before the write, rebuild the sibling
+in the same op, and mint collision-free ids (`add --mint`). A refusal writes
+nothing.
+
+```bash
+harness dd set "backpressure.dd.json#rows/bp-7106/probe" "npx vitest run ..."
+# validates the result against the schema, writes source + sibling together
+```
+
+Feed it something the schema refuses and you get a named error and an
+untouched file:
+
+```text
+E451: the change would make tasks.dd.json invalid: value must be an array
+```
+
+You can still lie to it — but lying means fabricating rows in a diffable
+file with your evidence one click away at review time.
+
+## Where this goes next
+
+Once state, addresses, and typed edges are substrate, more of engineering
+stops being prose. Two that are already on the roadmap (plan 071, phase 3):
+
+- **Fences as data.** An agent's dispatch fence — which paths it may touch,
+  who owns the grant, why it exists, when it expires — as rows in a fence
+  document, with a mechanical check that refuses an out-of-fence change by
+  naming the offending path and the fence row. Fence violations stop being
+  something a reviewer has to notice.
+- **Reviews as documents.** Findings as rows with severity and a repo
+  address, the verdict linking every finding confirmed / refuted / fixed,
+  and each planted-bad control carrying a `pressure` link to the fixture
+  that fired. Review history becomes something you can query across
+  reviews — and across models.
+
+Same trick both times: take a thing agents and humans currently keep honest
+by discipline, and give it rows.
 
 ## Smallest self-contained example
 
@@ -124,6 +305,7 @@ resolves from the document's own folder; no registry entry is required.
 | [08 - Validation and doctor](08-validation-and-doctor.md) | focused validation, repository sweeps, exclusions, and cwd defects |
 | [09 - Querying with jq](09-querying-with-jq.md) | copyable questions over real documents |
 | [10 - Command reference](10-command-reference.md) | the complete `harness dd` command family |
+| [11 - The builder proof graph](11-the-builder-proof-graph.md) | what the mechanisms add up to: the work/knowledge graph join |
 
 ## Run the examples
 

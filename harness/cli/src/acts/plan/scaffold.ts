@@ -80,7 +80,7 @@ function stringify(value: unknown): string {
  * single phase. A plan that starts as one file and grows into many is a
  * migration; a plan that starts split is just a plan. The overview carries meta,
  * goals, non-goals, acceptance criteria and phases; each phase's detail lives in
- * its own task file with the evidence section already present, so the first task
+ * its own task file with the done_when section already present, so the first task
  * added has somewhere to put its proof instead of inventing a section.
  */
 export function buildPlanScaffold(input: PlanScaffoldInput): PlanScaffold {
@@ -89,7 +89,18 @@ export function buildPlanScaffold(input: PlanScaffoldInput): PlanScaffold {
   const phases = input.phases.map((phaseTitle, index) => ({
     id: mint('ph', `${input.slug}/phase/${index}`, ids),
     title: phaseTitle,
-    slug: `phase-${index + 1}-${slugify(phaseTitle)}`,
+    /**
+     * BARE ORDINAL — `phase-2`, never `phase-2-<kebab-title>` (plan 071 ac-7110,
+     * the stated amendment to #90's convention).
+     *
+     * Two reasons, and the second is why it is load-bearing rather than tidy.
+     * A static flight-plan template must bake this address before any phase has
+     * a title, so a title-derived directory is unknowable at the moment the gate
+     * is authored. And retitling a phase must never MOVE its task file: a
+     * rename that silently relocates the document a departure gate points at
+     * turns a cosmetic edit into an unclearable refusal.
+     */
+    slug: `phase-${index + 1}`,
   }));
 
   const plan = {
@@ -104,6 +115,10 @@ export function buildPlanScaffold(input: PlanScaffoldInput): PlanScaffold {
           summary: '',
         },
       },
+      // `summary` is a REQUIRED first-class section, not the meta field of the
+      // same name — a scaffold that omitted it would emit a plan that fails its
+      // own `plan validate` on the first run.
+      { name: 'summary', value: '' },
       { name: 'goals', value: [] as string[] },
       { name: 'non_goals', value: [] as string[] },
       { name: 'acceptance_criteria', value: [] as unknown[] },
@@ -115,7 +130,7 @@ export function buildPlanScaffold(input: PlanScaffoldInput): PlanScaffold {
           brief: '',
           state: 'unchecked',
           ...(index > 0 && { depends_on: [phases[index - 1]?.id] }),
-          tasks: `tasks/${phase.slug}/tasks.dd.json#tasks`,
+          tasks: `assets/tasks/${phase.slug}/tasks.dd.json#tasks`,
         })),
       },
     ],
@@ -126,7 +141,7 @@ export function buildPlanScaffold(input: PlanScaffoldInput): PlanScaffold {
   };
 
   const taskFiles = phases.map((phase) => ({
-    relativePath: `tasks/${phase.slug}/tasks.dd.json`,
+    relativePath: `assets/tasks/${phase.slug}/tasks.dd.json`,
     json: stringify({
       dd: { schema: 'builder/plan' },
       sections: [
@@ -134,8 +149,11 @@ export function buildPlanScaffold(input: PlanScaffoldInput): PlanScaffold {
           name: 'meta',
           value: { title: phase.title, slug: phase.slug, status: 'draft', summary: '' },
         },
+        { name: 'summary', value: '' },
         { name: 'tasks', value: [] as unknown[] },
-        { name: 'evidence', value: {} },
+        // `done_when`, never `evidence`: the alias exists only for corpora that
+        // predate the rename, and nothing new should be authored into it.
+        { name: 'done_when', value: {} },
       ],
       references: [] as unknown[],
     }),

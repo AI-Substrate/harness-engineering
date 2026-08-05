@@ -1,10 +1,10 @@
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { registerTelemetryAct } from '../../../src/acts/telemetry.js';
 import { FakeClock } from '../../../src/adapters/clock/fake-clock.js';
 import { FakeEnv } from '../../../src/adapters/env/fake-env.js';
@@ -45,6 +45,26 @@ const CORPUS = fileURLToPath(
 );
 const LOGS_BLOB = readFileSync(`${CORPUS}expected-otlp-logs.jsonl`, 'utf8');
 const METRICS_BLOB = readFileSync(`${CORPUS}expected-otlp-metrics.jsonl`, 'utf8');
+
+/**
+ * A budget sized for REAL git under CONTENTION, not for pure computation.
+ *
+ * Measured on this box: the two real-git cases below spend **46 git children**
+ * between them, and each runs in 200–460ms uncontended. But `spawnSync` blocks on
+ * a child this file cannot influence, and sixteen other suites in this repo spawn
+ * real subprocesses of their own — sampled during a loaded full run, one such
+ * child has a p50 of 73ms and a MAX of 1202ms. Twenty-odd children behind that
+ * tail is how a ~220ms case was observed timing out at vitest's 5s default: the
+ * assertion's subject was never in doubt, the wallclock allowance was.
+ *
+ * Set once for the file rather than per-case, because the property is true of
+ * every case that shells out to git, and a per-case number invites the next author
+ * to guess one. The same idiom, for the same measured reason, as
+ * `exec-remote-telemetry-git.int.test.ts`. Note this is a BUDGET, not a fix: the
+ * fixture setup was moved into a hook first (see the describe below), and this
+ * covers only the irreducible real-git work that IS each case's subject.
+ */
+vi.setConfig({ testTimeout: 20_000, hookTimeout: 30_000 });
 
 /** The session id + capture date carried by the copilot-cli corpus blob (RES_SESSION). */
 const SID = 'b67cd3ce-e0ee-4048-831e-7f4591f20a60';
@@ -346,17 +366,45 @@ function porcelain(cwd: string): string {
 }
 
 describe('ExecGitRead — real-git round-trip + read-only invariant (T006/T008, KF-06/AC-08)', () => {
+  /**
+   * A committed, clean repo — built ONCE per case in a hook, not inside the
+   * assertion.
+   *
+   * The subject here is a REAL git round-trip, so unlike a scan whose tree walk
+   * was incidental, the git work cannot be taken out without taking the test's
+   * subject with it. What CAN come out is the fixture: `init`, two `config`s,
+   * `add` and `commit` are setup, and vitest budgets a hook separately from a
+   * case. The `bash -c 'echo …'` child goes entirely — a file write needs no
+   * shell, and one fewer subprocess is one fewer thing to queue behind.
+   */
+  const seedRepo = (prefix: string): string => {
+    const repo = mkdtempSync(join(tmpdir(), prefix));
+    const git = (...args: string[]) => spawnSync('git', args, { cwd: repo, encoding: 'utf8' });
+    git('init', '-q', '-b', 'main');
+    git('config', 'user.email', 'test@example.com');
+    git('config', 'user.name', 'Test');
+    writeFileSync(join(repo, 'README.md'), 'hello\n');
+    git('add', 'README.md');
+    git('commit', '-qm', 'init');
+    return repo;
+  };
+
+  let roundTripRepo = '';
+  let historyRepo = '';
+
+  beforeAll(() => {
+    roundTripRepo = seedRepo('harness-gitread-');
+    historyRepo = seedRepo('harness-gitread-hist-');
+  });
+
+  afterAll(() => {
+    for (const repo of [roundTripRepo, historyRepo])
+      if (repo.length > 0) rmSync(repo, { recursive: true, force: true });
+  });
+
   it('reads a committed shard back byte-identical, leaving the working tree untouched', () => {
-    const repo = mkdtempSync(join(tmpdir(), 'harness-gitread-'));
-    try {
-      // A minimal real repo with a clean tree.
-      const git = (...args: string[]) => spawnSync('git', args, { cwd: repo, encoding: 'utf8' });
-      git('init', '-q', '-b', 'main');
-      git('config', 'user.email', 'test@example.com');
-      git('config', 'user.name', 'Test');
-      spawnSync('bash', ['-c', 'echo hello > README.md'], { cwd: repo });
-      git('add', 'README.md');
-      git('commit', '-qm', 'init');
+    const repo = roundTripRepo;
+    {
       const before = porcelain(repo);
       expect(before).toBe(''); // clean
 
@@ -389,8 +437,6 @@ describe('ExecGitRead — real-git round-trip + read-only invariant (T006/T008, 
       const exp = combineSession(SID, shardFs(blobs), { kind: 'git-ref' });
       expect(exp.source.segment_count).toBe(1);
       expect(exp.identity.harness).toBe('copilot-cli');
-    } finally {
-      rmSync(repo, { recursive: true, force: true });
     }
   });
 
@@ -402,16 +448,8 @@ describe('ExecGitRead — real-git round-trip + read-only invariant (T006/T008, 
    * the 2nd sync's blobs — walking the history recovers the 1st sync's buried blobs.
    */
   it('listRefHistory + readTreeAtCommit recover segments buried in non-tip commits (F-03)', () => {
-    const repo = mkdtempSync(join(tmpdir(), 'harness-gitread-hist-'));
-    try {
-      const git = (...args: string[]) => spawnSync('git', args, { cwd: repo, encoding: 'utf8' });
-      git('init', '-q', '-b', 'main');
-      git('config', 'user.email', 'test@example.com');
-      git('config', 'user.name', 'Test');
-      spawnSync('bash', ['-c', 'echo hello > README.md'], { cwd: repo });
-      git('add', 'README.md');
-      git('commit', '-qm', 'init');
-
+    const repo = historyRepo;
+    {
       const gw = new ExecGitWrite(repo);
       const blob = (name: string, content: string) => ({
         mode: '100644' as const,
@@ -444,8 +482,6 @@ describe('ExecGitRead — real-git round-trip + read-only invariant (T006/T008, 
 
       // Still read-only.
       expect(porcelain(repo)).toBe('');
-    } finally {
-      rmSync(repo, { recursive: true, force: true });
     }
   });
 });

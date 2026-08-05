@@ -6,6 +6,7 @@ import { ErrorCodes } from '../../output/error-codes.js';
 import { isWithin, posixDirname, posixJoin, resolveInRepo, toPosix } from '../shared/posix-path.js';
 import {
   buildBuiltinEvent,
+  ddLinkOf,
   type FlowDoc,
   type FlowNode,
   type FlowProvenance,
@@ -200,6 +201,14 @@ export interface CreateFlowOptions {
   /** `--bare` — root-only, copy no template nodes. */
   bare?: boolean;
   /**
+   * `--plan-dir` — the repo-relative plan folder this flow belongs to.
+   *
+   * Recorded on the root, and used to ANCHOR the template's relative `dd_link`
+   * addresses at the folder (see `anchorDdLinks`). Absent ⇒ nothing is recorded
+   * and no address is touched, so every existing flow and template is unaffected.
+   */
+  planDir?: string;
+  /**
    * `--agent` — stamp `provenance.agent` (D-06 fix). **The only source**: there is deliberately
    * NO `HARNESS_AGENT` fallback (026 AC-5 / companion HIGH — the env carries the model name in
    * an agent runtime and it would surface in the rail title). Omitted → `null`.
@@ -263,17 +272,126 @@ function resolveTemplate(
  * deep-copy the template nodes verbatim, stamp root identity + provenance, fire
  * the `created` event, validate, and atomically write.
  */
+/**
+ * `--plan-dir`, normalized: repo-relative POSIX, no leading or trailing slash;
+ * `absent` when the flag was not passed (or was empty); `invalid` otherwise.
+ *
+ * A bad value is REFUSED, never quietly dropped. Dropping it makes
+ * `--plan-dir /abs/path` byte-indistinguishable from not passing the flag at
+ * all: `flow create` exits 0 and writes an UNANCHORED flow whose every gate is
+ * guaranteed to refuse E441 later, at the point of departure, far from the
+ * mistake. Two shapes are refused for two different reasons:
+ *
+ * - ABSOLUTE — a machine-specific prefix baked into a committed flow is a flow
+ *   whose gates only resolve on one laptop.
+ * - REPO-ESCAPING (`..`) — a gate address outside the repository is not a gate;
+ *   it points at something no reviewer, CI job, or clone can see.
+ */
+type PlanDirResult =
+  | { kind: 'absent' }
+  | { kind: 'ok'; value: string }
+  | { kind: 'invalid'; reason: string; hint: string };
+
+function normalizePlanDir(raw: string | undefined): PlanDirResult {
+  if (typeof raw !== 'string') return { kind: 'absent' };
+  const posix = toPosix(raw).trim();
+  // Absoluteness is checked BEFORE any stripping — stripping a leading `/` first
+  // would silently turn `/Users/someone/repo/docs/plans/x` into a plausible-looking
+  // relative path and bake it in, which is the exact outcome this guard exists to
+  // prevent.
+  if (posix.startsWith('/') || /^[a-zA-Z]:/.test(posix)) {
+    return {
+      kind: 'invalid',
+      reason: `--plan-dir must be repo-relative, got an absolute path: ${posix}`,
+      hint: 'Pass the folder as seen from the repo root, e.g. --plan-dir docs/plans/071-my-plan.',
+    };
+  }
+  const trimmed = posix.replace(/^\.\//, '').replace(/\/+$/, '');
+  if (trimmed.length === 0) return { kind: 'absent' };
+  if (trimmed.split('/').includes('..')) {
+    return {
+      kind: 'invalid',
+      reason: `--plan-dir must stay inside the repository, got: ${trimmed}`,
+      hint: 'Remove the `..` segments — gate addresses are anchored at the repo root, e.g. --plan-dir docs/plans/071-my-plan.',
+    };
+  }
+  return { kind: 'ok', value: trimmed };
+}
+
+/**
+ * Anchor a template's RELATIVE `dd_link` addresses at the plan folder (ac-7110).
+ *
+ * A flight-plan template is static: it is authored once, shipped in `skills/`, and
+ * cannot know which plan folder it will be instantiated into. But a flow's
+ * `dd_link.address` is REPO-ROOT anchored (`fromPath: null`, key finding F8) —
+ * which is why ac-7113 has the archive step rewrite them. So the template writes
+ * what it can know, `assets/tasks/phase-1/tasks.dd.json#tasks`, and create
+ * prefixes the folder it is being instantiated into.
+ *
+ * Doing it HERE rather than in prompt-ware is the whole point. A gate address
+ * assembled by a model is a gate that fails silently the day the model
+ * paraphrases, and mechanical refusal is precisely what this surface is for.
+ *
+ * ABSOLUTE-shaped addresses are left ALONE — an address already anchored at the
+ * repo root means what it says, and prefixing it would break a template that
+ * deliberately gates on something outside its own folder.
+ */
+function anchorDdLinks(nodes: readonly FlowNode[], planDir: string): FlowNode[] {
+  return nodes.map((node) => {
+    const link = ddLinkOf(node);
+    if (link === undefined || typeof link.address !== 'string') return node;
+    const anchored = anchorAddress(link.address, planDir);
+    return anchored === link.address ? node : { ...node, dd_link: { ...link, address: anchored } };
+  });
+}
+
+/** Prefix one address, unless it is already repo-root anchored. */
+function anchorAddress(address: string, planDir: string): string {
+  const trimmed = address.trim();
+  if (trimmed.length === 0) return address;
+  if (trimmed.startsWith('/') || trimmed.startsWith('#')) return address;
+  if (trimmed.startsWith(`${planDir}/`)) return address;
+  return `${planDir}/${trimmed}`;
+}
+
+/**
+ * The path `createFlow` will write to, resolved from the same two rules the create
+ * itself uses (`--path` anchored in-repo › `.harness/flows/<slug>.json`).
+ *
+ * Exported because the act must read the pre-write bytes at that exact path to be
+ * able to roll the source back if the sibling render fails (tk-7174). A caller
+ * re-deriving the target with its own copy of these two rules would work until the
+ * day the rules changed on one side, and then it would restore — or delete — the
+ * WRONG file. One function, one answer.
+ */
+export function resolveCreateTarget(
+  opts: { path?: string; slug: string },
+  repoRoot: string,
+): string {
+  const root = toPosix(repoRoot);
+  return opts.path
+    ? resolveInRepo(opts.path, root)
+    : posixJoin(root, FLOWS_DIR, `${opts.slug}.json`);
+}
+
 export function createFlow(
   opts: CreateFlowOptions,
   deps: FlowServiceDeps,
 ): { ok: true; path: string; doc: FlowDoc } | FlowFailure {
   const repoRoot = toPosix(opts.repoRoot);
+
+  // `--plan-dir` is validated FIRST, before the template is resolved and long
+  // before anything reaches disk: a refusal must leave no flow behind, because a
+  // half-anchored flow is the failure mode this option exists to remove.
+  const planDir = normalizePlanDir(opts.planDir);
+  if (planDir.kind === 'invalid') {
+    return fail(ErrorCodes.INVALID_ARGS, planDir.reason, planDir.hint);
+  }
+
   // A relative --path anchors to the repo root before the containment check
   // (else an in-repo relative path resolves to `../…` and is wrongly rejected);
   // an absolute path passes through. Containment still applies after resolution.
-  const targetPath = opts.path
-    ? resolveInRepo(opts.path, repoRoot)
-    : posixJoin(repoRoot, FLOWS_DIR, `${opts.slug}.json`);
+  const targetPath = resolveCreateTarget(opts, repoRoot);
 
   // Containment first — an out-of-repo write target is rejected before any work.
   if (!isWithin(repoRoot, targetPath)) {
@@ -322,6 +440,9 @@ export function createFlow(
       ? template.cursor
       : template.nodes[0]?.id;
 
+  const nodes =
+    planDir.kind === 'ok' ? anchorDdLinks(template.nodes, planDir.value) : template.nodes;
+
   const doc: FlowDoc = {
     schema_version: resolved.schema.schemaVersionMajor,
     kind: resolved.schema.kind,
@@ -332,8 +453,9 @@ export function createFlow(
     created_at: createdAt,
     provenance,
     events: [],
-    nodes: template.nodes,
+    nodes,
   };
+  if (planDir.kind === 'ok') doc.plan_dir = planDir.value;
   if (opts.title !== undefined && opts.title.length > 0) doc.title = opts.title;
   // The `created` (CRT) built-in event — the flow's first audit fact (ws-002 §E2).
   doc.events.push(
@@ -434,6 +556,13 @@ export interface FlowSummary {
   kind: string;
   now: string | null;
   path: string;
+  /**
+   * The plan folder this flow was created against, or null when it was created
+   * without `--plan-dir`. Listed because it is the only mechanical way to answer
+   * "which flow belongs to the plan I am about to archive" — the question the
+   * post-flight relocate has to answer before it can re-point anything.
+   */
+  plan_dir: string | null;
 }
 
 /**
@@ -457,7 +586,91 @@ export function listFlows(
       kind: typeof doc.kind === 'string' ? doc.kind : 'unknown',
       now: typeof doc.nav?.now === 'string' ? doc.nav.now : null,
       path: posixJoin(dir, name),
+      plan_dir: typeof doc.plan_dir === 'string' ? doc.plan_dir : null,
     });
   }
   return { ok: true, flows };
+}
+
+// ---------------------------------------------------------------------------
+// relocate — the plan folder moved; the gates have to move with it.
+// ---------------------------------------------------------------------------
+
+/** One address the relocation rewrote, reported so the move is auditable. */
+export interface RelocatedGate {
+  node: string;
+  from: string;
+  to: string;
+}
+
+/**
+ * Re-anchor a flow's `dd_link` gate addresses after its plan folder moved
+ * (ac-7113, key finding F8).
+ *
+ * A flow's gate addresses are REPO-ROOT anchored (`fromPath: null`). That is the
+ * right choice — it means a gate says the same thing to a reviewer, a CI job, and
+ * a clone — but it has one consequence: the post-flight `git mv` into
+ * `docs/plans/archive/` silently stales every one of them. Nothing catches it.
+ * `dd doctor` sweeps `*.dd.json` and a flow is `.harness/flows/<slug>.json`, so
+ * the corpus reads clean while the gates quietly point at a folder that no longer
+ * exists. The failure surfaces later as an E441 at a departure, or never, because
+ * an archived plan has no departures left to refuse.
+ *
+ * The rewrite is MECHANICAL for the same reason the anchoring was: the flow
+ * already records the folder it belongs to (`plan_dir`), so "which addresses moved"
+ * is a fact in the document rather than a judgement a model makes at archive time.
+ * A prompt that reassembles addresses is a gate that fails the day the prompt is
+ * paraphrased.
+ *
+ * Refuses rather than guesses in two cases: a flow with no `plan_dir` has no
+ * anchor to rewrite FROM, and a `--to` that is absolute or repo-escaping is the
+ * same bad address `--plan-dir` already refuses at create time. Same guard, same
+ * words — one rule about what a plan folder may be.
+ */
+export function relocateFlow(
+  opts: { path: string; repoRoot: string; to: string },
+  deps: FlowServiceDeps,
+): { ok: true; doc: FlowDoc; from: string; to: string; rewritten: RelocatedGate[] } | FlowFailure {
+  const target = normalizePlanDir(opts.to);
+  if (target.kind === 'invalid') {
+    return fail(ErrorCodes.INVALID_ARGS, target.reason.replace('--plan-dir', '--to'), target.hint);
+  }
+  if (target.kind === 'absent') {
+    return fail(
+      ErrorCodes.INVALID_ARGS,
+      '--to is required: relocating a flow means naming the folder its gates now live in',
+      'Pass the new repo-relative plan folder, e.g. --to docs/plans/archive/071-my-plan.',
+    );
+  }
+
+  const read = readFlowDoc(toPosix(opts.path), deps);
+  if (!read.ok) return read;
+  const doc = read.doc;
+
+  const from = typeof doc.plan_dir === 'string' ? doc.plan_dir.replace(/\/+$/, '') : null;
+  if (from === null || from.length === 0) {
+    return fail(
+      ErrorCodes.INVALID_ARGS,
+      `this flow records no plan_dir, so there is no anchor to re-point: ${opts.path}`,
+      'A flow created without --plan-dir has unanchored gate addresses; re-point them by hand, or recreate the flow with --plan-dir.',
+    );
+  }
+
+  const rewritten: RelocatedGate[] = [];
+  const nodes = doc.nodes.map((node) => {
+    const link = ddLinkOf(node);
+    if (link === undefined || typeof link.address !== 'string') return node;
+    const address = link.address;
+    // Only addresses INSIDE the folder that moved are re-pointed. A gate that
+    // deliberately cites something elsewhere in the repo did not move, and
+    // rewriting it would break a working address to fix a stale one.
+    if (address !== from && !address.startsWith(`${from}/`)) return node;
+    const next = `${target.value}${address.slice(from.length)}`;
+    rewritten.push({ node: node.id, from: address, to: next });
+    return { ...node, dd_link: { ...link, address: next } };
+  });
+
+  doc.nodes = nodes;
+  doc.plan_dir = target.value;
+  return { ok: true, doc, from, to: target.value, rewritten };
 }

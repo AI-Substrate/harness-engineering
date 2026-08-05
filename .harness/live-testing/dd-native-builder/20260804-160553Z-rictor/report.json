@@ -1,0 +1,182 @@
+{
+  "scenario": "dd-native-builder",
+  "run_id": "20260804-160553Z-rictor",
+  "subject": {
+    "harness": "claude",
+    "model": "opus",
+    "pij_session_id": "pij-key-constrictor",
+    "effort": "high"
+  },
+  "base_ref": "f947a2fc49928b997079297c53ef3925e107c789",
+  "base_ref_warning": "worktree HEAD f947a2fc \u2260 base_ref f947a2fc49928b997079297c53ef3925e107c789 \u2014 the scored worktree was not cut from the declared base_ref; the recorded seed_tuple.base_ref may be wrong",
+  "started_at": "2026-08-04T16:05:53.778Z",
+  "finished_at": "2026-08-04T16:05:58.060Z",
+  "deterministic": {
+    "score": 0.8333333333333334,
+    "axis_scores": {
+      "process": 0,
+      "capability": 1
+    },
+    "passed": 5,
+    "failed": 1,
+    "unknown": 5,
+    "total": 11,
+    "required_failed": 1,
+    "results": [
+      {
+        "id": "A1",
+        "type": "skill-called",
+        "source": "telemetry",
+        "axis": "process",
+        "status": "unknown",
+        "required": true,
+        "weight": 1,
+        "describe": "drove the work through the builder skill rather than free-handing it \u2014 everything below is only meaningful if this is how the plan was made"
+      },
+      {
+        "id": "A2",
+        "type": "file-created",
+        "source": "fs",
+        "axis": "capability",
+        "status": "pass",
+        "required": true,
+        "weight": 1,
+        "describe": "the plan is a deterministic document \u2014 the dd-native authoring path was actually taken (ac-7111)"
+      },
+      {
+        "id": "A3",
+        "type": "forbidden-state",
+        "source": "fs",
+        "axis": "safety",
+        "status": "fail",
+        "required": true,
+        "weight": 1,
+        "describe": "NO markdown plan document exists beside the dd one. The dd pair REPLACES `<slug>-plan.md`; a subject that wrote both hedged, and a hedged plan is two sources of truth"
+      },
+      {
+        "id": "A4",
+        "type": "file-created",
+        "source": "fs",
+        "axis": "capability",
+        "status": "pass",
+        "required": true,
+        "weight": 1,
+        "describe": "the phase task file was JIT-born as a dd document at the phase boundary, not scaffolded up front"
+      },
+      {
+        "id": "A5",
+        "type": "file-content-matches",
+        "source": "fs",
+        "axis": "capability",
+        "status": "pass",
+        "required": true,
+        "weight": 1,
+        "describe": "every assertion names its instrument \u2014 mandatory pressure was honoured rather than worked around (ac-7103)"
+      },
+      {
+        "id": "A6",
+        "type": "file-content-matches",
+        "source": "fs",
+        "axis": "capability",
+        "status": "pass",
+        "required": false,
+        "weight": 1,
+        "describe": "task rows carry the criteria they serve, so the work-accounting leg of the proof graph exists (ac-7105). Not required: a single-phase scenario may legitimately have one task and one criterion"
+      },
+      {
+        "id": "A7",
+        "type": "harness-verb-ran",
+        "source": "telemetry",
+        "axis": "process",
+        "status": "unknown",
+        "required": false,
+        "weight": 1,
+        "describe": "states were mutated through the dd WRITER VERBS. Not required, and deliberately so: `dd add`/`dd rm` are equally correct, and A9 catches the failure this is really about"
+      },
+      {
+        "id": "A8",
+        "type": "harness-verb-ran",
+        "source": "telemetry",
+        "axis": "process",
+        "status": "unknown",
+        "required": true,
+        "weight": 1,
+        "describe": "asked the plan whether its own story hangs together, at least once"
+      },
+      {
+        "id": "A9",
+        "type": "command-succeeds",
+        "source": "fs",
+        "axis": "capability",
+        "status": "pass",
+        "required": true,
+        "weight": 1,
+        "describe": "the corpus is doctor-clean AFTER the run \u2014 which is the honest test of 'never hand-edited the generated markdown'. A hand-edited sibling shows up here as drift no matter how it was made"
+      },
+      {
+        "id": "A10",
+        "type": "gate-refused",
+        "source": "telemetry",
+        "axis": "process",
+        "status": "unknown",
+        "required": true,
+        "weight": 1,
+        "describe": "at least one departure was REFUSED by a gate. This is the assertion the scenario exists for: a run whose gates never fired has not shown the gates work, only that the subject happened to stay ahead of them (tk-7169's evidence capture is what makes this provable at all)"
+      },
+      {
+        "id": "A11",
+        "type": "command-succeeds",
+        "source": "fs",
+        "axis": "capability",
+        "status": "unknown",
+        "required": false,
+        "weight": 1,
+        "describe": "the close-out question came back green \u2014 strict zero errors and zero warnings. A placeholder resolved per-run (`--resolve SUBJECT_PLAN_VALIDATE_COMPLETE=...`), because only the subject knows where its plan landed; unresolved it scores `unknown` under this scenario's placeholder_policy, never a silent pass or a spurious fail. Not required: a single-phase run may legitimately stop before close-out"
+      }
+    ]
+  },
+  "judged": [
+    {
+      "id": "A12.explanation-matches-telemetry",
+      "criterion": "explanation-matches-telemetry",
+      "field": "explanation-matches-telemetry",
+      "prompt": "CoT-before-score: first write concise evidence notes from verified artifacts, then choose exactly one verdict: pass | fail | unknown.\n\nArtifact boundary: use report.json/report.md, deterministic result rows, session-export.json, and worktree artifacts only; do not use subject prose, chat transcript, identity hints, or self-report.\n\nCanonical good-flow anchor slot (content deferred until human-gold-calibration-set-deferred lands):\n<canonical_good_flow_anchor>\nTODO: deferred canonical good-flow exemplar.\n</canonical_good_flow_anchor>\n\nCriterion: Explanation matches telemetry\nQuestion: Does the explanation match the verified telemetry/artifacts without inventing steps or hiding missing evidence?\n\nAnti-verbosity criterion: Do not reward length, rhetorical polish, or confidence without artifact evidence.",
+      "rubric": "pass when explanation and telemetry agree; fail on material contradiction; unknown when telemetry/artifacts are insufficient.",
+      "describe": "does the subject's own account of what it did match what telemetry says it did? The one thing no resolver can answer, and the one most worth knowing: Explanation matches telemetry",
+      "verdict": "unknown",
+      "rationale": "Rubric says unknown when telemetry is insufficient, and it is: 0 segments joined for session pij-key-constrictor (telemetry.available=false), so the telemetry half of the criterion is unmeasurable. Artifact-only cross-check of the subject's account against the worktree: corroborated on every checkable claim \u2014 new-since-base files match its report exactly (2 source, 2 test, 3 wiring-guard edits, plan folder, retro record at .harness/records/retro/2026-08-04/004-*); the-flow.json shows the claimed 5 spine nodes + receipted chores with nav on review-1; its 20 new tests exist and pass. No invented steps found in artifacts; no contradiction found. But the criterion is explanation-vs-TELEMETRY, and that lane is blind this run \u2014 unknown, not pass.",
+      "by": "orchestrator pij-related-koala (artifact-only; judge lane unrunnable without telemetry)"
+    }
+  ],
+  "provenance": {
+    "judge": {
+      "model": "gpt-5.5",
+      "model_version": "gpt-5.5-2026-07-01",
+      "subject_model": "opus",
+      "judge_family": "openai",
+      "subject_family": "claude",
+      "different_family_than_subject_asserted": true,
+      "different_family_than_subject": true,
+      "artifact_only": true,
+      "identity_stripped": true,
+      "temperature": 0,
+      "version_pinned": true,
+      "anti_verbosity": "Do not reward length, rhetorical polish, or confidence without artifact evidence.",
+      "criteria": [
+        "explanation-matches-telemetry"
+      ],
+      "prompt_scaffold": {
+        "cot_before_score": true,
+        "canonical_good_flow_anchor": null,
+        "calibration_set": "human-gold-calibration-set-deferred",
+        "artifact_only": true
+      },
+      "warnings": []
+    },
+    "resolutions": {
+      "SUBJECT_PLAN_VALIDATE_COMPLETE": "node harness/cli/bin/harness.js plan validate /Users/jordanknight/substrate/harness-engineering-worktrees/eval-ddnb-run1/docs/plans/072-documented-command-check/plan.dd.json --complete"
+    }
+  },
+  "alarms": [],
+  "verdict": "FAIL"
+}

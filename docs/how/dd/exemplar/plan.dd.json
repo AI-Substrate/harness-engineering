@@ -11,10 +11,14 @@
         "ordinal": 65,
         "status": "in-progress",
         "complexity": "CS-5",
-        "summary": "A plan authored as a deterministic document. Every claim below is a row with its own id, its own state, and its own outbound proof — so \"is this plan done?\" is a query, not a reading.",
+        "summary": "The exemplar plan, kept minimal: every claim is an addressable row with typed links to its proof.",
         "backpressure": "backpressure.dd.json#rows",
         "log": "execution-log.dd.json#entries"
       }
+    },
+    {
+      "name": "summary",
+      "value": "A plan authored as a deterministic document. Every claim below is a row with its own id, its own state, and its own outbound proof — so \"is this plan done?\" is a query, not a reading."
     },
     {
       "name": "goals",
@@ -50,7 +54,7 @@
         },
         {
           "id": "ac-0901",
-          "claim": "A real plan authored as plan.dd.json — with per-task evidence lists and AC rows carrying `pressure`/`proven_by` — validates, renders, and is queryable with stock jq.",
+          "claim": "A real plan authored as plan.dd.json — with per-task `done_when` assertion lists and AC rows carrying `pressure`/`proven_by` — validates, renders, and is queryable with stock jq.",
           "state": "unchecked",
           "note": "This corpus is that criterion's own subject: the row stays unchecked until the phase-5 proof run records it.",
           "pressure": "backpressure.dd.json#rows/bp-0901",
@@ -127,7 +131,7 @@
   "references": [
     {
       "path": "tasks/phase-2/tasks.dd.json",
-      "sha": "32a764b25a4767fa18618ad1c5888ffccf405195c8eade99e7aff55d3bb33229",
+      "sha": "bd74a7edad53603cb65169374bf8c8ec1067f93ac83fa3d13b9731b1bcf884b0",
       "mode": "live"
     },
     {

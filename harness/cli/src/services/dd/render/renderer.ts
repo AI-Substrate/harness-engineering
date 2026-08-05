@@ -1,4 +1,5 @@
 import { type DdAddress, isAddressFailure, parseAddress } from '../core/address.js';
+import { hasLinksBucket, LINKS_BUCKET_FIELD, readLinksBucket } from '../core/bucket.js';
 import { DEFAULT_GATE_TERMINAL_STATES } from '../core/constants.js';
 import { type DdDerivedState, deriveState } from '../core/derive.js';
 import type { DdDoc, DdSection, DdShape, ResolvedDdSchema } from '../core/model.js';
@@ -109,7 +110,7 @@ export function headingSlug(text: string): string {
 }
 
 /** Table-cell escaping: a cell may never break the row, and may never inject HTML. */
-function escapeCell(text: string): string {
+export function escapeCell(text: string): string {
   return text
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
@@ -344,6 +345,12 @@ function renderTable(columns: readonly string[], rows: readonly string[][]): str
  * Declared columns first, in declaration order, then whatever the data actually
  * carries, in first-seen order. A3: an interior the schema never declared still
  * renders — an unvalidated field is invisible to the validator, not to the reader.
+ *
+ * The links BUCKET is excluded here and appended LAST by {@link renderObjectRows},
+ * and only when some row actually carries entries. Two reasons, both load-bearing:
+ * a bucket is a trailing annotation rather than a field of the row, and a column
+ * that appeared empty on every table in the corpus would change the bytes of every
+ * golden for nothing (ac-7002: absent bucket renders byte-identical to today).
  */
 function columnsFor(
   rows: readonly Record<string, unknown>[],
@@ -353,10 +360,24 @@ function columnsFor(
   const columns = [...declared];
   for (const row of rows) {
     for (const key of Object.keys(row)) {
+      if (key === LINKS_BUCKET_FIELD && !declared.includes(LINKS_BUCKET_FIELD)) continue;
       if (!columns.includes(key)) columns.push(key);
     }
   }
   return columns;
+}
+
+/** One bucket cell: every entry as `rel: link`, in authored order. */
+function renderBucket(value: unknown, location: string, deps: CellDeps): string {
+  const bucket = readLinksBucket(value, location);
+  if (bucket.entries.length === 0) return EMPTY_CELL;
+  return bucket.entries
+    .map((entry) => {
+      const link = renderLink(entry.ref, deps.doc, deps.resolved);
+      const text = entry.label === undefined ? link : `${escapeCell(entry.label)} ${link}`;
+      return `${escapeCell(entry.rel)}: ${text}`;
+    })
+    .join('<br>');
 }
 
 function renderObjectRows(
@@ -366,8 +387,10 @@ function renderObjectRows(
   deps: CellDeps,
 ): string {
   const columns = columnsFor(rows, itemShape);
-  const body = rows.map((row, index) =>
-    columns.map((column) =>
+  const bucketDeclared = itemShape?.fields !== undefined && LINKS_BUCKET_FIELD in itemShape.fields;
+  const showBucket = !bucketDeclared && rows.some((row) => hasLinksBucket(row));
+  const body = rows.map((row, index) => {
+    const cells = columns.map((column) =>
       renderCell(
         row[column],
         column,
@@ -375,9 +398,15 @@ function renderObjectRows(
         `${location}[${index}].${column}`,
         deps,
       ),
-    ),
-  );
-  return renderTable(columns, body);
+    );
+    if (showBucket) {
+      cells.push(
+        renderBucket(row[LINKS_BUCKET_FIELD], `${location}[${index}].${LINKS_BUCKET_FIELD}`, deps),
+      );
+    }
+    return cells;
+  });
+  return renderTable(showBucket ? [...columns, 'Links'] : columns, body);
 }
 
 /** An object section rendered as its own two-column table — the shape's declared fields first. */

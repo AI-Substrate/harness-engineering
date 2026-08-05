@@ -123,3 +123,6 @@ jq -r '
 For a custom vocabulary, use the terminal values declared by that schema. JSON
 remains the query surface; the generated marks are the human view of the same
 rule.
+
+For what the gate is FOR — how these mechanisms add up to an auditable claim — see
+[The builder proof graph](11-the-builder-proof-graph.md).

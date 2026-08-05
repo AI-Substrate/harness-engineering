@@ -31,7 +31,7 @@ interface ParseContext {
 
 function fail(
   ctx: ParseContext,
-  issueClass: 'package-invalid' | 'enum-invalid' | 'version-unsupported',
+  issueClass: 'package-invalid' | 'enum-invalid' | 'rel-invalid' | 'version-unsupported',
   location: string,
   message: string,
   severity: SchemaSeverity = 'ERROR',
@@ -153,6 +153,31 @@ function parseShape(raw: unknown, location: string, ctx: ParseContext): DdShape 
       return null;
     }
     shape.target = raw.target;
+  }
+  // The relation. This block is the OD-8 pin the key finding demanded: `parseShape`
+  // is an ALLOW-LIST, so a key it does not name is silently discarded — which is
+  // exactly how `valuesShape` was lost once before. Without these six lines every
+  // `rel` in every builder schema would vanish between the file and the resolved
+  // schema, and the contradiction engine would ship inert on every real plan
+  // while every one of its own unit tests passed.
+  if (raw.rel !== undefined) {
+    if (typeof raw.rel !== 'string' || raw.rel.trim().length === 0) {
+      fail(ctx, 'rel-invalid', `${location}.rel`, 'rel must be a non-empty string');
+      return null;
+    }
+    if (type !== 'link') {
+      fail(
+        ctx,
+        'rel-invalid',
+        `${location}.rel`,
+        `rel is only meaningful on a link, not "${type}" (an array of links declares it on items)`,
+      );
+      return null;
+    }
+    // An UNKNOWN rel is deliberately accepted: the built-in set is frozen, the
+    // namespace is open, and a schema saying something dd does not understand
+    // yet behaves as `ref` rather than being refused.
+    shape.rel = raw.rel;
   }
   if (raw.allowAdditional !== undefined) {
     if (typeof raw.allowAdditional !== 'boolean') {

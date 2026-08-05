@@ -56,6 +56,12 @@ export interface SessionEvidence {
   checks: Array<{ status: string }>;
   compactions: number;
   tools: Record<string, number>;
+  /**
+   * Refusal E-code -> count (plan 071 tk-7169). LOCK-STEP with the CLI's
+   * `SessionEvidence`; a field added to one and not the other fails to compile
+   * in `session-evidence-lockstep.test.ts`. Fixed vocabulary, never message text.
+   */
+  refusals: Record<string, number>;
   gaps: string[];
   /**
    * Wall-span in seconds between the first + last telemetry event across the
@@ -376,6 +382,33 @@ const harnessVerbRan: ResolverFn = (a, rc) => {
   return bool((rc.evidence.harness_verbs[verb] ?? 0) >= numParam(a, 'min', 1));
 };
 
+/**
+ * Did a GATE actually refuse during this run?
+ *
+ * The one assertion in this vocabulary that can only be answered because of a
+ * deliberate widening. A dd gate refusal writes NOTHING to the flow — that
+ * invariant is pinned, and rightly: a refused departure must not leave a trace
+ * that looks like a departure. So for a long time "the subject hit a real gate
+ * and was turned back" was unprovable from evidence, and only a FORCE (which is
+ * the failure case) was durable. tk-7169 captures `envelope.error.code` on
+ * `command_exit` instead, so the refusal lands in telemetry while the flow stays
+ * untouched.
+ *
+ * With `code`, this asks whether that specific gate fired (`E441` for a
+ * completion gate, `E443` for the check kind). Without one, whether ANY refusal
+ * did. A scenario that only ever passes its gates has not demonstrated that the
+ * gates work — it has demonstrated that the subject avoided them.
+ */
+const gateRefused: ResolverFn = (a, rc) => {
+  if (!rc.evidence) return 'unknown';
+  const refusals = rc.evidence.refusals;
+  const code = strParam(a, 'code');
+  const min = numParam(a, 'min', 1);
+  if (code) return bool((refusals[code] ?? 0) >= min);
+  const total = Object.values(refusals).reduce((sum, count) => sum + count, 0);
+  return bool(total >= min);
+};
+
 const checksRan: ResolverFn = (a, rc) => {
   if (!rc.evidence) return 'unknown';
   const status = strParam(a, 'status');
@@ -523,6 +556,7 @@ export const RESOLVERS: Record<string, ResolverEntry> = {
   'skill-sequence': { lanes: ASSERTION_TYPES['skill-sequence'], resolve: skillSequence },
   'flow-seam-fired': { lanes: ASSERTION_TYPES['flow-seam-fired'], resolve: flowSeamFired },
   'harness-verb-ran': { lanes: ASSERTION_TYPES['harness-verb-ran'], resolve: harnessVerbRan },
+  'gate-refused': { lanes: ASSERTION_TYPES['gate-refused'], resolve: gateRefused },
   'checks-ran': { lanes: ASSERTION_TYPES['checks-ran'], resolve: checksRan },
   'tool-used': { lanes: ASSERTION_TYPES['tool-used'], resolve: toolUsed },
   'compaction-occurred': {
