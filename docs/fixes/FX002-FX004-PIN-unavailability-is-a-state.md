@@ -487,6 +487,39 @@ decisive:
 boundary of this fix** — what the pin does and does not bind — not as silence. Routed
 for its own ordinal.
 
+### The precise statement — the packet WIDENS a divergence, it does not merely decline to fix one
+
+*"We chose not to fix it"* is the wrong sentence. **ESTABLISHED (both accept sets
+read directly):**
+
+| | accepts today | accepts after the pin |
+|---|---|---|
+| **Reader A** — `decodeSegment` | `1.1, 2.0, 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7` | **`2.7` only** |
+| **Reader B** — `validSegment` | `2.4, 2.5, 2.6, 2.7` | `2.4, 2.5, 2.6, 2.7` (untouched) |
+
+**The two readers ALREADY disagree.** Today `A ⊃ B`: A is broader by five versions
+(`1.1`, `2.0–2.3`) that nothing has written for a long time. The disagreement exists
+but points in a **harmless direction** — A accepts what B refuses, on dead versions.
+
+**After the pin the disagreement INVERTS**: `A ⊂ B`, and it now covers `2.4/2.5/2.6`
+— versions with **real published sessions in the field** (a sibling seat measured
+`telemetry pull` succeeding on published 2.6 sessions today). So:
+
+> **The same bytes get two different answers depending on which door they enter:
+> `telemetry get`/`report` refuses a 2.6 record that `pull` accepts.**
+
+That is a **knowingly-shipped, knowingly-widened** inconsistency. It remains the
+right trade — pinning Reader B would refuse the sessions that currently work — but
+the packet **moves** something rather than leaving it alone, and a reader of this
+note in three weeks needs the first sentence, not the second.
+
+**This is the earlier line arriving early**: *a duplicate control is not redundancy,
+it is a future argument.* The argument starts on merge.
+
+**The reviewer must be told this is deliberate.** It is precisely the class the
+interaction pass exists to catch; arriving unannounced, it reads as the oversight
+that stage was built to prevent.
+
 **Note the family**: the grammar drift and this version drift are the *same defect in
 the same file* — `published-telemetry.ts` re-implements validation independently of
 the producer. Two instances, one cause.
