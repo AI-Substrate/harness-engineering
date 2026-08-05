@@ -137,3 +137,59 @@ and vitest transpiles without typechecking, so nothing typechecks it; its SAMPLE
 already omits four required `CliEvidence` fields (`token_evidence`, `refusals`,
 `source`, `ref_checked`) and no gate notices. Proved by the coder with a throwaway
 tsconfig. FX001 reported this as a suspicion; this establishes the mechanism.
+
+## Ruling #2 (2026-08-05, pij-related-koala — review round 2, MAJOR FX003-R2)
+
+**The reviewer's finding is CONFIRMED** — I read the path rather than taking the
+report. `parseSessionEvidence` validates `refusals` only as "an object of finite
+numbers" (`isNumMap`), so two malformed maps survive and then license a `fail`:
+
+- `{ malformed: 1 }` — a key that is not an error code at all.
+- `{ E440: 0.5 }` — finite and `> 0`, so `refusalCount` returns it as evidence.
+
+Either makes `refusalLaneDemonstrated` true, and a query naming an absent `E443`
+then resolves **`fail`** — the exact false accusation D1 exists to prevent, arriving
+by a different door.
+
+**AND ITS OTHER FACE, WHICH THE REVIEW DID NOT NAME.** `gateRefused` with no `code`
+param sums `refusalCount` across *all* values, so `{ malformed: 5 }` gives
+`observed = 5 >= min = 1` and resolves **`pass`**. That is a false GREEN on
+`gate-refused` — the instrument certifying that a gate stopped the subject when
+nothing did. It is arguably worse than the false red: a false fail gets argued with,
+a false pass gets believed. **Control both directions or the fix is half done.**
+
+**This predicate has now been wrong FOUR ways**, every time the same mistake —
+taking the presence of a structure for evidence of the thing:
+
+1. a boolean where three states were needed;
+2. `source: 'buffer'` as a date proof, blind to a capture that never fired;
+3. a KEY where a positive COUNT is the evidence;
+4. a WELL-FORMED-LOOKING key/value where a *valid* one is the evidence.
+
+The comment table beside the predicate gets a fourth row.
+
+**Fix direction (design is the coder's):**
+
+- **Exclude invalid entries; do NOT reject the payload.** Refusing the whole
+  envelope over one unrecognised refusal key would discard good skill/verb evidence —
+  the precise over-claiming the coder already corrected once in R1b. An invalid entry
+  contributes nothing and is otherwise inert.
+- **One place decides validity, as R1a established.** Key shape and magnitude are
+  decided in the same helper `refusalCount` already owns, used by *both* the observed
+  sum and the lane-demonstrated predicate, so the two can never disagree about what a
+  refusal is. Counts must be positive **integers** — a fractional occurrence count is
+  not an occurrence.
+- **Name the closed-set decision out loud.** A key regex is a *closed vocabulary of
+  error codes*, and a code shape we did not anticipate would be silently discarded —
+  pushing a genuine `fail` to `unknown`. That direction is the safe one and is
+  acceptable, but it must be a **stated decision with a comment**, not an accident:
+  FX001's first defect was a closed set nobody declared.
+
+**Controls — both polarities, every one must fire pre-fix:**
+
+- `{ malformed: 1 }` + query `E443` ⇒ `unknown` (pre-fix: `fail`).
+- `{ E440: 0.5 }` + query `E443` ⇒ `unknown` (pre-fix: `fail`).
+- `{ malformed: 5 }` + bare `gate-refused` ⇒ NOT `pass` (pre-fix: `pass`). **This is
+  the false-green control; it is the one most likely to be forgotten.**
+- Guards kept: `{ E440: 2 }` + query `E443` still `fail`; `{ E440: 2 }` bare still
+  `pass`; `{ E440: 0, E441: 2 }` still licenses a fail on `E443`.
