@@ -55,8 +55,8 @@ const RECEIPT_KINDS = new Set<string>(['validation', 'decision']);
 /** `basis_sha256:<64 hex>` — the surveyed plan's bytes, recorded in the receipt. */
 const BASIS_PATTERN = /basis_sha256:([0-9a-fA-F]{64})/;
 
-/** The doctrine's completed-attempt marker when the harness router is unavailable. */
-const UNAVAILABLE_PATTERN = /^decision:unavailable reason:.+ time:.+$/;
+/** The doctrine's Layer-1 detection receipt when the harness router is missing. */
+const UNAVAILABLE_DETECTION_PATTERN = /^decision:unavailable\b/i;
 
 /**
  * The reading's SHAPE (`SurveyDimension`, `SurveyReason`) is declared by the
@@ -70,7 +70,7 @@ const UNAVAILABLE_PATTERN = /^decision:unavailable reason:.+ time:.+$/;
 /** Every backpressure node, in document order (the re-basis nodes included). */
 function backpressureNodes(nodes: readonly FlowNode[]): FlowNode[] {
   return nodes.filter(
-    (node) => node.type === BACKPRESSURE_NODE_TYPE || BACKPRESSURE_ID.test(node.id),
+    (node) => node.type === BACKPRESSURE_NODE_TYPE || BACKPRESSURE_ID.test(nodeId(node) ?? ''),
   );
 }
 
@@ -80,6 +80,26 @@ interface Receipt {
   basis: string | null;
   /** Whether this is the doctrine's agent-authored unavailable-attempt receipt. */
   unavailable: boolean;
+  /** False when a receipt-shaped comment contradicts the doctrine's contract. */
+  valid: boolean;
+}
+
+/** Read the status of a real router/boot envelope, never by matching its prose. */
+function envelopeStatus(text: string): string | null {
+  try {
+    const parsed = JSON.parse(text) as unknown;
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null;
+    const status = (parsed as Record<string, unknown>).status;
+    return typeof status === 'string' ? status : null;
+  } catch {
+    return null;
+  }
+}
+
+function isUnavailableAttempt(text: string): boolean {
+  if (UNAVAILABLE_DETECTION_PATTERN.test(text)) return true;
+  const status = envelopeStatus(text);
+  return status === 'noop' || status === 'UNAVAILABLE';
 }
 
 /**
@@ -99,23 +119,30 @@ interface Receipt {
  */
 function newestReceipt(node: FlowNode): Receipt | null {
   const comments = node.comments ?? [];
+  let invalidDecision = false;
   for (let at = comments.length - 1; at >= 0; at -= 1) {
     const comment = comments[at];
     if (comment === undefined) continue;
     const kind = comment.kind;
     if (kind === undefined || !RECEIPT_KINDS.has(kind)) continue;
-    if (kind === 'decision' && (node.status !== 'skipped' || comment.source !== 'user')) continue;
+    if (kind === 'decision' && (node.status !== 'skipped' || comment.source !== 'user')) {
+      invalidDecision = true;
+      continue;
+    }
     const match = BASIS_PATTERN.exec(comment.text);
+    const basis = match?.[1]?.toLowerCase() ?? null;
+    const unavailable =
+      kind === 'validation' && comment.source === 'agent' && isUnavailableAttempt(comment.text);
     return {
       kind: kind as ReceiptKind,
-      basis: match?.[1]?.toLowerCase() ?? null,
-      unavailable:
-        kind === 'validation' &&
-        comment.source === 'agent' &&
-        UNAVAILABLE_PATTERN.test(comment.text),
+      basis,
+      unavailable,
+      valid: kind === 'decision' || basis !== null || unavailable,
     };
   }
-  return null;
+  return invalidDecision
+    ? { kind: 'decision', basis: null, unavailable: false, valid: false }
+    : null;
 }
 
 /**
@@ -132,11 +159,11 @@ function newestReceipt(node: FlowNode): Receipt | null {
  *   would not mean anything: a decline is a decision about THE WORK, not about the
  *   bytes, so there is nothing for a later edit to invalidate.
  *
- * Only the doctrine's agent-authored router-missing receipt
- * (`decision:unavailable reason:… time:…`) may omit a basis and read `null` /
- * CAN'T-TELL. A different basis-less validation receipt is malformed and remains
- * a known not-ready result. Shape alone is not evidence that the router was
- * unavailable.
+ * Only the doctrine's three agent-authored unavailable attempts may omit a basis
+ * and read `null` / CAN'T-TELL: router-missing detection, a parsed router envelope
+ * with status `noop`, or a parsed boot envelope with status `UNAVAILABLE`. A
+ * different basis-less validation is malformed and remains a known not-ready
+ * result.
  */
 function judge(
   node: FlowNode,
@@ -145,13 +172,14 @@ function judge(
   const receipt = newestReceipt(node);
   if (receipt === null) return { satisfied: false, reason: 'missing-receipt', basis: null };
   const basis = receipt.basis;
+  if (!receipt.valid) return { satisfied: false, reason: 'invalid-receipt', basis };
   if (receipt.kind === 'decision') {
     return { satisfied: true, reason: 'declined-with-receipt', basis };
   }
   if (basis === null && receipt.unavailable) {
     return { satisfied: null, reason: 'missing-basis', basis };
   }
-  if (basis === null) return { satisfied: false, reason: 'missing-receipt', basis };
+  if (basis === null) return { satisfied: false, reason: 'invalid-receipt', basis };
   if (basis === expected) return { satisfied: true, reason: 'survey-done', basis };
   return { satisfied: false, reason: 'stale-basis', basis };
 }
@@ -161,7 +189,12 @@ function judge(
  * dissent. A KNOWN failure outranks an unknown — the same precedence the verdict
  * itself uses — so a stale receipt is reported ahead of an unreadable one.
  */
-const DISSENT_ORDER: readonly SurveyReason[] = ['stale-basis', 'missing-receipt', 'missing-basis'];
+const DISSENT_ORDER: readonly SurveyReason[] = [
+  'stale-basis',
+  'invalid-receipt',
+  'missing-receipt',
+  'missing-basis',
+];
 
 /** A node that did not satisfy: `ok` is `false` (a failure) or `null` (unknowable). */
 interface Dissent {
@@ -175,14 +208,17 @@ interface Dissent {
  *
  * Re-basis nodes are deterministic: `backpressure-<first 12 hex>`. If one for
  * the current bytes exists it is the present, whatever historical terminal
- * nodes say. Before re-basis exists, the plain `backpressure` node is current.
+ * nodes say. Without that id, the plain node is only a fallback after later green
+ * evidence has been considered.
  */
+function nodeId(node: FlowNode): string | null {
+  const id = (node as { id?: unknown }).id;
+  return typeof id === 'string' ? id : null;
+}
+
 function currentNode(nodes: readonly FlowNode[], expected: string): FlowNode | undefined {
   const rebasedId = `backpressure-${expected.slice(0, 12)}`;
-  return (
-    nodes.find((node) => node.id.toLowerCase() === rebasedId) ??
-    nodes.find((node) => node.id.toLowerCase() === 'backpressure')
-  );
+  return nodes.find((node) => nodeId(node)?.toLowerCase() === rebasedId);
 }
 
 function reading(
@@ -195,7 +231,7 @@ function reading(
   return {
     satisfied,
     reason,
-    node: node?.id ?? null,
+    node: node === undefined ? null : nodeId(node),
     status: node?.status ?? null,
     basis: basis ?? null,
     expected_basis: expected,
@@ -216,9 +252,10 @@ function reading(
  * carries no basis and needs none: see `judge` for why the two are asymmetric.
  *
  * When several backpressure nodes exist (the doctrine mints one per re-basis), the
- * node whose id names the current basis owns the answer; absent that node, the
- * plain `backpressure` node does. Historical nodes are consulted only when neither
- * current form exists, and their dissent ordering cannot override the present.
+ * node whose id names the current basis owns the answer. Absent that node, a
+ * later matching validation or legitimate decline outranks the plain
+ * `backpressure` fallback. Historical dissent ordering cannot override the
+ * present.
  */
 export function readBackpressureSurvey(
   flowPath: string,
@@ -243,6 +280,30 @@ export function readBackpressureSurvey(
     }
     const verdict = judge(current, expected);
     return reading(verdict.satisfied, verdict.reason, expected, current, verdict.basis);
+  }
+
+  const plainAt = nodes.findIndex((node) => nodeId(node)?.toLowerCase() === 'backpressure');
+  if (plainAt >= 0) {
+    // The plain node is a fallback, not authority over fresher evidence. A later
+    // matching survey or human decline is affirmatively current even when its id
+    // predates the deterministic current-basis convention.
+    for (let at = nodes.length - 1; at > plainAt; at -= 1) {
+      const node = nodes[at];
+      if (node === undefined || !TERMINAL_STATUSES.has(node.status)) continue;
+      const verdict = judge(node, expected);
+      if (verdict.satisfied === true) {
+        return reading(true, verdict.reason, expected, node, verdict.basis);
+      }
+    }
+
+    const plain = nodes[plainAt];
+    if (plain !== undefined) {
+      if (!TERMINAL_STATUSES.has(plain.status)) {
+        return reading(false, 'not-run', expected, plain);
+      }
+      const verdict = judge(plain, expected);
+      return reading(verdict.satisfied, verdict.reason, expected, plain, verdict.basis);
+    }
   }
 
   const terminal = nodes.filter((node) => TERMINAL_STATUSES.has(node.status));

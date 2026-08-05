@@ -696,3 +696,100 @@ Warn trio, verbatim JSON envelopes:
 {"command":"markdown-lint","status":"degraded","timestamp":"2026-08-05T10:20:10.498Z","data":{"checks":[{"name":"markdownlint","outcome":"findings","findings":194,"examined":131,"summary":"harness-foundations/first-principles.md:7 error MD001/heading-increment Heading levels should only increment by one level at a time [Expected: h3; Actual: h4]"},{"name":"links","outcome":"findings","findings":1,"examined":131,"summary":"19:1-19:83 warning Cannot find file `../harness-presentations/missing-layer-101/intro-to-harness.md` missing-file remark-validate-links:missing-file"},{"name":"mermaid","outcome":"findings","findings":1,"examined":31,"summary":"invalid mermaid at skills/builder/references/stages/50-phase-tasks.md:215"}],"totals":{"findings":196,"filesLinted":131,"linksFilesChecked":131,"fencesParsed":31}},"next_action":"Review 196 markdown finding(s) (194 markdown lint, 1 in-repo links/anchors, 1 mermaid syntax) in `data.checks` — visible but non-blocking (warn-launch). Fix the authored docs, then promote the gate to error/exit 1 once they are clean (never widen the scope to dodge a finding)."}
 {"command":"windows-check","status":"degraded","timestamp":"2026-08-05T10:20:09.430Z","data":{"scanned":27,"findingCount":6,"byRule":{"WIN004":1,"WIN007":5},"findings":[{"rule":"WIN004","title":"single-separator basename split","file":".harness/extensions/html-snap/extension.ts","line":121,"snippet":"const base = (abs.split('/').pop() ?? 'page').replace(/\\.html?$/i, '');","message":"Splitting a path on '/' only drops the basename of a Windows backslash path. Split on /[/\\\\]/ instead."},{"rule":"WIN007","title":"POSIX absolute path or HOME env","file":".harness/extensions/html-snap/snap-core.ts","line":18,"snippet":"'/usr/bin/google-chrome',","message":"POSIX system paths (/usr, /bin, …) and $HOME do not exist on Windows. Read config via ctx.env.get (USERPROFILE/APPDATA on Windows) and avoid absolute system paths."},{"rule":"WIN007","title":"POSIX absolute path or HOME env","file":".harness/extensions/html-snap/snap-core.ts","line":19,"snippet":"'/usr/bin/google-chrome-stable',","message":"POSIX system paths (/usr, /bin, …) and $HOME do not exist on Windows. Read config via ctx.env.get (USERPROFILE/APPDATA on Windows) and avoid absolute system paths."},{"rule":"WIN007","title":"POSIX absolute path or HOME env","file":".harness/extensions/html-snap/snap-core.ts","line":20,"snippet":"'/usr/bin/chromium',","message":"POSIX system paths (/usr, /bin, …) and $HOME do not exist on Windows. Read config via ctx.env.get (USERPROFILE/APPDATA on Windows) and avoid absolute system paths."},{"rule":"WIN007","title":"POSIX absolute path or HOME env","file":".harness/extensions/html-snap/snap-core.ts","line":21,"snippet":"'/usr/bin/chromium-browser',","message":"POSIX system paths (/usr, /bin, …) and $HOME do not exist on Windows. Read config via ctx.env.get (USERPROFILE/APPDATA on Windows) and avoid absolute system paths."},{"rule":"WIN007","title":"POSIX absolute path or HOME env","file":".harness/extensions/html-snap/snap-core.ts","line":22,"snippet":"'/usr/bin/microsoft-edge',","message":"POSIX system paths (/usr, /bin, …) and $HOME do not exist on Windows. Read config via ctx.env.get (USERPROFILE/APPDATA on Windows) and avoid absolute system paths."}]},"next_action":"windows-check found 6 cross-platform hazard(s) in 2 rule class(es) [WIN004×1, WIN007×5] (warn-launch — non-blocking). First: .harness/extensions/html-snap/extension.ts:121 [WIN004] single-separator basename split. Fix per each finding's message, or add `// win-ok: <reason>` to intentionally allow a line. Rules: WIN001, WIN002, WIN003, WIN004, WIN005, WIN006, WIN007, WIN008. See `harness instructions windows-check`."}
 ```
+
+---
+
+## R4 — doctrine-complete unavailable detection and robust fallbacks
+
+the unavailable-detection scope was set three times — too broad, too narrow, then to the doctrine's actual three shapes — and each earlier boundary was set without reading the doctrine's own enumeration.
+
+### RED-first controls
+
+All three doctrine shapes went RED against `6d8260dd`: an open-ended multiline
+`decision:unavailable …` detection receipt, a parsed JSON envelope with `status: "noop"`, and a
+parsed JSON envelope with `status: "UNAVAILABLE"`. The invalid-receipt diagnostics, two later
+green fallback controls, genuinely id-less fixture, and CLI surface controls also went RED.
+
+Failure summary, verbatim:
+
+```text
+ ❯ test/services/dd/plan/ready.test.ts (44 tests | 13 failed) 464ms
+     × R3/F001 — an agent-authored decision cannot decline a skipped survey 11ms
+     × R3/F001 — even a user decision is not a decline on a done survey 10ms
+     × R3/F003 — a malformed basis-less validation is not a router-unavailable attempt 8ms
+     × R4/F001 — router-missing detection receipt is a basis-less completed attempt 9ms
+     × R4/F001 — router envelope status noop is a basis-less completed attempt 9ms
+     × R4/F001 — boot envelope status UNAVAILABLE is a basis-less completed attempt 8ms
+     × R4/F003 — later green matching validation outranks stale plain-node fallback 8ms
+     × R4/F003 — later green human decline outranks stale plain-node fallback 8ms
+     × R4/F004 — a genuinely id-less survey node degrades instead of throwing 11ms
+     × R4/F005 — noop envelope is unconfigured at the CLI, exit 2 14ms
+     × R4/F005 — UNAVAILABLE envelope is unconfigured at the CLI, exit 2 15ms
+     × R4/F005 — agent decision is invalid-receipt at the CLI, advisory exit 0 13ms
+     × R4/F005 — malformed basis-less validation is invalid-receipt at the CLI, advisory exit 0 14ms
+
+ Test Files  1 failed (1)
+      Tests  13 failed | 31 passed (44)
+```
+
+The discriminating failures were `false` vs `null` for all three unavailable attempts,
+`backpressure` vs the later green node for both fallback cases, a thrown
+`TypeError: Cannot read properties of undefined (reading 'toLowerCase')` for the id-less node,
+`degraded` vs `unconfigured` for both envelope CLI cases, and `missing-receipt` vs
+`invalid-receipt` for every receipt-present invalid case.
+
+### T017 — the doctrine's three shapes
+
+Detection receipts key on the protocol marker. Router/boot envelopes are parsed as JSON and only
+their top-level `status` is inspected; prose is never searched. Exactly `noop` and `UNAVAILABLE`
+join detection as completed basis-less attempts. Unparseable JSON, other statuses, and ordinary
+basis-less validations remain not-ready.
+
+### T018 — truthful invalid-receipt state
+
+Receipt-shaped validation/decision comments that fail authority or basis rules now report
+`invalid-receipt`. `missing-receipt` is reserved for a node that actually carries no valid or
+invalid receipt-shaped comment.
+
+### T019 + T020 — evidence-aware and id-safe fallback
+
+The exact `backpressure-<current 12>` id remains authoritative. When it is absent, later green
+validation/decline evidence is considered before the plain-node fallback. Runtime id reads are
+guarded, so a genuinely id-less typed survey node returns a stated `missing-receipt` verdict with
+`node: null` rather than escaping the envelope.
+
+### T021 — CLI surface controls
+
+Both real-envelope statuses assert `unconfigured` / exit 2 / `missing-basis`. Agent decisions and
+malformed validations assert `degraded` / exit 0 / `invalid-receipt`, including the emitted
+`next_action`. These tests observe the existing mapping; they do not alter it.
+
+### Focused GREEN
+
+`npx vitest run test/services/dd/plan/ready.test.ts` → **44 passed / 1 file**, 0 failed.
+Typecheck also passed.
+
+### Held rulings — unchanged
+
+F005 exit semantics and Open Question 1 remain held. `harness/cli/src/acts/plan/index.ts`, the
+mapping, and `--strict` are byte-untouched by R4.
+
+### R4 gates
+
+No R4 gate went RED after implementation.
+
+| Gate | Result |
+|------|--------|
+| `npm run test` | **4456 passed / 309 files**, 0 failed; coverage 89.52% statements / 80.41% branches / 92.31% functions / 92% lines |
+| `harness checks` (via `just checks`) | All hard gates **ok**: tests, biome, typecheck, check:docs, check:flows, check:telemetry-fixtures, check:doctrine-parity, check:dd-docs, root-invocation-smoke, dd doctor, skills-check |
+| `npm run check:docs` | `check:docs OK — no drift` |
+| frozen act guard | `harness/cli/src/acts/plan/index.ts` has no diff from HEAD |
+| `semantics.ts` guard | SHA-256 `3856153824f7fd3448aaf285197054a2f4a2524ed80c0fffe6dc9a3f8526f150`; byte diff empty |
+
+Warn trio, verbatim JSON envelopes:
+
+```json
+{"command":"arch-check","status":"degraded","timestamp":"2026-08-05T10:44:49.636Z","data":{"modules":273,"dependencies":1223,"violations":[{"from":"harness/cli/src/services/telemetry/ref-source.ts","to":"harness/cli/src/adapters/git/git-write-port.ts","rule":"services-ports-type-only","severity":"warn","comment":"Port imports from services must be type-only (the kernel injects the implementation)."},{"from":"harness/cli/src/services/telemetry/sync-service.ts","to":"harness/cli/src/adapters/git/git-write-port.ts","rule":"services-ports-type-only","severity":"warn","comment":"Port imports from services must be type-only (the kernel injects the implementation)."}]},"next_action":"Review 2 warn-severity architecture violation(s) (rules: services-ports-type-only). Promote a rule's severity to 'error' in .dependency-cruiser.cjs once it should block — and never weaken a rule in the same PR that trips it."}
+{"command":"markdown-lint","status":"degraded","timestamp":"2026-08-05T10:44:49.926Z","data":{"checks":[{"name":"markdownlint","outcome":"findings","findings":194,"examined":131,"summary":"harness-foundations/first-principles.md:7 error MD001/heading-increment Heading levels should only increment by one level at a time [Expected: h3; Actual: h4]"},{"name":"links","outcome":"findings","findings":1,"examined":131,"summary":"19:1-19:83 warning Cannot find file `../harness-presentations/missing-layer-101/intro-to-harness.md` missing-file remark-validate-links:missing-file"},{"name":"mermaid","outcome":"findings","findings":1,"examined":31,"summary":"invalid mermaid at skills/builder/references/stages/50-phase-tasks.md:215"}],"totals":{"findings":196,"filesLinted":131,"linksFilesChecked":131,"fencesParsed":31}},"next_action":"Review 196 markdown finding(s) (194 markdown lint, 1 in-repo links/anchors, 1 mermaid syntax) in `data.checks` — visible but non-blocking (warn-launch). Fix the authored docs, then promote the gate to error/exit 1 once they are clean (never widen the scope to dodge a finding)."}
+{"command":"windows-check","status":"degraded","timestamp":"2026-08-05T10:44:48.958Z","data":{"scanned":27,"findingCount":6,"byRule":{"WIN004":1,"WIN007":5},"findings":[{"rule":"WIN004","title":"single-separator basename split","file":".harness/extensions/html-snap/extension.ts","line":121,"snippet":"const base = (abs.split('/').pop() ?? 'page').replace(/\\.html?$/i, '');","message":"Splitting a path on '/' only drops the basename of a Windows backslash path. Split on /[/\\\\]/ instead."},{"rule":"WIN007","title":"POSIX absolute path or HOME env","file":".harness/extensions/html-snap/snap-core.ts","line":18,"snippet":"'/usr/bin/google-chrome',","message":"POSIX system paths (/usr, /bin, …) and $HOME do not exist on Windows. Read config via ctx.env.get (USERPROFILE/APPDATA on Windows) and avoid absolute system paths."},{"rule":"WIN007","title":"POSIX absolute path or HOME env","file":".harness/extensions/html-snap/snap-core.ts","line":19,"snippet":"'/usr/bin/google-chrome-stable',","message":"POSIX system paths (/usr, /bin, …) and $HOME do not exist on Windows. Read config via ctx.env.get (USERPROFILE/APPDATA on Windows) and avoid absolute system paths."},{"rule":"WIN007","title":"POSIX absolute path or HOME env","file":".harness/extensions/html-snap/snap-core.ts","line":20,"snippet":"'/usr/bin/chromium',","message":"POSIX system paths (/usr, /bin, …) and $HOME do not exist on Windows. Read config via ctx.env.get (USERPROFILE/APPDATA on Windows) and avoid absolute system paths."},{"rule":"WIN007","title":"POSIX absolute path or HOME env","file":".harness/extensions/html-snap/snap-core.ts","line":21,"snippet":"'/usr/bin/chromium-browser',","message":"POSIX system paths (/usr, /bin, …) and $HOME do not exist on Windows. Read config via ctx.env.get (USERPROFILE/APPDATA on Windows) and avoid absolute system paths."},{"rule":"WIN007","title":"POSIX absolute path or HOME env","file":".harness/extensions/html-snap/snap-core.ts","line":22,"snippet":"'/usr/bin/microsoft-edge',","message":"POSIX system paths (/usr, /bin, …) and $HOME do not exist on Windows. Read config via ctx.env.get (USERPROFILE/APPDATA on Windows) and avoid absolute system paths."}]},"next_action":"windows-check found 6 cross-platform hazard(s) in 2 rule class(es) [WIN004×1, WIN007×5] (warn-launch — non-blocking). First: .harness/extensions/html-snap/extension.ts:121 [WIN004] single-separator basename split. Fix per each finding's message, or add `// win-ok: <reason>` to intentionally allow a line. Rules: WIN001, WIN002, WIN003, WIN004, WIN005, WIN006, WIN007, WIN008. See `harness instructions windows-check`."}
+```

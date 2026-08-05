@@ -99,6 +99,26 @@ const UNAVAILABLE_RECEIPT = {
   kind: 'validation',
 };
 
+/** A router-missing detection receipt with the doctrine's open-ended trailing evidence. */
+const UNAVAILABLE_DETECTION_RECEIPT = {
+  ...UNAVAILABLE_RECEIPT,
+  text: `${UNAVAILABLE_RECEIPT.text}\nprobe:layer-1`,
+};
+
+/** A real router/boot envelope, recorded verbatim as the validation comment text. */
+function unavailableEnvelope(status: 'noop' | 'UNAVAILABLE') {
+  return {
+    at: '2026-08-05T08:25:38.868Z',
+    text: JSON.stringify(
+      { command: 'eng-harness-flow', status, data: { hook: 'pre-coding', detail: 'arbitrary' } },
+      null,
+      2,
+    ),
+    source: 'agent',
+    kind: 'validation',
+  };
+}
+
 interface SurveyNode {
   status: string;
   comments?: Array<Record<string, unknown>>;
@@ -336,7 +356,7 @@ describe('plan ready — the survey dimension', () => {
     const reading = readReady(corpus);
 
     expect(reading.survey.satisfied).toBe(false);
-    expect(reading.survey.reason).toBe('missing-receipt');
+    expect(reading.survey.reason).toBe('invalid-receipt');
     expect(reading.verdict).toBe('not-ready');
   });
 
@@ -347,7 +367,7 @@ describe('plan ready — the survey dimension', () => {
     const reading = readReady(corpus);
 
     expect(reading.survey.satisfied).toBe(false);
-    expect(reading.survey.reason).toBe('missing-receipt');
+    expect(reading.survey.reason).toBe('invalid-receipt');
     expect(reading.verdict).toBe('not-ready');
   });
 
@@ -419,6 +439,7 @@ describe('plan ready — the survey dimension', () => {
     expect(doctrine).toContain(
       '--kind validation --source agent --text "decision:unavailable reason:<…> time:<…>"',
     );
+    expect(doctrine).toContain('router installed but the envelope says `noop`/`UNAVAILABLE`');
     expect(UNAVAILABLE_RECEIPT).toMatchObject({ kind: 'validation', source: 'agent' });
     expect(UNAVAILABLE_RECEIPT.text).toMatch(/^decision:unavailable reason:.+ time:.+$/);
   });
@@ -440,8 +461,23 @@ describe('plan ready — the survey dimension', () => {
     const reading = readReady(corpus);
 
     expect(reading.survey.satisfied).toBe(false);
-    expect(reading.survey.reason).toBe('missing-receipt');
+    expect(reading.survey.reason).toBe('invalid-receipt');
     expect(reading.verdict).toBe('not-ready');
+  });
+
+  it.each([
+    ['router-missing detection receipt', UNAVAILABLE_DETECTION_RECEIPT],
+    ['router envelope status noop', unavailableEnvelope('noop')],
+    ['boot envelope status UNAVAILABLE', unavailableEnvelope('UNAVAILABLE')],
+  ])('R4/F001 — %s is a basis-less completed attempt', (_label, comment) => {
+    corpus = createSyntheticPlan({ slug: 'synthetic-plan', ...CLAIMED });
+    writeFlow(corpus.folder, [{ status: 'done', comments: [comment] }]);
+
+    const reading = readReady(corpus);
+
+    expect(reading.survey.satisfied).toBeNull();
+    expect(reading.survey.reason).toBe('missing-basis');
+    expect(reading.verdict).toBe('cant-tell');
   });
 
   it('a doctrine-shaped unavailable validation is CANT-TELL, not not-ready', () => {
@@ -525,6 +561,44 @@ describe('plan ready — the survey dimension', () => {
     expect(reading.survey.node).toBe(`backpressure-${basis.slice(0, 12)}`);
     expect(reading.survey.reason).toBe('not-run');
     expect(reading.survey.satisfied).toBe(false);
+    expect(reading.verdict).toBe('not-ready');
+  });
+
+  it.each([
+    ['matching validation', (basis: string) => receipt(basis), 'done'],
+    ['human decline', (_basis: string) => decline(), 'skipped'],
+  ] as const)('R4/F003 — later green %s outranks stale plain-node fallback', (_label, makeComment, status) => {
+    corpus = createSyntheticPlan({ slug: 'synthetic-plan', ...CLAIMED });
+    const basis = sha256(corpus.plan);
+    writeFlow(corpus.folder, [
+      { status: 'done', comments: [receipt('d'.repeat(64))] },
+      {
+        status,
+        id: 'backpressure-aaaaaaaaaaaa',
+        comments: [makeComment(basis)],
+      },
+    ]);
+
+    const reading = readReady(corpus);
+
+    expect(reading.survey.node).toBe('backpressure-aaaaaaaaaaaa');
+    expect(reading.survey.satisfied).toBe(true);
+    expect(reading.verdict).toBe('ready');
+  });
+
+  it('R4/F004 — a genuinely id-less survey node degrades instead of throwing', () => {
+    corpus = createSyntheticPlan({ slug: 'synthetic-plan', ...CLAIMED });
+    const path = writeFlow(corpus.folder, [{ status: 'done' }]);
+    const doc = JSON.parse(readFileSync(path, 'utf8')) as { nodes: Array<Record<string, unknown>> };
+    const survey = doc.nodes.find((node) => node.type === 'backpressure');
+    if (survey === undefined) throw new Error('fixture must contain a survey node');
+    delete survey.id;
+    writeFileSync(path, `${JSON.stringify(doc, null, 2)}\n`, 'utf8');
+
+    const reading = readReady(corpus);
+
+    expect(reading.survey.node).toBeNull();
+    expect(reading.survey.reason).toBe('missing-receipt');
     expect(reading.verdict).toBe('not-ready');
   });
 
@@ -728,6 +802,51 @@ describe('harness plan ready — envelope and exit mapping', () => {
     const data = run.envelope?.data as { verdict: string; reason: string };
     expect(data.verdict).toBe('cant-tell');
     expect(data.reason).toBe('missing-basis');
+  });
+
+  it.each([
+    ['noop', unavailableEnvelope('noop')],
+    ['UNAVAILABLE', unavailableEnvelope('UNAVAILABLE')],
+  ])('R4/F005 — %s envelope is unconfigured at the CLI, exit 2', async (_status, comment) => {
+    corpus = createSyntheticPlan({ slug: 'synthetic-plan', ...CLAIMED });
+    writeFlow(corpus.folder, [{ status: 'done', comments: [comment] }]);
+
+    const run = await runReady(corpus);
+
+    expect(run.envelope?.status).toBe('unconfigured');
+    expect(run.code).toBe(2);
+    const data = run.envelope?.data as { verdict: string; reason: string };
+    expect(data.verdict).toBe('cant-tell');
+    expect(data.reason).toBe('missing-basis');
+    expect(run.envelope?.next_action).toContain('nothing to fix');
+  });
+
+  it.each([
+    ['agent decision', { status: 'skipped', comments: [{ ...decline(), source: 'agent' }] }],
+    [
+      'malformed basis-less validation',
+      {
+        status: 'done',
+        comments: [
+          {
+            ...UNAVAILABLE_RECEIPT,
+            text: 'decision:completed verdict:Pass time:2026-08-05T08:10:00Z',
+          },
+        ],
+      },
+    ],
+  ] as const)('R4/F005 — %s is invalid-receipt at the CLI, advisory exit 0', async (_label, survey) => {
+    corpus = createSyntheticPlan({ slug: 'synthetic-plan', ...CLAIMED });
+    writeFlow(corpus.folder, [survey]);
+
+    const run = await runReady(corpus);
+
+    expect(run.envelope?.status).toBe('degraded');
+    expect(run.code).toBe(0);
+    const data = run.envelope?.data as { verdict: string; reason: string };
+    expect(data.verdict).toBe('not-ready');
+    expect(data.reason).toBe('invalid-receipt');
+    expect(run.envelope?.next_action).toBe('Not ready.');
   });
 
   it('`--strict` does not give a router-less repo teeth either', async () => {

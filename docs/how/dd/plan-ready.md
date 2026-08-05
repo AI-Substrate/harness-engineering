@@ -71,8 +71,9 @@ elsewhere) carries the chore and its receipt.
 | `done`, a `validation` receipt whose `basis_sha256` matches the plan's current bytes | satisfied |
 | a `decision` receipt from `source: user` on a `skipped` node (the human's decline) | **satisfied** — see below |
 | a `validation` receipt for *other* bytes | `stale-basis` — never satisfied |
-| the doctrine's `decision:unavailable …` validation receipt, with no basis | `missing-basis` — **can't-tell**, see below |
-| any other basis-less `validation` receipt | `missing-receipt` — malformed, never satisfied |
+| the doctrine's router-missing detection or parsed JSON envelope with status `noop` / `UNAVAILABLE`, with no basis | `missing-basis` — **can't-tell**, see below |
+| any other basis-less `validation` receipt | `invalid-receipt` — malformed, never satisfied |
+| a non-authoritative `decision` comment | `invalid-receipt` — never satisfied |
 | terminal, no receipt at all | `missing-receipt` — never satisfied |
 | not terminal | `not-run` |
 | no flight plan beside the plan | `cant-tell` |
@@ -91,6 +92,9 @@ nothing about the type, so keying on type alone would depend on whoever mints
 the node picking the same one by coincidence. When several nodes exist, the id
 for the current basis owns the answer; if it does not exist, the plain
 `backpressure` node does. Historical nodes never outrank the present.
+When the exact current-basis id is absent, however, the plain node is only a
+fallback: a later matching validation or legitimate decline is fresher green
+evidence and wins first.
 
 When a node carries several receipts, the **newest wins**. Comments are
 append-only, so a re-surveyed node holds its history: letting an older receipt
@@ -132,12 +136,16 @@ the plan has been edited since, the receipt is for a document that no longer
 exists, and the verdict is `stale-basis`. An edit made after the survey does
 not inherit the old green.
 
-The doctrine's router-missing receipt
-(`decision:unavailable reason:… time:…`) is a completed *attempt* but not a
-completed survey. It records that something happened; it cannot say which
-bytes were looked at, because none were. Merely omitting a basis does not prove
-router unavailability: any other basis-less validation receipt is malformed and
-reads not-ready.
+The doctrine names three completed *attempts* that produce no survey basis:
+
+1. the router-missing detection receipt (`decision:unavailable …`);
+2. a real router envelope whose parsed JSON `status` is `noop`; or
+3. a real boot envelope whose parsed JSON `status` is `UNAVAILABLE`.
+
+The envelope paths parse the recorded status; they do not match arbitrary
+prose inside the envelope. Unparseable JSON, another status, or any other
+basis-less validation is `invalid-receipt` / not-ready. Merely omitting a basis
+does not prove router unavailability.
 
 That reads **`cant-tell`**, not `not-ready`. A repo with no harness router
 receipts its survey as an unavailable attempt, and this command answers "I
