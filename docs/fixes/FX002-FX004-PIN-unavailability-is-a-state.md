@@ -455,6 +455,42 @@ seat and *why*, distinguishing:
 Only the second is a finding. Use `pij-telegram`'s shape as the known-good no-key
 fixture: a real-world referent beats a fabricated one.
 
+## Ruling #8 (2026-08-05) — the pin binds ONE of TWO readers. Stated, not fixed.
+
+**ESTABLISHED (probe cited)**: `published-telemetry.ts:906` `validSegment()` carries
+its **own independent** version accept set — `2.4 / 2.5 / 2.6 / 2.7` — plus its own
+required-field list. It does **not** route through `decodeSegment`.
+
+So the pin, as scoped, binds `decodeSegment` **only**. The consequence must be said
+out loud rather than discovered:
+
+> **After this packet, `telemetry get` / report will refuse a 2.6 record while
+> `telemetry pull` still accepts it. Same bytes, two answers, depending on which door
+> you come through.**
+
+That is a **second source of truth for "which versions do we read"**, and it was
+shipped **before** this packet — we did not create it, but the pin makes it
+observable and asymmetric.
+
+**Ruled: do NOT pin `validSegment` in this packet.** Two reasons, and the second is
+decisive:
+
+1. It is outside the packet's subject and would widen an already-widened fence.
+2. **It would break real, measured behaviour.** A sibling seat established that
+   `telemetry pull` currently succeeds on published **2.6** sessions and fails
+   (`E222`) on sessions carrying a `checks` event with gate keys containing `:` or a
+   space — a *producer/reader grammar drift*, unrelated to version. Pinning
+   `validSegment` to 2.7 would refuse exactly the sessions that presently work,
+   on top of a defect already blocking the others.
+
+**Required in the log**: the split accept-set is recorded as a **known, stated
+boundary of this fix** — what the pin does and does not bind — not as silence. Routed
+for its own ordinal.
+
+**Note the family**: the grammar drift and this version drift are the *same defect in
+the same file* — `published-telemetry.ts` re-implements validation independently of
+the producer. Two instances, one cause.
+
 ## Review
 
 Cross-model, same discipline: **Dim-0 mutation gate first and blocking**, then fix
