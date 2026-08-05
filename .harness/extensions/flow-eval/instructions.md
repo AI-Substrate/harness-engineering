@@ -70,11 +70,22 @@ nothing on the wire dates the binary that wrote it. `evidence.source` does not s
 So the resolver asks whether the lane has **demonstrated it can record** — does this session
 carry any coded `command_exit` at all?
 
+An entry only counts as a refusal when it is one: a key matching `E\d{3}` (the whole shape of
+the error registry) carrying a **positive integer** count. `{ malformed: 5 }` is not five
+refusals and `{ E440: 0.5 }` is not half an occurrence; both are entries we cannot read, and an
+unreadable entry is EXCLUDED rather than grounds to reject the envelope — throwing away the
+skill/verb evidence beside it would be the same over-claiming in the other direction. That key
+shape is a **closed vocabulary, declared on purpose**: a code shape we did not anticipate is
+discarded, which can only push a genuine `fail` down to `unknown` and never manufacture a
+verdict — but if the registry ever mints a code outside `E\d{3}`, the regex in `resolvers.ts`
+must move with it.
+
 | refusals | assertion | verdict |
 |---|---|---|
 | meets the bar | any | `pass` |
 | short of the bar, lane HAS recorded some code | any | `fail` — the silence is real evidence |
 | empty (lane never demonstrated) | any | `unknown`, with a note saying why |
+| present but unreadable (bad key, `0`, fractional) | any | as if empty — `pass` is unreachable, `fail` unlicensed |
 
 The consequence is stated rather than hidden: a **bare** `gate-refused {}` over an empty map is
 `pass`-or-`unknown` and can never `fail`. An accusation that the subject dodged a gate must not

@@ -137,6 +137,65 @@ describe('FX003 D1 — a gate-refusal shortfall is only a subject failure on a d
     expect((await resolveAssertionDetailed(a('gate-refused', { min: 3 }), rc(ev))).verdict).toBe('fail');
     expect((await resolveAssertionDetailed(a('gate-refused', { min: 1 }), rc(ev))).verdict).toBe('pass');
   });
+
+  it('R2 CONTROL: an UNRECOGNISED key is not a refusal — {malformed: 1} cannot license a fail (pre-fix: fail)', async () => {
+    // Round four. `parseSessionEvidence` type-checks `refusals` as "an object of
+    // finite numbers", so a key that is not an error code at all survived the seam
+    // and then read as "the lane demonstrated it can record" — and a query naming an
+    // absent E443 became a false accusation, by a different door to round three.
+    const ev = evidence({ refusals: { malformed: 1 } });
+    expect((await resolveAssertionDetailed(a('gate-refused', { code: 'E443' }), rc(ev))).verdict).toBe('unknown');
+  });
+
+  it('R2 CONTROL: a FRACTIONAL count is not an occurrence — {E440: 0.5} cannot license a fail (pre-fix: fail)', async () => {
+    // `0.5` is finite and strictly positive, so the R1 predicate accepted it. But
+    // occurrences are counted — the producer only ever does `(n ?? 0) + 1` — so a
+    // non-integer never came from a real count.
+    const ev = evidence({ refusals: { E440: 0.5 } });
+    expect((await resolveAssertionDetailed(a('gate-refused', { code: 'E443' }), rc(ev))).verdict).toBe('unknown');
+  });
+
+  it('R2 CONTROL (FALSE GREEN): a bare gate-refused over {malformed: 5} must NOT pass (pre-fix: pass)', async () => {
+    // The other polarity, and the more dangerous one: with no `code` param the
+    // resolver SUMS the map, so five of something unreadable read as observed 5 >=
+    // min 1 and the instrument CERTIFIED that a gate stopped the subject when
+    // nothing did. A false fail gets argued with; a false pass gets believed.
+    const ev = evidence({ refusals: { malformed: 5 } });
+    const r = await resolveAssertionDetailed(a('gate-refused', {}), rc(ev));
+    expect(r.verdict).not.toBe('pass');
+    expect(r.verdict).toBe('unknown');
+    expect((await resolveAssertionDetailed(a('gate-refused', { min: 1 }), rc(ev))).verdict).not.toBe('pass');
+    // Same false green through a fractional value.
+    expect((await resolveAssertionDetailed(a('gate-refused', {}), rc(evidence({ refusals: { E440: 0.5 } })))).verdict).not.toBe('pass');
+  });
+
+  it('R2 CONTROL: naming an unrecognised code cannot pass on its own key either', async () => {
+    // The `code` path reads one entry rather than summing, and it must apply the
+    // SAME validity rule — otherwise a scenario could pass by asserting a code shape
+    // the read side does not recognise.
+    const ev = evidence({ refusals: { malformed: 5, E440: 2 } });
+    expect((await resolveAssertionDetailed(a('gate-refused', { code: 'malformed' }), rc(ev))).verdict).toBe('fail');
+  });
+
+  it('R2 GUARD: an invalid entry is EXCLUDED, not grounds to reject the whole payload', async () => {
+    // Constraint 1 of Ruling #2. Throwing the envelope away over one unreadable
+    // refusal key would discard good skill/verb/checks evidence — the same
+    // over-claiming corrected in R1b, in the opposite direction.
+    const ev = evidence({ refusals: { malformed: 5, E440: 2 } });
+    expect((await resolveAssertionDetailed(a('checks-ran', { min: 1 }), rc(ev))).verdict).toBe('pass');
+    expect((await resolveAssertionDetailed(a('skill-called', { skill: 'builder' }), rc(ev))).verdict).toBe('pass');
+    // ...and the VALID entry beside it still counts, undiminished.
+    expect((await resolveAssertionDetailed(a('gate-refused', { code: 'E440', min: 2 }), rc(ev))).verdict).toBe('pass');
+    expect((await resolveAssertionDetailed(a('gate-refused', { min: 3 }), rc(ev))).verdict).toBe('fail');
+  });
+
+  it('R2 GUARD: the ruling guards, unchanged — a real refusal still passes and still licenses a fail', async () => {
+    const ev = evidence({ refusals: { E440: 2 } });
+    expect((await resolveAssertionDetailed(a('gate-refused', { code: 'E443' }), rc(ev))).verdict).toBe('fail');
+    expect((await resolveAssertionDetailed(a('gate-refused', {}), rc(ev))).verdict).toBe('pass');
+    const mixed = evidence({ refusals: { E440: 0, E441: 2 } });
+    expect((await resolveAssertionDetailed(a('gate-refused', { code: 'E443' }), rc(mixed))).verdict).toBe('fail');
+  });
 });
 
 // ---------------------------------------------------------------------------

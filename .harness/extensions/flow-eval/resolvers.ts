@@ -521,16 +521,46 @@ const harnessVerbRan: ResolverFn = (a, rc) => {
  * gates work — it has demonstrated that the subject avoided them.
  */
 /**
- * A refusal count that is EVIDENCE: finite and strictly positive.
+ * CLOSED SET, DECLARED (FX003 · Ruling #2). A refusal key must be a harness error
+ * code — `E` followed by exactly three digits. That is the whole shape of the
+ * registry: every one of the 116 codes in `harness/cli/src/output/error-codes.ts`
+ * matches, with no exceptions.
  *
- * Anything else counts for nothing — `0` (a key that was minted but never
- * incremented), `NaN`, a negative, or a non-number that survived an untrusted
- * payload. This is deliberately the ONE place magnitude is decided, used by both
- * the observed count and the lane-demonstrated predicate below, so the two can
- * never disagree about what "a refusal" is.
+ * The producer is looser than this: `session-evidence.ts` keys `refusals` by ANY
+ * non-empty `command_exit.code` string, so the narrowing happens here, on read.
+ * **The consequence, stated rather than left to be discovered:** a refusal code in
+ * a shape we did not anticipate is silently DISCARDED — it stops counting toward
+ * `observed`, and it stops licensing a `fail`. That pushes a genuine `fail` down to
+ * `unknown`, which is the safe direction and the one this whole fix argues for; it
+ * can never manufacture a verdict. But it is a closed vocabulary, and a closed
+ * vocabulary nobody declared was FX001's first defect. If the registry ever mints a
+ * code outside `E\d{3}`, THIS is the line that must move with it.
  */
-function refusalCount(v: unknown): number {
-  return typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : 0;
+const REFUSAL_CODE = /^E\d{3}$/;
+
+/**
+ * A refusal entry that is EVIDENCE: a recognised code key carrying a positive
+ * integer count. Returns the count, or `0` for anything that is not evidence.
+ *
+ * Both halves of "valid" are decided HERE and only here — key shape and magnitude —
+ * used by both the observed sum and the lane-demonstrated predicate below, so the
+ * two can never disagree about what "a refusal" is. Splitting them was how the same
+ * bug got in twice.
+ *
+ * What counts for nothing, and why:
+ *  - a key outside `REFUSAL_CODE` — `{ malformed: 5 }` is not five refusals, it is
+ *    an entry we cannot read as one;
+ *  - `0` — a key that was minted but never incremented, which is precisely the case
+ *    proving nothing was recorded;
+ *  - a FRACTION — `0.5` is not half an occurrence; occurrences are counted, and the
+ *    producer only ever does `(n ?? 0) + 1`, so a non-integer never came from a real
+ *    count;
+ *  - `NaN`, a negative, or a non-number that survived an untrusted payload.
+ */
+function refusalCount(key: string, v: unknown): number {
+  if (!REFUSAL_CODE.test(key)) return 0;
+  // Number.isInteger implies finite; the `> 0` is the magnitude half.
+  return typeof v === 'number' && Number.isInteger(v) && v > 0 ? v : 0;
 }
 
 /**
@@ -541,14 +571,24 @@ function refusalCount(v: unknown): number {
  * inference about which binary ran, and it is the only such proof available from the
  * evidence object.
  *
- * Note what the predicate asks: **magnitude, not shape**. `{ E440: 0 }` is a key with
- * no occurrence behind it, and a key is not an event — a zero count is precisely the
- * case proving nothing was recorded. This predicate has now been wrong three ways, all
- * the same mistake (taking the presence of a structure for evidence of the thing):
- * a boolean where three states were needed; `source: 'buffer'` as a date proof, blind
- * to a capture that never fired; and a KEY where a positive COUNT is the evidence. If
- * you are changing it a fourth time, the question it must answer is *"did a refusal
- * actually get recorded?"* — never *"is there a place where one would have gone?"*
+ * Note what the predicate asks: **magnitude and shape of a REAL entry, not the
+ * existence of an entry**. `{ E440: 0 }` is a key with no occurrence behind it, and
+ * `{ malformed: 5 }` is five of something we cannot read as a refusal — neither is
+ * an event. This predicate has now been wrong FOUR ways, every time the same
+ * mistake (taking the presence of a structure for evidence of the thing):
+ *
+ *  1. a boolean where three states were needed;
+ *  2. `source: 'buffer'` as a date proof, blind to a capture that never fired;
+ *  3. a KEY where a positive COUNT is the evidence;
+ *  4. a well-formed-LOOKING key/value where a VALID one is the evidence.
+ *
+ * If you are changing it a fifth time, the question it must answer is *"did a
+ * refusal actually get recorded?"* — never *"is there a place where one would have
+ * gone?"*. Both polarities are live: getting this wrong invents a `fail` that
+ * accuses the subject of dodging a gate, AND (through the bare-`min` sum) a `pass`
+ * that certifies a gate stopped the subject when nothing did. The false green is
+ * the more dangerous of the two, because a false fail gets argued with and a false
+ * pass gets believed.
  *
  * An empty (or all-zero) map is not evidence of anything, because TWO independent
  * defects produce a byte-identical one, and neither is visible from here:
@@ -574,7 +614,7 @@ function refusalCount(v: unknown): number {
  * naming a `code` (or a `min`) the demonstrated lane did not reach still fails.
  */
 function refusalLaneDemonstrated(ev: SessionEvidence): boolean {
-  return Object.values(ev.refusals ?? {}).some((v) => refusalCount(v) > 0);
+  return Object.entries(ev.refusals ?? {}).some(([k, v]) => refusalCount(k, v) > 0);
 }
 
 const gateRefused: ResolverFn = (a, rc) => {
@@ -583,8 +623,8 @@ const gateRefused: ResolverFn = (a, rc) => {
   const code = strParam(a, 'code');
   const min = numParam(a, 'min', 1);
   const observed = code
-    ? refusalCount(refusals[code])
-    : Object.values(refusals).reduce((sum: number, count) => sum + refusalCount(count), 0);
+    ? refusalCount(code, refusals[code])
+    : Object.entries(refusals).reduce((sum: number, [k, v]) => sum + refusalCount(k, v), 0);
   // Positive evidence always answers: the refusal is on the record.
   if (observed >= min) return 'pass';
   // Short of the bar. That is a SUBJECT failure only where the lane has shown it can

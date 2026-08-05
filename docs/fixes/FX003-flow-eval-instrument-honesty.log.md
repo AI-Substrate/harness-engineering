@@ -25,10 +25,10 @@ first post-fix run would not have proven it).
 
 `package-lock.json` drift was incidental `npm install` noise and was reverted, not committed.
 
-## R1 — the predicate that has now been wrong three ways
+## R1/R2 — the predicate that has now been wrong four ways
 
 `refusalLaneDemonstrated` is the single load-bearing predicate of D1, and review has
-corrected it three times. All three were **the same mistake: taking the presence of a
+corrected it four times. All four were **the same mistake: taking the presence of a
 structure for evidence of the thing.**
 
 | round | what it read | why it was wrong |
@@ -36,15 +36,48 @@ structure for evidence of the thing.**
 | 1 | a **boolean** where three states were needed | a shortfall was reported as a subject failure (the original D1) |
 | 2 | `source: 'buffer'` as a **date** proof | blind to FX001 · D4 — it rules out the roll eating the code, never a capture that never fired |
 | 3 | a **KEY** where a positive COUNT is the evidence | `{ E440: 0 }` — a key minted with no occurrence behind it — licensed a `fail` on an absent `E443` |
+| 4 | a **well-formed-LOOKING** key/value where a VALID one is the evidence | `parseSessionEvidence` type-checks `refusals` as "an object of finite numbers", so `{ malformed: 1 }` and `{ E440: 0.5 }` both survived the seam and both licensed a `fail` |
 
-The predicate now asks about **magnitude, not shape**, through one helper
-(`refusalCount`: finite AND strictly positive) used by *both* the observed count and
-the demonstrated test, so the two can never disagree about what a refusal is. Zero,
-`NaN`, negative and `Infinity` all license nothing.
+**Round 4 had a second face the review did not name, and it is the worse one.** With no
+`code` param `gateRefused` SUMS the map, so `{ malformed: 5 }` gave `observed = 5 >= min = 1`
+and resolved **`pass`** — the instrument certifying that a gate stopped the subject when
+nothing did. A false fail gets argued with; a false pass gets believed. Both polarities are
+controlled; the false-green control is the one this log would have been wrong to omit.
 
-**For the fourth reader**: the question this predicate must answer is *"did a refusal
-actually get recorded?"* — never *"is there a place where one would have gone?"* That
-sentence is in the code beside it.
+The predicate now asks about **a REAL entry — shape and magnitude together**, decided in one
+helper (`refusalCount(key, v)`: a key matching `REFUSAL_CODE` carrying a positive INTEGER)
+used by *both* the observed sum and the demonstrated test, so the two can never disagree
+about what a refusal is. Zero, `NaN`, negative, `Infinity`, fractions and unrecognised keys
+all license nothing. Splitting key-validity from magnitude-validity is exactly how the same
+bug got in twice, so they do not live apart.
+
+**The closed set is declared, not accidental.** `REFUSAL_CODE = /^E\d{3}$/` matches all 116
+codes in `harness/cli/src/output/error-codes.ts` with no exceptions, but the PRODUCER is
+looser — `session-evidence.ts` keys `refusals` by any non-empty `command_exit.code`. So the
+narrowing happens on read, and a code shape we did not anticipate is silently discarded: it
+stops counting toward `observed` and stops licensing a `fail`. That direction is safe (it can
+only push a genuine `fail` down to `unknown`, never manufacture a verdict) and it is the
+stated decision, with the comment beside the regex naming it — FX001's first defect was a
+closed set nobody declared.
+
+**An invalid entry is EXCLUDED, never grounds to reject the envelope.** Refusing the whole
+payload over one unreadable refusal key would throw away the good skill/verb/checks evidence
+beside it — the same over-claiming corrected in R1b, running the other way. There is a guard
+control for exactly this.
+
+**For the fifth reader**: the question this predicate must answer is *"did a refusal actually
+get recorded?"* — never *"is there a place where one would have gone?"* That sentence is in
+the code beside it.
+
+### Residual boundary (stated, not fixed)
+
+Entry-level validity is decided in `refusalCount`, but `parseSessionEvidence` still requires
+`refusals` to be an object of *numbers* — so `{ E440: 'lots' }` refuses the whole envelope
+rather than excluding one entry. That is the pre-existing R1b type contract on the wire (with
+its own accepted control), and relaxing it would widen `SessionEvidence.refusals` to
+`Record<string, unknown>`, a type change reaching a FORBIDDEN file's fixtures. It errs toward
+`unknown`, so it is not in FX003's class — but it is the one place "exclude, do not reject"
+is not yet fully honoured, and it is the orchestrator's call whether that matters.
 
 ### R1 — the evidence seam no longer casts
 
@@ -79,26 +112,66 @@ contract never covered.
 
 ## The Dim-0 mutation gate
 
-Nine mutations, each reverting ONE defect's logic to its pre-fix form, against the
-36 controls in `fx003-instrument-honesty.test.ts`. Every mutation fires its own
+Eleven mutations, each reverting ONE defect's logic to its pre-fix form, against the
+54 controls in `fx003-instrument-honesty.test.ts`. Every mutation fires its own
 controls and no unrelated ones (M2/M6 overlap only where both assert the same
 axis-null property):
 
 | Mutation | Controls fired |
 |---|---|
-| M1 `gateRefused` returns a boolean | 5 |
+| M1 `gateRefused` returns a boolean | 8 |
 | M2 axis fold returns `0` | 7 |
 | M3 base-ref string inequality | 3 |
 | M4 no `corpus-floor` type | 7 |
 | M5 placeholder plain `unknown` | 2 |
 | M6 unknown type silent | 2 |
-| R1-M7 `demonstrated` counts KEYS | 2 |
-| R1-M8 observed count trusts raw values | 1 |
+| R1-M7 `demonstrated` counts KEYS | 5 |
+| R1-M8 observed count trusts raw values | 4 |
 | R1-M9 `fetchEvidence` blind cast | 1 |
+| R2-M10 refusal key shape ignored | 4 |
+| R2-M11 a fractional count is an occurrence | 1 |
+
+45 firings over 54 controls. M1/M7/M8 rose against R1's tally because the new R2
+controls exercise the same predicate from both polarities — a mutation that was only
+visible as a false RED is now also visible as a false GREEN.
 
 R1-M9 is the reason the parse controls are not only unit tests: mutating the CALL SITE
 is invisible to a control that exercises the validator directly, so there is an
 end-to-end control that scores a malformed payload through the verb.
+
+### Verbatim pre-fix output (R2 — both polarities, against the EXACT R1 predicate)
+
+Not a synthetic mutation: `refusalCount` reverted to its committed R1 body (no key
+check, `Number.isFinite`), which is the code the reviewer read.
+
+```
+ FAIL  …/fx003-instrument-honesty.test.ts > FX003 D1 … > R2 CONTROL: an UNRECOGNISED key is not a refusal — {malformed: 1} cannot license a fail (pre-fix: fail)
+AssertionError: expected 'fail' to be 'unknown' // Object.is equality
+
+Expected: "unknown"
+Received: "fail"
+
+ ❯ …/fx003-instrument-honesty.test.ts:147:99
+    146|     const ev = evidence({ refusals: { malformed: 1 } });
+    147|     expect((await resolveAssertionDetailed(a('gate-refused', { code: '…
+```
+
+And the false green — the face the review did not name:
+
+```
+ FAIL  …/fx003-instrument-honesty.test.ts > FX003 D1 … > R2 CONTROL (FALSE GREEN): a bare gate-refused over {malformed: 5} must NOT pass (pre-fix: pass)
+AssertionError: expected 'pass' not to be 'pass' // Object.is equality
+
+ ❯ …/fx003-instrument-honesty.test.ts:165:27
+    163|     const ev = evidence({ refusals: { malformed: 5 } });
+    164|     const r = await resolveAssertionDetailed(a('gate-refused', {}), rc…
+    165|     expect(r.verdict).not.toBe('pass');
+       |                           ^
+```
+
+All five R2 controls fired against that predicate; the three ruling guards
+(`{E440:2}`+`E443` ⇒ `fail`, `{E440:2}` bare ⇒ `pass`, `{E440:0,E441:2}` ⇒ `fail` on
+`E443`) passed both before and after, which is what makes them guards.
 
 ### Verbatim pre-fix output (D1 — the live regression)
 
