@@ -71,7 +71,7 @@ elsewhere) carries the chore and its receipt.
 | `done`, a `validation` receipt whose `basis_sha256` matches the plan's current bytes | satisfied |
 | a `decision` receipt (the human's decline) | **satisfied** — see below |
 | a `validation` receipt for *other* bytes | `stale-basis` — never satisfied |
-| a `validation` receipt with no `basis_sha256` at all | `missing-basis` — never satisfied |
+| a `validation` receipt with no `basis_sha256` at all | `missing-basis` — **can't-tell**, see below |
 | terminal, no receipt at all | `missing-receipt` — never satisfied |
 | not terminal | `not-run` |
 | no flight plan beside the plan | `cant-tell` |
@@ -128,10 +128,22 @@ exists, and the verdict is `stale-basis`. An edit made after the survey does
 not inherit the old green.
 
 A `validation` receipt with **no** basis is a completed *attempt* but not a
-completed survey — the doctrine's router-unavailable receipt
+completed survey — the doctrine's router-missing receipt
 (`decision:unavailable reason:… time:…`) is exactly this shape. It records that
 something happened; it cannot say which bytes were looked at, because none
-were. That reads `missing-basis`, not satisfied.
+were.
+
+That reads **`cant-tell`**, not `not-ready`. A repo with no harness router
+receipts its survey as an unavailable attempt, and this command answers "I
+cannot tell" — because there is nothing the reader could *do* about a
+not-ready there. The doctrine mints that receipt precisely so a chore "never
+sits outstanding forever blocking `nav` in an un-harnessed repo"; reporting it
+as not-ready would reinstate the block it exists to remove, and a verdict
+nobody can act on is a dead end rather than a verdict.
+
+"This plan is not ready" and "I cannot determine whether this plan is ready"
+are different claims, and having a third value is the only reason the second
+one is sayable at all.
 
 ## What it deliberately does not check
 

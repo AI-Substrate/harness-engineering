@@ -78,6 +78,25 @@ function decline(words = 'not worth it for a doc-only change') {
   return { at: '2026-08-05T08:25:38.868Z', text: words, source: 'user', kind: 'decision' };
 }
 
+/**
+ * The DOCTRINE'S router-missing detection receipt, in its own words.
+ *
+ * `skills/eng-harness-flow/SKILL.md`: router **missing** (Layer-1 miss) → record a
+ * detection receipt — `harness flow comment … --kind validation --source agent
+ * --text "decision:unavailable reason:<…> time:<…>"` — **then** flip the node to
+ * `done`. "All three are completed attempts, never skips — a chore never sits
+ * outstanding forever blocking `nav` in an un-harnessed repo."
+ *
+ * Copied verbatim from that protocol on purpose, so this fixture breaks if the
+ * protocol ever changes shape rather than silently testing a receipt nobody mints.
+ */
+const UNAVAILABLE_RECEIPT = {
+  at: '2026-08-05T08:25:38.868Z',
+  text: 'decision:unavailable reason:router not installed time:2026-08-05T08:10:00Z',
+  source: 'agent',
+  kind: 'validation',
+};
+
 interface SurveyNode {
   status: string;
   comments?: Array<Record<string, unknown>>;
@@ -368,30 +387,44 @@ describe('plan ready — the survey dimension', () => {
     expect(reading.verdict).toBe('not-ready');
   });
 
-  it('a validation receipt with no basis is a completed attempt, not a completed survey', () => {
-    // The doctrine's router-unavailable detection receipt has exactly this shape:
-    // `--kind validation --text "decision:unavailable reason:… time:…"`. It records
-    // that an attempt happened; it cannot say which bytes were surveyed, because
-    // none were.
+  it('a validation receipt with no basis is CANT-TELL, not not-ready', () => {
+    // The doctrine's router-missing detection receipt has exactly this shape, and
+    // its stated purpose is that "a chore never sits outstanding forever blocking
+    // `nav` in an un-harnessed repo". Reading it as not-ready would reinstate the
+    // block it exists to remove — and it would be a block with no exit, because
+    // there is nothing a user in a router-less repo could do to turn it green.
+    //
+    // "The work is not ready" and "I cannot determine whether the work is ready"
+    // are different claims. This is the second, and having three values is the
+    // only reason the distinction is expressible at all.
+    corpus = createSyntheticPlan({ slug: 'synthetic-plan', ...CLAIMED });
+    writeFlow(corpus.folder, [{ status: 'done', comments: [UNAVAILABLE_RECEIPT] }]);
+
+    const reading = readReady(corpus);
+
+    expect(reading.survey.satisfied).toBeNull();
+    expect(reading.survey.reason).toBe('missing-basis');
+    expect(reading.verdict).toBe('cant-tell');
+    expect(reading.decided_by).toBe('survey');
+  });
+
+  it('a stale receipt on another node still outranks an unreadable one', () => {
+    // The verdict's own precedence, applied inside the dimension: a KNOWN failure
+    // beats an unknown. A router-less receipt must not mask a survey that really
+    // did go stale — that would downgrade an actionable not-ready to a shrug.
     corpus = createSyntheticPlan({ slug: 'synthetic-plan', ...CLAIMED });
     writeFlow(corpus.folder, [
+      { status: 'done', comments: [UNAVAILABLE_RECEIPT] },
       {
         status: 'done',
-        comments: [
-          {
-            at: '2026-08-05T08:25:38.868Z',
-            text: 'decision:unavailable reason:router not installed time:2026-08-05T08:10:00Z',
-            source: 'agent',
-            kind: 'validation',
-          },
-        ],
+        id: 'backpressure-0123456789ab',
+        comments: [receipt('c'.repeat(64))],
       },
     ]);
 
     const reading = readReady(corpus);
 
-    expect(reading.survey.satisfied).toBe(false);
-    expect(reading.survey.reason).toBe('missing-basis');
+    expect(reading.survey.reason).toBe('stale-basis');
     expect(reading.verdict).toBe('not-ready');
   });
 
@@ -606,6 +639,34 @@ describe('harness plan ready — envelope and exit mapping', () => {
     expect(run.envelope?.status).toBe('unconfigured');
     expect(run.code).toBe(2);
     expect(run.envelope?.next_action).toContain('No flight plan');
+  });
+
+  it('a router-less repo gets exit 2, not a not-ready it cannot act on', async () => {
+    // The control for the R2 ruling, at the surface that matters: the doctrine's
+    // verbatim `decision:unavailable` receipt must produce `unconfigured`/2. Not
+    // not-ready (a block with no exit in a router-less repo), and not ready.
+    corpus = createSyntheticPlan({ slug: 'synthetic-plan', ...CLAIMED });
+    writeFlow(corpus.folder, [{ status: 'done', comments: [UNAVAILABLE_RECEIPT] }]);
+
+    const run = await runReady(corpus);
+
+    expect(run.envelope?.status).toBe('unconfigured');
+    expect(run.code).toBe(2);
+    const data = run.envelope?.data as { verdict: string; reason: string };
+    expect(data.verdict).toBe('cant-tell');
+    expect(data.reason).toBe('missing-basis');
+  });
+
+  it('`--strict` does not give a router-less repo teeth either', async () => {
+    // Strict adds teeth to a KNOWN not-ready. Escalating a can't-tell would put
+    // back the un-clearable CI failure this ruling exists to remove.
+    corpus = createSyntheticPlan({ slug: 'synthetic-plan', ...CLAIMED });
+    writeFlow(corpus.folder, [{ status: 'done', comments: [UNAVAILABLE_RECEIPT] }]);
+
+    const run = await runReady(corpus, '--strict');
+
+    expect(run.envelope?.status).toBe('unconfigured');
+    expect(run.code).toBe(2);
   });
 
   it('names only the dimension that decided it (ruling ac-7007)', async () => {

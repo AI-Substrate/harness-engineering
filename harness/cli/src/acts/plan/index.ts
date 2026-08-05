@@ -612,7 +612,7 @@ function explainReadiness(reading: ReadyReading, target: string, flow: string): 
     case 'missing-receipt':
       return `The backpressure chore "${reading.survey.node}" is "${reading.survey.status}" but carries no receipt, so nothing records what was surveyed. Re-run the survey, or record the decline as a comment.`;
     case 'missing-basis':
-      return `The backpressure chore "${reading.survey.node}" carries a validation receipt with no \`basis_sha256\`, so it cannot say which plan bytes it surveyed — a completed attempt, not a completed survey. Re-run the survey against the current plan.`;
+      return `The backpressure chore "${reading.survey.node}" carries a validation receipt with no \`basis_sha256\` — a completed attempt, but nothing that says which plan bytes were surveyed (a repo with no harness router receipts its survey this way). Whether this plan is ready cannot be told from here — that is a refusal to guess, not a failure, and there is nothing to fix.`;
     case 'not-run':
       return `The backpressure survey has not been run (chore "${reading.survey.node}" is "${reading.survey.status}"). Run it, or decline it on the record — a decline with a receipt is a legitimate ready.`;
     case 'no-survey-node':

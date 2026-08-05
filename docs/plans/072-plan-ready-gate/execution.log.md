@@ -361,7 +361,8 @@ decline followed by an edit to the plan **stays** ready.
 A third state fell out of the split and is now named rather than silently lumped in: a
 `validation` receipt carrying **no** basis — the doctrine's `decision:unavailable` router-missing
 detection receipt is exactly that shape — is a completed *attempt*, not a completed survey. New
-reason **`missing-basis`**, never satisfied, with its own fixture and its own prose line.
+reason **`missing-basis`**, with its own fixture and its own prose line. Its **verdict** was
+corrected in R2 (below): can't-tell, not not-ready.
 
 ### F002 (HIGH) — newest receipt wins
 
@@ -439,3 +440,71 @@ not claimed as proof of a fixed defect.
 | `npm run test` | see below |
 | `harness checks` | see below |
 | `npm run check:docs` | see below |
+
+---
+
+## R2 — `missing-basis` keeps its name and loses its verdict
+
+One change, ruled after R1 raised the question rather than silently shipping the answer.
+
+**The reason code stands.** `missing-receipt` was a lie about this state — there *is* a receipt —
+and splitting the receipt kinds is what exposed it.
+
+**Its verdict contribution was wrong.** R1 made it `satisfied: false` → **not-ready**. It is now
+`satisfied: null` → **can't-tell**, `decided_by: survey`, envelope `unconfigured`, exit **2**.
+
+### Why, from the doctrine's own words rather than from the shape
+
+`skills/eng-harness-flow/SKILL.md` mints this receipt for a Layer-1 router miss and states its
+purpose outright:
+
+> `--kind validation --text "decision:unavailable reason:<…> time:<…>"` … **completed attempts,
+> never skips** — a chore never sits outstanding forever blocking `nav` in an un-harnessed repo.
+
+Reading it as not-ready **reinstates the exact block that receipt was written to remove**, and it
+is a block with no exit: there is no action a user in a router-less repo can take to turn it
+green. A verdict nobody can act on is a dead end, not a verdict.
+
+The R1 defence was "the survey genuinely did not happen." That is true and it is not the point.
+**"The work is not ready" and "I cannot determine whether the work is ready" are different
+claims**, and this is the second one. Having three values is the only reason the distinction is
+expressible — and the first time it came up for real, the two-valued answer was reached for.
+`unconfigured` ("nothing is mapped here yet") is also the literally-true envelope.
+
+Not-satisfied is unchanged for the genuinely broken cases: no receipt at all, wrong kind, stale
+basis.
+
+### Controls, and what they caught
+
+The fixture uses the doctrine's **verbatim** receipt text, held in one named constant with the
+SKILL.md quotation beside it, so it breaks if that protocol changes shape rather than quietly
+testing a receipt nobody mints.
+
+Three cases, all run against the pre-ruling reader (`git stash push` on `chores-read.ts`) first,
+all RED:
+
+```
+× a validation receipt with no basis is CANT-TELL, not not-ready   expected false to be null
+× a router-less repo gets exit 2, not a not-ready it cannot act on expected 'degraded' to be 'unconfigured'
+× `--strict` does not give a router-less repo teeth either         expected 'error' to be 'unconfigured'
+```
+
+The third RED is the finding stated as a number: under the R1 verdict, **`--strict` in a
+router-less repo exited 1** — a hard CI failure with nothing the repo's owner could do to clear
+it. That is the block, made concrete.
+
+A fourth case — "a stale receipt on another node still outranks an unreadable one" — **passed
+against the pre-ruling code too** (`stale-basis` already led the dissent order). It is kept as a
+regression guard on the precedence the verdict itself uses (a known failure outranks an unknown),
+and is not claimed as proof of a fixed defect.
+
+### Docs
+
+`docs/how/dd/plan-ready.md`: the survey table row now reads *can't-tell*, and the basis section
+says why in the same breath as the fact — a router-less repo gets "can't tell" because there is
+nothing the reader could do about a not-ready there.
+
+### Still open, and not ours
+
+**Open Question 1** (`--strict` opt-in vs. not-ready always non-zero) remains open and is
+Jordan's. Deliberately **not** resolved in code.

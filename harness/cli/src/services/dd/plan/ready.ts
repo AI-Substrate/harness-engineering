@@ -59,8 +59,13 @@ export type SurveyReason =
   | 'missing-receipt'
   /**
    * Terminal with a `validation` receipt that records no basis at all — a
-   * completed attempt (the doctrine's `decision:unavailable` detection receipt is
-   * one), but not a completed survey: it cannot say which bytes it looked at.
+   * completed attempt (the doctrine's router-missing `decision:unavailable`
+   * receipt is one), but not a completed survey: it cannot say which bytes it
+   * looked at. This reads **can't-tell**, never not-ready. The doctrine mints
+   * that receipt precisely so "a chore never sits outstanding forever blocking
+   * `nav` in an un-harnessed repo"; calling it not-ready would reinstate that
+   * block, and there is nothing a user in a router-less repo could do to clear
+   * it. A verdict nobody can act on is a dead end, not a verdict.
    */
   | 'missing-basis'
   /** Terminal with a receipt, but for different plan bytes than the ones on disk. */

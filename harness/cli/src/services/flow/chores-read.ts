@@ -112,33 +112,52 @@ function newestReceipt(node: FlowNode): Receipt | null {
  *
  * - A `validation` receipt is an agent's completed survey — a claim about
  *   SPECIFIC plan bytes. It therefore requires basis equality, and goes stale the
- *   moment those bytes change (AC-10). A `validation` receipt carrying no basis at
- *   all (the doctrine's `decision:unavailable` detection receipt is one) is a
- *   completed *attempt* but not a completed survey: it cannot say which bytes it
- *   looked at, so it cannot satisfy this dimension.
+ *   moment those bytes change (AC-10).
  * - A `decision` receipt is the human's decline, and the doctrine's decline
  *   command records the human's verbatim words and NO basis at all. Requiring one
  *   would make a documented decline unsatisfiable by the actual protocol. It also
  *   would not mean anything: a decline is a decision about THE WORK, not about the
  *   bytes, so there is nothing for a later edit to invalidate.
+ *
+ * A `validation` receipt carrying no basis is `null` — CAN'T-TELL, not a failure.
+ * That shape is the doctrine's router-missing detection receipt
+ * (`decision:unavailable reason:… time:…`), and the doctrine's stated purpose for
+ * it is that "a chore never sits outstanding forever blocking `nav` in an
+ * un-harnessed repo". Reading it as not-ready would reinstate the exact block it
+ * exists to remove — and it would be a block with no exit, because there is
+ * nothing a user in a router-less repo could do to turn it green. "The work is not
+ * ready" and "I cannot determine whether the work is ready" are different claims,
+ * and this is the second one; a verdict nobody can act on is a dead end, not a
+ * verdict.
  */
 function judge(
   node: FlowNode,
   expected: string,
-): { reason: SurveyReason; satisfied: boolean; basis: string | null } {
+): { reason: SurveyReason; satisfied: boolean | null; basis: string | null } {
   const receipt = newestReceipt(node);
   if (receipt === null) return { satisfied: false, reason: 'missing-receipt', basis: null };
   const basis = receipt.basis;
   if (receipt.kind === 'decision') {
     return { satisfied: true, reason: 'declined-with-receipt', basis };
   }
-  if (basis === null) return { satisfied: false, reason: 'missing-basis', basis };
+  if (basis === null) return { satisfied: null, reason: 'missing-basis', basis };
   if (basis === expected) return { satisfied: true, reason: 'survey-done', basis };
   return { satisfied: false, reason: 'stale-basis', basis };
 }
 
-/** Which unsatisfied reading tells a reader the most, when several nodes dissent. */
-const DISSENT_ORDER: readonly SurveyReason[] = ['stale-basis', 'missing-basis', 'missing-receipt'];
+/**
+ * Which non-satisfying reading tells a reader the most, when several nodes
+ * dissent. A KNOWN failure outranks an unknown — the same precedence the verdict
+ * itself uses — so a stale receipt is reported ahead of an unreadable one.
+ */
+const DISSENT_ORDER: readonly SurveyReason[] = ['stale-basis', 'missing-receipt', 'missing-basis'];
+
+/** A node that did not satisfy: `ok` is `false` (a failure) or `null` (unknowable). */
+interface Dissent {
+  node: FlowNode;
+  basis: string | null;
+  ok: false | null;
+}
 
 function reading(
   satisfied: boolean | null,
@@ -172,9 +191,10 @@ function reading(
  *
  * When several backpressure nodes exist (the doctrine mints one per re-basis), the
  * most informative reading wins: any node that is affirmatively satisfied, else
- * the loudest dissent (stale receipt, then a receipt with no basis, then no
- * receipt at all), else "not run". A survey that happened for the current bytes is
- * the truth regardless of how many earlier ones are lying around.
+ * the loudest dissent (a stale receipt, then no receipt at all, then a receipt
+ * that cannot say which bytes it saw), else "not run". A survey that happened for
+ * the current bytes is the truth regardless of how many earlier ones are lying
+ * around.
  */
 export function readBackpressureSurvey(
   flowPath: string,
@@ -197,16 +217,20 @@ export function readBackpressureSurvey(
     return reading(false, 'not-run', expected, nodes[0]);
   }
 
-  const dissent = new Map<SurveyReason, { node: FlowNode; basis: string | null }>();
+  const dissent = new Map<SurveyReason, Dissent>();
   for (const node of terminal) {
     const verdict = judge(node, expected);
-    if (verdict.satisfied) return reading(true, verdict.reason, expected, node, verdict.basis);
-    if (!dissent.has(verdict.reason)) dissent.set(verdict.reason, { node, basis: verdict.basis });
+    if (verdict.satisfied === true) {
+      return reading(true, verdict.reason, expected, node, verdict.basis);
+    }
+    if (!dissent.has(verdict.reason)) {
+      dissent.set(verdict.reason, { node, basis: verdict.basis, ok: verdict.satisfied });
+    }
   }
 
   for (const reason of DISSENT_ORDER) {
     const found = dissent.get(reason);
-    if (found !== undefined) return reading(false, reason, expected, found.node, found.basis);
+    if (found !== undefined) return reading(found.ok, reason, expected, found.node, found.basis);
   }
   return reading(false, 'missing-receipt', expected, terminal[0]);
 }
