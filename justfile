@@ -162,8 +162,21 @@ build:
 # (`node harness/cli/dist/index.js …`) rather than repointing the machine.
 # Verify at any time with: readlink -f "$(command -v harness)"
 #
+# Refuse to repoint the machine-global link from a linked worktree. "Root checkout
+# only" was policy in a comment; a comment is a remembered chore, not a control —
+# and the steal it warns about happened three times in one night while everyone
+# agreed with the policy. In the root checkout `git rev-parse --git-dir` is `.git`;
+# in a worktree it is a path under `.git/worktrees/`, so this is exact, not a guess.
+_require-root-checkout:
+    @test "$(git rev-parse --git-dir)" = ".git" || { \
+        echo "REFUSED: this is a linked worktree, not the root checkout."; \
+        echo "  The global \`harness\` must be linked from the root checkout so the machine"; \
+        echo "  serves main, not whatever branch a worktree happens to be on."; \
+        echo "  Build here instead: just build   (then: node harness/cli/dist/index.js ...)"; \
+        exit 1; }
+
 # Point the global `harness` at this working tree (root checkout only).
-link:
+link: _require-root-checkout
     npm link --ignore-scripts
     @echo "Linked: $(command -v harness) -> this working tree. Try: harness docs"
 
@@ -172,7 +185,7 @@ link:
 # at $(npm prefix -g)/bin, pointing at harness/cli/bin/harness.js. The link is
 # LIVE: re-run this (or `just build`) after changes to refresh the dist it serves.
 # Undo with `just uninstall-cli`.
-install-cli:
+install-cli: _require-root-checkout
     npm run build
     npm link --ignore-scripts
     @command -v harness >/dev/null 2>&1 \
