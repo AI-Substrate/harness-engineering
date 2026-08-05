@@ -381,6 +381,48 @@ head and re-opens the review. That is Jordan's explicit call, but it means: no
 drive-by edits, no opportunistic cleanups, nothing outside the three items above.
 Anything extra costs the whole PR another review round.
 
+## Ruling #6 (2026-08-05) — a required INTERACTION PASS before review
+
+This packet was assembled **incrementally** — FX002 as a dossier, FX004 as a ruling
+after its mechanism was refuted and re-established, the 2.7 pin folded in later from
+a separate instruction. Each item was adjudicated **at the moment it arrived, against
+the world as it stood then.** Until the coder held all three, the packet did not
+exist as a set, so **nobody was in a position to review it as one.**
+
+That produced a real defect: FX002's marker at *capture* time needs a new `Segment`
+field → bumps `SEGMENT_SCHEMA_VERSION` to 2.8 → **the 2.7 read pin refuses every
+segment this build writes.** The instrument stops reading its own output — total and
+silent, and under the pin's original design, refused *without a reason*. Two items,
+each correct alone, composing into the exact defect class the packet exists to
+eliminate. The coder was not doing the reviewer's job better than us; it was **the
+first party in a position to do it at all.**
+
+> **REQUIRED, before the reviewer sees the final head: one pass over the ASSEMBLED
+> packet, asking of each item — what does this change that another item in this same
+> packet depends on?** Not *"is each item correct"* (already done), but **"is each
+> item still correct in the presence of the others."**
+
+Cheap, bounded, and it happens exactly once, at the only moment it can work.
+
+## Field evidence for FX002 (n=397, not n=1)
+
+**ESTABLISHED (probe cited — scan of 458 `~/.pij/*.json` descriptors):**
+
+- **397 adopted** seats (`spawnedBy` null) vs 61 spawned.
+- **396 of 397 adopted seats carry `harnessSessionId`** — so the read-time join key
+  is present in the field at scale, not just on the seat that happened to look.
+- **The one outlier is `pij-telegram`** — a service pseudo-seat with `harnessSessionId`,
+  `spawnedBy`, `createdAt` and `state` all null. The no-key case **exists in the
+  wild**; FX002's unresolved path must survive it, and it is not an agent session at all.
+- **Zero `harnessSessionId` collisions** across all 458 descriptors.
+
+**What the last line does and does not license.** It does **not** make the ambiguity
+handling unnecessary — a session id could recur across re-adoptions, and
+`by_harness_session` being first-wins is exactly why a collision would be *invisible*
+rather than absent. It means the ambiguity guard is **prospective and unexercised by
+real data**: validated only against fabricated input. State it that way in the log
+rather than implying field validation.
+
 ## Review
 
 Cross-model, same discipline: **Dim-0 mutation gate first and blocking**, then fix
