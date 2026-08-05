@@ -26,7 +26,7 @@ it was handed over confidently.
 | **FX004** | **complete** — both faces fixed, 7 mutations fire, guards both directions |
 | **FX002** | **complete** — read-time resolution, 5 mutations fire, never fabricates |
 | **Pin** | **complete — value reversed to the FLOOR** (R2); the reason channel, total decoder, caller audit and per-reason tallies all stand |
-| Pin-knob control | **rewritten to the INVERTED hazard** (R2) — and proven by two planted `src/` mutations |
+| Pin-knob control | **rewritten TWICE** — to the INVERTED hazard (R2), then to a SCOPE THAT FOLLOWS THE PIN (R3, after a third blindness). Proven by four planted `src/` mutations |
 | Registry-shape control (#3.1) | **already existed** — reported, not duplicated |
 | Discard proof | **complete** — fires, and proven inert in the live tree |
 
@@ -256,7 +256,7 @@ dial was always the valuable part; R2 moved the value.
 |---|---|---|
 | 1 | `LEGACY_READ_PIN` should become unused | **Confirmed unused; removed.** Both declarations and all 3 call sites are gone from `session-export.test.ts` / `report.test.ts`. The frozen corpus now decodes through the **production** path with no test-only policy in between — strictly stronger evidence than before. |
 | 2 | `below_pin` becomes unreachable in production | **Confirmed, and kept reachable + tested via the knob.** Controls did not go inert — they were re-pointed at an explicitly declared `RAISED_PIN`, and each is paired with a guard asserting the *same record* is READ at the production pin, so a control cannot quietly become a test of nothing. Mutation count **20 → 22, all fire**. |
-| 3 | `pin-knob-src-usage.test.ts` must still be meaningful | **Rewritten to the inverted hazard** — see below. Proven by two planted `src/` mutations, now permanent gate entries PIN-M7/M8. |
+| 3 | `pin-knob-src-usage.test.ts` must still be meaningful | **Rewritten to the inverted hazard (R2), then re-scoped entirely (R3)** — the R2 rewrite was still blind one hop out. See below. Proven by four planted `src/` mutations, now permanent gate entries PIN-M7/M8/M9/M10. |
 | 4 | The reader divergence should collapse | **Confirmed collapsed — and better than "collapsed".** See below. |
 | 5 | The 11 corpus failures resolve without the workaround | **Confirmed.** Full telemetry suite green (1653 tests) with the legacy-pin plumbing deleted, not merely defaulted. |
 
@@ -366,6 +366,131 @@ two:
 
 Both are now permanent gate entries (**PIN-M7**, **PIN-M8**), so the proof does not
 depend on my having run it once by hand.
+
+## R3 — the SAME control failed a THIRD time, and the defect was the SCOPE
+
+**The reviewer planted `{ pin: '2.7' }` at `acts/telemetry.ts:1276` and the R2 control
+passed 6/6.** It was right to. The mechanism, verified here:
+
+```ts
+if (!/decodeSegment|SegmentDecodeOptions/.test(raw)) continue;
+```
+
+`acts/telemetry.ts` contains **neither string** — confirmed by `grep -c`, which returns
+`0`. So the whole file was skipped. It calls `combineSession`, and `combineSession`
+accepts and forwards a pin. **A file can reach the read policy without ever naming the
+decoder.**
+
+And the comment above that line stated the false premise out loud — *"scoped to files
+that touch the segment decoder, because only those can reach the read policy"*. That
+narrowing was wrong, and because a reason was written down it read as *considered*
+rather than assumed, so the next reader stops there. **That comment is deleted.** A
+retracted reason left standing is this packet's defect class in prose, and it is the
+second one I have removed this round.
+
+### Three failures, one shape
+
+| # | What the control did | What it missed |
+|---|---|---|
+| 1 | counted pin **keys** | the dynamic pass-through |
+| 2 | rewritten for the inverted hazard | `session-export.ts`'s own `{ pin: opts.pin }` |
+| 3 | covered that site | **the CALLERS of the function that contains it** |
+
+Every time, the scope was drawn around **where I was looking**, and the hazard lived one
+hop outside it. That is not three bugs; it is one bug re-committed at increasing radius.
+
+### The fix is a change of PRINCIPLE, not of pattern
+
+I did **not** add `combineSession` to the regex. That fixes hop 2 and goes blind at hop
+3, with nothing to say so — a fourth instance of the same defect, pre-installed.
+
+**The hazard does not sit at the decoder. It sits anywhere a pin can ORIGINATE and flow
+to one, however many hops away.** So the scan no longer has a notion of hops:
+
+> **Origination scanning is hop-count-INDEPENDENT by construction.** Whatever the chain
+> length, the value must be **written** somewhere, and in TypeScript that means the
+> identifier `pin` appears at the origin. Enumerating hops is what kept being wrong, so
+> the redesign removes the need to enumerate.
+
+The scan now covers **every file under `src/`, with no content filter at all**, for the
+identifier `pin` in code. Comments, string literals and regex literals are tokenized
+out, so help text like `'--pin <version>'` is inert **by construction** rather than by an
+allowlist entry someone has to trust. The price is an **11-entry hand-declared
+allowlist** — including `acts/update.ts`'s unrelated `--pin` registry flag, listed by
+line rather than exempted by file, *because a file-level exemption is the same move that
+failed three times*: a scope narrowed by a judgement about what a file "is about".
+
+The claim the allowlist makes is only the one the mechanism can keep — **that every place
+the identifier appears has been looked at**. It is explicitly *not* a reachability proof
+that `update`'s pin cannot reach a decoder. Overclaiming there would be the packet's own
+defect class again.
+
+### The scope itself is now controlled — always-on, not a one-time plant
+
+The scans take a `Map<path, source>`, so a test can feed them synthetic files. Three
+permanent fixtures, run on every suite execution:
+
+1. **the reviewer's exact plant** — a violation in a file naming nothing about the
+   decoder **must** be reported;
+2. **a THIRD-HOP chain** — origin → forwarder → `combineSession` → decoder — where the
+   origin, the new forwarder's parameter declaration, *and* its forward are all reported;
+3. **a GUARD** — a file where `pin` appears only in prose, help text and comments is
+   **not** reported. Without this the allowlist fills with noise, and an allowlist nobody
+   can read is one nobody checks.
+
+*A scan that cannot report the opposite is not a probe*, so the opposite is planted
+permanently rather than by hand once.
+
+### The tokenizer nearly reproduced the defect one level down
+
+To scan identifiers I had to tokenize out string literals. **My first tokenizer handled
+strings but not regex literals**, mistook `/["']/` for a division, and silently swallowed
+the remainder of **six real files** — `command-signature.ts` lost **316 of its 355
+lines**. A pin inside any of them would simply not have been found, and the scan would
+have reported *"all 11 declared, green"* while looking at almost nothing.
+
+I caught it only because I asserted a **line-count invariant** — tokenizing must preserve
+every file's line count exactly. That invariant is now a **fail-closed control that runs
+before any allowlist is consulted**: if the tokenizer ever falls out of step with the
+language, the suite says so instead of going quietly blind. Currently **252/252 files in
+sync**.
+
+Worth stating plainly: the instrument I built to catch silent blindness was itself
+silently blind, and only a probe that could return the contrary answer found it. That is
+the fourth time tonight that pattern has paid.
+
+### The planted-mutation proof (R3)
+
+Both plants applied to real `src/`, run, reverted; `git status` clean on both sides.
+
+**PIN-M9 — the reviewer's exact plant**, `{ pin: '2.7' }` at `acts/telemetry.ts`
+(`grep -c 'decodeSegment\|SegmentDecodeOptions'` → `0`). Old control **6/6 PASS**. New
+control **2 of 9 FAIL**:
+
+```text
+AssertionError: expected [ …(12) ] to deeply equal [ …(11) ]
++   "acts/telemetry.ts:exp = combineSession(sessionId, { fs: deps.fs, proc: deps.proc, env: deps.env }, { pin: });"
+```
+
+Note the literal `'2.7'` is tokenized away, leaving `{ pin: }` — an **empty** expression,
+which fails the origin rule's member-path shape. So `pin: '2.7'` is caught as an
+**origination** even though the literal itself is stripped.
+
+**PIN-M10 — a THIRD HOP**, cross-file: origin in `acts/telemetry.ts` → a new forwarder in
+`session-export.ts` → `combineSession` → decoder. Caught at **all three** points:
+
+```text
++   "acts/telemetry.ts:exp = exportForReport(sessionId, { fs: deps.fs, proc: deps.proc, env: deps.env }, { pin: });"
++   "services/telemetry/export-bridge.ts:o: { pin?: string },"
++   "services/telemetry/export-bridge.ts:return combineSession(sessionId, deps, { pin: o.pin, root: });"
+```
+
+**The gate itself had to change to express this.** The runner only supported a single
+file replacement, but the third-hop hazard is **cross-file by nature** — an origin in one
+file, a forwarder in another. A gate that can only edit one file cannot express the
+defect it is meant to catch, so `/tmp/packet-mut.py` now accepts a list of edits applied
+and reverted as one unit. Disclosed rather than worked around by shrinking the mutation
+to fit the tool.
 
 ## The registry-shape control (Ruling #3.1) — already present, not duplicated
 
@@ -477,7 +602,7 @@ lean on. Same question, asked again over the assembled set.
 | **J1** | **R2 → I1** | **I1 IS RETRACTED — the interaction no longer exists.** I1 was the item I most wanted challenged: a spawned seat whose segments were all below-pin reported `unresolved`, requiring a reader to correlate two envelope fields. At a floor pin **nothing is below-pin in production**, so identity is never lost to a policy refusal. The finding was real; the reversal dissolved it rather than my fixing it. |
 | **J2** | **R2 → I2 (FX002 read-time)** | **The hazard SURVIVES the reversal, by a different mechanism, and the ruling still holds.** A capture-time marker would bump `SEGMENT_SCHEMA_VERSION` to 2.8 — which is refused not for being *below* the pin but for being **outside `KNOWN_SCHEMA_VERSIONS`** (`unsupported_version`). The instrument would still stop reading its own output. So read-time was right for a reason that **outlives the pin value**, and the correct guard is not about the pin at all: **whatever we WRITE must be in the DECLARED set.** This pass produced a new control for exactly that — *"the instrument can READ ITS OWN OUTPUT"* asserts `KNOWN_SCHEMA_VERSIONS` contains `SEGMENT_SCHEMA_VERSION` and that its rank is not below the pin. Bumping the write schema without declaring it now fails a test instead of silently blinding the reader. |
 | **J3** | **R2 → I5 (second reader)** | **The widening is retracted** — A is a strict superset of B again, back to the pre-packet state. See the divergence section; the reviewer was told about the widening, so it must be told the widening is gone. |
-| **J4** | **R2 → I6 (the knob)** | **The hazard inverted** (permissive → strict) and the control was rewritten to match, not patched to prove the old claim. Two planted `src/` mutations fire; both are now permanent gate entries. |
+| **J4** | **R2 → I6 (the knob)** | **The hazard inverted** (permissive → strict) and the control was rewritten to match, not patched to prove the old claim. Two planted `src/` mutations fire; both are now permanent gate entries. **Superseded by R3 — the rewritten control was still blind one hop out. See the K-pass.** |
 | **J5** | **R2 → I9 (flow-eval evidence)** | Direction reverses **favourably**: flow-eval's telemetry assertions now see *more* evidence, not less. Nothing to guard — but note that more evidence means an assertion previously resolving `unknown` can now resolve `pass`/`fail`. That is the instrument working, and it changes **no** recorded result, because the 2.7 pin never shipped. |
 | **J6** | **R2 → the Option C rationale** | The knob's original justification (frozen-corpus read-back) **evaporated** — production reads the corpus now. The knob is retained for a *different* reason (`below_pin` exercisability), so the in-code rationale was **rewritten rather than left standing**. A parameter whose stated reason has been retracted is this packet's defect class in prose. |
 | **J7** | **R2 → the synthetic fixtures** | The 2.7 moves were collateral of the old pin and their justifying comments were now false; **reverted**. Restores 2.2/2.6 records flowing through a production act. |
@@ -487,6 +612,24 @@ lean on. Same question, asked again over the assembled set.
 **Nothing in this pass is left open.** J2 is the one that changed the build: it produced a
 control that did not exist before and that guards a hazard the pin reversal did *not*
 remove.
+
+### The R3 interaction pass (K1–K5) — re-run because an item changed
+
+Ruling #6's stage is re-entrant: R3 altered an item (the pin-knob control), so the set
+was reviewed as a set again rather than the item being checked alone.
+
+| # | Interaction | Finding |
+|---|---|---|
+| **K1** | **R3 → the whole `src/` tree** | **New coupling, accepted deliberately.** The control now scans **every** file under `src/`, so it is no longer a telemetry-local test — any file introducing the identifier `pin` fails a telemetry suite. Checked: no other packet item (FX002 `pij-identity`, FX004 `app.ts` / `no-extension-context`) introduces one. The coupling is the *mechanism*, not a side effect: a scan that only fires for files someone remembered to include is the defect being fixed. |
+| **K2** | **R3 → `acts/update.ts`** | **A genuine cross-domain cost, stated.** Six allowlist entries belong to `harness update --pin`, an unrelated feature. Entries are normalised to the **tokenized** line, so help-text and message churn does not break them — but a structural edit there now fails a telemetry test. Judged worth it: a file-level exemption is precisely the narrowing that failed three times. |
+| **K3** | **R3 → the Dim-0 gate** | **The gate had to change.** The third-hop hazard is cross-file by nature, and the runner could only edit one file. Extended to multi-file mutations applied/reverted as a unit. All 24 mutations re-verified after the change — **none went silent**, which is the specific risk of touching a gate runner. |
+| **K4** | **R3 → J2's "read its own output" control** | **No conflict, and they compose.** J2's control asserts the *write* schema is in the declared set; R3's asserts nobody *raises the read pin*. Both are needed and neither can substitute: J2 guards the producer, R3 guards the policy. |
+| **K5** | **R3 → the R2 planted-mutation proof (PIN-M7/M8)** | **Both still fire, at 4 and 8** (up from 3 and 7 — the new scan adds failing assertions, it does not replace them). The R2 proof is *extended*, not superseded; the old evidence stands and the R3 evidence is additional. |
+
+**One thing this pass changed:** K3. Extending the mutation runner is a change to the
+instrument that judges everything else, so re-running the *whole* gate rather than the two
+new entries was not optional — a runner edit that silently broke one existing mutation
+would have removed a control while appearing to add two.
 
 ## The reader divergence — the packet WIDENED it, then R2 RETRACTED the widening
 
@@ -522,7 +665,7 @@ fails `E222` on sessions whose `checks` event has gate keys containing `:` or a 
 producer/reader **grammar** drift, unrelated to version. Stated, not fixed; that is the
 trade, and after R2 it costs nothing observable.
 
-## The Dim-0 mutation gate — 22 mutations, ALL FIRE (was 20)
+## The Dim-0 mutation gate — 24 mutations, ALL FIRE (was 22, was 20)
 
 Every mutation restores a **pre-fix behaviour**, not merely broken code. Runner:
 `/tmp/packet-mut.py`. Counts below are from the final post-`biome` run (anchors were
@@ -541,10 +684,12 @@ re-verified after reformatting).
 | PIN-M2 an ABOVE-pin version mislabelled `below_pin` | 4 |
 | PIN-M3 `decodeLooseSegment` catch collapses its reason | 2 |
 | PIN-M4 session export drops the refusal tally from the envelope | 3 |
-| **PIN-M5 knob default DIVERGES from the declared policy constant** *(rewritten — see below)* | 9 |
-| PIN-M6 the pin compared by EQUALITY rather than as a floor | 14 |
-| **PIN-M7 a production lane silently RAISES the pin (`ref-source`)** *(new, R2)* | 3 |
-| **PIN-M8 the pass-through ORIGINATES a policy instead of forwarding one** *(new, R2)* | 7 |
+| **PIN-M5 knob default DIVERGES from the declared policy constant** *(rewritten — see below)* | 10 |
+| PIN-M6 the pin compared by EQUALITY rather than as a floor | 15 |
+| **PIN-M7 a production lane silently RAISES the pin (`ref-source`)** *(new, R2)* | 4 |
+| **PIN-M8 the pass-through ORIGINATES a policy instead of forwarding one** *(new, R2)* | 8 |
+| **PIN-M9 a pin ORIGINATES in a file that never names the decoder** *(new, R3 — the reviewer's plant)* | 2 |
+| **PIN-M10 a pin originates THREE hops out, via a forwarder that is not the decoder** *(new, R3, cross-file)* | 2 |
 | FX002-M1 adopted seat never consults the registry | 6 |
 | FX002-M2 ambiguity resolved by first-wins GUESS (the false green) | 2 |
 | FX002-M3 "no match" folded into "registry unavailable" | 2 |
@@ -626,6 +771,48 @@ production stricter. It fires 9.
    (the first-wins index conceals exactly what would count them), so the guard is
    prospective. Keeping it is the right call; claiming field validation for it would not
    be.
+
+9. **The pin scan is a TEXT scan, not a type-aware one — three evasions survive, named.**
+   The redesign makes the scan hop-count-independent, not omniscient. It would **not**
+   catch: (a) a computed key — `bag['p' + 'in'] = '2.7'`; (b) a spread of a bag whose pin
+   arrived from **outside `src/`**, e.g. `combineSession(a, b, { ...JSON.parse(cfg) })`,
+   where no `pin` token appears anywhere in production source; (c) a rename at a
+   distance through an untyped `Record<string, unknown>`. (a) and (c) are deliberate
+   evasion and I am content to leave those to review. **(b) is the real one** — it is
+   plausible rather than pathological, and I could not close it without type information
+   the scan does not have. Stated rather than papered over. The mitigating fact is that
+   the two pin-accepting **type declarations** (`SegmentDecodeOptions`,
+   `CombineSessionOpts`) are themselves in the declared list, so a *new* pin-accepting
+   entry point still cannot appear silently — only a new *filling* of an existing one via
+   spread.
+
+10. **The tokenizer's regex/division disambiguation is a HEURISTIC.** It decides `/`
+    starts a regex from the preceding token, which is the standard approach and is not
+    provably correct. I did not treat that as acceptable on its own: the line-count
+    invariant turns a heuristic failure from **silent blindness into a red suite**, which
+    is the honest form of "I used a heuristic". It holds for 252/252 files today. If a
+    future file breaks it, the gate fails loudly and someone fixes the tokenizer — it
+    cannot quietly stop finding pins.
+
+11. **An intermittent failure I saw THREE TIMES and can neither reproduce nor explain.**
+    Reported so it is not discovered as a surprise. During R3 verification, three
+    consecutive bare `npx vitest run` invocations reported `1 failed | 4530 passed`, with
+    the stack in `test/services/flow/archive-move.test.ts` (~line 296, a `flow list`
+    immediately after `buildRepo()`). Then **six consecutive full runs went green at
+    4531/4531**, and `harness checks` reported `tests:ok` on every attempt including the
+    ones bracketing the failures. Facts, separated from inference:
+    - The file passes in isolation (7/7).
+    - The pre-change tree passed a full run — but **once only**, which is not enough to
+      attribute the failure to my change.
+    - My change is a **test-only** file that reads `src/` from disk; there is no
+      mechanism by which it reaches flow archive-move.
+    - I formed a hypothesis (git contention with the telemetry auto-push that `harness
+      checks` performs) and **tested it** by running `checks` then the suite immediately.
+      **It did not reproduce. The hypothesis is refuted, not confirmed.**
+
+    So I am recording an unexplained intermittent, not a flake. Calling it a flake would
+    be asserting a conclusion I did not reach — the exact move this packet exists to
+    stop. It is very likely pre-existing and unrelated, and I could not establish that.
 
 ## Fence
 

@@ -16,42 +16,63 @@ import {
 import { combineSession } from '../../../src/services/telemetry/session-export.js';
 
 /*
-THE CONTROL THAT MAKES THE PIN KNOB SURVIVABLE — AND ITS HAZARD HAS INVERTED.
+THE CONTROL THAT MAKES THE PIN KNOB SURVIVABLE — THIRD REWRITE, AND THE SCOPE IS THE
+POINT. Read this before changing the scan; two previous versions were correct about
+the hazard and wrong about where to look for it, in the same way both times.
 
-WHAT THIS FILE USED TO ASSERT, AND WHY THAT IS NOW THE WRONG QUESTION.
-While the read pin sat at 2.7, production read narrowly and the knob was an OPT-OUT.
-The danger was a `src/` caller quietly lowering the pin, making the build MORE
-PERMISSIVE than the declared policy while the constant still read 2.7. So this file
-scanned for literal pin values. The reviewer found that scan blind to the dynamic
-`{ pin: opts.pin }` pass-through, and it was right — but fixing it to prove the old
-claim would prove nothing, because Jordan then reversed the pin TO THE FLOOR. There is
-no strict policy left to protect: opting out of a floor pin does nothing, since nothing
-is below the floor.
+THE HAZARD. The read pin sits at the FLOOR, so production refuses nothing it could
+have read. A `src/` caller passing a HIGHER pin would silently make production
+STRICTER — refusing records the stated policy says we read, with nothing in the
+output naming who decided it. That is this packet's own defect class (a system
+reporting a conclusion it did not reach) arriving through the mitigation for its own
+collision. A policy any call site can raise in private is not a policy.
+(The pre-reversal control asserted the MIRROR of this — that nobody LOWERED a strict
+2.7 pin. That question died with the reversal: nothing is below the floor. Do not
+restore it; it would be an assertion that cannot fail.)
 
-THE LIVE HAZARD IS THE EXACT OPPOSITE, and it is what this file now asserts.
-A `src/` caller passing a HIGHER pin would silently make production STRICTER — refusing
-records the stated policy says we read, with nothing in the output naming who decided
-it. That is this packet's own defect class (a system that could not do something,
-reporting something other than that), arriving through the mitigation for its own
-collision. The pin's value is a POLICY; a policy any call site can raise in private is
-not a policy.
+WHY THE SCOPE IS NOT "FILES THAT TOUCH THE DECODER" — THE THREE FAILURES.
+  1. The first version counted pin KEYS and missed the dynamic pass-through entirely.
+  2. The second was rewritten and still ignored `session-export.ts`'s `{ pin: opts.pin }`.
+  3. The third covered that site but scoped the property scan to files matching
+     /decodeSegment|SegmentDecodeOptions/, "because only those can reach the read
+     policy". THAT STATED REASON WAS FALSE. `acts/telemetry.ts` names neither string
+     and reaches the read policy through `combineSession`, which accepts and forwards
+     a pin. A reviewer planted `{ pin: '2.7' }` there and this file passed 6/6.
+Every time the scope was drawn around where the author was looking, and the hazard
+lived one hop outside it. Adding `combineSession` to the pattern fixes hop 2 and goes
+blind at hop 3, with nothing to say so.
 
-WHY THE PARAMETER IS KEPT AT ALL RATHER THAN DELETED — the alternative was live, and
-"a parameter nobody in production should ever set is better deleted than policed" is a
-fair rule. At a floor pin `below_pin` is unreachable in production, so this parameter is
-the ONLY path by which the reason channel's below-pin plumbing — the envelope field, the
-histogram exclusion, the per-reason separation — stays EXERCISED. Delete it and
-`below_pin` becomes a decoder-only artifact whose surfacing nothing proves, which is the
-vacuity this packet exists to kill. Kept, and policed by the allowlists below.
+THE FIX IS A CHANGE OF PRINCIPLE, NOT OF PATTERN: SCOPE ON THE PIN, NOT THE DECODER.
+The hazard does not live at the decoder. It lives anywhere a pin can be BORN and
+flow to one, however many hops away. Hop-counting cannot work, because it requires
+enumerating hops and the enumeration is what keeps being wrong. Scanning for
+ORIGINATION is hop-count-INDEPENDENT by construction: whatever the chain length,
+the value must be WRITTEN somewhere, and in TypeScript that means the identifier
+`pin` appears at the origin. So the scan covers EVERY file under `src/` with no
+content filter at all, and the 11 resulting sites are declared by hand below.
+That list is short because the surface genuinely is: an eleven-entry allowlist is
+affordable, and a scope that cannot be argued about is worth more than a short list.
 
-NON-VACUITY: this control was verified by PLANTING pin-raising call sites in `src/` and
-watching it fail (packet log, "the planted-mutation proof"). A permissive default makes
-it very easy to write an assertion that passes because there is nothing left to catch;
-the allowlists are exact-match precisely so that ANY new or altered pin site fails until
-someone re-declares it on purpose.
+WHY THE PARAMETER IS KEPT AT ALL RATHER THAN DELETED — "a parameter nobody in
+production should ever set is better deleted than policed" is a fair rule, and it was
+weighed. At a floor pin `below_pin` is unreachable in production, so this parameter is
+the ONLY path by which the reason channel's below-pin plumbing — the envelope field,
+the histogram exclusion, the per-reason separation — stays EXERCISED. Delete it and
+`below_pin` becomes a decoder-only artifact whose surfacing nothing proves, which is
+the vacuity this packet exists to kill. Kept, and policed here.
+
+NON-VACUITY. A permissive default makes it very easy to write an assertion that
+passes because there is nothing left to catch, so the scan is proved against planted
+violations two ways: the reviewer's exact plant and a THIRD-HOP chain are permanent
+in-test fixtures below ("the scan's SCOPE is not drawn around the decoder"), and the
+Dim-0 mutation gate plants both in real `src/`. A scan that cannot report the
+opposite is not a probe.
 */
 
 const SRC = fileURLToPath(new URL('../../../src', import.meta.url));
+
+/** Relative path -> source text. Taking a MAP is what lets the scans be probed. */
+type SourceMap = ReadonlyMap<string, string>;
 
 function tsFilesUnder(dir: string): string[] {
   const out: string[] = [];
@@ -63,9 +84,207 @@ function tsFilesUnder(dir: string): string[] {
   return out;
 }
 
-/** Strip block + line comments so prose about the knob never trips the scan. */
-function stripComments(source: string): string {
-  return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[^\n]*?\/\/.*$/gm, '');
+function readSrcFiles(): SourceMap {
+  const files = new Map<string, string>();
+  for (const file of tsFilesUnder(SRC)) {
+    files.set(file.slice(SRC.length + 1), readFileSync(file, 'utf8'));
+  }
+  return files;
+}
+
+const REGEX_MAY_FOLLOW = /[([{,;:=!&|?+\-*%~^<>]$/;
+const REGEX_MAY_FOLLOW_KEYWORD = /\b(return|typeof|case|in|of|do|else|yield|await|instanceof)$/;
+
+/**
+ * Source with comments, string literals and regex literals removed, so `\bpin\b` in
+ * what remains is a real IDENTIFIER rather than help text ("--pin <version>") or prose.
+ * Template `${...}` interpolations are KEPT — they are code.
+ *
+ * Newlines are preserved exactly, which is not decoration: `linesAreInSync` below turns
+ * that into a fail-closed control. A hand-rolled tokenizer that mistakes a regex literal
+ * for a division would swallow the rest of a file and the pin scan would go quietly
+ * blind — the precise failure mode this rewrite exists to end. If the line counts ever
+ * diverge, the tokenizer is out of step with the language and the scan is untrustworthy,
+ * and the suite says so before any allowlist is consulted.
+ */
+function codeOnly(source: string): string {
+  let out = '';
+  let i = 0;
+  const n = source.length;
+  const regexCanStartHere = (): boolean => {
+    const t = out.replace(/\s+$/, '');
+    return t === '' || REGEX_MAY_FOLLOW.test(t) || REGEX_MAY_FOLLOW_KEYWORD.test(t);
+  };
+  while (i < n) {
+    const c = source[i];
+    const d = source[i + 1];
+    if (c === '/' && d === '/') {
+      while (i < n && source[i] !== '\n') i += 1;
+      continue;
+    }
+    if (c === '/' && d === '*') {
+      i += 2;
+      while (i < n && !(source[i] === '*' && source[i + 1] === '/')) {
+        if (source[i] === '\n') out += '\n';
+        i += 1;
+      }
+      i += 2;
+      continue;
+    }
+    if (c === '/' && regexCanStartHere()) {
+      let j = i + 1;
+      let inClass = false;
+      let closed = false;
+      for (; j < n; j += 1) {
+        const ch = source[j];
+        if (ch === '\\') {
+          j += 1;
+          continue;
+        }
+        if (ch === '\n') break;
+        if (inClass) {
+          if (ch === ']') inClass = false;
+          continue;
+        }
+        if (ch === '[') inClass = true;
+        else if (ch === '/') {
+          closed = true;
+          break;
+        }
+      }
+      if (closed) {
+        i = j + 1;
+        while (i < n && /[a-z]/.test(source[i] ?? '')) i += 1;
+        out += ' ';
+        continue;
+      }
+    }
+    if (c === "'" || c === '"') {
+      const quote = c;
+      i += 1;
+      while (i < n && source[i] !== quote && source[i] !== '\n') {
+        if (source[i] === '\\') i += 1;
+        i += 1;
+      }
+      if (source[i] === quote) i += 1;
+      out += ' ';
+      continue;
+    }
+    if (c === '`') {
+      i += 1;
+      while (i < n) {
+        if (source[i] === '\\') {
+          i += 2;
+          continue;
+        }
+        if (source[i] === '`') {
+          i += 1;
+          break;
+        }
+        if (source[i] === '$' && source[i + 1] === '{') {
+          let depth = 1;
+          i += 2;
+          out += ' ';
+          while (i < n && depth > 0) {
+            if (source[i] === '{') depth += 1;
+            else if (source[i] === '}') {
+              depth -= 1;
+              if (depth === 0) {
+                i += 1;
+                break;
+              }
+            }
+            out += source[i];
+            i += 1;
+          }
+          out += ' ';
+          continue;
+        }
+        if (source[i] === '\n') out += '\n';
+        i += 1;
+      }
+      out += ' ';
+      continue;
+    }
+    out += c;
+    i += 1;
+  }
+  return out;
+}
+
+/** Files whose tokenized form lost or gained a line — i.e. where the scan is blind. */
+function desyncedFiles(files: SourceMap): string[] {
+  const bad: string[] = [];
+  for (const [path, source] of files) {
+    if (codeOnly(source).split('\n').length !== source.split('\n').length) bad.push(path);
+  }
+  return bad.sort();
+}
+
+/**
+ * THE SCOPE-FOLLOWING SCAN. Every line under `src/` on which the identifier `pin`
+ * appears in CODE, as `<relative path>:<code-only line, whitespace collapsed>`.
+ * No file filter, no proximity to the decoder, no notion of hops.
+ */
+function pinIdentifierSites(files: SourceMap): string[] {
+  const found: string[] = [];
+  for (const [path, source] of files) {
+    for (const line of codeOnly(source).split('\n')) {
+      if (/\bpin\b/.test(line)) found.push(`${path}:${line.trim().replace(/\s+/g, ' ')}`);
+    }
+  }
+  return found.sort();
+}
+
+/**
+ * THE DECLARED SET. Exact strings, so a CHANGED line is as loud as a new one, and a
+ * new site anywhere under `src/` fails until someone declares it on purpose with an
+ * argument attached. That is the entire mechanism.
+ *
+ * NOTE ON `acts/update.ts`: this is `harness update --pin`, an unrelated pin — the
+ * registry version to install. It is listed rather than exempted BY FILE deliberately.
+ * A file-level exemption is the same move that failed three times: a scope narrowed by
+ * a judgement about what a file "is about". The claim made here is only the one the
+ * mechanism can keep — that every place the identifier appears has been looked at —
+ * NOT a reachability proof that update's pin cannot reach a decoder.
+ */
+const DECLARED_PIN_IDENTIFIER_SITES: readonly string[] = [
+  // --- harness update --pin: the registry version to install. Different domain. ---
+  'acts/update.ts:const spec = normalizePin(opts.pin);',
+  'acts/update.ts:data: { pin: opts.pin },',
+  'acts/update.ts:if (opts.pin) {',
+  'acts/update.ts:message: opts.pin ,', // template interpolation inside an error string
+  'acts/update.ts:pin?: string;', // the CLI flag's own option type
+  'acts/update.ts:summary: opts.pin ,', // template interpolation inside an error string
+  // --- the read policy itself: where the pin is consumed, and nowhere else. ---
+  'services/telemetry/segment.ts:const pin = options.pin ?? SEGMENT_SCHEMA_PIN;',
+  'services/telemetry/segment.ts:const pinRank = KNOWN_SCHEMA_VERSIONS.indexOf(pin);',
+  'services/telemetry/segment.ts:pin?: string;', // SegmentDecodeOptions — the knob
+  // --- the one forwarding hop, declared so its callers are a bounded question. ---
+  'services/telemetry/session-export.ts:...(opts?.pin === undefined ? {} : { pin: opts.pin }),',
+  'services/telemetry/session-export.ts:pin?: string;', // CombineSessionOpts — hop 2
+];
+
+/**
+ * Every `src/` site handing a SECOND argument (the read policy) to the decoder, as
+ * `<relative path>:<argument expression>`. An independent door: the identifier scan
+ * catches where a pin is born, this catches where one is handed to the decoder.
+ * Function DEFINITIONS are excluded — they declare the parameter, they do not supply one.
+ */
+function pinSupplyingCallSites(files: SourceMap): string[] {
+  const found: string[] = [];
+  for (const [path, source] of files) {
+    const body = codeOnly(source);
+    for (const match of body.matchAll(/\bdecodeSegment(?:Detailed)?\s*\(/g)) {
+      const open = match.index + match[0].length - 1;
+      const before = body.slice(Math.max(0, match.index - 20), match.index);
+      if (/\bfunction\s+$/.test(before)) continue;
+      const args = topLevelArgs(balancedArgs(body, open));
+      if (args.length < 2) continue;
+      found.push(`${path}:${(args[1] ?? '').replace(/\s+/g, ' ')}`);
+    }
+  }
+  return found.sort();
 }
 
 /** Text of the balanced parenthesised group starting at `open` (the index of the `(`). */
@@ -101,33 +320,6 @@ function topLevelArgs(args: string): string[] {
   return out;
 }
 
-/**
- * Every `src/` site that hands a SECOND argument (the read policy) to the decoder, as
- * `<relative path>:<argument expression>`, comments stripped and whitespace collapsed.
- * Function DEFINITIONS are excluded — they declare the parameter, they do not supply one.
- */
-function pinSupplyingCallSites(): string[] {
-  const found: string[] = [];
-  for (const file of tsFilesUnder(SRC)) {
-    const body = stripComments(readFileSync(file, 'utf8'));
-    for (const match of body.matchAll(/\bdecodeSegment(?:Detailed)?\s*\(/g)) {
-      const open = match.index + match[0].length - 1;
-      const before = body.slice(Math.max(0, match.index - 20), match.index);
-      if (/\bfunction\s+$/.test(before)) continue;
-      const args = topLevelArgs(balancedArgs(body, open));
-      if (args.length < 2) continue;
-      found.push(`${file.slice(SRC.length + 1)}:${(args[1] ?? '').replace(/\s+/g, ' ')}`);
-    }
-  }
-  return found.sort();
-}
-
-/**
- * THE DECLARED SET. Exact strings, so a CHANGED expression is as loud as a new site.
- * Adding an entry is a deliberate act with an argument attached; that is the whole
- * mechanism. Every entry must ALSO satisfy the origin rule asserted below: it forwards
- * a caller-supplied optional and never originates a value of its own.
- */
 const DECLARED_PIN_SUPPLY_SITES: readonly string[] = [
   // The narrowing wrapper forwarding its own caller's options — cannot originate.
   'services/telemetry/segment.ts:options',
@@ -136,26 +328,23 @@ const DECLARED_PIN_SUPPLY_SITES: readonly string[] = [
 ];
 
 /**
- * Every `src/` site that writes a `pin` PROPERTY, as `<relative path>:<expression>`.
- * Scoped to files that touch the segment decoder, because only those can reach the read
- * policy — `acts/update.ts` carries an unrelated `--pin` flag and folding it in here
- * would buy a longer list and no more proof.
+ * Every `pin` PROPERTY written under `src/`, as `<relative path>:<expression>`.
+ * `pin?:` (a type declaration) is deliberately not matched — it declares the knob
+ * rather than filling it, and it is covered by the identifier scan instead.
  */
-function pinPropertySites(): string[] {
+function pinPropertyExpressions(files: SourceMap): string[] {
   const found: string[] = [];
-  for (const file of tsFilesUnder(SRC)) {
-    const raw = readFileSync(file, 'utf8');
-    if (!/decodeSegment|SegmentDecodeOptions/.test(raw)) continue;
-    const body = stripComments(raw);
-    // `pin?:` (a type declaration) is deliberately not matched — it declares the knob.
-    for (const match of body.matchAll(/[^?\w]pin\s*:\s*([^,;}\n]+)/g)) {
-      found.push(`${file.slice(SRC.length + 1)}:${(match[1] ?? '').trim()}`);
+  for (const [path, source] of files) {
+    for (const match of codeOnly(source).matchAll(/[^?\w]pin\s*:\s*([^,;}\n]*)/g)) {
+      found.push(`${path}:${(match[1] ?? '').trim()}`);
     }
   }
   return found.sort();
 }
 
 const DECLARED_PIN_PROPERTY_SITES: readonly string[] = [
+  // The update act forwarding its own CLI flag into an error envelope's data bag.
+  'acts/update.ts:opts.pin',
   // combineSession threading its caller's optional pin through, or omitting the key
   // entirely when unset. A pure forward: it can raise nothing on its own initiative.
   'services/telemetry/session-export.ts:opts.pin',
@@ -193,41 +382,124 @@ function bufferOf(bodies: unknown[]) {
 }
 
 describe('no production path can raise the read pin (load-bearing)', () => {
-  it('CONTROL: every src/ site that supplies a read policy is DECLARED', () => {
+  it('CONTROL: the tokenizer is in step with every src file — the scan is not blind', () => {
     /*
     Test Doc:
-    - Why: the live hazard. A new caller passing `{ pin: '2.7' }` — or
-      `{ pin: SEGMENT_SCHEMA_VERSION }`, which the previous literal-only scan would have
-      waved straight through — would make production refuse live data while the declared
-      policy still read "the floor". Nothing in the envelope would name the decision.
-    - Contract: the set of second arguments handed to decodeSegment/decodeSegmentDetailed
-      anywhere under src/ equals DECLARED_PIN_SUPPLY_SITES, exactly.
-    - Worked Example: `ref-source.ts` calls `decodeSegmentDetailed(parsed)` with ONE
-      argument and so never appears here; giving it a second argument fails this test,
-      which is exactly what happened when that mutation was planted.
+    - Why: every assertion below reads `codeOnly` output. A hand-rolled tokenizer that
+      mistook a regex literal for a division would swallow the remainder of a file, and
+      a pin inside it would simply not be found — the scan would report "all declared"
+      while looking at nothing. That is silent-wrong, the class this packet exists to
+      kill, reproduced inside the control meant to catch it.
+    - Contract: tokenizing preserves the line count of every file under src/, exactly.
+    - Worked Example: an earlier draft handled strings but not regex literals; six real
+      files desynced (one lost 316 of 355 lines) and this control named all six.
     */
-    expect(pinSupplyingCallSites()).toEqual([...DECLARED_PIN_SUPPLY_SITES].sort());
+    expect(desyncedFiles(readSrcFiles())).toEqual([]);
+  });
+
+  it("CONTROL: the scan's SCOPE is not drawn around the decoder — planted violations surface", () => {
+    /*
+    Test Doc:
+    - Why: THIS IS THE CONTROL ON THE CONTROL, and the reason the file was rewritten a
+      third time. The previous scan skipped any file not naming the decoder, so a pin
+      planted where the decoder is never mentioned was invisible AND the suite still
+      reported green. A scan that cannot report the opposite is not a probe, so the
+      opposite is planted here permanently rather than by hand once.
+    - Contract: a violation is found (a) in a file mentioning nothing about the decoder,
+      and (b) at a THIRD hop — an origin whose forwarder is itself a forwarder; while a
+      file where `pin` appears only in prose and help text is NOT reported.
+    - Worked Example: (a) is the reviewer's exact plant against `acts/telemetry.ts`,
+      which names neither `decodeSegment` nor `SegmentDecodeOptions` and reaches the
+      read policy through `combineSession`.
+    */
+    const reviewersPlant: SourceMap = new Map([
+      [
+        'acts/telemetry.ts',
+        ['exp = combineSession(sessionId, deps, { pin: ' + "'2.7'" + ' });'].join('\n'),
+      ],
+    ]);
+    expect(pinIdentifierSites(reviewersPlant)).toEqual([
+      'acts/telemetry.ts:exp = combineSession(sessionId, deps, { pin: });',
+    ]);
+
+    const thirdHop: SourceMap = new Map([
+      [
+        'services/report/export-for-report.ts',
+        [
+          'export function exportForReport(o: { pin?: string }) {',
+          '  return combineSession(id, deps, { pin: o.pin });',
+          '}',
+        ].join('\n'),
+      ],
+      ['acts/report.ts', ["exportForReport({ pin: '2.7' });"].join('\n')],
+    ]);
+    // BOTH the new forwarder and the origin one hop further out are reported; neither
+    // file's distance from the decoder changes whether it is seen.
+    expect(pinIdentifierSites(thirdHop)).toEqual([
+      'acts/report.ts:exportForReport({ pin: });',
+      'services/report/export-for-report.ts:export function exportForReport(o: { pin?: string }) {',
+      'services/report/export-for-report.ts:return combineSession(id, deps, { pin: o.pin });',
+    ]);
+
+    // GUARD: prose and help text are NOT violations. Without this the allowlist fills
+    // with noise, and an allowlist nobody can read is one nobody checks.
+    const innocent: SourceMap = new Map([
+      [
+        'acts/help.ts',
+        [
+          '// we pin the docs at a sha',
+          "const flag = '--pin <version>';",
+          '/* --pin: choose a version */',
+          'export const help = flag;',
+        ].join('\n'),
+      ],
+    ]);
+    expect(pinIdentifierSites(innocent)).toEqual([]);
+  });
+
+  it('CONTROL: every src/ occurrence of the identifier `pin` is DECLARED', () => {
+    /*
+    Test Doc:
+    - Why: the live hazard, scanned at its ORIGIN rather than at its destination. A new
+      caller writing `{ pin: '2.7' }` — or `{ pin: SEGMENT_SCHEMA_VERSION }`, which a
+      literal-only scan waves straight through — makes production refuse live data while
+      the declared policy still reads "the floor", and nothing in the envelope names the
+      decision. Scanning origination is hop-count-independent; scanning the decoder's
+      neighbourhood is not, which is why the previous two versions went blind.
+    - Contract: the set of code lines under src/ carrying the identifier `pin` equals
+      DECLARED_PIN_IDENTIFIER_SITES, exactly, across ALL files with no content filter.
+    */
+    expect(pinIdentifierSites(readSrcFiles())).toEqual([...DECLARED_PIN_IDENTIFIER_SITES].sort());
+  });
+
+  it('CONTROL: every src/ site that supplies a read policy to the decoder is DECLARED', () => {
+    /*
+    Test Doc:
+    - Why: the second, independent door. The identifier scan catches where a pin is
+      born; this catches where one is handed to the decoder, including through a bag
+      whose name says nothing about pins.
+    - Worked Example: `ref-source.ts` calls `decodeSegmentDetailed(parsed)` with ONE
+      argument and so never appears here; giving it a second fails this test, which is
+      exactly what happened when that mutation was planted.
+    */
+    expect(pinSupplyingCallSites(readSrcFiles())).toEqual([...DECLARED_PIN_SUPPLY_SITES].sort());
   });
 
   it('CONTROL: every src/ `pin:` property is DECLARED — and none of them originates a value', () => {
     /*
     Test Doc:
-    - Why: the second half of the same hazard, and the half the reviewer found missing.
-      A declared CALL site forwarding an identifier is only safe while the bag it
-      forwards cannot be filled in by production code; the dynamic pass-through at
-      session-export.ts was invisible to the old literal scan.
+    - Why: a declared forward is only safe while the bag it forwards cannot be filled in
+      by production code. This is the half a reviewer found missing twice.
     - Contract: the pin properties written under src/ equal DECLARED_PIN_PROPERTY_SITES,
-      and each expression is a plain member path (a forward), never a literal.
+      and each expression is a plain member path (a forward), never a value of its own.
+      A string literal tokenizes to the empty expression, which fails the shape — so
+      `pin: '2.7'` is caught as an ORIGINATION even where the literal itself is stripped.
     */
-    const sites = pinPropertySites();
+    const sites = pinPropertyExpressions(readSrcFiles());
     expect(sites).toEqual([...DECLARED_PIN_PROPERTY_SITES].sort());
     for (const site of sites) {
       const expr = site.slice(site.indexOf(':') + 1);
-      // A forward looks like `opts.pin`. A literal ('2.7'), a template, a call or a
-      // conditional does not — any of those would be production ORIGINATING a policy.
       expect(expr).toMatch(/^[A-Za-z_$][\w$]*(\?)?(\.[A-Za-z_$][\w$]*)*$/);
-      expect(expr).not.toContain("'");
-      expect(expr).not.toContain('`');
     }
   });
 
