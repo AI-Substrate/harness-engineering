@@ -423,6 +423,38 @@ rather than absent. It means the ambiguity guard is **prospective and unexercise
 real data**: validated only against fabricated input. State it that way in the log
 rather than implying field validation.
 
+**Stronger still — the collision count is `not-probeable`, NOT `0`.**
+`by_harness_session` is **first-wins**, so a collision and a non-collision produce the
+**identical observation**; the scan could not have detected one if it were happening.
+
+> **Not measurable by this method. The instrument that would count collisions is the
+> same mechanism that conceals them.**
+
+Report it as **`not-probeable`**, never `0`. A zero in a table is read as data by the
+next person, and there will be a next person. This is *absent* versus *invisible* —
+the distinction this whole packet defends — appearing **inside our own evidence for
+the fix**, not in the system under repair.
+
+### `pij-telegram` is not an outlier — it is a permanent legitimate inhabitant
+
+It is a **bridge, not an agent session**: it will never have a session id, by its
+nature, forever. Not degenerate, not corrupt.
+
+**So FX002's unresolved path is NOT an error path.** It is the normal, expected,
+**steady-state** outcome for at least one real component. If unresolved carries a
+severity — warning, failure, anything alarming — then `pij-telegram` emits it
+permanently, and a permanent warning is one everyone learns to ignore, which then
+**hides the real unresolved cases behind it**.
+
+**Requirement**: unresolved is a first-class, **non-alarming** outcome naming *which*
+seat and *why*, distinguishing:
+
+- **"has no session by nature"** — expected, steady-state, not actionable; from
+- **"should have had one and does not"** — actionable.
+
+Only the second is a finding. Use `pij-telegram`'s shape as the known-good no-key
+fixture: a real-world referent beats a fabricated one.
+
 ## Review
 
 Cross-model, same discipline: **Dim-0 mutation gate first and blocking**, then fix
