@@ -11,11 +11,18 @@ import {
 } from './otlp/logs.js';
 import { produceOtlpMetrics } from './otlp/metrics.js';
 import type { LogsData, MetricsData } from './otlp/types.js';
+import {
+  type PijIdentity,
+  type PijIdentityDeps,
+  resolveSessionPijIdentity,
+} from './pij-identity.js';
+import { emptyRefusalTally, type SegmentRefusalTally, tallyRefusal } from './ref-source.js';
 import { ROLLED_LOGS_NAME, splitJsonl } from './rolled-shard.js';
 import { computeRollup, parseIso } from './rollup.js';
 import {
-  decodeSegment,
+  decodeSegmentDetailed,
   type Segment,
+  type SegmentDecodeOptions,
   type SegmentModelStat,
   type SegmentTokens,
 } from './segment.js';
@@ -55,6 +62,17 @@ export interface SessionExportIdentity {
   pij_session_id: string | null;
   branch: string | null;
   models: string[];
+  /**
+   * HOW the pij identity was established, or why it was not (FX002). ALWAYS present.
+   *
+   * `pij_session_id` above stays exactly as it was — the resolved id or `null` — so
+   * every existing consumer is unaffected. What was missing is the DIFFERENCE between
+   * "this seat has no pij identity" and "this seat's identity could not be resolved":
+   * an adopted seat never had `PIJ_SESSION_ID` in its environment, so it captured
+   * none, and the join failed at the root with no error and no marker. Those are the
+   * seats doing the most interesting work, including our own orchestrator seats.
+   */
+  pij_identity: PijIdentity;
 }
 
 export interface SessionExportSource {
@@ -109,6 +127,17 @@ export interface SessionExportSummary {
    * merely fell inside a recovered window rendered as reconciled.
    */
   reconciled_segments?: number;
+  /**
+   * Records this session's read REFUSED, by reason (packet · pin). ALWAYS present —
+   * an all-zero tally is the statement "I refused nothing", which is exactly the
+   * claim a reader needs and cannot make from an omitted field.
+   *
+   * `below_pin` is the one this packet exists for: a 2.6 record is declined by the
+   * read pin, and before the fix that was a bare `null` inside the decoder — wire
+   * identical to malformed, truncated, or absent. If someone asks "where did the 2.6
+   * evidence go", the answer is HERE, in the output, not in a commit message.
+   */
+  segments_refused: SegmentRefusalTally;
 }
 
 export interface SessionExportSignals {
@@ -305,9 +334,14 @@ function reconstructFromLogs(logsRaw: string): SeqRead | null {
  * A seq is only ever in ONE shape (the roller never both concatenates AND leaves a
  * loose json for the same seq), so there is no double-count.
  */
-function readSessionSeqs(fs: CombineFs, sessionDir: string): SeqRead[] {
+function readSessionSeqs(
+  fs: CombineFs,
+  sessionDir: string,
+  decodeOptions: SegmentDecodeOptions,
+): { reads: SeqRead[]; refused: SegmentRefusalTally } {
   const names = fs.readdir(sessionDir);
   const out: SeqRead[] = [];
+  const refused = emptyRefusalTally();
 
   // Rolled shape (plan 049): reconstruct every seq from the concatenated logs blob.
   if (names.includes(ROLLED_LOGS_NAME)) {
@@ -316,6 +350,9 @@ function readSessionSeqs(fs: CombineFs, sessionDir: string): SeqRead[] {
       for (const line of splitJsonl(rolledLogs)) {
         const recon = reconstructFromLogs(line);
         if (recon !== null) out.push(recon);
+        // A rolled OTLP line is reassembled field-by-field, so it has no version to
+        // name — `malformed` is the honest reason for a refusal on this path.
+        else tallyRefusal(refused, 'malformed');
       }
     }
   }
@@ -343,10 +380,18 @@ function readSessionSeqs(fs: CombineFs, sessionDir: string): SeqRead[] {
       try {
         parsed = JSON.parse(raw);
       } catch {
-        continue; // a corrupt buffer file is skipped, never fatal
+        // a corrupt buffer file is skipped, never fatal — but it is COUNTED, and its
+        // reason named, rather than vanishing (packet ruling #1.2: this function's own
+        // failure path must not re-create the silence the reason channel removes).
+        tallyRefusal(refused, 'malformed');
+        continue;
       }
-      const seg = decodeSegment(parsed);
-      if (seg === null) continue;
+      const decoded = decodeSegmentDetailed(parsed, decodeOptions);
+      if (!decoded.ok) {
+        tallyRefusal(refused, decoded.reason);
+        continue;
+      }
+      const seg = decoded.segment;
       const companion = fs.readText(posixJoin(sessionDir, `${seq}.logs.jsonl`));
       out.push({ seg, events: eventsForSeq(seg, companion) });
     } else {
@@ -354,13 +399,18 @@ function readSessionSeqs(fs: CombineFs, sessionDir: string): SeqRead[] {
       if (logsRaw === null) continue;
       const recon = reconstructFromLogs(logsRaw);
       if (recon !== null) out.push(recon);
+      else tallyRefusal(refused, 'malformed');
     }
   }
-  return out;
+  return { reads: out, refused };
 }
 
 /** Build the session identity from the read segments (first-seen wins for scalar fields). */
-function buildIdentity(sessionId: string, reads: readonly SeqRead[]): SessionExportIdentity {
+function buildIdentity(
+  sessionId: string,
+  reads: readonly SeqRead[],
+  identityDeps: PijIdentityDeps | undefined,
+): SessionExportIdentity {
   const models: string[] = [];
   let harness = 'unknown';
   let harnessVersion: string | null = null;
@@ -380,13 +430,24 @@ function buildIdentity(sessionId: string, reads: readonly SeqRead[]): SessionExp
       if (!models.includes(name)) models.push(name);
     }
   }
+  // FX002: an adopted seat captured no PIJ_SESSION_ID, so `pij` is null above with no
+  // way to tell "has no pij identity" from "identity could not be resolved". Resolve on
+  // READ through the existing registry substrate, and keep WHY when it cannot be done.
+  const pijIdentity = resolveSessionPijIdentity(
+    reads.map((r) => r.seg),
+    sessionId,
+    identityDeps,
+  );
   return {
     harness_session_id: sessionId,
     harness,
     harness_version: harnessVersion,
-    pij_session_id: pij,
+    // Never fabricated: only a genuinely resolved identity fills this in. An
+    // unresolved one stays null and reports its reason alongside.
+    pij_session_id: pij ?? (pijIdentity.status === 'resolved' ? pijIdentity.pij_id : null),
     branch,
     models,
+    pij_identity: pijIdentity,
   };
 }
 
@@ -511,10 +572,67 @@ export function combineSession(
   deps: CombineSessionDeps,
   opts?: CombineSessionOpts,
 ): SessionExport {
+  return combineSessionAtPin(sessionId, deps, opts, undefined);
+}
+
+/**
+ * TEST-ONLY SEAM — the below-pin surfacing door, deliberately shaped as an IDENTIFIER
+ * rather than as a field on {@link CombineSessionOpts} (packet ruling #11).
+ *
+ * `pin` used to live on the production options bag. A reviewer then CONSTRUCTED the
+ * evasion rather than arguing it: `combineSession(id, deps, { ...JSON.parse(cfg) })`
+ * type-checks, carries no `pin` token anywhere in `src/`, and raised the read policy
+ * with all three static scans green. A field on a bag production callers already pass
+ * can be filled by DATA, and data leaves nothing for a text scan to find.
+ *
+ * Removing the field was still worth doing — a `pin` key on the bag is now inert, so
+ * that construction buys nothing. But the claim that first accompanied it went too far:
+ * it said an identifier could not arrive as data because `JSON.parse` returns values
+ * and never bindings. The same reviewer then refuted that too, with
+ * `Reflect.get(module, config.seam)` — under reflection the NAME is data as well, so a
+ * value can reach this function with no token of it anywhere in `src/`.
+ *
+ * THE CLAIM, NARROWED TO WHAT IS ACTUALLY ESTABLISHED (packet ruling #12):
+ * No production call site raises the read pin, and none can do so without writing the
+ * seam's name in source. Deliberate dynamic dispatch is out of scope and unchecked.
+ *
+ * That is a statement about MISTAKES — a caller added, an option forwarded, a bag
+ * filled — which is the threat this control was built for. It is not a statement about
+ * code written to defeat the check, and it no longer pretends to be.
+ *
+ * It exists because `below_pin` is unreachable in production at a floor pin, and a
+ * channel nobody reads is not a channel (ruling #1.1) — the ENVELOPE plumbing that
+ * carries a refusal reason out to `summary.segments_refused` has to stay exercised at
+ * a real caller's surface, not just inside the decoder.
+ *
+ * NO `src/` CALLER MAY NAME THIS. `test/services/telemetry/pin-knob-src-usage.test.ts`
+ * asserts that, and a planted violation fails it.
+ */
+export function combineSessionAtPinForTests(
+  sessionId: string,
+  deps: CombineSessionDeps,
+  opts: CombineSessionOpts | undefined,
+  readPin: string,
+): SessionExport {
+  return combineSessionAtPin(sessionId, deps, opts, readPin);
+}
+
+/**
+ * The combine itself. Private: the only two ways in are {@link combineSession} (no
+ * pin — the floor policy) and {@link combineSessionAtPinForTests} (a declared pin).
+ */
+function combineSessionAtPin(
+  sessionId: string,
+  deps: CombineSessionDeps,
+  opts: CombineSessionOpts | undefined,
+  readPin: string | undefined,
+): SessionExport {
   const root = opts?.root ?? deps.proc.cwd();
   const telDir = telemetryDir(root);
   const sessionDir = posixJoin(telDir, sessionId);
-  const reads = readSessionSeqs(deps.fs, sessionDir);
+  const { reads, refused: segmentsRefused } = readSessionSeqs(deps.fs, sessionDir, {
+    ...(readPin === undefined ? {} : { pin: readPin }),
+  });
 
   // Schema-version histogram (records v1 too — AC-02) + timecode bounds.
   const versions: Record<string, number> = {};
@@ -562,7 +680,11 @@ export function combineSession(
     .slice()
     .sort((a, b) => parseIso(a.t) - parseIso(b.t));
 
-  const identity = buildIdentity(sessionId, reads);
+  const identity = buildIdentity(
+    sessionId,
+    reads,
+    deps.env ? { fs: deps.fs, env: deps.env } : undefined,
+  );
   const { tokens, token_evidence, degraded } = buildTokens(
     reads,
     allEvents,
@@ -656,6 +778,7 @@ export function combineSession(
         ? { files_observed: { written: filesWritten, edited: filesEdited } }
         : {}),
       ...(reconciledSegments > 0 ? { reconciled_segments: reconciledSegments } : {}),
+      segments_refused: segmentsRefused,
     },
     signals: {
       logs: producedLogs.logs,

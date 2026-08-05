@@ -45,24 +45,28 @@
     },
     {
       "id": "A5",
-      "type": "file-content-matches",
+      "type": "corpus-floor",
       "source": "fs",
       "required": true,
       "params": {
         "glob": "docs/plans/*/assets/tasks/phase-*/tasks.dd.json",
-        "pattern": "\"pressure\""
+        "section": "done_when",
+        "require_field": "pressure",
+        "min_items": 1
       },
-      "describe": "every assertion names its instrument — mandatory pressure was honoured rather than worked around (ac-7103)"
+      "describe": "EVERY done_when row names its instrument — mandatory pressure was honoured rather than worked around (ac-7103). A substring grep for \"pressure\" passed when a single row anywhere carried the key; this fails unless every row does (FX003 D4)"
     },
     {
       "id": "A6",
-      "type": "file-content-matches",
+      "type": "corpus-floor",
       "source": "fs",
       "params": {
         "glob": "docs/plans/*/assets/tasks/phase-*/tasks.dd.json",
-        "pattern": "\"satisfies\""
+        "section": "tasks",
+        "require_field": "satisfies",
+        "min_items": 1
       },
-      "describe": "task rows carry the criteria they serve, so the work-accounting leg of the proof graph exists (ac-7105). Not required: a single-phase scenario may legitimately have one task and one criterion"
+      "describe": "EVERY task row carries the criteria it serves, so the work-accounting leg of the proof graph is complete rather than merely present (ac-7105). Not required: a single-phase scenario may legitimately have one task. Coverage the OTHER way — every criterion served by >=1 task — is deliberately NOT asserted here: `plan validate --complete` already refuses that as an orphan-claim, and a parallel check would be a second source of truth"
     },
     {
       "id": "A7",
@@ -86,6 +90,30 @@
       "describe": "asked the plan whether its own story hangs together, at least once"
     },
     {
+      "id": "A9a",
+      "type": "corpus-floor",
+      "source": "fs",
+      "required": true,
+      "params": {
+        "glob": "docs/plans/*/plan.dd.json",
+        "section": "acceptance_criteria",
+        "min_items": 3
+      },
+      "describe": "the plan states at least three acceptance criteria. A9's `dd doctor` is clean BY VACUITY over a corpus with nothing new in it — it passed in a run where the subject authored no dd documents at all — so the doctor's verdict only means something once there is a corpus for it to be clean ABOUT (FX003 D5)"
+    },
+    {
+      "id": "A9b",
+      "type": "corpus-floor",
+      "source": "fs",
+      "required": true,
+      "params": {
+        "glob": "docs/plans/*/assets/tasks/phase-*/tasks.dd.json",
+        "section": "tasks",
+        "min_items": 3
+      },
+      "describe": "the phase task file states at least three tasks. Same floor as A9a on the work-accounting side: a one-task corpus is indistinguishable from a token gesture, and every presence-grep above it would pass on one row (FX003 D4)"
+    },
+    {
       "id": "A9",
       "type": "command-succeeds",
       "source": "fs",
@@ -93,7 +121,7 @@
       "params": {
         "cmd": "node harness/cli/bin/harness.js dd doctor"
       },
-      "describe": "the corpus is doctor-clean AFTER the run — which is the honest test of 'never hand-edited the generated markdown'. A hand-edited sibling shows up here as drift no matter how it was made"
+      "describe": "the corpus is doctor-clean AFTER the run — which is the honest test of 'never hand-edited the generated markdown'. A hand-edited sibling shows up here as drift no matter how it was made. Read WITH A9a/A9b: clean over an empty corpus is vacuous"
     },
     {
       "id": "A10",

@@ -43,6 +43,13 @@ const EVIDENCE = {
   compactions: 1,
   tools: { Write: 5, Edit: 3 },
   gaps: ['plans_touched'],
+  // FX003-R1: `fetchEvidence` now VALIDATES the payload instead of casting it, so this
+  // fixture carries the fields a real `telemetry get --json` always sends and the
+  // scorer/report/ledger actually read. It previously omitted `refusals`,
+  // `harness_session_id` and `duration_s` — i.e. it was a payload the CLI never emits.
+  refusals: {},
+  harness_session_id: 'hs-fixture',
+  duration_s: 900,
 };
 
 const TELEMETRY_KEY = `harness telemetry get ${SESSION} --json --worktree ${WT}`;
@@ -130,8 +137,10 @@ describe('flow-eval score — happy path over the committed fixture', () => {
     expect(wrote).toMatch(/\.harness\/live-testing\/md-to-pdf\/.*\/report\.json$/);
     expect(fs.writes.some((p) => p.endsWith('report.md'))).toBe(true);
 
-    // evidence fetched EXACTLY once via the Phase-1 verb.
-    const telCalls = exec.calls.filter((c) => c.command === 'harness' && c.args[0] === 'telemetry');
+    // evidence fetched EXACTLY once via the Phase-1 verb. Scoped to `telemetry get`:
+    // the F4 cost snapshot is also a `harness telemetry …` call (`session save`), and
+    // it is a legitimate SECOND call the fetch-once contract does not cover.
+    const telCalls = exec.calls.filter((c) => c.command === 'harness' && c.args[0] === 'telemetry' && c.args[1] === 'get');
     expect(telCalls).toHaveLength(1);
     expect(telCalls[0].args).toEqual(['telemetry', 'get', SESSION, '--json', '--worktree', WT]);
 
@@ -301,9 +310,11 @@ describe('flow-eval score — F4 cost/export wiring (session save → telemetry_
   });
 
   it('no harness_session_id ⇒ NO save call at all (never guesses an id)', async () => {
-    // EVIDENCE (no harness_session_id) → the score path must not attempt a save.
+    // An HONEST null id (the shape the CLI emits when no harness session was captured)
+    // → the score path must not attempt a save. Stated explicitly now that the shared
+    // EVIDENCE fixture carries a real id, as a real payload does.
     const exec = new FakeExec({
-      [GET_KEY]: { code: 0, stdout: JSON.stringify({ command: 'telemetry', status: 'ok', data: EVIDENCE }) },
+      [GET_KEY]: { code: 0, stdout: JSON.stringify({ command: 'telemetry', status: 'ok', data: { ...EVIDENCE, harness_session_id: null } }) },
     });
     const fs = repoFs();
     const ctx = buildCtx('score', { scenario: 'md-to-pdf', session: SESSION, worktree: WT }, fs, exec);

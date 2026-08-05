@@ -3,7 +3,13 @@ import { TELEMETRY_REF_GLOB } from '../../adapters/git/git-write-port.js';
 import type { Event } from './events.js';
 import { reconstructSegmentFromOtlpLogs } from './otlp/logs.js';
 import { splitJsonl } from './rolled-shard.js';
-import { decodeSegment, type Segment } from './segment.js';
+import {
+  decodeSegmentDetailed,
+  SEGMENT_SCHEMA_PIN,
+  type Segment,
+  type SegmentDecodeResult,
+  type SegmentRefusalReason,
+} from './segment.js';
 import type { TokenEvidence } from './token-evidence.js';
 import {
   completeUsageTokens,
@@ -50,12 +56,59 @@ function sessionIdOfRef(ref: string): string | null {
   return seg !== undefined && seg.length > 0 ? seg : null;
 }
 
-function decodeLooseSegment(content: string): Segment | null {
+/**
+ * Decode one loose `<seq>.json` blob, KEEPING the refusal reason.
+ *
+ * The `catch` names its outcome rather than returning `null` (packet ruling #1.2):
+ * unparseable JSON is a malformed record, and if this function's own failure path
+ * collapsed to a bare `null` it would have re-created the exact silence the reason
+ * channel exists to remove — in the function that supplies it.
+ */
+function decodeLooseSegment(content: string): SegmentDecodeResult {
+  let parsed: unknown;
   try {
-    return decodeSegment(JSON.parse(content));
+    parsed = JSON.parse(content);
   } catch {
-    return null;
+    return { ok: false, reason: 'malformed', schema_version: null };
   }
+  return decodeSegmentDetailed(parsed);
+}
+
+/** Records this read REFUSED, kept apart by reason — they are different facts (packet · pin). */
+export interface SegmentRefusalTally {
+  /**
+   * Well-formed records at a KNOWN version below {@link SEGMENT_SCHEMA_PIN} — declined
+   * by policy, not broken. With the pin at the floor this counter is UNREACHABLE from
+   * production and is expected to read 0 forever; it is kept present and countable so
+   * that an absence is a stated 0 rather than a missing field, and so the lane can name
+   * the refusal if the pin is ever raised.
+   *
+   * BOUNDARY: this lane threads no pin (see {@link decodeLooseSegment}), so unlike the
+   * combine lane it cannot be driven to produce a below-pin refusal in a test either.
+   * Deliberately NOT fixed by adding a second knob — the counting site is shared
+   * (`tallyRefusal`), and inventing a test-only parameter here would install exactly
+   * the extra door the combine lane's control exists to police.
+   */
+  below_pin: number;
+  /** Records declaring a version outside the decoder's declared set (includes ABOVE the pin). */
+  unsupported_version: number;
+  /** Records at the pin that failed structural validation, or carried no readable version. */
+  malformed: number;
+}
+
+/** A zero tally — one construction site so no caller invents a partial shape. */
+export function emptyRefusalTally(): SegmentRefusalTally {
+  return { below_pin: 0, unsupported_version: 0, malformed: 0 };
+}
+
+/** Count one refusal into a tally by its reason (never folds two reasons together). */
+export function tallyRefusal(tally: SegmentRefusalTally, reason: SegmentRefusalReason): void {
+  tally[reason] += 1;
+}
+
+/** Total refusals across every reason — for callers that only need "how many were not read". */
+export function totalRefusals(tally: SegmentRefusalTally): number {
+  return tally.below_pin + tally.unsupported_version + tally.malformed;
 }
 
 /** Sum tokens across one ref's shard blobs (rolled `session.logs.jsonl`, legacy `<seq>.logs.jsonl`, loose `<seq>.json`). */
@@ -117,8 +170,15 @@ function tokensFromBlobs(blobs: readonly ShardBlob[]): {
         if (!hasTyped && !segmentMeasured) missing = true;
       }
     } else if (/^\d+\.json$/.test(b.name)) {
-      const seg = decodeLooseSegment(b.content);
-      if (seg === null) continue;
+      const decoded = decodeLooseSegment(b.content);
+      // DECLINED PROPAGATION, deliberately (packet ruling #1.1). This function answers
+      // one question — "how many tokens did this ref commit" — and a refused record
+      // contributes no tokens whatever the reason. `missing` below already reports the
+      // honest gap for records that WERE read. The refusal REASONS are surfaced by
+      // `segmentsFromBlobs`/`readRefSegmentsOutcome`, which read the same blobs;
+      // counting them twice on two paths would double-report the same records.
+      if (!decoded.ok) continue;
+      const seg = decoded.segment;
       segments += 1;
       pijSessionId ??= seg.captured_env?.PIJ_SESSION_ID ?? null;
       events.push(...seg.event_stream);
@@ -152,35 +212,42 @@ function tokensFromBlobs(blobs: readonly ShardBlob[]): {
 
 /**
  * Decode one ref's blobs back into whole {@link Segment}s (rolled OTLP + loose json),
- * counting the records it had to REJECT.
+ * counting the records it had to REJECT — **by reason** (packet · pin).
  *
- * A malformed record is skipped and the read continues — the documented fail-safe, and
+ * A refused record is skipped and the read continues — the documented fail-safe, and
  * the right call: one corrupt line must not blind a whole session. But "I read nothing"
  * and "I rejected everything I read" are different statements, so the count travels
- * with the result instead of being destroyed here (FX001 · R2).
+ * with the result instead of being destroyed here (FX001 · R2). The packet splits that
+ * count further: "I declined a 2.6 record because of the pin" and "I could not parse
+ * this" are also different statements, and folding them was the pin's whole defect.
  */
-function segmentsFromBlobs(blobs: readonly ShardBlob[]): { segments: Segment[]; skipped: number } {
+function segmentsFromBlobs(blobs: readonly ShardBlob[]): {
+  segments: Segment[];
+  refused: SegmentRefusalTally;
+} {
   const out: Segment[] = [];
-  let skipped = 0;
+  const refused = emptyRefusalTally();
   for (const b of blobs) {
     if (b.name.endsWith('.logs.jsonl')) {
       for (const line of splitJsonl(b.content)) {
         try {
           const reconstructed = reconstructSegmentFromOtlpLogs(JSON.parse(line) as never);
           if (reconstructed.ok) out.push(reconstructed.segment);
-          else skipped += 1;
+          // A rolled OTLP record is reassembled field-by-field rather than version-gated,
+          // so this path has no version to name — `malformed` is the honest reason here.
+          else tallyRefusal(refused, 'malformed');
         } catch {
           // a corrupt rolled record is skipped, never fatal
-          skipped += 1;
+          tallyRefusal(refused, 'malformed');
         }
       }
     } else if (/^\d+\.json$/.test(b.name)) {
-      const seg = decodeLooseSegment(b.content);
-      if (seg !== null) out.push(seg);
-      else skipped += 1;
+      const decoded = decodeLooseSegment(b.content);
+      if (decoded.ok) out.push(decoded.segment);
+      else tallyRefusal(refused, decoded.reason);
     }
   }
-  return { segments: out, skipped };
+  return { segments: out, refused };
 }
 
 /**
@@ -242,7 +309,20 @@ export interface RefSegmentsRead {
   status: 'ok' | 'port_failed';
   /** Whatever WAS decoded, keyed by harness session id (possibly partial on failure). */
   segments: Map<string, Segment[]>;
-  /** Records rejected as malformed — never a port failure, always a real record. */
+  /**
+   * Records rejected — never a port failure, always a real record. Kept as a
+   * per-reason tally (packet · pin): a record declined by the {@link SEGMENT_SCHEMA_PIN}
+   * and a record that would not parse are different facts and must not share a counter.
+   */
+  refused: SegmentRefusalTally;
+  /**
+   * Total rejected, across every reason.
+   *
+   * BACK-COMPAT, and deliberately NOT removed: existing callers ask "did this read
+   * reject anything" and that question is still well-posed. It is a SUM of `refused`,
+   * computed at one site, so it can never disagree with the tally — the FX003 · D2
+   * lesson (one source, consumers read it) rather than a second independent count.
+   */
   skipped: number;
 }
 
@@ -259,12 +339,12 @@ export interface RefSegmentsRead {
  */
 export function readRefSegmentsOutcome(gitRead: GitReadPort): RefSegmentsRead {
   const out = new Map<string, Segment[]>();
-  let skipped = 0;
+  const refused = emptyRefusalTally();
   let refs: string[];
   try {
     refs = listRefsStrict(gitRead);
   } catch {
-    return { status: 'port_failed', segments: out, skipped };
+    return { status: 'port_failed', segments: out, refused, skipped: totalRefusals(refused) };
   }
   let portFailed = false;
   for (const ref of refs) {
@@ -280,13 +360,20 @@ export function readRefSegmentsOutcome(gitRead: GitReadPort): RefSegmentsRead {
       continue;
     }
     const decoded = segmentsFromBlobs(blobs);
-    skipped += decoded.skipped;
+    refused.below_pin += decoded.refused.below_pin;
+    refused.unsupported_version += decoded.refused.unsupported_version;
+    refused.malformed += decoded.refused.malformed;
     if (decoded.segments.length === 0) continue;
     const prior = out.get(session);
     if (prior === undefined) out.set(session, decoded.segments);
     else prior.push(...decoded.segments);
   }
-  return { status: portFailed ? 'port_failed' : 'ok', segments: out, skipped };
+  return {
+    status: portFailed ? 'port_failed' : 'ok',
+    segments: out,
+    refused,
+    skipped: totalRefusals(refused),
+  };
 }
 
 /**

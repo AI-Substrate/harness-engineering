@@ -123,6 +123,7 @@ export function buildReportJson(input: ReportInput): Record<string, unknown> {
         required: r.required,
         weight: r.weight,
         ...(r.describe !== undefined && { describe: r.describe }),
+        ...(r.note !== undefined && { note: r.note }),
       })),
     },
     judged: scored.judged.map((j: JudgedField) => ({
@@ -151,6 +152,15 @@ function mdCell(value: string): string {
   return value.replace(/\|/g, '\\|').replace(/\n/g, ' ');
 }
 
+/**
+ * Render a score that may be honestly absent (FX003 · D2). `unmeasured` is the ONLY
+ * rendering of `null` — never `0.00`, which is a real measurement meaning "everything
+ * scored failed".
+ */
+function fmtScore(n: number | null): string {
+  return n === null ? 'unmeasured' : n.toFixed(2);
+}
+
 /** Render the human-readable `report.md` (deterministic table + judged + verdict). */
 export function buildReportMd(input: ReportInput): string {
   const { scored } = input;
@@ -159,15 +169,13 @@ export function buildReportMd(input: ReportInput): string {
   lines.push(`# flow-eval report — ${input.scenario}`);
   lines.push('');
   lines.push(`- **Verdict**: ${scored.verdict}`);
-  lines.push(`- **Score**: ${d.score.toFixed(2)} (${d.passed} pass / ${d.failed} fail / ${d.unknown} unknown of ${d.total})`);
-  // F-B: an axis with NO scorable (pass|fail) lane is UNMEASURED — render `unmeasured`,
-  // never `0.00` (a `0.00` is legal ONLY for a measured axis that scored zero). The
-  // measured-ness test mirrors the ledger's `scorable()` (buildRunRecord), keeping the
-  // report header honest with the RunRecord's null-axis semantics.
-  const axisMeasured = (axis: 'process' | 'capability'): boolean =>
-    d.results.some((r) => r.axis === axis && r.status !== 'unknown');
-  const axisCell = (axis: 'process' | 'capability'): string =>
-    axisMeasured(axis) ? d.axis_scores[axis].toFixed(2) : 'unmeasured';
+  lines.push(`- **Score**: ${fmtScore(d.score)} (${d.passed} pass / ${d.failed} fail / ${d.unknown} unknown of ${d.total})`);
+  // F-B / FX003 · D2: an axis with NO scorable (pass|fail) lane is UNMEASURED — render
+  // `unmeasured`, never `0.00` (a `0.00` is legal ONLY for a measured axis that scored
+  // zero). This now READS the scorer's `null` instead of re-deriving measured-ness from
+  // the result rows: three independent decisions of "is this axis measured" (scorer,
+  // report, ledger) was the disease, and the scorer's was the one that was wrong.
+  const axisCell = (axis: 'process' | 'capability'): string => fmtScore(d.axis_scores[axis]);
   lines.push(`- **Axis scores**: process ${axisCell('process')} · capability ${axisCell('capability')}`);
   lines.push(`- **Required (capability/safety) failed**: ${d.required_failed}`);
   if (scored.alarms.length > 0) {
@@ -252,14 +260,28 @@ export function renderMarkdownFromReportJson(parsed: unknown): RenderFromJsonRes
     return { ok: false, error: 'report.json is missing a deterministic.results block' };
   }
   const num = (v: unknown, fallback = 0): number => (typeof v === 'number' && Number.isFinite(v) ? v : fallback);
+  /**
+   * Read a possibly-absent score WITHOUT ever coercing it to `0` (FX003 · D2).
+   *
+   * Back-compat both ways: a HISTORIC report.json written before this fix carries a
+   * numeric `0` for an axis that measured nothing, and that cannot be corrected
+   * retroactively — the number is all the file has. It is read back as-is. What must
+   * never happen is the reverse: a `null` (or an absent key) silently becoming `0`
+   * here, which would re-tell the same lie one frame later.
+   */
+  const scoreOrNull = (v: unknown): number | null =>
+    typeof v === 'number' && Number.isFinite(v) ? v : null;
   const axis = (det.axis_scores as Record<string, unknown> | undefined) ?? {};
   const judged = (Array.isArray(j.judged) ? j.judged : []) as JudgedField[];
   const provenance = j.provenance as { judge?: unknown; resolutions?: unknown } | undefined;
 
   const scored: ScoredReport = {
     deterministic: {
-      score: num(det.score),
-      axis_scores: { process: num(axis.process), capability: num(axis.capability) },
+      score: scoreOrNull(det.score),
+      axis_scores: {
+        process: scoreOrNull(axis.process),
+        capability: scoreOrNull(axis.capability),
+      },
       passed: num(det.passed),
       failed: num(det.failed),
       unknown: num(det.unknown),

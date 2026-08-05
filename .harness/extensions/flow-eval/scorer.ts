@@ -20,7 +20,7 @@
  * Node-free; pure over the resolver verdicts.
  */
 
-import { type ResolveContext, resolveAssertion, type Verdict } from './resolvers.js';
+import { type ResolveContext, resolveAssertionDetailed, type Verdict } from './resolvers.js';
 import {
   DEFERRED_CALIBRATION_SET,
   type Assertion,
@@ -42,6 +42,13 @@ export interface ResultRow {
   required: boolean;
   weight: number;
   describe?: string;
+  /**
+   * WHY the resolver returned this status, when it had something to say (FX003 ·
+   * D1/D6). Present mostly on `unknown` rows, where a bare `?` otherwise collapses
+   * "no subject evidence", "unfilled run parameter" and "the lane cannot record
+   * this" into one glyph.
+   */
+  note?: string;
 }
 
 /** A `judged` assertion surfaced as a field (verdict left null for the orchestrator). */
@@ -60,16 +67,29 @@ export interface JudgedField {
   by: string | null;
 }
 
-/** Per-axis pass-rates (unknown-excluded), workshop 003 §D1. Safety is cap-only, not scored. */
+/**
+ * Per-axis pass-rates (unknown-excluded), workshop 003 §D1. Safety is cap-only, not scored.
+ *
+ * `null` means the axis had **no scorable (pass|fail) lane at all** — it measured
+ * nothing (FX003 · D2). That is not the same fact as `0`, which means every measured
+ * check on the axis FAILED, and rendering the first as the second is the instrument
+ * reporting a conclusion it never reached. This type is the ONE place that
+ * distinction is decided; `report.ts` and `ledger.ts` consume it rather than each
+ * re-deriving measured-ness from the result rows.
+ */
 export interface AxisScores {
-  process: number;
-  capability: number;
+  process: number | null;
+  capability: number | null;
 }
 
 /** The deterministic score block (workshop §4 + 003 §D1 two-axis split). */
 export interface DeterministicScore {
-  /** Back-compat single pass-rate over ALL deterministic lanes (still written to reports). */
-  score: number;
+  /**
+   * Back-compat single pass-rate over ALL deterministic lanes (still written to
+   * reports). `null` when NOTHING was scorable — same honesty as
+   * {@link AxisScores} (FX003 · D2): a run that measured nothing did not score zero.
+   */
+  score: number | null;
   /** Two-axis pass-rates: process (never caps) + capability (caps when required). */
   axis_scores: AxisScores;
   passed: number;
@@ -161,16 +181,18 @@ export async function scoreScenario(
   // Cap consults ONLY capability + safety (workshop 003 §D1/§D2 AC-02) — a required
   // process fail informs the process axis but must NOT sink the run.
   let requiredFailed = 0;
-  // Per-axis weight buckets for axis_scores (unknown excluded per axis). Safety is cap-only.
-  const axisPass: AxisScores = { process: 0, capability: 0 };
-  const axisFail: AxisScores = { process: 0, capability: 0 };
+  // Per-axis weight buckets for axis_scores (unknown excluded per axis). Safety is
+  // cap-only. These are ACCUMULATORS, not scores — always numeric, never null (the
+  // null lives in AxisScores, where "no measurement" is a real state).
+  const axisPass: Record<'process' | 'capability', number> = { process: 0, capability: 0 };
+  const axisFail: Record<'process' | 'capability', number> = { process: 0, capability: 0 };
 
   for (const a of assertions) {
     if (a.type === 'judged') {
       judged.push(...toJudged(a, judge));
       continue;
     }
-    const status = await resolveAssertion(a, rc);
+    const { verdict: status, note } = await resolveAssertionDetailed(a, rc);
     const weight = typeof a.weight === 'number' ? a.weight : 1;
     const required = a.required === true;
     const axis: Axis = a.axis ?? axisFor(a.type);
@@ -183,6 +205,7 @@ export async function scoreScenario(
       required,
       weight,
       ...(a.describe !== undefined && { describe: a.describe }),
+      ...(note !== undefined && { note }),
     });
     if (status === 'pass') {
       passed++;
@@ -199,19 +222,26 @@ export async function scoreScenario(
   }
 
   const denom = passWeight + failWeight;
-  const score = denom === 0 ? 0 : passWeight / denom;
+  // FX003 · D2: nothing scorable ⇒ NO score. `0` would be indistinguishable from
+  // "every check failed", which is the opposite claim about the subject.
+  const score = denom === 0 ? null : passWeight / denom;
   const procDenom = axisPass.process + axisFail.process;
   const capDenom = axisPass.capability + axisFail.capability;
   const axisScores: AxisScores = {
-    process: procDenom === 0 ? 0 : axisPass.process / procDenom,
-    capability: capDenom === 0 ? 0 : axisPass.capability / capDenom,
+    process: procDenom === 0 ? null : axisPass.process / procDenom,
+    capability: capDenom === 0 ? null : axisPass.capability / capDenom,
   };
 
   // Mimicry/contamination alarm (workshop 003 §D1): the "right ritual, broken artifact"
   // signal — high process, low capability. Gated on BOTH axes actually having evidence, so
   // a run with no artifacts measured never false-claims "broken artifact".
   const alarms: string[] = [];
-  if (procDenom > 0 && capDenom > 0 && axisScores.process >= 0.8 && axisScores.capability <= 0.4) {
+  if (
+    axisScores.process !== null &&
+    axisScores.capability !== null &&
+    axisScores.process >= 0.8 &&
+    axisScores.capability <= 0.4
+  ) {
     alarms.push('mimicry');
   }
 

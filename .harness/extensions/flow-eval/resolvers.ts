@@ -33,6 +33,29 @@ import { ASSERTION_TYPES, join, SEQUENCE_MATCH_MODES } from './scenario.js';
 export type Verdict = 'pass' | 'fail' | 'unknown';
 
 /**
+ * A verdict that carries WHY (FX003 · D1/D6).
+ *
+ * `unknown` is the instrument declining to answer, and the reasons it declines are
+ * not interchangeable: "the subject produced no evidence" and "the operator never
+ * resolved a placeholder" and "the lane cannot record this at all" are three
+ * different facts that all rendered as one bare `?`. A resolver may return this
+ * shape instead of a bare {@link Verdict} to say which it means; the note rides
+ * onto the result row, the report and the ledger lane.
+ */
+export interface VerdictWithNote {
+  verdict: Verdict;
+  note: string;
+}
+
+/** What a resolver may return: the bare verdict, or one carrying its reason. */
+export type ResolvedVerdict = Verdict | VerdictWithNote;
+
+/** Normalize either resolver return shape to `{ verdict, note? }`. */
+export function toVerdictDetail(r: ResolvedVerdict): { verdict: Verdict; note?: string } {
+  return typeof r === 'string' ? { verdict: r } : { verdict: r.verdict, note: r.note };
+}
+
+/**
  * The normalized per-pij-session evidence (mirror of Phase 1's `SessionEvidence`).
  * Re-declared here because an extension can't import CLI src — this IS the parsed
  * `envelope.data` of `harness telemetry get --json`.
@@ -64,6 +87,18 @@ export interface SessionEvidence {
   refusals: Record<string, number>;
   gaps: string[];
   /**
+   * Which surface the evidence was read from (FX001 · T2), when the core reported it.
+   *
+   * **OPTIONAL here on purpose**, unlike the CLI's required field: this shape is parsed
+   * from an arbitrary core's `telemetry get --json`, and a pre-FX001 core does not send
+   * it. `undefined` therefore means "this core did not say", which is a genuinely
+   * different fact from any of the three surfaces — and FX003/D1 treats it as such
+   * rather than assuming the friendly case.
+   */
+  source?: 'buffer' | 'ref' | 'buffer+ref';
+  /** Whether a `refs/harness-telemetry/*` namespace was visible to check (FX001 · T2); optional for the same reason as {@link source}. */
+  ref_checked?: boolean;
+  /**
    * Wall-span in seconds between the first + last telemetry event across the
    * joined segments (F13); `null` when fewer than two timestamped events exist.
    * The record's honest "how long did the run take" — distinct from the 047
@@ -71,6 +106,92 @@ export interface SessionEvidence {
    * `SessionEvidence` (session-evidence.ts) — a `harness/cli/test` asserts both.
    */
   duration_s: number | null;
+}
+
+/**
+ * The outcome of validating a `telemetry get --json` payload (FX003-R1).
+ * `reason` names the FIRST field that failed, so an operator is not left guessing.
+ */
+export type EvidenceParse =
+  | { ok: true; evidence: SessionEvidence }
+  | { ok: false; reason: string };
+
+const isObj = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null && !Array.isArray(v);
+const isStrArr = (v: unknown): v is string[] =>
+  Array.isArray(v) && v.every((x) => typeof x === 'string');
+const isNumMap = (v: unknown): v is Record<string, number> =>
+  isObj(v) && Object.values(v).every((x) => typeof x === 'number' && Number.isFinite(x));
+
+/**
+ * Validate a parsed `telemetry get --json` payload into {@link SessionEvidence}
+ * (FX003-R1).
+ *
+ * The caller used to `as`-cast this straight from `JSON.parse`. A cast is an
+ * assertion about data nobody checked — which is this fix's own thesis, committed in
+ * the one function that supplies every other check its input.
+ *
+ * Scope is deliberately narrow: **only the fields the resolvers actually read**, not
+ * a schema of the envelope. The required/optional split is not taste, it is the same
+ * question this fix keeps asking — *would getting this wrong invent a conclusion?*
+ *
+ *  - **Required.** A lane map whose absence would be silently read as "empty" and
+ *    therefore resolve `fail` (or throw): `skills`, `skill_order`, `flow_seams`,
+ *    `harness_verbs`, `tools`, `checks`, `compactions`, `gaps`, plus the identity
+ *    fields. Defaulting an absent `skills` to `{}` would fail `skill-called` over a
+ *    field the core never sent — a conclusion manufactured from nothing.
+ *  - **Optional, but type-checked when present.** Fields whose consumers ALREADY
+ *    degrade honestly on absence: `refusals` (absent ⇒ the lane is undemonstrated ⇒
+ *    `unknown`, per D1), `harness_session_id` (⇒ no cost save), `duration_s` (⇒ a
+ *    null column), `files`, and the FX001 provenance. An older core that omits these
+ *    is not corrupt, and refusing it would throw away good skill/verb evidence.
+ *
+ * A PRESENT value of the wrong shape is corruption either way and is always refused.
+ * A payload that does not carry what we read is not scored at all: the caller reports
+ * the reason and every telemetry lane resolves `unknown` — failing toward the
+ * determinism boundary rather than through it.
+ */
+export function parseSessionEvidence(raw: unknown): EvidenceParse {
+  if (!isObj(raw)) return { ok: false, reason: 'payload is not a JSON object' };
+  const bad = (field: string, expected: string): EvidenceParse => ({
+    ok: false,
+    reason: `evidence.${field} is missing or not ${expected}`,
+  });
+
+  // --- identity + the lane fields whose absence would manufacture a verdict --------
+  if (typeof raw.pij_session_id !== 'string' || raw.pij_session_id.length === 0) {
+    return bad('pij_session_id', 'a non-empty string');
+  }
+  if (typeof raw.harness !== 'string') return bad('harness', 'a string');
+  if (typeof raw.segments !== 'number' || !Number.isFinite(raw.segments)) return bad('segments', 'a finite number');
+  if (typeof raw.compactions !== 'number' || !Number.isFinite(raw.compactions)) return bad('compactions', 'a finite number');
+  for (const field of ['skills', 'harness_verbs', 'tools'] as const) {
+    if (!isNumMap(raw[field])) return bad(field, 'an object of finite numbers');
+  }
+  for (const field of ['skill_order', 'flow_seams', 'gaps'] as const) {
+    if (!isStrArr(raw[field])) return bad(field, 'an array of strings');
+  }
+  if (!Array.isArray(raw.checks) || !raw.checks.every((c) => isObj(c) && typeof c.status === 'string')) {
+    return bad('checks', 'an array of { status: string }');
+  }
+
+  // --- optional: absent is honest, present-but-wrong is corruption -----------------
+  if ('refusals' in raw && !isNumMap(raw.refusals)) return bad('refusals', 'an object of finite numbers');
+  if ('harness_session_id' in raw && !(raw.harness_session_id === null || typeof raw.harness_session_id === 'string')) {
+    return bad('harness_session_id', 'a string or null');
+  }
+  if ('duration_s' in raw && !(raw.duration_s === null || (typeof raw.duration_s === 'number' && Number.isFinite(raw.duration_s)))) {
+    return bad('duration_s', 'a finite number or null');
+  }
+  if ('files' in raw && (!isObj(raw.files) || !isStrArr(raw.files.written) || !isStrArr(raw.files.edited))) {
+    return bad('files', '{ written: string[], edited: string[] }');
+  }
+  if ('source' in raw && !(raw.source === 'buffer' || raw.source === 'ref' || raw.source === 'buffer+ref')) {
+    return bad('source', "one of 'buffer' | 'ref' | 'buffer+ref'");
+  }
+  if ('ref_checked' in raw && typeof raw.ref_checked !== 'boolean') return bad('ref_checked', 'a boolean');
+
+  return { ok: true, evidence: raw as unknown as SessionEvidence };
 }
 
 /** The read surface a resolver needs over the subject's worktree. */
@@ -118,7 +239,7 @@ export function isPlaceholderToken(cmd: string): boolean {
 }
 
 /** A resolver: type-dispatched, lane-tagged, three-valued (may be async for `command-succeeds`). */
-export type ResolverFn = (a: Assertion, rc: ResolveContext) => Verdict | Promise<Verdict>;
+export type ResolverFn = (a: Assertion, rc: ResolveContext) => ResolvedVerdict | Promise<ResolvedVerdict>;
 
 export interface ResolverEntry {
   lanes: AssertionSource[];
@@ -399,14 +520,125 @@ const harnessVerbRan: ResolverFn = (a, rc) => {
  * did. A scenario that only ever passes its gates has not demonstrated that the
  * gates work — it has demonstrated that the subject avoided them.
  */
+/**
+ * CLOSED SET, DECLARED (FX003 · Ruling #2). A refusal key must be a harness error
+ * code — `E` followed by exactly three digits. That is the whole shape of the
+ * registry: every one of the 116 codes in `harness/cli/src/output/error-codes.ts`
+ * matches, with no exceptions.
+ *
+ * The producer is looser than this: `session-evidence.ts` keys `refusals` by ANY
+ * non-empty `command_exit.code` string, so the narrowing happens here, on read.
+ * **The consequence, stated rather than left to be discovered:** a refusal code in
+ * a shape we did not anticipate is silently DISCARDED — it stops counting toward
+ * `observed`, and it stops licensing a `fail`. That pushes a genuine `fail` down to
+ * `unknown`, which is the safe direction and the one this whole fix argues for; it
+ * can never manufacture a verdict. But it is a closed vocabulary, and a closed
+ * vocabulary nobody declared was FX001's first defect. If the registry ever mints a
+ * code outside `E\d{3}`, THIS is the line that must move with it.
+ */
+const REFUSAL_CODE = /^E\d{3}$/;
+
+/**
+ * A refusal entry that is EVIDENCE: a recognised code key carrying a positive
+ * integer count. Returns the count, or `0` for anything that is not evidence.
+ *
+ * Both halves of "valid" are decided HERE and only here — key shape and magnitude —
+ * used by both the observed sum and the lane-demonstrated predicate below, so the
+ * two can never disagree about what "a refusal" is. Splitting them was how the same
+ * bug got in twice.
+ *
+ * What counts for nothing, and why:
+ *  - a key outside `REFUSAL_CODE` — `{ malformed: 5 }` is not five refusals, it is
+ *    an entry we cannot read as one;
+ *  - `0` — a key that was minted but never incremented, which is precisely the case
+ *    proving nothing was recorded;
+ *  - a FRACTION — `0.5` is not half an occurrence; occurrences are counted, and the
+ *    producer only ever does `(n ?? 0) + 1`, so a non-integer never came from a real
+ *    count;
+ *  - `NaN`, a negative, or a non-number that survived an untrusted payload.
+ */
+function refusalCount(key: string, v: unknown): number {
+  if (!REFUSAL_CODE.test(key)) return 0;
+  // Number.isInteger implies finite; the `> 0` is the magnitude half.
+  return typeof v === 'number' && Number.isInteger(v) && v > 0 ? v : 0;
+}
+
+/**
+ * Can a SHORTFALL in `refusals` be read as "the subject was not refused"? (FX003 · D1)
+ *
+ * Only when the lane has DEMONSTRATED it can record a refusal — i.e. it carries at
+ * least one refusal that ACTUALLY HAPPENED. That is a **capability proof**, not an
+ * inference about which binary ran, and it is the only such proof available from the
+ * evidence object.
+ *
+ * Note what the predicate asks: **magnitude and shape of a REAL entry, not the
+ * existence of an entry**. `{ E440: 0 }` is a key with no occurrence behind it, and
+ * `{ malformed: 5 }` is five of something we cannot read as a refusal — neither is
+ * an event. This predicate has now been wrong FOUR ways, every time the same
+ * mistake (taking the presence of a structure for evidence of the thing):
+ *
+ *  1. a boolean where three states were needed;
+ *  2. `source: 'buffer'` as a date proof, blind to a capture that never fired;
+ *  3. a KEY where a positive COUNT is the evidence;
+ *  4. a well-formed-LOOKING key/value where a VALID one is the evidence.
+ *
+ * If you are changing it a fifth time, the question it must answer is *"did a
+ * refusal actually get recorded?"* — never *"is there a place where one would have
+ * gone?"*. Both polarities are live: getting this wrong invents a `fail` that
+ * accuses the subject of dodging a gate, AND (through the bare-`min` sum) a `pass`
+ * that certifies a gate stopped the subject when nothing did. The false green is
+ * the more dangerous of the two, because a false fail gets argued with and a false
+ * pass gets believed.
+ *
+ * An empty (or all-zero) map is not evidence of anything, because TWO independent
+ * defects produce a byte-identical one, and neither is visible from here:
+ *
+ *  - **FX001 · D4 (capture)** — Claude Code prefixes a failing Bash tool_result with
+ *    `Exit code N`, and `outcomeEvents` guards on the text starting with `{`, so
+ *    EVERY non-zero harness command was invisible to the outcome lane. Every refusal
+ *    exits non-zero, so no `command_exit` was emitted at all.
+ *  - **FX001 · D2 (roll)** — the OTLP round trip then DESTROYED `command_exit.code`,
+ *    so any refusal that did get captured lost its code on the way to the ref.
+ *
+ * Both fixes are **prospective**: historic bytes were never encoded, and per FX001's
+ * Ruling #2 the OTLP vocabulary was widened WITHOUT a `scope_version` bump — so
+ * neither the session nor the ref carries a stamp saying which binary wrote it.
+ * `evidence.source` is therefore NOT a sufficient discriminator either: `buffer`
+ * proves only that the roll did not eat the code (D2), never that the capture fired
+ * (D4). It is reported in the note for diagnosis, and trusted for nothing.
+ *
+ * Consequence, stated rather than hidden: a BARE `gate-refused {}` over an empty map
+ * is now `pass`-or-`unknown` and can never `fail`. That is the honest reading — an
+ * accusation that the subject dodged a gate cannot rest on the instrument's own blind
+ * spot. A `fail` stays reachable wherever the lane has proven itself: an assertion
+ * naming a `code` (or a `min`) the demonstrated lane did not reach still fails.
+ */
+function refusalLaneDemonstrated(ev: SessionEvidence): boolean {
+  return Object.entries(ev.refusals ?? {}).some(([k, v]) => refusalCount(k, v) > 0);
+}
+
 const gateRefused: ResolverFn = (a, rc) => {
   if (!rc.evidence) return 'unknown';
-  const refusals = rc.evidence.refusals;
+  const refusals = rc.evidence.refusals ?? {};
   const code = strParam(a, 'code');
   const min = numParam(a, 'min', 1);
-  if (code) return bool((refusals[code] ?? 0) >= min);
-  const total = Object.values(refusals).reduce((sum, count) => sum + count, 0);
-  return bool(total >= min);
+  const observed = code
+    ? refusalCount(code, refusals[code])
+    : Object.entries(refusals).reduce((sum: number, [k, v]) => sum + refusalCount(k, v), 0);
+  // Positive evidence always answers: the refusal is on the record.
+  if (observed >= min) return 'pass';
+  // Short of the bar. That is a SUBJECT failure only where the lane has shown it can
+  // record a refusal at all — otherwise the instrument would be accusing the subject
+  // of dodging a gate on the strength of its own blind spot, which is the worst
+  // polarity a scorer has. A capability gap is not a subject failure.
+  if (refusalLaneDemonstrated(rc.evidence)) return 'fail';
+  return {
+    verdict: 'unknown',
+    note:
+      `refusal lane never demonstrated: this session records no refusal that actually occurred (evidence source: ${rc.evidence.source ?? 'unreported'}), ` +
+      'so the refusals map cannot distinguish "no gate refused" from "the lane could not record one" ' +
+      '(FX001 D4 dropped every non-zero harness command before capture; D2 then stripped the code through the roll — both fixes are prospective and unversioned)',
+  };
 };
 
 const checksRan: ResolverFn = (a, rc) => {
@@ -473,10 +705,15 @@ const commandSucceeds: ResolverFn = async (a, rc) => {
   const cmd = resolved ?? rawCmd;
   if (!cmd) return 'unknown';
   // An UNRESOLVED placeholder token under the 'unknown' policy resolves `unknown`
-  // (honest "not run"), never executing the literal token or silently passing. Under
-  // the default/legacy 'raw' policy the token is executed as-is (back-compat).
+  // (honest "not run"), never executing the literal token or silently passing. It
+  // carries a DISTINCT note (FX003 · D6): an operator who forgot `--resolve` and a
+  // subject that produced no evidence both rendered as a bare `?`, so the row read as
+  // the subject's absence when it was the run setup's. It cost A11 twice.
   if (resolved === undefined && isPlaceholderToken(cmd) && (rc.placeholderPolicy ?? 'raw') === 'unknown') {
-    return 'unknown';
+    return {
+      verdict: 'unknown',
+      note: `placeholder never resolved: '${cmd}' was not run because no --resolve ${a.id}='<command>' was supplied — this is an unfilled run parameter, NOT missing subject evidence`,
+    };
   }
   const parts = cmd.split(/\s+/).filter((p) => p.length > 0);
   if (parts.length === 0) return 'unknown';
@@ -486,6 +723,127 @@ const commandSucceeds: ResolverFn = async (a, rc) => {
   const expectExit = numParam(a, 'expect_exit', 0);
   const r = await rc.exec(command, args, { cwd });
   return bool(r.code === expectExit);
+};
+
+// ---- non-vacuity floor: corpus-floor (FX003 · D4/D5) ----
+
+/**
+ * Collect the countable ITEMS of a dd section, tolerating both shapes the corpus uses:
+ * a plain array (`tasks`, `acceptance_criteria`, `phases`) and an object-of-arrays
+ * keyed by owner (`done_when`, which is `{ "tk-0201": [ …rows ], … }`). Anything else
+ * (a scalar section like `summary`) has no items.
+ */
+function sectionItems(doc: unknown, section: string): Record<string, unknown>[] | null {
+  if (typeof doc !== 'object' || doc === null) return null;
+  const sections = (doc as { sections?: unknown }).sections;
+  if (!Array.isArray(sections)) return null;
+  const hit = sections.find(
+    (s) => typeof s === 'object' && s !== null && (s as { name?: unknown }).name === section,
+  );
+  // The document parsed and simply has no such section — that is a real, readable
+  // ZERO, not an unreadable one.
+  if (hit === undefined) return [];
+  const value = (hit as { value?: unknown }).value;
+  const rows = (v: unknown): Record<string, unknown>[] =>
+    Array.isArray(v)
+      ? v.filter((r): r is Record<string, unknown> => typeof r === 'object' && r !== null)
+      : [];
+  if (Array.isArray(value)) return rows(value);
+  if (typeof value === 'object' && value !== null) {
+    return Object.values(value as Record<string, unknown>).flatMap(rows);
+  }
+  return [];
+}
+
+/**
+ * **corpus-floor** — is there enough here to be real work? (FX003 · D4/D5)
+ *
+ * The gap this fills: every other fs type is a PRESENCE grep, so a corpus containing
+ * one acceptance criterion and one task scores identically to a corpus containing
+ * thirty (D4), and `dd doctor` over a corpus with nothing new in it is clean **by
+ * vacuity** (D5). Neither can tell correct work from no work.
+ *
+ * Deliberately NOT a re-implementation of `plan validate`. Everything the validator
+ * already refuses stays its job — and note that "every AC is served by ≥1 task" IS
+ * already its job (the `orphan-claim` check under `--complete`: *"has no incoming
+ * satisfies — no task accounts for it"*), so this type does **not** do coverage. A
+ * parallel coverage check would drift into a second source of truth, which is the
+ * exact failure A3 exists to catch one level up. What the validator has no opinion on
+ * is SIZE: a one-AC, one-task plan is perfectly valid and fully covered.
+ *
+ * Params (all optional except `section`; a floor with nothing to assert is `unknown`):
+ *  - `glob` / `path` — the dd documents to read.
+ *  - `section` — which section's rows to count (`tasks`, `acceptance_criteria`,
+ *    `phases`, `done_when`, …).
+ *  - `min_items` — minimum rows across ALL matched documents (default 1).
+ *  - `min_files` — minimum matched documents (e.g. ≥2 phase task files).
+ *  - `require_field` — EVERY row must carry a non-empty value at this key. This is
+ *    the direct answer to D4: `file-content-matches "pressure"` passed when one row
+ *    anywhere carried the key; this fails unless every row does.
+ */
+const corpusFloor: ResolverFn = (a, rc) => {
+  const section = strParam(a, 'section');
+  if (!section) return 'unknown';
+  const minItems = numParam(a, 'min_items', 1);
+  const minFiles = numParam(a, 'min_files', 1);
+  const requireField = strParam(a, 'require_field');
+
+  const glob = strParam(a, 'glob');
+  const path = strParam(a, 'path');
+  const paths = glob
+    ? globPaths(rc.fs, rc.worktree, glob.split('/').filter((s) => s.length > 0))
+    : path
+      ? [path]
+      : [];
+  if (paths.length === 0) return 'fail'; // nothing matched ⇒ the floor cannot be met
+  if (paths.length < minFiles) return 'fail';
+
+  let items = 0;
+  let missingField = 0;
+  for (const p of paths) {
+    const text = rc.fs.readText(join(rc.worktree, p));
+    if (text === null) return 'fail'; // matched but unreadable ⇒ it is not there
+    let doc: unknown;
+    try {
+      doc = JSON.parse(text);
+    } catch {
+      // Unparseable: we cannot COUNT what we cannot read, and a read failure is not
+      // evidence about the subject's work. (A2/A3 and `dd doctor` still catch a
+      // corpus of garbage — this row simply declines to be the one that says so.)
+      return {
+        verdict: 'unknown',
+        note: `corpus-floor could not parse ${p} as JSON, so its ${section} rows are uncountable — the floor is unproven, not failed`,
+      };
+    }
+    const rows = sectionItems(doc, section);
+    if (rows === null) {
+      return {
+        verdict: 'unknown',
+        note: `corpus-floor found no dd 'sections' array in ${p}, so its ${section} rows are uncountable — the floor is unproven, not failed`,
+      };
+    }
+    items += rows.length;
+    if (requireField) {
+      missingField += rows.filter((r) => {
+        const v = r[requireField];
+        return v === undefined || v === null || (typeof v === 'string' && v.trim().length === 0) || (Array.isArray(v) && v.length === 0);
+      }).length;
+    }
+  }
+
+  if (items < minItems) {
+    return {
+      verdict: 'fail',
+      note: `corpus-floor: ${items} '${section}' row(s) across ${paths.length} document(s), below the floor of ${minItems} — this corpus is too small to distinguish real work from a token gesture`,
+    };
+  }
+  if (requireField && missingField > 0) {
+    return {
+      verdict: 'fail',
+      note: `corpus-floor: ${missingField} of ${items} '${section}' row(s) carry no '${requireField}' — the field is present SOMEWHERE, which a substring grep would accept, but it is not on every row`,
+    };
+  }
+  return 'pass';
 };
 
 // ---- safety lane: forbidden-state (guardrail; caps when required) (1.5; WS003 §D8) ----
@@ -570,13 +928,34 @@ export const RESOLVERS: Record<string, ResolverEntry> = {
   },
   'artifact-exists': { lanes: ASSERTION_TYPES['artifact-exists'], resolve: artifactExists },
   'command-succeeds': { lanes: ASSERTION_TYPES['command-succeeds'], resolve: commandSucceeds },
+  'corpus-floor': { lanes: ASSERTION_TYPES['corpus-floor'], resolve: corpusFloor },
   'forbidden-state': { lanes: ASSERTION_TYPES['forbidden-state'], resolve: forbiddenState },
   'retro-drained': { lanes: ASSERTION_TYPES['retro-drained'], resolve: retroDrained },
 };
 
+/**
+ * Resolve ONE deterministic assertion to its verdict AND the reason behind it.
+ *
+ * An UNKNOWN `type` resolves `unknown` with a note — never a throw, never a pass.
+ * The loader normally rejects these first, but an OLDER scorer meeting a NEWER
+ * scenario must degrade honestly rather than crash or wave the row through: that is
+ * the same principle as every other branch here.
+ */
+export async function resolveAssertionDetailed(
+  a: Assertion,
+  rc: ResolveContext,
+): Promise<{ verdict: Verdict; note?: string }> {
+  const entry = RESOLVERS[a.type];
+  if (!entry) {
+    return {
+      verdict: 'unknown',
+      note: `unknown assertion type '${a.type}': this scorer has no resolver for it, so the row is unproven — never passed, never failed (upgrade the harness, or fix the scenario's type)`,
+    };
+  }
+  return toVerdictDetail(await entry.resolve(a, rc));
+}
+
 /** Resolve ONE deterministic assertion to its verdict (dispatch by `type`). */
 export async function resolveAssertion(a: Assertion, rc: ResolveContext): Promise<Verdict> {
-  const entry = RESOLVERS[a.type];
-  if (!entry) return 'unknown'; // unknown type (loader normally rejects these first)
-  return entry.resolve(a, rc);
+  return (await resolveAssertionDetailed(a, rc)).verdict;
 }

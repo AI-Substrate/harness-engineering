@@ -146,11 +146,20 @@ describe('scoreScenario — three-valued score + required-fail cap + judged spli
     expect(report.verdict).toBe('PASS_WITH_NOTES');
   });
 
-  it('scores 0 when there is nothing resolvable (all unknown)', async () => {
+  it('scores NULL when there is nothing resolvable (all unknown) — FX003 D2', async () => {
+    // This used to expect `0`, which is the same number a run that FAILED every
+    // check reports. A run that measured nothing did not score zero; it has no
+    // score, and the report must be able to say so.
     const report = await scoreScenario([UNKNOWN, JUDGED], rc(null));
-    expect(report.deterministic.score).toBe(0);
+    expect(report.deterministic.score).toBeNull();
     expect(report.deterministic.total).toBe(1);
     expect(report.verdict).toBe('PASS_WITH_NOTES');
+  });
+
+  it('still scores a real 0 when everything measurable FAILED (the guard on the above)', async () => {
+    const report = await scoreScenario([CAP_FAIL_REQ], rc(procEvidence()));
+    expect(report.deterministic.score).toBe(0);
+    expect(report.deterministic.failed).toBe(1);
   });
 });
 

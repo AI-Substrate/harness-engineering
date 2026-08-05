@@ -376,6 +376,9 @@ function rosterDescriptor(m: FleetRosterMember): PijDescriptor | null {
     transcript_path: m.transcript_path,
     spawned_by: null,
     model: m.model,
+    // A roster member with join keys is by definition an agent seat, never a relay
+    // bridge — this synthesis path only runs when `harness_session_id` is non-null.
+    relay: false,
   };
 }
 

@@ -40,7 +40,7 @@ import {
 } from './ledger.js';
 import { compareModels, renderLedgerList } from './ledger-view.js';
 import type { ResolveContext, SessionEvidence } from './resolvers.js';
-import { isPlaceholderToken } from './resolvers.js';
+import { isPlaceholderToken, parseSessionEvidence } from './resolvers.js';
 import { buildJudgeProvenance, join, loadScenario } from './scenario.js';
 import { scoreScenario } from './scorer.js';
 
@@ -82,22 +82,38 @@ function resolveMap_opt(ctx: VerbContext): Record<string, string> {
  * `null` — telemetry assertions then resolve `unknown`, never `fail` (the
  * determinism boundary). Never throws.
  */
+/**
+ * Fetch the session's telemetry evidence ONCE via the Phase-1 CLI verb.
+ *
+ * Returns the VALIDATED evidence, or a `reason` naming why there is none. The
+ * payload used to be `as`-cast straight out of `JSON.parse` (FX003-R1): a cast is an
+ * assertion about data nobody checked, committed in the function that feeds every
+ * other check its input. A payload that does not carry what the resolvers read is
+ * refused here, so every telemetry lane resolves `unknown` — never a `fail`
+ * manufactured from a field that was never there.
+ */
 async function fetchEvidence(
   ctx: VerbContext,
   session: string,
   worktree: string | undefined,
-): Promise<SessionEvidence | null> {
+): Promise<{ evidence: SessionEvidence | null; reason: string | null }> {
   const args = ['telemetry', 'get', session, '--json'];
   if (worktree) args.push('--worktree', worktree);
   const r = await ctx.exec('harness', args);
-  if (!r.ok) return null;
+  if (!r.ok) return { evidence: null, reason: `harness telemetry get exited ${r.code}` };
+  let env: { status?: string; data?: unknown };
   try {
-    const env = JSON.parse(r.stdout) as { status?: string; data?: unknown };
-    if (env.status !== 'ok' || typeof env.data !== 'object' || env.data === null) return null;
-    return env.data as SessionEvidence;
+    env = JSON.parse(r.stdout) as { status?: string; data?: unknown };
   } catch {
-    return null;
+    return { evidence: null, reason: 'harness telemetry get did not return JSON' };
   }
+  if (env.status !== 'ok') {
+    return { evidence: null, reason: `harness telemetry get returned status '${env.status ?? 'absent'}'` };
+  }
+  const parsed = parseSessionEvidence(env.data);
+  return parsed.ok
+    ? { evidence: parsed.evidence, reason: null }
+    : { evidence: null, reason: `telemetry evidence rejected — ${parsed.reason}` };
 }
 
 /** The stable per-session suffix a run-id ends with (all runs of one pij session share it). */
@@ -122,6 +138,77 @@ async function detectWorktreeHead(ctx: VerbContext, worktree: string): Promise<s
   if (!r.ok) return null;
   const head = r.stdout.trim();
   return head.length > 0 ? head : null;
+}
+
+/** A full 40-char git oid. */
+const FULL_OID = /^[0-9a-f]{40}$/;
+/** Any hex string long enough to be a meaningful abbreviated oid (git's floor is 4; 7 is the common short form). */
+const HEX_OID = /^[0-9a-f]{4,40}$/;
+
+/**
+ * Resolve a ref to its FULL 40-char oid inside the worktree, or `null` when it does
+ * not resolve there (a branch that doesn't exist in this checkout, a typo, no git).
+ * `^{commit}` peels annotated tags so a tag and the commit it points at compare equal.
+ */
+async function resolveOid(ctx: VerbContext, worktree: string, ref: string): Promise<string | null> {
+  const r = await ctx.exec('git', ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`], { cwd: worktree });
+  if (!r.ok) return null;
+  const oid = r.stdout.trim().toLowerCase();
+  return FULL_OID.test(oid) ? oid : null;
+}
+
+/**
+ * FX003 · D3 — does the worktree's HEAD disagree with the declared `base_ref`?
+ *
+ * Three states, because there are three facts (the ruling: a literal `HEAD` is not a
+ * pinned base, it is the ABSENCE of one — say so rather than falling silent):
+ *
+ *  - `null` — no finding. Either they are the same commit, or HEAD could not be read
+ *    at all (an honest "couldn't detect" never becomes a drift accusation).
+ *  - an UNPINNED note — `base.ref` is the literal `HEAD` (what `scaffold` writes by
+ *    default), so the scenario pins nothing and the run is not reproducible. This is
+ *    a real finding, not a permanent pass: comparing HEAD to itself could never warn.
+ *  - a DRIFT warning — two genuinely different commits.
+ *
+ * The comparison itself resolves BOTH sides to full oids, so an abbreviated sha and
+ * the full sha OF THE SAME COMMIT no longer read as drift (the pre-fix bug: a raw
+ * string `!==` of `--short` HEAD against a 40-char `base.ref`). When the declared ref
+ * will not resolve in this worktree, fall back to a hex-prefix comparison so the
+ * abbreviation case is still handled without git.
+ */
+async function baseRefFinding(
+  ctx: VerbContext,
+  worktree: string,
+  baseRef: string,
+): Promise<string | null> {
+  const head = await detectWorktreeHead(ctx, worktree);
+  if (head === null) return null;
+
+  const declared = baseRef.trim();
+  if (declared === 'HEAD') {
+    return (
+      `base_ref is the literal 'HEAD' — this scenario pins NO base commit, so the run is not reproducible ` +
+      `and the recorded seed_tuple.base_ref cannot identify what was scored (worktree HEAD is ${head}). ` +
+      `Pin it: set base.ref in scenario.json to a sha, or pass --base-ref <sha>`
+    );
+  }
+
+  const headOid = await resolveOid(ctx, worktree, 'HEAD');
+  const baseOid = await resolveOid(ctx, worktree, declared);
+  if (headOid !== null && baseOid !== null) {
+    return headOid === baseOid
+      ? null
+      : `worktree HEAD ${head} (${headOid}) ≠ base_ref ${declared} (${baseOid}) — the scored worktree was not cut from the declared base_ref; the recorded seed_tuple.base_ref may be wrong`;
+  }
+
+  // The declared ref does not resolve here (or git could not answer). Compare the raw
+  // strings PREFIX-tolerantly: an abbreviation of the same commit must not warn, and
+  // git guarantees a unique-prefix abbreviation, so a shared prefix is the honest test.
+  const h = head.toLowerCase();
+  const b = declared.toLowerCase();
+  if (HEX_OID.test(h) && HEX_OID.test(b) && (h.startsWith(b) || b.startsWith(h))) return null;
+  if (h === b) return null;
+  return `worktree HEAD ${head} ≠ base_ref ${declared} — the scored worktree was not cut from the declared base_ref; the recorded seed_tuple.base_ref may be wrong`;
 }
 
 /**
@@ -202,7 +289,7 @@ async function runScore(ctx: VerbContext): Promise<VerbResult> {
 
   const worktree = strOpt(ctx, 'worktree') ?? ctx.cwd;
   const startedAt = ctx.clock.nowIso();
-  const evidence = await fetchEvidence(ctx, session, strOpt(ctx, 'worktree'));
+  const { evidence, reason: evidenceReason } = await fetchEvidence(ctx, session, strOpt(ctx, 'worktree'));
 
   // F-A: the HONEST subject + base_ref. `--subject-*` / `--base-ref` overrides win
   // over `scenario.json#subject` / `base.ref`; they cascade to the report header,
@@ -213,20 +300,24 @@ async function runScore(ctx: VerbContext): Promise<VerbResult> {
   const subjectEffort = strOpt(ctx, 'subjectEffort') ?? loaded.scenario.config.subject.effort;
   const baseRef = strOpt(ctx, 'baseRef') ?? loaded.scenario.config.base.ref;
 
-  // F-A: when a worktree is explicitly given, detect its HEAD and surface a VISIBLE
-  // warning (envelope + report.md) when it disagrees with the effective base_ref —
-  // never a crash, never a silent pass. A failed/empty detection ⇒ no warning.
+  // F-A / FX003 · D3: when a worktree is explicitly given, compare its HEAD to the
+  // effective base_ref and surface a VISIBLE finding (envelope + report.md) — drift,
+  // or an unpinned base — never a crash, never a silent pass. Both sides resolve to
+  // full oids first, so an abbreviated sha of the SAME commit is not drift.
   const worktreeOpt = strOpt(ctx, 'worktree');
+  // The base-ref finding is tracked SEPARATELY from the general warning list: it is the
+  // one that persists into report.json as `base_ref_warning`, and taking `warnings[0]`
+  // for it would mislabel whichever warning happened to land first.
+  const baseRefWarning = worktreeOpt ? await baseRefFinding(ctx, worktreeOpt, baseRef) : null;
   const warnings: string[] = [];
-  if (worktreeOpt) {
-    const head = await detectWorktreeHead(ctx, worktreeOpt);
-    if (head !== null && head !== baseRef) {
-      warnings.push(
-        `worktree HEAD ${head} ≠ base_ref ${baseRef} — the scored worktree was not cut from the declared base_ref; the recorded seed_tuple.base_ref may be wrong`,
-      );
-    }
+  // Say WHY the telemetry lane is empty. `telemetry.available: false` alone leaves an
+  // operator guessing between "no session", "a degraded envelope" and "a payload we
+  // refused"; every telemetry assertion resolving `unknown` is a big enough claim to
+  // deserve its reason on the record.
+  if (evidenceReason !== null) {
+    warnings.push(`telemetry lane unavailable — ${evidenceReason}; every telemetry assertion resolves unknown (not fail)`);
   }
-  const baseRefWarning = warnings.length > 0 ? warnings[0] : null;
+  if (baseRefWarning !== null) warnings.push(baseRefWarning);
 
   // 4.6 (SUGG-003): per-run assertion resolution. `--resolve <id>=<cmd>` overrides a
   // `command-succeeds` cmd WITHOUT mutating the committed bundle; the scenario's

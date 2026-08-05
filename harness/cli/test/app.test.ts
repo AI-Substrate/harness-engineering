@@ -11,10 +11,12 @@ import {
   asciiFlag,
   buildProgram,
   deriveCommand,
+  firstPositional,
   isExtensionsDisabled,
   loadRegistry,
   type MainOverrides,
   main,
+  noExtensionContextEnvelope,
   shouldCaptureForArgv,
 } from '../src/app.js';
 import type { CliIo, Writers } from '../src/output/output-port.js';
@@ -429,5 +431,106 @@ describe('main — telemetry capture preamble (plan 034 Phase 3)', () => {
     // Real captureTelemetry runs (and writes a buffer) when on, short-circuits
     // when off — the host command's stdout/stderr/exit must not budge either way.
     expect(maskTs(on)).toEqual(maskTs(off));
+  });
+});
+
+// ---- FX004: an unregistered verb reports the REASON, not a syntax error ----
+
+describe('noExtensionContextEnvelope (FX004)', () => {
+  /*
+  Test Doc:
+  - Why: pre-fix, `harness checks` from a directory with no loadable extensions
+    reported `E108: Expected 0 arguments but got 1: checks` — "you typed it wrong"
+    for a state the CLI could diagnose. `harness checks --help` was worse: it printed
+    TOP-LEVEL usage and exited 0, a failing case returning a passing-looking result.
+  - Contract: the guard runs PRE-PARSE, so it catches both faces; it returns null
+    (carry on) whenever it cannot honestly claim an absent extension context.
+  - Quality Contribution: this is the control set that breaks the confound which let
+    the "not in a harness repo" theory survive three tellings — it tests the
+    discriminator in BOTH directions, and nothing here involves git.
+  */
+  const emptyRegistry = { verbs: [], records: [] };
+  const EXT = (root: string) => `${root}/.harness/extensions`;
+  const withExtensions = (root: string) =>
+    new FakeFs({ [`${EXT(root)}/checks/extension.ts`]: '// checks' }, { [EXT(root)]: ['checks'] });
+
+  const guard = (argv: string[], d: VerbActDeps, registry = emptyRegistry) =>
+    noExtensionContextEnvelope(
+      argv,
+      buildProgram('1.2.3', io, d, registry),
+      d,
+      new FakeClock('2026-06-08T07:20:00.000Z'),
+    );
+
+  it('CONTROL: `checks` with no loadable extensions → E149, not E108', () => {
+    const d = deps({ fs: new FakeFs(), proc: new FakeProcess({}, '/tmp/elsewhere') });
+    const env = guard(['node', 'harness', 'checks'], d);
+    expect(env?.error?.code).toBe('E149');
+    expect(env?.error?.message).toContain('/tmp/elsewhere');
+  });
+
+  it('CONTROL: the second face — `checks --help` is refused, not silently helped', () => {
+    /*
+    A near-miss invocation returning a passing-looking result is how the bug read as
+    working. The guard is pre-parse precisely so `--help` cannot short-circuit it.
+    */
+    const d = deps({ fs: new FakeFs(), proc: new FakeProcess({}, '/tmp/elsewhere') });
+    expect(guard(['node', 'harness', 'checks', '--help'], d)?.error?.code).toBe('E149');
+  });
+
+  it('CONTROL: inside a repo but NOT at its root — still refused, and the remedy is the VERIFIED ancestor', () => {
+    /*
+    The case a "not in a harness repo" message would lie to. The fake has no git
+    concept at all, so "in a repo" is not even representable — that is the point.
+    */
+    const d = deps({ fs: withExtensions('/work'), proc: new FakeProcess({}, '/work/harness/cli') });
+    const env = guard(['node', 'harness', 'checks'], d);
+    expect(env?.error?.code).toBe('E149');
+    expect(env?.error?.message).not.toMatch(/repo/i);
+    expect(env?.next_action).toBe('cd /work && harness checks');
+  });
+
+  it('GUARD: extensions ARE loadable here → not our case, E108 still owns the typo', () => {
+    /*
+    The guard's own guard. It must never claim an absent extension context in a
+    directory that has one; an unknown name there really is a typo.
+    */
+    const d = deps({ fs: withExtensions('/work'), proc: new FakeProcess({}, '/work') });
+    expect(guard(['node', 'harness', 'nosuchverb'], d)).toBeNull();
+  });
+
+  it('GUARD: a REGISTERED verb is never intercepted, extensions present or not', () => {
+    const d = deps({ fs: new FakeFs(), proc: new FakeProcess({}, '/tmp/elsewhere') });
+    expect(
+      guard(['node', 'harness', 'hello'], d, { verbs: [mkVerb('hello')], records: [] }),
+    ).toBeNull();
+  });
+
+  it('GUARD: core commands and flag-only invocations are never intercepted', () => {
+    const d = deps({ fs: new FakeFs(), proc: new FakeProcess({}, '/tmp/elsewhere') });
+    for (const argv of [
+      ['node', 'harness'],
+      ['node', 'harness', '--version'],
+      ['node', 'harness', '--json'],
+      ['node', 'harness', 'help'],
+      ['node', 'harness', 'doctor'],
+    ]) {
+      expect(guard(argv, d)).toBeNull();
+    }
+  });
+
+  it('GUARD: global flags before the verb do not hide it from the guard', () => {
+    const d = deps({ fs: new FakeFs(), proc: new FakeProcess({}, '/tmp/elsewhere') });
+    expect(guard(['node', 'harness', '--json', '--quiet', 'checks'], d)?.error?.code).toBe('E149');
+  });
+});
+
+describe('firstPositional (FX004 argv scan)', () => {
+  it('skips flags, stops at `--`, and returns null when there is no verb', () => {
+    expect(firstPositional(['node', 'h', '--json', 'checks'])).toBe('checks');
+    expect(firstPositional(['node', 'h', 'checks', '--help'])).toBe('checks');
+    expect(firstPositional(['node', 'h'])).toBeNull();
+    expect(firstPositional(['node', 'h', '--version'])).toBeNull();
+    expect(firstPositional(['node', 'h', '--', 'checks'])).toBeNull();
   });
 });

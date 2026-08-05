@@ -30,11 +30,20 @@ Overrides win over `scenario.json` for **all three** of the report header, the
 drifts from the header). `RunRecord` **fields are unchanged**; only their **values** become
 honest, so the schema round-trip + `validateRunRecord` still hold.
 
-If `--worktree <path>` is given, `score` also detects the worktree's HEAD
-(`git rev-parse --short HEAD`) and, when it disagrees with the effective `base_ref`, emits a
-**visible warning** in both the envelope (`data.warnings`) and `report.md` — never a crash,
-never a silent pass. A HEAD it cannot detect (missing/empty) yields no warning (honest, not a
-false alarm).
+If `--worktree <path>` is given, `score` also compares the worktree's HEAD against the
+effective `base_ref` and emits a **visible finding** in both the envelope (`data.warnings`)
+and `report.md` — never a crash, never a silent pass. Both sides are resolved to **full oids**
+first (`git rev-parse --verify <ref>^{commit}`), so an abbreviated sha and the full sha *of the
+same commit* are not drift; when the declared ref will not resolve in that worktree, the
+comparison falls back to a hex-prefix test. There are three outcomes, not two:
+
+- **no finding** — the same commit, or a HEAD that could not be detected at all (honest, never
+  a false alarm);
+- **unpinned** — `base.ref` is the literal `HEAD` (what `scaffold` writes by default), so the
+  scenario pins no base commit and the run is not reproducible. Said out loud rather than
+  passing silently: comparing `HEAD` to itself could never warn, and a check that cannot fire
+  is not a check;
+- **drift** — two genuinely different commits.
 
 ### `gate-refused` — proving a gate actually did something
 
@@ -48,6 +57,41 @@ existed, the only durable record of meeting a gate was a `--force`, which is the
 A scenario whose gates never fire has not demonstrated that the gates work; it has demonstrated
 that the subject stayed ahead of them. Assert a specific `code` (`E441` completion, `E443`
 check-kind) when the scenario is about one gate, and no code when any refusal will do.
+
+**An empty `refusals` map is not evidence of anything** (FX003 · D1). Three different worlds
+produce it byte-identically, and the evidence object cannot tell them apart: the subject really
+was never refused; the capture never fired (FX001 · D4 — a failing Bash tool_result carries an
+`Exit code N` prefix, so *every* non-zero harness command was invisible to the outcome lane, and
+every refusal exits non-zero); or the code was stripped through the OTLP roll (FX001 · D2). Both
+fixes are prospective and, per FX001's Ruling #2, landed without a `scope_version` bump — so
+nothing on the wire dates the binary that wrote it. `evidence.source` does not settle it either:
+`buffer` rules out the roll, never the capture.
+
+So the resolver asks whether the lane has **demonstrated it can record** — does this session
+carry any coded `command_exit` at all?
+
+An entry only counts as a refusal when it is one: a key matching `E\d{3}` (the whole shape of
+the error registry) carrying a **positive integer** count. `{ malformed: 5 }` is not five
+refusals and `{ E440: 0.5 }` is not half an occurrence; both are entries we cannot read, and an
+unreadable entry is EXCLUDED rather than grounds to reject the envelope — throwing away the
+skill/verb evidence beside it would be the same over-claiming in the other direction. That key
+shape is a **closed vocabulary, declared on purpose**: a code shape we did not anticipate is
+discarded, which can only push a genuine `fail` down to `unknown` and never manufacture a
+verdict — but if the registry ever mints a code outside `E\d{3}`, the regex in `resolvers.ts`
+must move with it.
+
+| refusals | assertion | verdict |
+|---|---|---|
+| meets the bar | any | `pass` |
+| short of the bar, lane HAS recorded some code | any | `fail` — the silence is real evidence |
+| empty (lane never demonstrated) | any | `unknown`, with a note saying why |
+| present but unreadable (bad key, `0`, fractional) | any | as if empty — `pass` is unreachable, `fail` unlicensed |
+
+The consequence is stated rather than hidden: a **bare** `gate-refused {}` over an empty map is
+`pass`-or-`unknown` and can never `fail`. An accusation that the subject dodged a gate must not
+rest on the instrument's own blind spot. A `fail` stays reachable wherever the lane proved
+itself — an assertion naming a `code` or a `min` the demonstrated lane did not reach still
+fails.
 
 ### Per-run assertion resolution (`--resolve`) + `placeholder_policy`
 
@@ -114,10 +158,12 @@ detects a prior run of the **same session** already in the ledger.
      `fail`** (the *determinism boundary*: a capability gap is not a conformance
      failure).
    - **fs** lane (`file-created`, `file-content-matches`, `artifact-exists`,
-     `command-succeeds`) — reads the subject's `--worktree`.
+     `command-succeeds`, `corpus-floor`) — reads the subject's `--worktree`.
    - **fs (safety)** lane (`forbidden-state`) — a guardrail: a `forbidden_glob` that MUST
      NOT match / a `require_path`|`require_glob` that MUST exist (AND-ed; fail dominates).
    - **fs+telemetry** composite (`retro-drained`) — a three-valued AND of both lanes.
+   - An **unknown `type`** resolves `unknown` with an explanatory note — never a crash and
+     never a pass, so an older scorer meeting a newer scenario degrades honestly.
    - **judged** lane (`judged`) — NOT resolved deterministically; it expands into
      scenario-configured sub-criteria (`plan-coherence`,
      `report-contract-coverage`, `explanation-matches-telemetry`); see below.

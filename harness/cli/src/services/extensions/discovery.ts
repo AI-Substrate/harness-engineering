@@ -60,7 +60,23 @@ export interface DiscoveryResult {
  * subdir from pointing elsewhere.
  */
 export function discoverExtensions(fs: FsPort, proc: ProcessPort): DiscoveryResult {
-  const base = posixJoin(toPosix(proc.cwd()), ...EXTENSIONS_DIR);
+  return discoverExtensionsAt(fs, toPosix(proc.cwd()));
+}
+
+/**
+ * {@link discoverExtensions} for an EXPLICIT directory rather than the process cwd.
+ *
+ * Same rules, same single POSIX origin — this is the implementation and the cwd form
+ * is the one-line wrapper, so there is no second copy of the resolution rules to drift
+ * (the "one implementation, not two" constraint this repo holds elsewhere).
+ *
+ * It exists so a DIAGNOSTIC can probe a directory the loader itself never looks at:
+ * the loader is deliberately cwd-only, but a message explaining that no extensions
+ * were found may legitimately search for one that would work — provided it VERIFIES
+ * what it finds instead of guessing (packet ruling #3.2).
+ */
+export function discoverExtensionsAt(fs: FsPort, dir: string): DiscoveryResult {
+  const base = posixJoin(dir, ...EXTENSIONS_DIR);
   const entries = fs.readdir(base);
   if (entries.length === 0) {
     return { candidates: [], rejected: [] };
