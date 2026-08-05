@@ -100,6 +100,27 @@ result, an out-param, a counter on the envelope. What is not negotiable is that
 every current caller of `decodeSegment` either surfaces the reason or is explicitly
 recorded as one that discards it (and why that is safe there).
 
+## Ruling #1 (2026-08-05, prime via pij-related-koala) — a channel nobody reads is not a channel
+
+Two additions to the pin, both about the same hazard: **a fix that is real in the
+decoder and invisible at the surface, which would review as done.**
+
+**1. AUDIT THE CALLERS, NOT JUST THE DECODER.** Every caller of `decodeSegment`
+today branches on `null` and has only ever had one thing to say about it. Adding a
+reason to the return value does **not** make those callers say it — they will keep
+collapsing every refusal into their existing "not present" path, and the channel
+will exist while the output is unchanged. **Enumerate every caller** and show each
+one either propagating the reason or **explicitly declining to, with a line saying
+why that is safe there.** An unenumerated caller is an unfinished fix.
+
+**2. THE FIX'S OWN ERROR PATH.** Whatever carries the reason must not itself
+collapse to `null` on the way out. If the reason-bearing path can `catch → null`,
+it has re-created the exact thing it replaced. We have already shipped one fix that
+reproduced its own defect in its failure branch; that is why this is a stated
+acceptance condition and not a review nicety.
+
+Both get controls, like everything else here.
+
 ## Controls — planted-bad, every one must FIRE pre-fix
 
 Same discipline as FX001/FX003: **Dim-0 mutation gate first and blocking**. A control
@@ -119,6 +140,13 @@ reporting.
   (pre-fix: `null`, indistinguishable). **Guard**: a 2.7 record still decodes.
   **Guard**: a genuinely malformed record still refuses, and reports *malformed* —
   not below-pin.
+- **Pin · Ruling #1.1 (surface)**: the below-pin reason is visible **at the output of
+  at least one real caller**, not only at `decodeSegment`'s return. A control that
+  exercises the decoder alone cannot see a caller that swallows the reason — the same
+  shape as FX003's R1-M9, where a validator nothing called proved nothing.
+- **Pin · Ruling #1.2 (own error path)**: the reason-bearing path, when it *itself*
+  fails, does not collapse to a bare `null`. Plant the failure and show the outcome
+  is still named.
 
 ## The prior APPROVE and certification are VOID — do not inherit them
 
