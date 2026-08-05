@@ -924,7 +924,21 @@ function refuse(reason: SegmentRefusalReason, schemaVersion: string | null): Seg
  * The mitigation is load-bearing and lives in
  * `test/services/telemetry/pin-knob-src-usage.test.ts`: it enumerates every `src/` site
  * that supplies a pin, holds them against a declared allowlist, and asserts none of
- * them ORIGINATES a value — so no production path can raise the effective pin.
+ * them ORIGINATES a value.
+ *
+ * THE CLAIM, NARROWED TO WHAT IS ACTUALLY ESTABLISHED (packet ruling #12):
+ * No production call site raises the read pin, and none can do so without writing the
+ * seam's name in source. Deliberate dynamic dispatch is out of scope and unchecked.
+ *
+ * The wording that stood here until ruling #13 said more than that — a blanket promise
+ * about what production could REACH — and it survived a full round after being
+ * withdrawn everywhere else, because this file was not on the control's claim list. It
+ * is on it now. The sentence was not merely over-broad but false where it stood: a
+ * reviewer's dynamic dispatch drives the effective pin to 2.7 and refuses a 2.4 record,
+ * and that construction is asserted as a live fact in the control. The gap stays open
+ * HERE for the same reason it stays open at the seam — sealing this options bag would
+ * remove the knob the below-pin machinery is proved through, which trades real coverage
+ * for a claim we have agreed to state honestly instead.
  */
 export interface SegmentDecodeOptions {
   /**

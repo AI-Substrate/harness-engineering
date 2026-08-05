@@ -106,6 +106,30 @@ No further scan will be written: a scanner that tried to detect reflection would
 fifth iteration of the thing that has now been wrong four times, and the sixth
 construction would defeat it.
 
+TWO WAYS THE NARROWED CLAIM ESCAPED ITS OWN CONTROL (packet ruling #13). Neither is a
+new iteration of the scan; both are the narrowing not carried all the way out.
+  1. THE CLAIM LIST WAS SHORT BY ONE FILE. `SegmentDecodeOptions` in `segment.ts`
+     still carried the withdrawn blanket wording a full round after it was retracted
+     here and at the seam, and the control could not see it because `CLAIM_SITES`
+     did not list it. The list is DECLARED on purpose — for the same reason the pin
+     allowlist is by line and not by file — and a declared list is worth exactly what
+     its declaration is. The answer is to declare the site, not to go hunting with a
+     scan.
+  2. TITLES WERE READ FROM SOURCE, SO A COMPUTED ONE WAS INVISIBLE. The title check
+     matched `describe`/`it` only where the first argument was a LITERAL, so
+     `describe(['no production ', 'path can raise it'].join(''), …)` would reprint the
+     withdrawn wording in every failure header while the control reported nothing. The
+     idiom was not hypothetical: it is the one used below to keep fabricated fixtures
+     from self-matching, so the evasion was already in this file, in the author's own
+     hand, as a technique.
+THE FIX FOR (2) IS STRUCTURAL AND IS NOT A BETTER PARSER. An expression parser that
+chased computed titles would be the fifth scan and would lose to the sixth
+construction. Titles are now read from the RUNNER'S COLLECTED TREE instead — by then a
+computed title has already collapsed to a string, so every construction that produces
+the banned wording is caught, because what is inspected is the OUTPUT and not the
+expression that made it. Source parsing stays for PROSE, where there is no runtime
+equivalent to read.
+
 WHAT SEALING DID NOT BUY, stated because the packet's own thesis demands it: the
 planted evasion still TYPE-CHECKS. Spreading `any` into an object literal yields `any`,
 and excess-property checking does not apply to `any`, so removing the field does not
@@ -376,8 +400,15 @@ function commentProse(source: string): string {
 const NARROWED_CLAIM =
   "No production call site raises the read pin, and none can do so without writing the seam's name in source. Deliberate dynamic dispatch is out of scope and unchecked.";
 
-/** The files that carry the claim: this control and the seam it guards. */
+/** The files that carry the claim: this control, the seam it guards, and the knob's own
+ * declaration. `segment.ts` was missing from this list for a round, which is how the
+ * withdrawn wording survived there — see item 1 of ruling #13 in the header. The list
+ * is DECLARED rather than discovered, deliberately: a claim site is a place someone
+ * chose to make a promise, and there is no pattern that reliably finds those. Adding a
+ * site is a one-line edit; finding one is a reading job, and it stays a reading job.
+ */
 const CLAIM_SITES: readonly string[] = [
+  'src/services/telemetry/segment.ts',
   'src/services/telemetry/session-export.ts',
   'test/services/telemetry/pin-knob-src-usage.test.ts',
 ];
@@ -400,22 +431,16 @@ const RETRACTED_CLAIMS: readonly string[] = [
 ];
 
 /**
- * The text in which this file and the seam MAKE CLAIMS: comment prose, plus every
- * `describe`/`it` title.
+ * The text in which a file MAKES CLAIMS: comment prose, and only that.
  *
- * Both, and not the whole file. Prose is the obvious place a claim lives, but the
- * ratchet's furthest reach was a TITLE: this suite's own name asserted, in full, the
- * unrestricted version of the claim — a promise printed on the one line every failure
- * report shows. Scanning the whole file instead would be simpler and wrong: the
- * retracted wordings are listed above as string literals, and a file must be able to
- * NAME what it has withdrawn without that counting as it saying so.
+ * Not the whole file: the retracted wordings are listed above as string literals, and a
+ * file must be able to NAME what it has withdrawn without that counting as it saying
+ * so. And no longer titles either — those are read from the runner instead
+ * ({@link resolvedTitles}), because a title parsed out of source is only the titles
+ * someone wrote as literals.
  */
 function claimText(source: string): string {
-  const titles: string[] = [];
-  for (const m of source.matchAll(/\b(?:describe|it)\(\s*(['"`])([\s\S]*?)\1/g)) {
-    titles.push(m[2] ?? '');
-  }
-  return `${commentProse(source)} ${titles.join(' ')}`.replace(/\s+/g, ' ');
+  return commentProse(source);
 }
 
 /** Claim sites whose text says less, or more, than {@link NARROWED_CLAIM}. */
@@ -436,6 +461,62 @@ function readClaimSites(): SourceMap {
   const files = new Map<string, string>();
   for (const rel of CLAIM_SITES) files.set(rel, readFileSync(join(CLI_ROOT, rel), 'utf8'));
   return files;
+}
+
+/** The shape this file needs from the runner's collected tree, and nothing more. */
+interface CollectedTask {
+  name?: unknown;
+  tasks?: unknown;
+}
+
+/**
+ * Every RESOLVED suite and test title in a collected file, READ FROM THE RUNNER rather
+ * than parsed out of the source.
+ *
+ * The ratchet's furthest reach was a TITLE: this suite's own name once asserted, in
+ * full, the unrestricted version of the claim — a promise printed on the one line every
+ * failure report shows. The first attempt to catch that read titles out of the source,
+ * which only ever saw the ones written as string LITERALS; `describe(parts.join(''), …)`
+ * printed the banned wording and the check saw nothing.
+ *
+ * Reading the runner's tree closes the SHAPE rather than that instance. Collection has
+ * already finished by the time any test body runs, so every title in the file is
+ * present — including suites declared BELOW this one — and every one of them is a plain
+ * string, whatever expression produced it. There is nothing left to parse and therefore
+ * nothing left to out-write. This is the one place a runtime reading exists; prose has
+ * no equivalent, which is why {@link claimText} still reads source.
+ */
+function resolvedTitles(file: CollectedTask): string[] {
+  const out: string[] = [];
+  const walk = (tasks: unknown): void => {
+    if (!Array.isArray(tasks)) return;
+    for (const entry of tasks) {
+      const node = entry as CollectedTask;
+      if (typeof node.name === 'string') out.push(node.name);
+      walk(node.tasks);
+    }
+  };
+  walk(file.tasks);
+  return out;
+}
+
+/**
+ * This control's own title, supplied to `it` as an IDENTIFIER rather than a literal.
+ * Deliberate: the reading below must work on titles nobody wrote as a literal, so the
+ * control demonstrates the case it exists to cover instead of only asserting it.
+ */
+const TITLE_CONTROL = 'CONTROL: no RESOLVED title asserts a retracted claim, however assembled';
+
+/** Resolved titles that assert a wording this packet has retracted. */
+function titleViolations(titles: readonly string[]): string[] {
+  const out: string[] = [];
+  for (const title of titles) {
+    const lower = title.toLowerCase();
+    for (const banned of RETRACTED_CLAIMS) {
+      if (lower.includes(banned)) out.push(`title "${title}": retracted claim "${banned}"`);
+    }
+  }
+  return out.sort();
 }
 
 /**
@@ -782,17 +863,20 @@ describe('no production path raises the read pin without naming it (load-bearing
       with nothing anywhere comparing the two. An instrument whose coverage claim is broader than its coverage is the
       precise defect this whole packet exists to kill, so leaving it unasserted in the
       packet's own control would be the joke telling itself.
-    - Contract: both claim sites carry NARROWED_CLAIM verbatim, and neither carries any
+    - Contract: all three claim sites carry NARROWED_CLAIM verbatim, and none carries any
       wording retracted in rounds #11 or #12.
     - Worked Example: the pre-fix source of this very file fails it twice — the claim
       was absent, and the suite's own `describe` title asserted a retracted wording
       outright, which is how far the ratchet had got before anything compared them.
-    - Boundary: this checks that the claim MATCHES the coverage. It cannot check that
-      the coverage is worth having; the scans and behavioural controls above do that.
+      `segment.ts` then failed it the same way a round later, for the duller reason that
+      it was never on the list.
+    - Boundary: this checks that the claim MATCHES the coverage, in PROSE. It cannot
+      check that the coverage is worth having; the scans and behavioural controls above
+      do that. Titles are a separate reading, below.
     */
     expect(claimViolations(readClaimSites())).toEqual([]);
 
-    // GUARD, three directions — an assertion that cannot fail is not a control, and
+    // GUARD, two directions — an assertion that cannot fail is not a control, and
     // with a claim this narrow it would be very easy to write one.
     expect(claimViolations(new Map([['silent.ts', '/* says nothing at all */']]))).toEqual([
       'silent.ts: claim missing',
@@ -802,14 +886,48 @@ describe('no production path raises the read pin without naming it (load-bearing
         new Map([['creep.ts', `/* ${NARROWED_CLAIM} And an identifier cannot arrive as data. */`]]),
       ),
     ).toEqual(['creep.ts: retracted claim "identifier cannot arrive"']);
-    // …including a claim made where only a failure report would show it. The title is
-    // assembled rather than written whole, so that this fixture cannot be picked up as
-    // a title of THIS file — the same reason the fabricated sources above are built by
-    // `join`. A scanner that reads its own test data is measuring itself.
-    const plantedTitle = ['describe(', "'", 'no production path can raise it', "'", ', () => {});'];
-    expect(
-      claimViolations(new Map([['title.ts', `/* ${NARROWED_CLAIM} */\n${plantedTitle.join('')}`]])),
-    ).toEqual(['title.ts: retracted claim "no production path can raise"']);
+  });
+
+  it(TITLE_CONTROL, (ctx) => {
+    /*
+    Test Doc:
+    - Why: a title is a claim printed on the one line every failure report shows, and
+      the previous reading of them saw only the ones written as string LITERALS. A
+      computed title — the exact idiom used for the fabricated fixtures in this file —
+      would reprint a withdrawn wording with nothing to report it. Chasing computed
+      expressions with a better parser would be the fifth scan; this reads the RUNNER'S
+      resolved titles instead, where every construction has already collapsed to a
+      string and there is no expression left to out-write.
+    - Contract: no resolved suite or test title in this file asserts a retracted wording,
+      however that title was assembled.
+    - Worked Example: a reviewer planted `describe(['no production ', 'path can raise
+      it'].join(''), …)`; source parsing reported nothing and this reading reports it.
+    - Boundary: this covers THIS file's titles. Prose is covered above, by source; the
+      two readings are separate because only one of them has a runtime form to read.
+    */
+    const titles = resolvedTitles((ctx.task as unknown as { file: CollectedTask }).file);
+
+    // NON-VACUITY FIRST: if the runner's tree ever changes shape, the walk finds nothing
+    // and the assertion below passes by having read no titles at all — which is this
+    // packet's own defect class, in the control written to kill it. This test's own
+    // title must come back, and it is supplied as an IDENTIFIER rather than a literal,
+    // so the runtime path is exercised by the very act of checking it.
+    expect(titles).toContain(TITLE_CONTROL);
+    expect(titleViolations(titles)).toEqual([]);
+
+    // GUARD. Literal and computed must be caught IDENTICALLY — that identity is the
+    // fix, not an accident of it: by the time a title is read there is no difference
+    // left between them. And a benign computed title must stay unreported, or the
+    // control would just be banning a syntax.
+    const written = 'no production path can raise it';
+    const assembled = ['no production ', 'path can raise it'].join('');
+    expect(titleViolations([written])).toEqual([
+      `title "${written}": retracted claim "no production path can raise"`,
+    ]);
+    expect(titleViolations([assembled])).toEqual([
+      `title "${assembled}": retracted claim "no production path can raise"`,
+    ]);
+    expect(titleViolations([['a benign ', 'computed title'].join('')])).toEqual([]);
   });
 
   it('CONTROL: the declared default IS the floor — production refuses nothing it could read', () => {

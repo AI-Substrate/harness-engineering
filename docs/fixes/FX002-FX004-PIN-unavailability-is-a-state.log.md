@@ -26,9 +26,9 @@ it was handed over confidently.
 | **FX004** | **complete** — both faces fixed, 7 mutations fire, guards both directions |
 | **FX002** | **complete** — read-time resolution, 5 mutations fire, never fabricates |
 | **Pin** | **complete — value reversed to the FLOOR** (R2); the reason channel, total decoder, caller audit and per-reason tallies all stand |
-| Pin-knob control | **rewritten FOUR times** — to the INVERTED hazard (R2), to a SCOPE THAT FOLLOWS THE PIN (R3), **superseded as the primary guarantee** (R4: the door was SEALED, not policed), and finally **narrowed to what it proves** (R5). Proven by eight planted mutations |
+| Pin-knob control | **rewritten FOUR times** — to the INVERTED hazard (R2), to a SCOPE THAT FOLLOWS THE PIN (R3), **superseded as the primary guarantee** (R4: the door was SEALED, not policed), and finally **narrowed to what it proves** (R5). Proven by ten planted mutations |
 | Pin door | **SEALED (R4, ruling #11)** — `pin` removed from `CombineSessionOpts`; the below-pin surfacing lives behind a named test-only seam. The seal **holds**: a `pin` on the bag is inert |
-| Pin CLAIM | **NARROWED (R5, ruling #12)** — reflection reaches the seam, so the reachability claim is withdrawn. The claim is now what the scans establish, with the gap named in the same sentence and **asserted as a live test** |
+| Pin CLAIM | **NARROWED (R5, ruling #12)** — reflection reaches the seam, so the reachability claim is withdrawn. The claim is now what the scans establish, with the gap named in the same sentence and **asserted as a live test**. **R6 (ruling #13): the narrowing is now CARRIED OUT** — the third claim site (`segment.ts`) is declared, and titles are read from the runner so a computed one cannot evade the check |
 | Registry-shape control (#3.1) | **already existed** — reported, not duplicated |
 | Discard proof | **complete** — fires, and proven inert in the live tree |
 
@@ -681,6 +681,8 @@ the `0`-vs-not-probeable collision tally and the retracted-reason comment in R3)
 Carried **verbatim** in both claim sites — `src/services/telemetry/session-export.ts`
 (the seam's doc block) and `test/services/telemetry/pin-knob-src-usage.test.ts` (the
 header) — and enforced by a control, not by care.
+*(**Superseded in R6**: there were **three** claim sites, not two. `segment.ts` carried
+the withdrawn wording and was not on the list. See R6 finding 1.)*
 
 **No fifth scan was written.** A scanner aimed at reflection would be the fourth-wrong
 thing done a fifth time, and the sixth construction would defeat it.
@@ -694,7 +696,10 @@ a site that re-broadens in prose, and a site that re-broadens **in a test title*
 
 Two design points that were not obvious and cost a debug cycle each:
 
-- **It scans comment prose *and* `describe`/`it` titles — not the whole file.** The
+- **It scans comment prose *and* `describe`/`it` titles — not the whole file.**
+  *(**Superseded in R6**: the title half read titles out of SOURCE, so it only ever saw
+  the ones written as literals. Titles are now read from the runner. The prose half and
+  the reasoning below stand unchanged.)* The
   ratchet's furthest reach *was a title*: this suite was literally named with the
   unrestricted claim, which is the one line every failure report prints. A whole-file
   scan is simpler and wrong: the retracted wordings are listed in-file as string
@@ -756,6 +761,146 @@ sites are declared and its scope is `services/telemetry`, which is why it stays.
 | M4 | Does it re-open the reader divergence (ruling #9, retracted in R2)? | No. The pin value is untouched — still the floor. `validSegment` is not involved. |
 | M5 | Does the claim-scan interact with the **tokenizer** guard (R3)? | Yes, and deliberately: `commentProse` reuses `codeOnly`, so the line-preservation control now protects the claim scan too. If the tokenizer breaks, the claim scan fails red rather than silently finding no prose — the same fail-closed direction. |
 | M6 | Could the claim control itself become true-but-empty? | It is the risk the guards exist for, and it **actually happened twice in development** (both self-reference bugs made it report violations, not silence — the safe direction). Its three planted guards fire; PIN-M13/M14 fire in real source. |
+
+## R6 — the narrowing was not carried out. Both escapes are closed
+
+Ruling #13, and the ruling is explicit that this is **not a sixth iteration of the
+scan**: it is ruling #12's instruction (*"the narrowed claim applies there too… stated in
+the log, not implied"*) left unfinished, plus one edit that rides along because it is the
+same file in the same breath. Both findings are upheld. Neither is a scan defect.
+
+### Finding 1 — the blanket claim survived in a THIRD file
+
+`segment.ts` still asserted, at `SegmentDecodeOptions`:
+
+> …them ORIGINATES a value — **so no production path can raise the effective pin.**
+
+That is the withdrawn blanket wording, and it was **false where it stood**: the
+reviewer's asserted dynamic dispatch drives the downstream effective pin to 2.7 and
+refuses a 2.4 record — a fact this packet's own `KNOWN GAP, ASSERTED` control asserts
+one file away.
+
+The control could not see it because `CLAIM_SITES` listed only the seam and the test
+file. **That is the whole bug.** The fix is the small one the ruling specified: the
+narrowed claim, verbatim, at that site, and the site added to `CLAIM_SITES`.
+
+**No scan was written to hunt for further claim sites.** `CLAIM_SITES` is a *declared*
+list on purpose — the same reason the pin allowlist is by line and not by file. A claim
+site is a place someone chose to make a promise, and there is no pattern that reliably
+finds those; declaring one is a one-line edit, finding one is a reading job, and it stays
+a reading job. I did the reading for the two neighbouring files (`ref-source.ts`,
+`session-export.ts`) against all eight retracted wordings and **found no further site**;
+that is a reading, not a guarantee.
+
+### Finding 2 — a COMPUTED title reprinted the withdrawn wording, invisibly
+
+The title half of the claim scan matched `describe`/`it` only where the first argument
+was a **literal**:
+
+```ts
+/\b(?:describe|it)\(\s*(['"`])([\s\S]*?)\1/g
+```
+
+So `describe(['no production ', 'path can raise it'].join(''), …)` printed the retracted
+claim in **every failure header** while the control reported nothing.
+
+The irony is worth recording because it is the lesson: **that idiom is the one I used in
+this very file** to stop fabricated fixtures self-matching. The evasion was already in
+the file, in my own hand, as a technique — and I did not think to point it at my own
+check.
+
+**The fix is structural and is not a better parser.** Per the ruling, an expression
+parser that chased computed titles would be the fifth scan and would lose to the sixth
+construction. Titles are now read from the **runner's collected tree** instead
+(`resolvedTitles(ctx.task.file)`): collection has already finished by the time any test
+body runs, so every title in the file is present — including suites declared *below* the
+running test, which I verified rather than assumed — and every one is a plain string,
+**whatever expression produced it**. There is nothing left to parse and therefore nothing
+left to out-write. Source parsing stays for **prose**, where there is no runtime
+equivalent to read.
+
+`claimText` is now prose-only; `titleViolations` reads the runtime titles. Two readings,
+because only one of them has a runtime form.
+
+### Pre-fix output, verbatim
+
+**Both holes open at once, against HEAD `48c879e8`** — the reviewer's computed-title
+plant appended to the pre-fix control, `segment.ts` carrying the blanket wording:
+
+```text
+ ✓ test/services/telemetry/pin-knob-src-usage.test.ts (14 tests) 252ms
+
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+```
+
+Green, with the withdrawn claim printed in the report as a suite name:
+
+```text
+ ✓ test/services/telemetry/pin-knob-src-usage.test.ts > no production path can raise it > planted 0ms
+```
+
+**Finding 1, control firing** (fixed control, pre-fix `segment.ts`):
+
+```text
+ FAIL  test/services/telemetry/pin-knob-src-usage.test.ts > no production path raises the read pin without naming it (load-bearing) > CONTROL: the CLAIM and the SCAN'S COVERAGE agree, gap named in the same breath
+AssertionError: expected [ …(2) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "src/services/telemetry/segment.ts: claim missing",
++   "src/services/telemetry/segment.ts: retracted claim \"no production path can raise\"",
++ ]
+```
+
+**Finding 2, control firing** (fixed control, reviewer's computed-title plant):
+
+```text
+ FAIL  test/services/telemetry/pin-knob-src-usage.test.ts > no production path raises the read pin without naming it (load-bearing) > CONTROL: no RESOLVED title asserts a retracted claim, however assembled
+AssertionError: expected [ Array(1) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "title \"no production path can raise it\": retracted claim \"no production path can raise\"",
++ ]
+```
+
+### The new control, and its anti-vacuity
+
+`CONTROL: no RESOLVED title asserts a retracted claim, however assembled` — and the
+title of that control is supplied to `it` as an **identifier**, not a literal, so the
+control demonstrates the case it exists to cover rather than only asserting it.
+
+Its first assertion is the non-vacuity one, deliberately placed first: **if the runner's
+tree ever changes shape the walk returns nothing and the check passes by having read no
+titles at all** — this packet's own defect class, inside the control written to kill it.
+So it asserts its own title comes back before it asserts anything about the contents.
+
+Guards, per the ruling: a literal banned title and a computed banned title are caught
+**identically** (that identity *is* the fix — by read time there is no difference left
+between them), and a benign computed title is **not** reported, or the control would just
+be banning a syntax.
+
+Both findings are permanent gate entries: **PIN-M15** (the blanket claim returns to
+`segment.ts`) and **PIN-M16** (the reviewer's computed-title plant). Both fire.
+
+### R6 interaction pass (ruling #6, re-run because items changed)
+
+| # | Question | Finding |
+|---|---|---|
+| N1 | Any behaviour change? | None. `segment.ts` is a **doc block only** — no executable line touched; `tsc --noEmit` clean. The test file gains one control and swaps one reading for another. |
+| N2 | Does dropping source-title parsing LOSE coverage? | No — it is a strict superset. Every literal title the regex saw is in the runner's tree too, plus every computed one. Proven both directions: PIN-M13 (literal) and PIN-M16 (computed) both fire. |
+| N3 | Does reading `ctx.task.file` couple the control to a vitest internal? | Yes, and it is stated rather than hidden. `file.tasks` is the runner's collected tree; a shape change would break the walk. The non-vacuity assertion is exactly the mitigation — a broken walk fails **red**, not silent. |
+| N4 | Does adding `segment.ts` to `CLAIM_SITES` create a new failure mode? | Yes, the intended one: `segment.ts` must now carry the claim verbatim forever. PIN-M15 is that gate. |
+| N5 | Does R6 disturb the R4 seal or the R5 gap assertion? | No. Both untouched and still passing; the seal's behavioural claim and the asserted gap are unchanged. All 30 mutations fire. |
+| N6 | Does it touch FX002/FX004 or the pin VALUE? | No shared surface. Pin still at the floor; all 12 FX002/FX004 mutations fire at unchanged counts. |
+
 
 
 
@@ -931,7 +1076,7 @@ fails `E222` on sessions whose `checks` event has gate keys containing `:` or a 
 producer/reader **grammar** drift, unrelated to version. Stated, not fixed; that is the
 trade, and after R2 it costs nothing observable.
 
-## The Dim-0 mutation gate — 28 mutations, ALL FIRE (was 26, 24, 22, 20)
+## The Dim-0 mutation gate — 30 mutations, ALL FIRE (was 28, 26, 24, 22, 20)
 
 Every mutation restores a **pre-fix behaviour**, not merely broken code. Runner:
 `/tmp/packet-mut.py`. Counts below are from the final post-`biome` run (anchors were
@@ -960,6 +1105,8 @@ re-verified after reformatting).
 | **PIN-M12 a production lane CALLS the test-only pin seam** *(new, R4)* | 2 |
 | **PIN-M13 the suite TITLE re-asserts the retracted, unrestricted claim** *(new, R5)* | 1 |
 | **PIN-M14 the narrowed claim is stripped from the seam's own doc block** *(new, R5)* | 1 |
+| **PIN-M15 the blanket claim returns to `segment.ts` — a claim site off the list** *(new, R6)* | 1 |
+| **PIN-M16 a COMPUTED suite title re-asserts the retracted claim** *(new, R6 — the reviewer's construction)* | 1 |
 | FX002-M1 adopted seat never consults the registry | 6 |
 | FX002-M2 ambiguity resolved by first-wins GUESS (the false green) | 2 |
 | FX002-M3 "no match" folded into "registry unavailable" | 2 |
@@ -1066,7 +1213,8 @@ production stricter. It fires 9.
    The boundary that remains, stated at its true width: **the scans establish that no
    `src/` file WRITES a pin or the seam's name. They establish nothing about deliberate
    dynamic dispatch, which is out of scope and unchecked.** That sentence is now carried
-   verbatim in both claim sites and enforced by a control, and the gap itself is asserted
+   verbatim in all **three** claim sites — `segment.ts` was missing for a round (R6) —
+   and enforced by a control, and the gap itself is asserted
    as a passing test so closing it later cannot happen silently.
 
    The equivalent hole at `SegmentDecodeOptions` (the decoder's own bag) is **not** closed
@@ -1104,12 +1252,31 @@ production stricter. It fires 9.
     be asserting a conclusion I did not reach — the exact move this packet exists to
     stop. It is very likely pre-existing and unrelated, and I could not establish that.
 
-    **R4/R5 status: UNEXPLAINED, NOT CLEARED — not upgraded (ruling #12).** The reviewer added three more full
+    **R4/R5/R6 status: UNEXPLAINED, NOT CLEARED — not upgraded (rulings #12, #13).** The reviewer added three more full
     4531/313 suites and seven isolated runs with no recurrence, and R4 adds another
     green full run — and correctly declined to call that absolution. Nine-plus green
     runs cannot prove a negative about something that fired three times. **It remains a
     live risk to CI**: if it fires there the PR does not go green, and we will know
     nothing more than we know now.
+
+12. **Two boundaries new in R6, both about the claim check rather than the pin.**
+
+    (a) **`CLAIM_SITES` is a declared list, and I read for further sites rather than
+    proving there are none.** Ruling #13 forbids hunting with a scan, and the reason is
+    sound — a claim site is a place someone chose to make a promise, and no pattern finds
+    those. So the check is exactly as complete as the list. I read `ref-source.ts` and
+    `session-export.ts` against all eight retracted wordings and found nothing further.
+    **That is a reading, not a guarantee**, and it is the same shape as the defect R6
+    fixed: the previous list was also believed complete. The mitigation is that adding a
+    site is one line, and PIN-M15 proves the check bites once a site is listed.
+
+    (b) **Reading resolved titles couples the control to the runner's collected tree.**
+    `ctx.task.file.tasks` is vitest's shape, not a public contract, and a change to it
+    would break the walk. This is stated rather than hidden, and it is deliberately
+    fail-**closed**: the control asserts its own title comes back *before* it asserts
+    anything about the contents, so a broken walk goes red instead of quietly reading
+    zero titles and passing. That ordering is the whole mitigation, and it is the same
+    move as the tokenizer's line-count invariant in boundary 10.
 
 ## Fence
 
@@ -1117,11 +1284,11 @@ production stricter. It fires 9.
 `.harness/extensions/flow-eval/` (**one new test file**, R1 only — untouched in R2), and
 `docs/fixes/FX002-*`. `package-lock.json` **unmodified**. Nothing pushed.
 
-**Full suite: 4535 passed / 313 files, zero failures** (R1: 4523; R3: 4531; R4: 4533 —
-R5's claim control and asserted-gap test are a net +2). Warn trio byte-identical to the dispatch baseline at every
-checkpoint including R4: **arch 2 / markdown 196 / windows 6**.
+**Full suite: 4536 passed / 313 files, zero failures** (R1: 4523; R3: 4531; R4: 4533;
+R5: 4535 — R6's title control is a net +1). Warn trio byte-identical to the dispatch baseline at every
+checkpoint including R6: **arch 2 / markdown 196 / windows 6**.
 
 R4 touched **one production file** (`src/services/telemetry/session-export.ts` — the
-type change ruling #11 required) plus two test files and this log. **R5 touches no
-production behaviour at all**: one doc block in that same file, and the control file
-plus this log. `package-lock.json` **unmodified**. Nothing pushed.
+type change ruling #11 required) plus two test files and this log. **R5 and R6 touch no
+production behaviour at all**: doc blocks in `session-export.ts` (R5) and `segment.ts`
+(R6), the control file, and this log. `package-lock.json` **unmodified**. Nothing pushed.
