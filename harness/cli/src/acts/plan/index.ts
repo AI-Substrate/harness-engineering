@@ -8,7 +8,12 @@ import { ExecGit } from '../../adapters/git/exec-git.js';
 import type { GitPort } from '../../adapters/git/git-port.js';
 import { NodeHash } from '../../adapters/hash/node-hash.js';
 import { NodeProcess } from '../../adapters/process/node-process.js';
-import { formatDegraded, formatError, formatOk } from '../../output/envelope.js';
+import {
+  formatDegraded,
+  formatError,
+  formatOk,
+  formatUnconfigured,
+} from '../../output/envelope.js';
 import { ErrorCodes } from '../../output/error-codes.js';
 import { exitWithEnvelope } from '../../output/exit.js';
 import { type CliIo, createOutputPort } from '../../output/output-port.js';
@@ -26,10 +31,13 @@ import {
   buildPlanIndex,
   itemKey,
   type PlanDocument,
+  type ReadyReading,
   readPlanCheck,
+  readPlanReadiness,
 } from '../../services/dd/plan/index.js';
 import type { SchemaIssue } from '../../services/dd/schema/model.js';
 import { ConventionSchemaResolver } from '../../services/dd/schema/resolve.js';
+import { readBackpressureSurvey } from '../../services/flow/chores-read.js';
 import {
   isWithin,
   posixDirname,
@@ -463,6 +471,163 @@ function registerValidateCommand(plan: Command, io: CliIo, deps: DdActDeps): voi
     );
 }
 
+/**
+ * `harness plan ready <target>` — is this plan ready to start work on?
+ *
+ * The one command an agent runs at plan setup and again at a gate. It COMPOSES
+ * two readings and adds no analysis of its own: the plan's own complete check
+ * (which already reports `orphan-claim` — "no task accounts for this criterion")
+ * and the flight plan's backpressure chore (which is the only place that knows
+ * whether a human DECLINED the survey rather than never running it).
+ *
+ * Three verdicts, mapped onto the kernel's existing status contract:
+ *   - `ready`     → `ok`           → exit 0
+ *   - `not-ready` → `degraded`     → exit 0 (`error`/1 under `--strict`)
+ *   - `cant-tell` → `unconfigured` → exit 2
+ *
+ * `unconfigured` is not a hedge, it is the repo's own word for "nothing is mapped
+ * here yet", and exit 2 is what the kernel already gives it — which is why the
+ * refusal can be honest without inventing a code.
+ *
+ * The terminal stays ADVISORY: a not-ready plan exits 0 by default, because the
+ * flow forbids gating a human. CI opts into teeth with `--strict`, and the only
+ * non-zero code the kernel's status mapping can express is `error`/1
+ * (`exit.ts` maps by status alone, so a `degraded` verdict cannot exit non-zero).
+ * That reconciliation is deliberate, not a workaround of the mapping.
+ */
+function registerReadyCommand(plan: Command, io: CliIo, deps: DdActDeps): void {
+  plan
+    .command('ready <target>')
+    .description(
+      'Say whether a plan is ready to start work on — or refuse, when there is nothing to judge',
+    )
+    .option(
+      '--flow <path>',
+      'the flight plan carrying the backpressure chore (default: `the-flow.json` beside the plan)',
+    )
+    .option(
+      '--strict',
+      'exit non-zero on a not-ready verdict (for CI; the terminal stays advisory)',
+    )
+    .action(async (target: string, opts: { flow?: string; strict?: boolean }) => {
+      const ctx = context(io, deps);
+      const path = resolvePlanDocument(target, ctx.repoRoot);
+      readPlan(ctx, 'plan ready', path);
+
+      const loader = new FsDocLoader(
+        ctx.fs,
+        new NodeHash(),
+        await trackedPaths(new NodeExec(), ctx.repoRoot),
+      );
+      // `complete: true` is not optional here: `orphan-claim` — the finding that
+      // IS the criteria question — is emitted under that mode only.
+      const check = readPlanCheck(
+        path,
+        { schemaResolver: planResolver(ctx), docLoader: loader },
+        { repoRoot: ctx.repoRoot, complete: true },
+      );
+      if (!check.ok) {
+        exitWithEnvelope(
+          formatError('plan ready', ErrorCodes.DD_DOCUMENT_INVALID, check.message, ctx.clock, {
+            details: { path, reason: check.reason },
+            next_action: 'Fix the reported location, then re-run.',
+          }),
+          ctx.port,
+        );
+      }
+
+      const flowPath =
+        opts.flow !== undefined
+          ? resolveInRepo(opts.flow, ctx.repoRoot)
+          : posixJoin(posixDirname(path), 'the-flow.json');
+      const fs = new NodeFs();
+      // The basis is the plan document's CURRENT bytes — `check.sha`, the same
+      // digest the reading was taken on. A receipt recorded against different
+      // bytes is stale by definition, and an edit made after the survey must not
+      // inherit its green.
+      const survey = readBackpressureSurvey(
+        flowPath,
+        { fs, clock: ctx.clock, git: new ExecGit(ctx.repoRoot), env: new NodeEnv() },
+        check.sha,
+      );
+      const reading = readPlanReadiness(check, survey);
+
+      const data = {
+        path,
+        flow: flowPath,
+        basis_sha256: check.sha,
+        verdict: reading.verdict,
+        reason: reading.reason,
+        decided_by: reading.decided_by,
+        criteria: reading.criteria,
+        survey: reading.survey,
+      };
+
+      if (reading.verdict === 'ready') {
+        exitWithEnvelope(
+          formatOk('plan ready', data, ctx.clock, {
+            next_action: `Every criterion is claimed by a task and the backpressure survey is on the record for these bytes — start work.`,
+          }),
+          ctx.port,
+        );
+      }
+
+      // ONE line, naming only the dimension that decided it. Ruling ac-7007: a
+      // wall of per-row warnings teaches a reader to ignore warnings, and this
+      // verb's whole job is to answer a question rather than emit a list.
+      const line = explainReadiness(reading, target, flowPath);
+      if (reading.verdict === 'cant-tell') {
+        exitWithEnvelope(formatUnconfigured('plan ready', line, ctx.clock, { data }), ctx.port);
+      }
+      if (opts.strict === true) {
+        exitWithEnvelope(
+          formatError('plan ready', ErrorCodes.DD_PLAN_NOT_READY, line, ctx.clock, {
+            details: data,
+            next_action: line,
+          }),
+          ctx.port,
+        );
+      }
+      exitWithEnvelope(formatDegraded('plan ready', data, line, ctx.clock), ctx.port);
+    });
+}
+
+/**
+ * The one line a reader gets. Prose lives HERE, never in the service: reason codes
+ * are data, and a service that returned sentences would make every future caller
+ * re-parse English to learn what it already knew.
+ */
+function explainReadiness(reading: ReadyReading, target: string, flow: string): string {
+  switch (reading.reason) {
+    case 'nothing-to-check':
+      return `This plan has no acceptance criteria, so there is nothing to judge — that is not a pass. Write the criteria first, then re-run \`harness plan ready ${target}\`.`;
+    case 'unclaimed-criteria': {
+      const addresses = reading.criteria.unclaimed.map((row) => row.address).join(', ');
+      return `${reading.criteria.unclaimed.length} acceptance criterion/criteria that no task accounts for: ${addresses}. Add a \`satisfies\` link from the task that will make each one true.`;
+    }
+    case 'plan-unreadable':
+      return `The plan does not validate, so its criteria cannot be read. Run \`harness plan validate ${target} --complete\` and fix what it reports first.`;
+    case 'stale-basis':
+      return `The backpressure survey was recorded against different plan bytes (receipt basis ${reading.survey.basis?.slice(0, 12)}…, plan now ${reading.survey.expected_basis.slice(0, 12)}…) — re-run the survey against the current plan.`;
+    case 'missing-receipt':
+      return `The backpressure chore "${reading.survey.node}" is "${reading.survey.status}" but carries no receipt, so nothing records what was surveyed. Re-run the survey, or record the decline as a comment.`;
+    case 'invalid-receipt':
+      return `The backpressure chore "${reading.survey.node}" carries a receipt that cannot count because it is malformed or not authoritative. Re-run the survey to record a validation receipt with basis_sha256, or record a human decline with --kind decision --source user.`;
+    case 'missing-basis':
+      return `The backpressure chore "${reading.survey.node}" carries a validation receipt with no \`basis_sha256\` — a completed attempt, but nothing that says which plan bytes were surveyed (a repo with no harness router receipts its survey this way). Whether this plan is ready cannot be told from here — that is a refusal to guess, not a failure, and there is nothing to fix.`;
+    case 'not-run':
+      return `The backpressure survey has not been run (chore "${reading.survey.node}" is "${reading.survey.status}"). Run it, or decline it on the record — a decline with a receipt is a legitimate ready.`;
+    case 'no-survey-node':
+      return `The flight plan carries no backpressure node, so whether the survey was declined or never run cannot be told from here.`;
+    case 'no-flight-plan':
+      return `No flight plan at ${flow}, so whether the backpressure survey was declined or never run cannot be told from a document alone — this is a refusal to guess, not a failure.`;
+    case 'flight-plan-unreadable':
+      return `The flight plan at ${flow} could not be read, so the survey dimension cannot be judged.`;
+    default:
+      return `Not ready.`;
+  }
+}
+
 function registerRenderCommand(plan: Command, io: CliIo, deps: DdActDeps): void {
   plan
     .command('render <target>')
@@ -869,6 +1034,7 @@ export function registerPlanAct(program: Command, io: CliIo, deps: DdActDeps): v
     .description('Scaffold, validate and render plans authored as deterministic documents');
   registerNewCommand(plan, io, deps);
   registerValidateCommand(plan, io, deps);
+  registerReadyCommand(plan, io, deps);
   registerRenderCommand(plan, io, deps);
   registerPrBodyCommand(plan, io, deps);
   registerFenceCommand(plan, io, deps);

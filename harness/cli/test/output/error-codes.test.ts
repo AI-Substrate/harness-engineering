@@ -133,6 +133,7 @@ describe('ErrorCodes table', () => {
       DD_PLAN_VALIDATE_FAILED: 'E459',
       DD_FENCE_VIOLATION: 'E460',
       DD_FENCE_INVALID: 'E461',
+      DD_PLAN_NOT_READY: 'E462',
     });
   });
 

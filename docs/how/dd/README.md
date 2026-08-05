@@ -306,6 +306,7 @@ resolves from the document's own folder; no registry entry is required.
 | [09 - Querying with jq](09-querying-with-jq.md) | copyable questions over real documents |
 | [10 - Command reference](10-command-reference.md) | the complete `harness dd` command family |
 | [11 - The builder proof graph](11-the-builder-proof-graph.md) | what the mechanisms add up to: the work/knowledge graph join |
+| [Is this plan ready to start work on?](plan-ready.md) | the three-valued readiness verdict, and why it refuses to judge an empty plan |
 
 ## Run the examples
 
