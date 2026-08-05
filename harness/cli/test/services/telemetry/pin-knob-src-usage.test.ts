@@ -13,12 +13,16 @@ import {
   type SegmentInput,
   serializeSegment,
 } from '../../../src/services/telemetry/segment.js';
-import { combineSession } from '../../../src/services/telemetry/session-export.js';
+import {
+  combineSession,
+  combineSessionAtPinForTests,
+} from '../../../src/services/telemetry/session-export.js';
 
 /*
-THE CONTROL THAT MAKES THE PIN KNOB SURVIVABLE — THIRD REWRITE, AND THE SCOPE IS THE
-POINT. Read this before changing the scan; two previous versions were correct about
-the hazard and wrong about where to look for it, in the same way both times.
+THE CONTROL THAT MAKES THE PIN KNOB SURVIVABLE — FOURTH REWRITE, AND THIS TIME THE
+SCAN WAS NOT THE THING THAT CHANGED. Read this before changing it; three previous
+versions were correct about the hazard and wrong about where to look for it, and the
+fourth was correct about where to look and WRONG ABOUT WHAT IT PROVED.
 
 THE HAZARD. The read pin sits at the FLOOR, so production refuses nothing it could
 have read. A `src/` caller passing a HIGHER pin would silently make production
@@ -53,13 +57,34 @@ content filter at all, and the 11 resulting sites are declared by hand below.
 That list is short because the surface genuinely is: an eleven-entry allowlist is
 affordable, and a scope that cannot be argued about is worth more than a short list.
 
-WHY THE PARAMETER IS KEPT AT ALL RATHER THAN DELETED — "a parameter nobody in
-production should ever set is better deleted than policed" is a fair rule, and it was
-weighed. At a floor pin `below_pin` is unreachable in production, so this parameter is
-the ONLY path by which the reason channel's below-pin plumbing — the envelope field,
-the histogram exclusion, the per-reason separation — stays EXERCISED. Delete it and
-`below_pin` becomes a decoder-only artifact whose surfacing nothing proves, which is
-the vacuity this packet exists to kill. Kept, and policed here.
+THE FOURTH FAILURE, AND WHY THE ANSWER IS NO LONGER A SCAN. The scan above is not
+wrong — it finds every place `pin` is WRITTEN in `src/`, exactly as advertised. The
+CLAIM was wrong. A reviewer did not argue the hole, it BUILT one: it added
+`combineSession(sessionId, deps, { ...JSON.parse(config) })` to production source and
+this file stayed 9/9 GREEN. No `pin` identifier, no `pin:` property, no direct decoder
+call — a value arriving through `any` needs no token at all, so every static scan is
+defeated at once and none of them is defective. Text scanning can establish "nobody
+WROTE a pin"; it cannot establish "no production path can RAISE the pin", and this
+file's prose asserted the second.
+
+SO THE DOOR IS SEALED, NOT POLICED (packet ruling #11, reversing the earlier decision
+to keep and police the parameter). `pin` is GONE from `CombineSessionOpts`. The
+below-pin surfacing lives behind `combineSessionAtPinForTests` — a named export, taking
+the pin as a POSITIONAL argument. The shape is the whole point: a FIELD on a bag that
+production callers already construct can be filled by DATA, and data leaves nothing to
+find; an IDENTIFIER cannot arrive that way, because `JSON.parse` returns values, never
+bindings. To reach the seam a caller must WRITE the name, and a written name is the one
+thing an exhaustive scan cannot miss. The hazard moved from undetectable to trivially
+detectable, which is why the scans below stop being load-bearing and become confirming.
+
+WHAT SEALING DID NOT BUY, stated because the packet's own thesis demands it: the
+planted evasion still TYPE-CHECKS. Spreading `any` into an object literal yields `any`,
+and excess-property checking does not apply to `any`, so removing the field does not
+produce a compiler error at the plant (verified: `tsc --noEmit` exits 0 with the
+reviewer's exact line in `src/`). What it produces is INERTNESS — no code reads
+`opts.pin` any more, so the bag can carry the key and change nothing. The proof of the
+seal is therefore behavioural, not a compiler diagnostic: the control below replays the
+reviewer's construction verbatim and asserts the record is READ.
 
 NON-VACUITY. A permissive default makes it very easy to write an assertion that
 passes because there is nothing left to catch, so the scan is proved against planted
@@ -261,9 +286,28 @@ const DECLARED_PIN_IDENTIFIER_SITES: readonly string[] = [
   'services/telemetry/segment.ts:const pinRank = KNOWN_SCHEMA_VERSIONS.indexOf(pin);',
   'services/telemetry/segment.ts:pin?: string;', // SegmentDecodeOptions — the knob
   // --- the one forwarding hop, declared so its callers are a bounded question. ---
-  'services/telemetry/session-export.ts:...(opts?.pin === undefined ? {} : { pin: opts.pin }),',
-  'services/telemetry/session-export.ts:pin?: string;', // CombineSessionOpts — hop 2
+  'services/telemetry/session-export.ts:...(readPin === undefined ? {} : { pin: readPin }),',
 ];
+
+/**
+ * Every `src/` occurrence of the TEST-ONLY seam's name. The seal's own control: the
+ * pin left `CombineSessionOpts` so no data-shaped value can reach the read policy, and
+ * what remains is a door that can ONLY be opened by writing this identifier. Unlike a
+ * field on an options bag, that is a thing a text scan can genuinely establish.
+ */
+function seamCallSites(files: SourceMap): string[] {
+  const found: string[] = [];
+  for (const [path, source] of files) {
+    const body = codeOnly(source);
+    for (const match of body.matchAll(/\bcombineSessionAtPinForTests\b/g)) {
+      const before = body.slice(Math.max(0, match.index - 30), match.index);
+      // The definition itself declares the seam; it does not call it.
+      if (/\b(?:export\s+)?function\s+$/.test(before)) continue;
+      found.push(path);
+    }
+  }
+  return [...new Set(found)].sort();
+}
 
 /**
  * Every `src/` site handing a SECOND argument (the read policy) to the decoder, as
@@ -345,9 +389,9 @@ function pinPropertyExpressions(files: SourceMap): string[] {
 const DECLARED_PIN_PROPERTY_SITES: readonly string[] = [
   // The update act forwarding its own CLI flag into an error envelope's data bag.
   'acts/update.ts:opts.pin',
-  // combineSession threading its caller's optional pin through, or omitting the key
-  // entirely when unset. A pure forward: it can raise nothing on its own initiative.
-  'services/telemetry/session-export.ts:opts.pin',
+  // The combine's private body threading the pin it was CALLED with — a positional
+  // parameter, not a bag field, so nothing data-shaped can arrive here.
+  'services/telemetry/session-export.ts:readPin',
 ];
 
 /** A genuine, serializer-produced segment — never a bespoke shape. */
@@ -503,6 +547,65 @@ describe('no production path can raise the read pin (load-bearing)', () => {
     }
   });
 
+  it('CONTROL: the SEAL — a `pin` on the production options bag changes NOTHING', () => {
+    /*
+    Test Doc:
+    - Why: THE control for ruling #11, and the one the three scans above could not be.
+      A reviewer CONSTRUCTED the evasion rather than arguing it — it added
+      `combineSession(id, deps, { ...JSON.parse(config) })` to real `src/` and this file
+      stayed 9/9 green: a value arriving through `any` carries no token, so nothing
+      textual can see it. The answer is not a better scan. `pin` left
+      `CombineSessionOpts`, so the key can be present and mean nothing.
+    - Contract: the reviewer's exact construction, replayed here, does NOT raise the
+      read policy. The 2.4 record is READ and counted; the refusal tally stays zero.
+    - Worked Example: run against the pre-seal source this FAILS with
+      `below_pin: 1` — the plant worked, which is precisely why it had to be sealed.
+    - Boundary: removing the field does NOT make the plant a compile error (`tsc`
+      exits 0 on it — spreading `any` yields `any`). It makes it INERT, and inertness
+      is only observable by running it. Hence a behavioural control, not a type one.
+    */
+    const config = '{"pin":"2.7"}';
+    const bag = { root: '/work', ...JSON.parse(config) };
+    // The bag really does carry the key — this control is not passing by accident.
+    expect((bag as { pin?: string }).pin).toBe('2.7');
+
+    const exp = combineSession(
+      'sessKnob',
+      bufferOf([{ ...realSegment(), schema_version: '2.4' }]),
+      bag,
+    );
+    expect(exp.summary.segments_refused).toEqual({
+      below_pin: 0,
+      unsupported_version: 0,
+      malformed: 0,
+    });
+    expect(exp.summary.segment_schema_versions['2.4']).toBe(1);
+  });
+
+  it('CONTROL: the one remaining door is an IDENTIFIER, and no src/ file names it', () => {
+    /*
+    Test Doc:
+    - Why: the seal moves the pin behind `combineSessionAtPinForTests`, which keeps
+      `below_pin`'s ENVELOPE plumbing exercised at a real caller. That door has to stay
+      out of production — but unlike a bag field it CANNOT be opened by data, because
+      `JSON.parse` returns values and never bindings. Reaching it requires writing the
+      name, so here the scan is sufficient rather than merely the best available.
+    - Contract: no file under src/ calls the seam.
+    - Worked Example: the guard below plants a call in a file that mentions neither the
+      decoder nor a pin, and it is reported.
+    */
+    expect(seamCallSites(readSrcFiles())).toEqual([]);
+
+    const planted: SourceMap = new Map([
+      [
+        'acts/report.ts',
+        ["const exp = combineSessionAtPinForTests(id, deps, {}, '2.7');"].join(''),
+      ],
+      ['acts/quiet.ts', ['export const nothing = 1;'].join('')],
+    ]);
+    expect(seamCallSites(planted)).toEqual(['acts/report.ts']);
+  });
+
   it('CONTROL: the declared default IS the floor — production refuses nothing it could read', () => {
     /*
     Test Doc:
@@ -549,7 +652,7 @@ describe('no production path can raise the read pin (load-bearing)', () => {
     policing a parameter that does nothing, and `below_pin` would be unreachable
     everywhere rather than merely unreachable in production. The machinery has to be
     able to name a below-pin refusal the day someone raises the pin — that is the ONLY
-    reason the parameter survives.
+    reason the seam survives the seal.
     */
     const rec = { ...realSegment(), schema_version: '2.4' };
     expect(decodeSegmentDetailed(rec).ok).toBe(true);
@@ -559,8 +662,9 @@ describe('no production path can raise the read pin (load-bearing)', () => {
       schema_version: '2.4',
     });
     expect(decodeSegment(rec, { pin: '2.7' })).toBeNull();
-    // …and it reaches the envelope, not just the decoder.
-    const exp = combineSession('sessKnob', bufferOf([rec]), { root: '/work', pin: '2.7' });
+    // …and it reaches the envelope, not just the decoder — through the seam, which is
+    // now the only caller-surface path that can.
+    const exp = combineSessionAtPinForTests('sessKnob', bufferOf([rec]), { root: '/work' }, '2.7');
     expect(exp.summary.segments_refused.below_pin).toBe(1);
   });
 

@@ -166,24 +166,6 @@ export interface CombineSessionOpts {
   /** Explicit telemetry buffer root override; the buffer is `<root>/.harness/temp/telemetry`. */
   root?: string;
   /**
-   * READ-PIN override — the oldest `schema_version` this combine will read.
-   *
-   * PRODUCTION NEVER SETS THIS, and the direction of the danger is the point: omitted,
-   * the decoder reads {@link SEGMENT_SCHEMA_PIN}, which sits at the FLOOR of the known
-   * version set, so production refuses nothing it could have read. A caller that sets
-   * this can therefore only make the read STRICTER, never more permissive — it is a
-   * lever for refusing live data, which is why no `src/` site may originate a value for
-   * it.
-   *
-   * It exists so `below_pin` — unreachable in production at a floor pin — stays
-   * exercisable at a REAL caller's surface (packet ruling #1.1: a channel nobody reads
-   * is not a channel), rather than degrading to a decoder-only artifact whose envelope
-   * plumbing nothing proves. `test/services/telemetry/pin-knob-src-usage.test.ts` holds
-   * every `src/` pin site against a declared allowlist and asserts none originates a
-   * value, which is what keeps this from becoming a second door.
-   */
-  pin?: string;
-  /**
    * The source discriminator echoed into `source.kind` (default `'temp'`). The
    * git-ref source passes `'git-ref'`; combine itself is source-agnostic — it reads
    * whatever the injected {@link CombineFs} exposes (a temp buffer or committed
@@ -590,11 +572,56 @@ export function combineSession(
   deps: CombineSessionDeps,
   opts?: CombineSessionOpts,
 ): SessionExport {
+  return combineSessionAtPin(sessionId, deps, opts, undefined);
+}
+
+/**
+ * TEST-ONLY SEAM — the below-pin surfacing door, deliberately shaped as an IDENTIFIER
+ * rather than as a field on {@link CombineSessionOpts} (packet ruling #11).
+ *
+ * `pin` used to live on the production options bag. A reviewer then CONSTRUCTED the
+ * evasion rather than arguing it: `combineSession(id, deps, { ...JSON.parse(cfg) })`
+ * type-checks, carries no `pin` token anywhere in `src/`, and raised the read policy
+ * with all three static scans green. A field on a bag production callers already pass
+ * can be filled by DATA, and data leaves nothing for a text scan to find.
+ *
+ * An identifier cannot arrive that way. `JSON.parse` returns values, never bindings;
+ * to reach this function a caller must WRITE this name, and a written name is the one
+ * thing the exhaustive `src/` scan cannot miss. That is the seal: not a rule against
+ * setting a pin, but a door no data-shaped value can open.
+ *
+ * It exists because `below_pin` is unreachable in production at a floor pin, and a
+ * channel nobody reads is not a channel (ruling #1.1) — the ENVELOPE plumbing that
+ * carries a refusal reason out to `summary.segments_refused` has to stay exercised at
+ * a real caller's surface, not just inside the decoder.
+ *
+ * NO `src/` CALLER MAY NAME THIS. `test/services/telemetry/pin-knob-src-usage.test.ts`
+ * asserts that, and a planted violation fails it.
+ */
+export function combineSessionAtPinForTests(
+  sessionId: string,
+  deps: CombineSessionDeps,
+  opts: CombineSessionOpts | undefined,
+  readPin: string,
+): SessionExport {
+  return combineSessionAtPin(sessionId, deps, opts, readPin);
+}
+
+/**
+ * The combine itself. Private: the only two ways in are {@link combineSession} (no
+ * pin — the floor policy) and {@link combineSessionAtPinForTests} (a declared pin).
+ */
+function combineSessionAtPin(
+  sessionId: string,
+  deps: CombineSessionDeps,
+  opts: CombineSessionOpts | undefined,
+  readPin: string | undefined,
+): SessionExport {
   const root = opts?.root ?? deps.proc.cwd();
   const telDir = telemetryDir(root);
   const sessionDir = posixJoin(telDir, sessionId);
   const { reads, refused: segmentsRefused } = readSessionSeqs(deps.fs, sessionDir, {
-    ...(opts?.pin === undefined ? {} : { pin: opts.pin }),
+    ...(readPin === undefined ? {} : { pin: readPin }),
   });
 
   // Schema-version histogram (records v1 too — AC-02) + timecode bounds.

@@ -26,7 +26,8 @@ it was handed over confidently.
 | **FX004** | **complete** — both faces fixed, 7 mutations fire, guards both directions |
 | **FX002** | **complete** — read-time resolution, 5 mutations fire, never fabricates |
 | **Pin** | **complete — value reversed to the FLOOR** (R2); the reason channel, total decoder, caller audit and per-reason tallies all stand |
-| Pin-knob control | **rewritten TWICE** — to the INVERTED hazard (R2), then to a SCOPE THAT FOLLOWS THE PIN (R3, after a third blindness). Proven by four planted `src/` mutations |
+| Pin-knob control | **rewritten THREE times** — to the INVERTED hazard (R2), to a SCOPE THAT FOLLOWS THE PIN (R3), and then **superseded as the primary guarantee** (R4: the door was SEALED, not policed). Proven by six planted `src/` mutations |
+| Pin door | **SEALED (R4, ruling #11)** — `pin` removed from `CombineSessionOpts`; the below-pin surfacing lives behind a named test-only seam |
 | Registry-shape control (#3.1) | **already existed** — reported, not duplicated |
 | Discard proof | **complete** — fires, and proven inert in the live tree |
 
@@ -492,7 +493,125 @@ defect it is meant to catch, so `/tmp/packet-mut.py` now accepts a list of edits
 and reverted as one unit. Disclosed rather than worked around by shrinking the mutation
 to fit the tool.
 
-## The registry-shape control (Ruling #3.1) — already present, not duplicated
+## R4 — the scan was right and the CLAIM was wrong; the door is SEALED, not policed
+
+**The reviewer did not argue the hole — it BUILT one.** It added
+
+```ts
+combineSession(sessionId, deps, { ...JSON.parse(config) })
+```
+
+to production source and `pin-knob-src-usage.test.ts` stayed **9/9 GREEN**. No `pin`
+identifier, no `pin:` property, no direct decoder call: all three static scans defeated
+at once, and **none of them defective**.
+
+That distinction decides the fix. The scans do exactly what they say — they find every
+place `pin` is **written** in `src/`. The file's prose asserted something stronger:
+that *no production path can raise the pin*. A value arriving through `any` needs no
+token at all, so text scanning can establish the first claim and can never establish the
+second. Boundary 9 had named this case; its stated mitigation only detected a **new type
+entry point**, and this was a new **filling of the existing one**.
+
+Two honest end states existed — close the hole and keep the claim, or keep the hole and
+weaken every claim to what the scan proves. Keeping both the hole and the strong claim
+would have been **this packet's own defect class, committed in the packet's own prose**.
+Ruled (ruling #11) and taken: **close it**.
+
+### The seal, and why the SHAPE of the door is the whole argument
+
+`pin` is **removed from `CombineSessionOpts`**. The below-pin surfacing moves behind
+`combineSessionAtPinForTests(sessionId, deps, opts, readPin)` — a named export taking
+the pin as a **positional argument**. Both entry points delegate to a private
+`combineSessionAtPin`; production's only door passes `undefined`.
+
+The change is not "a better hiding place". It is a change of **kind**:
+
+| | Before | After |
+|---|---|---|
+| How the door opens | a FIELD on a bag production already constructs | an IDENTIFIER a caller must WRITE |
+| Can data open it? | **yes** — `{ ...JSON.parse(cfg) }`, no token anywhere | **no** — `JSON.parse` returns values, never bindings |
+| What a scan can prove | "nobody wrote a pin" (weaker than the claim) | "nobody named the seam" (exactly the claim) |
+
+So the scans stop being load-bearing and become **confirming**. That is the point of
+sealing over policing: no scan can be defeated, because no scan is what holds.
+
+### What sealing did NOT buy — the ruling's suggested proof does not hold
+
+The ruling asked me to cite a compiler error: *"the proof is that the planted source no
+longer compiles"*. **It still compiles.** I planted the reviewer's exact line in real
+`src/acts/telemetry.ts` and ran `npx tsc --noEmit -p tsconfig.json` → **exit 0**.
+Spreading `any` into an object literal yields `any`, and excess-property checking does
+not apply to `any`, so removing the field produces no diagnostic at the call site.
+
+What removal produces is **inertness**: no code reads `opts.pin` any more, so the bag can
+carry the key and change nothing. Inertness is only observable by **running** it — hence
+the seal's control is behavioural, not a type error. Stated here rather than quietly
+substituted, because a ruling's predicted evidence that does not materialise is exactly
+the kind of thing that gets rounded to "done" in a report.
+
+### The two new controls, and their pre-fix output
+
+**PIN-M11 — the sealed hole, re-armed.** `pin?: string` restored to `CombineSessionOpts`
+and read back into the decode options. The SEAL control replays the reviewer's exact
+construction and fails:
+
+```text
+FAIL  CONTROL: the SEAL — a `pin` on the production options bag changes NOTHING
+AssertionError: expected { below_pin: 1, …(2) } to deeply equal { below_pin: +0, …(2) }
+
+  {
+-   "below_pin": 0,
++   "below_pin": 1,
+    "malformed": 0,
+    "unsupported_version": 0,
+  }
+```
+
+`below_pin: 1` is the reviewer's evasion **working** — a 2.4 record refused by a policy
+nothing in `src/` ever named. Post-seal the same construction reads the record. The
+control also asserts the bag genuinely carries `pin: '2.7'` at runtime, so it cannot pass
+by the key having quietly gone missing.
+
+**PIN-M12 — a production lane CALLS the seam.** Planted in `acts/telemetry.ts`, the file
+that names neither the decoder nor a pin — the same blind spot that hid the R3 plant:
+
+```text
+FAIL  CONTROL: the one remaining door is an IDENTIFIER, and no src/ file names it
+AssertionError: expected [ 'acts/telemetry.ts' ] to deeply equal []
++   "acts/telemetry.ts",
+```
+
+Its guard (a synthetic `Map`) plants a seam call in a file mentioning nothing about
+telemetry and a second file mentioning nothing at all, and asserts only the first is
+reported — so the scan cannot pass by reporting everything or nothing.
+
+### The gate runner had a silent defect, found while adding these
+
+Adding two same-file edits exposed a bug in `/tmp/packet-mut.py`'s multi-edit loop: it
+re-read the **pristine** original for each edit, so for two edits to one file **only the
+last survived**. PIN-M10 (added in R3) had been applying its call-site edit and silently
+dropping its import edit — it still fired, so nothing said so. **A gate quietly applying
+less than it claims is this packet's defect class living in the instrument**, and it was
+invisible for exactly the reason the packet is about: the observable outcome (FIRES) is
+identical either way. Fixed to compose edits; the whole gate re-run afterwards.
+
+Consequence, recorded rather than smoothed over: **PIN-M9 dropped 3 failures → 2** and
+**PIN-M10 5 → 2**. Not a control going blind — the seal makes a planted `{ pin: … }`
+**inert at runtime**, so the behavioural assertion it used to trip no longer trips. The
+scans still catch both plants, which is the honest residue: after the seal, a written pin
+is a **hygiene** violation rather than a live hazard.
+
+### R4 interaction pass (ruling #6, re-run because an item changed)
+
+| # | Question | Finding |
+|---|---|---|
+| L1 | Does the seal break the floor pin (R2)? | No. The floor is `SEGMENT_SCHEMA_PIN` in the decoder; the seal removes a *caller-side* override only. The floor controls are untouched and still pass. |
+| L2 | Does it make `below_pin` unreachable — the vacuity R2 warned about? | No, and this was the reason deletion was rejected in R2. The seam preserves the end-to-end surfacing at a real caller: `GUARD: the knob is NOT inert` still drives `combineSessionAtPinForTests` and still sees `below_pin: 1` in the **envelope**, not just the decoder. |
+| L3 | Does it touch the reader divergence (ruling #9, retracted in R2)? | No. `validSegment` was never routed through `combineSession`; the accept sets are unchanged. The retraction stands. |
+| L4 | Does it interact with FX002's read-time resolution? | No shared surface. FX002 resolves identity from the pij registry; the pin governs which `schema_version` decodes. Verified by the gate: all FX002 mutations still fire at unchanged counts. |
+| L5 | Does removing a production type break any other caller? | Four `combineSession` call sites in `src/` (`acts/telemetry.ts` ×3, `published-telemetry.ts` ×1) — **none passed a pin**; `tsc --noEmit` clean; full suite green. The blast radius was real and empty. |
+
+
 
 `harness/cli/test/output/error-codes.test.ts` already asserts
 `expect(code).toMatch(/^E\d{3}$/)` across `Object.values(ErrorCodes)` — exactly the
@@ -665,7 +784,7 @@ fails `E222` on sessions whose `checks` event has gate keys containing `:` or a 
 producer/reader **grammar** drift, unrelated to version. Stated, not fixed; that is the
 trade, and after R2 it costs nothing observable.
 
-## The Dim-0 mutation gate — 24 mutations, ALL FIRE (was 22, was 20)
+## The Dim-0 mutation gate — 26 mutations, ALL FIRE (was 24, was 22, was 20)
 
 Every mutation restores a **pre-fix behaviour**, not merely broken code. Runner:
 `/tmp/packet-mut.py`. Counts below are from the final post-`biome` run (anchors were
@@ -684,12 +803,14 @@ re-verified after reformatting).
 | PIN-M2 an ABOVE-pin version mislabelled `below_pin` | 4 |
 | PIN-M3 `decodeLooseSegment` catch collapses its reason | 2 |
 | PIN-M4 session export drops the refusal tally from the envelope | 3 |
-| **PIN-M5 knob default DIVERGES from the declared policy constant** *(rewritten — see below)* | 10 |
-| PIN-M6 the pin compared by EQUALITY rather than as a floor | 15 |
+| **PIN-M5 knob default DIVERGES from the declared policy constant** *(rewritten — see below)* | 11 |
+| PIN-M6 the pin compared by EQUALITY rather than as a floor | 16 |
 | **PIN-M7 a production lane silently RAISES the pin (`ref-source`)** *(new, R2)* | 4 |
-| **PIN-M8 the pass-through ORIGINATES a policy instead of forwarding one** *(new, R2)* | 8 |
-| **PIN-M9 a pin ORIGINATES in a file that never names the decoder** *(new, R3 — the reviewer's plant)* | 2 |
-| **PIN-M10 a pin originates THREE hops out, via a forwarder that is not the decoder** *(new, R3, cross-file)* | 2 |
+| **PIN-M8 the pass-through ORIGINATES a policy instead of forwarding one** *(new, R2)* | 9 |
+| **PIN-M9 a pin ORIGINATES in a file that never names the decoder** *(R3 — the reviewer's plant; 3 → 2 after the R4 seal made it inert)* | 2 |
+| **PIN-M10 a pin originates THREE hops out, via a forwarder that is not the decoder** *(R3, cross-file; 5 → 2, same reason)* | 2 |
+| **PIN-M11 `pin` re-added to the production options bag — the sealed hole, re-armed** *(new, R4)* | 3 |
+| **PIN-M12 a production lane CALLS the test-only pin seam** *(new, R4)* | 1 |
 | FX002-M1 adopted seat never consults the registry | 6 |
 | FX002-M2 ambiguity resolved by first-wins GUESS (the false green) | 2 |
 | FX002-M3 "no match" folded into "registry unavailable" | 2 |
@@ -772,19 +893,24 @@ production stricter. It fires 9.
    prospective. Keeping it is the right call; claiming field validation for it would not
    be.
 
-9. **The pin scan is a TEXT scan, not a type-aware one — three evasions survive, named.**
-   The redesign makes the scan hop-count-independent, not omniscient. It would **not**
-   catch: (a) a computed key — `bag['p' + 'in'] = '2.7'`; (b) a spread of a bag whose pin
-   arrived from **outside `src/`**, e.g. `combineSession(a, b, { ...JSON.parse(cfg) })`,
-   where no `pin` token appears anywhere in production source; (c) a rename at a
-   distance through an untyped `Record<string, unknown>`. (a) and (c) are deliberate
-   evasion and I am content to leave those to review. **(b) is the real one** — it is
-   plausible rather than pathological, and I could not close it without type information
-   the scan does not have. Stated rather than papered over. The mitigating fact is that
-   the two pin-accepting **type declarations** (`SegmentDecodeOptions`,
-   `CombineSessionOpts`) are themselves in the declared list, so a *new* pin-accepting
-   entry point still cannot appear silently — only a new *filling* of an existing one via
-   spread.
+9. **The pin scan is a TEXT scan, not a type-aware one — and (b) was BUILT, not
+   hypothesised. CLOSED BY SEALING (R4).** As written in R3 this boundary named three
+   evasions: (a) a computed key `bag['p' + 'in'] = '2.7'`; (b) a spread of a bag whose
+   pin arrived from **outside `src/`**, e.g. `combineSession(a, b, { ...JSON.parse(cfg) })`;
+   (c) a rename at a distance through an untyped `Record<string, unknown>`. I called (b)
+   "the real one" and left it open. **The reviewer then constructed it in production
+   source and the suite stayed 9/9 green** — the boundary was correctly named and
+   insufficiently acted on, and its stated mitigation (a new pin-accepting *type* cannot
+   appear silently) did not apply, because this was a new **filling** of an existing one.
+
+   R4 closes all three at once, and not by scanning harder: `pin` no longer exists on
+   `CombineSessionOpts`, so there is no field for any of (a), (b) or (c) to fill. What
+   replaces it is an **identifier**-shaped door, which data cannot open — the residual
+   scan is now sufficient for what it claims rather than weaker than it. The equivalent
+   hole at `SegmentDecodeOptions` (the decoder's own bag) is **not** closed and is not in
+   scope: it is reached only from `services/telemetry`, its two `src/` call sites are
+   declared, and sealing it would remove the knob the below-pin machinery is tested
+   through. Named here so the seal is not read as wider than it is.
 
 10. **The tokenizer's regex/division disambiguation is a HEURISTIC.** It decides `/`
     starts a regex from the preceding token, which is the standard approach and is not
@@ -814,12 +940,23 @@ production stricter. It fires 9.
     be asserting a conclusion I did not reach — the exact move this packet exists to
     stop. It is very likely pre-existing and unrelated, and I could not establish that.
 
+    **R4 status: UNEXPLAINED, NOT CLEARED.** The reviewer added three more full
+    4531/313 suites and seven isolated runs with no recurrence, and R4 adds another
+    green full run — and correctly declined to call that absolution. Nine-plus green
+    runs cannot prove a negative about something that fired three times. **It remains a
+    live risk to CI**: if it fires there the PR does not go green, and we will know
+    nothing more than we know now.
+
 ## Fence
 
 `git status --short` touches only `harness/cli/src/**`, `harness/cli/test/**`,
 `.harness/extensions/flow-eval/` (**one new test file**, R1 only — untouched in R2), and
 `docs/fixes/FX002-*`. `package-lock.json` **unmodified**. Nothing pushed.
 
-**Full suite: 4528 passed / 313 files, zero failures** (R1: 4523 — the R2 control rewrite
-and the new self-readability guard are a net +5). Warn trio byte-identical to the
-dispatch baseline at every checkpoint: **arch 2 / markdown 196 / windows 6**.
+**Full suite: 4533 passed / 313 files, zero failures** (R1: 4523; R3: 4531 — R4's two
+seal controls are a net +2). Warn trio byte-identical to the dispatch baseline at every
+checkpoint including R4: **arch 2 / markdown 196 / windows 6**.
+
+R4 touched **one production file** (`src/services/telemetry/session-export.ts` — the
+type change ruling #11 required) plus two test files and this log. `package-lock.json`
+**unmodified**. Nothing pushed.

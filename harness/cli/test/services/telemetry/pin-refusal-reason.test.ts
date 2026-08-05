@@ -17,7 +17,10 @@ import {
   type SegmentInput,
   serializeSegment,
 } from '../../../src/services/telemetry/segment.js';
-import { combineSession } from '../../../src/services/telemetry/session-export.js';
+import {
+  combineSession,
+  combineSessionAtPinForTests,
+} from '../../../src/services/telemetry/session-export.js';
 
 /*
 THE READ PIN — a record we will not read must SAY so.
@@ -232,13 +235,16 @@ describe('the pin at a REAL caller surface (ruling #1.1 — a channel nobody rea
       shape as FX003's R1-M9 ("a validator nothing calls proves nothing").
     - Contract: summary.segments_refused counts the declined record, by reason, and the
       record does NOT appear in the schema-version histogram (it was not read).
-    - Worked Example: driven at a RAISED pin, because at the production floor pin
-      nothing is below_pin. That is exactly why the combine keeps a pin parameter: it
+    - Worked Example: driven at a RAISED pin through the TEST-ONLY seam, because at the
+      production floor pin nothing is below_pin. The seam exists for exactly this: it
       is the only path by which `below_pin`'s ENVELOPE plumbing stays exercised rather
-      than becoming a decoder-only artifact nothing proves.
+      than becoming a decoder-only artifact nothing proves. It is a named identifier
+      and NOT a field on the production options bag — ruling #11, after a reviewer
+      constructed `combineSession(id, deps, { ...JSON.parse(cfg) })` and raised the pin
+      with every static scan green.
     */
     const deps = bufferOf([{ ...realSegment(), schema_version: '2.6' }]);
-    const exp = combineSession('sessPin', deps, { root: '/work', pin: RAISED_PIN });
+    const exp = combineSessionAtPinForTests('sessPin', deps, { root: '/work' }, RAISED_PIN);
     expect(exp.summary.segments_refused).toEqual({
       below_pin: 1,
       unsupported_version: 0,
@@ -265,7 +271,7 @@ describe('the pin at a REAL caller surface (ruling #1.1 — a channel nobody rea
       { ...realSegment(), schema_version: '9.9-private' },
       '{ not json at all',
     ]);
-    const exp = combineSession('sessPin', deps, { root: '/work', pin: RAISED_PIN });
+    const exp = combineSessionAtPinForTests('sessPin', deps, { root: '/work' }, RAISED_PIN);
     expect(exp.summary.segments_refused).toEqual({
       below_pin: 1,
       unsupported_version: 1,
