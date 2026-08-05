@@ -175,6 +175,62 @@ outside-but-has-extensions (probe 4) break the confound.
 probed it anyway, and stopped rather than building on it. That is the behaviour this
 whole packet is about.
 
+## Ruling #3 (2026-08-05) — the discard, the remedy wording, and a labelling rule
+
+### 1. Prove the `/^E\d{3}$/` discard — do not merely satisfy it
+
+The new code must match the pattern, **and the discard must be demonstrated on a
+known-bad**. Sit with why: this packet's thesis is *unavailability must announce
+itself*, and **the fix's own error code can vanish into a sibling lane without a
+word** if it fails that shape. Same defect, one layer over, inside the machinery we
+are shipping to cure it.
+
+That guard has only ever run against input satisfying it — **demonstrated, not
+tested**, a distinction that has cost us twice tonight.
+
+**Placement — two controls, not one, because they prove different things:**
+
+- **In-fence, and the more valuable of the two**: a control in `harness/cli/test/**`
+  asserting **every** code in the registry matches `/^E\d{3}$/`. This catches every
+  *future* code, not just ours, and it lives where the registry lives.
+- **The discard proof itself** needs a fixture in `.harness/extensions/flow-eval/**`,
+  which is forbidden here — **routed to prime, not taken.** See the note below.
+
+### 2. The remedy must not smuggle the dead mechanism back in
+
+*"Try running from the repo root"* is a remedy sentence that still encodes *"the
+problem is that you are not in the repo."* A user who follows it and succeeds learns
+the **retracted theory**, with our name on it.
+
+**But the corrected phrasing has a trap of its own.** *"The nearest directory that
+has extensions is `<path>`"* requires **finding** that directory — i.e. walking up —
+which is exactly what discovery deliberately does **not** do. A diagnostic may search
+where the loader does not, but then:
+
+- it must **actually find** the path before naming one — **never** assert a path it
+  did not verify holds a loadable extension; and
+- when no such directory exists, it says **that**, rather than falling back to a
+  guess about the repo root.
+
+Otherwise the fix's own message asserts something it did not establish — for the
+third time on this defect.
+
+### 3. Labelling rule — an inherited mechanism is a HYPOTHESIS
+
+Standing, and adopted because the transmission path is now visible: prime published
+a mechanism as established, **I wrote it into this dossier as established**, and from
+that moment it read as settled to everyone downstream. Neither of us marked it as
+inherited.
+
+> **A mechanism you did not establish yourself is a hypothesis — however confidently
+> it was handed to you, and whoever handed it to you.** Cheapest probe first, before
+> any code rests on it.
+
+**In this dossier and every future one**: a mechanism claim is labelled
+**ESTABLISHED (probe cited)** or **INHERITED — UNVERIFIED**. One word, at the point
+of writing. The FX004 mechanism above should have carried the second label and did
+not.
+
 ## Controls — planted-bad, every one must FIRE pre-fix
 
 Same discipline as FX001/FX003: **Dim-0 mutation gate first and blocking**. A control
