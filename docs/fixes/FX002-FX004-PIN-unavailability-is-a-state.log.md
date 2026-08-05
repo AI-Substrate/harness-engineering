@@ -26,8 +26,9 @@ it was handed over confidently.
 | **FX004** | **complete** — both faces fixed, 7 mutations fire, guards both directions |
 | **FX002** | **complete** — read-time resolution, 5 mutations fire, never fabricates |
 | **Pin** | **complete — value reversed to the FLOOR** (R2); the reason channel, total decoder, caller audit and per-reason tallies all stand |
-| Pin-knob control | **rewritten THREE times** — to the INVERTED hazard (R2), to a SCOPE THAT FOLLOWS THE PIN (R3), and then **superseded as the primary guarantee** (R4: the door was SEALED, not policed). Proven by six planted `src/` mutations |
-| Pin door | **SEALED (R4, ruling #11)** — `pin` removed from `CombineSessionOpts`; the below-pin surfacing lives behind a named test-only seam |
+| Pin-knob control | **rewritten FOUR times** — to the INVERTED hazard (R2), to a SCOPE THAT FOLLOWS THE PIN (R3), **superseded as the primary guarantee** (R4: the door was SEALED, not policed), and finally **narrowed to what it proves** (R5). Proven by eight planted mutations |
+| Pin door | **SEALED (R4, ruling #11)** — `pin` removed from `CombineSessionOpts`; the below-pin surfacing lives behind a named test-only seam. The seal **holds**: a `pin` on the bag is inert |
+| Pin CLAIM | **NARROWED (R5, ruling #12)** — reflection reaches the seam, so the reachability claim is withdrawn. The claim is now what the scans establish, with the gap named in the same sentence and **asserted as a live test** |
 | Registry-shape control (#3.1) | **already existed** — reported, not duplicated |
 | Discard proof | **complete** — fires, and proven inert in the live tree |
 
@@ -611,6 +612,152 @@ is a **hygiene** violation rather than a live hazard.
 | L4 | Does it interact with FX002's read-time resolution? | No shared surface. FX002 resolves identity from the pij registry; the pin governs which `schema_version` decodes. Verified by the gate: all FX002 mutations still fire at unchanged counts. |
 | L5 | Does removing a production type break any other caller? | Four `combineSession` call sites in `src/` (`acts/telemetry.ts` ×3, `published-telemetry.ts` ×1) — **none passed a pin**; `tsc --noEmit` clean; full suite green. The blast radius was real and empty. |
 
+## R5 — the SEAL held; the CLAIM around it did not. The claim is now NARROW
+
+Ruling #12. The reviewer refuted the seal's argument the same way it refuted the last
+one — by **building** it, not by arguing it:
+
+```js
+Reflect.get(module, config.seam)
+```
+
+with the seam's **name** and the pin both arriving from JSON. No `pin` token, no seam
+token, all **11** pin controls green, and a 2.4 record reached `below_pin: 1`.
+
+The R4 claim was *"an identifier cannot arrive as data, because `JSON.parse` returns
+values and never bindings"*. **Under reflection the name is data too.** That claim is
+false and is withdrawn.
+
+### The preferred fix was attempted first, and it does not hold
+
+Ruling #12 preferred making the seam **unnameable** — export it under a `Symbol`, which
+`JSON.parse` cannot produce. I built that shape and probed it rather than reasoning
+about it. Verbatim, `/tmp/symprobe/`:
+
+```text
+reviewer construction   -> UNRESOLVED (defeated)
+two-hop construction    -> READ AT PIN 2.7
+enumeration construction-> READ AT PIN 2.7
+```
+
+- **Hop 1** `Reflect.get(m, cfg.seam)` — defeated, exactly as the ruling predicted.
+- **Hop 2** the test has to index the symbol, so the symbol must be exported under
+  *some* string name; `Reflect.get(Reflect.get(m, cfg.bag), Reflect.get(m, cfg.key))`
+  reaches it with nothing but strings out of the same JSON.
+- **Hop 0** `Object.getOwnPropertySymbols(bag)[0]` reaches it using **no name at all** —
+  strictly easier than the construction being defended against.
+
+The general fact underneath: **tests and production share one module graph, and
+reflection is total over it.** Anything a test can reach, `src/` can reach. A `Symbol`
+buys one hop, which is the instance again — the precise error of the previous four
+rounds. Per the ruling's binding stop condition (*"if it does not hold on first attempt,
+take the narrowed claim and stop"*), I took the narrowed claim. **I did not split the
+difference: no Symbol was added.** Adopting a change that defeats one construction while
+the claim still has to be narrowed would buy a stronger-looking file and no stronger
+guarantee.
+
+### What actually happened: the THREAT MODEL drifted, and only the prose moved
+
+This is the finding, and the ruling named it before I did. The control was built to
+catch a developer **accidentally** raising the pin. By round five it was being asked to
+withstand **deliberately obfuscated access** — JSON-parsed config, dynamic import,
+reflected export. Nobody writes that by mistake.
+
+Both are legitimate. They are not the same concern. And across R3→R4 the **mechanism
+never over-reached** — every scan did exactly what it said. **The prose ratcheted**,
+from "nobody wrote a pin" up to a blanket promise about what production could reach,
+with nothing anywhere comparing the two.
+
+So the defect was never in the scan. It was **an instrument whose coverage claim is
+broader than its coverage** — this packet's entire thesis, committed in the packet's own
+control. That is the third time this class has shown up *inside our own evidence* (after
+the `0`-vs-not-probeable collision tally and the retracted-reason comment in R3).
+
+### The claim, and where it now lives
+
+> No production call site raises the read pin, and none can do so without writing the
+> seam's name in source. **Deliberate dynamic dispatch is out of scope and unchecked.**
+
+Carried **verbatim** in both claim sites — `src/services/telemetry/session-export.ts`
+(the seam's doc block) and `test/services/telemetry/pin-knob-src-usage.test.ts` (the
+header) — and enforced by a control, not by care.
+
+**No fifth scan was written.** A scanner aimed at reflection would be the fourth-wrong
+thing done a fifth time, and the sixth construction would defeat it.
+
+### The two new controls
+
+**1. `CONTROL: the CLAIM and the SCAN'S COVERAGE agree, gap named in the same breath`.**
+Both claim sites must carry `NARROWED_CLAIM` verbatim, and neither may carry any wording
+retracted in rounds #11 or #12. Three planted guards prove it fires: a site with no claim,
+a site that re-broadens in prose, and a site that re-broadens **in a test title**.
+
+Two design points that were not obvious and cost a debug cycle each:
+
+- **It scans comment prose *and* `describe`/`it` titles — not the whole file.** The
+  ratchet's furthest reach *was a title*: this suite was literally named with the
+  unrestricted claim, which is the one line every failure report prints. A whole-file
+  scan is simpler and wrong: the retracted wordings are listed in-file as string
+  literals, and **a file must be able to name what it withdrew without that counting as
+  it saying so.** Comment extraction reuses `codeOnly`'s tokenizer via a sink rather than
+  adding a second scanner — a second scanner would be a second answer to "what is a
+  comment here".
+- **A scanner that reads its own test data measures itself.** Two self-reference bugs
+  fired during development: my own doc block *quoting* the retracted title tripped the
+  ban, and a fabricated guard fixture was picked up as a real title of this file. Both
+  were caught by the control, which is the control working. The fixture is now assembled
+  with the file's existing `join('')` idiom so it cannot self-match.
+
+**2. `KNOWN GAP, ASSERTED: dynamic dispatch DOES reach the seam — the claim says so`.**
+The reviewer's construction is replayed and asserted to **succeed** (`below_pin: 1`),
+while `seamCallSites` — correctly, per its stated scope — reports nothing. A gap that is
+tested cannot be closed by accident or quietly forgotten: the day someone closes it,
+**this test fails** and forces the claim above to be widened deliberately, in writing, by
+whoever earned it.
+
+### Pre-fix output, verbatim
+
+Both claim sites reverted to their pre-R5 wording (the suite title restored, the claim
+stripped from the seam's doc block):
+
+```text
+ FAIL  test/services/telemetry/pin-knob-src-usage.test.ts > no production path can raise the read pin (load-bearing) > CONTROL: the CLAIM and the SCAN'S COVERAGE agree, gap named in the same breath
+AssertionError: expected [ …(2) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "src/services/telemetry/session-export.ts: claim missing",
++   "test/services/telemetry/pin-knob-src-usage.test.ts: retracted claim \"no production path can raise\"",
++ ]
+```
+
+Note the failure header itself: the retracted claim is printed in the suite name on the
+same line as the failure. That is the artifact the title-scanning half exists for.
+
+### `SegmentDecodeOptions` — same shape one layer in, and **left**
+
+Per ruling #12: not sealed. Sealing it would remove the knob the below-pin machinery is
+tested through, and we are not trading real coverage for a claim we have just agreed to
+state honestly. **The narrowed claim applies there too, and the gap is unclosed there for
+the same reason**: `pin` is a field on the decoder's own options bag, so it can be filled
+by data, and the decoder itself can be reflected out of its module. Its two `src/` call
+sites are declared and its scope is `services/telemetry`, which is why it stays.
+
+### R5 interaction pass (ruling #6, re-run because an item changed)
+
+| # | Question | Finding |
+|---|---|---|
+| M1 | Does narrowing the claim change any **behaviour**? | No. R5 edits prose, one `describe` title, and adds two tests. `src/` behaviour is byte-unchanged apart from a doc block; `tsc --noEmit` clean. |
+| M2 | Does asserting the gap (`KNOWN GAP`) contradict the seal (R4)? | No, and this was the sharpest question. The seal's *behavioural* claim — a `pin` on `CombineSessionOpts` is INERT — is untouched and still proven by `CONTROL: the SEAL`. Only the *reachability* claim was withdrawn. Both tests now pass side by side, which is the honest picture: the field is dead, the export is reachable. |
+| M3 | Does it weaken FX002 or FX004? | No shared surface; all 12 FX002/FX004 mutations still fire at unchanged counts. |
+| M4 | Does it re-open the reader divergence (ruling #9, retracted in R2)? | No. The pin value is untouched — still the floor. `validSegment` is not involved. |
+| M5 | Does the claim-scan interact with the **tokenizer** guard (R3)? | Yes, and deliberately: `commentProse` reuses `codeOnly`, so the line-preservation control now protects the claim scan too. If the tokenizer breaks, the claim scan fails red rather than silently finding no prose — the same fail-closed direction. |
+| M6 | Could the claim control itself become true-but-empty? | It is the risk the guards exist for, and it **actually happened twice in development** (both self-reference bugs made it report violations, not silence — the safe direction). Its three planted guards fire; PIN-M13/M14 fire in real source. |
+
+
 
 
 `harness/cli/test/output/error-codes.test.ts` already asserts
@@ -784,7 +931,7 @@ fails `E222` on sessions whose `checks` event has gate keys containing `:` or a 
 producer/reader **grammar** drift, unrelated to version. Stated, not fixed; that is the
 trade, and after R2 it costs nothing observable.
 
-## The Dim-0 mutation gate — 26 mutations, ALL FIRE (was 24, was 22, was 20)
+## The Dim-0 mutation gate — 28 mutations, ALL FIRE (was 26, 24, 22, 20)
 
 Every mutation restores a **pre-fix behaviour**, not merely broken code. Runner:
 `/tmp/packet-mut.py`. Counts below are from the final post-`biome` run (anchors were
@@ -810,7 +957,9 @@ re-verified after reformatting).
 | **PIN-M9 a pin ORIGINATES in a file that never names the decoder** *(R3 — the reviewer's plant; 3 → 2 after the R4 seal made it inert)* | 2 |
 | **PIN-M10 a pin originates THREE hops out, via a forwarder that is not the decoder** *(R3, cross-file; 5 → 2, same reason)* | 2 |
 | **PIN-M11 `pin` re-added to the production options bag — the sealed hole, re-armed** *(new, R4)* | 3 |
-| **PIN-M12 a production lane CALLS the test-only pin seam** *(new, R4)* | 1 |
+| **PIN-M12 a production lane CALLS the test-only pin seam** *(new, R4)* | 2 |
+| **PIN-M13 the suite TITLE re-asserts the retracted, unrestricted claim** *(new, R5)* | 1 |
+| **PIN-M14 the narrowed claim is stripped from the seam's own doc block** *(new, R5)* | 1 |
 | FX002-M1 adopted seat never consults the registry | 6 |
 | FX002-M2 ambiguity resolved by first-wins GUESS (the false green) | 2 |
 | FX002-M3 "no match" folded into "registry unavailable" | 2 |
@@ -904,13 +1053,28 @@ production stricter. It fires 9.
    appear silently) did not apply, because this was a new **filling** of an existing one.
 
    R4 closes all three at once, and not by scanning harder: `pin` no longer exists on
-   `CombineSessionOpts`, so there is no field for any of (a), (b) or (c) to fill. What
-   replaces it is an **identifier**-shaped door, which data cannot open — the residual
-   scan is now sufficient for what it claims rather than weaker than it. The equivalent
-   hole at `SegmentDecodeOptions` (the decoder's own bag) is **not** closed and is not in
-   scope: it is reached only from `services/telemetry`, its two `src/` call sites are
-   declared, and sealing it would remove the knob the below-pin machinery is tested
-   through. Named here so the seal is not read as wider than it is.
+   `CombineSessionOpts`, so there is no field for any of (a), (b) or (c) to fill. That
+   half **stands** — a `pin` on the bag is inert, proven behaviourally.
+
+   **R5 withdraws the OTHER half.** R4 also said the replacement was an identifier-shaped
+   door "which data cannot open". **That is false and is retracted.** The reviewer built
+   `Reflect.get(module, config.seam)`: under reflection the *name* is data too. A `Symbol`
+   export was probed as the ruling preferred and does not hold either — it is reached by
+   two hops off the namespace, or by symbol enumeration naming nothing at all. Tests and
+   production share one module graph and reflection is total over it.
+
+   The boundary that remains, stated at its true width: **the scans establish that no
+   `src/` file WRITES a pin or the seam's name. They establish nothing about deliberate
+   dynamic dispatch, which is out of scope and unchecked.** That sentence is now carried
+   verbatim in both claim sites and enforced by a control, and the gap itself is asserted
+   as a passing test so closing it later cannot happen silently.
+
+   The equivalent hole at `SegmentDecodeOptions` (the decoder's own bag) is **not** closed
+   and is not in scope (ruling #12 confirms: leave it): it is reached only from
+   `services/telemetry`, its two `src/` call sites are declared, and sealing it would
+   remove the knob the below-pin machinery is tested through. **The narrowed claim applies
+   there too, unclosed for the same reason.** Named here so the seal is not read as wider
+   than it is.
 
 10. **The tokenizer's regex/division disambiguation is a HEURISTIC.** It decides `/`
     starts a regex from the preceding token, which is the standard approach and is not
@@ -940,7 +1104,7 @@ production stricter. It fires 9.
     be asserting a conclusion I did not reach — the exact move this packet exists to
     stop. It is very likely pre-existing and unrelated, and I could not establish that.
 
-    **R4 status: UNEXPLAINED, NOT CLEARED.** The reviewer added three more full
+    **R4/R5 status: UNEXPLAINED, NOT CLEARED — not upgraded (ruling #12).** The reviewer added three more full
     4531/313 suites and seven isolated runs with no recurrence, and R4 adds another
     green full run — and correctly declined to call that absolution. Nine-plus green
     runs cannot prove a negative about something that fired three times. **It remains a
@@ -953,10 +1117,11 @@ production stricter. It fires 9.
 `.harness/extensions/flow-eval/` (**one new test file**, R1 only — untouched in R2), and
 `docs/fixes/FX002-*`. `package-lock.json` **unmodified**. Nothing pushed.
 
-**Full suite: 4533 passed / 313 files, zero failures** (R1: 4523; R3: 4531 — R4's two
-seal controls are a net +2). Warn trio byte-identical to the dispatch baseline at every
+**Full suite: 4535 passed / 313 files, zero failures** (R1: 4523; R3: 4531; R4: 4533 —
+R5's claim control and asserted-gap test are a net +2). Warn trio byte-identical to the dispatch baseline at every
 checkpoint including R4: **arch 2 / markdown 196 / windows 6**.
 
 R4 touched **one production file** (`src/services/telemetry/session-export.ts` — the
-type change ruling #11 required) plus two test files and this log. `package-lock.json`
-**unmodified**. Nothing pushed.
+type change ruling #11 required) plus two test files and this log. **R5 touches no
+production behaviour at all**: one doc block in that same file, and the control file
+plus this log. `package-lock.json` **unmodified**. Nothing pushed.

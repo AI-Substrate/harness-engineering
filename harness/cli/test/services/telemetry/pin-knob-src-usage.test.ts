@@ -64,18 +64,47 @@ CLAIM was wrong. A reviewer did not argue the hole, it BUILT one: it added
 this file stayed 9/9 GREEN. No `pin` identifier, no `pin:` property, no direct decoder
 call — a value arriving through `any` needs no token at all, so every static scan is
 defeated at once and none of them is defective. Text scanning can establish "nobody
-WROTE a pin"; it cannot establish "no production path can RAISE the pin", and this
-file's prose asserted the second.
+WROTE a pin"; it cannot establish that no production path REACHES the read policy, and
+this file's prose asserted the second.
 
 SO THE DOOR IS SEALED, NOT POLICED (packet ruling #11, reversing the earlier decision
 to keep and police the parameter). `pin` is GONE from `CombineSessionOpts`. The
 below-pin surfacing lives behind `combineSessionAtPinForTests` — a named export, taking
-the pin as a POSITIONAL argument. The shape is the whole point: a FIELD on a bag that
-production callers already construct can be filled by DATA, and data leaves nothing to
-find; an IDENTIFIER cannot arrive that way, because `JSON.parse` returns values, never
-bindings. To reach the seam a caller must WRITE the name, and a written name is the one
-thing an exhaustive scan cannot miss. The hazard moved from undetectable to trivially
-detectable, which is why the scans below stop being load-bearing and become confirming.
+the pin as a POSITIONAL argument. That much stands and is worth having: a `pin` key on
+the bag is now INERT, so the reviewer's construction buys nothing.
+
+THE FIFTH FAILURE — AND IT IS THE CLAIM AGAIN, NOT THE SCAN. The seal shipped with the
+argument that a FIELD can be filled by data but an IDENTIFIER cannot, because
+`JSON.parse` returns values and never bindings. The reviewer refuted that by building
+it: `Reflect.get(module, config.seam)`, with the seam's NAME and the pin both arriving
+from JSON. All eleven pin controls stayed green and a 2.4 record reached `below_pin: 1`.
+Under reflection the name is data too. A probe run here (see the log's R5 section)
+pushed it further: exporting the seam under a `Symbol` defeats that exact line, and is
+then defeated in turn by two hops off the namespace, and by symbol ENUMERATION using no
+name at all. Tests and production share one module graph, and reflection is total over
+it — so a seam a test can reach is a seam `src/` can reach.
+
+NAME WHAT ACTUALLY HAPPENED: THE THREAT MODEL DRIFTED. This control was built to catch
+a developer ACCIDENTALLY raising the pin — adding a caller, forwarding an option,
+filling a bag. Five rounds later it was being asked to defend against DELIBERATELY
+OBFUSCATED ACCESS: source that JSON-parses a config, reflects a named export out of a
+module, and calls it. Nobody writes that by mistake; it is code written to defeat the
+check. Both are legitimate concerns and they are NOT THE SAME CONCERN — and the claim
+in this file had been quietly ratcheting to cover the second while the mechanism was
+built for the first. That mismatch, not the reflection, is the defect: an instrument
+whose coverage claim is broader than its coverage. It is the exact thing this packet
+exists to kill, committed in the packet's own prose.
+
+THE CLAIM, NARROWED TO WHAT IS ACTUALLY ESTABLISHED (packet ruling #12):
+No production call site raises the read pin, and none can do so without writing the
+seam's name in source. Deliberate dynamic dispatch is out of scope and unchecked.
+
+Nothing above or below may assert more than that sentence. A control enforces it
+("the CLAIM and the SCAN'S COVERAGE agree"), and the gap it names is itself asserted
+as a live fact ("KNOWN GAP, ASSERTED") so that closing it later cannot happen silently.
+No further scan will be written: a scanner that tried to detect reflection would be a
+fifth iteration of the thing that has now been wrong four times, and the sixth
+construction would defeat it.
 
 WHAT SEALING DID NOT BUY, stated because the packet's own thesis demands it: the
 planted evasion still TYPE-CHECKS. Spreading `any` into an object literal yields `any`,
@@ -95,6 +124,7 @@ opposite is not a probe.
 */
 
 const SRC = fileURLToPath(new URL('../../../src', import.meta.url));
+const CLI_ROOT = fileURLToPath(new URL('../../..', import.meta.url));
 
 /** Relative path -> source text. Taking a MAP is what lets the scans be probed. */
 type SourceMap = ReadonlyMap<string, string>;
@@ -132,7 +162,7 @@ const REGEX_MAY_FOLLOW_KEYWORD = /\b(return|typeof|case|in|of|do|else|yield|awai
  * diverge, the tokenizer is out of step with the language and the scan is untrustworthy,
  * and the suite says so before any allowlist is consulted.
  */
-function codeOnly(source: string): string {
+function codeOnly(source: string, comments?: string[]): string {
   let out = '';
   let i = 0;
   const n = source.length;
@@ -144,16 +174,20 @@ function codeOnly(source: string): string {
     const c = source[i];
     const d = source[i + 1];
     if (c === '/' && d === '/') {
+      const from = i;
       while (i < n && source[i] !== '\n') i += 1;
+      comments?.push(source.slice(from, i));
       continue;
     }
     if (c === '/' && d === '*') {
+      const from = i;
       i += 2;
       while (i < n && !(source[i] === '*' && source[i + 1] === '/')) {
         if (source[i] === '\n') out += '\n';
         i += 1;
       }
       i += 2;
+      comments?.push(source.slice(from, i));
       continue;
     }
     if (c === '/' && regexCanStartHere()) {
@@ -291,9 +325,13 @@ const DECLARED_PIN_IDENTIFIER_SITES: readonly string[] = [
 
 /**
  * Every `src/` occurrence of the TEST-ONLY seam's name. The seal's own control: the
- * pin left `CombineSessionOpts` so no data-shaped value can reach the read policy, and
- * what remains is a door that can ONLY be opened by writing this identifier. Unlike a
- * field on an options bag, that is a thing a text scan can genuinely establish.
+ * pin left `CombineSessionOpts` so nothing arriving as data through the options bag
+ * reaches the read policy, and what remains is a door opened by WRITING this identifier.
+ *
+ * SCOPE, EXACTLY: this establishes that no `src/` file NAMES the seam. It does not
+ * establish that no `src/` file can REACH it — `Reflect.get(module, config.seam)`
+ * resolves the export with the name arriving as data, and no text scan sees that.
+ * Deliberate dynamic dispatch is out of scope and unchecked; see the header.
  */
 function seamCallSites(files: SourceMap): string[] {
   const found: string[] = [];
@@ -307,6 +345,97 @@ function seamCallSites(files: SourceMap): string[] {
     }
   }
   return [...new Set(found)].sort();
+}
+
+/**
+ * COMMENT text only, whitespace collapsed, so a claim can be matched VERBATIM
+ * regardless of how it happens to be line-wrapped.
+ *
+ * Comments ONLY, and that is not tidiness: this file must be able to name the wordings
+ * it has retracted without those names counting as the file making them. Prose is where
+ * a claim lives; a string literal in a banned-phrase list is the opposite of a claim.
+ * The extraction reuses `codeOnly`'s tokenizer rather than adding a second one — a
+ * second scanner would be a second answer to "what is a comment here".
+ */
+function commentProse(source: string): string {
+  const comments: string[] = [];
+  codeOnly(source, comments);
+  return comments
+    .join('\n')
+    .replace(/^[ \t]*\/[/*]+/gm, ' ')
+    .replace(/^[ \t]*\*\/?/gm, ' ')
+    .replace(/\s+/g, ' ');
+}
+
+/**
+ * THE CLAIM. Ruling #12, verbatim, and the ONLY thing this file's mechanism is
+ * entitled to say. Both halves matter: the first is what the scans establish, the
+ * second is the gap they do not cover, named in the same breath so nobody can read
+ * one without the other.
+ */
+const NARROWED_CLAIM =
+  "No production call site raises the read pin, and none can do so without writing the seam's name in source. Deliberate dynamic dispatch is out of scope and unchecked.";
+
+/** The files that carry the claim: this control and the seam it guards. */
+const CLAIM_SITES: readonly string[] = [
+  'src/services/telemetry/session-export.ts',
+  'test/services/telemetry/pin-knob-src-usage.test.ts',
+];
+
+/**
+ * Wordings RETRACTED across rounds #11 and #12, banned so the claim cannot ratchet back
+ * up by degrees. That ratchet is what actually failed here: the mechanism never changed
+ * scope, the prose around it quietly grew to cover deliberate evasion, and the mismatch
+ * went unnoticed for two rounds because nothing compared the two.
+ */
+const RETRACTED_CLAIMS: readonly string[] = [
+  'identifier cannot arrive',
+  'no data-shaped value',
+  'no production path can raise',
+  'cannot miss',
+  'trivially detectable',
+  'structurally impossible',
+  'unnameable',
+  'cannot be reached from production',
+];
+
+/**
+ * The text in which this file and the seam MAKE CLAIMS: comment prose, plus every
+ * `describe`/`it` title.
+ *
+ * Both, and not the whole file. Prose is the obvious place a claim lives, but the
+ * ratchet's furthest reach was a TITLE: this suite's own name asserted, in full, the
+ * unrestricted version of the claim — a promise printed on the one line every failure
+ * report shows. Scanning the whole file instead would be simpler and wrong: the
+ * retracted wordings are listed above as string literals, and a file must be able to
+ * NAME what it has withdrawn without that counting as it saying so.
+ */
+function claimText(source: string): string {
+  const titles: string[] = [];
+  for (const m of source.matchAll(/\b(?:describe|it)\(\s*(['"`])([\s\S]*?)\1/g)) {
+    titles.push(m[2] ?? '');
+  }
+  return `${commentProse(source)} ${titles.join(' ')}`.replace(/\s+/g, ' ');
+}
+
+/** Claim sites whose text says less, or more, than {@link NARROWED_CLAIM}. */
+function claimViolations(files: SourceMap): string[] {
+  const out: string[] = [];
+  for (const [path, source] of files) {
+    const text = claimText(source);
+    if (!text.includes(NARROWED_CLAIM)) out.push(`${path}: claim missing`);
+    const lower = text.toLowerCase();
+    for (const banned of RETRACTED_CLAIMS) {
+      if (lower.includes(banned)) out.push(`${path}: retracted claim "${banned}"`);
+    }
+  }
+  return out.sort();
+}
+
+function readClaimSites(): SourceMap {
+  const files = new Map<string, string>();
+  for (const rel of CLAIM_SITES) files.set(rel, readFileSync(join(CLI_ROOT, rel), 'utf8'));
+  return files;
 }
 
 /**
@@ -425,7 +554,7 @@ function bufferOf(bodies: unknown[]) {
   };
 }
 
-describe('no production path can raise the read pin (load-bearing)', () => {
+describe('no production path raises the read pin without naming it (load-bearing)', () => {
   it('CONTROL: the tokenizer is in step with every src file — the scan is not blind', () => {
     /*
     Test Doc:
@@ -587,12 +716,14 @@ describe('no production path can raise the read pin (load-bearing)', () => {
     Test Doc:
     - Why: the seal moves the pin behind `combineSessionAtPinForTests`, which keeps
       `below_pin`'s ENVELOPE plumbing exercised at a real caller. That door has to stay
-      out of production — but unlike a bag field it CANNOT be opened by data, because
-      `JSON.parse` returns values and never bindings. Reaching it requires writing the
-      name, so here the scan is sufficient rather than merely the best available.
-    - Contract: no file under src/ calls the seam.
+      out of production, and this is the half of that a scan can genuinely establish:
+      nobody WROTE the name.
+    - Contract: no file under src/ names the seam.
     - Worked Example: the guard below plants a call in a file that mentions neither the
       decoder nor a pin, and it is reported.
+    - Boundary: naming is not reaching. `Reflect.get(module, config.seam)` resolves the
+      export with the name arriving as data and this scan stays green — asserted as a
+      live fact by "KNOWN GAP, ASSERTED" below, not left implicit here.
     */
     expect(seamCallSites(readSrcFiles())).toEqual([]);
 
@@ -604,6 +735,81 @@ describe('no production path can raise the read pin (load-bearing)', () => {
       ['acts/quiet.ts', ['export const nothing = 1;'].join('')],
     ]);
     expect(seamCallSites(planted)).toEqual(['acts/report.ts']);
+  });
+
+  it('KNOWN GAP, ASSERTED: dynamic dispatch DOES reach the seam — the claim says so', async () => {
+    /*
+    Test Doc:
+    - Why: ruling #12. A reviewer refuted the seal's claim by building
+      `Reflect.get(module, config.seam)` — the seam's NAME and the pin both arriving
+      from JSON, no token of either in source, all eleven pin controls green, and a 2.4
+      record reaching `below_pin: 1`. Rather than pretend that hole is shut, or write a
+      fifth scan that a sixth construction would defeat, the gap is ASSERTED here as a
+      live fact. A gap that is tested cannot be closed by accident and cannot be
+      forgotten: the day someone does close it, THIS test fails and forces the claim
+      above to be widened deliberately, in writing, by whoever earned it.
+    - Contract: the reviewer's exact construction resolves the seam and raises the read
+      policy, while `seamCallSites` — correctly, per its stated scope — reports nothing.
+    - Boundary: this is why the claim is about what is WRITTEN, not about what can be
+      reached. Tests and production share one module graph and reflection is total over
+      it, so a seam a test can reach is a seam `src/` can reach. Exporting under a
+      `Symbol` defeats this exact line and is then defeated by two hops off the
+      namespace, or by symbol enumeration naming nothing at all (probed; see the log).
+    */
+    const mod = await import('../../../src/services/telemetry/session-export.js');
+    const config = JSON.parse('{"seam":"combineSessionAtPinForTests","pin":"2.7"}');
+    const reached = Reflect.get(mod, config.seam) as typeof combineSessionAtPinForTests;
+    expect(typeof reached).toBe('function');
+
+    const exp = reached(
+      'sessKnob',
+      bufferOf([{ ...realSegment(), schema_version: '2.4' }]),
+      { root: '/work' },
+      config.pin,
+    );
+    expect(exp.summary.segments_refused.below_pin).toBe(1);
+    // The scan is not defective — it reports exactly what it claims to, and no more.
+    expect(seamCallSites(readSrcFiles())).toEqual([]);
+  });
+
+  it("CONTROL: the CLAIM and the SCAN'S COVERAGE agree, gap named in the same breath", () => {
+    /*
+    Test Doc:
+    - Why: THE control for ruling #12, and the one this file needed four rounds ago.
+      Every previous failure was read as "the scan looked in the wrong place"; the last
+      two were not. The mechanism never over-reached — the PROSE did, ratcheting from
+      "nobody wrote a pin" up to a blanket promise about what production could reach,
+      with nothing anywhere comparing the two. An instrument whose coverage claim is broader than its coverage is the
+      precise defect this whole packet exists to kill, so leaving it unasserted in the
+      packet's own control would be the joke telling itself.
+    - Contract: both claim sites carry NARROWED_CLAIM verbatim, and neither carries any
+      wording retracted in rounds #11 or #12.
+    - Worked Example: the pre-fix source of this very file fails it twice — the claim
+      was absent, and the suite's own `describe` title asserted a retracted wording
+      outright, which is how far the ratchet had got before anything compared them.
+    - Boundary: this checks that the claim MATCHES the coverage. It cannot check that
+      the coverage is worth having; the scans and behavioural controls above do that.
+    */
+    expect(claimViolations(readClaimSites())).toEqual([]);
+
+    // GUARD, three directions — an assertion that cannot fail is not a control, and
+    // with a claim this narrow it would be very easy to write one.
+    expect(claimViolations(new Map([['silent.ts', '/* says nothing at all */']]))).toEqual([
+      'silent.ts: claim missing',
+    ]);
+    expect(
+      claimViolations(
+        new Map([['creep.ts', `/* ${NARROWED_CLAIM} And an identifier cannot arrive as data. */`]]),
+      ),
+    ).toEqual(['creep.ts: retracted claim "identifier cannot arrive"']);
+    // …including a claim made where only a failure report would show it. The title is
+    // assembled rather than written whole, so that this fixture cannot be picked up as
+    // a title of THIS file — the same reason the fabricated sources above are built by
+    // `join`. A scanner that reads its own test data is measuring itself.
+    const plantedTitle = ['describe(', "'", 'no production path can raise it', "'", ', () => {});'];
+    expect(
+      claimViolations(new Map([['title.ts', `/* ${NARROWED_CLAIM} */\n${plantedTitle.join('')}`]])),
+    ).toEqual(['title.ts: retracted claim "no production path can raise"']);
   });
 
   it('CONTROL: the declared default IS the floor — production refuses nothing it could read', () => {

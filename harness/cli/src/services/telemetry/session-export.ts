@@ -585,10 +585,20 @@ export function combineSession(
  * with all three static scans green. A field on a bag production callers already pass
  * can be filled by DATA, and data leaves nothing for a text scan to find.
  *
- * An identifier cannot arrive that way. `JSON.parse` returns values, never bindings;
- * to reach this function a caller must WRITE this name, and a written name is the one
- * thing the exhaustive `src/` scan cannot miss. That is the seal: not a rule against
- * setting a pin, but a door no data-shaped value can open.
+ * Removing the field was still worth doing — a `pin` key on the bag is now inert, so
+ * that construction buys nothing. But the claim that first accompanied it went too far:
+ * it said an identifier could not arrive as data because `JSON.parse` returns values
+ * and never bindings. The same reviewer then refuted that too, with
+ * `Reflect.get(module, config.seam)` — under reflection the NAME is data as well, so a
+ * value can reach this function with no token of it anywhere in `src/`.
+ *
+ * THE CLAIM, NARROWED TO WHAT IS ACTUALLY ESTABLISHED (packet ruling #12):
+ * No production call site raises the read pin, and none can do so without writing the
+ * seam's name in source. Deliberate dynamic dispatch is out of scope and unchecked.
+ *
+ * That is a statement about MISTAKES — a caller added, an option forwarded, a bag
+ * filled — which is the threat this control was built for. It is not a statement about
+ * code written to defeat the check, and it no longer pretends to be.
  *
  * It exists because `below_pin` is unreachable in production at a floor pin, and a
  * channel nobody reads is not a channel (ruling #1.1) — the ENVELOPE plumbing that
