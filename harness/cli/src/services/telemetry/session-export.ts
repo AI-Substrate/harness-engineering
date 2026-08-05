@@ -168,12 +168,19 @@ export interface CombineSessionOpts {
   /**
    * READ-PIN override — the oldest `schema_version` this combine will read.
    *
-   * PRODUCTION NEVER SETS THIS: omitted, the decoder reads `SEGMENT_SCHEMA_PIN` and
-   * names everything older `below_pin`. It exists so the frozen Segment-2.4
-   * real-capture corpus keeps its read-back proof under an EXPLICITLY DECLARED legacy
-   * pin (see {@link SegmentDecodeOptions}); that the knob is unused in `src/` is
-   * asserted by `test/services/telemetry/pin-knob-src-usage.test.ts`, which is what
-   * keeps this from becoming a second door.
+   * PRODUCTION NEVER SETS THIS, and the direction of the danger is the point: omitted,
+   * the decoder reads {@link SEGMENT_SCHEMA_PIN}, which sits at the FLOOR of the known
+   * version set, so production refuses nothing it could have read. A caller that sets
+   * this can therefore only make the read STRICTER, never more permissive — it is a
+   * lever for refusing live data, which is why no `src/` site may originate a value for
+   * it.
+   *
+   * It exists so `below_pin` — unreachable in production at a floor pin — stays
+   * exercisable at a REAL caller's surface (packet ruling #1.1: a channel nobody reads
+   * is not a channel), rather than degrading to a decoder-only artifact whose envelope
+   * plumbing nothing proves. `test/services/telemetry/pin-knob-src-usage.test.ts` holds
+   * every `src/` pin site against a declared allowlist and asserts none originates a
+   * value, which is what keeps this from becoming a second door.
    */
   pin?: string;
   /**

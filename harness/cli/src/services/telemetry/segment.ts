@@ -818,21 +818,16 @@ export function serializeEvent(e: Event, repoRoot?: string): Event {
 }
 
 /**
- * The READ pin (packet FX002/FX004/PIN — Jordan's ruling; prime recommended 2.6 and
- * was overruled). This build READS exactly one schema version. It is deliberately a
- * separate constant from {@link SEGMENT_SCHEMA_VERSION}: that one says what we WRITE,
- * this one says what we will READ, and collapsing them hides the moment they differ.
- */
-export const SEGMENT_SCHEMA_PIN = '2.7';
-
-/**
- * Every schema version this decoder has structural rules for, oldest first. This is
+ * Every schema version this decoder has structural rules for, OLDEST FIRST. This is
  * the DECLARED closed set (the FX003 · R2 lesson: a closed vocabulary must be stated,
  * not accumulated by accident) and it is what makes `below_pin` distinguishable from
  * `unsupported_version` — without it, "a version I do not know" and "a version I know
  * and will not read" would be the same answer again, one layer up.
+ *
+ * Exported so the pin policy can be asserted against it rather than against a
+ * hand-copied literal: a second list of versions would be a second source of truth.
  */
-const KNOWN_SCHEMA_VERSIONS: readonly string[] = [
+export const KNOWN_SCHEMA_VERSIONS: readonly string[] = [
   '1.1',
   '2.0',
   '2.1',
@@ -845,12 +840,40 @@ const KNOWN_SCHEMA_VERSIONS: readonly string[] = [
 ];
 
 /**
+ * The READ pin — the OLDEST `schema_version` this build will read, DERIVED from the
+ * floor of {@link KNOWN_SCHEMA_VERSIONS} rather than written as a literal.
+ *
+ * It is deliberately a separate constant from {@link SEGMENT_SCHEMA_VERSION}: that one
+ * says what we WRITE, this one says what we will READ, and collapsing them hides the
+ * moment they differ.
+ *
+ * THE POLICY IS PERMISSIVE, AND THAT IS THE RULING (Jordan, reversing an earlier 2.7).
+ * The pin was originally set high; no recorded rationale for reading narrowly was ever
+ * found — the debate had only ever been about WHICH number, never about what pinning
+ * BUYS. Set against nothing: 68 of 116 published sessions (59%, ~19.5k documents)
+ * default-refused, a collision with the permanently-frozen Segment-2.4 capture corpus,
+ * and a knowingly-widened divergence against the second reader. So the pin sits at the
+ * floor and production refuses nothing it could have read.
+ *
+ * THE DIAL IS THE VALUABLE PART, NOT THE VALUE. Everything the pin work built stands:
+ * the reason channel (`below_pin` / `unsupported_version` / `malformed` instead of a
+ * bare `null`), a total decoder with no `catch → null`, the audited caller set, and
+ * per-reason tallies. A pin at the floor means `below_pin` is unreachable in
+ * PRODUCTION — it is NOT dead: the machinery can still name a below-pin refusal the
+ * moment anyone raises the pin, and it is exercised through the knob to prove it.
+ */
+export const SEGMENT_SCHEMA_PIN: string = KNOWN_SCHEMA_VERSIONS[0] as string;
+
+/**
  * WHY a record was not read. Three DIFFERENT facts that were one bare `null` before
  * this packet — and the reason they must never share a counter:
  *
  * - `below_pin` — a record at a version this build KNOWS and structurally could read,
- *   refused because the pin says read only {@link SEGMENT_SCHEMA_PIN}. The data is
- *   fine; the policy declined it. Recoverable by moving the pin.
+ *   refused because the pin says read nothing older than {@link SEGMENT_SCHEMA_PIN}.
+ *   The data is fine; the policy declined it. Recoverable by moving the pin. With the
+ *   pin at the floor this is UNREACHABLE IN PRODUCTION and reachable only through the
+ *   knob — kept, and kept exercised, so the machinery can name the refusal the day
+ *   anyone raises the pin. A counter that stops firing is the vacuity, not the fix.
  * - `unsupported_version` — a version string outside the declared set above. NOT
  *   `below_pin`: a 2.8 record is ABOVE the pin, and calling it "below" would be this
  *   packet's own defect (a lookup reporting an absence it had not established).
@@ -882,26 +905,32 @@ function refuse(reason: SegmentRefusalReason, schemaVersion: string | null): Seg
 
 /**
  * The READ POLICY for one decode. Production NEVER passes this — it reads
- * {@link SEGMENT_SCHEMA_PIN} and nothing older.
+ * {@link SEGMENT_SCHEMA_PIN}, which sits at the floor of the declared version set, so
+ * production refuses nothing it could have read.
  *
- * The knob exists for exactly one reason, and it is a real one: the committed
- * real-capture corpus is **permanently frozen** Segment-2.4 evidence
- * (`test/…/otlp-golden.ts` throws on `REGEN_GOLDEN`), and for three of the four
- * shipping harnesses those 2.4 captures are the ONLY real captured sessions there
- * are. A hard pin would cost claude, copilot-cli and copilot-vscode their real-data
- * read-back — present and future coverage, not history. So the corpus read-back
- * tests declare an explicit legacy pin, which keeps 2.4 readability PROVEN and keeps
- * the pre-2.7 decoder branches alive and exercised rather than unreachable rot.
+ * THE KNOB'S HAZARD INVERTED WHEN THE PIN MOVED TO THE FLOOR, and the guard moved with
+ * it. While the pin was high, the risk was a production caller quietly making the build
+ * MORE PERMISSIVE than the stated policy. At the floor there is no permissiveness left
+ * to steal; the live risk is the exact opposite — a production caller passing a HIGHER
+ * pin and silently making the build STRICTER, refusing data the stated policy says we
+ * read, with nothing in the output to say who decided that.
  *
- * A knob is an opt-out, and two doors is a real hazard. The mitigation is
- * load-bearing and lives in `test/services/telemetry/pin-knob-src-usage.test.ts`:
- * it asserts NO call site under `src/` passes a non-default pin, so the knob
- * provably exists only for the corpus.
+ * The knob is kept for one reason and it is a real one: at the floor, `below_pin` is
+ * unreachable in production, so this is the ONLY way to prove the reason channel can
+ * still name a below-pin refusal — at the decoder AND out through a real caller's
+ * envelope. Deleting it would leave `below_pin` a decoder-only artifact with its
+ * surfacing untested, which is the vacuity this packet exists to kill.
+ *
+ * The mitigation is load-bearing and lives in
+ * `test/services/telemetry/pin-knob-src-usage.test.ts`: it enumerates every `src/` site
+ * that supplies a pin, holds them against a declared allowlist, and asserts none of
+ * them ORIGINATES a value — so no production path can raise the effective pin.
  */
 export interface SegmentDecodeOptions {
   /**
    * The OLDEST schema version to read; anything below it resolves `below_pin`.
-   * A FLOOR, not an equality — which is what makes `below_pin` the honest name.
+   * A FLOOR, not an equality — which is what makes `below_pin` the honest name, and
+   * what lets the default sit at the floor of the known set and refuse nothing.
    * Defaults to {@link SEGMENT_SCHEMA_PIN}.
    */
   pin?: string;
@@ -953,9 +982,9 @@ export function decodeSegment(value: unknown, options: SegmentDecodeOptions = {}
  * Structural validation for a record at or above the pin.
  *
  * The pre-2.7 branches below (`legacyVersion` 1.1, `intermediateVersion` 2.0–2.3, and
- * the 2.4/2.5/2.6 arms of `currentVersion`) are REACHABLE — and exercised — through an
- * explicitly declared legacy pin, which is why they are kept rather than deleted. Under
- * the production pin they are simply never reached. See {@link SegmentDecodeOptions}.
+ * the 2.4/2.5/2.6 arms of `currentVersion`) are REACHED IN PRODUCTION now that the pin
+ * sits at the floor — they are the read path for the four frozen real captures and for
+ * 59% of published sessions, not conditionally-revivable legacy.
  */
 function decodePinnedSegment(raw: Record<string, unknown>): Segment | null {
   const currentVersion =

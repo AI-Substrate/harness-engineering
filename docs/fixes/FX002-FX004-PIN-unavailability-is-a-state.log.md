@@ -1,4 +1,4 @@
-# FX002 · FX004 · the 2.7 pin — execution log
+# FX002 · FX004 · the read pin — execution log
 
 **Branch**: `s065/fx003-flow-eval-instrument` (rides PR #97) · **Coder**: `pij-alright-muskox`
 **Dossier**: [`FX002-FX004-PIN-unavailability-is-a-state.md`](./FX002-FX004-PIN-unavailability-is-a-state.md)
@@ -7,10 +7,17 @@ Labelling convention adopted from **Ruling #3.3**: every mechanism claim below i
 **ESTABLISHED** (probe cited) or **INHERITED — UNVERIFIED**. Nothing is asserted because
 it was handed over confidently.
 
+> **R2 — THE PIN VALUE WAS REVERSED TO THE FLOOR** (Jordan). The log below is kept as a
+> record rather than rewritten, because the reasoning that produced Option C is still the
+> reasoning that makes the reversal safe. Where a section describes the 2.7 policy it is
+> marked **SUPERSEDED** and the current state is in
+> [The pin reversal](#the-pin-reversal-r2--the-pin-is-a-floor-set-to-the-floor).
+
 ## Baseline (before any change)
 
 `node harness/cli/bin/harness.js checks` — all hard gates ok, warn trio
 **arch 2 / markdown 196 / windows 6**. Matches the dispatch baseline exactly.
+**R2 final**: identical — all hard gates ok, **arch 2 / markdown 196 / windows 6**.
 
 ## Status summary
 
@@ -18,7 +25,8 @@ it was handed over confidently.
 |---|---|
 | **FX004** | **complete** — both faces fixed, 7 mutations fire, guards both directions |
 | **FX002** | **complete** — read-time resolution, 5 mutations fire, never fabricates |
-| **Pin** | **complete — Option C** (production policy, not amputation) |
+| **Pin** | **complete — value reversed to the FLOOR** (R2); the reason channel, total decoder, caller audit and per-reason tallies all stand |
+| Pin-knob control | **rewritten to the INVERTED hazard** (R2) — and proven by two planted `src/` mutations |
 | Registry-shape control (#3.1) | **already existed** — reported, not duplicated |
 | Discard proof | **complete** — fires, and proven inert in the live tree |
 
@@ -173,7 +181,10 @@ producer *output* to the golden and never decodes it). What breaks is every test
 2.4/2.5/2.6/2.7. `decodeSegment` **also** accepted `1.1` and `2.0–2.3`
 (`segment.ts:830-836`). The narrowing is larger than stated.
 
-### Resolution — Option C (Ruling #5)
+### Resolution — Option C (Ruling #5) — **SUPERSEDED BY R2**
+
+> Kept as the record of how the dial was built. The dial survives R2 unchanged; only its
+> **value** moved. See [The pin reversal](#the-pin-reversal-r2--the-pin-is-a-floor-set-to-the-floor).
 
 Jordan's own criterion selected it: he does not care about old records **unless it costs
 coverage from now on**. It does — the four frozen 2.4 captures are the **only** real
@@ -188,26 +199,173 @@ readability stays **proven** and the pre-2.7 decoder branches stay alive **and
 exercised** rather than becoming unreachable rot.
 
 The pin is a **FLOOR**, not an equality — which is what makes `below_pin` the honest
-name, and what lets one knob serve a corpus spanning 1.1 → 2.6.
+name, and what lets one knob serve a corpus spanning 1.1 → 2.6. **This is the property
+that made R2 a one-constant change rather than a redesign.**
 
 **The mitigation is load-bearing, not a nicety** — I named the two-doors risk myself and
 own it: `test/services/telemetry/pin-knob-src-usage.test.ts` asserts **no `src/` call
 site passes a non-default pin**, that the default really *is* `SEGMENT_SCHEMA_PIN`, and
 that the knob is not inert. Without it this is the A3 failure; with it, the knob provably
-exists for the corpus alone.
+exists for the corpus alone. **The reviewer found this control blind to the dynamic
+pass-through, and was right — see [the control rewrite](#the-pin-knob-control-rewritten-to-the-inverted-hazard).**
 
 **On Option B**: prime ruled it incomplete *as framed* — leaving ~200 lines unreachable
 is rot that breaks silently, this packet's own defect class. The honest B was B′
 (delete outright). Not taken, but recorded, so the choice was between two complete
-positions. My discomfort with B was right and I had under-weighted it.
+positions. My discomfort with B was right and I had under-weighted it. **R2 retires the
+question entirely**: at a floor pin those branches are not conditionally-revivable
+legacy, they are the *production read path* for 59% of published sessions.
 
 **Synthetic fixtures vs recorded evidence** — a distinction I applied deliberately. The
-frozen 2.4/1.1 **recorded** corpus decodes under a declared legacy pin (never altered).
+frozen 2.4/1.1 **recorded** corpus decoded under a declared legacy pin (never altered).
 Hand-built **synthetic** act fixtures (`2.2`/`2.6` in `acts/telemetry.test.ts`,
 `git-read.test.ts`) were moved to the current schema instead: they are test
 constructions, not evidence, and the alternative was putting the pin knob on a
 production act. Two of them also carried non-vocabulary harness ids
 (`temp-harness`) that only the laxer pre-2.4 branch accepted.
+**R2 REVERTED ALL OF THIS COLLATERAL** — see the consequence table below.
+
+## The pin reversal (R2) — the pin is a FLOOR set to the floor
+
+**Jordan's ruling**: `SEGMENT_SCHEMA_PIN` moves to the **oldest version in
+`KNOWN_SCHEMA_VERSIONS`**, so production refuses nothing it could have read. Verbatim
+rationale: *"there was no stated reason"* for 2.7. Set against nothing: 68 of 116
+published sessions (59%, ~19.5k documents) default-refused, the frozen-corpus collision,
+and a knowingly-widened reader divergence.
+
+**Implemented as a derivation, not a literal**:
+
+```ts
+export const KNOWN_SCHEMA_VERSIONS: readonly string[] = ['1.1', '2.0', /* … */ '2.7'];
+export const SEGMENT_SCHEMA_PIN: string = KNOWN_SCHEMA_VERSIONS[0] as string;
+```
+
+Deriving it matters: a second hand-written `'1.1'` would be a second source of truth for
+"where the floor is", and the constant would silently stop meaning *the floor* the moment
+an older version were declared. `KNOWN_SCHEMA_VERSIONS` is now **exported** so the policy
+can be asserted against the set rather than against a copied literal.
+
+**What did NOT change, and this is the point**: the reason channel (`below_pin` /
+`unsupported_version` / `malformed` instead of a bare `null`), the total decoder with no
+`catch → null`, the caller audit, the per-reason tallies, and the floor semantics. The
+dial was always the valuable part; R2 moved the value.
+
+### The five consequences — checked, not assumed
+
+| # | Consequence | Result |
+|---|---|---|
+| 1 | `LEGACY_READ_PIN` should become unused | **Confirmed unused; removed.** Both declarations and all 3 call sites are gone from `session-export.test.ts` / `report.test.ts`. The frozen corpus now decodes through the **production** path with no test-only policy in between — strictly stronger evidence than before. |
+| 2 | `below_pin` becomes unreachable in production | **Confirmed, and kept reachable + tested via the knob.** Controls did not go inert — they were re-pointed at an explicitly declared `RAISED_PIN`, and each is paired with a guard asserting the *same record* is READ at the production pin, so a control cannot quietly become a test of nothing. Mutation count **20 → 22, all fire**. |
+| 3 | `pin-knob-src-usage.test.ts` must still be meaningful | **Rewritten to the inverted hazard** — see below. Proven by two planted `src/` mutations, now permanent gate entries PIN-M7/M8. |
+| 4 | The reader divergence should collapse | **Confirmed collapsed — and better than "collapsed".** See below. |
+| 5 | The 11 corpus failures resolve without the workaround | **Confirmed.** Full telemetry suite green (1653 tests) with the legacy-pin plumbing deleted, not merely defaulted. |
+
+**Consequence 4 in full (ESTABLISHED — I re-read both accept sets).** Reader A
+(`decodeSegment`) accepts nine versions again: 1.1, 2.0–2.3, 2.4–2.7. Reader B
+(`validSegment`, `published-telemetry.ts:906`) is unchanged at four: 2.4–2.7. So **A is a
+strict superset of B once more — exactly the pre-packet state.** The inversion this
+packet introduced is not merely mitigated, it is *undone*: the packet now moves the
+divergence **not at all**. The residual disagreement (A broader on five dead versions
+1.1/2.0–2.3) predates the packet, is the harmless direction, and is untouched.
+`telemetry get`/`report` and `telemetry pull` now agree on every version either can
+actually meet in the field. **Ruling #9's "we chose to widen a known divergence" no
+longer describes this packet** — R2 retracts the widening, and the reviewer should be
+told that explicitly, because the previous report surfaced it as a deliberate decision.
+
+**Collateral reverted.** The synthetic act fixtures moved to 2.7 under the old pin
+(`acts/telemetry.test.ts`, `git-read.test.ts`) are **reverted to their original 2.2/2.6
+shapes** — including the `temp-harness` → `acme-harness-*` renames those moves forced.
+The diff shrinks, but that is not the reason: the comments justifying those moves
+asserted a rationale that no longer holds (*"a production act must not be handed a
+below-pin record to read"*), and a comment stating a retracted reason is this packet's
+own defect class committed in prose. Reverting also **restores version diversity through
+a production act** — 2.2 and 2.6 records now flow through `telemetry session save` for
+real, which is coverage the 2.7 pin had taken away.
+
+## The pin-knob control, rewritten to the INVERTED hazard
+
+**The reviewer's MAJOR was correct**: the old control scanned for *literal* pin values
+and was blind to the dynamic `{ pin: opts.pin }` pass-through at `session-export.ts:597`,
+so it could not establish the test-only policy it claimed.
+
+**But fixing it to prove the old claim would have proved nothing.** The old control
+existed to protect a STRICT 2.7 production policy from being silently opted out of. At a
+floor pin there is no strict policy to protect — opting out of a floor does nothing,
+because nothing is below the floor. The hazard **inverted**:
+
+| | Old hazard (2.7 pin) | **Live hazard (floor pin)** |
+|---|---|---|
+| Direction | a `src/` caller making production **more permissive** than declared | a `src/` caller passing a **higher** pin, making production **stricter** than declared |
+| Effect | reads data the policy declined | **refuses live data the policy says we read**, with nothing naming the decision |
+
+`session-export.ts:597` is precisely that shape — it forwards a caller-supplied pin with
+no floor. So the control now asserts **the live hazard**, in four parts:
+
+1. **Every `src/` site supplying a read policy is DECLARED.** A real balanced-paren
+   argument scan (not a regex guess) collects every `decodeSegment(…)` /
+   `decodeSegmentDetailed(…)` call under `src/` carrying a second argument, as
+   `path:expression`, and compares it **exact-match** against a declared allowlist. A new
+   site *or a changed expression* fails until someone re-declares it deliberately.
+2. **Every `src/` `pin:` property is DECLARED and ORIGINATES nothing** — each expression
+   must be a plain member path (`opts.pin`), never a literal, template, call or
+   conditional. This is the half the reviewer found missing.
+3. **The declared default IS the floor** — `SEGMENT_SCHEMA_PIN === KNOWN_SCHEMA_VERSIONS[0]`,
+   and no known version resolves `below_pin` under it. The allowlist proves nobody raises
+   the pin; this proves what the pin they cannot raise actually *is*. An unraised wrong
+   default is still a wrong policy.
+4. **Behavioural, at a real caller** — a 2.4 record is read, counted and refused by
+   nothing through `combineSession`, with no pin passed anywhere.
+
+**On deleting the parameter instead of policing it** — the rule offered (*"a parameter
+nobody in production should ever set is better deleted than policed"*) is fair and I
+considered it seriously. **I did not take it, and here is the argument.** At a floor pin
+`below_pin` is unreachable in production, so this parameter is the **only** path by which
+the below-pin *surfacing* stays exercised: the envelope field, the histogram exclusion,
+the per-reason separation. Delete it and `below_pin` degrades to a decoder-only artifact
+whose plumbing through a real caller nothing proves — which is Ruling #1.1's own failure
+mode (*a channel nobody reads is not a channel*) and the vacuity this packet exists to
+kill. The parameter earns its keep by being the only door to a reachable-but-unreached
+state. It is kept, declared, and policed.
+
+### The planted-mutation proof
+
+*A control that cannot fail is not a control.* Both plants were applied to `src/`, run,
+and reverted; `git diff` was empty on both sides. Verbatim output:
+
+**Plant 1 — a production lane silently raising the pin** (`ref-source.ts:74`,
+`decodeSegmentDetailed(parsed)` → `decodeSegmentDetailed(parsed, { pin: '2.7' })`):
+
+```text
+× CONTROL: every src/ site that supplies a read policy is DECLARED 21ms
+× CONTROL: every src/ `pin:` property is DECLARED — and none of them originates a value 12ms
+
+- Expected
++ Received
+  [
++   "services/telemetry/ref-source.ts:{ pin: '2.7' }",
+    "services/telemetry/segment.ts:options",
+    "services/telemetry/session-export.ts:decodeOptions",
+  ]
+```
+
+**Plant 2 — an IDENTIFIER, not a literal** (`session-export.ts:597`, `{ pin: opts.pin }`
+→ `{ pin: SEGMENT_SCHEMA_VERSION }`). **This is the exact evasion the old literal-only
+scan would have waved straight through**, which is why it is the more important of the
+two:
+
+```text
+× CONTROL: every src/ `pin:` property is DECLARED — and none of them originates a value 16ms
+
+- Expected
++ Received
+  [
+-   "services/telemetry/session-export.ts:opts.pin",
++   "services/telemetry/session-export.ts:SEGMENT_SCHEMA_VERSION",
+  ]
+```
+
+Both are now permanent gate entries (**PIN-M7**, **PIN-M8**), so the proof does not
+depend on my having run it once by hand.
 
 ## The registry-shape control (Ruling #3.1) — already present, not duplicated
 
@@ -308,38 +466,67 @@ still correct in the presence of the others"**.
 | **I8** | **FX004 guard → telemetry capture** | The guard exits *after* the capture preamble, so an E149 invocation captures and exits like any other error path. **Verified live**: exit 1, clean JSON, empty stderr. |
 | **I9** | **pin → flow-eval evidence** | flow-eval reads via `harness telemetry get` → `session-evidence` → `readRefSegments` → **the pinned decoder**. So the pin *does* bind flow-eval. **The failure direction is the safe one**: reduced evidence makes telemetry assertions resolve `unknown`, never `fail` — exactly the polarity FX003 established. |
 
-## Known stated boundary — the pin binds ONE of two readers, and the packet WIDENS the gap
 
-**ESTABLISHED** (I read both accept sets directly, and confirmed `published-telemetry.ts`
-contains **zero** uses of `decodeSegment`):
+### The R2 interaction pass — re-run because an item changed
 
-| Reader | Accepts |
-|---|---|
-| **A** `decodeSegment` (`segment.ts`) | 1.1, 2.0–2.3, 2.4–2.7 — **nine** versions |
-| **B** `validSegment` (`published-telemetry.ts:906`) | 2.4–2.7 — **four**, with its own required-field list |
+Ruling #6 makes this a **stage**, not advice, and R2 changed a value three other items
+lean on. Same question, asked again over the assembled set.
 
-They **already disagreed** before this packet: A was a strict *superset* of B, broader
-only on five dead versions — a harmless direction.
+| # | Interaction | Finding |
+|---|---|---|
+| **J1** | **R2 → I1** | **I1 IS RETRACTED — the interaction no longer exists.** I1 was the item I most wanted challenged: a spawned seat whose segments were all below-pin reported `unresolved`, requiring a reader to correlate two envelope fields. At a floor pin **nothing is below-pin in production**, so identity is never lost to a policy refusal. The finding was real; the reversal dissolved it rather than my fixing it. |
+| **J2** | **R2 → I2 (FX002 read-time)** | **The hazard SURVIVES the reversal, by a different mechanism, and the ruling still holds.** A capture-time marker would bump `SEGMENT_SCHEMA_VERSION` to 2.8 — which is refused not for being *below* the pin but for being **outside `KNOWN_SCHEMA_VERSIONS`** (`unsupported_version`). The instrument would still stop reading its own output. So read-time was right for a reason that **outlives the pin value**, and the correct guard is not about the pin at all: **whatever we WRITE must be in the DECLARED set.** This pass produced a new control for exactly that — *"the instrument can READ ITS OWN OUTPUT"* asserts `KNOWN_SCHEMA_VERSIONS` contains `SEGMENT_SCHEMA_VERSION` and that its rank is not below the pin. Bumping the write schema without declaring it now fails a test instead of silently blinding the reader. |
+| **J3** | **R2 → I5 (second reader)** | **The widening is retracted** — A is a strict superset of B again, back to the pre-packet state. See the divergence section; the reviewer was told about the widening, so it must be told the widening is gone. |
+| **J4** | **R2 → I6 (the knob)** | **The hazard inverted** (permissive → strict) and the control was rewritten to match, not patched to prove the old claim. Two planted `src/` mutations fire; both are now permanent gate entries. |
+| **J5** | **R2 → I9 (flow-eval evidence)** | Direction reverses **favourably**: flow-eval's telemetry assertions now see *more* evidence, not less. Nothing to guard — but note that more evidence means an assertion previously resolving `unknown` can now resolve `pass`/`fail`. That is the instrument working, and it changes **no** recorded result, because the 2.7 pin never shipped. |
+| **J6** | **R2 → the Option C rationale** | The knob's original justification (frozen-corpus read-back) **evaporated** — production reads the corpus now. The knob is retained for a *different* reason (`below_pin` exercisability), so the in-code rationale was **rewritten rather than left standing**. A parameter whose stated reason has been retracted is this packet's defect class in prose. |
+| **J7** | **R2 → the synthetic fixtures** | The 2.7 moves were collateral of the old pin and their justifying comments were now false; **reverted**. Restores 2.2/2.6 records flowing through a production act. |
+| **J8** | **R2 → FX004 / E149** | **No interaction.** FX004 is the extension-discovery lane; it neither reads nor decodes segments. Checked rather than assumed. |
+| **J9** | **R2 → the frozen-corpus proof** | The corpus decodes through the **production** path with no declared override — strictly stronger than before. The pre-2.7 decoder branches are no longer "kept alive by a test-only pin"; they are the production read path. |
 
-**After this packet, A becomes a strict SUBSET of B, and the disagreement covers
+**Nothing in this pass is left open.** J2 is the one that changed the build: it produced a
+control that did not exist before and that guards a hazard the pin reversal did *not*
+remove.
+
+## The reader divergence — the packet WIDENED it, then R2 RETRACTED the widening
+
+**ESTABLISHED** (I read both accept sets directly, before and after R2, and confirmed
+`published-telemetry.ts` contains **zero** uses of `decodeSegment`):
+
+| Reader | Accepts (pre-packet) | At the 2.7 pin | **After R2 (current)** |
+|---|---|---|---|
+| **A** `decodeSegment` (`segment.ts`) | 1.1, 2.0–2.3, 2.4–2.7 — **nine** | 2.7 only — **one** | 1.1, 2.0–2.3, 2.4–2.7 — **nine** |
+| **B** `validSegment` (`published-telemetry.ts:906`) | 2.4–2.7 — **four** | 2.4–2.7 — **four** | 2.4–2.7 — **four** |
+
+The two readers **already disagreed** before this packet: A was a strict *superset* of B,
+broader only on five dead versions — the harmless direction.
+
+**Under the 2.7 pin, A became a strict SUBSET of B**, and the disagreement covered
 2.4/2.5/2.6 — versions with real published sessions that `telemetry pull` succeeds on
-today.** So `telemetry get`/`report` will refuse a 2.6 record while `pull` still accepts
-it: same bytes, two answers, depending which door you come through.
+today. `telemetry get`/`report` would have refused a 2.6 record while `pull` accepted it:
+same bytes, two answers, depending which door you came through. Ruling #9 was right that
+this had to be reported as *"we chose to widen a known divergence"*, not *"we chose not
+to fix one"* — the packet **moved** something.
 
-**Say it correctly: the packet did not decline to fix a divergence — it WIDENED one**,
-turning it from a dead-version direction into a live-data direction. Someone reading this
-in three weeks needs to know the packet **moved** something.
+**R2 retracts that.** A is a strict superset of B again, and the residual disagreement is
+back to the five dead versions that predate the packet, in the harmless direction,
+untouched. **The packet now moves the divergence not at all.** The reviewer was told
+about the widening as a deliberate decision, so it must now be told just as explicitly
+that the widening is gone — an announced hazard that quietly disappears is its own kind
+of stale report.
 
-**Deliberately not fixed.** Pinning `validSegment` would refuse exactly the 2.6 sessions
-that presently work, and it is outside the packet's subject on an already-widened fence.
-A sibling seat separately established that `pull` fails `E222` on sessions whose `checks`
-event has gate keys containing `:` or a space — a producer/reader **grammar** drift,
-unrelated to version. Stated, not fixed; that is the trade.
+**Still deliberately not fixed**, and unchanged by R2: pinning `validSegment` would
+refuse exactly the 2.6 sessions that presently work, and it is outside the packet's
+subject on an already-widened fence. A sibling seat separately established that `pull`
+fails `E222` on sessions whose `checks` event has gate keys containing `:` or a space — a
+producer/reader **grammar** drift, unrelated to version. Stated, not fixed; that is the
+trade, and after R2 it costs nothing observable.
 
-## The Dim-0 mutation gate — 20 mutations, ALL FIRE
+## The Dim-0 mutation gate — 22 mutations, ALL FIRE (was 20)
 
 Every mutation restores a **pre-fix behaviour**, not merely broken code. Runner:
-`/tmp/packet-mut.py`.
+`/tmp/packet-mut.py`. Counts below are from the final post-`biome` run (anchors were
+re-verified after reformatting).
 
 | Mutation | Failures |
 |---|---|
@@ -350,29 +537,53 @@ Every mutation restores a **pre-fix behaviour**, not merely broken code. Runner:
 | FX004-M5 "no ancestor" silently falls back to a guess | 4 |
 | FX004-M6 `firstPositional` stops at the first token (flags hide the verb) | 2 |
 | FX004-M7 E149 collapses back into E108 | 4 |
-| PIN-M1 below-pin refused as `malformed` (reasons folded) | 4 |
-| PIN-M2 an ABOVE-pin version mislabelled `below_pin` | 3 |
-| PIN-M3 `decodeLooseSegment` catch collapses its reason | 1 |
-| PIN-M4 session export drops the refusal tally from the envelope | 2 |
-| FX002-M1 adopted seat never consults the registry | 4 |
+| PIN-M1 below-pin refused as `malformed` (reasons folded) | 5 |
+| PIN-M2 an ABOVE-pin version mislabelled `below_pin` | 4 |
+| PIN-M3 `decodeLooseSegment` catch collapses its reason | 2 |
+| PIN-M4 session export drops the refusal tally from the envelope | 3 |
+| **PIN-M5 knob default DIVERGES from the declared policy constant** *(rewritten — see below)* | 9 |
+| PIN-M6 the pin compared by EQUALITY rather than as a floor | 14 |
+| **PIN-M7 a production lane silently RAISES the pin (`ref-source`)** *(new, R2)* | 3 |
+| **PIN-M8 the pass-through ORIGINATES a policy instead of forwarding one** *(new, R2)* | 7 |
+| FX002-M1 adopted seat never consults the registry | 6 |
 | FX002-M2 ambiguity resolved by first-wins GUESS (the false green) | 2 |
-| FX002-M3 "no match" folded into "registry unavailable" | 1 |
+| FX002-M3 "no match" folded into "registry unavailable" | 2 |
 | FX002-M4 registry OVERRIDES the seat's own env declaration | 2 |
 | FX002-M5 uses the registry's lossy first-wins index | 2 |
 | FX002-M6 relay collapsed into the ACTIONABLE twin (the permanent alarm) | 1 |
 | FX002-M7 everything unresolved is actionable (severity decided wrongly, once) | 5 |
-| PIN-M5 the knob default is NOT the production pin | 7 |
-| PIN-M6 the pin compared by EQUALITY rather than as a floor | 2 |
 
-**PIN-M3 was SILENT on the first run** and that is the gate earning its keep: my controls
-exercised `session-export`'s error path but never `ref-source`'s, so ruling #1.2's claim
-was unproven at one of the two callers. Adding the ref-surface controls made it fire.
-This is the R1-M9 shape from the other side — a claim nothing exercises proves nothing.
+**PIN-M3 was SILENT on the first run** (R1) and that is the gate earning its keep: my
+controls exercised `session-export`'s error path but never `ref-source`'s, so ruling
+#1.2's claim was unproven at one of the two callers. Adding the ref-surface controls made
+it fire. This is the R1-M9 shape from the other side — a claim nothing exercises proves
+nothing.
+
+### PIN-M5 went SILENT on the R2 run, and the diagnosis matters more than the fix
+
+The first R2 run reported **19/20 fire, PIN-M5 silent**. The tempting read is "a control
+went blind". It had not. PIN-M5 replaced `options.pin ?? SEGMENT_SCHEMA_PIN` with
+`options.pin ?? '1.1'` — a genuine behavioural change at a 2.7 pin, and a **literal
+no-op** once the constant *is* `'1.1'`. It fired nothing because **it had stopped being a
+mutation**, not because anything stopped watching.
+
+That is worth naming rather than quietly re-pointing, because it is this packet's own
+defect class **inside the packet's own gate**: a probe that reports "nothing found" when
+the honest answer is "I was no longer looking". A silent mutation has exactly two causes —
+a blind control or a dead mutation — and they are indistinguishable from the summary line.
+The only way to tell them apart is to read the mutation against the current source, which
+is now a standing step whenever a constant this gate depends on changes.
+
+Rewritten to the defect it exists to catch, in its inverted direction: a hardcoded default
+that **diverges** from the declared policy constant (`?? '2.7'`), silently making
+production stricter. It fires 9.
 
 ## Honest boundaries — what I could not see through
 
-1. **The pin's accept-set scope is not mine to choose.** "We decline 2.4" and "we can no
-   longer read 2.4" are different products. Blocked, deliberately.
+1. **The pin's accept-set scope was not mine to choose — RESOLVED.** "We decline 2.4"
+   and "we can no longer read 2.4" are different products; I blocked rather than guess.
+   Jordan resolved it twice: Option C, then the reversal to the floor. Recorded as closed
+   rather than deleted, because stopping was the right move both times.
 2. **`check:dd-docs FAIL — baked dd docs drifted from their sources`** appears in vitest
    output **both before and after** my changes, while the `check:dd-docs` gate itself
    reports **ok**. I did not chase it — it is pre-existing and outside this packet — but
@@ -394,11 +605,24 @@ This is the R1-M9 shape from the other side — a claim nothing exercises proves
    remains unproven is the end-to-end recovery: the buffer is flushed to refs, so it
    needs the branch build plus a ref read. **The gap stands, honestly, and is smaller.**
 
-6. **The pin binds one of two readers, and this packet widens that divergence** — see the
-   stated boundary section above. This is the interaction-pass finding I most want a
-   reviewer to look at, because it is a deliberate decision rather than an oversight.
+6. **The pin binds one of two readers — the widening is RETRACTED by R2.** The packet
+   briefly turned a dead-version divergence into a live-data one; at the floor pin
+   reader A is a strict superset of reader B again and the packet moves the divergence
+   not at all. The *residual* pre-packet divergence (two independent accept sets, no
+   shared source of truth) is untouched and remains someone's problem — stated, not
+   fixed. The reviewer was told about the widening as a deliberate decision, so it is
+   told just as plainly that it is gone.
 
-7. **The ambiguity guard is unexercised by real data.** Collisions are *not-probeable*
+7. **`below_pin` is unreachable in production, and one lane cannot exercise it at all.**
+   The combine lane keeps a declared pin parameter, so the below-pin envelope plumbing
+   stays proven. The **ref lane threads no pin**, so there its `below_pin` counter is
+   neither reachable nor drivable in a test — it is a stated 0. I deliberately did **not**
+   add a second knob to make it reachable: that would install the exact extra door the
+   combine lane's control exists to police, to prove a counter that shares its one
+   counting site (`tallyRefusal`) with a lane where it *is* proven. Stated in-code at the
+   field itself, not just here.
+
+8. **The ambiguity guard is unexercised by real data.** Collisions are *not-probeable*
    (the first-wins index conceals exactly what would count them), so the guard is
    prospective. Keeping it is the right call; claiming field validation for it would not
    be.
@@ -406,8 +630,9 @@ This is the R1-M9 shape from the other side — a claim nothing exercises proves
 ## Fence
 
 `git status --short` touches only `harness/cli/src/**`, `harness/cli/test/**`,
-`.harness/extensions/flow-eval/` (**one new test file**), and `docs/fixes/FX002-*`.
-`package-lock.json` **unmodified**. Nothing pushed.
+`.harness/extensions/flow-eval/` (**one new test file**, R1 only — untouched in R2), and
+`docs/fixes/FX002-*`. `package-lock.json` **unmodified**. Nothing pushed.
 
-**Full suite: 4523 passed / 313 files, zero failures.** Warn trio byte-identical:
-**arch 2 / markdown 196 / windows 6**.
+**Full suite: 4528 passed / 313 files, zero failures** (R1: 4523 — the R2 control rewrite
+and the new self-readability guard are a net +5). Warn trio byte-identical to the
+dispatch baseline at every checkpoint: **arch 2 / markdown 196 / windows 6**.

@@ -76,7 +76,19 @@ function decodeLooseSegment(content: string): SegmentDecodeResult {
 
 /** Records this read REFUSED, kept apart by reason — they are different facts (packet · pin). */
 export interface SegmentRefusalTally {
-  /** Well-formed records at a KNOWN version below {@link SEGMENT_SCHEMA_PIN} — declined by policy, not broken. */
+  /**
+   * Well-formed records at a KNOWN version below {@link SEGMENT_SCHEMA_PIN} — declined
+   * by policy, not broken. With the pin at the floor this counter is UNREACHABLE from
+   * production and is expected to read 0 forever; it is kept present and countable so
+   * that an absence is a stated 0 rather than a missing field, and so the lane can name
+   * the refusal if the pin is ever raised.
+   *
+   * BOUNDARY: this lane threads no pin (see {@link decodeLooseSegment}), so unlike the
+   * combine lane it cannot be driven to produce a below-pin refusal in a test either.
+   * Deliberately NOT fixed by adding a second knob — the counting site is shared
+   * (`tallyRefusal`), and inventing a test-only parameter here would install exactly
+   * the extra door the combine lane's control exists to police.
+   */
   below_pin: number;
   /** Records declaring a version outside the decoder's declared set (includes ABOVE the pin). */
   unsupported_version: number;

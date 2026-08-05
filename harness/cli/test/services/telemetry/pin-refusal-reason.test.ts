@@ -11,14 +11,16 @@ import {
 import {
   decodeSegment,
   decodeSegmentDetailed,
+  KNOWN_SCHEMA_VERSIONS,
   SEGMENT_SCHEMA_PIN,
+  SEGMENT_SCHEMA_VERSION,
   type SegmentInput,
   serializeSegment,
 } from '../../../src/services/telemetry/segment.js';
 import { combineSession } from '../../../src/services/telemetry/session-export.js';
 
 /*
-THE 2.7 PIN — a record we will not read must SAY so.
+THE READ PIN — a record we will not read must SAY so.
 
 Pre-fix, `decodeSegment` returned `null` for every refusal, so a below-pin record,
 a corrupt record, a truncated record and an absent record were the SAME answer to
@@ -26,15 +28,32 @@ every caller. Narrowing the accepted version set without adding a reason channel
 would have made declined records disappear into that same silence — the packet's
 own defect, built on purpose, with a version number on it.
 
+THE PIN NOW SITS AT THE FLOOR of the declared version set (Jordan's reversal): no
+recorded rationale for reading narrowly was ever found, and a high pin cost 59% of
+published sessions their read. So PRODUCTION REFUSES NOTHING IT COULD HAVE READ, and
+`below_pin` is unreachable in production — reachable, and deliberately kept exercised,
+through the declared knob. The dial was always the valuable part, never the value; a
+counter that quietly stops firing is the vacuity this packet exists to kill.
+
 Three reasons, deliberately kept apart:
   below_pin           a KNOWN version below the pin — declined by policy, data is fine
   unsupported_version a version outside the declared set — INCLUDING above the pin,
                       because calling a 2.8 record "below" would be the same defect
-  malformed           at the pin and structurally invalid, or no readable version
+  malformed           at/above the pin and structurally invalid, or no readable version
 
 Ruling #1.1: a control that exercises the decoder ALONE cannot see a caller that
 swallows the reason, so the surface controls below ride a REAL caller's output.
 */
+
+/**
+ * A pin RAISED above the floor, declared once here.
+ *
+ * With the production pin at the floor, this is the only way `below_pin` can be
+ * produced at all — and it must stay producible, because the machinery has to be able
+ * to name a below-pin refusal the day anyone raises the pin. Every assertion below that
+ * uses it is asserting about a RAISED pin, never about production policy.
+ */
+const RAISED_PIN = '2.7';
 
 const tel = (root: string): string => `${root}/.harness/temp/telemetry`;
 
@@ -71,27 +90,63 @@ function bufferOf(bodies: unknown[]) {
   };
 }
 
-describe('the 2.7 pin — decodeSegmentDetailed names its refusals', () => {
-  it('GUARD: a record AT the pin still decodes (the pin declines, it does not break reading)', () => {
-    const at = realSegment();
-    expect(at.schema_version).toBe(SEGMENT_SCHEMA_PIN);
-    const result = decodeSegmentDetailed(at);
-    expect(result.ok).toBe(true);
-  });
-
-  it('CONTROL: a 2.6 record is below_pin — NOT malformed', () => {
+describe('the read pin — decodeSegmentDetailed names its refusals', () => {
+  it('CONTROL: the pin sits at the FLOOR — production refuses nothing it could have read', () => {
     /*
     Test Doc:
-    - Why: the dossier's headline case. Pre-fix this was `null`, byte-identical to a
-      corrupt record, so "where did the 2.6 evidence go?" had no answer in the output.
+    - Why: the policy itself, asserted rather than assumed. Jordan reversed the pin to
+      the floor because no rationale for reading narrowly was ever recorded, while a
+      high pin default-refused 59% of published sessions. If someone raises the pin
+      later, this is the control that makes that a DECISION rather than a drift.
+    - Contract: the default pin equals the oldest DECLARED version, and no known
+      version resolves `below_pin` under it.
+    */
+    expect(SEGMENT_SCHEMA_PIN).toBe(KNOWN_SCHEMA_VERSIONS[0]);
+    for (const v of KNOWN_SCHEMA_VERSIONS) {
+      const result = decodeSegmentDetailed({ ...realSegment(), schema_version: v });
+      if (!result.ok) expect(result.reason).not.toBe('below_pin');
+    }
+  });
+
+  it('CONTROL: the instrument can READ ITS OWN OUTPUT — the write version is not below the read pin', () => {
+    /*
+    Test Doc:
+    - Why: the interaction the packet nearly shipped. A capture-time marker would have
+      bumped SEGMENT_SCHEMA_VERSION to 2.8, which the then-2.7 READ pin would have
+      refused as `unsupported_version` — the instrument would have stopped reading its
+      own captures. Two of this packet's OWN items produced that between them, and
+      nothing in the tree would have said so.
+    - Contract: a freshly serialized segment always decodes under the production pin.
+    */
+    const at = realSegment();
+    expect(at.schema_version).toBe(SEGMENT_SCHEMA_VERSION);
+    expect(KNOWN_SCHEMA_VERSIONS).toContain(SEGMENT_SCHEMA_VERSION);
+    expect(KNOWN_SCHEMA_VERSIONS.indexOf(SEGMENT_SCHEMA_VERSION)).toBeGreaterThanOrEqual(
+      KNOWN_SCHEMA_VERSIONS.indexOf(SEGMENT_SCHEMA_PIN),
+    );
+    expect(decodeSegmentDetailed(at).ok).toBe(true);
+  });
+
+  it('CONTROL: at a RAISED pin a 2.6 record is below_pin — NOT malformed', () => {
+    /*
+    Test Doc:
+    - Why: the dossier's headline case, now reachable only through the knob. Pre-fix
+      this was `null`, byte-identical to a corrupt record, so "where did the 2.6
+      evidence go?" had no answer in the output. The pin value moved; the requirement
+      that a declined record NAME itself did not.
     - Contract: a known version below the pin resolves { ok:false, reason:'below_pin' }
       and carries the version it declared.
+    - Worked Example: under the production floor pin the SAME record is read — asserted
+      alongside, so this cannot silently become a test of nothing.
     */
-    expect(decodeSegmentDetailed({ ...realSegment(), schema_version: '2.6' })).toEqual({
+    expect(
+      decodeSegmentDetailed({ ...realSegment(), schema_version: '2.6' }, { pin: RAISED_PIN }),
+    ).toEqual({
       ok: false,
       reason: 'below_pin',
       schema_version: '2.6',
     });
+    expect(decodeSegmentDetailed({ ...realSegment(), schema_version: '2.6' }).ok).toBe(true);
   });
 
   it('CONTROL: an ABOVE-pin version is unsupported_version, never below_pin', () => {
@@ -127,7 +182,10 @@ describe('the 2.7 pin — decodeSegmentDetailed names its refusals', () => {
 
   it('GUARD: the narrowing wrapper still answers Segment | null for callers with nothing to say', () => {
     expect(decodeSegment(realSegment())).not.toBeNull();
-    expect(decodeSegment({ ...realSegment(), schema_version: '2.6' })).toBeNull();
+    expect(decodeSegment({ ...realSegment(), schema_version: '2.6' })).not.toBeNull();
+    expect(
+      decodeSegment({ ...realSegment(), schema_version: '2.6' }, { pin: RAISED_PIN }),
+    ).toBeNull();
   });
 
   it('CONTROL: the reason path is TOTAL — it never throws and never yields a bare null', () => {
@@ -174,9 +232,13 @@ describe('the pin at a REAL caller surface (ruling #1.1 — a channel nobody rea
       shape as FX003's R1-M9 ("a validator nothing calls proves nothing").
     - Contract: summary.segments_refused counts the declined record, by reason, and the
       record does NOT appear in the schema-version histogram (it was not read).
+    - Worked Example: driven at a RAISED pin, because at the production floor pin
+      nothing is below_pin. That is exactly why the combine keeps a pin parameter: it
+      is the only path by which `below_pin`'s ENVELOPE plumbing stays exercised rather
+      than becoming a decoder-only artifact nothing proves.
     */
     const deps = bufferOf([{ ...realSegment(), schema_version: '2.6' }]);
-    const exp = combineSession('sessPin', deps, { root: '/work' });
+    const exp = combineSession('sessPin', deps, { root: '/work', pin: RAISED_PIN });
     expect(exp.summary.segments_refused).toEqual({
       below_pin: 1,
       unsupported_version: 0,
@@ -185,13 +247,25 @@ describe('the pin at a REAL caller surface (ruling #1.1 — a channel nobody rea
     expect(exp.summary.segment_schema_versions['2.6']).toBeUndefined();
   });
 
+  it('GUARD: the SAME record is READ at the production pin — the policy is permissive', () => {
+    /*
+    The other half of the control above, and what stops it drifting into asserting a
+    strictness production does not have: with no pin passed, the 2.6 record is read,
+    counted in the histogram, and refuses nothing.
+    */
+    const deps = bufferOf([{ ...realSegment(), schema_version: '2.6' }]);
+    const exp = combineSession('sessPin', deps, { root: '/work' });
+    expect(exp.summary.segments_refused).toEqual(emptyRefusalTally());
+    expect(exp.summary.segment_schema_versions['2.6']).toBe(1);
+  });
+
   it('CONTROL: the envelope keeps the reasons APART', () => {
     const deps = bufferOf([
       { ...realSegment(), schema_version: '2.6' },
       { ...realSegment(), schema_version: '9.9-private' },
       '{ not json at all',
     ]);
-    const exp = combineSession('sessPin', deps, { root: '/work' });
+    const exp = combineSession('sessPin', deps, { root: '/work', pin: RAISED_PIN });
     expect(exp.summary.segments_refused).toEqual({
       below_pin: 1,
       unsupported_version: 1,
@@ -221,26 +295,50 @@ describe('the pin at the OTHER real caller — the ref surface', () => {
   const REF = 'refs/harness-telemetry/2026-06-29/sessPin';
   const blob = (name: string, content: string) => ({ name, content });
 
-  it('CONTROL: readRefSegmentsOutcome keeps below_pin apart from malformed', () => {
+  it('CONTROL: readRefSegmentsOutcome keeps the refusal reasons APART', () => {
     /*
     Test Doc:
     - Why: the second enumerated caller of the decoder (ruling #1.1). Pre-fix this
       path had ONE counter, `skipped`, which folded "declined by the pin" together
-      with "would not parse" — the same two facts the envelope must keep apart.
+      with "would not parse" — different facts sharing one number.
     - Contract: refused is a per-reason tally; skipped remains their SUM, derived at
       one site so it can never disagree with the tally it summarises.
+    - BOUNDARY, stated rather than papered over: this lane threads NO pin, so at the
+      production floor pin `below_pin` cannot be produced here at all — not in
+      production and not in a test. The pair driven below (`unsupported_version` vs
+      `malformed`) were BOTH folded into `skipped` pre-fix, so the control keeps its
+      original force. Adding a pin parameter to this lane purely to make the third
+      counter reachable would install exactly the extra door the combine lane's
+      control exists to police, so it is NOT done; `below_pin`'s counting is shared
+      with the combine lane at one site (`tallyRefusal`), and is proven there.
     */
     const gitRead = new FakeGitRead({
       [REF]: [
         blob('0.json', JSON.stringify(realSegment())),
-        blob('1.json', JSON.stringify({ ...realSegment(), schema_version: '2.6' })),
-        blob('2.json', JSON.stringify({ ...realSegment(), schema_version: '9.9-private' })),
+        blob('1.json', JSON.stringify({ ...realSegment(), schema_version: '9.9-private' })),
+        blob('2.json', '{ not json at all'),
       ],
     });
     const out = readRefSegmentsOutcome(gitRead);
     expect(out.status).toBe('ok');
-    expect(out.refused).toEqual({ below_pin: 1, unsupported_version: 1, malformed: 0 });
+    expect(out.refused).toEqual({ below_pin: 0, unsupported_version: 1, malformed: 1 });
     expect(out.skipped).toBe(2);
+    expect(out.segments.get('sessPin')).toHaveLength(1);
+  });
+
+  it('GUARD: this lane READS a 2.6 record — the floor pin applies here too', () => {
+    /*
+    The positive half of the boundary above. `below_pin: 0` in that tally must mean
+    "nothing was declined by policy", not "this lane never looks at versions" — an
+    unexercised zero is indistinguishable from a probe that was never looking, which is
+    the confusion this whole packet is about.
+    */
+    const gitRead = new FakeGitRead({
+      [REF]: [blob('0.json', JSON.stringify({ ...realSegment(), schema_version: '2.6' }))],
+    });
+    const out = readRefSegmentsOutcome(gitRead);
+    expect(out.refused).toEqual(emptyRefusalTally());
+    expect(out.skipped).toBe(0);
     expect(out.segments.get('sessPin')).toHaveLength(1);
   });
 

@@ -42,17 +42,17 @@ const CLAUDE = GOLDEN('./fixtures/real/claude/2026-06-25-static-site/expected-se
 const CURSOR = GOLDEN('./fixtures/real/cursor/2026-06-25-checks-walkthrough/expected-segment.json');
 const COPILOT = GOLDEN('./fixtures/real/copilot-cli/2026-06-24-checks-run/expected-segment.json');
 
-/**
- * The EXPLICITLY DECLARED legacy read pin (packet ruling #5).
- *
- * Production reads `SEGMENT_SCHEMA_PIN` (2.7) and names everything older `below_pin`.
- * The committed real-capture corpus is permanently frozen Segment-2.4 evidence, and for
- * claude, copilot-cli and copilot-vscode those 2.4 captures are the ONLY real captured
- * sessions there are — so the read-back proof decodes under a declared floor instead of
- * being retired. Declaring it here is the point: the pin these assertions hold under is
- * visible at the assertion, not inherited silently.
- */
-const LEGACY_READ_PIN = '1.1';
+/*
+THE FROZEN CORPUS NOW READS UNDER THE PRODUCTION PIN — no declared override.
+
+These read-backs used to pass an explicitly declared legacy pin, because the read pin
+sat at 2.7 and the committed real-capture corpus is permanently frozen Segment-2.4
+evidence. Jordan reversed the pin to the FLOOR of the declared version set, so nothing
+here is below it and the override became a no-op. It is removed rather than left in
+place as decoration: a parameter that does nothing still reads as though the assertion
+depends on it. What remains is strictly stronger evidence — the corpus is now decoded by
+the SAME path production uses, with no test-only policy in between.
+*/
 
 const tel = (root: string): string => `${root}/.harness/temp/telemetry`;
 
@@ -76,7 +76,6 @@ function exportOf(sub: string, segments: object[]): SessionExport {
     names.push(`${i}.json`);
   });
   return combineSession(sub, makeDeps(files, { [`${tel('/work')}/${sub}`]: names }), {
-    pin: LEGACY_READ_PIN,
     root: '/work',
   });
 }
