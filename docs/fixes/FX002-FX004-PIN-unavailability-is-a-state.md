@@ -524,6 +524,55 @@ that stage was built to prevent.
 the same file* — `published-telemetry.ts` re-implements validation independently of
 the producer. Two instances, one cause.
 
+## Ruling #10 (2026-08-05) — THE PIN GOES TO THE FLOOR. Jordan, reversing 2.7.
+
+**Jordan, verbatim: *"there was no stated reason."*** Asked what pinning at 2.7 buys,
+nobody could name it — and no rationale is recorded anywhere in this dossier, the
+rulings, or the relay chain. The entire debate was ever only about *which number*,
+never about what pinning gets us. Set against an unnamed benefit:
+
+- **68 of 116 published sessions** (59%, 19,540 documents) default-refused;
+- the frozen-corpus collision and its 11 test failures;
+- a knowingly-widened divergence between two readers (rulings #8/#9);
+- and a "recoverable" capability with **no shipped way to invoke it**.
+
+**`SEGMENT_SCHEMA_PIN` moves to the FLOOR** — the oldest known schema version — so
+production refuses nothing it could have read.
+
+### What this does NOT change — the valuable work was never the pin value
+
+The reason channel stays in full: `below_pin` / `unsupported_version` / `malformed`
+instead of a bare `null`, the total decoder with no `catch → null`, the enumerated
+caller audit, the per-reason tallies. **A dial set permissively is still a dial**, and
+the machinery can name a below-pin refusal the moment anyone raises it.
+
+`below_pin` becomes unreachable in production and **stays reachable and tested via the
+knob**. A control that silently stops firing is the vacuity this packet exists to kill.
+
+### Retired by this change
+
+Rulings **#8 and #9** (the widened divergence) should **collapse** — with the pin at
+the floor, Reader A no longer becomes a subset of Reader B. **Verify, do not assume**;
+surviving divergence is a finding. Likewise the 68-session cost and the
+recovery-flag question: nothing needs recovering.
+
+### The control's purpose evaporated — and the hazard INVERTED
+
+`pin-knob-src-usage.test.ts` existed to prove the knob was test-only, so a **strict**
+2.7 production policy could not be silently opted out of. **At the floor there is no
+strict policy to protect** — opting out of a floor pin does nothing.
+
+The live hazard is now the **opposite**: a `src/` caller passing a **higher** pin and
+silently making production **stricter**, refusing data the stated policy says we read.
+`session-export.ts:590` (`...(opts?.pin === undefined ? {} : { pin: opts.pin })`) is
+exactly that shape — the reviewer's MAJOR, and my own flag.
+
+**The control must be rewritten to assert the live hazard**, and must be shown to FAIL
+against a planted `src/` site that raises the pin. With a permissive default it would
+be trivially easy to write an assertion that passes because there is nothing left to
+catch. If the honest answer is to delete the pass-through rather than police it, say
+so — a parameter no production caller should ever set is better removed than guarded.
+
 ## Review
 
 Cross-model, same discipline: **Dim-0 mutation gate first and blocking**, then fix
