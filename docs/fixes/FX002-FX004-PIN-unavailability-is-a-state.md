@@ -231,6 +231,31 @@ inherited.
 of writing. The FX004 mechanism above should have carried the second label and did
 not.
 
+## Ruling #4 (2026-08-05) — the inertness proof needs a positive control
+
+The discard fixture lives in the **live** extension tree (`.harness/extensions/` is
+what this repo loads; it dogfoods its own harness), so its inertness must be proven.
+The proof as first stated — *"doctor's loaded-extension list byte-identical before
+and after"* — is a **null result**, and a null result cannot distinguish **"nothing
+loaded"** from **"the probe was never looking."**
+
+Discovery is **cwd-relative** (the finding this whole packet rests on). A list that
+was empty, mis-keyed, or read from the wrong cwd would be byte-identical before and
+after **for reasons having nothing to do with the fixture** — proving the probe is
+stable, not that the tree is inert.
+
+**Required, and it costs one line**: confirm the *before* list actually contains
+`flow-eval`'s `entryPath`. Then the instrument is known to be populated, correctly
+keyed, and reading the intended cwd — so an unchanged list afterwards means
+something. **A probe that cannot report the opposite is not a probe.**
+
+**ESTABLISHED (probe cited)** — the boundary this rests on: `discovery.ts:62-100`
+iterates only top-level subdirs of `.harness/extensions/` and resolves one entry each
+(`manifest → extension.ts → extension.js → index.ts → index.js`); a live
+`doctor --json` keys loaded extensions by that `entryPath`; `flow-eval/` already
+carries eight `*.test.ts` files and a `fixtures/` dir, none loaded. A **new subdir**
+is the dangerous shape and is forbidden.
+
 ## Controls — planted-bad, every one must FIRE pre-fix
 
 Same discipline as FX001/FX003: **Dim-0 mutation gate first and blocking**. A control
