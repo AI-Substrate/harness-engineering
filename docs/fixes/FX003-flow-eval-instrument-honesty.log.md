@@ -1,7 +1,9 @@
 # FX003 — execution log (coder: pij-alright-muskox)
 
 **Branch**: `s065/fx003-flow-eval-instrument` (from `be49dd32`) · **Dossier**: `FX003-flow-eval-instrument-honesty.md`
-**Rulings honoured**: Ruling #1 (Q1 confirmed option A; Q2 approved + unknown-type condition; Q3 redirected to a third state; the D1 discriminator hole).
+**Rulings honoured**: Ruling #1 (Q1 confirmed option A; Q2 approved + unknown-type
+condition; Q3 redirected to a third state; the D1 discriminator hole) and **FX003-R1**
+(the zero-count predicate; the blind cast at the evidence seam).
 
 ## Baseline (before any change)
 
@@ -23,21 +25,80 @@ first post-fix run would not have proven it).
 
 `package-lock.json` drift was incidental `npm install` noise and was reverted, not committed.
 
+## R1 — the predicate that has now been wrong three ways
+
+`refusalLaneDemonstrated` is the single load-bearing predicate of D1, and review has
+corrected it three times. All three were **the same mistake: taking the presence of a
+structure for evidence of the thing.**
+
+| round | what it read | why it was wrong |
+|---|---|---|
+| 1 | a **boolean** where three states were needed | a shortfall was reported as a subject failure (the original D1) |
+| 2 | `source: 'buffer'` as a **date** proof | blind to FX001 · D4 — it rules out the roll eating the code, never a capture that never fired |
+| 3 | a **KEY** where a positive COUNT is the evidence | `{ E440: 0 }` — a key minted with no occurrence behind it — licensed a `fail` on an absent `E443` |
+
+The predicate now asks about **magnitude, not shape**, through one helper
+(`refusalCount`: finite AND strictly positive) used by *both* the observed count and
+the demonstrated test, so the two can never disagree about what a refusal is. Zero,
+`NaN`, negative and `Infinity` all license nothing.
+
+**For the fourth reader**: the question this predicate must answer is *"did a refusal
+actually get recorded?"* — never *"is there a place where one would have gone?"* That
+sentence is in the code beside it.
+
+### R1 — the evidence seam no longer casts
+
+`fetchEvidence` did `env.data as SessionEvidence` straight out of `JSON.parse`: an
+assertion about data nobody checked, in the function that feeds every other check its
+input. It now validates through `parseSessionEvidence`, and the required/optional
+split is drawn on this fix's own question — *would getting this wrong invent a
+conclusion?*
+
+- **Required** — lane fields whose absence would be read as "empty" and resolve `fail`
+  (or throw): `skills`, `skill_order`, `flow_seams`, `harness_verbs`, `tools`,
+  `checks`, `compactions`, `gaps`, plus identity. Defaulting an absent `skills` to
+  `{}` fails `skill-called` over a field the core never sent.
+- **Optional, type-checked when present** — fields whose consumers already degrade
+  honestly: `refusals` (absent ⇒ undemonstrated ⇒ `unknown`, by D1),
+  `harness_session_id`, `duration_s`, `files`, and the FX001 provenance. Refusing an
+  older core over these would throw away good skill/verb evidence.
+
+A refused payload is reported (`data.warnings`) rather than left as a bare
+`telemetry.available: false`, and every telemetry lane resolves `unknown`.
+
+**This also kept the fence intact.** A blanket presence rule broke
+`harness/cli/test/extensions/flow-eval/e2e-md-to-pdf.test.ts` — a FORBIDDEN file —
+whose fixture omits `refusals`, `harness_session_id` and `duration_s`. The right
+answer was the better rule, not an edit to that file: it now passes untouched.
+
+Two extension-side fixtures WERE completed (`extension.test.ts`), because they claimed
+to be `telemetry get --json` payloads while omitting fields the CLI always sends. One
+assertion there was also narrowed from "any `harness telemetry` call" to
+`telemetry get`, since F4's cost snapshot is a legitimate second call the fetch-once
+contract never covered.
+
 ## The Dim-0 mutation gate
 
-Six mutations, each reverting ONE defect's logic to its pre-fix form, against the
+Nine mutations, each reverting ONE defect's logic to its pre-fix form, against the
 36 controls in `fx003-instrument-honesty.test.ts`. Every mutation fires its own
 controls and no unrelated ones (M2/M6 overlap only where both assert the same
 axis-null property):
 
 | Mutation | Controls fired |
 |---|---|
-| M1 `gateRefused` returns a boolean | 3 |
+| M1 `gateRefused` returns a boolean | 5 |
 | M2 axis fold returns `0` | 7 |
 | M3 base-ref string inequality | 3 |
 | M4 no `corpus-floor` type | 7 |
 | M5 placeholder plain `unknown` | 2 |
 | M6 unknown type silent | 2 |
+| R1-M7 `demonstrated` counts KEYS | 2 |
+| R1-M8 observed count trusts raw values | 1 |
+| R1-M9 `fetchEvidence` blind cast | 1 |
+
+R1-M9 is the reason the parse controls are not only unit tests: mutating the CALL SITE
+is invisible to a control that exercises the validator directly, so there is an
+end-to-end control that scores a malformed payload through the verb.
 
 ### Verbatim pre-fix output (D1 — the live regression)
 
@@ -130,7 +191,8 @@ older scorer meeting a newer scenario degrades honestly. Control + guard include
 
 1. **The refusal lane cannot be probed, only observed.** There is no way from the evidence
    object to prove the lane *could* have recorded a refusal that did not happen. The only
-   capability proof available is a refusal that *did*. A real probe would need a CLI-side
+   capability proof available is a refusal that *did* — and after R1, one that actually
+   occurred, not merely a key that exists. A real probe would need a CLI-side
    signal (e.g. a `gaps` marker for refusal capture, or exposing uncoded `command_exit`
    counts) — `harness/cli/**` is fenced and PR #95 is frozen, so I did not pursue it. **This
    is the one place a future fix could restore a failable bare `gate-refused`.**

@@ -11,7 +11,7 @@ import flowEval from './extension.js';
 import { buildRunRecord, validateRunRecord } from './ledger.js';
 import { renderLedgerList } from './ledger-view.js';
 import { buildReportJson, buildReportMd, renderMarkdownFromReportJson } from './report.js';
-import { type ResolveContext, resolveAssertionDetailed, type SessionEvidence } from './resolvers.js';
+import { parseSessionEvidence, type ResolveContext, resolveAssertionDetailed, type SessionEvidence } from './resolvers.js';
 import { loadScenario } from './scenario.js';
 import type { Assertion } from './scenario.js';
 import { scoreScenario } from './scorer.js';
@@ -107,6 +107,163 @@ describe('FX003 D1 — a gate-refusal shortfall is only a subject failure on a d
     expect((await resolveAssertionDetailed(a('gate-refused', {}), rc(null))).verdict).toBe('unknown');
   });
 
+  it('R1 CONTROL: a ZERO count does NOT demonstrate the lane — {E440: 0} cannot license a fail (pre-fix: fail)', async () => {
+    // Round three of the same mistake: the predicate counted KEYS, so a key minted
+    // with no occurrence behind it read as "the lane can record". A key is not an
+    // event; a zero count is precisely the case proving nothing was recorded.
+    const ev = evidence({ refusals: { E440: 0 } });
+    expect((await resolveAssertionDetailed(a('gate-refused', { code: 'E443' }), rc(ev))).verdict).toBe('unknown');
+    expect((await resolveAssertionDetailed(a('gate-refused', {}), rc(ev))).verdict).toBe('unknown');
+  });
+
+  it('R1 CONTROL: non-finite and negative counts license nothing either (one predicate, no second path)', async () => {
+    for (const junk of [Number.NaN, -1, Number.POSITIVE_INFINITY]) {
+      const ev = evidence({ refusals: { E440: junk } });
+      expect((await resolveAssertionDetailed(a('gate-refused', { code: 'E443' }), rc(ev))).verdict).toBe('unknown');
+      expect((await resolveAssertionDetailed(a('gate-refused', {}), rc(ev))).verdict).toBe('unknown');
+    }
+  });
+
+  it('R1 GUARD: a zero count alongside a POSITIVE one still demonstrates the lane', async () => {
+    // The magnitude test is per-map, not per-key: one real refusal proves the lane
+    // works, so the absence of another code is still evidence.
+    const ev = evidence({ refusals: { E440: 0, E441: 2 } });
+    expect((await resolveAssertionDetailed(a('gate-refused', { code: 'E443' }), rc(ev))).verdict).toBe('fail');
+    expect((await resolveAssertionDetailed(a('gate-refused', { code: 'E441' }), rc(ev))).verdict).toBe('pass');
+  });
+
+  it('R1 GUARD: a zero count never inflates the observed total', async () => {
+    const ev = evidence({ refusals: { E440: 0, E441: 0, E442: 1 } });
+    expect((await resolveAssertionDetailed(a('gate-refused', { min: 3 }), rc(ev))).verdict).toBe('fail');
+    expect((await resolveAssertionDetailed(a('gate-refused', { min: 1 }), rc(ev))).verdict).toBe('pass');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// R1 — the evidence seam validates what it depends on instead of casting
+// ---------------------------------------------------------------------------
+
+/** A payload shaped exactly like a real `telemetry get --json` `data` block. */
+function payload(over: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    pij_session_id: 'pij-fx003', harness_session_id: 'hs-1', harness: 'claude-code',
+    segments: 3, skills: { builder: 1 }, skill_order: ['builder'],
+    files: { written: [], edited: [] }, flow_seams: [], harness_verbs: { checks: 1 },
+    checks: [{ status: 'ok' }], compactions: 0, tools: {}, refusals: {}, gaps: [],
+    duration_s: 10, source: 'buffer', ref_checked: true,
+    ...over,
+  };
+}
+
+describe('FX003-R1 — the evidence seam validates its payload rather than asserting it', () => {
+  it('GUARD: a well-formed payload parses, including the optional FX001 provenance', () => {
+    const p = parseSessionEvidence(payload());
+    expect(p.ok).toBe(true);
+    if (p.ok) expect(p.evidence.source).toBe('buffer');
+  });
+
+  it('GUARD: an older core that omits the honestly-degrading fields still parses (absent ≠ corrupt)', () => {
+    // These are exactly the fields whose consumers already handle absence: refusals
+    // (⇒ the lane is undemonstrated ⇒ unknown, per D1), harness_session_id (⇒ no cost
+    // save), duration_s (⇒ a null column), files, and the FX001 provenance. Refusing
+    // an older core over these would throw away good skill/verb evidence.
+    const { source, ref_checked, refusals, harness_session_id, duration_s, files, ...older } = payload();
+    expect(parseSessionEvidence(older).ok).toBe(true);
+  });
+
+  it('CONTROL: the REQUIRED/OPTIONAL split is drawn where a missing field would MANUFACTURE a verdict', () => {
+    // Required: absence would be read as "empty" and resolve `fail` (or throw).
+    for (const field of ['skills', 'skill_order', 'flow_seams', 'harness_verbs', 'tools', 'checks', 'compactions', 'gaps'] as const) {
+      const p = payload();
+      delete p[field];
+      expect(parseSessionEvidence(p).ok, `${field} must be required`).toBe(false);
+    }
+    // Optional: every consumer already degrades honestly.
+    for (const field of ['refusals', 'harness_session_id', 'duration_s', 'files', 'source', 'ref_checked'] as const) {
+      const p = payload();
+      delete p[field];
+      expect(parseSessionEvidence(p).ok, `${field} must be optional`).toBe(true);
+    }
+  });
+
+  it('CONTROL: a MISSING lane field is refused, not defaulted (pre-fix: cast, then `skill-called` FAILS on a field that was never there)', () => {
+    const { skills, ...noSkills } = payload();
+    const p = parseSessionEvidence(noSkills);
+    expect(p.ok).toBe(false);
+    if (!p.ok) expect(p.reason).toMatch(/evidence\.skills/);
+  });
+
+  it('CONTROL: a WRONG-TYPED field is refused with the field named', () => {
+    for (const [field, value] of [
+      ['refusals', { E440: 'lots' }], ['checks', [{ status: 7 }]],
+      ['gaps', 'none'], ['segments', '3'], ['files', { written: 'a.ts', edited: [] }],
+      ['harness_session_id', 7], ['duration_s', 'ages'], ['skills', { builder: Number.NaN }],
+      ['source', 'somewhere-else'], ['ref_checked', 'yes'],
+    ] as const) {
+      const p = parseSessionEvidence(payload({ [field]: value }));
+      expect(p.ok, `${field} must be refused`).toBe(false);
+      if (!p.ok) expect(p.reason).toContain(field);
+    }
+  });
+
+  it('CONTROL: a non-object payload is refused (pre-fix: only null/undefined were caught)', () => {
+    for (const junk of [null, 42, 'evidence', [], undefined]) {
+      expect(parseSessionEvidence(junk).ok).toBe(false);
+    }
+  });
+
+  it('a refused payload makes every telemetry lane UNKNOWN — never a manufactured fail', async () => {
+    // The whole point of refusing rather than defaulting: `{}` for an absent `skills`
+    // would resolve `skill-called` to `fail`, accusing the subject over a field the
+    // core never sent.
+    const scored = await scoreScenario(
+      [{ id: 'A1', type: 'skill-called', source: 'telemetry', params: { skill: 'builder' } }],
+      rc(null),
+    );
+    expect(scored.deterministic.results[0].status).toBe('unknown');
+    expect(scored.deterministic.failed).toBe(0);
+  });
+
+  it('CONTROL (end to end): a malformed payload is refused AT THE VERB, with the reason surfaced (pre-fix: cast, then telemetry lanes FAIL)', async () => {
+    // The mutation this catches is the blind `env.data as SessionEvidence` at the call
+    // site — validating in a helper nothing calls would prove nothing. `harness_verbs`
+    // as a string indexes to undefined, so pre-fix `harness-verb-ran` resolved `fail`
+    // on garbage the instrument never checked.
+    const { readFileSync } = await import('node:fs');
+    const fs = new FakeFs(
+      {
+        [`${REPO}/live-testing/scenarios/md-to-pdf/scenario.json`]: readFileSync(njoin(MD_FIXTURE, 'scenario.json'), 'utf8'),
+        [`${REPO}/live-testing/scenarios/md-to-pdf/assertions.json`]: readFileSync(njoin(MD_FIXTURE, 'assertions.json'), 'utf8'),
+      },
+      { [WT]: [] },
+    );
+    const exec = new FakeExec({
+      [`harness telemetry get pij-fx003 --json --worktree ${WT}`]: {
+        code: 0,
+        stdout: JSON.stringify({ command: 'telemetry', status: 'ok', data: payload({ harness_verbs: 'lots' }) }),
+      },
+    });
+    const ctx = buildVerbContext(
+      { exec, fs, fsWrite: fs, env: new FakeEnv(), git: new FakeGit({ isRepo: true, branch: 'main' }), clock: new FakeClock('2026-08-05T11:00:00.000Z') },
+      { cwd: REPO, args: { action: 'score' }, options: { scenario: 'md-to-pdf', session: 'pij-fx003', worktree: WT } },
+    );
+    const res = await flowEval.run(ctx);
+    expect(res.status).toBe('ok');
+    const data = res.data as { telemetry: { available: boolean }; warnings?: string[] };
+    expect(data.telemetry.available).toBe(false);
+    expect(data.warnings?.join(' ')).toMatch(/telemetry lane unavailable/);
+    expect(data.warnings?.join(' ')).toMatch(/evidence\.harness_verbs/);
+    // …and NO telemetry-lane row was failed on the strength of that garbage.
+    const report = JSON.parse(fs.readText(fs.writes.find((w) => w.endsWith('report.json')) as string) as string) as {
+      deterministic: { results: Array<{ source: string; status: string }> };
+    };
+    const telemetryRows = report.deterministic.results.filter((r) => r.source === 'telemetry');
+    expect(telemetryRows.length).toBeGreaterThan(0);
+    expect(telemetryRows.every((r) => r.status === 'unknown')).toBe(true);
+  });
+});
+
+describe('FX003 D1 (cont.) — provenance is reported, never trusted', () => {
   it('evidence.source is NOT trusted as the discriminator: `buffer` alone cannot license a fail', async () => {
     // `source: buffer` proves only that the OTLP roll did not eat the code (FX001 D2).
     // It says NOTHING about D4, where a failing harness command produced no
@@ -271,8 +428,12 @@ async function scoreWithBaseRef(baseRef: string, execScripts: Record<string, { c
   );
   const res = await flowEval.run(ctx);
   if (res.status === 'error') throw new Error(`score failed: ${JSON.stringify(res.error)}`);
-  const warnings = (res.data as { warnings?: string[] } | undefined)?.warnings ?? [];
-  return warnings.length > 0 ? warnings[0] : null;
+  // Read the PERSISTED field this defect is about, not `warnings[0]` — the envelope
+  // legitimately carries other warnings (e.g. the telemetry lane's reason), and
+  // position is not identity.
+  const reportPath = fs.writes.find((w) => w.endsWith('report.json')) as string;
+  const json = JSON.parse(fs.readText(reportPath) as string) as { base_ref_warning?: string };
+  return json.base_ref_warning ?? null;
 }
 
 describe('FX003 D3 — the base_ref check compares commits, not string lengths', () => {
