@@ -22,6 +22,7 @@ import { computeRollup, parseIso } from './rollup.js';
 import {
   decodeSegmentDetailed,
   type Segment,
+  type SegmentDecodeOptions,
   type SegmentModelStat,
   type SegmentTokens,
 } from './segment.js';
@@ -164,6 +165,17 @@ export interface CombineSessionDeps {
 export interface CombineSessionOpts {
   /** Explicit telemetry buffer root override; the buffer is `<root>/.harness/temp/telemetry`. */
   root?: string;
+  /**
+   * READ-PIN override — the oldest `schema_version` this combine will read.
+   *
+   * PRODUCTION NEVER SETS THIS: omitted, the decoder reads `SEGMENT_SCHEMA_PIN` and
+   * names everything older `below_pin`. It exists so the frozen Segment-2.4
+   * real-capture corpus keeps its read-back proof under an EXPLICITLY DECLARED legacy
+   * pin (see {@link SegmentDecodeOptions}); that the knob is unused in `src/` is
+   * asserted by `test/services/telemetry/pin-knob-src-usage.test.ts`, which is what
+   * keeps this from becoming a second door.
+   */
+  pin?: string;
   /**
    * The source discriminator echoed into `source.kind` (default `'temp'`). The
    * git-ref source passes `'git-ref'`; combine itself is source-agnostic — it reads
@@ -336,6 +348,7 @@ function reconstructFromLogs(logsRaw: string): SeqRead | null {
 function readSessionSeqs(
   fs: CombineFs,
   sessionDir: string,
+  decodeOptions: SegmentDecodeOptions,
 ): { reads: SeqRead[]; refused: SegmentRefusalTally } {
   const names = fs.readdir(sessionDir);
   const out: SeqRead[] = [];
@@ -384,7 +397,7 @@ function readSessionSeqs(
         tallyRefusal(refused, 'malformed');
         continue;
       }
-      const decoded = decodeSegmentDetailed(parsed);
+      const decoded = decodeSegmentDetailed(parsed, decodeOptions);
       if (!decoded.ok) {
         tallyRefusal(refused, decoded.reason);
         continue;
@@ -573,7 +586,9 @@ export function combineSession(
   const root = opts?.root ?? deps.proc.cwd();
   const telDir = telemetryDir(root);
   const sessionDir = posixJoin(telDir, sessionId);
-  const { reads, refused: segmentsRefused } = readSessionSeqs(deps.fs, sessionDir);
+  const { reads, refused: segmentsRefused } = readSessionSeqs(deps.fs, sessionDir, {
+    ...(opts?.pin === undefined ? {} : { pin: opts.pin }),
+  });
 
   // Schema-version histogram (records v1 too — AC-02) + timecode bounds.
   const versions: Record<string, number> = {};

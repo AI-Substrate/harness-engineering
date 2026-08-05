@@ -404,12 +404,18 @@ describe('registerTelemetryAct — telemetry session save', () => {
   /** A v2 segment combineSession can read: identity + one turn event carrying tokens. */
   function saveSeg(): string {
     return JSON.stringify({
-      schema_version: '2.2',
+      schema_version: '2.7',
       command: 'flow',
       harness: 'claude-code',
       harness_version: '0.6.0',
       harness_session_id: 'sessSave',
       timecode: '2026-06-23T11:00:00.000Z',
+      // `window` + `effort` are REQUIRED from 2.4 on; the fixture predates the read pin
+      // and was a synthetic 2.2 shape. It is a test construction, not recorded evidence,
+      // so it moves to the current schema rather than declaring a legacy pin (which
+      // would put the knob on a production act).
+      window: { since: 'session-start', from: 0, to: 1 },
+      effort: null,
       branch: 'main',
       tokens: {
         input: 10,
@@ -436,9 +442,10 @@ describe('registerTelemetryAct — telemetry session save', () => {
 
   function partialSaveBufferFs(): FakeFs {
     const partial = JSON.parse(saveSeg()) as Record<string, unknown>;
-    partial.schema_version = '2.6';
-    partial.window = { since: 'session-start', from: 0, to: 1 };
-    partial.effort = null;
+    // Was 2.6 (the version that introduced the typed `usage` channel this fixture
+    // exercises); moved to the current schema for the same reason as `saveSeg` — a
+    // production act must not be handed a below-pin record to read.
+    partial.schema_version = '2.7';
     partial.event_stream = [
       {
         t: '2026-06-23T11:00:01.000Z',

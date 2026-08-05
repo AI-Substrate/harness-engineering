@@ -4,6 +4,8 @@ import { FakeFs } from '../../../src/adapters/fs/fake-fs.js';
 import { FakeProcess } from '../../../src/adapters/process/fake-process.js';
 import {
   descriptorsClaiming,
+  isActionable,
+  resolveDescriptorIdentity,
   resolvePijIdentity,
   resolveSessionPijIdentity,
 } from '../../../src/services/telemetry/pij-identity.js';
@@ -28,15 +30,38 @@ TWO HARD RULES, both controlled below:
 */
 
 const HOME = '/home/dev';
+
+/**
+ * `pij-telegram`'s REAL committed shape, copied from a live `~/.pij` descriptor
+ * (ids/paths only — no content). It is a RELAY: a bridge, not an agent session. It
+ * carries NO `harnessSessionId` key at all and never will, by its nature, permanently.
+ * A real-world referent beats a fabricated one, and this is the case that decides
+ * whether "unresolved" is allowed to be alarming.
+ */
+const TELEGRAM_DESCRIPTOR = JSON.stringify({
+  id: 'pij-telegram',
+  folder: '/home/dev/pij',
+  dataDir: '/home/dev/.pij/pij-telegram',
+  pid: 24910,
+  startedAt: '2026-08-04T05:04:33.248Z',
+  harness: 'pi',
+  lifecycle: 'bound',
+  relay: true,
+  systemState: 'unknown',
+});
 const desc = (harnessSessionId: string | null, over: Record<string, unknown> = {}) =>
   JSON.stringify({ harnessSessionId, harness: 'copilot', ...over });
 
-/** A fake `~/.pij` holding the given `<pij id> -> harnessSessionId` descriptors. */
+/**
+ * A fake `~/.pij`. A value of `RAW:<json>` seeds a verbatim descriptor body (used for
+ * `pij-telegram`'s real shape); anything else is a plain `harnessSessionId`.
+ */
 function registryOf(entries: Record<string, string | null>) {
   const files: Record<string, string> = {};
   const names: string[] = [];
   for (const [pijId, sid] of Object.entries(entries)) {
-    files[`${HOME}/.pij/${pijId}.json`] = desc(sid);
+    files[`${HOME}/.pij/${pijId}.json`] =
+      typeof sid === 'string' && sid.startsWith('RAW:') ? sid.slice(4) : desc(sid);
     names.push(`${pijId}.json`);
   }
   return readPijRegistry({
@@ -113,6 +138,7 @@ describe('FX002 — an unresolved identity is a STATE, not a silence', () => {
     expect(resolvePijIdentity(undefined, 'sessShared', registry)).toEqual({
       status: 'unresolved',
       reason: 'ambiguous',
+      actionable: true,
       candidates: ['pij-seat-a', 'pij-seat-b'],
     });
   });
@@ -124,10 +150,16 @@ describe('FX002 — an unresolved identity is a STATE, not a silence', () => {
     */
     expect(
       resolvePijIdentity(undefined, 'sessAdopted', registryOf({ 'pij-x': 'sessOther' })),
-    ).toEqual({ status: 'unresolved', reason: 'no_descriptor_match', candidates: [] });
+    ).toEqual({
+      status: 'unresolved',
+      reason: 'no_descriptor_match',
+      actionable: true,
+      candidates: [],
+    });
     expect(resolvePijIdentity(undefined, 'sessAdopted', registryOf({}))).toEqual({
       status: 'unresolved',
       reason: 'registry_unavailable',
+      actionable: false,
       candidates: [],
     });
   });
@@ -151,9 +183,35 @@ describe('FX002 — an unresolved identity is a STATE, not a silence', () => {
     }
   });
 
-  it('GUARD: descriptorsClaiming ignores descriptors carrying no harness session id', () => {
-    const registry = registryOf({ 'pij-live': 'sessAdopted', 'pij-null': null });
+  it('CONTROL: a descriptor with NO join key is survived, not tripped over', () => {
+    /*
+    Test Doc:
+    - Why: this has a real-world referent, established by a field scan of 458 `~/.pij`
+      descriptors: `pij-telegram` carries harnessSessionId, spawnedBy, createdAt and
+      state ALL null. It is not an agent session at all, and it sits in the same
+      directory every read walks. A keyless descriptor must be skipped cleanly rather
+      than matching, throwing, or being counted as a candidate.
+    - Contract: descriptors with a null harness_session_id never claim any session, and
+      their presence does not disturb resolution for the seats that do carry keys.
+    */
+    const registry = registryOf({ 'pij-live': 'sessAdopted', 'pij-telegram': null });
     expect(descriptorsClaiming(registry, 'sessAdopted')).toEqual(['pij-live']);
+    // …and it claims nothing of its own, rather than matching a null-ish session id.
+    expect(descriptorsClaiming(registry, '')).toEqual([]);
+    expect(resolvePijIdentity(undefined, 'sessAdopted', registry)).toEqual({
+      status: 'resolved',
+      pij_id: 'pij-live',
+      via: 'registry',
+    });
+    // A registry of ONLY keyless descriptors resolves unresolved — never a guess.
+    expect(
+      resolvePijIdentity(undefined, 'sessAdopted', registryOf({ 'pij-telegram': null })),
+    ).toEqual({
+      status: 'unresolved',
+      reason: 'no_descriptor_match',
+      actionable: true,
+      candidates: [],
+    });
   });
 
   it('CONTROL: the session-level resolver reads real SEGMENTS, and stays fail-safe', () => {
@@ -167,6 +225,7 @@ describe('FX002 — an unresolved identity is a STATE, not a silence', () => {
     expect(resolveSessionPijIdentity([segmentWith(undefined)], 'sessAdopted', deps)).toEqual({
       status: 'unresolved',
       reason: 'registry_unavailable',
+      actionable: false,
       candidates: [],
     });
     expect(
@@ -191,6 +250,7 @@ describe('FX002 — an unresolved identity is a STATE, not a silence', () => {
     expect(resolveSessionPijIdentity([segmentWith(undefined)], 'sessAdopted', exploding)).toEqual({
       status: 'unresolved',
       reason: 'registry_unavailable',
+      actionable: false,
       candidates: [],
     });
   });
@@ -250,6 +310,7 @@ describe('FX002 at the REAL caller surface (ruling #1.1)', () => {
     expect(exp.identity.pij_identity).toEqual({
       status: 'unresolved',
       reason: 'ambiguous',
+      actionable: true,
       candidates: ['pij-seat-a', 'pij-seat-b'],
     });
     expect(exp.identity.pij_session_id).toBeNull();
@@ -262,6 +323,88 @@ describe('FX002 at the REAL caller surface (ruling #1.1)', () => {
       status: 'resolved',
       pij_id: 'pij-spawned-one',
       via: 'env',
+    });
+  });
+});
+
+describe('FX002 · ruling #7 — unresolved is a STATE, and only some of it is a finding', () => {
+  it('CONTROL: a RELAY (pij-telegram, real shape) is unresolved and NOT actionable', () => {
+    /*
+    Test Doc:
+    - Why: THE control for ruling #7. `pij-telegram` is a bridge, not an agent session,
+      and will never carry a harness session id — permanently, by its nature. If that
+      raised a finding it would raise one forever, and a permanent warning is one
+      everyone learns to ignore, which would then bury the real unresolved cases behind
+      it. An alarm whose only steady output is noise guards nothing.
+    - Contract: reason `no_session_by_nature`, `actionable: false`, no fabricated id.
+    */
+    const registry = registryOf({ 'pij-telegram': `RAW:${TELEGRAM_DESCRIPTOR}` });
+    expect(registry.by_pij.get('pij-telegram')?.relay).toBe(true);
+    expect(registry.by_pij.get('pij-telegram')?.harness_session_id).toBeNull();
+    expect(resolveDescriptorIdentity('pij-telegram', registry)).toEqual({
+      status: 'unresolved',
+      reason: 'no_session_by_nature',
+      actionable: false,
+      candidates: [],
+    });
+  });
+
+  it('CONTROL: a NON-relay seat with no session id IS actionable — the twin fact', () => {
+    /*
+    The distinction that makes the previous control worth having: the same missing key
+    means something different on a seat that should have had one. Collapsing these two
+    is exactly what ruling #7 forbids.
+    */
+    const registry = registryOf({ 'pij-agent-seat': null });
+    expect(resolveDescriptorIdentity('pij-agent-seat', registry)).toEqual({
+      status: 'unresolved',
+      reason: 'session_key_missing',
+      actionable: true,
+      candidates: [],
+    });
+  });
+
+  it('GUARD: a keyed seat still resolves, and an unknown pij id is actionable', () => {
+    const registry = registryOf({ 'pij-live': 'sessAdopted' });
+    expect(resolveDescriptorIdentity('pij-live', registry)).toEqual({
+      status: 'resolved',
+      pij_id: 'pij-live',
+      via: 'registry',
+    });
+    expect(resolveDescriptorIdentity('pij-absent', registry)).toMatchObject({
+      reason: 'no_descriptor_match',
+      actionable: true,
+    });
+  });
+
+  it('GUARD: a capability gap is not a subject failure — registry_unavailable is NOT actionable', () => {
+    /*
+    This repo's standing rule, applied here: "the registry could not be read" says
+    nothing about the seat, so it must not be filed as a finding against it.
+    */
+    expect(resolveDescriptorIdentity('pij-anything', registryOf({}))).toMatchObject({
+      reason: 'registry_unavailable',
+      actionable: false,
+    });
+  });
+
+  it('GUARD: every actionable flag comes from ONE decider, so no consumer re-derives it', () => {
+    expect(isActionable('no_session_by_nature')).toBe(false);
+    expect(isActionable('registry_unavailable')).toBe(false);
+    expect(isActionable('session_key_missing')).toBe(true);
+    expect(isActionable('no_descriptor_match')).toBe(true);
+    expect(isActionable('ambiguous')).toBe(true);
+  });
+
+  it('GUARD: a relay sitting in the registry never disturbs a real seat resolving', () => {
+    const registry = registryOf({
+      'pij-telegram': `RAW:${TELEGRAM_DESCRIPTOR}`,
+      'pij-live': 'sessAdopted',
+    });
+    expect(resolvePijIdentity(undefined, 'sessAdopted', registry)).toEqual({
+      status: 'resolved',
+      pij_id: 'pij-live',
+      via: 'registry',
     });
   });
 });

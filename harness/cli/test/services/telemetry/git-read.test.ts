@@ -275,9 +275,9 @@ describe('session save --source git-ref|auto — act wiring (T007)', () => {
     const dir = `/repo/.harness/temp/telemetry/${SID}`;
     // Temp seq 0: SAME seq the git-ref shard owns, with a poisoned identity/tokens.
     const tempSeq0 = JSON.stringify({
-      schema_version: '2.2',
+      schema_version: '2.7',
       command: 'session',
-      harness: 'temp-harness',
+      harness: 'acme-harness-1',
       harness_version: '0.0.0-temp',
       harness_session_id: SID,
       timecode: '2026-06-24T10:00:00.000Z',
@@ -299,9 +299,9 @@ describe('session save --source git-ref|auto — act wiring (T007)', () => {
     });
     // Temp-only seq 1: NO git-ref shard — must survive (git-ref fills gaps only).
     const tempSeq1 = JSON.stringify({
-      schema_version: '2.2',
+      schema_version: '2.7',
       command: 'session',
-      harness: 'temp-only-harness',
+      harness: 'acme-harness-2',
       harness_version: '0.0.0-temp',
       harness_session_id: SID,
       timecode: '2026-06-24T10:05:00.000Z',
@@ -347,7 +347,7 @@ describe('session save --source git-ref|auto — act wiring (T007)', () => {
     // Git-ref wins the shared seq 0: identity is the shard's, NOT the temp poison.
     expect(doc.source.kind).toBe('git-ref');
     expect(doc.identity.harness).toBe('copilot-cli');
-    expect(doc.identity.harness).not.toBe('temp-harness');
+    expect(doc.identity.harness).not.toBe('acme-harness-1'); // the poisoned temp identity
     expect(doc.identity.models).not.toContain('leaked-temp-model');
     // The billion-token temp input never leaks (seq 0 tokens come from the git-ref rollup).
     expect(doc.summary.tokens.in).toBeLessThan(999_999_999);

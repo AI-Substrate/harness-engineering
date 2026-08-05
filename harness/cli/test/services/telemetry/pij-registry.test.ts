@@ -52,6 +52,9 @@ describe('parsePijDescriptor — the join fields (F-04)', () => {
         '/home/dev/.codex/sessions/2026/07/04/rollout-2026-07-04T13-45-43-019f2b3b-6fbb-73b3-a9ec-b78a01deb9d0.jsonl',
       spawned_by: 'pij-4s10mb',
       model: null,
+      // FX002: additive. A relay (bridge) descriptor never carries a harnessSessionId
+      // by its nature; an ordinary agent seat like this one is not a relay.
+      relay: false,
     });
   });
 

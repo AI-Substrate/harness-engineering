@@ -33,6 +33,16 @@ export interface PijDescriptor {
   spawned_by: string | null;
   /** First model label if the descriptor carried one, else null. */
   model: string | null;
+  /**
+   * `true` when the descriptor declares itself a RELAY (a bridge, e.g. `pij-telegram`).
+   *
+   * Additive, and load-bearing for FX002: a relay is not an agent session and will
+   * NEVER carry a `harnessSessionId` — by its nature, permanently. Without this field
+   * "has no session because it is a bridge" and "should have a session and does not"
+   * are the same observation, and the first would raise a permanent finding that
+   * teaches everyone to ignore the second.
+   */
+  relay: boolean;
 }
 
 /** The registry lookup — pij id ⇄ harness session id, plus an availability flag. */
@@ -76,6 +86,7 @@ export function parsePijDescriptor(pijId: string, raw: string): PijDescriptor | 
     transcript_path: str(d.transcriptPath),
     spawned_by: str(d.spawnedBy),
     model: str(d.model),
+    relay: d.relay === true,
   };
 }
 

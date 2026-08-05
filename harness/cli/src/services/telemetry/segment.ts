@@ -873,9 +873,38 @@ export interface SegmentDecodeRefused {
 /** A decode that either yields a Segment or NAMES its refusal — never a bare `null`. */
 export type SegmentDecodeResult = { ok: true; segment: Segment } | SegmentDecodeRefused;
 
-/** Refusal helper — one construction site, so no branch can invent a shape. */
+/**
+ * Refusal helper — one construction site, so no branch can invent a shape.
+ */
 function refuse(reason: SegmentRefusalReason, schemaVersion: string | null): SegmentDecodeRefused {
   return { ok: false, reason, schema_version: schemaVersion };
+}
+
+/**
+ * The READ POLICY for one decode. Production NEVER passes this — it reads
+ * {@link SEGMENT_SCHEMA_PIN} and nothing older.
+ *
+ * The knob exists for exactly one reason, and it is a real one: the committed
+ * real-capture corpus is **permanently frozen** Segment-2.4 evidence
+ * (`test/…/otlp-golden.ts` throws on `REGEN_GOLDEN`), and for three of the four
+ * shipping harnesses those 2.4 captures are the ONLY real captured sessions there
+ * are. A hard pin would cost claude, copilot-cli and copilot-vscode their real-data
+ * read-back — present and future coverage, not history. So the corpus read-back
+ * tests declare an explicit legacy pin, which keeps 2.4 readability PROVEN and keeps
+ * the pre-2.7 decoder branches alive and exercised rather than unreachable rot.
+ *
+ * A knob is an opt-out, and two doors is a real hazard. The mitigation is
+ * load-bearing and lives in `test/services/telemetry/pin-knob-src-usage.test.ts`:
+ * it asserts NO call site under `src/` passes a non-default pin, so the knob
+ * provably exists only for the corpus.
+ */
+export interface SegmentDecodeOptions {
+  /**
+   * The OLDEST schema version to read; anything below it resolves `below_pin`.
+   * A FLOOR, not an equality — which is what makes `below_pin` the honest name.
+   * Defaults to {@link SEGMENT_SCHEMA_PIN}.
+   */
+  pin?: string;
 }
 
 /**
@@ -886,20 +915,26 @@ function refuse(reason: SegmentRefusalReason, schemaVersion: string | null): Seg
  * `catch → null`, because a reason channel that collapses on its own failure has
  * re-created the silence it replaced (packet ruling #1.2).
  */
-export function decodeSegmentDetailed(value: unknown): SegmentDecodeResult {
+export function decodeSegmentDetailed(
+  value: unknown,
+  options: SegmentDecodeOptions = {},
+): SegmentDecodeResult {
+  const pin = options.pin ?? SEGMENT_SCHEMA_PIN;
   if (value === null || typeof value !== 'object' || Array.isArray(value))
     return refuse('malformed', null);
   const raw = value as Record<string, unknown>;
   if (typeof raw.schema_version !== 'string') return refuse('malformed', null);
   const declared = raw.schema_version;
+  const declaredRank = KNOWN_SCHEMA_VERSIONS.indexOf(declared);
+  // A version outside the DECLARED set is not "below" anything — a 2.8 record is ABOVE
+  // the pin, and calling it below_pin would assert a relation this build cannot
+  // establish. Garbage version strings land here too: both mean "I have no rules".
+  if (declaredRank === -1) return refuse('unsupported_version', declared);
+  const pinRank = KNOWN_SCHEMA_VERSIONS.indexOf(pin);
   // The pin, applied BEFORE structural validation: "record at 2.6, below the 2.7 pin,
   // not read" is a statement about the version alone, and re-validating a record we
   // have already declined would only let a structural failure relabel it `malformed`.
-  if (declared !== SEGMENT_SCHEMA_PIN) {
-    return KNOWN_SCHEMA_VERSIONS.includes(declared)
-      ? refuse('below_pin', declared)
-      : refuse('unsupported_version', declared);
-  }
+  if (declaredRank < pinRank) return refuse('below_pin', declared);
   const decoded = decodePinnedSegment(raw);
   return decoded === null ? refuse('malformed', declared) : { ok: true, segment: decoded };
 }
@@ -909,21 +944,18 @@ export function decodeSegmentDetailed(value: unknown): SegmentDecodeResult {
  * refusal. Every caller in this repo is enumerated in the packet log; a NEW caller
  * should reach for {@link decodeSegmentDetailed} and only fall back here with a reason.
  */
-export function decodeSegment(value: unknown): Segment | null {
-  const result = decodeSegmentDetailed(value);
+export function decodeSegment(value: unknown, options: SegmentDecodeOptions = {}): Segment | null {
+  const result = decodeSegmentDetailed(value, options);
   return result.ok ? result.segment : null;
 }
 
 /**
- * Structural validation for a record already known to be AT the pin.
+ * Structural validation for a record at or above the pin.
  *
- * NOTE — the pre-pin version branches below (`legacyVersion` 1.1, `intermediateVersion`
- * 2.0–2.3, and the 2.4/2.5/2.6 arms of `currentVersion`) are now UNREACHABLE through
- * {@link decodeSegmentDetailed}: the pin refuses those versions before this function is
- * called. They are retained DELIBERATELY, not by oversight — deleting ~200 lines of
- * decoder is a behaviour-neutral refactor that would enlarge an already-approved PR's
- * review surface, and the version literals here remain the documentation of what each
- * schema version structurally meant. Deletion is a follow-up, stated in the packet log.
+ * The pre-2.7 branches below (`legacyVersion` 1.1, `intermediateVersion` 2.0–2.3, and
+ * the 2.4/2.5/2.6 arms of `currentVersion`) are REACHABLE — and exercised — through an
+ * explicitly declared legacy pin, which is why they are kept rather than deleted. Under
+ * the production pin they are simply never reached. See {@link SegmentDecodeOptions}.
  */
 function decodePinnedSegment(raw: Record<string, unknown>): Segment | null {
   const currentVersion =

@@ -36,18 +36,54 @@ import type { Segment } from './segment.js';
  * contests it.
  */
 
-/** WHY an identity could not be named — each a different, countable fact. */
+/**
+ * WHY an identity could not be named — each a different, countable fact.
+ *
+ * UNRESOLVED IS NOT AN ERROR PATH. It is the normal, permanent, steady-state outcome
+ * for at least one real inhabitant of `~/.pij`: `pij-telegram` is a RELAY — a bridge,
+ * not an agent session — and it will never carry a harness session id, by its nature,
+ * forever. If unresolved carried a severity, that seat would emit it permanently, and a
+ * permanent warning is one everyone learns to ignore — which would then hide the
+ * genuinely actionable unresolved cases behind it. We would have built an alarm whose
+ * only steady output is noise, burying the signal it exists to guard.
+ *
+ * So the reasons below split along ACTIONABILITY, and {@link isActionable} is the one
+ * place that decides it, so no consumer re-derives severity and drifts.
+ */
 export type PijIdentityUnresolved =
   /** No `PIJ_SESSION_ID` was captured and `~/.pij` was absent or unreadable. */
   | 'registry_unavailable'
   /** The registry was read, but no descriptor claims this harness session. */
   | 'no_descriptor_match'
   /**
+   * The descriptor exists and is a RELAY with no session id — expected and permanent.
+   * `pij-telegram` is the real-world referent. NOT a finding.
+   */
+  | 'no_session_by_nature'
+  /**
+   * The descriptor exists, is NOT a relay, and carries no session id. It SHOULD have
+   * had one. This is the actionable twin of `no_session_by_nature`, and keeping them
+   * apart is the whole point.
+   */
+  | 'session_key_missing'
+  /**
    * MORE THAN ONE descriptor claims this harness session. Deliberately NOT resolved to
    * the first: several seats share a repo, and a first-wins pick is a guess wearing a
    * result's clothes. The candidates travel so a human can disambiguate.
    */
   | 'ambiguous';
+
+/**
+ * Whether an unresolved identity is a FINDING or just a fact.
+ *
+ * `no_session_by_nature` — a bridge that never has a session — is expected steady
+ * state. `registry_unavailable` is a capability gap, not a statement about the seat
+ * (this repo's standing rule: a capability gap is not a subject failure). The other
+ * three are genuinely actionable.
+ */
+export function isActionable(reason: PijIdentityUnresolved): boolean {
+  return reason !== 'no_session_by_nature' && reason !== 'registry_unavailable';
+}
 
 /** How an identity was established — or why it was not. Never a bare `null`. */
 export type PijIdentity =
@@ -60,11 +96,22 @@ export type PijIdentity =
   | {
       status: 'unresolved';
       reason: PijIdentityUnresolved;
+      /**
+       * Whether this is a FINDING (`true`) or expected steady state (`false`).
+       * Carried rather than left to the consumer so severity is decided ONCE — see
+       * {@link isActionable}.
+       */
+      actionable: boolean;
       /** Populated ONLY for `ambiguous` — every descriptor that claimed the session. */
       candidates: string[];
     };
 
 const PIJ_SESSION_ENV = 'PIJ_SESSION_ID';
+
+/** One construction site for an unresolved identity, so `actionable` can never drift. */
+function unresolved(reason: PijIdentityUnresolved, candidates: string[] = []): PijIdentity {
+  return { status: 'unresolved', reason, actionable: isActionable(reason), candidates };
+}
 
 /**
  * Every pij id whose descriptor claims `harnessSessionId`.
@@ -101,16 +148,40 @@ export function resolvePijIdentity(
     return { status: 'resolved', pij_id: fromEnv, via: 'env' };
   }
   if (!registry.available) {
-    return { status: 'unresolved', reason: 'registry_unavailable', candidates: [] };
+    return unresolved('registry_unavailable');
   }
   const claiming = descriptorsClaiming(registry, harnessSessionId);
   if (claiming.length === 0) {
-    return { status: 'unresolved', reason: 'no_descriptor_match', candidates: [] };
+    return unresolved('no_descriptor_match');
   }
   if (claiming.length > 1) {
-    return { status: 'unresolved', reason: 'ambiguous', candidates: claiming };
+    return unresolved('ambiguous', claiming);
   }
   return { status: 'resolved', pij_id: claiming[0], via: 'registry' };
+}
+
+/**
+ * Resolve identity from the DESCRIPTOR direction — "can this seat be joined at all?"
+ *
+ * This is where the bridge case lives, and why it exists: the session direction
+ * ({@link resolvePijIdentity}) is keyed BY a harness session id, so a seat that has no
+ * session id can never be its subject and its "no session" fact has nowhere to be said.
+ * Asked about a pij id instead, the answer is available and, crucially, SPLITTABLE:
+ *
+ *   relay + no session id  -> `no_session_by_nature`  expected, permanent, NOT a finding
+ *   not a relay, no id     -> `session_key_missing`   should have had one — actionable
+ *
+ * Collapsing those two is what would make `pij-telegram` emit a permanent finding, and
+ * a permanent finding is one everyone learns to ignore.
+ */
+export function resolveDescriptorIdentity(pijId: string, registry: PijRegistry): PijIdentity {
+  if (!registry.available) return unresolved('registry_unavailable');
+  const descriptor = registry.by_pij.get(pijId);
+  if (descriptor === undefined) return unresolved('no_descriptor_match');
+  if (descriptor.harness_session_id === null) {
+    return unresolved(descriptor.relay ? 'no_session_by_nature' : 'session_key_missing');
+  }
+  return { status: 'resolved', pij_id: pijId, via: 'registry' };
 }
 
 /** The ports the read-time resolution needs — the same pair `readPijRegistry` takes. */
@@ -139,13 +210,13 @@ export function resolveSessionPijIdentity(
     return { status: 'resolved', pij_id: captured[PIJ_SESSION_ENV], via: 'env' };
   }
   if (deps === undefined) {
-    return { status: 'unresolved', reason: 'registry_unavailable', candidates: [] };
+    return unresolved('registry_unavailable');
   }
   let registry: PijRegistry;
   try {
     registry = readPijRegistry(deps);
   } catch {
-    return { status: 'unresolved', reason: 'registry_unavailable', candidates: [] };
+    return unresolved('registry_unavailable');
   }
   return resolvePijIdentity(undefined, harnessSessionId, registry);
 }

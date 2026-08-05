@@ -18,7 +18,7 @@ it was handed over confidently.
 |---|---|
 | **FX004** | **complete** — both faces fixed, 7 mutations fire, guards both directions |
 | **FX002** | **complete** — read-time resolution, 5 mutations fire, never fabricates |
-| **Pin** | **built and gated, BLOCKED on a product ruling** (frozen-corpus collision) |
+| **Pin** | **complete — Option C** (production policy, not amputation) |
 | Registry-shape control (#3.1) | **already existed** — reported, not duplicated |
 | Discard proof | **complete** — fires, and proven inert in the live tree |
 
@@ -173,11 +173,41 @@ producer *output* to the golden and never decodes it). What breaks is every test
 2.4/2.5/2.6/2.7. `decodeSegment` **also** accepted `1.1` and `2.0–2.3`
 (`segment.ts:830-836`). The narrowing is larger than stated.
 
-Options B′ (pin hard, delete the ~200 lines of legacy decoder, retire the read-back
-proof) and C (pin as a stated *policy* with a production default, corpus tests decoding
-at an explicitly declared legacy pin) are with prime for Jordan. **The pin work above
-stands either way** — the reason channel and the caller propagation are settled; only the
-accept-set scope is open.
+### Resolution — Option C (Ruling #5)
+
+Jordan's own criterion selected it: he does not care about old records **unless it costs
+coverage from now on**. It does — the four frozen 2.4 captures are the **only** real
+captured sessions for **claude, copilot-cli and copilot-vscode**, so a hard pin costs
+three of four shipping harnesses their real-data read-back. Present and future coverage,
+not history.
+
+**Built**: `decodeSegmentDetailed(value, { pin = SEGMENT_SCHEMA_PIN })`. Production
+passes nothing and reads 2.7 only; `below_pin` stays named and countable. The
+corpus read-back tests declare `LEGACY_READ_PIN` at their assertion site, so 2.4
+readability stays **proven** and the pre-2.7 decoder branches stay alive **and
+exercised** rather than becoming unreachable rot.
+
+The pin is a **FLOOR**, not an equality — which is what makes `below_pin` the honest
+name, and what lets one knob serve a corpus spanning 1.1 → 2.6.
+
+**The mitigation is load-bearing, not a nicety** — I named the two-doors risk myself and
+own it: `test/services/telemetry/pin-knob-src-usage.test.ts` asserts **no `src/` call
+site passes a non-default pin**, that the default really *is* `SEGMENT_SCHEMA_PIN`, and
+that the knob is not inert. Without it this is the A3 failure; with it, the knob provably
+exists for the corpus alone.
+
+**On Option B**: prime ruled it incomplete *as framed* — leaving ~200 lines unreachable
+is rot that breaks silently, this packet's own defect class. The honest B was B′
+(delete outright). Not taken, but recorded, so the choice was between two complete
+positions. My discomfort with B was right and I had under-weighted it.
+
+**Synthetic fixtures vs recorded evidence** — a distinction I applied deliberately. The
+frozen 2.4/1.1 **recorded** corpus decodes under a declared legacy pin (never altered).
+Hand-built **synthetic** act fixtures (`2.2`/`2.6` in `acts/telemetry.test.ts`,
+`git-read.test.ts`) were moved to the current schema instead: they are test
+constructions, not evidence, and the alternative was putting the pin knob on a
+production act. Two of them also carried non-vocabulary harness ids
+(`temp-harness`) that only the laxer pre-2.4 branch accepted.
 
 ## The registry-shape control (Ruling #3.1) — already present, not duplicated
 
@@ -209,7 +239,104 @@ correctly keyed, and an unchanged list afterwards means something. **AFTER**: th
 **byte-identical** (`diff` empty), and `flow-eval --help` hashes identically
 (`c52636fa4f4eea8c93667aa529e8368bf0d5ab6b`) both sides.
 
-## The Dim-0 mutation gate — 16 mutations, ALL FIRE
+## FX002 · Ruling #7 — unresolved is a STATE, and only some of it is a finding
+
+**Field evidence (ESTABLISHED — orchestrator scan of all 458 `~/.pij` descriptors,
+plus my own read of the live `pij-telegram` descriptor):**
+
+- **397 adopted** (`spawnedBy` null) vs **61 spawned** — the adopted case is the
+  majority, not an edge.
+- **396 of 397 adopted seats carry `harnessSessionId`** — the read-time join key exists
+  in the field at scale, not just on the seat that happened to look.
+- **`pij-telegram` carries no session key at all** — and it is **not** a degenerate
+  outlier. It is a **RELAY**: a bridge, not an agent session. Its real descriptor
+  carries `relay: true`, `lifecycle: 'bound'`, `harness: 'pi'` and **no
+  `harnessSessionId` key whatsoever**. It will never have one, by its nature, forever.
+- **harnessSessionId collisions: NOT-PROBEABLE.** Deliberately *not* recorded as
+  "zero". `by_harness_session` is first-wins, so a collision and a non-collision produce
+  the **identical observation** — the instrument that would count collisions is the same
+  mechanism that conceals them. A `0` in a table gets read as data by the next person,
+  and there will be a next person. The ambiguity guard is therefore **prospective and
+  unexercised by real data**, validated only against fabricated input. It stays.
+
+  Worth naming: that is *absent-vs-invisible* — the exact distinction this packet
+  defends — showing up **inside our own evidence for the fix**, not in the system under
+  repair.
+
+**The design consequence.** Because a relay is a permanent legitimate inhabitant, the
+unresolved path is **not an error path**. If unresolved carried a severity,
+`pij-telegram` would emit it *forever*, and a permanent warning is one everyone learns
+to ignore — which would then **hide the real unresolved cases behind it**. An alarm
+whose only steady output is noise guards nothing.
+
+So the vocabulary splits along **actionability**, decided in exactly one place
+(`isActionable`) so no consumer re-derives severity and drifts:
+
+| reason | actionable | meaning |
+|---|---|---|
+| `no_session_by_nature` | **no** | a relay/bridge — expected, permanent steady state |
+| `registry_unavailable` | **no** | a capability gap is not a subject failure |
+| `session_key_missing` | **yes** | a non-relay seat that *should* have had a key |
+| `no_descriptor_match` | **yes** | nothing in the registry claims this session |
+| `ambiguous` | **yes** | >1 descriptor claims it — never silently first-wins |
+
+`resolveDescriptorIdentity` answers the **descriptor direction** ("can this seat be
+joined at all?"), which is where the bridge case can be *said*: the session direction is
+keyed **by** a session id, so a seat that has none can never be its subject.
+
+`relay` was added to `PijDescriptor` **additively** — without it, "has no session
+because it is a bridge" and "should have a session and does not" are the same
+observation.
+
+## The interaction pass (Ruling #6) — reviewing the packet as a SET
+
+This packet was assembled **incrementally**: FX002 as a dossier, FX004 after its
+mechanism was refuted, the pin folded in later. Each was adjudicated against the world as
+it stood when it arrived, so until all three were in hand nobody was positioned to review
+them as one set. This is that pass — asking of each item not "is it correct" but **"is it
+still correct in the presence of the others"**.
+
+| # | Interaction | Finding |
+|---|---|---|
+| **I1** | **pin → FX002** | FX002's env-based resolution reads `captured_env` from segments that **survived** the pin. A *spawned* seat whose segments are all below-pin now reports `unresolved` where it previously resolved from env. **Verified empirically**: identity `{unresolved, registry_unavailable}` with `segments_refused {below_pin: 1}`. Both facts are in the envelope, so it is honest — but a reader must **correlate two fields**. Stated, not hidden. |
+| **I2** | **FX002 → pin** | A capture-time marker would bump the schema to 2.8, which the 2.7 pin refuses — the instrument would stop reading its own output. **Avoided** by resolving at read time. |
+| **I3** | **FX004 → FX003** (already approved in this PR) | E149 must match `/^E\d{3}$/` or the flow-eval refusal lane silently discards it. **Controlled** by the discard proof, which drives the real lane with every registered code. |
+| **I4** | **FX004 → error-code registry** | E149 added to the exhaustive snapshot; the registry-shape assertion already covers it. |
+| **I5** | **pin → the SECOND reader** | See the boundary below — the packet **widens** an existing divergence. The most consequential item in this pass. |
+| **I6** | **pin knob → the pin** | A knob is an opt-out. **Controlled** by `pin-knob-src-usage.test.ts`. |
+| **I7** | **FX002 `relay` → fleet-evidence** | `rosterDescriptor` synthesises a `PijDescriptor` and needed the new field; set `relay: false` with a reason (that path only runs for members that *have* join keys). Caught by typecheck. |
+| **I8** | **FX004 guard → telemetry capture** | The guard exits *after* the capture preamble, so an E149 invocation captures and exits like any other error path. **Verified live**: exit 1, clean JSON, empty stderr. |
+| **I9** | **pin → flow-eval evidence** | flow-eval reads via `harness telemetry get` → `session-evidence` → `readRefSegments` → **the pinned decoder**. So the pin *does* bind flow-eval. **The failure direction is the safe one**: reduced evidence makes telemetry assertions resolve `unknown`, never `fail` — exactly the polarity FX003 established. |
+
+## Known stated boundary — the pin binds ONE of two readers, and the packet WIDENS the gap
+
+**ESTABLISHED** (I read both accept sets directly, and confirmed `published-telemetry.ts`
+contains **zero** uses of `decodeSegment`):
+
+| Reader | Accepts |
+|---|---|
+| **A** `decodeSegment` (`segment.ts`) | 1.1, 2.0–2.3, 2.4–2.7 — **nine** versions |
+| **B** `validSegment` (`published-telemetry.ts:906`) | 2.4–2.7 — **four**, with its own required-field list |
+
+They **already disagreed** before this packet: A was a strict *superset* of B, broader
+only on five dead versions — a harmless direction.
+
+**After this packet, A becomes a strict SUBSET of B, and the disagreement covers
+2.4/2.5/2.6 — versions with real published sessions that `telemetry pull` succeeds on
+today.** So `telemetry get`/`report` will refuse a 2.6 record while `pull` still accepts
+it: same bytes, two answers, depending which door you come through.
+
+**Say it correctly: the packet did not decline to fix a divergence — it WIDENED one**,
+turning it from a dead-version direction into a live-data direction. Someone reading this
+in three weeks needs to know the packet **moved** something.
+
+**Deliberately not fixed.** Pinning `validSegment` would refuse exactly the 2.6 sessions
+that presently work, and it is outside the packet's subject on an already-widened fence.
+A sibling seat separately established that `pull` fails `E222` on sessions whose `checks`
+event has gate keys containing `:` or a space — a producer/reader **grammar** drift,
+unrelated to version. Stated, not fixed; that is the trade.
+
+## The Dim-0 mutation gate — 20 mutations, ALL FIRE
 
 Every mutation restores a **pre-fix behaviour**, not merely broken code. Runner:
 `/tmp/packet-mut.py`.
@@ -232,6 +359,10 @@ Every mutation restores a **pre-fix behaviour**, not merely broken code. Runner:
 | FX002-M3 "no match" folded into "registry unavailable" | 1 |
 | FX002-M4 registry OVERRIDES the seat's own env declaration | 2 |
 | FX002-M5 uses the registry's lossy first-wins index | 2 |
+| FX002-M6 relay collapsed into the ACTIONABLE twin (the permanent alarm) | 1 |
+| FX002-M7 everything unresolved is actionable (severity decided wrongly, once) | 5 |
+| PIN-M5 the knob default is NOT the production pin | 7 |
+| PIN-M6 the pin compared by EQUALITY rather than as a floor | 2 |
 
 **PIN-M3 was SILENT on the first run** and that is the gate earning its keep: my controls
 exercised `session-export`'s error path but never `ref-source`'s, so ruling #1.2's claim
@@ -253,12 +384,30 @@ This is the R1-M9 shape from the other side — a claim nothing exercises proves
    not just names that would have been verbs. I cannot know whether `bogus` would have
    been a verb in a directory that has none, so the message asserts only the two facts I
    can establish (not a core command; no extension verbs registered here).
-5. **I did not verify FX002 against a real adopted seat's live telemetry.** The controls
-   use fakes end-to-end. The mechanism is established from source; the *end-to-end*
-   recovery of a genuine adopted seat is not something I proved.
+5. **I did not verify FX002 end-to-end against a real adopted seat's live telemetry.**
+   The controls use fakes end-to-end. This boundary is now **narrower and
+   evidence-backed** rather than open-ended: the orchestrator established (ESTABLISHED,
+   probe cited) that its own seat *is* the adopted case — zero `PIJ_*` vars in env — and
+   that `~/.pij/pij-related-koala.json` **does** carry a `harnessSessionId` matching the
+   real session, with `spawnedBy` null. So the join key demonstrably exists on disk for a
+   genuine adopted seat and read-time resolution **is possible** for the exemplar. What
+   remains unproven is the end-to-end recovery: the buffer is flushed to refs, so it
+   needs the branch build plus a ref read. **The gap stands, honestly, and is smaller.**
+
+6. **The pin binds one of two readers, and this packet widens that divergence** — see the
+   stated boundary section above. This is the interaction-pass finding I most want a
+   reviewer to look at, because it is a deliberate decision rather than an oversight.
+
+7. **The ambiguity guard is unexercised by real data.** Collisions are *not-probeable*
+   (the first-wins index conceals exactly what would count them), so the guard is
+   prospective. Keeping it is the right call; claiming field validation for it would not
+   be.
 
 ## Fence
 
 `git status --short` touches only `harness/cli/src/**`, `harness/cli/test/**`,
 `.harness/extensions/flow-eval/` (**one new test file**), and `docs/fixes/FX002-*`.
 `package-lock.json` **unmodified**. Nothing pushed.
+
+**Full suite: 4523 passed / 313 files, zero failures.** Warn trio byte-identical:
+**arch 2 / markdown 196 / windows 6**.
