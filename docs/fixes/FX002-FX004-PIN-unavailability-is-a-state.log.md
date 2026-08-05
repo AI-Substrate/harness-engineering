@@ -895,11 +895,45 @@ Both findings are permanent gate entries: **PIN-M15** (the blanket claim returns
 | # | Question | Finding |
 |---|---|---|
 | N1 | Any behaviour change? | None. `segment.ts` is a **doc block only** — no executable line touched; `tsc --noEmit` clean. The test file gains one control and swaps one reading for another. |
-| N2 | Does dropping source-title parsing LOSE coverage? | No — it is a strict superset. Every literal title the regex saw is in the runner's tree too, plus every computed one. Proven both directions: PIN-M13 (literal) and PIN-M16 (computed) both fire. |
+| N2 | Does dropping source-title parsing LOSE coverage? | **(Corrected in R7 — the original answer claimed a strict superset and that is false; see below.)** The two readings are **not comparable by subset in either direction**, because they do not read the same kind of thing. The property that actually holds: **every title the runner collects is read, whatever expression produced it — literal or computed — and PIN-M13 and PIN-M16 prove both. Text resembling a `describe` call in a comment or a quoted string is not a title and is not read.** |
 | N3 | Does reading `ctx.task.file` couple the control to a vitest internal? | Yes, and it is stated rather than hidden. `file.tasks` is the runner's collected tree; a shape change would break the walk. The non-vacuity assertion is exactly the mitigation — a broken walk fails **red**, not silent. |
 | N4 | Does adding `segment.ts` to `CLAIM_SITES` create a new failure mode? | Yes, the intended one: `segment.ts` must now carry the claim verbatim forever. PIN-M15 is that gate. |
 | N5 | Does R6 disturb the R4 seal or the R5 gap assertion? | No. Both untouched and still passing; the seal's behavioural claim and the asserted gap are unchanged. All 30 mutations fire. |
 | N6 | Does it touch FX002/FX004 or the pin VALUE? | No shared surface. Pin still at the floor; all 12 FX002/FX004 mutations fire at unchanged counts. |
+
+## R7 — N2 claimed a strict superset. It was not one. Log-only correction
+
+The reviewer declined an easy approve over the sentence above, and it was right to: **a
+false proof claim in the log is a defect in exactly the thing this packet exists to
+fix.** The decoy that settles it:
+
+```ts
+const decoy = "describe('no production path can raise it', () => {})";
+```
+
+The old source regex extracted that as a title. The runner never will — **because it is
+not a title.** It is a string literal inside code. So the old reading matched *text that
+looked like a `describe` call anywhere in the file*, comments and quoted strings
+included, none of which were ever titles; the new reading reads *the titles the runner
+actually collected*. One gained every computed title; the other had false matches that
+were never coverage. Neither contains the other. N2 above now states the property that
+does hold, and the false one is corrected rather than merely softened.
+
+**This correction is unguarded, deliberately.** The obvious move — adding the superset
+phrasing to `RETRACTED_CLAIMS` so the fix self-enforces — does not work. The false claim
+lives in **this log**, and the log is deliberately not a `CLAIM_SITES` entry: it is the
+packet's history and must be able to quote its own retracted statements verbatim. Worse,
+this same file uses "strict superset" **five other times, correctly** — every one of them
+about **reader A vs reader B** and the divergence R2 retracted, not about this control.
+A ban would fire on the true uses and miss the false one. **A control that cannot
+distinguish the wrong claim from the right one is not a control**, so there is none here
+— the sentence is corrected and the absence of a guard is stated.
+
+**Three consecutive rounds now, the mechanism was right and the SENTENCE was wrong.** R4,
+R5, R6 — the seal held, the reading held, the coverage held, and each time the claim
+written around it said more than it had earned. That is this packet's own thesis landing
+on the packet: *an instrument whose claim is broader than its coverage.*
+
 
 
 
@@ -1259,7 +1293,8 @@ production stricter. It fires 9.
     live risk to CI**: if it fires there the PR does not go green, and we will know
     nothing more than we know now.
 
-12. **Two boundaries new in R6, both about the claim check rather than the pin.**
+12. **Boundaries about the claim check rather than the pin — (a) and (b) new in R6, (c)
+    added in R7.**
 
     (a) **`CLAIM_SITES` is a declared list, and I read for further sites rather than
     proving there are none.** Ruling #13 forbids hunting with a scan, and the reason is
@@ -1277,6 +1312,18 @@ production stricter. It fires 9.
     anything about the contents, so a broken walk goes red instead of quietly reading
     zero titles and passing. That ordering is the whole mitigation, and it is the same
     move as the tokenizer's line-count invariant in boundary 10.
+
+    (c) **A retracted wording sitting in a code string literal is caught by nothing.**
+    Added in R7. `codeOnly()` strips strings and `claimText` reads comments, so a line
+    like `const decoy = "describe('no production path can raise it', () => {})"` is
+    invisible to both halves of the check — and now that titles are read at runtime, it
+    is not a title either. **Judged acceptable, and stated rather than assumed**: the ban
+    exists to stop the claim being *asserted* — printed in a failure header, written in a
+    doc block. A string that is never printed as a title asserts nothing to any reader.
+    It is the same exemption that already lets `RETRACTED_CLAIMS` list the banned
+    wordings as literals in that very file: **a file must be able to name what it
+    withdrew without that counting as asserting it.** No scan is built for this; a scan
+    would have to ban the file from naming its own retractions.
 
 ## Fence
 
