@@ -256,6 +256,64 @@ iterates only top-level subdirs of `.harness/extensions/` and resolves one entry
 carries eight `*.test.ts` files and a `fixtures/` dir, none loaded. A **new subdir**
 is the dangerous shape and is forbidden.
 
+## Ruling #5 (2026-08-05) — the pin is PRODUCTION POLICY, not amputation
+
+**The pin stays 2.7. Jordan's ruling is unchanged — his own criterion selects how it
+is implemented.**
+
+He said: *"I don't care about old stuff unless it means we are not getting good
+coverage from now."* **ESTABLISHED (probe cited)** — the real-capture corpus:
+
+| harness | real captured session | version |
+|---|---|---|
+| claude | `2026-06-25-static-site` | **2.4** |
+| copilot-cli | `2026-06-24-checks-run` | **2.4** |
+| copilot-vscode | `2026-06-25-real` | **2.4** |
+| cursor | `2026-06-25-checks-walkthrough` | **2.4** |
+| cursor | `2026-08-03-applypatch-textstat` | 2.7 |
+
+The only current-format capture is **cursor**. A hard pin therefore costs **three of
+four shipping harnesses their real-data read-back** — present and future coverage,
+not history. His criterion is met, so it decides: **option C.**
+
+**Also decided: the coder's option B was incomplete as framed.** It left ~200 lines
+of legacy decoder unreachable-but-present. Unreachable code no test exercises is rot
+that breaks silently — this packet's own defect class. The honest version of B was
+**B′: delete the branches outright.** That option is not taken, but it is recorded so
+the choice is between two complete positions rather than one complete and one
+half-done.
+
+### The shape
+
+- `decodeSegmentDetailed(value, { pin = SEGMENT_SCHEMA_PIN })`. **Production passes
+  nothing** and therefore reads 2.7 only; below-pin is named and countable exactly as
+  the rider requires.
+- The frozen-corpus read-back tests decode at an **explicitly declared** legacy pin,
+  so 2.4 readability stays proven and the legacy/intermediate branches stay alive
+  **and exercised**.
+- **REQUIRED CONTROL — the knob must be provably test-only**: an in-fence test
+  asserting **no `src/` call site passes a non-default pin.** Without it this is the
+  A3 two-doors failure; with it, the knob demonstrably exists only for the corpus.
+- **The blast radius is larger than this dossier first stated**, and that was my
+  understatement: the pin drops **1.1 and 2.0–2.3** as well as 2.4–2.6. Corrected
+  here rather than left to surface in review.
+
+### Logged separately, not blocking
+
+Mint fresh **2.7** real captures for claude, copilot-cli and copilot-vscode. Worth
+doing on its own merits. When they exist, the legacy read path becomes genuinely
+unnecessary and deleting it is an evidence-backed decision rather than an accepted
+loss. **Cannot be faked** — these are real scrubbed captures and regeneration is
+deliberately disabled.
+
+### Worth recording: the rider paid for itself before shipping
+
+This collision was findable **because** the packet was building a reason channel and
+had to enumerate what gets refused and why. A silent pin would have dropped three
+harnesses' fixtures into the same `null` as garbage, and nobody would have noticed
+until someone went looking for data that had quietly stopped existing. That is the
+argument for loud refusal, demonstrated on the packet that implements it, pre-merge.
+
 ## Controls — planted-bad, every one must FIRE pre-fix
 
 Same discipline as FX001/FX003: **Dim-0 mutation gate first and blocking**. A control
