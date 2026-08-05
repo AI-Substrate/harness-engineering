@@ -575,7 +575,7 @@ function registerReadyCommand(plan: Command, io: CliIo, deps: DdActDeps): void {
       // ONE line, naming only the dimension that decided it. Ruling ac-7007: a
       // wall of per-row warnings teaches a reader to ignore warnings, and this
       // verb's whole job is to answer a question rather than emit a list.
-      const line = explainReadiness(reading, target);
+      const line = explainReadiness(reading, target, flowPath);
       if (reading.verdict === 'cant-tell') {
         exitWithEnvelope(formatUnconfigured('plan ready', line, ctx.clock, { data }), ctx.port);
       }
@@ -597,7 +597,7 @@ function registerReadyCommand(plan: Command, io: CliIo, deps: DdActDeps): void {
  * are data, and a service that returned sentences would make every future caller
  * re-parse English to learn what it already knew.
  */
-function explainReadiness(reading: ReadyReading, target: string): string {
+function explainReadiness(reading: ReadyReading, target: string, flow: string): string {
   switch (reading.reason) {
     case 'nothing-to-check':
       return `This plan has no acceptance criteria, so there is nothing to judge — that is not a pass. Write the criteria first, then re-run \`harness plan ready ${target}\`.`;
@@ -611,14 +611,16 @@ function explainReadiness(reading: ReadyReading, target: string): string {
       return `The backpressure survey was recorded against different plan bytes (receipt basis ${reading.survey.basis?.slice(0, 12)}…, plan now ${reading.survey.expected_basis.slice(0, 12)}…) — re-run the survey against the current plan.`;
     case 'missing-receipt':
       return `The backpressure chore "${reading.survey.node}" is "${reading.survey.status}" but carries no receipt, so nothing records what was surveyed. Re-run the survey, or record the decline as a comment.`;
+    case 'missing-basis':
+      return `The backpressure chore "${reading.survey.node}" carries a validation receipt with no \`basis_sha256\`, so it cannot say which plan bytes it surveyed — a completed attempt, not a completed survey. Re-run the survey against the current plan.`;
     case 'not-run':
       return `The backpressure survey has not been run (chore "${reading.survey.node}" is "${reading.survey.status}"). Run it, or decline it on the record — a decline with a receipt is a legitimate ready.`;
     case 'no-survey-node':
       return `The flight plan carries no backpressure node, so whether the survey was declined or never run cannot be told from here.`;
     case 'no-flight-plan':
-      return `No flight plan beside this plan, so whether the backpressure survey was declined or never run cannot be told from a document alone — this is a refusal to guess, not a failure.`;
+      return `No flight plan at ${flow}, so whether the backpressure survey was declined or never run cannot be told from a document alone — this is a refusal to guess, not a failure.`;
     case 'flight-plan-unreadable':
-      return `The flight plan at ${reading.survey.node ?? 'the expected path'} could not be read, so the survey dimension cannot be judged.`;
+      return `The flight plan at ${flow} could not be read, so the survey dimension cannot be judged.`;
     default:
       return `Not ready.`;
   }

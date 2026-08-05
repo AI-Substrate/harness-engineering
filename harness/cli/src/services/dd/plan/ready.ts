@@ -48,10 +48,21 @@ export type CriteriaReason =
 export type SurveyReason =
   /** A `done` chore whose receipt matches the plan's current bytes. */
   | 'survey-done'
-  /** A `skipped` chore whose receipt matches — the human declined, on the record. */
+  /**
+   * A `decision` receipt — the human declined, on the record, in their own words.
+   * No basis is required or expected: the doctrine's decline command records the
+   * human's verbatim words and no `basis_sha256` at all. A decline is a decision
+   * about the WORK, not about the bytes, so nothing later can make it stale.
+   */
   | 'declined-with-receipt'
   /** Terminal, but nothing on the node says what was surveyed. */
   | 'missing-receipt'
+  /**
+   * Terminal with a `validation` receipt that records no basis at all — a
+   * completed attempt (the doctrine's `decision:unavailable` detection receipt is
+   * one), but not a completed survey: it cannot say which bytes it looked at.
+   */
+  | 'missing-basis'
   /** Terminal with a receipt, but for different plan bytes than the ones on disk. */
   | 'stale-basis'
   /** A survey node exists and has not reached a terminal status. */

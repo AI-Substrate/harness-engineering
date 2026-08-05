@@ -125,10 +125,11 @@ Received: "ready"
       Tests  1 failed (1)
 ```
 
-**Read the failure line, not just the colour.** It failed at **line 176** — the verdict
-assertion — which means the four positive-control assertions above it (lines 169-172:
-`survey.satisfied === true`, `survey.reason === 'survey-done'`, `criteria.unclaimed === []`,
-`criteria.claims === 0`) all **passed**. The RED therefore says precisely one thing:
+**Read the failure line, not just the colour.** It failed on the **verdict assertion**
+(`expect(reading.verdict).toBe('cant-tell')`) — which means the four positive-control
+assertions above it (`survey.satisfied === true`, `survey.reason === 'survey-done'`,
+`criteria.unclaimed === []`, `criteria.claims === 0`) all **passed**. The RED therefore says
+precisely one thing:
 
 > presented with a plan that was green on every readable dimension and contained nothing at all
 > to judge, the gate answered **`ready`**.
@@ -136,6 +137,10 @@ assertion — which means the four positive-control assertions above it (lines 1
 That is dossier F-06 reproduced inside the new verb — the emptiest plan scoring readiest — and it
 is the failure T003 exists to close. Had the test been written after the guard, it would have gone
 green on the day it was written and proven none of this.
+
+> The verbatim trace above cites `ready.test.ts:176` because that is where the assertion sat when
+> the RED was observed. The file has grown since (R1 added cases above it), so the assertion is
+> named here rather than located by line — a line number in a log is a pointer that rots.
 
 ---
 
@@ -265,7 +270,7 @@ findings in the added/edited docs (repo total unchanged at 196).
 |---|-----|-----------|-------------|
 | D1 | Noteworthy | **`ready.ts` importing `services/flow` broke four architecture rules.** The first cut had the verdict model importing `SurveyReading` from `flow/chores-read.ts`. That type-only import transitively dragged the flow's fs/clock/git ports and `output/error-codes` into `dd/plan`, tripping `dd-plan-never-imports-output`, `dd-plan-never-imports-node-adapters` and `no-circular` — **14 arch-check violations, all mine**. | Fixed by reversing the direction, never by weakening a rule (the rule's own note forbids that). The survey dimension's shape now lives with the rest of the verdict model in `ready.ts`, and `chores-read.ts` imports it through dd's published barrel — the one seam the flow spine is permitted to reach for. **14 → 2**, and both survivors are pre-existing `services/telemetry` warnings this work never touched. |
 | D2 | Noteworthy | **A new `E4xx` code is a frozen-surface renegotiation, not an addition.** `DD_PLAN_NOT_READY` (E462) made `test/acts/dd-surface.test.ts` fail on a *count*, by design. | Recorded the renegotiation in the manifest (`docs/plans/065-…/dd-surface.md`) with the reasoning, and adjusted the count 62 → 63. Reusing `DD_PLAN_INCOMPLETE` (E457) was the alternative and was rejected: readiness can fail on a stale or missing backpressure receipt, which is not a statement about plan completeness, and an agent switching on E457 would be told the wrong thing. **This file is outside the brief's stated fence — see the deviation note.** |
-| D3 | Noteworthy | **Re-basis survey nodes carry no `chore` marker.** Read off the live flight plan: `backpressure-752982794591` has `type: "backpressure"` and no `chore` block. A reader keyed on the chore marker would have missed the only node that surveyed the current bytes. | The reader keys on `node.type`. Pinned by a fixture. |
+| D3 | Noteworthy | **Re-basis survey nodes carry no `chore` marker.** Read off the live flight plan: `backpressure-752982794591` has `type: "backpressure"` and no `chore` block. A reader keyed on the chore marker would have missed the only node that surveyed the current bytes. | The reader keys on `node.type` **or the doctrine-pinned node id** (widened in R1/F001 — see below). Pinned by fixtures in both shapes. |
 | D4 | Noteworthy | **`plan validate --complete` is load-bearing for the criteria dimension.** `orphan-claim` is emitted under `complete: true` only; the verb hard-codes it rather than exposing a flag. | Documented at the call site. A `--complete`-less read would report every plan as having no unclaimed criteria — a second vacuity bug in a different costume. |
 | D5 | Deferred | **Open Question 1 is still open.** `--strict` opt-in was resolved *by design*, not by a human ruling (the plan records the user replied "build the plan now" without deciding). If the answer is "not-ready must always exit non-zero", it is a one-line change to the mapping. | Carried, not closed. Surfaced here for the go-decision. |
 | D6 | Noteworthy | **Pre-existing lint debt in `src/acts/plan/index.ts`.** Biome reports 3 unused imports + 2 unused variables (`validateWalk`, `resolveMapSeed`, `buildPlanIndex`, `loadPlanDocuments`, a `doc` binding). Verified against `HEAD`: the same 5 findings exist without my change. | **Left alone** — unrelated to this work, and fixing it here would put dead-code deletion in a feature diff. Worth a follow-up. |
@@ -279,7 +284,7 @@ findings in the added/edited docs (repo total unchanged at 196).
 | AC-01 | ✅ | `ready.test.ts` "every criterion claimed, survey receipted for these bytes, reads ready"; CLI case `ready → status ok, exit 0` |
 | AC-02 | ✅ | "a criterion no task accounts for is not-ready, named by address" — asserts the full `#acceptance_criteria/ac-0001` address |
 | AC-03 | ✅ | The T005 fixture (RED first), plus CLI cases `unconfigured`/exit 2 and "`--strict` does NOT turn a refusal into a failure" |
-| AC-04 | ✅ | "a decline is a legitimate ready: skipped, with a matching decision receipt" |
+| AC-04 | ✅ | "a decline is a legitimate ready: skipped, with the doctrine's decision receipt" (**no basis** — corrected in R1/F003), plus "a decline does not go stale when the plan is edited afterwards" |
 | AC-05 | ✅ | "skipped with no receipt is not satisfied" → `missing-receipt` |
 | AC-06 | ✅ | "no flight plan beside the plan is cant-tell" (service) + CLI exit 2 |
 | AC-07 | ✅ | `degraded`/0 by default; `error`/`E462`/1 under `--strict` |
@@ -325,3 +330,112 @@ The brief scoped changes to the plan folder, `services/dd/plan/`, `services/flow
    which does not exist. This is the same file under its real path.
 
 Both are reported rather than quietly absorbed.
+
+---
+
+## R1 — review round 1 fixes (`REQUEST_CHANGES`: 3 HIGH, 2 MEDIUM)
+
+Five findings ruled on and applied. The reviewer **approved** the vacuity precedence, `--strict`
+semantics, the `E462` opening, the frozen-manifest renegotiation and the architecture direction —
+none of those were reopened.
+
+**Files**: `harness/cli/src/services/flow/chores-read.ts`,
+`harness/cli/src/services/dd/plan/ready.ts`, `harness/cli/src/acts/plan/index.ts`,
+`harness/cli/test/services/dd/plan/ready.test.ts`, `docs/how/dd/plan-ready.md`.
+
+### F003 (HIGH) — a documented decline was unsatisfiable by the real protocol
+
+The doctrine's decline is `harness flow comment --kind decision --source user --text "<the
+human's verbatim words>"` — verified in `skills/eng-harness-flow/SKILL.md`. It carries **no
+`basis_sha256` at all**. AC-04 as originally written required a decline receipt whose basis
+matched, so the human's "no" could never satisfy the gate in normal use.
+
+**Ruled and applied**: a `decision` receipt satisfies **without** a basis; a `validation` receipt
+(a completed survey) still **requires** basis equality. The asymmetry is now stated in
+`docs/how/dd/plan-ready.md` under *"Why a decline needs no basis, and a completed survey does"*
+rather than left for a reader to infer: a completed survey is a claim about *specific plan bytes*,
+so it expires when they change; a decline is a decision about *the work*, so nothing later
+invalidates it. Two fixtures: the doctrine-shaped decline reads `declined-with-receipt`, and a
+decline followed by an edit to the plan **stays** ready.
+
+A third state fell out of the split and is now named rather than silently lumped in: a
+`validation` receipt carrying **no** basis — the doctrine's `decision:unavailable` router-missing
+detection receipt is exactly that shape — is a completed *attempt*, not a completed survey. New
+reason **`missing-basis`**, never satisfied, with its own fixture and its own prose line.
+
+### F002 (HIGH) — newest receipt wins
+
+Comments are append-only, so a re-surveyed node holds *both* receipts. The first-match scan let
+the older one shadow the newer, reporting `stale-basis` about a survey already redone.
+`newestReceipt` now scans newest-first.
+
+The fixture is the finding: a node carrying **a stale receipt followed by a current one** must
+read satisfied. Its control — the same two receipts in the **opposite** order — must still read
+`stale-basis`, otherwise the first fixture would pass merely because the reader prefers a matching
+basis found anywhere in the list.
+
+### F004 (MEDIUM) — an allow-list that did not list
+
+A comment with **no** `kind` was accepted despite the stated `validation | decision` rule: a
+control that did not do what it said it did — this packet's own defect class. Now the kind must be
+stated explicitly. Both the kind-less and the `note` cases are asserted.
+
+### F001 (HIGH finding upheld; the reviewer's *reasoning* corrected)
+
+The reviewer's stated mechanism was that doctrine-minted `backpressure-<hash>` nodes carry
+`type: chore` and were therefore invisible.
+
+**What was verified**: in this plan's live `the-flow.json`, both `backpressure` and
+`backpressure-752982794591` carry `type: "backpressure"`, and both were already being seen. **What
+was not verified**: any code path that mints such a node as `type: chore`. No such path was found,
+so the claimed live defect is **not demonstrated here** — recorded as the reviewer's hypothesis,
+not an established mechanism.
+
+**The real finding, which stands**: the doctrine pins the re-basis node's **id**
+(`backpressure-<first 12 hex>`) and says nothing about its `type`. Selecting on type alone
+therefore relies on whoever mints the node choosing the same type by coincidence, not by contract.
+Selection is now `type === 'backpressure' || /^backpressure(-[0-9a-f]{12})?$/i.test(id)`. Both id
+shapes are tested against a **non-matching** type, and an "unrelated chore node is not mistaken
+for the survey" fixture guards the other side of the widening.
+
+### F005 (MEDIUM) — a docs example is a runnable surface
+
+Every command in `docs/how/dd/plan-ready.md` pointed at `docs/plans/072-plan-ready-gate`, which
+has no `plan.dd.json`, so every one of them errored. All examples now target
+`docs/plans/archive/071-dd-native-builder`, and **each was executed before being written down**.
+A new *"What `<target>` has to be"* section states the requirement (a `plan.dd.json` or its
+containing directory) and shows the real `E400` a markdown-only folder gets.
+
+### FT-006 (LOW, not in the ruling — applied anyway where it was a lie)
+
+The T005 pointer no longer cites a line number (the file grew; the assertion is named instead).
+The `no-flight-plan` and `flight-plan-unreadable` prose now name the **resolved flow path** rather
+than asserting "beside this plan", which was false whenever `--flow` was passed explicitly.
+
+### The R1 tests are controls, not decorations
+
+Every new case was run against the **pre-fix** reader (`git stash push` on `chores-read.ts` alone)
+before the fix was accepted. Seven of the nine went RED:
+
+```
+× AC-04 — a decline is a legitimate ready …          expected 'missing-receipt' to be 'declined-with-receipt'
+× AC-04 — a decline does not go stale …              expected 'missing-receipt' to be 'declined-with-receipt'
+× R1/F002 — a later matching receipt beats …         expected 'stale-basis' to be 'survey-done'
+× R1/F002 — and the reverse order still reads stale  expected 'survey-done' to be 'stale-basis'
+× R1/F004 — a comment with NO kind is not a receipt  expected true to be false
+× a validation receipt with no basis …               expected 'missing-receipt' to be 'missing-basis'
+× R1/F001 — the survey is found by its … ID          expected null to be 'backpressure-572b939e33c1'
+```
+
+Stated honestly: **two** of the new cases passed against the old code — the `note` case (already
+rejected) and "an unrelated chore node is not mistaken for the survey" (nothing to widen yet).
+They are kept as regression guards on behaviour the fix could plausibly have broken, and they are
+not claimed as proof of a fixed defect.
+
+### Gates after R1
+
+| Gate | Result |
+|------|--------|
+| `npm run test` | see below |
+| `harness checks` | see below |
+| `npm run check:docs` | see below |

@@ -16,8 +16,21 @@ import { type FlowServiceDeps, readFlowDoc } from './flow-service.js';
  * reading every survey as unreceipted.
  */
 
-/** The node `type` the harness doctrine stamps on a backpressure seam node. */
+/** The node `type` this repo's flight plans carry on a backpressure seam node. */
 export const BACKPRESSURE_NODE_TYPE = 'backpressure';
+
+/**
+ * The node ID the doctrine actually PINS: `backpressure`, and on a re-basis
+ * `backpressure-<first 12 hex of the surveyed plan's SHA-256>` (`eng-harness-flow`
+ * SKILL.md, "Recurrence — latest-plan basis").
+ *
+ * Selecting on the id as well as the type is the point. The doctrine specifies the
+ * id and says nothing about the `type` field, so a reader that matched on type
+ * alone would be depending on whoever mints the node happening to choose the same
+ * type this repo's flows happen to use — a coincidence, not a contract. Matching
+ * either means the survey is still found when a minter picks a different type.
+ */
+const BACKPRESSURE_ID = /^backpressure(?:-[0-9a-f]{12})?$/i;
 
 /**
  * The statuses that END a chore. Everything else means it is still outstanding —
@@ -30,8 +43,14 @@ const TERMINAL_STATUSES = new Set(['done', 'skipped']);
  * attempt) and `decision` (the human's decline). A `note` is deliberately NOT one
  * — the doctrine reserves receipts for append-only comments precisely because a
  * note is overwritable, and a receipt you can quietly rewrite proves nothing.
+ *
+ * The kind must be stated EXPLICITLY. A comment with no `kind` at all is not a
+ * receipt either: accepting it would make the allow-list decorative, and "a
+ * control that does not do what it says it does" is the exact defect class this
+ * verb exists to catch.
  */
-const RECEIPT_KINDS = new Set(['validation', 'decision']);
+type ReceiptKind = 'validation' | 'decision';
+const RECEIPT_KINDS = new Set<string>(['validation', 'decision']);
 
 /** `basis_sha256:<64 hex>` — the surveyed plan's bytes, recorded in the receipt. */
 const BASIS_PATTERN = /basis_sha256:([0-9a-fA-F]{64})/;
@@ -47,25 +66,79 @@ const BASIS_PATTERN = /basis_sha256:([0-9a-fA-F]{64})/;
 
 /** Every backpressure node, in document order (the re-basis nodes included). */
 function backpressureNodes(nodes: readonly FlowNode[]): FlowNode[] {
-  return nodes.filter((node) => node.type === BACKPRESSURE_NODE_TYPE);
+  return nodes.filter(
+    (node) => node.type === BACKPRESSURE_NODE_TYPE || BACKPRESSURE_ID.test(node.id),
+  );
+}
+
+interface Receipt {
+  kind: ReceiptKind;
+  /** The `basis_sha256` this receipt records, or `null` when it carries none. */
+  basis: string | null;
 }
 
 /**
- * The basis a node's receipt records, or `null` when it carries no receipt.
+ * The node's NEWEST receipt, or `null` when it carries none.
  *
- * Keyed on the node TYPE rather than the `chore` marker on purpose: a re-basis
- * survey node is spliced in without a chore marker, and a reader that only looked
- * at chore-marked nodes would miss the very node that re-surveyed the plan it is
- * being asked about.
+ * Newest-first is load-bearing, not a detail. Comments are append-only, so a node
+ * accumulates history: survey the plan, edit the plan, re-survey it, and the node
+ * holds a stale receipt FOLLOWED by a current one. A first-match scan would let
+ * the older receipt shadow the newer one and report `stale-basis` about a survey
+ * that has in fact been redone. The last word wins, because the last word is the
+ * most recent thing anyone recorded.
+ *
+ * The node is found by type or id (see `BACKPRESSURE_ID`) rather than by the
+ * `chore` marker on purpose: a re-basis survey node is spliced in without one, and
+ * a reader keyed on the chore marker would miss the very node that re-surveyed the
+ * plan it is being asked about.
  */
-function receiptBasis(node: FlowNode): string | null {
-  for (const comment of node.comments ?? []) {
-    if (comment.kind !== undefined && !RECEIPT_KINDS.has(comment.kind)) continue;
+function newestReceipt(node: FlowNode): Receipt | null {
+  const comments = node.comments ?? [];
+  for (let at = comments.length - 1; at >= 0; at -= 1) {
+    const comment = comments[at];
+    if (comment === undefined) continue;
+    const kind = comment.kind;
+    if (kind === undefined || !RECEIPT_KINDS.has(kind)) continue;
     const match = BASIS_PATTERN.exec(comment.text);
-    if (match?.[1] !== undefined) return match[1].toLowerCase();
+    return { kind: kind as ReceiptKind, basis: match?.[1]?.toLowerCase() ?? null };
   }
   return null;
 }
+
+/**
+ * What ONE terminal survey node says about these plan bytes.
+ *
+ * The two receipt kinds are treated asymmetrically, deliberately:
+ *
+ * - A `validation` receipt is an agent's completed survey — a claim about
+ *   SPECIFIC plan bytes. It therefore requires basis equality, and goes stale the
+ *   moment those bytes change (AC-10). A `validation` receipt carrying no basis at
+ *   all (the doctrine's `decision:unavailable` detection receipt is one) is a
+ *   completed *attempt* but not a completed survey: it cannot say which bytes it
+ *   looked at, so it cannot satisfy this dimension.
+ * - A `decision` receipt is the human's decline, and the doctrine's decline
+ *   command records the human's verbatim words and NO basis at all. Requiring one
+ *   would make a documented decline unsatisfiable by the actual protocol. It also
+ *   would not mean anything: a decline is a decision about THE WORK, not about the
+ *   bytes, so there is nothing for a later edit to invalidate.
+ */
+function judge(
+  node: FlowNode,
+  expected: string,
+): { reason: SurveyReason; satisfied: boolean; basis: string | null } {
+  const receipt = newestReceipt(node);
+  if (receipt === null) return { satisfied: false, reason: 'missing-receipt', basis: null };
+  const basis = receipt.basis;
+  if (receipt.kind === 'decision') {
+    return { satisfied: true, reason: 'declined-with-receipt', basis };
+  }
+  if (basis === null) return { satisfied: false, reason: 'missing-basis', basis };
+  if (basis === expected) return { satisfied: true, reason: 'survey-done', basis };
+  return { satisfied: false, reason: 'stale-basis', basis };
+}
+
+/** Which unsatisfied reading tells a reader the most, when several nodes dissent. */
+const DISSENT_ORDER: readonly SurveyReason[] = ['stale-basis', 'missing-basis', 'missing-receipt'];
 
 function reading(
   satisfied: boolean | null,
@@ -92,14 +165,16 @@ function reading(
  * acceptance criterion to name an instrument would re-invent the coverage
  * predicate that decision threw away.
  *
- * `expectedBasis` is the SHA-256 of the plan document being judged. A receipt for
- * different bytes is `stale-basis` and never satisfied — an edit made after the
- * survey must not inherit the old green.
+ * `expectedBasis` is the SHA-256 of the plan document being judged. A completed
+ * survey's receipt for different bytes is `stale-basis` and never satisfied — an
+ * edit made after the survey must not inherit the old green. A human's DECLINE
+ * carries no basis and needs none: see `judge` for why the two are asymmetric.
  *
  * When several backpressure nodes exist (the doctrine mints one per re-basis), the
- * most informative reading wins: a matching receipt, else a stale one, else a
- * terminal node with no receipt, else "not run". A survey that happened for the
- * current bytes is the truth regardless of how many earlier ones are lying around.
+ * most informative reading wins: any node that is affirmatively satisfied, else
+ * the loudest dissent (stale receipt, then a receipt with no basis, then no
+ * receipt at all), else "not run". A survey that happened for the current bytes is
+ * the truth regardless of how many earlier ones are lying around.
  */
 export function readBackpressureSurvey(
   flowPath: string,
@@ -122,24 +197,16 @@ export function readBackpressureSurvey(
     return reading(false, 'not-run', expected, nodes[0]);
   }
 
-  let stale: { node: FlowNode; basis: string } | null = null;
+  const dissent = new Map<SurveyReason, { node: FlowNode; basis: string | null }>();
   for (const node of terminal) {
-    const basis = receiptBasis(node);
-    if (basis === null) continue;
-    if (basis === expected) {
-      return reading(
-        true,
-        node.status === 'skipped' ? 'declined-with-receipt' : 'survey-done',
-        expected,
-        node,
-        basis,
-      );
-    }
-    stale ??= { node, basis };
+    const verdict = judge(node, expected);
+    if (verdict.satisfied) return reading(true, verdict.reason, expected, node, verdict.basis);
+    if (!dissent.has(verdict.reason)) dissent.set(verdict.reason, { node, basis: verdict.basis });
   }
 
-  if (stale !== null) {
-    return reading(false, 'stale-basis', expected, stale.node, stale.basis);
+  for (const reason of DISSENT_ORDER) {
+    const found = dissent.get(reason);
+    if (found !== undefined) return reading(false, reason, expected, found.node, found.basis);
   }
   return reading(false, 'missing-receipt', expected, terminal[0]);
 }

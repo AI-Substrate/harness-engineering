@@ -4,10 +4,25 @@
 should ask it: when a plan is first written, and again at a gate.
 
 ```bash
-harness plan ready docs/plans/072-plan-ready-gate
+harness plan ready docs/plans/archive/071-dd-native-builder
 ```
 
 It is a **read**. It never writes to the plan document or the flight plan.
+
+## What `<target>` has to be
+
+A **dd-native** plan: a `plan.dd.json`, or the directory containing one. Both
+forms resolve to the same document, so the example above is interchangeable
+with `docs/plans/archive/071-dd-native-builder/plan.dd.json`.
+
+A markdown-only plan folder is not a target and does not get a verdict — it
+gets an honest error, because there is no structured document to read
+criteria out of:
+
+```console
+$ harness plan ready docs/plans/072-plan-ready-gate
+{"command":"plan ready","status":"error", … ,"error":{"code":"E400","message":"no plan document at …/docs/plans/072-plan-ready-gate/plan.dd.json"}, …}
+```
 
 ## Three answers, not two
 
@@ -53,30 +68,70 @@ elsewhere) carries the chore and its receipt.
 
 | Chore state | Reads |
 | --- | --- |
-| `done`, receipt's `basis_sha256` matches the plan's current bytes | satisfied |
-| `skipped`, receipt matches | **satisfied** — see below |
-| terminal, receipt is for *other* bytes | `stale-basis` — never satisfied |
+| `done`, a `validation` receipt whose `basis_sha256` matches the plan's current bytes | satisfied |
+| a `decision` receipt (the human's decline) | **satisfied** — see below |
+| a `validation` receipt for *other* bytes | `stale-basis` — never satisfied |
+| a `validation` receipt with no `basis_sha256` at all | `missing-basis` — never satisfied |
 | terminal, no receipt at all | `missing-receipt` — never satisfied |
 | not terminal | `not-run` |
 | no flight plan beside the plan | `cant-tell` |
+
+A receipt is an **append-only comment** whose `kind` is explicitly `validation`
+or `decision`. A `note` is not a receipt (notes are overwritable, and a receipt
+you can quietly rewrite proves nothing), and neither is a comment with no
+`kind` — an allow-list that accepted the unstated case would be decorative.
+
+The survey node is found by its doctrine-pinned **id** — `backpressure`, or
+`backpressure-<first 12 hex of the surveyed plan's SHA-256>` on a re-basis — or
+by node `type: backpressure`. Either matches. The doctrine pins the id and says
+nothing about the type, so keying on type alone would depend on whoever mints
+the node picking the same one by coincidence.
+
+When a node carries several receipts, the **newest wins**. Comments are
+append-only, so a re-surveyed node holds its history: letting an older receipt
+shadow a newer one would report `stale-basis` about a survey that has already
+been redone.
 
 #### Why a decline is green
 
 Declining the backpressure survey is the human's call, and a gate that read a
 decline as "not ready" would be a compliance floor — which the flow explicitly
-forbids. So a `skipped` chore **with its decision receipt** is a legitimate
-`ready`.
+forbids. So a chore carrying its **decision receipt** is a legitimate `ready`.
 
 The receipt is what does the work. `skipped` with no receipt is *not*
 satisfied: without one, "the human decided against it" and "somebody clicked
 past it" are the same bytes on disk, and only one of those is a decision.
 
+#### Why a decline needs no basis, and a completed survey does
+
+The two receipt kinds are treated **asymmetrically, on purpose**:
+
+- A **`validation` receipt is a completed survey** — a claim about *specific
+  plan bytes*. It requires basis equality, and it goes stale the moment those
+  bytes change.
+- A **`decision` receipt is the human's decline** — a decision about *the
+  work*, not about the bytes. There is nothing for a later edit to invalidate,
+  so no basis is required.
+
+This is not a convenience. The doctrine's decline command is
+`harness flow comment --kind decision --source user --text "<the human's
+verbatim words>"`, which records the words and **no `basis_sha256` at all**.
+A gate that demanded a basis on a decline would be demanding a field the
+protocol never writes — the decline would be unsatisfiable in normal use, and
+the human's "no" would silently read as not-ready.
+
 #### Why the basis matters
 
-A receipt records the SHA-256 of the plan it surveyed. If the plan has been
-edited since, the receipt is for a document that no longer exists, and the
-verdict is `stale-basis`. An edit made after the survey does not inherit the
-old green.
+A completed survey's receipt records the SHA-256 of the plan it surveyed. If
+the plan has been edited since, the receipt is for a document that no longer
+exists, and the verdict is `stale-basis`. An edit made after the survey does
+not inherit the old green.
+
+A `validation` receipt with **no** basis is a completed *attempt* but not a
+completed survey — the doctrine's router-unavailable receipt
+(`decision:unavailable reason:… time:…`) is exactly this shape. It records that
+something happened; it cannot say which bytes were looked at, because none
+were. That reads `missing-basis`, not satisfied.
 
 ## What it deliberately does not check
 
@@ -96,7 +151,7 @@ gate reports, it does not block a person mid-flight.
 CI opts in:
 
 ```bash
-harness plan ready docs/plans/072-plan-ready-gate --strict
+harness plan ready docs/plans/archive/071-dd-native-builder --strict
 ```
 
 `--strict` turns `not-ready` into status `error`, exit **1** (`E462`). It is
@@ -117,6 +172,7 @@ reader to ignore warnings, which is a failure mode this codebase has already
 ruled on. The full structured reading is always in `data` for anything that
 wants to consume it:
 
-```bash
-harness plan ready docs/plans/072-plan-ready-gate --json | jq '.data | {verdict, reason, decided_by}'
+```console
+$ harness plan ready docs/plans/archive/071-dd-native-builder --json | jq -c '.data | {verdict, reason, decided_by}'
+{"verdict":"not-ready","reason":"stale-basis","decided_by":"survey"}
 ```

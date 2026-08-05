@@ -66,10 +66,23 @@ function receipt(basis: string, kind: 'validation' | 'decision' = 'validation') 
   };
 }
 
+/**
+ * A DECLINE, exactly as the doctrine's decline command writes one:
+ * `harness flow comment --kind decision --source user --text "<verbatim words>"`.
+ *
+ * Note what is not here: a `basis_sha256`. The doctrine's decline records the
+ * human's words and nothing else, so a decline receipt that carried a basis is a
+ * shape nobody ships.
+ */
+function decline(words = 'not worth it for a doc-only change') {
+  return { at: '2026-08-05T08:25:38.868Z', text: words, source: 'user', kind: 'decision' };
+}
+
 interface SurveyNode {
   status: string;
   comments?: Array<Record<string, unknown>>;
   id?: string;
+  type?: string;
 }
 
 /**
@@ -103,7 +116,7 @@ function writeFlow(folder: string, surveys: SurveyNode[]): string {
           { id: 'phase-1', type: 'phase', label: 'Phase 1', status: 'todo', next: [] },
           ...surveys.map((survey, at) => ({
             id: survey.id ?? (at === 0 ? 'backpressure' : `backpressure-${at}`),
-            type: 'backpressure',
+            type: survey.type ?? 'backpressure',
             label: 'Backpressure survey',
             status: survey.status,
             branch_of: 'plan',
@@ -258,18 +271,128 @@ describe('plan ready — the survey dimension', () => {
     return readReady(corpus);
   };
 
-  it('AC-04 — a decline is a legitimate ready: skipped, with a matching decision receipt', () => {
+  it('AC-04 — a decline is a legitimate ready: skipped, with the doctrine\u2019s decision receipt', () => {
     corpus = createSyntheticPlan({ slug: 'synthetic-plan', ...CLAIMED });
-    writeFlow(corpus.folder, [
-      { status: 'skipped', comments: [receipt(sha256(corpus.plan), 'decision')] },
-    ]);
+    // The receipt carries the human's verbatim words and NO basis — the shape the
+    // doctrine's decline command actually writes. Requiring a basis here made
+    // AC-04 unsatisfiable by the real protocol (found in review, R1/F003).
+    writeFlow(corpus.folder, [{ status: 'skipped', comments: [decline()] }]);
 
     const reading = readReady(corpus);
 
     // Declining the survey is the human's right. A gate that read a receipted
     // decline as not-ready would be a compliance floor, which the flow forbids.
     expect(reading.survey.reason).toBe('declined-with-receipt');
+    expect(reading.survey.satisfied).toBe(true);
+    expect(reading.survey.basis).toBeNull();
     expect(reading.verdict).toBe('ready');
+  });
+
+  it('AC-04 — a decline does not go stale when the plan is edited afterwards', () => {
+    // The asymmetry, asserted rather than left implicit: a completed survey is a
+    // claim about SPECIFIC bytes and expires when they change; a decline is a
+    // decision about the WORK, so there is nothing for an edit to invalidate.
+    corpus = createSyntheticPlan({ slug: 'synthetic-plan', ...CLAIMED });
+    writeFlow(corpus.folder, [{ status: 'skipped', comments: [decline()] }]);
+    const before = sha256(corpus.plan);
+    const doc = JSON.parse(readFileSync(corpus.plan, 'utf8')) as Record<string, unknown>;
+    doc.summary = 'edited after the decline was recorded';
+    writeFileSync(corpus.plan, `${JSON.stringify(doc, null, 2)}\n`, 'utf8');
+    expect(sha256(corpus.plan)).not.toBe(before);
+
+    const reading = readReady(corpus);
+
+    expect(reading.survey.reason).toBe('declined-with-receipt');
+    expect(reading.verdict).toBe('ready');
+  });
+
+  it('R1/F002 — a later matching receipt beats an earlier stale one on the same node', () => {
+    // Comments are append-only, so a re-surveyed node holds its history: the stale
+    // receipt FIRST, the current one after it. A first-match scan would report
+    // `stale-basis` about a survey that has in fact already been redone — the
+    // older word shadowing the newer one. The last word wins.
+    corpus = createSyntheticPlan({ slug: 'synthetic-plan', ...CLAIMED });
+    const basis = sha256(corpus.plan);
+    writeFlow(corpus.folder, [
+      { status: 'done', comments: [receipt('b'.repeat(64)), receipt(basis)] },
+    ]);
+
+    const reading = readReady(corpus);
+
+    expect(reading.survey.reason).toBe('survey-done');
+    expect(reading.survey.basis).toBe(basis);
+    expect(reading.verdict).toBe('ready');
+  });
+
+  it('R1/F002 — and the reverse order still reads stale: the newest word is the word', () => {
+    // The control for the control. If the fixture above passed because the reader
+    // simply prefers a matching basis anywhere in the list, this one would pass
+    // too — and it must not.
+    corpus = createSyntheticPlan({ slug: 'synthetic-plan', ...CLAIMED });
+    const basis = sha256(corpus.plan);
+    writeFlow(corpus.folder, [
+      { status: 'done', comments: [receipt(basis), receipt('b'.repeat(64))] },
+    ]);
+
+    const reading = readReady(corpus);
+
+    expect(reading.survey.reason).toBe('stale-basis');
+    expect(reading.survey.basis).toBe('b'.repeat(64));
+    expect(reading.verdict).toBe('not-ready');
+  });
+
+  it('R1/F004 — a comment with NO kind is not a receipt, whatever it says', () => {
+    // The allow-list has to actually list. A kind-less comment carrying a perfect
+    // basis was being accepted, which made the stated `validation | decision`
+    // rule decorative — a control that does not do what it says it does, which is
+    // this verb's own defect class.
+    corpus = createSyntheticPlan({ slug: 'synthetic-plan', ...CLAIMED });
+    const { kind: _dropped, ...kindless } = receipt(sha256(corpus.plan));
+    writeFlow(corpus.folder, [{ status: 'done', comments: [kindless] }]);
+
+    const reading = readReady(corpus);
+
+    expect(reading.survey.satisfied).toBe(false);
+    expect(reading.survey.reason).toBe('missing-receipt');
+    expect(reading.verdict).toBe('not-ready');
+  });
+
+  it('R1/F004 — a `note` is not a receipt either: notes are overwritable', () => {
+    corpus = createSyntheticPlan({ slug: 'synthetic-plan', ...CLAIMED });
+    const note = { ...receipt(sha256(corpus.plan)), kind: 'note' };
+    writeFlow(corpus.folder, [{ status: 'done', comments: [note] }]);
+
+    const reading = readReady(corpus);
+
+    expect(reading.survey.reason).toBe('missing-receipt');
+    expect(reading.verdict).toBe('not-ready');
+  });
+
+  it('a validation receipt with no basis is a completed attempt, not a completed survey', () => {
+    // The doctrine's router-unavailable detection receipt has exactly this shape:
+    // `--kind validation --text "decision:unavailable reason:… time:…"`. It records
+    // that an attempt happened; it cannot say which bytes were surveyed, because
+    // none were.
+    corpus = createSyntheticPlan({ slug: 'synthetic-plan', ...CLAIMED });
+    writeFlow(corpus.folder, [
+      {
+        status: 'done',
+        comments: [
+          {
+            at: '2026-08-05T08:25:38.868Z',
+            text: 'decision:unavailable reason:router not installed time:2026-08-05T08:10:00Z',
+            source: 'agent',
+            kind: 'validation',
+          },
+        ],
+      },
+    ]);
+
+    const reading = readReady(corpus);
+
+    expect(reading.survey.satisfied).toBe(false);
+    expect(reading.survey.reason).toBe('missing-basis');
+    expect(reading.verdict).toBe('not-ready');
   });
 
   it('AC-05 — skipped with no receipt is not satisfied: nothing records what was decided', () => {
@@ -337,6 +460,56 @@ describe('plan ready — the survey dimension', () => {
     expect(reading.survey.node).toBe(`backpressure-${basis.slice(0, 12)}`);
     expect(reading.survey.reason).toBe('survey-done');
     expect(reading.verdict).toBe('ready');
+  });
+
+  it('R1/F001 — the survey is found by its doctrine-pinned ID, not only by its type', () => {
+    // What the doctrine PINS is the id — `backpressure`, and on a re-basis
+    // `backpressure-<first 12 hex>`. It says nothing about `type`. Selecting on
+    // type alone therefore depends on whoever mints the node picking the same type
+    // this repo's flows happen to use: a coincidence, not a contract. Both id
+    // shapes are asserted here against a NON-matching type.
+    //
+    // Honesty about what this covers: no code path that mints a backpressure node
+    // as `type: chore` has been demonstrated — the live plan-072 flight plan
+    // stamps `type: backpressure` on both the base node and the re-basis node.
+    // This is brittleness insurance, not a reproduction of an observed defect.
+    corpus = createSyntheticPlan({ slug: 'synthetic-plan', ...CLAIMED });
+    const basis = sha256(corpus.plan);
+    writeFlow(corpus.folder, [
+      { status: 'done', type: 'chore', comments: [receipt('a'.repeat(64))] },
+      {
+        status: 'done',
+        type: 'chore',
+        id: `backpressure-${basis.slice(0, 12)}`,
+        comments: [receipt(basis)],
+      },
+    ]);
+
+    const reading = readReady(corpus);
+
+    expect(reading.survey.node).toBe(`backpressure-${basis.slice(0, 12)}`);
+    expect(reading.survey.reason).toBe('survey-done');
+    expect(reading.verdict).toBe('ready');
+  });
+
+  it('an unrelated chore node is not mistaken for the survey', () => {
+    // The other half of id-matching: widening the selector must not swallow every
+    // chore in the flight plan. A node that is neither the backpressure type nor
+    // the backpressure id leaves the dimension unknowable, not satisfied.
+    corpus = createSyntheticPlan({ slug: 'synthetic-plan', ...CLAIMED });
+    writeFlow(corpus.folder, [
+      {
+        status: 'done',
+        type: 'chore',
+        id: 'observe-drain',
+        comments: [receipt(sha256(corpus.plan))],
+      },
+    ]);
+
+    const reading = readReady(corpus);
+
+    expect(reading.survey.reason).toBe('no-survey-node');
+    expect(reading.verdict).toBe('cant-tell');
   });
 
   it('pins the receipt-shape coupling: `listChores` cannot answer this question', () => {
