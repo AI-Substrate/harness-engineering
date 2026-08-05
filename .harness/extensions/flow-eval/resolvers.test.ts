@@ -160,12 +160,26 @@ describe('resolvers — telemetry lane (evidence present ⇒ pass/fail)', () => 
     expect(await resolveAssertion(a('gate-refused', { code: 'E441', min: 2 }), rc)).toBe('fail');
   });
 
-  it('gate-refused FAILS on a run where no gate ever refused', async () => {
-    // The case that matters most: a scenario whose gates never fired has not
-    // demonstrated that the gates work, only that the subject avoided them.
+  it('gate-refused is UNKNOWN, not FAIL, when the refusal lane never showed it can record (FX003 D1)', async () => {
+    // This test used to expect `fail` — "a scenario whose gates never fired has not
+    // demonstrated the gates work, only that the subject avoided them". The intent was
+    // right; the verdict was not. An EMPTY refusals map is produced identically by a
+    // subject that dodged every gate AND by the two FX001 defects: D4 dropped every
+    // non-zero harness command before capture (and every refusal exits non-zero), and
+    // D2 then stripped the code through the OTLP roll. Both fixes are prospective and
+    // unversioned, so from the evidence object those cases are indistinguishable.
+    // Accusing the subject on that basis is the worst polarity a scorer has.
     const rc = ctxWith({ ...evidence(), refusals: {} });
-    expect(await resolveAssertion(a('gate-refused', {}), rc)).toBe('fail');
-    expect(await resolveAssertion(a('gate-refused', { code: 'E441' }), rc)).toBe('fail');
+    expect(await resolveAssertion(a('gate-refused', {}), rc)).toBe('unknown');
+    expect(await resolveAssertion(a('gate-refused', { code: 'E441' }), rc)).toBe('unknown');
+  });
+
+  it('gate-refused KEEPS a reachable FAIL on a lane that HAS demonstrated it records', async () => {
+    // The guard on the test above: the fix must not turn everything into `unknown`.
+    // Once the lane has recorded any code, its silence about another one is evidence.
+    const rc = ctxWith({ ...evidence(), refusals: { E441: 1 } });
+    expect(await resolveAssertion(a('gate-refused', { code: 'E443' }), rc)).toBe('fail');
+    expect(await resolveAssertion(a('gate-refused', { min: 2 }), rc)).toBe('fail');
   });
 
   it('skill-sequence FAILS when the order is violated (out-of-order) under STRICT mode', async () => {

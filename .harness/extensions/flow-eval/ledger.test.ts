@@ -132,10 +132,15 @@ describe('buildRunRecord — 2.1 round-trips a scored run into a schema-valid re
         { id: 'A8', type: 'file-created', source: 'fs', axis: 'capability', status: 'unknown', required: true, weight: 1 },
         { id: 'A2', type: 'skill-sequence', source: 'telemetry', axis: 'process', status: 'pass', required: false, weight: 1 },
       ],
-      axis_scores: { process: 1, capability: 0 },
+      // FX003 D2: the SCORER now decides measured-ness and emits null itself; the
+      // ledger passes it through instead of re-deriving it. This fixture therefore
+      // carries what the real scorer produces for an all-unknown capability axis.
+      // (It previously carried `0` here and relied on the ledger to correct the
+      // scorer — a second implementation that was right while the first was wrong,
+      // which is exactly how the wrong one survived.)
+      axis_scores: { process: 1, capability: null },
     });
     const rec = buildRunRecord(input({ scored: s }));
-    // NON-VACUITY: capability has only an `unknown` lane → null (NOT the scorer's 0).
     expect(rec.axis_scores.capability).toBeNull();
     expect(rec.axis_scores.process).toBe(1);
     expect(rec.unknown_rate_by_axis).toEqual({ capability: 1, process: 0 });

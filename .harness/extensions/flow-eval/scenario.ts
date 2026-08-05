@@ -256,6 +256,8 @@ export const ASSERTION_TYPES: Record<string, AssertionSource[]> = {
   'file-content-matches': ['fs'],
   'artifact-exists': ['fs'],
   'command-succeeds': ['fs'],
+  // Non-vacuity floor — fs (is the corpus big enough to be real work? FX003 D4/D5).
+  'corpus-floor': ['fs'],
   // Composite — fs+telemetry (AND of both lanes).
   'retro-drained': ['fs+telemetry'],
   // Safety — fs (guardrail: forbidden artifacts absent / required contract present).
@@ -287,6 +289,7 @@ export const ASSERTION_AXES: Record<string, Axis> = {
   'file-content-matches': 'capability',
   'artifact-exists': 'capability',
   'command-succeeds': 'capability',
+  'corpus-floor': 'capability',
   // Safety — the guardrail (caps when required).
   'forbidden-state': 'safety',
   // Judged — informational; scored on the process axis, never caps.

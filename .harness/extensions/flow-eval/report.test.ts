@@ -160,7 +160,10 @@ describe('writeReport — writes report.{json,md} via ctx.fsWrite (AC-07)', () =
       ...scored,
       deterministic: {
         ...scored.deterministic,
-        axis_scores: { process: 0, capability: 0 },
+        // FX003 D2: `null` is what the scorer now emits for an axis with no scorable
+        // lane, and the renderer READS it rather than re-deriving measured-ness from
+        // the rows below (one source of truth, not three).
+        axis_scores: { process: null, capability: 0 },
         results: [
           { id: 'P1', type: 'skill-called', source: 'telemetry', axis: 'process', status: 'unknown', required: false, weight: 1 },
           { id: 'C1', type: 'file-created', source: 'fs', axis: 'capability', status: 'fail', required: false, weight: 1 },

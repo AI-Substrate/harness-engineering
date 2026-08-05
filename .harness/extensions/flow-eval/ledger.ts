@@ -48,6 +48,13 @@ export interface LaneOutcome {
   verdict: 'pass' | 'fail' | 'unknown';
   required: boolean;
   axis: 'capability' | 'process' | 'safety';
+  /**
+   * WHY the lane returned this verdict, when the resolver had something to say
+   * (FX003 · D1/D6). Additive + optional: absent on legacy records, and
+   * `additionalProperties: true` keeps the schema forward-compatible without a
+   * {@link RUN_RECORD_SCHEMA_VERSION} bump.
+   */
+  note?: string;
 }
 
 /**
@@ -289,10 +296,9 @@ export function buildRunRecord(input: BuildRunRecordInput): RunRecord {
     verdict: r.status,
     required: r.required,
     axis: r.axis,
+    ...(r.note !== undefined && { note: r.note }),
   }));
 
-  const scorable = (axis: 'capability' | 'process'): boolean =>
-    results.some((r) => r.axis === axis && r.status !== 'unknown');
   const rateOn = (axis: 'capability' | 'process'): number => {
     const on = results.filter((r) => r.axis === axis);
     if (on.length === 0) return 0;
@@ -323,9 +329,13 @@ export function buildRunRecord(input: BuildRunRecordInput): RunRecord {
     base_ref: input.base_ref,
     seed_tuple: seed,
     lanes,
+    // FX003 · D2: taken STRAIGHT from the scorer, which is now the one place that
+    // decides whether an axis measured anything. This used to re-derive it with a
+    // local `scorable()` — a second implementation that happened to be right while
+    // the scorer's was wrong, which is how the wrong one survived.
     axis_scores: {
-      capability: scorable('capability') ? input.scored.deterministic.axis_scores.capability : null,
-      process: scorable('process') ? input.scored.deterministic.axis_scores.process : null,
+      capability: input.scored.deterministic.axis_scores.capability,
+      process: input.scored.deterministic.axis_scores.process,
     },
     verdict: toRecordVerdict(input.scored.verdict),
     telemetry_available: input.telemetry_available,

@@ -124,6 +124,77 @@ async function detectWorktreeHead(ctx: VerbContext, worktree: string): Promise<s
   return head.length > 0 ? head : null;
 }
 
+/** A full 40-char git oid. */
+const FULL_OID = /^[0-9a-f]{40}$/;
+/** Any hex string long enough to be a meaningful abbreviated oid (git's floor is 4; 7 is the common short form). */
+const HEX_OID = /^[0-9a-f]{4,40}$/;
+
+/**
+ * Resolve a ref to its FULL 40-char oid inside the worktree, or `null` when it does
+ * not resolve there (a branch that doesn't exist in this checkout, a typo, no git).
+ * `^{commit}` peels annotated tags so a tag and the commit it points at compare equal.
+ */
+async function resolveOid(ctx: VerbContext, worktree: string, ref: string): Promise<string | null> {
+  const r = await ctx.exec('git', ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`], { cwd: worktree });
+  if (!r.ok) return null;
+  const oid = r.stdout.trim().toLowerCase();
+  return FULL_OID.test(oid) ? oid : null;
+}
+
+/**
+ * FX003 · D3 — does the worktree's HEAD disagree with the declared `base_ref`?
+ *
+ * Three states, because there are three facts (the ruling: a literal `HEAD` is not a
+ * pinned base, it is the ABSENCE of one — say so rather than falling silent):
+ *
+ *  - `null` — no finding. Either they are the same commit, or HEAD could not be read
+ *    at all (an honest "couldn't detect" never becomes a drift accusation).
+ *  - an UNPINNED note — `base.ref` is the literal `HEAD` (what `scaffold` writes by
+ *    default), so the scenario pins nothing and the run is not reproducible. This is
+ *    a real finding, not a permanent pass: comparing HEAD to itself could never warn.
+ *  - a DRIFT warning — two genuinely different commits.
+ *
+ * The comparison itself resolves BOTH sides to full oids, so an abbreviated sha and
+ * the full sha OF THE SAME COMMIT no longer read as drift (the pre-fix bug: a raw
+ * string `!==` of `--short` HEAD against a 40-char `base.ref`). When the declared ref
+ * will not resolve in this worktree, fall back to a hex-prefix comparison so the
+ * abbreviation case is still handled without git.
+ */
+async function baseRefFinding(
+  ctx: VerbContext,
+  worktree: string,
+  baseRef: string,
+): Promise<string | null> {
+  const head = await detectWorktreeHead(ctx, worktree);
+  if (head === null) return null;
+
+  const declared = baseRef.trim();
+  if (declared === 'HEAD') {
+    return (
+      `base_ref is the literal 'HEAD' — this scenario pins NO base commit, so the run is not reproducible ` +
+      `and the recorded seed_tuple.base_ref cannot identify what was scored (worktree HEAD is ${head}). ` +
+      `Pin it: set base.ref in scenario.json to a sha, or pass --base-ref <sha>`
+    );
+  }
+
+  const headOid = await resolveOid(ctx, worktree, 'HEAD');
+  const baseOid = await resolveOid(ctx, worktree, declared);
+  if (headOid !== null && baseOid !== null) {
+    return headOid === baseOid
+      ? null
+      : `worktree HEAD ${head} (${headOid}) ≠ base_ref ${declared} (${baseOid}) — the scored worktree was not cut from the declared base_ref; the recorded seed_tuple.base_ref may be wrong`;
+  }
+
+  // The declared ref does not resolve here (or git could not answer). Compare the raw
+  // strings PREFIX-tolerantly: an abbreviation of the same commit must not warn, and
+  // git guarantees a unique-prefix abbreviation, so a shared prefix is the honest test.
+  const h = head.toLowerCase();
+  const b = declared.toLowerCase();
+  if (HEX_OID.test(h) && HEX_OID.test(b) && (h.startsWith(b) || b.startsWith(h))) return null;
+  if (h === b) return null;
+  return `worktree HEAD ${head} ≠ base_ref ${declared} — the scored worktree was not cut from the declared base_ref; the recorded seed_tuple.base_ref may be wrong`;
+}
+
 /**
  * Parse the `telemetry session save` envelope's `totals` into a denormalized
  * {@link TelemetrySummary}. Returns `null` when ANY of the four cost fields is
@@ -213,18 +284,15 @@ async function runScore(ctx: VerbContext): Promise<VerbResult> {
   const subjectEffort = strOpt(ctx, 'subjectEffort') ?? loaded.scenario.config.subject.effort;
   const baseRef = strOpt(ctx, 'baseRef') ?? loaded.scenario.config.base.ref;
 
-  // F-A: when a worktree is explicitly given, detect its HEAD and surface a VISIBLE
-  // warning (envelope + report.md) when it disagrees with the effective base_ref —
-  // never a crash, never a silent pass. A failed/empty detection ⇒ no warning.
+  // F-A / FX003 · D3: when a worktree is explicitly given, compare its HEAD to the
+  // effective base_ref and surface a VISIBLE finding (envelope + report.md) — drift,
+  // or an unpinned base — never a crash, never a silent pass. Both sides resolve to
+  // full oids first, so an abbreviated sha of the SAME commit is not drift.
   const worktreeOpt = strOpt(ctx, 'worktree');
   const warnings: string[] = [];
   if (worktreeOpt) {
-    const head = await detectWorktreeHead(ctx, worktreeOpt);
-    if (head !== null && head !== baseRef) {
-      warnings.push(
-        `worktree HEAD ${head} ≠ base_ref ${baseRef} — the scored worktree was not cut from the declared base_ref; the recorded seed_tuple.base_ref may be wrong`,
-      );
-    }
+    const finding = await baseRefFinding(ctx, worktreeOpt, baseRef);
+    if (finding !== null) warnings.push(finding);
   }
   const baseRefWarning = warnings.length > 0 ? warnings[0] : null;
 
