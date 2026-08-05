@@ -1,0 +1,61 @@
+{
+  "schema_version": "2.7",
+  "command": "checks",
+  "harness": "copilot-cli",
+  "harness_version": "unknown",
+  "harness_session_id": "815f3d58-cc52-46e6-a936-110ee1526779",
+  "timecode": "2026-08-05T00:58:22.447Z",
+  "window": {
+    "since": "session-start",
+    "from": 0,
+    "to": 0
+  },
+  "branch": null,
+  "tokens": null,
+  "effort": null,
+  "captured_env": {
+    "PIJ_HARNESS": "copilot",
+    "PIJ_PARENT_ID": "pij-related-koala",
+    "PIJ_SESSION_ID": "pij-medieval-yak"
+  },
+  "event_stream": [
+    {
+      "t": "2026-08-05T00:58:22.447Z",
+      "kind": "checks",
+      "status": "error",
+      "gates": {
+        "tests": "error",
+        "biome": "error",
+        "typecheck": "ok",
+        "check:docs": "ok",
+        "check:flows": "error",
+        "check:telemetry-fixtures": "error",
+        "check:doctrine-parity": "ok",
+        "check:dd-docs": "ok",
+        "root-invocation-smoke": "ok",
+        "arch-check": "unconfigured",
+        "dd doctor": "ok",
+        "skills-check": "ok",
+        "markdown-lint": "unconfigured",
+        "windows-check": "degraded"
+      }
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 0,
+      "agent_working_s": 0,
+      "human_s": 0,
+      "idle_s": 0,
+      "working_ratio": 0
+    },
+    "flow_stage_time_s": {},
+    "skills": {},
+    "tokens": null,
+    "tools": {},
+    "outcomes": {
+      "checks": "error",
+      "exits": {}
+    }
+  }
+}
