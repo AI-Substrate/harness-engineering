@@ -817,11 +817,115 @@ export function serializeEvent(e: Event, repoRoot?: string): Event {
   }
 }
 
-/** Fail-closed decoder for loose on-disk Segment JSON used by every reader. */
-export function decodeSegment(value: unknown): Segment | null {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) return null;
+/**
+ * The READ pin (packet FX002/FX004/PIN — Jordan's ruling; prime recommended 2.6 and
+ * was overruled). This build READS exactly one schema version. It is deliberately a
+ * separate constant from {@link SEGMENT_SCHEMA_VERSION}: that one says what we WRITE,
+ * this one says what we will READ, and collapsing them hides the moment they differ.
+ */
+export const SEGMENT_SCHEMA_PIN = '2.7';
+
+/**
+ * Every schema version this decoder has structural rules for, oldest first. This is
+ * the DECLARED closed set (the FX003 · R2 lesson: a closed vocabulary must be stated,
+ * not accumulated by accident) and it is what makes `below_pin` distinguishable from
+ * `unsupported_version` — without it, "a version I do not know" and "a version I know
+ * and will not read" would be the same answer again, one layer up.
+ */
+const KNOWN_SCHEMA_VERSIONS: readonly string[] = [
+  '1.1',
+  '2.0',
+  '2.1',
+  '2.2',
+  '2.3',
+  '2.4',
+  '2.5',
+  '2.6',
+  '2.7',
+];
+
+/**
+ * WHY a record was not read. Three DIFFERENT facts that were one bare `null` before
+ * this packet — and the reason they must never share a counter:
+ *
+ * - `below_pin` — a record at a version this build KNOWS and structurally could read,
+ *   refused because the pin says read only {@link SEGMENT_SCHEMA_PIN}. The data is
+ *   fine; the policy declined it. Recoverable by moving the pin.
+ * - `unsupported_version` — a version string outside the declared set above. NOT
+ *   `below_pin`: a 2.8 record is ABOVE the pin, and calling it "below" would be this
+ *   packet's own defect (a lookup reporting an absence it had not established).
+ *   Garbage version strings land here too — both share "I have no rules for this".
+ * - `malformed` — the record IS at the pin and failed structural validation, or it
+ *   carried no readable version at all. The data is broken.
+ *
+ * A caller that folds these back together has undone the fix.
+ */
+export type SegmentRefusalReason = 'below_pin' | 'unsupported_version' | 'malformed';
+
+/** A refused decode, carrying WHY plus the version it declared (null when unreadable). */
+export interface SegmentDecodeRefused {
+  ok: false;
+  reason: SegmentRefusalReason;
+  /** The record's declared `schema_version` when it had a string one, else `null`. */
+  schema_version: string | null;
+}
+
+/** A decode that either yields a Segment or NAMES its refusal — never a bare `null`. */
+export type SegmentDecodeResult = { ok: true; segment: Segment } | SegmentDecodeRefused;
+
+/** Refusal helper — one construction site, so no branch can invent a shape. */
+function refuse(reason: SegmentRefusalReason, schemaVersion: string | null): SegmentDecodeRefused {
+  return { ok: false, reason, schema_version: schemaVersion };
+}
+
+/**
+ * Fail-closed decoder for loose on-disk Segment JSON, REPORTING why it refused.
+ *
+ * This is the reason-bearing form ({@link decodeSegment} is the narrowing wrapper).
+ * It is total: every path returns an `ok` or a NAMED refusal, and it contains no
+ * `catch → null`, because a reason channel that collapses on its own failure has
+ * re-created the silence it replaced (packet ruling #1.2).
+ */
+export function decodeSegmentDetailed(value: unknown): SegmentDecodeResult {
+  if (value === null || typeof value !== 'object' || Array.isArray(value))
+    return refuse('malformed', null);
   const raw = value as Record<string, unknown>;
-  if (typeof raw.schema_version !== 'string') return null;
+  if (typeof raw.schema_version !== 'string') return refuse('malformed', null);
+  const declared = raw.schema_version;
+  // The pin, applied BEFORE structural validation: "record at 2.6, below the 2.7 pin,
+  // not read" is a statement about the version alone, and re-validating a record we
+  // have already declined would only let a structural failure relabel it `malformed`.
+  if (declared !== SEGMENT_SCHEMA_PIN) {
+    return KNOWN_SCHEMA_VERSIONS.includes(declared)
+      ? refuse('below_pin', declared)
+      : refuse('unsupported_version', declared);
+  }
+  const decoded = decodePinnedSegment(raw);
+  return decoded === null ? refuse('malformed', declared) : { ok: true, segment: decoded };
+}
+
+/**
+ * Narrowing wrapper kept for call sites that genuinely have nothing to say about a
+ * refusal. Every caller in this repo is enumerated in the packet log; a NEW caller
+ * should reach for {@link decodeSegmentDetailed} and only fall back here with a reason.
+ */
+export function decodeSegment(value: unknown): Segment | null {
+  const result = decodeSegmentDetailed(value);
+  return result.ok ? result.segment : null;
+}
+
+/**
+ * Structural validation for a record already known to be AT the pin.
+ *
+ * NOTE — the pre-pin version branches below (`legacyVersion` 1.1, `intermediateVersion`
+ * 2.0–2.3, and the 2.4/2.5/2.6 arms of `currentVersion`) are now UNREACHABLE through
+ * {@link decodeSegmentDetailed}: the pin refuses those versions before this function is
+ * called. They are retained DELIBERATELY, not by oversight — deleting ~200 lines of
+ * decoder is a behaviour-neutral refactor that would enlarge an already-approved PR's
+ * review surface, and the version literals here remain the documentation of what each
+ * schema version structurally meant. Deletion is a follow-up, stated in the packet log.
+ */
+function decodePinnedSegment(raw: Record<string, unknown>): Segment | null {
   const currentVersion =
     raw.schema_version === '2.4' ||
     raw.schema_version === '2.5' ||

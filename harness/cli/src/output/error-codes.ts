@@ -29,6 +29,8 @@ export const ErrorCodes = {
   EXTENSION_API_ABOVE_CORE: 'E147',
   /** A v2 extension declares an unknown top-level section (typo or newer vocabulary). */
   EXTENSION_UNKNOWN_SECTION: 'E148',
+  /** A verb is unregistered because NO extension is loadable from the cwd — a diagnosable state, not the `E108` "you typed it wrong" it used to report (FX004). */
+  EXTENSION_CONTEXT_ABSENT: 'E149',
   /** `harness new`: the requested verb name fails the name rules (empty, spaces, separators, etc.). */
   SCAFFOLD_INVALID_NAME: 'E150',
   /** `harness new`: the requested name is reserved by a core command (`help`/`doctor`/`new`). */

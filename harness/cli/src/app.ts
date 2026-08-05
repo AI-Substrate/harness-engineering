@@ -48,6 +48,12 @@ import { helpStyleConfig, resolveUseColor } from './output/style.js';
 import { validateVerbRegistry } from './services/config/load-config.js';
 import { discoverExtensions } from './services/extensions/discovery.js';
 import {
+  findExtensionAncestor,
+  type NoExtensionContext,
+  noExtensionContextMessage,
+  noExtensionContextNextAction,
+} from './services/extensions/no-extension-context.js';
+import {
   buildExtensionRegistry,
   type ExtensionRegistry,
   type VerbRegistry,
@@ -57,6 +63,7 @@ import {
   coreRecordTypes,
   type ExtensionRecordType,
 } from './services/record/registry.js';
+import { toPosix } from './services/shared/posix-path.js';
 import { coreTelemetryAdapters } from './services/telemetry/adapters/index.js';
 import {
   CAPTURE_DEPTH_ENV,
@@ -198,6 +205,70 @@ export function commanderErrorEnvelope(
 }
 
 /** Last-resort envelope for an unexpected error before/around parse — routed through the kernel. */
+/**
+ * The first non-flag token in argv — the subcommand the user asked for, if any.
+ *
+ * Every global option on `buildProgram` is a boolean (`--json`, `--no-json`,
+ * `--quiet`, `--ascii`, `--no-extensions`, `-v/--version`), so no flag consumes a
+ * following value and the first bare token is unambiguous. `--` ends option parsing.
+ */
+export function firstPositional(argv: string[]): string | null {
+  for (const token of argv.slice(2)) {
+    if (token === '--') return null;
+    if (token.startsWith('-')) continue;
+    return token;
+  }
+  return null;
+}
+
+/**
+ * FX004 — refuse an unregistered verb with the REASON, before commander turns it into
+ * a syntax error.
+ *
+ * This runs PRE-PARSE deliberately, because the defect has two faces and only a
+ * pre-parse guard catches both: `harness checks` threw `E108` ("you typed it wrong"),
+ * while `harness checks --help` printed the TOP-LEVEL usage and exited 0 — a
+ * failing case returning a passing-looking result, which is how the bug read as
+ * working. Mapping commander's error after the fact fixes the first face only; the
+ * second never reaches an error path at all.
+ *
+ * Returns `null` — i.e. "not my case, carry on" — whenever the answer is genuinely
+ * unknown to this guard:
+ *  - no subcommand was asked for (bare `harness`, `harness --version`);
+ *  - the name IS a registered command (core or extension), so parse it normally;
+ *  - extensions ARE loadable here, so an unknown name really is a typo and `E108`
+ *    remains the correct, honest answer. This is the guard's own guard: it must not
+ *    claim an absent extension context in a directory that has one.
+ */
+export function noExtensionContextEnvelope(
+  argv: string[],
+  program: Command,
+  deps: VerbActDeps,
+  clock: Clock,
+): Envelope | null {
+  const requested = firstPositional(argv);
+  if (requested === null) return null;
+  const known = program.commands.some(
+    (cmd) => cmd.name() === requested || cmd.aliases().includes(requested),
+  );
+  if (known) return null;
+  if (discoverExtensions(deps.fs, deps.proc).candidates.length > 0) return null;
+
+  const cwd = toPosix(deps.proc.cwd());
+  const ctx: NoExtensionContext = {
+    cwd,
+    requested,
+    remedy: findExtensionAncestor(deps.fs, cwd),
+  };
+  return formatError(
+    'harness',
+    ErrorCodes.EXTENSION_CONTEXT_ABSENT,
+    noExtensionContextMessage(ctx),
+    clock,
+    { next_action: noExtensionContextNextAction(ctx) },
+  );
+}
+
 function unexpectedEnvelope(err: unknown, clock: Clock): Envelope {
   return formatError(
     'harness',
@@ -501,7 +572,15 @@ export async function main(
   process.env[CAPTURE_DEPTH_ENV] = String((Number(process.env[CAPTURE_DEPTH_ENV] ?? '0') || 0) + 1);
 
   try {
-    await buildProgram(version, io, deps, registry).parseAsync(argv);
+    const program = buildProgram(version, io, deps, registry);
+    // FX004: refuse an unregistered verb with the reason BEFORE commander maps it to a
+    // syntax error (or, for `--help`, to a silent top-level-usage fallback).
+    const contextEnvelope = noExtensionContextEnvelope(argv, program, deps, clock);
+    if (contextEnvelope !== null) {
+      exitWithEnvelope(contextEnvelope, port);
+      return;
+    }
+    await program.parseAsync(argv);
   } catch (err) {
     const envelope = commanderErrorEnvelope(err as { code?: string; message?: string }, clock);
     if (envelope === null) {
