@@ -95,3 +95,45 @@ byte-identical to the baseline at dispatch: arch 2 / markdown 196 / windows 6).
 - Anything in `harness/cli/**`.
 - The `checks` double-count on main (069/adapter, two producers per run) — routed
   to prime.
+
+## Ruling #1 (2026-08-05, pij-related-koala — coder fence questions 1–3)
+
+- **Q1 (D2 shape) — CONFIRMED.** Three places independently decide "is this axis
+  measured" (`scorer.ts` wrong, `report.ts` `axisMeasured()` right, `ledger.ts`
+  `scorable()` right), so `report.md` was honest only by RE-DERIVING what the
+  scorer got wrong. That is the same "one implementation, not two" failure
+  FX001's D1 ruled on. `AxisScores` → `number|null` in the scorer; report and
+  ledger CONSUME it. Conditions: the back-compat reader must never coerce
+  `null → 0` downstream; `ledger-view.ts` ruled in or out explicitly; and the log
+  must state that HISTORIC `report.json` rows carry numeric `0` for unmeasured
+  axes and cannot be retroactively corrected (prospective, like FX001's D2/D4).
+- **Q2 (new `corpus-floor` assertion type) — APPROVED, additive-only.** The
+  existing vocabulary is all presence-greps; "every AC served by ≥1 task" needs
+  to parse and count, and a typed tested assertion beats hiding dd semantics in a
+  shell string. **Condition**: an UNKNOWN assertion type must resolve `unknown` —
+  never crash, never pass — with a control. The vocabulary is first-party (all
+  consumer scenarios are in-repo), so this is not FX001's closed-set problem.
+- **Q3 (base-ref) — REDIRECTED.** Full-oid comparison is right for the
+  abbreviated-vs-full case, but the coder's consequence — a scenario declaring
+  `ref: 'HEAD'` can NEVER warn — installs a control that cannot fail, inside a fix
+  whose whole purpose is that the instrument stops asserting what it did not
+  establish. `scaffold` writes `ref: 'HEAD'` BY DEFAULT, so that would ship a
+  permanently inert check. **Rule**: a literal `HEAD` is not a pinned base, it is
+  the ABSENCE of one — surface it as its own state (the run is not reproducible),
+  not as silence. A third state, not a permanent pass.
+- **Hole flagged in the coder's D1 discriminator**: `evidence.source` (buffer =
+  trustworthy) correctly handles D2 (the roll destroying the code) but NOT D4 — a
+  pre-D4 buffer segment has no `command_exit` for a refusal at all, so `source:
+  buffer` proves the roll did not eat the code, not that the capture ever fired.
+  Suggested shape (design is the coder's): ask whether the refusal lane has
+  DEMONSTRATED it can record — e.g. ≥1 `command_exit` carrying a code anywhere in
+  the session — a capability proof rather than a date proof, which keeps a genuine
+  `fail` reachable.
+
+**Finding routed (not fixed here — forbidden path):** the CLI↔extension lock-step
+proof at `harness/cli/test/extensions/flow-eval/session-evidence-lockstep.test.ts`
+is DEAD. `tsc` runs `-p harness/cli/tsconfig.json` whose `include` is `['src']`,
+and vitest transpiles without typechecking, so nothing typechecks it; its SAMPLE
+already omits four required `CliEvidence` fields (`token_evidence`, `refusals`,
+`source`, `ref_checked`) and no gate notices. Proved by the coder with a throwaway
+tsconfig. FX001 reported this as a suspicion; this establishes the mechanism.
