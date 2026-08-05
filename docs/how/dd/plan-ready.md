@@ -71,7 +71,7 @@ elsewhere) carries the chore and its receipt.
 | `done`, a `validation` receipt whose `basis_sha256` matches the plan's current bytes | satisfied |
 | a `decision` receipt from `source: user` on a `skipped` node (the human's decline) | **satisfied** — see below |
 | a `validation` receipt for *other* bytes | `stale-basis` — never satisfied |
-| the doctrine's router-missing detection or parsed JSON envelope with status `noop` / `UNAVAILABLE`, with no basis | `missing-basis` — **can't-tell**, see below |
+| the operative `decision:unavailable` receipt, or the documented alternative carrying a standalone `noop` / `UNAVAILABLE` token, with no basis | `missing-basis` — **can't-tell**, see below |
 | any other basis-less `validation` receipt | `invalid-receipt` — malformed, never satisfied |
 | a non-authoritative `decision` comment | `invalid-receipt` — never satisfied |
 | terminal, no receipt at all | `missing-receipt` — never satisfied |
@@ -136,16 +136,19 @@ the plan has been edited since, the receipt is for a document that no longer
 exists, and the verdict is `stale-basis`. An edit made after the survey does
 not inherit the old green.
 
-The doctrine names three completed *attempts* that produce no survey basis:
+The operative flight-plan instruction records an unavailable attempt as
+`decision:unavailable …`. The doctrine also explicitly permits a real
+`noop` / `UNAVAILABLE` envelope as the comment text, so the reader accepts
+either form. It does not parse a comment-body schema: `decision:unavailable`
+is primary, and a standalone `noop` or `UNAVAILABLE` token is the documented
+alternative. Token boundaries keep word fragments such as `snoopy` from
+counting.
 
-1. the router-missing detection receipt (`decision:unavailable …`);
-2. a real router envelope whose parsed JSON `status` is `noop`; or
-3. a real boot envelope whose parsed JSON `status` is `UNAVAILABLE`.
-
-The envelope paths parse the recorded status; they do not match arbitrary
-prose inside the envelope. Unparseable JSON, another status, or any other
-basis-less validation is `invalid-receipt` / not-ready. Merely omitting a basis
-does not prove router unavailability.
+The two forms are being unified upstream as FX009. `plan ready` deliberately
+does not adjudicate them or discard the recorded evidence. Any other basis-less
+validation is `invalid-receipt` / not-ready. Its diagnostic prescribes the
+repair: re-run the survey to record `basis_sha256`, or record a human decline
+with `--kind decision --source user`.
 
 That reads **`cant-tell`**, not `not-ready`. A repo with no harness router
 receipts its survey as an unavailable attempt, and this command answers "I

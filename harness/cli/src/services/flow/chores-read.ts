@@ -55,8 +55,23 @@ const RECEIPT_KINDS = new Set<string>(['validation', 'decision']);
 /** `basis_sha256:<64 hex>` — the surveyed plan's bytes, recorded in the receipt. */
 const BASIS_PATTERN = /basis_sha256:([0-9a-fA-F]{64})/;
 
-/** The doctrine's Layer-1 detection receipt when the harness router is missing. */
+/** The operative recorded form when the harness router is unavailable. */
 const UNAVAILABLE_DETECTION_PATTERN = /^decision:unavailable\b/i;
+
+/**
+ * The doctrine documents both receipt forms as alternatives:
+ *
+ * - `skills/eng-harness-flow/SKILL.md:85` says to persist the verbatim envelope;
+ * - `skills/builder/references/flight-plan.template.json:74` persists
+ *   `decision:unavailable`; and
+ * - `skills/builder/references/00-routing.md:226` explicitly permits either.
+ *
+ * Therefore the reader also accepts standalone `noop` / `UNAVAILABLE` outcome
+ * tokens without parsing a comment-body schema. FX009, owned by prime, tracks
+ * unification; `plan ready` deliberately does not adjudicate the two forms.
+ */
+const UNAVAILABLE_OUTCOME_TOKEN_PATTERN =
+  /(?:^|[^A-Za-z0-9_])(?:noop|UNAVAILABLE)(?=$|[^A-Za-z0-9_])/;
 
 /**
  * The reading's SHAPE (`SurveyDimension`, `SurveyReason`) is declared by the
@@ -84,22 +99,8 @@ interface Receipt {
   valid: boolean;
 }
 
-/** Read the status of a real router/boot envelope, never by matching its prose. */
-function envelopeStatus(text: string): string | null {
-  try {
-    const parsed = JSON.parse(text) as unknown;
-    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null;
-    const status = (parsed as Record<string, unknown>).status;
-    return typeof status === 'string' ? status : null;
-  } catch {
-    return null;
-  }
-}
-
 function isUnavailableAttempt(text: string): boolean {
-  if (UNAVAILABLE_DETECTION_PATTERN.test(text)) return true;
-  const status = envelopeStatus(text);
-  return status === 'noop' || status === 'UNAVAILABLE';
+  return UNAVAILABLE_DETECTION_PATTERN.test(text) || UNAVAILABLE_OUTCOME_TOKEN_PATTERN.test(text);
 }
 
 /**
@@ -159,9 +160,9 @@ function newestReceipt(node: FlowNode): Receipt | null {
  *   would not mean anything: a decline is a decision about THE WORK, not about the
  *   bytes, so there is nothing for a later edit to invalidate.
  *
- * Only the doctrine's three agent-authored unavailable attempts may omit a basis
- * and read `null` / CAN'T-TELL: router-missing detection, a parsed router envelope
- * with status `noop`, or a parsed boot envelope with status `UNAVAILABLE`. A
+ * Only the doctrine's agent-authored unavailable forms may omit a basis and read
+ * `null` / CAN'T-TELL: the operative `decision:unavailable` receipt or the
+ * documented alternative carrying a standalone `noop` / `UNAVAILABLE` token. A
  * different basis-less validation is malformed and remains a known not-ready
  * result.
  */

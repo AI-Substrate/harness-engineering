@@ -194,6 +194,9 @@ Add `harness plan ready <target>`: a read-only verdict that composes the existin
 | [x] | T020 | R4/F004: degrade safely on a genuinely id-less survey node | `flow` | `services/flow/chores-read.ts`, `test/services/dd/plan/ready.test.ts` | Missing node id produces a stated survey verdict and never throws | R4 ruling |
 | [x] | T021 | R4/F005: pin new paths through the real CLI | `dd/plan` | `test/services/dd/plan/ready.test.ts` | Unavailable envelopes and invalid receipts assert envelope status, reason, next action, and exit code | R4 ruling; exit policy held |
 | [x] | T022 | Record the three unavailable-detection boundaries and update operator docs | docs | `execution.log.md`, `docs/how/dd/plan-ready.md` | Required ruling sentence is preserved verbatim; docs name all three shapes and invalid-receipt | R4 ruling |
+| [x] | T023 | R6/F001: restore the operative unavailable receipt and documented alternative reading | `flow` | `services/flow/chores-read.ts`, `test/services/dd/plan/ready.test.ts` | No comment-body parser remains; `decision:unavailable` is primary and standalone `noop` / `UNAVAILABLE` tokens satisfy the doctrine's alternative form | R6 ruling + amendment |
+| [x] | T024 | R5/F002: prescribe a remedy for invalid receipts | `dd/plan` | `acts/plan/index.ts`, `test/services/dd/plan/ready.test.ts` | `invalid-receipt` emits a specific one-line repair action at the CLI without changing status or exit mapping | R5 ruling retained by R6 |
+| [x] | T025 | Record the R6 evidence correction and update operator docs | docs | `execution.log.md`, `docs/how/dd/plan-ready.md` | The 13-RED breakdown is appended as a correction; the five boundary swings and both-form source are recorded honestly | R6 ruling + amendment |
 
 ### Acceptance Coverage Map
 

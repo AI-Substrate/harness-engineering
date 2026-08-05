@@ -97,6 +97,7 @@ vacuity.
 ### The observed pre-guard failure, verbatim
 
 ```
+
  RUN  v4.1.10 /Users/jordanknight/substrate/harness-engineering-worktrees/s065-deterministic-documents/harness/cli
 
  × test/services/dd/plan/ready.test.ts > plan ready — vacuity (T005, AC-03, AC-11) > refuses to judge a plan with zero claim rows, however green everything else is 18ms
@@ -792,4 +793,97 @@ Warn trio, verbatim JSON envelopes:
 {"command":"arch-check","status":"degraded","timestamp":"2026-08-05T10:44:49.636Z","data":{"modules":273,"dependencies":1223,"violations":[{"from":"harness/cli/src/services/telemetry/ref-source.ts","to":"harness/cli/src/adapters/git/git-write-port.ts","rule":"services-ports-type-only","severity":"warn","comment":"Port imports from services must be type-only (the kernel injects the implementation)."},{"from":"harness/cli/src/services/telemetry/sync-service.ts","to":"harness/cli/src/adapters/git/git-write-port.ts","rule":"services-ports-type-only","severity":"warn","comment":"Port imports from services must be type-only (the kernel injects the implementation)."}]},"next_action":"Review 2 warn-severity architecture violation(s) (rules: services-ports-type-only). Promote a rule's severity to 'error' in .dependency-cruiser.cjs once it should block — and never weaken a rule in the same PR that trips it."}
 {"command":"markdown-lint","status":"degraded","timestamp":"2026-08-05T10:44:49.926Z","data":{"checks":[{"name":"markdownlint","outcome":"findings","findings":194,"examined":131,"summary":"harness-foundations/first-principles.md:7 error MD001/heading-increment Heading levels should only increment by one level at a time [Expected: h3; Actual: h4]"},{"name":"links","outcome":"findings","findings":1,"examined":131,"summary":"19:1-19:83 warning Cannot find file `../harness-presentations/missing-layer-101/intro-to-harness.md` missing-file remark-validate-links:missing-file"},{"name":"mermaid","outcome":"findings","findings":1,"examined":31,"summary":"invalid mermaid at skills/builder/references/stages/50-phase-tasks.md:215"}],"totals":{"findings":196,"filesLinted":131,"linksFilesChecked":131,"fencesParsed":31}},"next_action":"Review 196 markdown finding(s) (194 markdown lint, 1 in-repo links/anchors, 1 mermaid syntax) in `data.checks` — visible but non-blocking (warn-launch). Fix the authored docs, then promote the gate to error/exit 1 once they are clean (never widen the scope to dodge a finding)."}
 {"command":"windows-check","status":"degraded","timestamp":"2026-08-05T10:44:48.958Z","data":{"scanned":27,"findingCount":6,"byRule":{"WIN004":1,"WIN007":5},"findings":[{"rule":"WIN004","title":"single-separator basename split","file":".harness/extensions/html-snap/extension.ts","line":121,"snippet":"const base = (abs.split('/').pop() ?? 'page').replace(/\\.html?$/i, '');","message":"Splitting a path on '/' only drops the basename of a Windows backslash path. Split on /[/\\\\]/ instead."},{"rule":"WIN007","title":"POSIX absolute path or HOME env","file":".harness/extensions/html-snap/snap-core.ts","line":18,"snippet":"'/usr/bin/google-chrome',","message":"POSIX system paths (/usr, /bin, …) and $HOME do not exist on Windows. Read config via ctx.env.get (USERPROFILE/APPDATA on Windows) and avoid absolute system paths."},{"rule":"WIN007","title":"POSIX absolute path or HOME env","file":".harness/extensions/html-snap/snap-core.ts","line":19,"snippet":"'/usr/bin/google-chrome-stable',","message":"POSIX system paths (/usr, /bin, …) and $HOME do not exist on Windows. Read config via ctx.env.get (USERPROFILE/APPDATA on Windows) and avoid absolute system paths."},{"rule":"WIN007","title":"POSIX absolute path or HOME env","file":".harness/extensions/html-snap/snap-core.ts","line":20,"snippet":"'/usr/bin/chromium',","message":"POSIX system paths (/usr, /bin, …) and $HOME do not exist on Windows. Read config via ctx.env.get (USERPROFILE/APPDATA on Windows) and avoid absolute system paths."},{"rule":"WIN007","title":"POSIX absolute path or HOME env","file":".harness/extensions/html-snap/snap-core.ts","line":21,"snippet":"'/usr/bin/chromium-browser',","message":"POSIX system paths (/usr, /bin, …) and $HOME do not exist on Windows. Read config via ctx.env.get (USERPROFILE/APPDATA on Windows) and avoid absolute system paths."},{"rule":"WIN007","title":"POSIX absolute path or HOME env","file":".harness/extensions/html-snap/snap-core.ts","line":22,"snippet":"'/usr/bin/microsoft-edge',","message":"POSIX system paths (/usr, /bin, …) and $HOME do not exist on Windows. Read config via ctx.env.get (USERPROFILE/APPDATA on Windows) and avoid absolute system paths."}]},"next_action":"windows-check found 6 cross-platform hazard(s) in 2 rule class(es) [WIN004×1, WIN007×5] (warn-launch — non-blocking). First: .harness/extensions/html-snap/extension.ts:121 [WIN004] single-separator basename split. Fix per each finding's message, or add `// win-ok: <reason>` to intentionally allow a line. Rules: WIN001, WIN002, WIN003, WIN004, WIN005, WIN006, WIN007, WIN008. See `harness instructions windows-check`."}
+```
+
+---
+
+## R6 — restore the recorded form; accept the documented alternative
+
+Before building a reader for a producer's output, establish that the producer emits it — and which instruction the producer actually follows when two sources disagree.
+
+I set this boundary five times: too broad, too narrow, "doctrine-complete", three recognisers, and now withdrawn to nearly where R3 had it. Every swing refined the *how* while the *whether* went unchecked.
+
+### Evidence correction — R4's 13 RED
+
+The earlier 13-RED total remains above as reported; this correction does not restate it as four.
+Its actual breakdown was **5 taxonomy-only assertions, 4 invented-envelope fixtures, and 4 real
+behaviour defects**. Only the final four were defects. The four invented-envelope controls are
+deleted with the JSON/status parser they were built to justify.
+
+The both-forms clause was in `skills/builder/references/00-routing.md`, which I had read in full
+at the start of this flow, while I ruled three times on which single form to parse. The doctrine
+was not missing the answer; it was in front of me and I did not read it.
+
+R5's producer-specific structural controls were run and then withdrawn before commit when the
+operative persisted instruction was established. They are not counted as proof of a shipped
+defect.
+
+### R6 RED-first controls
+
+The reader was first restored to the R3 primary recogniser with no parser and no token reading.
+Against that pre-fix reader, exactly the four real behaviour controls went RED; the primary
+`decision:unavailable` receipt and token-boundary negatives stayed GREEN as regression guards.
+
+Failure summary, verbatim:
+
+```text
+ ❯ test/services/dd/plan/ready.test.ts (46 tests | 4 failed) 1513ms
+     × R6/F001 — documented alternative token noop is a basis-less completed attempt 33ms
+     × R6/F001 — documented alternative token UNAVAILABLE is a basis-less completed attempt 37ms
+     × R6/F001 — documented token noop is unconfigured at the CLI, exit 2 32ms
+     × R6/F001 — documented token UNAVAILABLE is unconfigured at the CLI, exit 2 41ms
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 42 passed (46)
+```
+
+### T023 — documented reading, no comment-body parser
+
+`decision:unavailable` is the primary recorded form. A standalone `noop` or `UNAVAILABLE` token
+is the documented alternative reading; token boundaries keep `snoopy` and `UNAVAILABLES`
+invalid. There is no JSON parser and no structural adjudication of comment bodies.
+
+The three sources are pinned beside the code and in the contract test:
+
+- `skills/eng-harness-flow/SKILL.md:85` — persist the verbatim envelope;
+- `skills/builder/references/flight-plan.template.json:74` — persist
+  `decision:unavailable`; and
+- `skills/builder/references/00-routing.md:226` — explicitly permits both forms as alternatives.
+
+Unification is tracked as **FX009**, owned by prime. `plan ready` deliberately does not
+adjudicate it; the upstream direction is a stable `decision:unavailable` prefix carrying the
+verbatim envelope in `reason`.
+
+### T024 — actionable invalid-receipt diagnostic
+
+`invalid-receipt` now names the receipt as malformed or non-authoritative and prescribes either
+a validation receipt with `basis_sha256` or a human decline with
+`--kind decision --source user`. The two CLI controls pin that one-line repair action.
+
+Focused GREEN: **46 passed / 1 file**, 0 failed. Typecheck passed.
+
+### T025 — operator guidance and held rulings
+
+The guide now describes the two documented recorded forms, token boundaries, the absence of a
+comment-body parser, the FX009 owner, and the actionable `invalid-receipt` repair. F005 remains
+held: status/exit mapping and `--strict` are unchanged. `semantics.ts` remains byte-identical.
+
+### R6 gates
+
+No R6 whole-gate command went RED after implementation.
+
+| Gate | Result |
+|------|--------|
+| `npm run test` | **4458 passed / 309 files**, 0 failed; coverage 89.51% statements / 80.41% branches / 92.31% functions / 91.99% lines |
+| `harness checks` (via `just checks`) | All hard gates **ok**: tests, biome, typecheck, check:docs, check:flows, check:telemetry-fixtures, check:doctrine-parity, check:dd-docs, root-invocation-smoke, dd doctor, skills-check |
+| `npm run check:docs` | `check:docs OK — no drift` |
+| held exit surface | Status mapping, exit mapping, and `--strict` branches unchanged; the act diff adds only the `invalid-receipt` explanation |
+| `semantics.ts` guard | SHA-256 `3856153824f7fd3448aaf285197054a2f4a2524ed80c0fffe6dc9a3f8526f150`; byte diff empty |
+
+Warn trio, verbatim JSON envelopes:
+
+```json
+{"command":"arch-check","status":"degraded","timestamp":"2026-08-05T11:06:45.791Z","data":{"modules":273,"dependencies":1223,"violations":[{"from":"harness/cli/src/services/telemetry/ref-source.ts","to":"harness/cli/src/adapters/git/git-write-port.ts","rule":"services-ports-type-only","severity":"warn","comment":"Port imports from services must be type-only (the kernel injects the implementation)."},{"from":"harness/cli/src/services/telemetry/sync-service.ts","to":"harness/cli/src/adapters/git/git-write-port.ts","rule":"services-ports-type-only","severity":"warn","comment":"Port imports from services must be type-only (the kernel injects the implementation)."}]},"next_action":"Review 2 warn-severity architecture violation(s) (rules: services-ports-type-only). Promote a rule's severity to 'error' in .dependency-cruiser.cjs once it should block — and never weaken a rule in the same PR that trips it."}
+{"command":"markdown-lint","status":"degraded","timestamp":"2026-08-05T11:06:46.797Z","data":{"checks":[{"name":"markdownlint","outcome":"findings","findings":194,"examined":131,"summary":"harness-foundations/first-principles.md:7 error MD001/heading-increment Heading levels should only increment by one level at a time [Expected: h3; Actual: h4]"},{"name":"links","outcome":"findings","findings":1,"examined":131,"summary":"19:1-19:83 warning Cannot find file `../harness-presentations/missing-layer-101/intro-to-harness.md` missing-file remark-validate-links:missing-file"},{"name":"mermaid","outcome":"findings","findings":1,"examined":31,"summary":"invalid mermaid at skills/builder/references/stages/50-phase-tasks.md:215"}],"totals":{"findings":196,"filesLinted":131,"linksFilesChecked":131,"fencesParsed":31}},"next_action":"Review 196 markdown finding(s) (194 markdown lint, 1 in-repo links/anchors, 1 mermaid syntax) in `data.checks` — visible but non-blocking (warn-launch). Fix the authored docs, then promote the gate to error/exit 1 once they are clean (never widen the scope to dodge a finding)."}
+{"command":"windows-check","status":"degraded","timestamp":"2026-08-05T11:06:44.994Z","data":{"scanned":27,"findingCount":6,"byRule":{"WIN004":1,"WIN007":5},"findings":[{"rule":"WIN004","title":"single-separator basename split","file":".harness/extensions/html-snap/extension.ts","line":121,"snippet":"const base = (abs.split('/').pop() ?? 'page').replace(/\\.html?$/i, '');","message":"Splitting a path on '/' only drops the basename of a Windows backslash path. Split on /[/\\\\]/ instead."},{"rule":"WIN007","title":"POSIX absolute path or HOME env","file":".harness/extensions/html-snap/snap-core.ts","line":18,"snippet":"'/usr/bin/google-chrome',","message":"POSIX system paths (/usr, /bin, …) and $HOME do not exist on Windows. Read config via ctx.env.get (USERPROFILE/APPDATA on Windows) and avoid absolute system paths."},{"rule":"WIN007","title":"POSIX absolute path or HOME env","file":".harness/extensions/html-snap/snap-core.ts","line":19,"snippet":"'/usr/bin/google-chrome-stable',","message":"POSIX system paths (/usr, /bin, …) and $HOME do not exist on Windows. Read config via ctx.env.get (USERPROFILE/APPDATA on Windows) and avoid absolute system paths."},{"rule":"WIN007","title":"POSIX absolute path or HOME env","file":".harness/extensions/html-snap/snap-core.ts","line":20,"snippet":"'/usr/bin/chromium',","message":"POSIX system paths (/usr, /bin, …) and $HOME do not exist on Windows. Read config via ctx.env.get (USERPROFILE/APPDATA on Windows) and avoid absolute system paths."},{"rule":"WIN007","title":"POSIX absolute path or HOME env","file":".harness/extensions/html-snap/snap-core.ts","line":21,"snippet":"'/usr/bin/chromium-browser',","message":"POSIX system paths (/usr, /bin, …) and $HOME do not exist on Windows. Read config via ctx.env.get (USERPROFILE/APPDATA on Windows) and avoid absolute system paths."},{"rule":"WIN007","title":"POSIX absolute path or HOME env","file":".harness/extensions/html-snap/snap-core.ts","line":22,"snippet":"'/usr/bin/microsoft-edge',","message":"POSIX system paths (/usr, /bin, …) and $HOME do not exist on Windows. Read config via ctx.env.get (USERPROFILE/APPDATA on Windows) and avoid absolute system paths."}]},"next_action":"windows-check found 6 cross-platform hazard(s) in 2 rule class(es) [WIN004×1, WIN007×5] (warn-launch — non-blocking). First: .harness/extensions/html-snap/extension.ts:121 [WIN004] single-separator basename split. Fix per each finding's message, or add `// win-ok: <reason>` to intentionally allow a line. Rules: WIN001, WIN002, WIN003, WIN004, WIN005, WIN006, WIN007, WIN008. See `harness instructions windows-check`."}
 ```

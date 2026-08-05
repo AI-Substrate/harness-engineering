@@ -60,9 +60,9 @@ export type SurveyReason =
   /** A receipt-shaped comment exists, but it is not authoritative or well-formed. */
   | 'invalid-receipt'
   /**
-   * Terminal with one of the doctrine's three completed attempts that produced
-   * no survey basis: router-missing detection, router `noop`, or boot
-   * `UNAVAILABLE`. This reads **can't-tell**, never not-ready.
+   * Terminal with the doctrine's unavailable attempt, recorded as the operative
+   * `decision:unavailable` form or the documented `noop` / `UNAVAILABLE`
+   * alternative. It produced no survey basis, so this reads **can't-tell**.
    */
   | 'missing-basis'
   /** Terminal with a receipt, but for different plan bytes than the ones on disk. */

@@ -83,14 +83,11 @@ function decline(words = 'not worth it for a doc-only change') {
 /**
  * The DOCTRINE'S router-missing detection receipt, in its own words.
  *
- * `skills/eng-harness-flow/SKILL.md`: router **missing** (Layer-1 miss) → record a
- * detection receipt — `harness flow comment … --kind validation --source agent
- * --text "decision:unavailable reason:<…> time:<…>"` — **then** flip the node to
- * `done`. "All three are completed attempts, never skips — a chore never sits
- * outstanding forever blocking `nav` in an un-harnessed repo."
+ * `skills/builder/references/flight-plan.template.json:74` is the operative
+ * instruction agents re-read: router missing or envelope `noop`/`UNAVAILABLE`
+ * records `decision:unavailable reason:<…> time:<…>`.
  *
- * Copied verbatim from that protocol on purpose, so this fixture breaks if the
- * protocol ever changes shape rather than silently testing a receipt nobody mints.
+ * Copied from that persisted instruction, not inferred from a producer description.
  */
 const UNAVAILABLE_RECEIPT = {
   at: '2026-08-05T08:25:38.868Z',
@@ -99,25 +96,22 @@ const UNAVAILABLE_RECEIPT = {
   kind: 'validation',
 };
 
-/** A router-missing detection receipt with the doctrine's open-ended trailing evidence. */
-const UNAVAILABLE_DETECTION_RECEIPT = {
-  ...UNAVAILABLE_RECEIPT,
-  text: `${UNAVAILABLE_RECEIPT.text}\nprobe:layer-1`,
-};
-
-/** A real router/boot envelope, recorded verbatim as the validation comment text. */
-function unavailableEnvelope(status: 'noop' | 'UNAVAILABLE') {
+/**
+ * Documented-alternative fixtures, not structural-envelope fixtures. The doctrine
+ * permits the detection receipt or real envelope text, so these deliberately are
+ * not parseable: the reader recognises the recorded outcome token, not a schema.
+ */
+function unavailableTokenReceipt(text: string) {
   return {
-    at: '2026-08-05T08:25:38.868Z',
-    text: JSON.stringify(
-      { command: 'eng-harness-flow', status, data: { hook: 'pre-coding', detail: 'arbitrary' } },
-      null,
-      2,
-    ),
-    source: 'agent',
-    kind: 'validation',
+    ...UNAVAILABLE_RECEIPT,
+    text,
   };
 }
+
+const NOOP_ALTERNATIVE_RECEIPT = unavailableTokenReceipt('router attempt returned token noop');
+const UNAVAILABLE_ALTERNATIVE_RECEIPT = unavailableTokenReceipt(
+  'boot attempt returned token UNAVAILABLE',
+);
 
 interface SurveyNode {
   status: string;
@@ -433,13 +427,26 @@ describe('plan ready — the survey dimension', () => {
     expect(reading.verdict).toBe('not-ready');
   });
 
-  it('F006 — the unavailable fixture is anchored to the in-repo doctrine', () => {
+  it('F006/R6 — the reading is anchored to all three doctrine statements', () => {
     const doctrine = readFileSync(join(REPO_ROOT, 'skills/eng-harness-flow/SKILL.md'), 'utf8');
-
-    expect(doctrine).toContain(
-      '--kind validation --source agent --text "decision:unavailable reason:<…> time:<…>"',
+    const template = readFileSync(
+      join(REPO_ROOT, 'skills/builder/references/flight-plan.template.json'),
+      'utf8',
     );
-    expect(doctrine).toContain('router installed but the envelope says `noop`/`UNAVAILABLE`');
+    const routing = readFileSync(
+      join(REPO_ROOT, 'skills/builder/references/00-routing.md'),
+      'utf8',
+    );
+
+    expect(template).toContain(
+      'Router missing, or envelope noop/UNAVAILABLE → same two calls with the detection receipt/envelope as the text:',
+    );
+    expect(template).toContain('--text \\"decision:unavailable reason:<…> time:<…>\\" THEN');
+    expect(doctrine).toContain('with that **real envelope** as the comment text');
+    expect(routing).toContain(
+      'detection receipt (`decision:unavailable`) or real `noop` envelope on the node',
+    );
+    expect(routing).toContain('(or the real `noop`/`UNAVAILABLE` envelope as the text)');
     expect(UNAVAILABLE_RECEIPT).toMatchObject({ kind: 'validation', source: 'agent' });
     expect(UNAVAILABLE_RECEIPT.text).toMatch(/^decision:unavailable reason:.+ time:.+$/);
   });
@@ -466,10 +473,10 @@ describe('plan ready — the survey dimension', () => {
   });
 
   it.each([
-    ['router-missing detection receipt', UNAVAILABLE_DETECTION_RECEIPT],
-    ['router envelope status noop', unavailableEnvelope('noop')],
-    ['boot envelope status UNAVAILABLE', unavailableEnvelope('UNAVAILABLE')],
-  ])('R4/F001 — %s is a basis-less completed attempt', (_label, comment) => {
+    ['operative decision:unavailable receipt', UNAVAILABLE_RECEIPT],
+    ['documented alternative token noop', NOOP_ALTERNATIVE_RECEIPT],
+    ['documented alternative token UNAVAILABLE', UNAVAILABLE_ALTERNATIVE_RECEIPT],
+  ])('R6/F001 — %s is a basis-less completed attempt', (_label, comment) => {
     corpus = createSyntheticPlan({ slug: 'synthetic-plan', ...CLAIMED });
     writeFlow(corpus.folder, [{ status: 'done', comments: [comment] }]);
 
@@ -478,6 +485,22 @@ describe('plan ready — the survey dimension', () => {
     expect(reading.survey.satisfied).toBeNull();
     expect(reading.survey.reason).toBe('missing-basis');
     expect(reading.verdict).toBe('cant-tell');
+  });
+
+  it.each([
+    'snoopy',
+    'UNAVAILABLES',
+  ])('R6/F001 — documented token reading does not accept the word fragment %s', (fragment) => {
+    corpus = createSyntheticPlan({ slug: 'synthetic-plan', ...CLAIMED });
+    writeFlow(corpus.folder, [
+      { status: 'done', comments: [unavailableTokenReceipt(`result:${fragment}`)] },
+    ]);
+
+    const reading = readReady(corpus);
+
+    expect(reading.survey.satisfied).toBe(false);
+    expect(reading.survey.reason).toBe('invalid-receipt');
+    expect(reading.verdict).toBe('not-ready');
   });
 
   it('a doctrine-shaped unavailable validation is CANT-TELL, not not-ready', () => {
@@ -805,9 +828,9 @@ describe('harness plan ready — envelope and exit mapping', () => {
   });
 
   it.each([
-    ['noop', unavailableEnvelope('noop')],
-    ['UNAVAILABLE', unavailableEnvelope('UNAVAILABLE')],
-  ])('R4/F005 — %s envelope is unconfigured at the CLI, exit 2', async (_status, comment) => {
+    ['token noop', NOOP_ALTERNATIVE_RECEIPT],
+    ['token UNAVAILABLE', UNAVAILABLE_ALTERNATIVE_RECEIPT],
+  ])('R6/F001 — documented %s is unconfigured at the CLI, exit 2', async (_shape, comment) => {
     corpus = createSyntheticPlan({ slug: 'synthetic-plan', ...CLAIMED });
     writeFlow(corpus.folder, [{ status: 'done', comments: [comment] }]);
 
@@ -846,7 +869,9 @@ describe('harness plan ready — envelope and exit mapping', () => {
     const data = run.envelope?.data as { verdict: string; reason: string };
     expect(data.verdict).toBe('not-ready');
     expect(data.reason).toBe('invalid-receipt');
-    expect(run.envelope?.next_action).toBe('Not ready.');
+    expect(run.envelope?.next_action).toContain('cannot count');
+    expect(run.envelope?.next_action).toContain('basis_sha256');
+    expect(run.envelope?.next_action).toContain('--kind decision --source user');
   });
 
   it('`--strict` does not give a router-less repo teeth either', async () => {
