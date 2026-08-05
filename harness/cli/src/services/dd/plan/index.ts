@@ -44,4 +44,17 @@ export type {
   PlanSemanticOptions,
   PlanSemanticResult,
 } from './model.js';
+export {
+  type CriteriaDimension,
+  type CriteriaReason,
+  computeReadiness,
+  type ReadyReading,
+  type ReadyReason,
+  type ReadyVerdict,
+  readCriteriaDimension,
+  readPlanReadiness,
+  type SurveyDimension,
+  type SurveyReason,
+  type UnclaimedCriterion,
+} from './ready.js';
 export { readPlanSemantics, scopeFrom } from './semantics.js';

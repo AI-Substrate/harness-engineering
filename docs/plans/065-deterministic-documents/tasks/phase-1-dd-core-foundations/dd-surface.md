@@ -194,13 +194,19 @@ allocation; the surface test counts sixty E4xx codes.
 | E458 | `DD_PLAN_SCOPE_UNRESOLVED` | `--address` scope did not resolve |
 | E459 | `DD_PLAN_VALIDATE_FAILED` | the semantic validation pass itself failed |
 
-### E460-E469 — builder fence and review documents
+### E460-E469 — builder fence, review documents, and the readiness gate
 **GRANTED 2026-08-04 (one-line renegotiation, plan 071 ph-7103)**: E450-E459 is a
 complete allocation, so the fence check (`harness plan fence`, ac-7120) and the
-review corpus (ac-7121) open the next block. Partial allocation — E462-E469 are
-free. The surface test counts sixty-two E4xx codes.
+review corpus (ac-7121) open the next block.
+**EXTENDED 2026-08-05 (one-line renegotiation, plan 072)**: `harness plan ready
+--strict` needs a code of its own. Reusing `DD_PLAN_INCOMPLETE` (E457) was the
+alternative and was rejected: readiness can fail because a backpressure receipt is
+stale or missing, which is not a statement about the plan being incomplete, and an
+agent switching on E457 would be told the wrong thing. Partial allocation —
+E463-E469 are free. The surface test counts sixty-three E4xx codes.
 
 | Code | Name | Failure class |
 |---|---|---|
 | E460 | `DD_FENCE_VIOLATION` | a touched path is refused by an active fence row |
 | E461 | `DD_FENCE_INVALID` | the fence document cannot be read as a fence |
+| E462 | `DD_PLAN_NOT_READY` | `plan ready --strict` reached a not-ready verdict |

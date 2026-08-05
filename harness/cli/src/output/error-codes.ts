@@ -248,6 +248,10 @@ export const ErrorCodes = {
   DD_FENCE_VIOLATION: 'E460',
   /** `harness plan fence`: the fence document itself cannot be read as a fence. */
   DD_FENCE_INVALID: 'E461',
+
+  // --- plan readiness gate (plan 072; E462) ---
+  /** `harness plan ready --strict` reached a not-ready verdict; CI asked for teeth. */
+  DD_PLAN_NOT_READY: 'E462',
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];
