@@ -934,6 +934,56 @@ R5, R6 — the seal held, the reading held, the coverage held, and each time the
 written around it said more than it had earned. That is this packet's own thesis landing
 on the packet: *an instrument whose claim is broader than its coverage.*
 
+## R8 — stop JUDGING the gap, ENUMERATE the coverage. Boundary 12c rewritten
+
+The reviewer built it rather than argued it, again: a `console.error` carrying a
+withdrawn wording, planted in the control file itself.
+
+```ts
+console.error('no production path can raise it');
+```
+
+Suite **14/14 green**, and vitest printed the withdrawn claim **on stderr**. 12c's
+rationale — *"a string that is never printed as a title asserts nothing to any reader"* —
+is false. A code string can be a reader-facing runtime message.
+
+**That is the FOURTH consecutive round where the mechanism was right and the sentence was
+wrong** — R4, R5, R6, and now the sentence written in R7 *to fix* the R6 sentence. What
+that repetition means is not that any particular claim was unlucky. It is that we kept
+writing claims of the form *"and therefore X is safe"*, and every one of them is a
+judgement the next round falsifies.
+
+**So 12c no longer judges; it enumerates.** Narrowing it to "inert" or "non-emitting"
+would have been the same mistake one size smaller: to call a string inert you must know
+every channel by which one can reach a reader — stderr, stdout, a thrown message, a
+snapshot, a report file, a log line — and that unbounded enumeration is the thing that
+has now been wrong four times. The rewritten 12c says only what the check **reads**: the
+comments of the declared claim sites, and the runner's resolved titles. Everything else
+is out of scope, **stated as scope and not as safety**. The acceptability rationale is
+deleted outright — both sentences, the "asserts nothing to any reader" one and the "same
+exemption" one. Those are what broke.
+
+**This end state is terminal by construction, and that is the point.** An enumeration
+cannot be falsified by finding a third channel, because it never claimed the third; a
+judgement can be falsified by any channel anyone thinks of next. Per the ruling and
+recorded here so a later reader can tell a new defect from a restatement of a known
+limit: **if a fifth channel is found, that finding is already covered by the enumeration
+and is not a change** — it is an instance of what 12c already says is uncovered.
+
+**The control is PIN-M17, and its hard requirement was that it must NOT EMIT.** The new
+tripwire — *"KNOWN GAP, ASSERTED: the claim check reads TWO channels, and a code string
+is not one"* — builds a fixture carrying `NARROWED_CLAIM` in a comment and **every**
+entry of `RETRACTED_CLAIMS` as a code string literal, then asserts `claimViolations`
+reports `[]`. Nothing is emitted: the wordings are taken from the list rather than
+retyped, so the file gains no new copy of them, and a passing run prints nothing at all.
+Its guard is the load-bearing half — the **same** wordings moved into the channel that
+*is* read must all be reported, so the silence above is the scope rather than a fixture
+that never held banned material. The mutation gate proves it bites: PIN-M17 widens
+`claimText` to read the whole source while the scope statement stays as written, and
+**2 tests fail** — the tripwire itself and the claim/coverage control.
+
+No new scan was written, no emission audit, no hunt for a fifth construction.
+
 
 
 
@@ -1110,11 +1160,22 @@ fails `E222` on sessions whose `checks` event has gate keys containing `:` or a 
 producer/reader **grammar** drift, unrelated to version. Stated, not fixed; that is the
 trade, and after R2 it costs nothing observable.
 
-## The Dim-0 mutation gate — 30 mutations, ALL FIRE (was 28, 26, 24, 22, 20)
+## The Dim-0 mutation gate — 31 mutations, ALL FIRE (was 30, 28, 26, 24, 22, 20)
 
 Every mutation restores a **pre-fix behaviour**, not merely broken code. Runner:
 `/tmp/packet-mut.py`. Counts below are from the final post-`biome` run (anchors were
-re-verified after reformatting).
+re-verified after reformatting). **One exception, named rather than smuggled**: PIN-M17
+restores no past behaviour because the hazard it gates is a *future* one — the claim
+check's channels widening while boundary 12c's scope statement stays as written. It is a
+tripwire on an asserted gap, the same shape as PIN-M12, and it fires for the same reason
+the others do: the controls can see the defect.
+
+**Two counts in this table were STALE and are corrected in R8**: PIN-M1 read 5 and
+PIN-M4 read 3, and both are 6 and 4 on the live tree. The drift is from later rounds
+adding pin assertions, not from anything in R8 — verified by running both against `HEAD`
+with the R8 test change stashed, where they already read 6 and 4. Recorded rather than
+silently overwritten, because "counts from the final run" was itself a claim slightly
+broader than the fact, which is the defect this packet exists to kill.
 
 | Mutation | Failures |
 |---|---|
@@ -1125,10 +1186,10 @@ re-verified after reformatting).
 | FX004-M5 "no ancestor" silently falls back to a guess | 4 |
 | FX004-M6 `firstPositional` stops at the first token (flags hide the verb) | 2 |
 | FX004-M7 E149 collapses back into E108 | 4 |
-| PIN-M1 below-pin refused as `malformed` (reasons folded) | 5 |
+| PIN-M1 below-pin refused as `malformed` (reasons folded) | 6 |
 | PIN-M2 an ABOVE-pin version mislabelled `below_pin` | 4 |
 | PIN-M3 `decodeLooseSegment` catch collapses its reason | 2 |
-| PIN-M4 session export drops the refusal tally from the envelope | 3 |
+| PIN-M4 session export drops the refusal tally from the envelope | 4 |
 | **PIN-M5 knob default DIVERGES from the declared policy constant** *(rewritten — see below)* | 11 |
 | PIN-M6 the pin compared by EQUALITY rather than as a floor | 16 |
 | **PIN-M7 a production lane silently RAISES the pin (`ref-source`)** *(new, R2)* | 4 |
@@ -1141,6 +1202,7 @@ re-verified after reformatting).
 | **PIN-M14 the narrowed claim is stripped from the seam's own doc block** *(new, R5)* | 1 |
 | **PIN-M15 the blanket claim returns to `segment.ts` — a claim site off the list** *(new, R6)* | 1 |
 | **PIN-M16 a COMPUTED suite title re-asserts the retracted claim** *(new, R6 — the reviewer's construction)* | 1 |
+| **PIN-M17 the claim check's CHANNELS widen while the scope statement does not** *(new, R8 — the 12c tripwire)* | 2 |
 | FX002-M1 adopted seat never consults the registry | 6 |
 | FX002-M2 ambiguity resolved by first-wins GUESS (the false green) | 2 |
 | FX002-M3 "no match" folded into "registry unavailable" | 2 |
@@ -1293,8 +1355,18 @@ production stricter. It fires 9.
     live risk to CI**: if it fires there the PR does not go green, and we will know
     nothing more than we know now.
 
+    **R8: IT RECURRED — a FOURTH occurrence, and this is the news of this round.**
+    R8's full suite read **1 failed | 4536 passed (4537)**, the failure being
+    `test/services/flow/archive-move.test.ts:310`. Same file, same shape, and the
+    bracketing evidence is the same as before: the `harness checks` tests gate passed
+    **immediately before** it, the very next full run passed **4537/4537 across
+    313 files**, and the file passes in isolation (7/7). It has now only ever fired
+    under full-suite parallel load, never isolated. Still **unexplained, still not
+    cleared, and deliberately not upgraded** — but the ten-green streak the earlier
+    entry rested on is over, which strengthens rather than weakens the CI-risk reading.
+
 12. **Boundaries about the claim check rather than the pin — (a) and (b) new in R6, (c)
-    added in R7.**
+    added in R7 and rewritten in R8.**
 
     (a) **`CLAIM_SITES` is a declared list, and I read for further sites rather than
     proving there are none.** Ruling #13 forbids hunting with a scan, and the reason is
@@ -1313,17 +1385,22 @@ production stricter. It fires 9.
     zero titles and passing. That ordering is the whole mitigation, and it is the same
     move as the tokenizer's line-count invariant in boundary 10.
 
-    (c) **A retracted wording sitting in a code string literal is caught by nothing.**
-    Added in R7. `codeOnly()` strips strings and `claimText` reads comments, so a line
-    like `const decoy = "describe('no production path can raise it', () => {})"` is
-    invisible to both halves of the check — and now that titles are read at runtime, it
-    is not a title either. **Judged acceptable, and stated rather than assumed**: the ban
-    exists to stop the claim being *asserted* — printed in a failure header, written in a
-    doc block. A string that is never printed as a title asserts nothing to any reader.
-    It is the same exemption that already lets `RETRACTED_CLAIMS` list the banned
-    wordings as literals in that very file: **a file must be able to name what it
-    withdrew without that counting as asserting it.** No scan is built for this; a scan
-    would have to ban the file from naming its own retractions.
+    (c) **The claim check reads two channels, and that enumeration is the whole of its
+    coverage.** The channels are: **comments in the files listed in `CLAIM_SITES`**, and
+    **resolved `describe`/`it` titles at runtime**. A retracted wording reaching a reader
+    by any other channel — a code string literal, a `console.error`, a thrown message, a
+    report file — is **not covered**. This is a statement of scope, not a judgement that
+    those channels are safe. **PIN-M17** gates it: an asserted-gap tripwire holds a
+    fixture carrying the claim in prose and every retracted wording in code strings, and
+    asserts the check reports nothing, so the day someone widens the channels the
+    tripwire goes red and this enumeration has to be widened deliberately, in writing.
+    The tripwire asserts over the scan's output and **emits nothing on a passing run** —
+    a control that printed the retracted wording every run would commit the defect it
+    documents.
+
+    **The bound, and it binds the next reader as much as this one**: if a fifth channel
+    is found, that finding is **already covered by the enumeration** and is **not a
+    change** — it is an instance of what (c) already says is uncovered.
 
 ## Fence
 
@@ -1331,11 +1408,15 @@ production stricter. It fires 9.
 `.harness/extensions/flow-eval/` (**one new test file**, R1 only — untouched in R2), and
 `docs/fixes/FX002-*`. `package-lock.json` **unmodified**. Nothing pushed.
 
-**Full suite: 4536 passed / 313 files, zero failures** (R1: 4523; R3: 4531; R4: 4533;
-R5: 4535 — R6's title control is a net +1). Warn trio byte-identical to the dispatch baseline at every
-checkpoint including R6: **arch 2 / markdown 196 / windows 6**.
+**Full suite: 4537 passed / 313 files** (R1: 4523; R3: 4531; R4: 4533;
+R5: 4535; R6: 4536 — R8's asserted-gap tripwire is a net +1). **Not "zero failures" this
+round, and the qualification is the honest one**: R8's *first* full run read 1 failed /
+4536 passed — the boundary-11 intermittent, fourth occurrence, `archive-move.test.ts`.
+The `harness checks` tests gate before it and the full run after it were both green.
+Warn trio byte-identical to the dispatch baseline at every
+checkpoint including R8: **arch 2 / markdown 196 / windows 6**.
 
 R4 touched **one production file** (`src/services/telemetry/session-export.ts` — the
-type change ruling #11 required) plus two test files and this log. **R5 and R6 touch no
+type change ruling #11 required) plus two test files and this log. **R5, R6 and R8 touch no
 production behaviour at all**: doc blocks in `session-export.ts` (R5) and `segment.ts`
 (R6), the control file, and this log. `package-lock.json` **unmodified**. Nothing pushed.

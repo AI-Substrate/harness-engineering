@@ -930,6 +930,44 @@ describe('no production path raises the read pin without naming it (load-bearing
     expect(titleViolations([['a benign ', 'computed title'].join('')])).toEqual([]);
   });
 
+  it('KNOWN GAP, ASSERTED: the claim check reads TWO channels, and a code string is not one', () => {
+    /*
+    Test Doc:
+    - Why: ruling #15. The boundary that named this gap first justified it — a string
+      never printed as a title reaches nobody — and a reviewer then printed one on
+      stderr from a `console.error` in this very file, with the suite green. The lesson
+      is not that the justification picked the wrong channel. It is that justifying the
+      gap at all requires knowing every way a string can reach a reader — stderr,
+      stdout, a thrown message, a snapshot, a report file — and that enumeration has now
+      been wrong four rounds running. So the boundary states COVERAGE instead: the two
+      channels this check reads, and nothing about the ones it does not. An enumeration
+      of what IS read cannot be falsified by finding a third channel, because it never
+      spoke about the third.
+    - Contract: a fixture carrying the claim in prose and EVERY retracted wording in code
+      string literals reports nothing. That silence is scope, not safety.
+    - Worked Example: `const decoy = "…";` and `console.error("…")` — neither is a
+      comment and neither is a title, so neither is read.
+    - Boundary: the day someone widens the channels, this test goes red and forces the
+      scope statement to be widened deliberately, in writing. PIN-M17 is that gate. The
+      assertion is over the SCAN'S OUTPUT on a fabricated fixture and emits nothing on a
+      passing run: a control that printed the retracted wording every run would commit
+      the defect it documents. The wordings are taken from the list rather than typed,
+      so this test adds no new copy of them to the file.
+    */
+    const inCode = RETRACTED_CLAIMS.map((c, i) => `const decoy${i} = ${JSON.stringify(c)};`);
+    const fixture = [`/* ${NARROWED_CLAIM} */`, ...inCode].join('\n');
+    expect(claimViolations(new Map([['code-string.ts', fixture]]))).toEqual([]);
+
+    // GUARD, and it is the load-bearing half. The SAME wordings in the channel that IS
+    // read are every one of them reported, so the silence above is the scope and not a
+    // fixture that never held banned material — true-but-empty is this packet's own
+    // defect class, and it would be very easy to write here.
+    const asProse = `/* ${NARROWED_CLAIM} ${RETRACTED_CLAIMS.join('. ')} */`;
+    expect(claimViolations(new Map([['prose.ts', asProse]]))).toEqual(
+      RETRACTED_CLAIMS.map((c) => `prose.ts: retracted claim "${c}"`).sort(),
+    );
+  });
+
   it('CONTROL: the declared default IS the floor — production refuses nothing it could read', () => {
     /*
     Test Doc:
