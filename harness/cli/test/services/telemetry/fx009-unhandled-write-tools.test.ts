@@ -4,6 +4,12 @@ import { describe, expect, it } from 'vitest';
 import { FakeEnv } from '../../../src/adapters/env/fake-env.js';
 import { FakeFs } from '../../../src/adapters/fs/fake-fs.js';
 import { FakeProcess } from '../../../src/adapters/process/fake-process.js';
+import {
+  CURSOR_SESSION_ENV,
+  CURSOR_TRANSCRIPTS_ENV,
+  cursorAdapter,
+  cursorTranscriptPath,
+} from '../../../src/services/telemetry/adapters/cursor-adapter.js';
 import type { Event } from '../../../src/services/telemetry/events.js';
 import type { Segment } from '../../../src/services/telemetry/segment.js';
 import { type SegmentInput, serializeSegment } from '../../../src/services/telemetry/segment.js';
@@ -112,6 +118,27 @@ const fileEvent = (path: string): Event => ({
   delta: { lines_added: 1, lines_removed: 0, bytes_added: 1, bytes_removed: 0 },
 });
 
+/**
+ * The event stream a REAL cursor extraction produces for one `Write` call — the
+ * adapter is driven for real so the counter is tested against what the adapter
+ * actually emits, not against a hand-built stand-in for it.
+ */
+function cursorWrite(path: string, contents: string): Event[] {
+  const line = `${JSON.stringify({
+    role: 'assistant',
+    message: { content: [{ type: 'tool_use', name: 'Write', input: { path, contents } }] },
+  })}\n`;
+  const caps = cursorAdapter.extract({
+    env: new FakeEnv({ [CURSOR_SESSION_ENV]: 'convFX009', [CURSOR_TRANSCRIPTS_ENV]: '/t' }),
+    fs: new FakeFs({ [cursorTranscriptPath('/t', 'convFX009')]: line }),
+    repoRoot: '/repo',
+    harness: 'cursor-agent',
+    window: { since: 'session-start', from: 0, to: 1 },
+    capturedAt: T,
+  });
+  return (caps.event_stream ?? []).filter((e) => e.kind !== 'turn');
+}
+
 describe('FX009 — the counter fires on EMPTY EXTRACTION', () => {
   it('fires for a KNOWN write tool that yielded no file events — our own guess is guarded', () => {
     // `Write` IS in the registry and the adapter HAS a branch for it. If the
@@ -161,6 +188,19 @@ describe('FX009 — the counter stays silent when extraction WORKED', () => {
     expect(
       flaggedTools([seg({ Shell: 8, Read: 1, Glob: 1, ReadLints: 2, GetMcpTools: 1 })]),
     ).toEqual([]);
+  });
+
+  it('does not fire when a write produced a +0 delta — an EMPTY FILE is still extraction', () => {
+    // The false-positive path, driven END TO END through the adapter rather than
+    // from a hand-built segment: an empty (or blank-lines-only) write is real
+    // content, so it must reach the segment as a `file` event. If the adapter's
+    // body-key check ever regresses to a non-blank guard, the event disappears,
+    // this segment shows a write-capable call with zero file events, and the
+    // instrument built to stop false readings emits one — downgrading the envelope
+    // of an honest session.
+    const events = cursorWrite('empty.ts', '');
+    expect(events.filter((e) => e.kind === 'file')).toHaveLength(1);
+    expect(flaggedTools([seg({ Write: 1 }, events)])).toEqual([]);
   });
 
   it('is scoped to Cursor — another harness is not judged by Cursor’s registry', () => {

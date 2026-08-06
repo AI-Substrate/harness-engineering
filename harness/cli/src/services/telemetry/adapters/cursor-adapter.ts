@@ -158,10 +158,31 @@ interface FileChange {
   delta: FileDelta;
 }
 
-/** The first non-blank string among the given candidate values, else undefined. */
+/**
+ * The first non-blank string among the given candidates — for PATHS only, where a
+ * blank value is genuinely invalid and skipping to the next key is right.
+ */
 function firstString(...values: unknown[]): string | undefined {
   for (const v of values) {
     if (typeof v === 'string' && v.trim() !== '') return v;
+  }
+  return undefined;
+}
+
+/**
+ * The first PRESENT string among the given candidates — for FILE BODIES, where
+ * `''` and whitespace-only are real content, not absence.
+ *
+ * A blank-guard here would silently discard an empty or blank-lines-only write,
+ * and that corrupts the honesty mechanism in both directions: alone in a segment
+ * the dropped write leaves zero file events, so the unhandled-write-tool counter
+ * fires and downgrades the envelope on a FALSE POSITIVE; alongside another write
+ * the counter stays quiet and the write is simply lost — FX009's own failure mode
+ * inside FX009's fix.
+ */
+function firstPresentString(...values: unknown[]): string | undefined {
+  for (const v of values) {
+    if (typeof v === 'string') return v;
   }
   return undefined;
 }
@@ -197,7 +218,7 @@ function fileChanges(input: unknown): FileChange[] {
   const o = input as Record<string, unknown>;
   const path = firstString(o.path, o.file_path);
   if (path === undefined) return [];
-  const contents = firstString(o.contents, o.content);
+  const contents = firstPresentString(o.contents, o.content);
   if (contents !== undefined) return [{ path, add: true, delta: writtenDelta(contents) }];
   const oldText = typeof o.old_string === 'string' ? o.old_string : undefined;
   const newText = typeof o.new_string === 'string' ? o.new_string : undefined;

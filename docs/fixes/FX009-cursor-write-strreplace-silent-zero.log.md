@@ -97,6 +97,21 @@ fence either way). Semantically exact, too — a `file` event that should have e
 
 Full telemetry suite: **1666 passed**. `harness checks`: green.
 
+### Blank is content, not absence (review fix)
+
+Review caught the body-key presence check: `firstString` skipped any candidate whose value
+trimmed to empty, so `contents: ''` was treated as *absent* and the write was dropped. It is
+broader than the empty-file case — `'\n\n\n'` (3 added lines) and `'   \n  '` (2 lines, 5
+bytes) are real content and were discarded too. Both directions corrupt the honesty
+mechanism: **alone** in a segment the dropped write leaves zero file events, so the counter
+fires and downgrades the envelope on a **false positive**; **in company** with another write
+the counter stays quiet and the write is silently lost — FX009's own failure mode installed
+inside FX009's fix. Body keys now use `firstPresentString` (`typeof === 'string'`); the
+blank guard **stays** on `path`, where a blank value is genuinely invalid. Four controls,
+each proven non-vacuous by restoring the trim guard (4 red): empty, blank-lines-only,
+whitespace-only, and a counter test driving the adapter end to end so a `+0` write still
+counts as extraction.
+
 ### Same-path churn is an array push, and the golden bakes that in
 
 The specimen edits `lib.test.mjs` six times, `cli.mjs` three times and `README.md` twice.

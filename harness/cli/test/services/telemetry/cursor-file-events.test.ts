@@ -401,6 +401,53 @@ describe('cursorAdapter · Write/StrReplace object inputs (FX009)', () => {
     }
   });
 
+  /**
+   * BLANK IS CONTENT, NOT ABSENCE. A presence check (`typeof === 'string'`) rather
+   * than a non-blank check is load-bearing on the BODY keys: an empty or
+   * whitespace-only write is a real write, and dropping it corrupts the honesty
+   * mechanism in both directions — alone in a segment it leaves zero file events
+   * and fires the counter on a FALSE POSITIVE; alongside another write it vanishes
+   * silently, which is FX009's own failure mode inside FX009's fix. The blank guard
+   * stays on the PATH, where a blank value is genuinely invalid (asserted above).
+   */
+  it('keeps an EMPTY-STRING write as a real write (+0 lines, not a dropped event)', () => {
+    const events = fileEvents(objectCall('Write', { path: 'empty.ts', contents: '' }));
+    expect(events).toHaveLength(1);
+    expect(events[0].change).toBe('written');
+    expect(events[0].delta).toEqual({
+      lines_added: 0,
+      lines_removed: 0,
+      bytes_added: 0,
+      bytes_removed: 0,
+    });
+  });
+
+  it('keeps a BLANK-LINES-ONLY write — three newlines are three added lines', () => {
+    const events = fileEvents(objectCall('Write', { path: 'blank.ts', contents: '\n\n\n' }));
+    expect(events).toHaveLength(1);
+    // Non-vacuous: a trailing newline is not counted as an extra line, so `\n\n\n`
+    // is exactly 3 empty lines — a count a dropped event could never produce.
+    expect(events[0].delta.lines_added).toBe(3);
+    expect(events[0].delta.bytes_added).toBe(0);
+  });
+
+  it('keeps a WHITESPACE-ONLY write — the bytes are real and are counted', () => {
+    const events = fileEvents(objectCall('Write', { path: 'ws.ts', contents: '   \n  ' }));
+    expect(events).toHaveLength(1);
+    expect(events[0].delta.lines_added).toBe(2);
+    expect(events[0].delta.bytes_added).toBe(5); // 3 + 2, separators excluded
+  });
+
+  it('keeps a StrReplace that BLANKS a line — new_string of "" is an edit, not a drop', () => {
+    const events = fileEvents(
+      objectCall('StrReplace', { path: 'a.ts', old_string: 'gone\n', new_string: '' }),
+    );
+    expect(events).toHaveLength(1);
+    expect(events[0].change).toBe('edited');
+    expect(events[0].delta.lines_removed).toBe(1);
+    expect(events[0].delta.lines_added).toBe(0);
+  });
+
   it('never carries file CONTENT out of the adapter (AC-04, both object branches)', () => {
     const text = `${objectCall('Write', {
       path: 'w.ts',
