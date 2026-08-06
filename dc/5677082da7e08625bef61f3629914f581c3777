@@ -1,0 +1,69 @@
+harness/cli/src/acts/doctor.ts
+  s_3873580dee1f09::t_63de36166863a6 5-6,8,10-11,13-14,17-19,27,30-74,83-97,104,109-128,130-159,163,165,174-179,197-357
+harness/cli/src/adapters/fs/executable-bit-port.ts
+  s_3873580dee1f09::t_887cf2a7648b45 1-16
+harness/cli/src/adapters/fs/node-executable-bit.ts
+  s_3873580dee1f09::t_13ad748367ad33 1-26
+harness/cli/src/adapters/fs/node-path-kind.ts
+  s_3873580dee1f09::t_37ebfd17154ba1 1-20
+harness/cli/src/adapters/fs/path-kind-port.ts
+  s_3873580dee1f09::t_f1ed39230fe811 1-20
+harness/cli/src/adapters/http/download-port.ts
+  s_3873580dee1f09::t_79c080f6a7a3c9 1-31
+harness/cli/src/adapters/http/node-download.ts
+  s_3873580dee1f09::t_8b9f00a8bb98ac 1-88
+harness/cli/src/services/doctor/collector/health.ts
+  s_3873580dee1f09::t_ded297efaf0cd5 35,204-221
+harness/cli/src/services/doctor/collector/skills-guard.ts
+  s_3873580dee1f09::t_b201ddb69b4fab 1-105
+harness/cli/src/services/doctor/collector/state.ts
+  s_3873580dee1f09::t_bc583d6cfa312e 34-40
+harness/cli/src/services/doctor/collector/trace2.ts
+  s_3873580dee1f09::t_93faa03377f078 38-130
+harness/cli/test/acts/doctor.test.ts
+  s_3873580dee1f09::t_5966d7dd793665 57-61
+harness/cli/test/adapters/git/exec-remote-telemetry-git.int.test.ts
+  s_3873580dee1f09::t_5e265f8d7d3333 22,25-28,30-32,34-35
+harness/cli/test/adapters/git/fake-git.test.ts
+  s_3873580dee1f09::t_c3d05f9420334a 8,108-110,112
+harness/cli/test/architecture/hermetic-git-fixtures.test.ts
+  s_3873580dee1f09::t_9b9ba78a746cba 1-92
+harness/cli/test/services/doctor/collector/install.test.ts
+  s_3873580dee1f09::t_7944fbdc8145db 19-20,41-52,75-76,81,85-88,96,232-235,239-241,353-354,361-364,463-592
+harness/cli/test/services/telemetry/git-read.test.ts
+  s_3873580dee1f09::t_51a063ec55c625 25,383-384
+harness/cli/test/support/collector-fakes.ts
+  s_3873580dee1f09::t_0da01c3ccaa2c9 1-3,155-219
+harness/cli/test/support/hermetic-git.ts
+  s_3873580dee1f09::t_ec85a5b065f270 1-88
+harness/cli/vitest.config.ts
+  s_3873580dee1f09::t_d63c2d4886cb27 12-33
+docs/how/gitai-collector.md
+  s_3873580dee1f09::t_eabd2b59767c05 173-182,199,216-268,282,284
+harness/cli/src/services/doctor/collector/install.ts
+  s_3873580dee1f09::t_220fc4fd3e82e5 5,13-18,46-63,86,184,207-232,289-315,323
+harness/cli/src/services/doctor/collector/types.ts
+  s_3873580dee1f09::t_0147ab36c98bd9 3,5,7,41-47,58-59,61-65,67,87-88
+harness/cli/test/acts/doctor-collector.test.ts
+  s_3873580dee1f09::t_e7865681b59382 1-241
+harness/cli/test/adapters/collector-adapters.int.test.ts
+  s_3873580dee1f09::t_74283848a5b075 1-236
+harness/cli/test/adapters/git/cat-file-batch.int.test.ts
+  s_3873580dee1f09::t_ac7b40f4e18540 9,28-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "dc5677082da7e08625bef61f3629914f581c3777",
+  "prompts": {},
+  "sessions": {
+    "s_3873580dee1f09": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "bddf45ce-c84d-4702-aee9-259da767de25",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
