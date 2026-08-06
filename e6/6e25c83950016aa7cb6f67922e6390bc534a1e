@@ -1,0 +1,20 @@
+docs/plans/073-gitai-collector-v1/assets/HANDOVER.md
+  s_a76964380084ef::t_e3c25a23d4e9ae 136-146,151-165
+  s_a76964380084ef::t_3cede4eff05ca7 166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e66e25c83950016aa7cb6f67922e6390bc534a1e",
+  "prompts": {},
+  "sessions": {
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
