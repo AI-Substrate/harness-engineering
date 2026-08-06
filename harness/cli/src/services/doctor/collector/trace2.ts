@@ -36,41 +36,31 @@ export interface Trace2Reading {
 }
 
 /**
- * True when `install-hooks` may run.
+ * True when `install-hooks` may run. **Observed-EMPTY is the sole automatic
+ * path — there is no second case, and none may be added on a heuristic.**
  *
- * The ONLY unconditional yes is an observed-EMPTY config. There is exactly one
- * narrow second case, and it exists because the first one would otherwise make
- * the re-check (ac-0010) impossible: once git-ai's hooks are on, git-ai's OWN
- * two trace2 keys are in the global config, so a guard that only accepted
- * "empty" would refuse to hook a coding harness installed next month — forever,
- * on every machine that ever succeeded.
+ * A narrow re-install exception once lived here: if every key present was one
+ * git-ai itself writes AND workspace state recorded a verified install of our
+ * own, a re-check was allowed to proceed. Round 2 of the phase-1 review struck
+ * it down, correctly:
  *
- * So a re-install is permitted when BOTH hold:
+ * - The "prior install" half derived from a gitignored, unvalidated workspace
+ *   JSON file that is not bound to this home or this global git config.
+ *   Copying it forges the condition with no prior install at all.
+ * - Worse, it needs no bad actor. We install once; the operator later sets
+ *   their own `trace2.eventTarget`; a re-check matches the key NAME, trusts the
+ *   stale record, and `install-hooks` deletes their entire trace2 section.
  *
- * 1. every key present is one git-ai itself writes (`trace2.eventTarget`,
- *    `trace2.eventNesting`), and
- * 2. this harness has a RECORDED, verified install of its own.
- *
- * Together those mean the config we would be overwriting is the config we put
- * there. If a developer set `trace2.eventTarget` themselves and we never
- * installed, condition 2 fails and the guard blocks exactly as before. The
- * protection is unchanged: we still never delete a trace2 config that is not
- * already ours.
+ * A key name plus an old local record cannot establish ownership of a mutable,
+ * machine-wide git value. So a re-check that finds ANY trace2 config — git-ai's
+ * own keys included — declines to invoke `install-hooks` and emits the manual
+ * instructions, exactly as a first install would. This could only return if
+ * git-ai offered a non-destructive, provenance-safe hook operation.
  */
-export function mayInstallHooks(
-  reading: Trace2Reading,
-  opts: { priorInstallVerified?: boolean } = {},
-): boolean {
-  if (reading.status === 'empty') return true;
-  // `unknown` still fails closed: a guard that cannot read must not clear.
-  if (reading.status !== 'present') return false;
-  if (opts.priorInstallVerified !== true) return false;
-  return reading.entries.length > 0 && reading.entries.every(isGitAiOwnTrace2Key);
-}
-
-/** Keys git-ai writes for itself — the only ones a re-install may pass over. */
-function isGitAiOwnTrace2Key(entry: string): boolean {
-  return /^trace2\.(eventtarget|eventnesting)(\s|=|$)/i.test(entry.trim());
+export function mayInstallHooks(reading: Trace2Reading): boolean {
+  // `present` and `unknown` both fail closed: a guard that cannot read must not
+  // clear, and a config that exists is never ours to give away.
+  return reading.status === 'empty';
 }
 
 /**
@@ -81,6 +71,22 @@ function isGitAiOwnTrace2Key(entry: string): boolean {
  * git reports config keys lowercased, hence the spelling here.
  */
 const GITAI_TRACE2_KEY = 'trace2.eventtarget';
+
+/**
+ * The config KEY of one `git config --get-regexp` line, lowercased.
+ *
+ * git separates key from value with a single space (`--get-regexp`) or `=`
+ * (`--list --null`-adjacent forms); a valueless key is the whole line. Matching
+ * with `startsWith` instead — as this file once did — accepts
+ * `trace2.eventtarget_custom` as proof that git-ai wrote `trace2.eventTarget`,
+ * which is how a stray near-prefix key turns a zero-exit no-op into a recorded
+ * install. Extract the key and compare it EXACTLY (phase-1 review, round 2 P1).
+ */
+function trace2KeyOf(entry: string): string {
+  const trimmed = entry.trim();
+  const delimiter = trimmed.search(/[\s=]/);
+  return (delimiter === -1 ? trimmed : trimmed.slice(0, delimiter)).toLowerCase();
+}
 
 export type Trace2VerificationStatus = 'verified' | 'absent' | 'unreadable';
 
@@ -115,9 +121,7 @@ export function verifyInstalledTrace2(reading: Trace2Reading): Trace2Verificatio
       detail: `install-hooks exited 0 but the global trace2 config could not be re-read afterwards (${reading.detail}) — the install is UNVERIFIED`,
     };
   }
-  const found = reading.entries.some((entry) =>
-    entry.toLowerCase().trimStart().startsWith(GITAI_TRACE2_KEY),
-  );
+  const found = reading.entries.some((entry) => trace2KeyOf(entry) === GITAI_TRACE2_KEY);
   if (found) {
     return {
       status: 'verified',

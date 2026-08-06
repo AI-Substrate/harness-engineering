@@ -4,6 +4,7 @@ import {
   manualHookInstructions,
   mayInstallHooks,
   readGlobalTrace2,
+  verifyInstalledTrace2,
 } from '../../../../src/services/doctor/collector/trace2.js';
 
 /**
@@ -100,6 +101,87 @@ describe('readGlobalTrace2 — the read itself is non-destructive', () => {
     );
 
     expect(source).not.toMatch(/'--unset'|'--remove-section'|'--replace-all'/);
+  });
+});
+
+describe('mayInstallHooks — observed-empty is the SOLE automatic path', () => {
+  const reading = (entries: string[]) =>
+    ({
+      status: 'present',
+      entries,
+      detail: 'present',
+      observedAt: NOW,
+    }) as const;
+
+  /**
+   * The reverted exception (phase-1 review, round 2 P0). It let a re-check
+   * overwrite a trace2 config made only of git-ai's OWN key names, on the
+   * strength of a gitignored workspace JSON file saying we had installed before.
+   * Two failures: that file is forgeable by copying, and — with no bad actor at
+   * all — an operator who sets their own `trace2.eventTarget` after our install
+   * would have had the whole section deleted on the next re-check.
+   */
+  it("git-ai's OWN keys do not unlock a re-install, however the state file reads", () => {
+    expect(
+      mayInstallHooks(
+        reading([
+          'trace2.eventTarget af_unix:/home/u/.git-ai/internal/daemon/trace2.sock',
+          'trace2.eventNesting 5',
+        ]),
+      ),
+    ).toBe(false);
+  });
+
+  it('ignores any "we installed before" hint a caller might still pass', () => {
+    // The old signature took `{ priorInstallVerified }` and returned TRUE here.
+    const guard = mayInstallHooks as (r: unknown, o?: unknown) => boolean;
+    expect(guard(reading(['trace2.eventTarget /tmp/t']), { priorInstallVerified: true })).toBe(
+      false,
+    );
+  });
+});
+
+describe('verifyInstalledTrace2 — the key, not a prefix of it', () => {
+  const present = (entries: string[]) =>
+    ({ status: 'present', entries, detail: 'present', observedAt: NOW }) as const;
+
+  it("git-ai's key, space-delimited as git prints it → verified", () => {
+    expect(
+      verifyInstalledTrace2(
+        present(['trace2.eventtarget af_unix:/home/u/.git-ai/internal/daemon/trace2.sock']),
+      ).status,
+    ).toBe('verified');
+  });
+
+  it('the key in git’s other spellings — `=` delimited, mixed case → verified', () => {
+    expect(verifyInstalledTrace2(present(['trace2.eventTarget=/tmp/t'])).status).toBe('verified');
+  });
+
+  /**
+   * The round-2 P1 regression. `startsWith('trace2.eventtarget')` accepted these
+   * as proof git-ai had installed hooks, so a stray near-prefix key after a
+   * zero-exit no-op recorded `installed`.
+   */
+  it('a NEAR-PREFIX key is not proof of anything', () => {
+    for (const near of [
+      'trace2.eventtarget_custom /tmp/t',
+      'trace2.eventtargetanything /tmp/t',
+      'trace2.eventTargetX=/tmp/t',
+    ]) {
+      const verdict = verifyInstalledTrace2(present([near]));
+      expect(verdict.status, near).toBe('absent');
+      expect(verdict.detail).toContain('did NOT write');
+    }
+  });
+
+  it('an empty post-install config → absent; an unreadable one → unreadable', () => {
+    expect(
+      verifyInstalledTrace2({ status: 'empty', entries: [], detail: '', observedAt: NOW }).status,
+    ).toBe('absent');
+    expect(
+      verifyInstalledTrace2({ status: 'unknown', entries: [], detail: 'x', observedAt: NOW })
+        .status,
+    ).toBe('unreadable');
   });
 });
 

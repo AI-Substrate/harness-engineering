@@ -230,15 +230,33 @@ describe('installCollector — stage 2 is INDEPENDENT of stage 1 (ac-0013, ac-00
     expect(guards(first)[0]).toMatchObject({ observed: 'empty', entries: [], at: NOW });
 
     // A second run records a SECOND guard observation: not first-run-only. By
-    // then git-ai's OWN two trace2 keys are in the global config, so the second
-    // guard legitimately observes `present` — and the install still proceeds,
-    // because the only config it would pass over is the one we put there.
+    // then git-ai's OWN two trace2 keys are in the global config — and that
+    // BLOCKS, because a key name plus a local record cannot prove a machine-wide
+    // git value is still ours to delete (round 2 P0). The operator is told.
     await installCollector(d);
     const second = readCollectorState(d.fs, REPO);
     expect(guards(second)).toHaveLength(2);
     expect(guards(second).map((entry) => entry.observed)).toEqual(['present', 'empty']);
     expect(guards(second)[0]?.entries.join(' ')).toContain('trace2.eventtarget');
-    expect(second?.hooks.status).toBe('installed');
+    expect(second?.hooks.status).toBe('skipped-trace2');
+  });
+
+  /**
+   * The reverted exception, kept as a live guard against its return: after a
+   * VERIFIED install of our own, a second pass over git-ai's own keys still does
+   * not invoke `install-hooks` (phase-1 review, round 2 P0).
+   */
+  it('a verified prior install does NOT buy a re-install over git-ai’s own keys', async () => {
+    const d = deps();
+    await installCollector(d);
+    expect(readCollectorState(d.fs, REPO)?.hooks.status).toBe('installed');
+    const before = d.exec.calls.filter((call) => call.args[0] === 'install-hooks').length;
+
+    const second = await installCollector(d);
+
+    expect(second.hooks).toBe('skipped-trace2');
+    expect(d.exec.calls.filter((call) => call.args[0] === 'install-hooks')).toHaveLength(before);
+    expect(second.manualInstructions.join('\n')).toContain('install-hooks');
   });
 
   it('an unreadable trace2 config fails closed — hooks are not installed', async () => {
@@ -341,13 +359,17 @@ describe('recheckCollector — a new coding harness is detected and reported (ac
 
     expect(recheck.newAgents).toEqual(['cursor']);
     expect(recheck.warnings.join(' ')).toContain('Cursor');
-    expect(recheck.hooks).toBe('installed');
+    // The new agent is REPORTED, but the hooks are not re-installed for it:
+    // git-ai's own keys are in the global config by now, and observed-empty is
+    // the sole automatic path (round 2 P0). The operator gets instructions.
+    expect(recheck.hooks).toBe('skipped-trace2');
+    expect(recheck.manualInstructions.join('\n')).toContain('install-hooks');
     // The guard ran AGAIN — git-ai re-applies the trace2 removal every time.
     const trace2Reads = d.exec.calls.filter((call) => call.args.includes('--get-regexp'));
     expect(trace2Reads.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('a re-check with a trace2 config present still refuses to install hooks', async () => {
+  it('a re-check on a machine whose trace2 is someone ELSE’s refuses too', async () => {
     const fs = new FakeCollectorFs();
     fs.mkdirp(`${HOME}/.claude`);
     const exec = new FakeSequencedExec({
@@ -358,10 +380,10 @@ describe('recheckCollector — a new coding harness is detected and reported (ac
     const d = deps({ fs, exec });
     await installCollector(d);
 
-    // Someone sets up trace2 for their OWN tooling, then installs Gemini. A
-    // verified prior install buys a re-install over git-ai's own keys and
-    // NOTHING else: `trace2.normalTarget` is not a key git-ai writes, so the
-    // guard blocks exactly as it would on a machine we had never touched.
+    // The scenario that killed the exception: we installed, THEN the operator
+    // set up trace2 for their own tooling, then installed Gemini. Nothing local
+    // can tell that config apart from the one we left behind — so the guard
+    // blocks on both, exactly as on a machine we had never touched.
     fs.mkdirp(`${HOME}/.gemini`);
     const guarded = new FakeExec({
       [TRACE2_GET]: { code: 0, stdout: 'trace2.normalTarget /tmp/trace\n' },

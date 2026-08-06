@@ -166,6 +166,13 @@ function parseInstalledAgents(stdout: string): string[] {
  * Stage 2 — hooks. Callable on its own for a re-check (ac-0010): the trace2
  * guard runs EVERY time, first install and re-check alike, because git-ai
  * re-applies the trace2 removal on every invocation.
+ *
+ * A re-check therefore behaves like a first install in every respect, including
+ * the block: once hooks are on, git-ai's own two trace2 keys are in the global
+ * config, so a later re-check observes `present` and STOPS — new agents are
+ * still reported, and the operator gets the manual instructions. That is the
+ * intended posture, not a gap: nothing local can prove a machine-wide git value
+ * is still ours to delete (phase-1 review, round 2 P0).
  */
 export async function installHooks(
   deps: CollectorDeps,
@@ -181,7 +188,7 @@ export async function installHooks(
     phase: 'guard',
   });
 
-  if (!mayInstallHooks(reading, { priorInstallVerified: state.hooks.status === 'installed' })) {
+  if (!mayInstallHooks(reading)) {
     const manual = manualHookInstructions(binaryPath, reading.entries);
     next = {
       ...next,

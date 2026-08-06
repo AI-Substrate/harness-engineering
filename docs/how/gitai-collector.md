@@ -170,15 +170,22 @@ Recording the *empty* observation matters as much as blocking the non-empty one:
 an unrecorded empty is indistinguishable, a year later, from one that something
 erased.
 
-**One narrow exception, and it is narrow on purpose.** After a successful
-install, git-ai's own `trace2.eventTarget`/`trace2.eventNesting` are in the
-global config — so a guard that only ever accepted "empty" would refuse to hook a
-coding harness installed next month, forever, on every machine that had ever
-succeeded. A re-install is therefore permitted when **both** hold: every key
-present is one git-ai itself writes, **and** harness has a recorded, verified
-install of its own. In other words, the only config it may pass over is the
-config it put there. Set `trace2.eventTarget` yourself on a machine harness never
-installed on, and the guard blocks exactly as before.
+**Observed-empty is the sole automatic path — a re-check gets no extra latitude.**
+After a successful install, git-ai's own `trace2.eventTarget`/`trace2.eventNesting`
+are in the global config, so every later re-check observes *non-empty* and stops:
+new coding harnesses are still **detected and reported**, but the hooks are not
+re-installed for them, and you get the manual instructions above instead.
+
+That is deliberate. An earlier version permitted a re-install when every key
+present was one git-ai itself writes *and* workspace state recorded a verified
+install of our own. It was removed in review, for a reason worth keeping written
+down: that state file is a gitignored, unvalidated JSON file in the workspace,
+not bound to your home or your git config. Copying it forges the condition. And
+with no bad actor at all — harness installs once, you later set your **own**
+`trace2.eventTarget`, a re-check matches the key *name*, trusts the stale record,
+and `install-hooks` deletes your whole section. **A key name plus an old local
+record cannot establish ownership of a mutable, machine-wide git value.** This
+could only come back if git-ai offered a non-destructive hook operation.
 
 ### Why we never run their `install.sh`
 
@@ -215,10 +222,12 @@ Ours is the decision to run it. These are its terms:
 > code. A test asserts no forbidden spelling can reach git-ai as an argument.
 >
 > **And the re-read decides.** git-ai always writes `trace2.eventTarget` when it
-> installs hooks, so that key's presence afterwards is the evidence. If it is
-> absent, unreadable, or replaced by something else, the hooks are recorded as
-> `unverified` — never `installed`, and never silently upgraded by a zero exit.
-> Evidence that is recorded and then ignored is not evidence.
+> installs hooks, so that key's presence afterwards is the evidence. The check
+> compares the **exact** config key, not a prefix of it — `trace2.eventTarget_custom`
+> is not proof that `trace2.eventTarget` was written. If the key is absent,
+> unreadable, or only near-matched, the hooks are recorded as `unverified` —
+> never `installed`, and never silently upgraded by a zero exit. Evidence that is
+> recorded and then ignored is not evidence.
 
 ### The skills guard — the same shape as trace2
 
@@ -259,7 +268,7 @@ harness doctor
 
 # the LIFECYCLE — the only ways anything is downloaded, executed or written
 harness doctor --install-collector    # fetch + verify the pin, then hooks (guards first)
-harness doctor --recheck-collector    # hook a coding harness that appeared later
+harness doctor --recheck-collector    # detect a coding harness that appeared later
 
 # maintainer only: hash all six artifacts for a tag and print a reviewable pin
 harness doctor --regenerate-collector-pin v1.6.22 [--pin-out /tmp/pin.ts]
