@@ -3,7 +3,7 @@
   "kind": "flight-plan",
   "slug": "gitai-collector-v1",
   "nav": {
-    "now": "plan",
+    "now": "phase-1",
     "next": null,
     "intent": "Git AI becomes the collector. v1: disable harness telemetry capture by default (not remove), harness doctor detects/installs a pinned+SHA-verified git-ai via our own cross-platform download, installs agent hooks, and re-checks later. No semantic/flow work. Fleet lineage dark until v2.",
     "bag": {
@@ -65,6 +65,67 @@
         "from": "research",
         "to": "plan"
       }
+    },
+    {
+      "id": "UPD-002",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-06T08:27:34.801Z",
+      "details": {
+        "node": "backpressure",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-002",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-06T08:27:35.181Z",
+      "details": {
+        "node": "backpressure",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "optional"
+        }
+      }
+    },
+    {
+      "id": "UPD-003",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-06T08:27:44.690Z",
+      "details": {
+        "node": "plan",
+        "fields": [
+          "note",
+          "artifacts"
+        ]
+      }
+    },
+    {
+      "id": "STA-003",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-06T08:27:45.379Z",
+      "details": {
+        "node": "plan",
+        "from": "assumed",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-002",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-08-06T08:27:45.924Z",
+      "details": {
+        "from": "plan",
+        "to": "phase-1"
+      }
     }
   ],
   "nodes": [
@@ -93,7 +154,7 @@
       "id": "plan",
       "type": "plan",
       "label": "Plan",
-      "status": "assumed",
+      "status": "done",
       "command": "/builder 1b plan",
       "next": [
         "phase-1"
@@ -104,7 +165,14 @@
         "Done when plan.dd.json carries both halves and reads Status: READY — DRAFT means a gate FAILed, so resolve the gaps and re-run. The plan is dd-native: plan.dd.json plus its GENERATED plan.dd.md sibling, and no <slug>-plan.md exists.",
         "Scaffold and fill through the CLI: harness plan new <slug> --title \"<title>\" --phase \"<title>\", then harness dd set / harness dd add (add --mint ac for criteria). Validation runs BEFORE every write and the sibling rebuilds in the same operation — never hand-edit either file.",
         "Create the flow with harness flow create flight-plan --plan-dir \"<plan dir>\" — without it the baked gate addresses stay plan-relative and every departure refuses E441."
-      ]
+      ],
+      "note": "dd-native plan: 22 acceptance criteria, 17 tasks, all claimed. validate 0/0/0. Reviewed by an independent copilot/gpt-5.6-sol peer via /validate-v2; 3 HIGH + 2 MEDIUM applied. Backpressure survey done (Partial).",
+      "artifacts": [
+        "plan.dd.json",
+        "assets/backpressure.dd.json"
+      ],
+      "modified_at": "2026-08-06T08:27:45.379Z",
+      "ran_at": "2026-08-06T08:27:45.379Z"
     },
     {
       "id": "phase-1",
@@ -186,7 +254,7 @@
       "id": "backpressure",
       "type": "backpressure",
       "label": "Backpressure survey",
-      "status": "known",
+      "status": "done",
       "branch_of": "plan",
       "next": [
         "plan"
@@ -202,7 +270,17 @@
         "On done, receipt first, status second: harness flow comment --path <flow-path> --node backpressure --kind validation --source agent --text \"decision:<…> verdict:<…> time:<…> basis_sha256:<full SHA-256 of the plan file>\" THEN harness flow status --path <flow-path> --node backpressure --to done. Mandatory unless the human declines — a decline is: harness flow comment --path <flow-path> --node backpressure --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node backpressure --to skipped; never a narrated skip.",
         "Basis is the LATEST plan: on each guided entry recompute the plan file's SHA-256 — a mismatch with (or absence of) the recorded basis_sha256 re-opens this seam via a deterministic new chore, id backpressure-<first 12 hex of that SHA-256> (full hash in its receipt; same bytes re-use this node + receipt, changed bytes create exactly one new node; never resurrect this one — D5).",
         "Router missing, or envelope noop/UNAVAILABLE → same two calls with the detection receipt/envelope as the text: harness flow comment --path <flow-path> --node backpressure --kind validation --source agent --text \"decision:unavailable reason:<…> time:<…>\" THEN harness flow status --path <flow-path> --node backpressure --to done — a completed attempt, not a skip."
-      ]
+      ],
+      "comments": [
+        {
+          "at": "2026-08-06T08:27:34.801Z",
+          "text": "decision:completed verdict:Partial basis_sha256:a4f8b08f3acbf017c64a52689e63583002cd6db57562dad8816dcaf5a393c6df time:2026-08-06T08:20Z artifact:assets/backpressure.dd.json counts:19-RUN-2-EXTEND-1-BUILD-2-ABSENT",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "modified_at": "2026-08-06T08:27:35.181Z",
+      "ran_at": "2026-08-06T08:27:35.181Z"
     },
     {
       "id": "boot-1",
