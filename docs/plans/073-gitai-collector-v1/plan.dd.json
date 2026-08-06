@@ -118,7 +118,7 @@
         },
         {
           "id": "ac-0010",
-          "claim": "Re-running doctor after a new coding harness is installed on the machine detects that its hooks are missing and reports it.",
+          "claim": "Re-running doctor after a new coding harness is installed on the machine detects that its hooks are missing and reports it. Doctor does NOT automatically re-invoke install-hooks to fix it: once a first install has succeeded, git-ai's own trace2 keys are present, and harness cannot establish from a key name plus a local record that those keys are still the ones it wrote rather than a value the operator has since set. Observed-empty trace2 remains the SOLE automatic path. A re-check that finds any existing trace2 reports the unhooked agent and prints manual instructions, exactly as a first install does.",
           "state": "unchecked"
         },
         {
