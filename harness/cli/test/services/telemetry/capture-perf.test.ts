@@ -51,7 +51,7 @@ function latestSegment(fs: FakeFs): any {
 function captureDeps(fs: FakeFs): CaptureDeps {
   return {
     fs,
-    env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: SESSION, CLAUDE_EFFORT: 'high' }, HOME),
+    env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', CLAUDE_CODE_SESSION_ID: SESSION, CLAUDE_EFFORT: 'high' }, HOME),
     clock: new FakeClock('2026-06-23T00:00:00.000Z'),
     proc: new FakeProcess({}, REPO),
     git: new FakeGit({ isRepo: true, branch: 'b', remoteUrl: 'github.com/x/y' }),

@@ -78,7 +78,7 @@ function capture(
 function syncDeps(fs: FakeFs, git: FakeGitWrite): SyncDeps {
   return {
     fs,
-    env: new FakeEnv({}),
+    env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1' }),
     proc: new FakeProcess({}, REPO),
     git,
     clock: new FakeClock('2026-03-23T10:05:00.000Z'),
@@ -119,7 +119,7 @@ function runSessionSave(args: string[], io: CliIo, fs: FakeFs, gitRead: FakeGitR
     fs,
     proc: new FakeProcess({}, REPO),
     clock: new FakeClock('2026-03-23T10:06:00.000Z'),
-    env: new FakeEnv({}, '/home/u'),
+    env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1' }, '/home/u'),
     gitWrite: new FakeGitWrite(),
     gitRead,
   });
@@ -145,7 +145,7 @@ describe('finding 02 — a mid-session sync/prune must not shrink what a read re
 
     const readDeps = (gitRead?: FakeGitRead): SessionEvidenceDeps => ({
       fs,
-      env: new FakeEnv({}, '/home/u'),
+      env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1' }, '/home/u'),
       proc: new FakeProcess({}, REPO),
       ...(gitRead ? { gitRead } : {}),
     });
@@ -191,7 +191,7 @@ describe('finding 02 — a mid-session sync/prune must not shrink what a read re
 
     const evidence = await getSessionEvidence(PIJ, {
       fs,
-      env: new FakeEnv({}, '/home/u'),
+      env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1' }, '/home/u'),
       proc: new FakeProcess({}, REPO),
     });
 
@@ -216,7 +216,7 @@ describe('finding 02 — a mid-session sync/prune must not shrink what a read re
     const exported = combineSession(SESSION, {
       fs,
       proc: new FakeProcess({}, REPO),
-      env: new FakeEnv({}, '/home/u'),
+      env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1' }, '/home/u'),
     });
 
     expect(exported.summary.token_evidence.coverage).toBe('partial');
@@ -249,7 +249,7 @@ describe('finding 02 — a mid-session sync/prune must not shrink what a read re
 
     const evidence = await getSessionEvidence(PIJ, {
       fs: laggedFs,
-      env: new FakeEnv({}, '/home/u'),
+      env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1' }, '/home/u'),
       proc: new FakeProcess({}, REPO),
       gitRead: gitReadFor(git),
     });
@@ -360,7 +360,7 @@ describe('finding 02 — a mid-session sync/prune must not shrink what a read re
 
     const fleet = await getFleetEvidence(
       PIJ,
-      { fs, env: new FakeEnv({}, '/home/u'), proc: new FakeProcess({}, REPO) },
+      { fs, env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1' }, '/home/u'), proc: new FakeProcess({}, REPO) },
       { rosterPath: `${REPO}/roster.json`, gitRead: gitReadFor(git) },
     );
 
@@ -381,7 +381,7 @@ describe('finding 02 — a mid-session sync/prune must not shrink what a read re
     const exported = combineSession(SESSION, {
       fs,
       proc: new FakeProcess({}, REPO),
-      env: new FakeEnv({}, '/home/u'),
+      env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1' }, '/home/u'),
     });
 
     expect(exported.summary.token_evidence.coverage).toBe('measured');

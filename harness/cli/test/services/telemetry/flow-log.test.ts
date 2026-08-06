@@ -209,7 +209,7 @@ function deps(files: Record<string, string>, stream: Event[]): { d: CaptureDeps;
   const fs = new FakeFs(files);
   const d: CaptureDeps = {
     fs,
-    env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'sess1', HARNESS_PLAN_ID: PLAN }),
+    env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', CLAUDE_CODE_SESSION_ID: 'sess1', HARNESS_PLAN_ID: PLAN }),
     clock: new FakeClock('2026-06-24T09:02:00.000Z'),
     proc: new FakeProcess({}, REPO),
     git: new FakeGit({ isRepo: true, branch: 'main', remoteUrl: 'github.com/x/y' }),
@@ -267,7 +267,7 @@ describe('capture-service — flow_log replay (AC-04/05/06/07)', () => {
     const fs = new FakeFs({}); // no FLIGHT file
     const d: CaptureDeps = {
       fs,
-      env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'sess1', HARNESS_PLAN_ID: PLAN }),
+      env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', CLAUDE_CODE_SESSION_ID: 'sess1', HARNESS_PLAN_ID: PLAN }),
       clock: new FakeClock('2026-06-24T09:02:00.000Z'),
       proc: new FakeProcess({}, REPO),
       git: new FakeGit({ isRepo: true, branch: 'main', remoteUrl: 'github.com/x/y' }),
@@ -304,7 +304,7 @@ describe('capture-service — flow_log replay (AC-04/05/06/07)', () => {
     function capWith(planId: string): void {
       captureTelemetry({
         fs,
-        env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'sess1', HARNESS_PLAN_ID: planId }),
+        env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', CLAUDE_CODE_SESSION_ID: 'sess1', HARNESS_PLAN_ID: planId }),
         clock: new FakeClock('2026-06-24T09:02:00.000Z'),
         proc: new FakeProcess({}, REPO),
         git: new FakeGit({ isRepo: true, branch: 'main', remoteUrl: 'github.com/x/y' }),

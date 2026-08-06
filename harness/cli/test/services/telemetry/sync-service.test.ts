@@ -112,7 +112,7 @@ function makeDeps(
   const clock = over.clock ?? new FakeClock('2026-03-30T00:00:00.000Z');
   const deps: SyncDeps = {
     fs,
-    env: new FakeEnv(over.env ?? {}),
+    env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', ...(over.env ?? {}) }),
     proc: new FakeProcess({}, REPO),
     git,
     // The migration ports are optional; default them ON so the trigger is exercised

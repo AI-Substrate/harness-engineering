@@ -58,7 +58,7 @@ function deps(
   const fs = new FakeFs(over.files ?? {});
   const d: CaptureDeps = {
     fs,
-    env: new FakeEnv(over.env ?? {}),
+    env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', ...(over.env ?? {}) }),
     clock: new FakeClock('2026-06-23T04:58:00.000Z'),
     proc: new FakeProcess({}, REPO),
     git: new FakeGit({ isRepo: true, branch: '034-x', remoteUrl: 'github.com/x/y' }),
@@ -110,6 +110,7 @@ function latestBlob(git: FakeGitWrite, name: string): string | undefined {
 describe('T005 — detectHarness (innermost wins)', () => {
   it('Copilot beats Claude when both env vars are set (nested)', () => {
     const env = new FakeEnv({
+      HARNESS_TELEMETRY_CAPTURE: '1',
       COPILOT_AGENT_SESSION_ID: 'cop-1',
       CLAUDE_CODE_SESSION_ID: 'cl-1',
     });
@@ -117,12 +118,13 @@ describe('T005 — detectHarness (innermost wins)', () => {
   });
 
   it('detects Claude when only its var is set', () => {
-    const env = new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'cl-1' });
+    const env = new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', CLAUDE_CODE_SESSION_ID: 'cl-1' });
     expect(detectHarness(env)).toEqual({ harness: 'claude-code', sessionId: 'cl-1' });
   });
 
   it('Cursor beats Claude when both are set (cursor-agent embeds a Claude runtime)', () => {
     const env = new FakeEnv({
+      HARNESS_TELEMETRY_CAPTURE: '1',
       CURSOR_CONVERSATION_ID: 'cur-1',
       CLAUDE_CODE_SESSION_ID: 'cl-1',
     });
@@ -130,7 +132,7 @@ describe('T005 — detectHarness (innermost wins)', () => {
   });
 
   it('returns null when no harness env is present (zero-harness)', () => {
-    expect(detectHarness(new FakeEnv({}))).toBeNull();
+    expect(detectHarness(new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1' }))).toBeNull();
   });
 });
 
@@ -206,7 +208,7 @@ describe('P063 T004 — standard Claude locator inputs are composed once', () =>
       env: { CLAUDE_CODE_SESSION_ID: 'claude-session' },
       adapters: [recordingClaudeAdapter(seen)],
     });
-    d.env = new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'claude-session' }, '/home/standard-user');
+    d.env = new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', CLAUDE_CODE_SESSION_ID: 'claude-session' }, '/home/standard-user');
     d.git = git;
 
     captureTelemetry(d);
@@ -269,6 +271,7 @@ describe('v2.5 — selectCapturedEnv finite pij contract', () => {
     expect(
       selectCapturedEnv(
         new FakeEnv({
+          HARNESS_TELEMETRY_CAPTURE: '1',
           ...CURRENT_ENV,
           HOME: '/home/u',
           PIJ_ID: 'legacy-id',
@@ -283,6 +286,7 @@ describe('v2.5 — selectCapturedEnv finite pij contract', () => {
 
   it('drops wrong per-key values rather than serializing arbitrary PIJ content', () => {
     const env = new FakeEnv({
+      HARNESS_TELEMETRY_CAPTURE: '1',
       PIJ_SESSION_ID: 'session-not-a-current-pij-id',
       PIJ_PARENT_ID: 'parent-not-a-current-pij-id',
       PIJ_HARNESS: 'not-a-harness',
@@ -309,18 +313,18 @@ describe('v2.5 — selectCapturedEnv finite pij contract', () => {
     '-----BEGIN PRIVATE KEY-----',
   ])('drops credential-shaped values from an otherwise allowed key', (credential) => {
     const { PIJ_SPAWN_ID: _omitted, ...expected } = CURRENT_ENV;
-    expect(selectCapturedEnv(new FakeEnv({ ...CURRENT_ENV, PIJ_SPAWN_ID: credential }))).toEqual(
+    expect(selectCapturedEnv(new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', ...CURRENT_ENV, PIJ_SPAWN_ID: credential }))).toEqual(
       expected,
     );
   });
 
   it('returns empty when nothing matches (the dominant host case → field omitted)', () => {
-    expect(selectCapturedEnv(new FakeEnv({ HOME: '/home/u', PATH: '/usr/bin' }))).toEqual({});
+    expect(selectCapturedEnv(new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', HOME: '/home/u', PATH: '/usr/bin' }))).toEqual({});
   });
 });
 
 describe('Phase 6 — copilot-vscode detection + cwd session resolution (AC-20/AC-21)', () => {
-  const VSCODE_ENV = { AI_AGENT: 'github_copilot_vscode_agent' };
+  const VSCODE_ENV = { HARNESS_TELEMETRY_CAPTURE: '1', AI_AGENT: 'github_copilot_vscode_agent' };
 
   it('AC-20 — the AI_AGENT marker detects copilot-vscode with an empty (db-resolved) session id', () => {
     expect(detectHarness(new FakeEnv(VSCODE_ENV))).toEqual({
@@ -331,11 +335,11 @@ describe('Phase 6 — copilot-vscode detection + cwd session resolution (AC-20/A
 
   it('AC-20 negative control — TERM_PROGRAM=vscode alone does NOT trigger copilot-vscode', () => {
     // a copilot-cli run inside VS Code's integrated terminal must not false-match
-    expect(detectHarness(new FakeEnv({ TERM_PROGRAM: 'vscode' }))).toBeNull();
+    expect(detectHarness(new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', TERM_PROGRAM: 'vscode' }))).toBeNull();
   });
 
   it('AC-20 — copilot-cli (its own session-id var) is unaffected by the AI_AGENT path', () => {
-    expect(detectHarness(new FakeEnv({ COPILOT_AGENT_SESSION_ID: 'cop-9' }))).toEqual({
+    expect(detectHarness(new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', COPILOT_AGENT_SESSION_ID: 'cop-9' }))).toEqual({
       harness: 'copilot-cli',
       sessionId: 'cop-9',
     });
@@ -349,6 +353,7 @@ describe('Phase 6 — copilot-vscode detection + cwd session resolution (AC-20/A
     expect(
       detectHarness(
         new FakeEnv({
+          HARNESS_TELEMETRY_CAPTURE: '1',
           COPILOT_AGENT_SESSION_ID: 'cop-7',
           AI_AGENT: 'github_copilot_vscode_agent',
         }),
@@ -508,7 +513,7 @@ describe('plan 054 — telemetry buffer wipe resumes above flushed watermark', (
     const git = new FakeGitWrite();
     const syncDeps = {
       fs,
-      env: new FakeEnv({}),
+      env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1' }),
       proc: new FakeProcess({}, REPO),
       git,
     };
@@ -670,7 +675,7 @@ describe('FIX-1 — no-activity captures are not spooled (empty-window plumbing 
     const fs = new FakeFs({});
     const onBranch = (branch: string, position: number | null): CaptureDeps => ({
       fs,
-      env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'sw' }),
+      env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', CLAUDE_CODE_SESSION_ID: 'sw' }),
       clock: new FakeClock('2026-06-24T09:02:00.000Z'),
       proc: new FakeProcess({}, REPO),
       git: new FakeGit({ isRepo: true, branch, remoteUrl: 'github.com/x/y' }),
@@ -724,7 +729,7 @@ describe('branch-change detection + branch event', () => {
   function depsOn(fs: FakeFs, branch: string): CaptureDeps {
     return {
       fs,
-      env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'sbr' }),
+      env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', CLAUDE_CODE_SESSION_ID: 'sbr' }),
       clock: new FakeClock('2026-06-24T09:02:00.000Z'),
       proc: new FakeProcess({}, REPO),
       git: new FakeGit({ isRepo: true, branch, remoteUrl: 'github.com/x/y' }),
@@ -782,7 +787,7 @@ describe('branch-change detection + branch event', () => {
     function emptyDeps(fs: FakeFs, branch: string): CaptureDeps {
       return {
         fs,
-        env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'sbr' }),
+        env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', CLAUDE_CODE_SESSION_ID: 'sbr' }),
         clock: new FakeClock('2026-06-24T09:02:00.000Z'),
         proc: new FakeProcess({}, REPO),
         git: new FakeGit({ isRepo: true, branch, remoteUrl: 'github.com/x/y' }),
@@ -813,7 +818,7 @@ describe('triggering-command harness event (timeline visibility)', () => {
   function depsWith(fs: FakeFs, stream: Event[]): CaptureDeps {
     return {
       fs,
-      env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'shc' }),
+      env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', CLAUDE_CODE_SESSION_ID: 'shc' }),
       clock: new FakeClock('2026-06-24T09:02:00.000Z'),
       proc: new FakeProcess({}, REPO),
       git: new FakeGit({ isRepo: true, branch: 'main', remoteUrl: 'github.com/x/y' }),
@@ -857,7 +862,7 @@ describe('artifact-semantics pass (plan 050) — changed artifacts → `artifact
   ): CaptureDeps {
     return {
       fs,
-      env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'art' }),
+      env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', CLAUDE_CODE_SESSION_ID: 'art' }),
       clock,
       proc: new FakeProcess({}, REPO),
       git: new FakeGit({ isRepo: true, branch: 'main', remoteUrl: 'github.com/x/y' }),

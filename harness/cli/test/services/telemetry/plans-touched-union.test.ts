@@ -70,7 +70,7 @@ function capture(opts: {
   const fs = new FakeFs(opts.files ?? {});
   const d: CaptureDeps = {
     fs,
-    env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'sess1', ...(opts.env ?? {}) }),
+    env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', CLAUDE_CODE_SESSION_ID: 'sess1', ...(opts.env ?? {}) }),
     clock: new FakeClock('2026-07-01T09:02:00.000Z'),
     proc: new FakeProcess({}, opts.cwd ?? REPO),
     git: new FakeGit({ isRepo: true, branch: 'feat/x', remoteUrl: 'github.com/x/y' }),

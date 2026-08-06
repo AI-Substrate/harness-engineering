@@ -56,7 +56,7 @@ function deps(
   const fs = new FakeFs(files);
   const d: CaptureDeps = {
     fs,
-    env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'sess1', HARNESS_PLAN_ID: PLAN }),
+    env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', CLAUDE_CODE_SESSION_ID: 'sess1', HARNESS_PLAN_ID: PLAN }),
     clock: new FakeClock('2026-06-24T09:02:00.000Z'),
     proc: new FakeProcess({}, REPO),
     git: new FakeGit({ isRepo: true, branch: PLAN, remoteUrl: 'github.com/x/y' }),
@@ -180,7 +180,7 @@ describe('capture-service — flow event injection (T5.6, AC-18)', () => {
     const fs = new FakeFs({ [FLIGHT]: flightPlan('phase-5', 'in_progress') });
     const d: CaptureDeps = {
       fs,
-      env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'sess1' }), // no HARNESS_PLAN_ID → derived from cwd
+      env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', CLAUDE_CODE_SESSION_ID: 'sess1' }), // no HARNESS_PLAN_ID → derived from cwd
       clock: new FakeClock('2026-06-24T09:02:00.000Z'),
       proc: new FakeProcess({}, deepCwd),
       git: new FakeGit({ isRepo: true, branch: PLAN, remoteUrl: 'github.com/x/y' }),
@@ -210,7 +210,7 @@ describe('capture-service — flow event injection (T5.6, AC-18)', () => {
     const fs = new FakeFs({ [otherFlight]: flightPlan('design', 'in_progress') });
     const d: CaptureDeps = {
       fs,
-      env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'sess1', HARNESS_PLAN_ID: otherPlan }),
+      env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', CLAUDE_CODE_SESSION_ID: 'sess1', HARNESS_PLAN_ID: otherPlan }),
       clock: new FakeClock('2026-06-24T09:02:00.000Z'),
       proc: new FakeProcess({}, deepCwd),
       git: new FakeGit({ isRepo: true, branch: otherPlan, remoteUrl: 'github.com/x/y' }),

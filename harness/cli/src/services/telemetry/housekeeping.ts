@@ -5,7 +5,7 @@ import type { GitWritePort } from '../../adapters/git/git-write-port.js';
 import type { ProcessPort } from '../../adapters/process/process-port.js';
 import type { Envelope, HousekeepingNotice } from '../../output/envelope.js';
 import type { OutputMode, Writers } from '../../output/output-port.js';
-import { KILL_SWITCH_ENV } from './capture-service.js';
+import { isCaptureEnabled } from './capture-gate.js';
 import { captureChecksOutcome } from './checks-capture.js';
 import { pendingTelemetry, syncTelemetry } from './sync-service.js';
 
@@ -98,8 +98,10 @@ export function buildHousekeepingDecorator(
   return (env: Envelope) => {
     try {
       if (!WELL_KNOWN_HOUSEKEEPING_COMMANDS.has(env.command)) return;
-      // Kill-switch: telemetry fully off → no nudge, no push, nothing buffered.
-      if (deps.env.get(KILL_SWITCH_ENV) === '1') return;
+      // The HOUSEKEEPING enforcement point (plan 073 ac-0019): telemetry fully
+      // off → no nudge, no push, no `checks` verdict capture, nothing buffered.
+      // Off is the SHIPPED default now, not just the kill-switch.
+      if (!isCaptureEnabled(deps.env)) return;
 
       // `checks` auto-pushes (capture already happened in the preamble) unless the
       // narrow opt-out is set, in which case it falls back to the passive nudge.

@@ -13,7 +13,7 @@ import { posixJoin, toPosix } from '../shared/posix-path.js';
 import type { HarnessAdapter } from './adapters/harness-adapter.js';
 import { LIVENESS_SUFFIX } from './capture-liveness.js';
 import { reconcileOrphanLanes } from './capture-reconcile.js';
-import { KILL_SWITCH_ENV } from './capture-service.js';
+import { isCaptureEnabled } from './capture-gate.js';
 import { readFlushed, telemetryDir } from './cursor.js';
 import { reconstructSegmentFromOtlpLogs } from './otlp/logs.js';
 import type { LogsData } from './otlp/types.js';
@@ -556,7 +556,10 @@ function runReconcile(deps: SyncDeps): ReconciledLanes | undefined {
 export function syncTelemetry(deps: SyncDeps): SyncResult {
   const empty: SyncResult = { ok: true, pushed: false, segments: 0, sessions: 0, plans: [] };
   try {
-    if (deps.env.get(KILL_SWITCH_ENV) === '1') return empty; // kill-switch → no-op (AC-05)
+    // The PUBLISH enforcement point (plan 073 ac-0019): a shipped harness pushes
+    // nothing because capture is off by default — not merely because the operator
+    // set the kill-switch.
+    if (!isCaptureEnabled(deps.env)) return empty; // capture disabled → no-op (AC-05)
     return syncUnsafe(deps);
   } catch (err) {
     return { ...empty, ok: false, message: errMsg(err) };
