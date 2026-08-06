@@ -390,6 +390,26 @@ function trimNeighbour(n: FlowNode): NavNeighbour {
 }
 
 export interface NavShow {
+  /**
+   * Position at the family's CANONICAL envelope address (FX012).
+   *
+   * `flow create`/`show`/`apply`/`nav set` report position at `data.now` (through
+   * the act's `summary()`), and so does `flow orient --json`. `nav show` reported
+   * it only at `data.nav.now`, so the one verb whose whole job is "where am I?"
+   * answered at a different address from every sibling — and the act suite
+   * asserted both shapes nine lines apart without noticing.
+   *
+   * Emitted ALONGSIDE `nav`, never instead of it: the nested object stays exactly
+   * where it is, so every existing `data.nav` reader (and
+   * `docs/how/harness-flow.md`) stays true.
+   *
+   * The `?? null` is the load-bearing half. `nav` is passed through verbatim, so
+   * on an unpositioned flow a consumer reading `data.nav.now` dereferences null;
+   * these fields carry `summary()`'s normalisation, so "no position" is `null`
+   * here exactly as it is everywhere else.
+   */
+  now: string | null;
+  next: string | null;
   nav: Nav | null;
   predecessors: NavNeighbour[];
   successors: NavNeighbour[];
@@ -398,9 +418,10 @@ export interface NavShow {
 }
 
 /**
- * `flow nav show` — the position read: the `nav` object (or `null` when the doc
- * carries none — graceful, never an error) plus the `now` node's trimmed
- * neighbours. A read, not a mutation (no clone, no event).
+ * `flow nav show` — the position read: the position at the canonical `now`/`next`
+ * addresses, the `nav` object (or `null` when the doc carries none — graceful,
+ * never an error), plus the `now` node's trimmed neighbours. A read, not a
+ * mutation (no clone, no event).
  */
 export function navShow(doc: FlowDoc): NavShow {
   const nav = doc.nav ?? null;
@@ -408,6 +429,8 @@ export function navShow(doc: FlowDoc): NavShow {
   const nodes = Array.isArray(doc.nodes) ? doc.nodes : [];
   const has = now.length > 0 && nodes.some((n) => n.id === now);
   return {
+    now: nav?.now ?? null,
+    next: nav?.next ?? null,
     nav,
     predecessors: has ? predecessorsOf(nodes, now).map(trimNeighbour) : [],
     successors: has ? successorsOf(nodes, now).map(trimNeighbour) : [],

@@ -123,7 +123,7 @@ re-validates against the resolved schema, and writes atomically (temp + rename).
 | `new <type>` | Scaffold a custom flow-type **schema overlay** into `.harness/schemas/flows/<type>.schema.json`. |
 | `show` | Read a flow and print its summary envelope. |
 | `list` | Discover flows under `.harness/flows/` (or `--dir`). |
-| `nav show` | Print the position: `{ nav: {now,next,intent,bag} \| null, predecessors, successors, due_chores }`. `due_chores` lists the chores anchored at `nav.now` still outstanding — the "what's due here?" read. |
+| `nav show` | Print the position: `{ now, next, nav: {now,next,intent,bag} \| null, predecessors, successors, due_chores }`. `now`/`next` are the **canonical** position address — the same `data.now` every other position-reporting verb uses, normalised to `null` when the flow carries no `nav` (the nested `nav` object is kept alongside for existing readers). `due_chores` lists the chores anchored at `nav.now` still outstanding — the "what's due here?" read. |
 | `nav set [--now <id>] [--next <id> \| --clear-next] [--intent <t>]` | Move position (`--now`, validated → `E305`, fires `cursor-moved`), set/clear the advisory next, and/or set the intent. |
 | `nav meta set <k> <v>` / `nav meta get [k]` | Shallow-merge one key into the free-form `bag` / read one key (or the whole bag). |
 | `rail [--chores show\|collapse\|hide]` | Emit the one-line rail: `[<title>] <pips>  <names>`, banded `pre ─ [ flight ] ─ post`. `--chores` controls chore-name visibility (default `collapse`). |
