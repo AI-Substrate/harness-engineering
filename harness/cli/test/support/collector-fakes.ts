@@ -1,3 +1,6 @@
+import type { ExecOptions, ExecPort, ExecResult } from '../../src/adapters/exec/exec-port.js';
+import type { ExecScript } from '../../src/adapters/exec/fake-exec.js';
+import type { PathKind, PathKindPort } from '../../src/adapters/fs/path-kind-port.js';
 import type {
   CollectorFsPort,
   DownloadOutcome,
@@ -147,5 +150,70 @@ export class FakeExecutableBit implements ExecutableBitPort {
   setExecutable(path: string): boolean {
     this.calls.push(path);
     return this.result;
+  }
+}
+
+/**
+ * An exec fake that can answer the SAME command differently over time.
+ *
+ * The collector reads the global trace2 config twice around one
+ * `install-hooks` — once as a guard, once as verification — and the whole point
+ * of the second read is that the answer is expected to have CHANGED. A fake that
+ * can only give one answer per command line can therefore only model a machine
+ * where install-hooks did nothing, which is exactly the failure the verification
+ * exists to catch and exactly the wrong default for a happy-path fixture.
+ *
+ * Scripts may be a single result or a list consumed in order; the last entry
+ * repeats once the list is exhausted, so "and it stays that way" needs no
+ * padding.
+ */
+export class FakeSequencedExec implements ExecPort {
+  readonly calls: Array<{ command: string; args: string[]; cwd: string; timeoutMs?: number }> = [];
+  private readonly queues = new Map<string, ExecScript[]>();
+
+  constructor(private readonly scripts: Record<string, ExecScript | ExecScript[]> = {}) {}
+
+  async run(command: string, args: string[], opts: ExecOptions): Promise<ExecResult> {
+    this.calls.push({
+      command,
+      args,
+      cwd: opts.cwd,
+      ...(opts.timeoutMs !== undefined && { timeoutMs: opts.timeoutMs }),
+    });
+    const key = [command, ...args].join(' ');
+    const scripted = this.scripts[key] ?? this.scripts[command];
+    let script: ExecScript = { code: 0 };
+    if (Array.isArray(scripted)) {
+      let queue = this.queues.get(key);
+      if (queue === undefined) {
+        queue = [...scripted];
+        this.queues.set(key, queue);
+      }
+      script = (queue.length > 1 ? queue.shift() : queue[0]) ?? { code: 0 };
+    } else if (scripted !== undefined) {
+      script = scripted;
+    }
+    return {
+      code: script.code,
+      stdout: script.stdout ?? '',
+      stderr: script.stderr ?? '',
+      ok: script.code === 0,
+    };
+  }
+}
+
+/**
+ * A scripted `lstat` classification. Anything not seeded reads `absent`, which
+ * is the state of a machine that has never installed git-ai's skills — so a
+ * fixture only has to declare the paths whose presence is the point.
+ */
+export class FakePathKind implements PathKindPort {
+  readonly calls: string[] = [];
+
+  constructor(private readonly kinds: Record<string, PathKind> = {}) {}
+
+  kindNoFollow(path: string): PathKind {
+    this.calls.push(path);
+    return this.kinds[path] ?? 'absent';
   }
 }

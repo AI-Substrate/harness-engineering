@@ -32,6 +32,7 @@ export type CollectorVerdict =
   | 'healthy'
   | 'not-installed'
   | 'cli-only-trace2'
+  | 'cli-only-skills'
   | 'hooks-incomplete'
   | 'degraded'
   | 'could-not-determine';
@@ -198,6 +199,24 @@ export function readCollectorHealth(deps: CollectorHealthDeps): CollectorHealth 
       detail: `git-ai CLI installed and hash-matching (${manifest.version}), hooks NOT installed because a global trace2 config is present — no AI attribution is being collected`,
       next_action:
         'Back up your global trace2 keys, then run `git-ai install-hooks` yourself (it deletes the whole global trace2 section). Harness will not do it for you.',
+    };
+  }
+  if (state.hooks.status === 'skipped-skills') {
+    return {
+      ...base,
+      verdict: 'cli-only-skills',
+      detail: `git-ai CLI installed and hash-matching (${manifest.version}), hooks NOT installed because real content sits where git-ai keeps its skill links — ${state.hooks.detail}`,
+      next_action:
+        'Move or rename the reported skill paths if they are yours to keep, then re-run `harness doctor --install-collector`. Harness will not delete them for you.',
+    };
+  }
+  if (state.hooks.status === 'unverified') {
+    return {
+      ...base,
+      verdict: 'degraded',
+      detail: `git-ai CLI installed, but the hook install could NOT be verified — ${state.hooks.detail}`,
+      next_action:
+        'Nothing here proves hooks are on: `git-ai install-hooks` exited 0 without leaving its own global trace2 key. Re-run `harness doctor --install-collector`, and if it repeats, run `git-ai install-hooks` by hand and read its output.',
     };
   }
   if (state.hooks.status === 'failed' || state.hooks.status === 'not-attempted') {

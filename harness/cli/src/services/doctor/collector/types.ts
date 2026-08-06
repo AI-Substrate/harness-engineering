@@ -1,7 +1,10 @@
 import type { Clock } from '../../../adapters/clock/clock-port.js';
 import type { ExecPort } from '../../../adapters/exec/exec-port.js';
+import type { ExecutableBitPort } from '../../../adapters/fs/executable-bit-port.js';
 import type { FsPort } from '../../../adapters/fs/fs-port.js';
+import type { PathKindPort } from '../../../adapters/fs/path-kind-port.js';
 import type { HashPort } from '../../../adapters/hash/hash-port.js';
+import type { DownloadPort } from '../../../adapters/http/download-port.js';
 import type { GITAI_PIN } from './pin.js';
 
 /**
@@ -35,6 +38,13 @@ export interface HostTarget {
   arch: string;
   /** The user's home directory — git-ai installs under `<home>/.git-ai`. */
   home: string;
+  /**
+   * `CLAUDE_CONFIG_DIR`, when set. git-ai honours it (`utils.rs:430`), so the
+   * skills guard must too: on a machine where it points at `~/.claude-alt`,
+   * inspecting `~/.claude` would report safety about a directory git-ai never
+   * touches. Absent → the guard falls back to `<home>/.claude`.
+   */
+  claudeConfigDir?: string;
 }
 
 /** One artifact resolved for a host: what to fetch and what it must hash to. */
@@ -45,38 +55,16 @@ export interface ResolvedArtifact {
   sha256: string;
 }
 
+export type { ExecutableBitPort } from '../../../adapters/fs/executable-bit-port.js';
+export type { PathKind, PathKindPort } from '../../../adapters/fs/path-kind-port.js';
 /**
- * An HTTP GET, injected. The adapter follows redirects and reports where it
- * ENDED UP (`url`) plus how many hops it took, because "the bytes came from
- * somewhere else" is a provenance failure this design refuses rather than
- * tolerates (ac-0015).
+ * The two capabilities the CLI's existing ports did not already cover — an HTTP
+ * GET and the Unix executable bit — now live where every other port lives,
+ * `src/adapters/<x>/<x>-port.ts`, so the real adapters can implement them
+ * without an adapter importing from `services/`. Re-exported here (type-only)
+ * because the collector's vocabulary is what the rest of this directory reads.
  */
-export interface DownloadPort {
-  get(url: string, opts: { timeoutMs: number }): Promise<DownloadOutcome>;
-}
-
-export type DownloadOutcome =
-  | {
-      ok: true;
-      status: number;
-      /** The FINAL url after redirects. */
-      url: string;
-      redirects: number;
-      bytes: Uint8Array;
-      /** The server's declared `Content-Length`, when it sent one. */
-      declaredBytes?: number;
-    }
-  | { ok: false; kind: 'timeout' | 'network'; message: string };
-
-/**
- * The Unix executable bit. Not on {@link FsPort} because nothing in the harness
- * has ever placed an executable before; a downloaded CLI is the first (ac-0016).
- * Implementations no-op on Windows, where execution is extension-driven.
- */
-export interface ExecutableBitPort {
-  /** Set mode 0o755 on an existing path. False when the mode could not be set. */
-  setExecutable(path: string): boolean;
-}
+export type { DownloadOutcome, DownloadPort } from '../../../adapters/http/download-port.js';
 
 /** The filesystem surface the collector actually uses — narrow on purpose. */
 export type CollectorFsPort = Pick<
@@ -96,6 +84,8 @@ export type CollectorFsPort = Pick<
 /** Everything the install/re-check lifecycle needs. */
 export interface CollectorDeps {
   fs: CollectorFsPort;
+  /** `lstat`-honest path classification — the skills guard's only capability. */
+  paths: PathKindPort;
   hash: HashPort;
   http: DownloadPort;
   exec: ExecPort;

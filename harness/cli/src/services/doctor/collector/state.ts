@@ -31,7 +31,13 @@ export type CliInstallStatus =
   | 'unsupported-platform'
   | 'not-installed';
 
-export type HooksInstallStatus = 'installed' | 'skipped-trace2' | 'failed' | 'not-attempted';
+export type HooksInstallStatus =
+  | 'installed'
+  | 'skipped-trace2'
+  | 'skipped-skills'
+  | 'unverified'
+  | 'failed'
+  | 'not-attempted';
 
 export interface Trace2Observation {
   observed: 'empty' | 'present' | 'unknown';

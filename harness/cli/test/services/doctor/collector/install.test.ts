@@ -16,6 +16,8 @@ import {
   FakeCollectorFs,
   FakeDownload,
   FakeExecutableBit,
+  FakePathKind,
+  FakeSequencedExec,
   ok200,
 } from '../../../support/collector-fakes.js';
 
@@ -36,6 +38,18 @@ const NOW = '2026-08-06T10:00:00.000Z';
 const BINARY = '/home/u/.git-ai/bin/git-ai';
 const CONFIG = '/home/u/.git-ai/config.json';
 const TRACE2_GET = 'git config --global --get-regexp ^trace2\\.';
+/**
+ * What git-ai's `configure_daemon_trace2` leaves in the GLOBAL config on a real
+ * install (`install_hooks.rs:256-283`) — the presence of this key is the only
+ * evidence the collector accepts that hooks actually went on.
+ */
+const GITAI_TRACE2 =
+  'trace2.eventtarget af_unix:/home/u/.git-ai/internal/daemon/trace2.sock\ntrace2.eventnesting 5';
+/** A trace2 read that answers EMPTY first (the guard) and git-ai's keys after. */
+const TRACE2_EMPTY_THEN_INSTALLED = [
+  { code: 1, stdout: '' },
+  { code: 0, stdout: `${GITAI_TRACE2}\n` },
+];
 const PAYLOAD = new TextEncoder().encode('#!/bin/sh\necho git-ai\n');
 const ARTIFACT_URL = `${GITAI_PIN.release_base_url}/${GITAI_PIN.version}/git-ai-macos-arm64`;
 
@@ -58,17 +72,20 @@ function testPin() {
 function deps(
   over: {
     fs?: FakeCollectorFs;
-    exec?: FakeExec;
+    exec?: FakeExec | FakeSequencedExec;
+    paths?: FakePathKind;
     http?: FakeDownload;
     platform?: string;
     arch?: string;
   } = {},
-): CollectorDeps & { fs: FakeCollectorFs; exec: FakeExec } {
+): CollectorDeps & { fs: FakeCollectorFs; exec: FakeExec | FakeSequencedExec } {
   const fs = over.fs ?? new FakeCollectorFs();
   const exec =
     over.exec ??
-    new FakeExec({
-      [TRACE2_GET]: { code: 1, stdout: '' },
+    new FakeSequencedExec({
+      // The guard read is EMPTY; the verification read afterwards shows git-ai's
+      // own keys — which is what a successful `install-hooks` actually does.
+      [TRACE2_GET]: TRACE2_EMPTY_THEN_INSTALLED,
       [`${BINARY} install-hooks`]: { code: 0, stdout: 'claude: installed\ncodex: installed\n' },
       [`${BINARY} status --json`]: { code: 0, stdout: '{"schema_version":"authorship/3.0.0"}' },
     });
@@ -76,6 +93,7 @@ function deps(
     fs,
     exec,
     hash: new NodeHash(),
+    paths: over.paths ?? new FakePathKind(),
     http: over.http ?? new FakeDownload({ [ARTIFACT_URL]: ok200(PAYLOAD) }),
     exe: new FakeExecutableBit(),
     clock: new FakeClock(NOW),
@@ -211,11 +229,16 @@ describe('installCollector — stage 2 is INDEPENDENT of stage 1 (ac-0013, ac-00
     expect(guards(first)).toHaveLength(1);
     expect(guards(first)[0]).toMatchObject({ observed: 'empty', entries: [], at: NOW });
 
-    // A second run records a SECOND guard observation: not first-run-only.
+    // A second run records a SECOND guard observation: not first-run-only. By
+    // then git-ai's OWN two trace2 keys are in the global config, so the second
+    // guard legitimately observes `present` — and the install still proceeds,
+    // because the only config it would pass over is the one we put there.
     await installCollector(d);
     const second = readCollectorState(d.fs, REPO);
     expect(guards(second)).toHaveLength(2);
-    expect(guards(second).every((entry) => entry.observed === 'empty')).toBe(true);
+    expect(guards(second).map((entry) => entry.observed)).toEqual(['present', 'empty']);
+    expect(guards(second)[0]?.entries.join(' ')).toContain('trace2.eventtarget');
+    expect(second?.hooks.status).toBe('installed');
   });
 
   it('an unreadable trace2 config fails closed — hooks are not installed', async () => {
@@ -327,15 +350,18 @@ describe('recheckCollector — a new coding harness is detected and reported (ac
   it('a re-check with a trace2 config present still refuses to install hooks', async () => {
     const fs = new FakeCollectorFs();
     fs.mkdirp(`${HOME}/.claude`);
-    const exec = new FakeExec({
-      [TRACE2_GET]: { code: 1, stdout: '' },
+    const exec = new FakeSequencedExec({
+      [TRACE2_GET]: TRACE2_EMPTY_THEN_INSTALLED,
       [`${BINARY} install-hooks`]: { code: 0, stdout: 'claude: installed\n' },
       [`${BINARY} status --json`]: { code: 0, stdout: '{"schema_version":"authorship/3.0.0"}' },
     });
     const d = deps({ fs, exec });
     await installCollector(d);
 
-    // Someone sets up trace2 for their own tooling, then installs Gemini.
+    // Someone sets up trace2 for their OWN tooling, then installs Gemini. A
+    // verified prior install buys a re-install over git-ai's own keys and
+    // NOTHING else: `trace2.normalTarget` is not a key git-ai writes, so the
+    // guard blocks exactly as it would on a machine we had never touched.
     fs.mkdirp(`${HOME}/.gemini`);
     const guarded = new FakeExec({
       [TRACE2_GET]: { code: 0, stdout: 'trace2.normalTarget /tmp/trace\n' },
@@ -432,5 +458,135 @@ describe('the dogfood hazards are encoded, not remembered', () => {
     expect(disclosures).toContain('CANNOT be scoped to chosen agents');
     expect(disclosures).toContain('VS Code extension');
     expect(disclosures).toContain('Code-Insiders');
+  });
+});
+
+/**
+ * P1 of the phase-1 review — the post-install verification must DECIDE, not just
+ * be recorded.
+ *
+ * The defect this pins was subtle and exactly the kind the dogfood existed to
+ * prevent: the code re-read the global trace2 config after `install-hooks`,
+ * wrote the observation into state, and then set `hooks: 'installed'` on the
+ * strength of a zero exit anyway. Since git-ai's argument parser ends in
+ * `_ => {}` it exits zero for invocations it never understood, so a zero exit is
+ * not evidence of anything. Evidence recorded and then ignored is not evidence.
+ */
+describe('a zero exit is NOT proof that hooks were installed', () => {
+  const statusOk = { code: 0, stdout: '{"schema_version":"authorship/3.0.0"}' };
+
+  it('an EMPTY post-install read means unverified — never installed', async () => {
+    // Guard reads empty, install-hooks exits 0, and the config it ALWAYS writes
+    // on a real install is still not there. Nothing was hooked.
+    const exec = new FakeSequencedExec({
+      [TRACE2_GET]: { code: 1, stdout: '' },
+      [`${BINARY} install-hooks`]: { code: 0, stdout: 'claude: installed\n' },
+      [`${BINARY} status --json`]: statusOk,
+    });
+    const d = deps({ exec });
+
+    const result = await installCollector(d);
+
+    expect(result.cli).toBe('installed');
+    expect(result.hooks).toBe('unverified');
+    expect(readCollectorState(d.fs, REPO)?.hooks.status).toBe('unverified');
+    expect(readCollectorState(d.fs, REPO)?.hooks.agents).toEqual([]);
+    expect(result.warnings.join(' ')).toContain('trace2.eventtarget');
+  });
+
+  it('an UNREADABLE post-install read means unverified — absent evidence is not good news', async () => {
+    const exec = new FakeSequencedExec({
+      [TRACE2_GET]: [
+        { code: 1, stdout: '' },
+        { code: 128, stderr: 'fatal: unreadable' },
+      ],
+      [`${BINARY} install-hooks`]: { code: 0, stdout: 'claude: installed\n' },
+      [`${BINARY} status --json`]: statusOk,
+    });
+
+    const result = await installCollector(deps({ exec }));
+
+    expect(result.hooks).toBe('unverified');
+    expect(result.warnings.join(' ')).toContain('UNVERIFIED');
+  });
+
+  it('a post-install read carrying SOMEONE ELSE’S keys is not our install either', async () => {
+    const exec = new FakeSequencedExec({
+      [TRACE2_GET]: [
+        { code: 1, stdout: '' },
+        { code: 0, stdout: 'trace2.normalTarget /tmp/trace\n' },
+      ],
+      [`${BINARY} install-hooks`]: { code: 0, stdout: 'claude: installed\n' },
+      [`${BINARY} status --json`]: statusOk,
+    });
+
+    const result = await installCollector(deps({ exec }));
+
+    expect(result.hooks).toBe('unverified');
+  });
+
+  it('records `installed` ONLY when git-ai’s own trace2 key is there afterwards', async () => {
+    const result = await installCollector(deps());
+
+    expect(result.hooks).toBe('installed');
+    expect(result.state.hooks.detail).toContain('verified by re-reading');
+  });
+});
+
+/**
+ * The SKILLS precondition guard (phase-1 review ruling).
+ *
+ * git-ai deletes its three skill links when invoked without `--skills` and
+ * overwrites them when invoked with it, so neither constant is safe. The guard
+ * makes the destructive path unreachable: inspect the nine paths, and if any
+ * holds real content, do not invoke `install-hooks` at all.
+ */
+describe('the skills guard declines to destroy rather than choosing a destruction', () => {
+  it('does NOT invoke install-hooks when a real directory sits at a skill path', async () => {
+    const paths = new FakePathKind({ [`${HOME}/.claude/skills/ask`]: 'directory' });
+    const d = deps({ paths });
+
+    const result = await installCollector(d);
+
+    expect(result.cli).toBe('installed');
+    expect(result.hooks).toBe('skipped-skills');
+    expect(d.exec.calls.some((call) => call.args[0] === 'install-hooks')).toBe(false);
+    expect(result.warnings.join(' ')).toContain('/.claude/skills/ask');
+    expect(result.manualInstructions.join('\n')).toContain('install-hooks');
+  });
+
+  it('treats a symlink or an absent path as git-ai’s own territory and proceeds', async () => {
+    const paths = new FakePathKind({
+      [`${HOME}/.claude/skills/ask`]: 'symlink',
+      [`${HOME}/.cursor/skills/git-ai-search`]: 'symlink',
+    });
+    const d = deps({ paths });
+
+    const result = await installCollector(d);
+
+    expect(result.hooks).toBe('installed');
+    expect(d.exec.calls.some((call) => call.args[0] === 'install-hooks')).toBe(true);
+  });
+
+  it('honours CLAUDE_CONFIG_DIR, because git-ai does', async () => {
+    // Guarding ~/.claude on a machine whose Claude config lives elsewhere would
+    // report safety about a directory git-ai never touches — worse than no guard.
+    const paths = new FakePathKind({ '/home/u/.claude-alt/skills/prompt-analysis': 'directory' });
+    const d = deps({ paths });
+    const result = await installCollector({
+      ...d,
+      host: { ...d.host, claudeConfigDir: '/home/u/.claude-alt' },
+    });
+
+    expect(result.hooks).toBe('skipped-skills');
+    expect(result.warnings.join(' ')).toContain('.claude-alt/skills/prompt-analysis');
+  });
+
+  it('treats an unclassifiable path as content — never as free space', async () => {
+    const paths = new FakePathKind({ [`${HOME}/.agents/skills/git-ai-search`]: 'unknown' });
+
+    const result = await installCollector(deps({ paths }));
+
+    expect(result.hooks).toBe('skipped-skills');
   });
 });

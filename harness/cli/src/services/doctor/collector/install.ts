@@ -2,6 +2,7 @@ import { detectAgents } from './agents.js';
 import { downloadAndVerify } from './download.js';
 import { GITAI_PIN } from './pin.js';
 import { binaryPathFor, configPathFor, resolveArtifact } from './platform.js';
+import { manualSkillsInstructions, readSkillsGuard } from './skills-guard.js';
 import {
   type CollectorState,
   emptyCollectorState,
@@ -9,7 +10,12 @@ import {
   recordTrace2Observation,
   writeCollectorState,
 } from './state.js';
-import { manualHookInstructions, mayInstallHooks, readGlobalTrace2 } from './trace2.js';
+import {
+  manualHookInstructions,
+  mayInstallHooks,
+  readGlobalTrace2,
+  verifyInstalledTrace2,
+} from './trace2.js';
 import { type CollectorDeps, INSTALL_HOOKS_TIMEOUT_MS } from './types.js';
 
 /**
@@ -37,7 +43,24 @@ import { type CollectorDeps, INSTALL_HOOKS_TIMEOUT_MS } from './types.js';
  */
 
 export type CliStage = 'installed' | 'already-current' | 'failed' | 'unsupported-platform';
-export type HooksStage = 'installed' | 'skipped-trace2' | 'failed' | 'not-attempted';
+export type HooksStage =
+  | 'installed'
+  | 'skipped-trace2'
+  /**
+   * Real user content sits where git-ai keeps its skill links, so invoking
+   * `install-hooks` at all would delete or overwrite it. Same shape as
+   * `skipped-trace2`: a deliberate, reportable, recoverable non-install.
+   */
+  | 'skipped-skills'
+  /**
+   * `install-hooks` exited 0, and the config it ALWAYS writes is not there (or
+   * could not be re-read). Deliberately not `installed` and deliberately not
+   * `failed`: the command did not report an error, and we must not invent one —
+   * but we saw no evidence it worked, and evidence is the only currency here.
+   */
+  | 'unverified'
+  | 'failed'
+  | 'not-attempted';
 
 export interface CollectorInstallResult {
   cli: CliStage;
@@ -60,7 +83,7 @@ export const INSTALL_HOOKS_DISCLOSURES: readonly string[] = [
   'resets the GLOBAL git `trace2` section and writes its own trace2.eventTarget/eventNesting — machine-wide, every repo (only ever run here on an observed-EMPTY trace2 config)',
   'stops and restarts the git-ai background daemon',
   'rewrites each detected agent config file in place (Claude/Codex/Gemini/Droid/Cursor/Windsurf/… ), reformatting it and discarding JSONC comments — git-ai keeps no backups',
-  'runs `uninstall_skills` whenever `--skills` is absent, removing git-ai skill links on every invocation — so we always invoke WITHOUT `--skills`, and it always removes them',
+  'runs `uninstall_skills` whenever `--skills` is absent, removing git-ai skill links on every invocation — so we always invoke WITHOUT `--skills`, and it always removes them. A precondition guard inspects all nine skill paths first (`ask`, `prompt-analysis`, `git-ai-search` under ~/.agents, ~/.cursor and $CLAUDE_CONFIG_DIR|~/.claude): if any holds real content rather than a symlink, we do not invoke it at all',
   'CANNOT be scoped to chosen agents — there is no per-agent selector, so it hooks every coding harness it detects in one shot (ten of them on the dogfood machine)',
   'installs a VS Code extension into BOTH Code and Code-Insiders and rewrites both settings.json files',
   'does NOT instrument agents that are already running — a live session stays uninstrumented until it restarts, and its prior work is attributed to the human',
@@ -158,7 +181,7 @@ export async function installHooks(
     phase: 'guard',
   });
 
-  if (!mayInstallHooks(reading)) {
+  if (!mayInstallHooks(reading, { priorInstallVerified: state.hooks.status === 'installed' })) {
     const manual = manualHookInstructions(binaryPath, reading.entries);
     next = {
       ...next,
@@ -178,6 +201,32 @@ export async function installHooks(
         `git-ai hooks NOT installed — ${reading.detail}. The pinned CLI is installed and unaffected.`,
       ],
       manual,
+    };
+  }
+
+  // SECOND precondition, same shape as the first: inspect, and decline to
+  // destroy. git-ai removes its three skill links when invoked without
+  // `--skills` and overwrites them when invoked with it, so a real directory at
+  // any of those nine paths makes BOTH spellings destructive. There is no flag
+  // value that is safe here — only not invoking is (phase-1 review, skills).
+  const skills = readSkillsGuard(deps.paths, deps.host);
+  if (!skills.mayInstall) {
+    next = {
+      ...next,
+      updated_at: now,
+      hooks: {
+        status: 'skipped-skills',
+        at: now,
+        agents: [],
+        detail: skills.detail,
+      },
+    };
+    writeCollectorState(deps.fs, deps.cwd, next);
+    return {
+      hooks: 'skipped-skills',
+      state: next,
+      warnings: [`git-ai hooks NOT installed — ${skills.detail}`],
+      manual: manualSkillsInstructions(binaryPath, skills.blocking),
     };
   }
 
@@ -237,6 +286,33 @@ export async function installHooks(
     phase: 'post-install',
   });
 
+  // …and the verification DECIDES the outcome. Recording the evidence and then
+  // ruling on the exit code anyway is the exact defect this re-read exists to
+  // prevent: git-ai exits 0 for arguments it never understood, so a zero exit is
+  // not a claim about hooks. Absent or unreadable ⇒ never `installed`.
+  const verification = verifyInstalledTrace2(after);
+  if (verification.status !== 'verified') {
+    next = {
+      ...next,
+      updated_at: now,
+      hooks: {
+        status: 'unverified',
+        at: now,
+        agents: [],
+        detail: verification.detail,
+      },
+    };
+    writeCollectorState(deps.fs, deps.cwd, next);
+    return {
+      hooks: 'unverified',
+      state: next,
+      warnings: [
+        `${verification.detail}. Treat AI attribution as NOT being collected; the pinned CLI is installed and unaffected.`,
+      ],
+      manual: manualHookInstructions(binaryPath, after.entries),
+    };
+  }
+
   next = {
     ...next,
     updated_at: now,
@@ -244,7 +320,7 @@ export async function installHooks(
       status: 'installed',
       at: now,
       agents,
-      detail: `hooks installed for ${agents.length} agent(s): ${agents.join(', ') || '(none detected)'} — agents already RUNNING stay uninstrumented until they restart`,
+      detail: `hooks installed for ${agents.length} agent(s): ${agents.join(', ') || '(none detected)'} — verified by re-reading the global trace2 config; agents already RUNNING stay uninstrumented until they restart`,
     },
   };
   writeCollectorState(deps.fs, deps.cwd, next);

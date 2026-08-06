@@ -35,9 +35,99 @@ export interface Trace2Reading {
   observedAt: string;
 }
 
-/** True when `install-hooks` may run: ONLY on an observed-empty trace2 config. */
-export function mayInstallHooks(reading: Trace2Reading): boolean {
-  return reading.status === 'empty';
+/**
+ * True when `install-hooks` may run.
+ *
+ * The ONLY unconditional yes is an observed-EMPTY config. There is exactly one
+ * narrow second case, and it exists because the first one would otherwise make
+ * the re-check (ac-0010) impossible: once git-ai's hooks are on, git-ai's OWN
+ * two trace2 keys are in the global config, so a guard that only accepted
+ * "empty" would refuse to hook a coding harness installed next month — forever,
+ * on every machine that ever succeeded.
+ *
+ * So a re-install is permitted when BOTH hold:
+ *
+ * 1. every key present is one git-ai itself writes (`trace2.eventTarget`,
+ *    `trace2.eventNesting`), and
+ * 2. this harness has a RECORDED, verified install of its own.
+ *
+ * Together those mean the config we would be overwriting is the config we put
+ * there. If a developer set `trace2.eventTarget` themselves and we never
+ * installed, condition 2 fails and the guard blocks exactly as before. The
+ * protection is unchanged: we still never delete a trace2 config that is not
+ * already ours.
+ */
+export function mayInstallHooks(
+  reading: Trace2Reading,
+  opts: { priorInstallVerified?: boolean } = {},
+): boolean {
+  if (reading.status === 'empty') return true;
+  // `unknown` still fails closed: a guard that cannot read must not clear.
+  if (reading.status !== 'present') return false;
+  if (opts.priorInstallVerified !== true) return false;
+  return reading.entries.length > 0 && reading.entries.every(isGitAiOwnTrace2Key);
+}
+
+/** Keys git-ai writes for itself — the only ones a re-install may pass over. */
+function isGitAiOwnTrace2Key(entry: string): boolean {
+  return /^trace2\.(eventtarget|eventnesting)(\s|=|$)/i.test(entry.trim());
+}
+
+/**
+ * The config key git-ai ALWAYS writes when it installs hooks.
+ * `configure_daemon_trace2` (`src/commands/install_hooks.rs:256-283`) removes
+ * the global `trace2` section and then writes `trace2.eventTarget` (plus
+ * `trace2.eventNesting`) — unconditionally, on every successful invocation.
+ * git reports config keys lowercased, hence the spelling here.
+ */
+const GITAI_TRACE2_KEY = 'trace2.eventtarget';
+
+export type Trace2VerificationStatus = 'verified' | 'absent' | 'unreadable';
+
+export interface Trace2Verification {
+  status: Trace2VerificationStatus;
+  detail: string;
+}
+
+/**
+ * Did `install-hooks` actually do the thing it always does? (plan 073 · P1 of
+ * the phase-1 review.)
+ *
+ * This exists because of the live dogfood finding: git-ai's argument parser ends
+ * in `_ => {}`, so it exits ZERO for invocations it never understood. An exit
+ * code from that binary is therefore not evidence, and the post-install read was
+ * being recorded while the outcome was decided by the exit code anyway — which
+ * is the same as not having read it.
+ *
+ * So the post-read is turned into a verdict:
+ *
+ * - **verified** — git-ai's own `trace2.eventTarget` is now in the global
+ *   config, which only happens on a real hook install.
+ * - **absent** — the config is readable and git-ai's key is NOT there. It exited
+ *   zero having installed nothing. Never `installed`.
+ * - **unreadable** — we could not check. Absent evidence is not good news; the
+ *   caller records a non-healthy state and says why.
+ */
+export function verifyInstalledTrace2(reading: Trace2Reading): Trace2Verification {
+  if (reading.status === 'unknown') {
+    return {
+      status: 'unreadable',
+      detail: `install-hooks exited 0 but the global trace2 config could not be re-read afterwards (${reading.detail}) — the install is UNVERIFIED`,
+    };
+  }
+  const found = reading.entries.some((entry) =>
+    entry.toLowerCase().trimStart().startsWith(GITAI_TRACE2_KEY),
+  );
+  if (found) {
+    return {
+      status: 'verified',
+      detail: `install-hooks verified by re-reading the global config: ${GITAI_TRACE2_KEY} is present`,
+    };
+  }
+  return {
+    status: 'absent',
+    detail: `install-hooks exited 0 but did NOT write ${GITAI_TRACE2_KEY} to the global git config — it always does on a real install, so nothing was hooked (git-ai's arg parser ignores what it does not understand and still exits 0)`,
+  };
 }
 
 /**

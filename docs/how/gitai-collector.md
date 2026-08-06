@@ -170,6 +170,16 @@ Recording the *empty* observation matters as much as blocking the non-empty one:
 an unrecorded empty is indistinguishable, a year later, from one that something
 erased.
 
+**One narrow exception, and it is narrow on purpose.** After a successful
+install, git-ai's own `trace2.eventTarget`/`trace2.eventNesting` are in the
+global config — so a guard that only ever accepted "empty" would refuse to hook a
+coding harness installed next month, forever, on every machine that had ever
+succeeded. A re-install is therefore permitted when **both** hold: every key
+present is one git-ai itself writes, **and** harness has a recorded, verified
+install of its own. In other words, the only config it may pass over is the
+config it put there. Set `trace2.eventTarget` yourself on a machine harness never
+installed on, and the guard blocks exactly as before.
+
 ### Why we never run their `install.sh`
 
 Their installer edits shell rc files, prepends to `PATH`, symlinks a `git` shim,
@@ -186,7 +196,7 @@ Ours is the decision to run it. These are its terms:
 - rewrites each detected agent's config file in place, reformatting it and
   discarding JSONC comments — **git-ai keeps no backups**;
 - runs `uninstall_skills` whenever `--skills` is absent, so it removes git-ai
-  skill links on every invocation;
+  skill links on every invocation — see the skills guard below;
 - **cannot be scoped to chosen agents** — there is no per-agent selector, so it
   hooks every coding harness it detects in one shot (ten of them on the dogfood
   machine);
@@ -203,6 +213,59 @@ Ours is the decision to run it. These are its terms:
 > exactly `install-hooks` and nothing else, and verifies the outcome by
 > **re-reading the global git config** afterwards rather than trusting an exit
 > code. A test asserts no forbidden spelling can reach git-ai as an argument.
+>
+> **And the re-read decides.** git-ai always writes `trace2.eventTarget` when it
+> installs hooks, so that key's presence afterwards is the evidence. If it is
+> absent, unreadable, or replaced by something else, the hooks are recorded as
+> `unverified` — never `installed`, and never silently upgraded by a zero exit.
+> Evidence that is recorded and then ignored is not evidence.
+
+### The skills guard — the same shape as trace2
+
+git-ai manages three skills — `ask`, `prompt-analysis`, `git-ai-search` — as
+symlinks under each agent's skills directory, and it is destructive in **both**
+directions: without `--skills` it runs `uninstall_skills` and removes whatever is
+at those paths; with `--skills` it installs over them. There is no flag value
+that is safe, so the flag is not the decision.
+
+Before invoking `install-hooks`, harness inspects all nine paths —
+`~/.agents/skills/<n>`, `~/.cursor/skills/<n>` and
+`$CLAUDE_CONFIG_DIR|~/.claude/skills/<n>` for each of the three names — with
+`lstat`, which does not follow the final component:
+
+- **absent or a symlink** → git-ai's own territory, nothing of yours to lose;
+- **a real directory or file** → do **not** invoke at all. Name the path, print
+  the manual command, and leave it alone;
+- **unclassifiable** → treated as content. A path we could not read is never
+  reported as free space.
+
+`CLAUDE_CONFIG_DIR` is honoured because git-ai honours it (`utils.rs:430`);
+guarding `~/.claude` on a machine whose Claude config lives at `~/.claude-alt`
+would report safety about a directory git-ai never touches, which is worse than
+no guard at all.
+
+Same principle as trace2: **inspect, and decline to destroy.** The destructive
+path is made unreachable rather than chosen.
+
+---
+
+## Running it
+
+The collector rides on `harness doctor`, and the split is deliberate:
+
+```bash
+# the REPORT — a pure filesystem read; invokes nothing (doctor's P7 rule)
+harness doctor
+
+# the LIFECYCLE — the only ways anything is downloaded, executed or written
+harness doctor --install-collector    # fetch + verify the pin, then hooks (guards first)
+harness doctor --recheck-collector    # hook a coding harness that appeared later
+
+# maintainer only: hash all six artifacts for a tag and print a reviewable pin
+harness doctor --regenerate-collector-pin v1.6.22 [--pin-out /tmp/pin.ts]
+```
+
+A plain `harness doctor` never installs anything. Nothing is implied.
 
 ---
 
@@ -216,8 +279,9 @@ doctor row, it **warns and never blocks**.
 |---|---|
 | `healthy` | pinned binary present and hash-matching, hooks installed, daemon pid file present, note schema as pinned |
 | `cli-only-trace2` | **CLI installed, hooks not installed because trace2 is present.** Its own state: not healthy, not a failed install, not "could not determine" |
+| `cli-only-skills` | CLI installed, hooks not installed because real content sits where git-ai keeps its skill links |
 | `hooks-incomplete` | a coding harness appeared after the hooks went on; its edits are not being attributed |
-| `degraded` | binary no longer matches the pin, hooks failed, or a note-schema mismatch |
+| `degraded` | binary no longer matches the pin, hooks failed, hooks are `unverified` (a zero exit that left no evidence), or a note-schema mismatch |
 | `not-installed` | nothing installed, or an unsupported platform |
 | `could-not-determine` | we could not read what we needed — **never** rendered as healthy, never folded into "no data" |
 

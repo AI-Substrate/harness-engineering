@@ -54,6 +54,11 @@ describe('registerDoctorAct', () => {
       'sensor-watcher',
       'telemetry-flush-hook',
       'capture-liveness',
+      // plan 073 — wired by DEFAULT. The row was previously omitted whenever the
+      // composition root supplied no host, which it always did; a doctor without
+      // this row cannot say "nothing is collecting your AI attribution", which is
+      // the only thing it exists to say.
+      'gitai-collector',
       'dd-documents',
       'precommit-hook-latency',
       'instructions',
