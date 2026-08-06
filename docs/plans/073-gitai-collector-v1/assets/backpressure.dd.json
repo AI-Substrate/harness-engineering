@@ -1,0 +1,316 @@
+{
+  "dd": {
+    "schema": "builder/backpressure"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Backpressure coverage — Git AI as the telemetry collector (v1)",
+        "slug": "073-backpressure",
+        "plan": "../plan.dd.json#meta",
+        "basis_sha256": "a4f8b08f3acbf017c64a52689e63583002cd6db57562dad8816dcaf5a393c6df",
+        "certainty": "Partial"
+      }
+    },
+    {
+      "name": "sensors",
+      "value": [
+        {
+          "id": "bp-0001",
+          "name": "CLI unit + integration tests",
+          "command": "just test",
+          "dimension": "behaviour",
+          "found_in": "harness/cli/test/"
+        },
+        {
+          "id": "bp-0002",
+          "name": "Omnibus gate (tests, biome, typecheck, docs/flow/telemetry drift, arch, skills, markdown, windows)",
+          "command": "just checks",
+          "dimension": "behaviour+architecture+maintainability",
+          "found_in": "root"
+        },
+        {
+          "id": "bp-0003",
+          "name": "Windows compatibility, with no Windows runner",
+          "command": "just windows-check",
+          "dimension": "behaviour (cross-platform)",
+          "found_in": "root → harness windows-check"
+        },
+        {
+          "id": "bp-0004",
+          "name": "Architecture tests",
+          "command": "just checks",
+          "dimension": "architecture-fitness",
+          "found_in": "harness/cli/test/architecture/"
+        },
+        {
+          "id": "bp-0005",
+          "name": "Contract + conformance suites",
+          "command": "just test",
+          "dimension": "architecture-fitness",
+          "found_in": "harness/cli/test/{contract,conformance}/"
+        },
+        {
+          "id": "bp-0006",
+          "name": "Telemetry golden drift guard",
+          "command": "just check-telemetry-fixtures",
+          "dimension": "behaviour",
+          "found_in": "root"
+        }
+      ]
+    },
+    {
+      "name": "rows",
+      "value": [
+        {
+          "id": "bp-0007",
+          "criterion": "Capture off by default at all three enforcement points",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "just test",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-0001",
+            "../plan.dd.json#acceptance_criteria/ac-0019"
+          ]
+        },
+        {
+          "id": "bp-0008",
+          "criterion": "Read path ungated — pull/report still resolve a published ref",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "just test",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-0002"
+          ]
+        },
+        {
+          "id": "bp-0009",
+          "criterion": "Install only from the committed pin manifest",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "just test",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-0003"
+          ]
+        },
+        {
+          "id": "bp-000a",
+          "criterion": "Hash verified on a temp file before placement",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "just test",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-0004"
+          ]
+        },
+        {
+          "id": "bp-000b",
+          "criterion": "Mismatch installs nothing, no partial file, reports both digests",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "just test",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-0005"
+          ]
+        },
+        {
+          "id": "bp-000c",
+          "criterion": "Updater disabled before first run",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "just test",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-0007"
+          ]
+        },
+        {
+          "id": "bp-000d",
+          "criterion": "trace2 guard before every install-hooks; non-empty skips+warns, empty is recorded",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "just test",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-0008"
+          ]
+        },
+        {
+          "id": "bp-000e",
+          "criterion": "install-hooks side effects bounded and disclosed",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "just test",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-0009"
+          ]
+        },
+        {
+          "id": "bp-000f",
+          "criterion": "Simple bounded health read",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "just test",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-000a"
+          ]
+        },
+        {
+          "id": "bp-0010",
+          "criterion": "'Could not determine' is a distinct state",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "just test",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-000b"
+          ]
+        },
+        {
+          "id": "bp-0011",
+          "criterion": "Doctor warns, never blocks",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "just test",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-000c"
+          ]
+        },
+        {
+          "id": "bp-0012",
+          "criterion": "Pin is data — version bump is a one-file diff",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "just test",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-000d",
+            "../plan.dd.json#acceptance_criteria/ac-001a"
+          ]
+        },
+        {
+          "id": "bp-0013",
+          "criterion": "Regenerate rewrites the manifest; install never does",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "just test",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-000e"
+          ]
+        },
+        {
+          "id": "bp-0014",
+          "criterion": "Expected note schema version pinned and asserted",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "just test",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-000f"
+          ]
+        },
+        {
+          "id": "bp-0015",
+          "criterion": "Re-check detects a newly installed coding harness",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "just test",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-0010"
+          ]
+        },
+        {
+          "id": "bp-0016",
+          "criterion": "CLI install independent of hook install",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "just test",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-0013"
+          ]
+        },
+        {
+          "id": "bp-0017",
+          "criterion": "'CLI installed, hooks not installed (trace2 present)' is its own state",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "just test",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-0014"
+          ]
+        },
+        {
+          "id": "bp-0018",
+          "criterion": "Download failure contract: non-2xx, redirect, timeout, interrupted write, cleanup",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "just test",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-0015"
+          ]
+        },
+        {
+          "id": "bp-0019",
+          "criterion": "Unsupported platform installs nothing",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "just test",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-0017"
+          ]
+        },
+        {
+          "id": "bp-001a",
+          "criterion": "Manifest regeneration is all-or-nothing",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "just test",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-0018"
+          ]
+        },
+        {
+          "id": "bp-001b",
+          "criterion": "Six-platform resolution; hashing via Node crypto with no shell-out",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "add the platform-resolution matrix and a no-shell-out assertion to the Windows-compat sensor, then `just windows-check`",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-0006"
+          ]
+        },
+        {
+          "id": "bp-001c",
+          "criterion": "Executable mode on Unix and atomic replacement of an existing binary",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "add a mode-and-atomicity case to the same sensor, then `just windows-check`",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-0016"
+          ]
+        },
+        {
+          "id": "bp-001d",
+          "criterion": "The real artifacts at the pinned tag actually match the recorded hashes",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "Phase 0 builds a network-gated pin-verification recipe, then `just check-gitai-pin`",
+          "probe_trail": "Globbed **/*.spec.*, **/*.e2e.*, **/playwright.config.*, **/cypress.config.* across root + harness/cli/ — no network-integration sensor exists."
+        },
+        {
+          "id": "bp-001e",
+          "criterion": "The collection-proof gap is recorded honestly rather than papered over",
+          "mode": "ABSENT",
+          "tier": "human-judgement",
+          "probe_trail": "Documentation-of-a-known-limit criterion; no sensor can prove a caveat was written honestly.",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-0012"
+          ]
+        },
+        {
+          "id": "bp-001f",
+          "criterion": "git-ai's own behaviour matches what this plan assumes (install-hooks resets trace2 and runs uninstall_skills; status --json carries what we read)",
+          "mode": "ABSENT",
+          "tier": "human-judgement",
+          "probe_trail": "Read from git-ai source at ~/github/git-ai @7df7e2069 with file:line citations. No sensor here can prove a third-party binary's behaviour without installing and running it."
+        }
+      ]
+    }
+  ]
+}
