@@ -39,6 +39,30 @@ Three chores now due at `phase-1`: **Boot check**, **Observe: P1**, **Retro: P1 
 There is also a gate on `phase-1` — *"not yet evaluated"* — which resolves from the task
 rows' terminal state, so it stays unevaluated until the coder's work lands.
 
+## Review brief — Jordan's standing instructions for the review
+
+Given **2026-08-06**, verbatim: *"when the work is done, i want you to review the new
+tests, make sure they are achieveable in CI, and dont use any new or exetnal deps."*
+
+Three checks the reviewer must make explicitly, on top of the normal verdict:
+
+1. **Every new test runs in CI** — no test that depends on this machine's state. The
+   specific traps this plan invites: a real network fetch of the pinned release, an
+   installed `git-ai` binary, a live daemon, a writable global `~/.gitconfig`, a real
+   `trace2` socket, or an installed coding agent. Each must be faked or skipped by a
+   declared condition, never assumed present.
+2. **No new dependencies** — not in `package.json`, not a new binary invoked from a
+   test, not a downloaded fixture. The download/verify path must be testable with what
+   the repo already has.
+3. **No external network at test time.** The pinned-SHA verification is the whole point
+   of the feature and is also the easiest thing to accidentally test by really
+   downloading. It must be provable offline.
+
+Also from the same session (see `assets/research/dogfood-live-install.md`): the review is
+against the **dogfood evidence**, not the plan text alone — six live findings there
+change what "correct" means, notably that `--dry-run` fails open on any near-miss
+spelling.
+
 ## Jordan's rulings — binding, do not re-litigate
 
 1. **git-ai becomes the collector.** v1 **disables** harness capture by default (does
