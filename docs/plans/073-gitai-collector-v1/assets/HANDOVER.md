@@ -108,3 +108,36 @@ non-plan schema requires hand-writing the envelope — the one action the docs f
   sharing ids with harness's own telemetry staging. That is the corpus at stake, and
   it makes the reviewer's F7 concern (hook sends an 8-char id, git-ai joins on the
   UUID) checkable with one live hook firing.
+
+## ⚠️ Known-wrong value, deliberately left in place
+
+`assets/backpressure.dd.json` → `meta.certainty` = **`Partial`**, and that is very
+likely the wrong token. Do not silently "fix" it; read this first.
+
+Prime established the collision is sharper than first reported — it is the **same
+axis with a different scale**:
+
+```
+prose    Strong  > Partial > Weak         Partial = MIDDLE
+schema   Proven  > Confident > Partial    Partial = FLOOR
+```
+
+I rated on the **prose** scale (19 of 22 criteria have an existing paved sensor, 2
+need a named extension, 1 needs a build, 2 are honestly ABSENT → "middling"). Written
+into the dd it now reads as **the weakest value the schema offers**, which does not
+describe this proof set.
+
+**Why it was not corrected**: the schema declares the enum members and defines
+**none** of them — no descriptions, no per-member documentation. The only prose that
+defines "certainty" describes the *other* scale. Choosing between `Confident` and
+`Partial` would mean inventing the semantics of a vocabulary this seat does not own.
+Recorded as underdetermined rather than guessed.
+
+**To close it**: once the schema's rungs are given stated meanings, set it with one
+command —
+`harness dd set assets/backpressure.dd.json#meta <json> --value-json`.
+
+Note for whoever ships the generator prime allocated: **generation cannot fix this
+one.** It closes the twin (`BUILDABLE`/`BUILD`) and the missing member
+(`inferential`), turns the gate green, and leaves this value wrong — with the green
+then arguing the vocabulary is consistent.
