@@ -279,15 +279,22 @@ async function runCollectorLifecycle(
 
   if (opts.recheckCollector === true) {
     const result = await recheckCollector(deps);
+    // Two fields on purpose: `hooks` is what THIS attempt did, `coverage` is what
+    // the machine has. A guard that refused to invoke git-ai changes the first
+    // and must not change the second (phase-1 review, round 3).
     const data = {
       action: 'recheck-collector',
       newAgents: result.newAgents,
       hooks: result.hooks,
+      coverage: result.coverage,
       warnings: result.warnings,
       manual: result.manualInstructions,
       text: `${[
         `new coding harnesses since the last hook install: ${
           result.newAgents.length === 0 ? '(none)' : result.newAgents.join(', ')
+        }`,
+        `hooks still installed for: ${
+          result.coverage.agents.length === 0 ? '(none)' : result.coverage.agents.join(', ')
         }`,
         renderLines('warnings:', result.warnings),
         renderLines('to do this yourself:', result.manualInstructions),
@@ -302,7 +309,7 @@ async function runCollectorLifecycle(
             'doctor',
             data,
             result.manualInstructions.length > 0
-              ? 'Hooks were not installed — follow the printed manual steps, then re-run `harness doctor`.'
+              ? 'Hooks were NOT added for the new harness (existing hooks are unaffected) — follow the printed manual steps, then re-run `harness doctor`.'
               : 'Read the warnings above, then re-run `harness doctor` to see the collector row.',
             clock,
           ),

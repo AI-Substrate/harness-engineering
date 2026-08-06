@@ -238,7 +238,12 @@ describe('installCollector — stage 2 is INDEPENDENT of stage 1 (ac-0013, ac-00
     expect(guards(second)).toHaveLength(2);
     expect(guards(second).map((entry) => entry.observed)).toEqual(['present', 'empty']);
     expect(guards(second)[0]?.entries.join(' ')).toContain('trace2.eventtarget');
-    expect(second?.hooks.status).toBe('skipped-trace2');
+    // The BLOCK lands on the attempt. Hook coverage is a fact about the machine
+    // and a guard that never invoked git-ai did not change the machine, so it is
+    // still `installed` (round 3).
+    expect(second?.last_attempt?.status).toBe('skipped-trace2');
+    expect(second?.hooks.status).toBe('installed');
+    expect(second?.hooks.agents).toEqual(['claude', 'codex']);
   });
 
   /**

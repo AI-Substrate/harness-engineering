@@ -1,4 +1,4 @@
-import { detectAgents } from './agents.js';
+import { agentsMissingHooks, detectAgents } from './agents.js';
 import { downloadAndVerify } from './download.js';
 import { GITAI_PIN } from './pin.js';
 import { binaryPathFor, configPathFor, resolveArtifact } from './platform.js';
@@ -6,6 +6,7 @@ import { manualSkillsInstructions, readSkillsGuard } from './skills-guard.js';
 import {
   type CollectorState,
   emptyCollectorState,
+  type HooksInstallStatus,
   readCollectorState,
   recordTrace2Observation,
   writeCollectorState,
@@ -163,6 +164,57 @@ function parseInstalledAgents(stdout: string): string[] {
 }
 
 /**
+ * Record the OUTCOME OF AN ATTEMPT without lying about the MACHINE.
+ *
+ * `preserveCoverage` is not a convenience flag — it is the distinction between
+ * the two ways an install can fail to happen:
+ *
+ * - A **precondition guard refused** (`skipped-trace2`, `skipped-skills`). We
+ *   never invoked git-ai, so nothing on this machine changed. Hooks that were
+ *   proven installed are still installed and still collecting, and saying
+ *   otherwise is a confident wrong number (phase-1 review, round 3).
+ * - **git-ai ran and the outcome was bad** (`failed`, `unverified`). It may have
+ *   changed the machine, and we have no evidence about what survived. Prior
+ *   coverage is no longer proven, so it is not carried forward.
+ *
+ * Either way the attempt itself is written down, so a re-check that got blocked
+ * is visible as a blocked re-check rather than inferred from a missing agent.
+ */
+function recordAttempt(
+  state: CollectorState,
+  now: string,
+  attempt: {
+    status: HooksInstallStatus;
+    detail: string;
+    uncovered: string[];
+    preserveCoverage: boolean;
+  },
+): CollectorState {
+  const keep = attempt.preserveCoverage && state.hooks.status === 'installed';
+  return {
+    ...state,
+    updated_at: now,
+    last_attempt: {
+      status: attempt.status,
+      at: now,
+      detail: attempt.detail,
+      uncovered: attempt.uncovered,
+    },
+    hooks: keep
+      ? state.hooks
+      : { status: attempt.status, at: now, agents: [], detail: attempt.detail },
+  };
+}
+
+/** Agents on this machine the RECORDED install does not cover — a pure fs read. */
+function uncoveredAgentIds(deps: CollectorDeps, state: CollectorState): string[] {
+  const covered = state.hooks.status === 'installed' ? state.hooks.agents : [];
+  return agentsMissingHooks(detectAgents(deps.fs, deps.host.home), covered).map(
+    (agent) => agent.id,
+  );
+}
+
+/**
  * Stage 2 — hooks. Callable on its own for a re-check (ac-0010): the trace2
  * guard runs EVERY time, first install and re-check alike, because git-ai
  * re-applies the trace2 removal on every invocation.
@@ -173,6 +225,10 @@ function parseInstalledAgents(stdout: string): string[] {
  * still reported, and the operator gets the manual instructions. That is the
  * intended posture, not a gap: nothing local can prove a machine-wide git value
  * is still ours to delete (phase-1 review, round 2 P0).
+ *
+ * What a block does NOT do is revoke coverage we already proved. The blocked
+ * attempt lands in `last_attempt`; `hooks` keeps saying what the machine
+ * actually has (see {@link recordAttempt}).
  */
 export async function installHooks(
   deps: CollectorDeps,
@@ -190,22 +246,22 @@ export async function installHooks(
 
   if (!mayInstallHooks(reading)) {
     const manual = manualHookInstructions(binaryPath, reading.entries);
-    next = {
-      ...next,
-      updated_at: now,
-      hooks: {
-        status: 'skipped-trace2',
-        at: now,
-        agents: [],
-        detail: reading.detail,
-      },
-    };
+    const uncovered = uncoveredAgentIds(deps, next);
+    const preserved = next.hooks.status === 'installed';
+    next = recordAttempt(next, now, {
+      status: 'skipped-trace2',
+      detail: reading.detail,
+      uncovered,
+      preserveCoverage: true,
+    });
     writeCollectorState(deps.fs, deps.cwd, next);
     return {
       hooks: 'skipped-trace2',
       state: next,
       warnings: [
-        `git-ai hooks NOT installed — ${reading.detail}. The pinned CLI is installed and unaffected.`,
+        preserved
+          ? `git-ai hooks could NOT be added for ${uncovered.join(', ') || 'the new harness'} — ${reading.detail}. The hooks already installed for ${next.hooks.agents.join(', ')} are UNAFFECTED and still collecting; the pinned CLI is unaffected too.`
+          : `git-ai hooks NOT installed — ${reading.detail}. The pinned CLI is installed and unaffected.`,
       ],
       manual,
     };
@@ -218,21 +274,23 @@ export async function installHooks(
   // value that is safe here — only not invoking is (phase-1 review, skills).
   const skills = readSkillsGuard(deps.paths, deps.host);
   if (!skills.mayInstall) {
-    next = {
-      ...next,
-      updated_at: now,
-      hooks: {
-        status: 'skipped-skills',
-        at: now,
-        agents: [],
-        detail: skills.detail,
-      },
-    };
+    const uncovered = uncoveredAgentIds(deps, next);
+    const preserved = next.hooks.status === 'installed';
+    next = recordAttempt(next, now, {
+      status: 'skipped-skills',
+      detail: skills.detail,
+      uncovered,
+      preserveCoverage: true,
+    });
     writeCollectorState(deps.fs, deps.cwd, next);
     return {
       hooks: 'skipped-skills',
       state: next,
-      warnings: [`git-ai hooks NOT installed — ${skills.detail}`],
+      warnings: [
+        preserved
+          ? `git-ai hooks could NOT be added for ${uncovered.join(', ') || 'the new harness'} — ${skills.detail}. The hooks already installed for ${next.hooks.agents.join(', ')} are UNAFFECTED and still collecting.`
+          : `git-ai hooks NOT installed — ${skills.detail}`,
+      ],
       manual: manualSkillsInstructions(binaryPath, skills.blocking),
     };
   }
@@ -245,33 +303,25 @@ export async function installHooks(
       timeoutMs: INSTALL_HOOKS_TIMEOUT_MS,
     });
   } catch (err) {
-    next = {
-      ...next,
-      updated_at: now,
-      hooks: {
-        status: 'failed',
-        at: now,
-        agents: [],
-        detail: `install-hooks could not be run: ${err instanceof Error ? err.message : String(err)}`,
-      },
-    };
+    next = recordAttempt(next, now, {
+      status: 'failed',
+      detail: `install-hooks could not be run: ${err instanceof Error ? err.message : String(err)}`,
+      uncovered: uncoveredAgentIds(deps, next),
+      preserveCoverage: false,
+    });
     writeCollectorState(deps.fs, deps.cwd, next);
     return { hooks: 'failed', state: next, warnings: [next.hooks.detail], manual: [] };
   }
 
   if (result.code !== 0) {
-    next = {
-      ...next,
-      updated_at: now,
-      hooks: {
-        status: 'failed',
-        at: now,
-        agents: [],
-        detail: `install-hooks exited ${result.code}${
-          result.stderr.trim() === '' ? '' : `: ${result.stderr.trim().split('\n')[0]}`
-        }`,
-      },
-    };
+    next = recordAttempt(next, now, {
+      status: 'failed',
+      detail: `install-hooks exited ${result.code}${
+        result.stderr.trim() === '' ? '' : `: ${result.stderr.trim().split('\n')[0]}`
+      }`,
+      uncovered: uncoveredAgentIds(deps, next),
+      preserveCoverage: false,
+    });
     writeCollectorState(deps.fs, deps.cwd, next);
     return { hooks: 'failed', state: next, warnings: [next.hooks.detail], manual: [] };
   }
@@ -299,16 +349,12 @@ export async function installHooks(
   // not a claim about hooks. Absent or unreadable ⇒ never `installed`.
   const verification = verifyInstalledTrace2(after);
   if (verification.status !== 'verified') {
-    next = {
-      ...next,
-      updated_at: now,
-      hooks: {
-        status: 'unverified',
-        at: now,
-        agents: [],
-        detail: verification.detail,
-      },
-    };
+    next = recordAttempt(next, now, {
+      status: 'unverified',
+      detail: verification.detail,
+      uncovered: uncoveredAgentIds(deps, next),
+      preserveCoverage: false,
+    });
     writeCollectorState(deps.fs, deps.cwd, next);
     return {
       hooks: 'unverified',
@@ -323,6 +369,12 @@ export async function installHooks(
   next = {
     ...next,
     updated_at: now,
+    last_attempt: {
+      status: 'installed',
+      at: now,
+      detail: 'install-hooks ran and was verified by re-reading the global trace2 config',
+      uncovered: [],
+    },
     hooks: {
       status: 'installed',
       at: now,
@@ -483,7 +535,18 @@ export async function installCollector(deps: CollectorDeps): Promise<CollectorIn
 export interface CollectorRecheckResult {
   /** Agent ids present on the machine that the recorded install did not cover. */
   newAgents: string[];
+  /**
+   * The outcome of THIS attempt — `skipped-trace2` when a guard refused. Not a
+   * statement about what the machine has: read {@link CollectorRecheckResult.coverage}
+   * for that.
+   */
   hooks: HooksStage;
+  /**
+   * Hook coverage as it stands AFTER the re-check — unchanged by a guard that
+   * refused to invoke git-ai. A blocked re-check leaves this exactly as it was,
+   * which is the whole point (phase-1 review, round 3).
+   */
+  coverage: { status: HooksInstallStatus; agents: string[] };
   state: CollectorState;
   warnings: string[];
   manualInstructions: string[];
@@ -498,6 +561,10 @@ export interface CollectorRecheckResult {
  * written for. git-ai re-applies the trace2 removal on every `install-hooks`,
  * so a guard that only ran on first install would protect the first developer
  * and quietly hand over everyone else's config on the second run.
+ *
+ * A blocked re-check is therefore an ordinary outcome, and it must leave the
+ * report BETTER than not running it: existing coverage survives untouched, the
+ * new agent stays named as the gap, and the block is recorded as an attempt.
  */
 export async function recheckCollector(deps: CollectorDeps): Promise<CollectorRecheckResult> {
   const manifest = deps.manifest ?? GITAI_PIN;
@@ -507,10 +574,13 @@ export async function recheckCollector(deps: CollectorDeps): Promise<CollectorRe
   const covered = new Set(state.hooks.agents.map((id) => id.toLowerCase()));
   const newAgents = detected.filter((agent) => !covered.has(agent.id.toLowerCase()));
 
+  const coverageOf = (s: CollectorState) => ({ status: s.hooks.status, agents: s.hooks.agents });
+
   if (newAgents.length === 0) {
     return {
       newAgents: [],
       hooks: state.hooks.status,
+      coverage: coverageOf(state),
       state,
       warnings: [],
       manualInstructions: [],
@@ -520,6 +590,7 @@ export async function recheckCollector(deps: CollectorDeps): Promise<CollectorRe
     return {
       newAgents: newAgents.map((agent) => agent.id),
       hooks: 'not-attempted',
+      coverage: coverageOf(state),
       state,
       warnings: [
         `${newAgents.map((a) => a.label).join(', ')} present but git-ai is not installed — no attribution is being collected for them`,
@@ -532,6 +603,7 @@ export async function recheckCollector(deps: CollectorDeps): Promise<CollectorRe
   return {
     newAgents: newAgents.map((agent) => agent.id),
     hooks: result.hooks,
+    coverage: coverageOf(result.state),
     state: result.state,
     warnings: [
       `new coding harness detected since the last hook install: ${newAgents

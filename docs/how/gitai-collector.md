@@ -187,6 +187,20 @@ and `install-hooks` deletes your whole section. **A key name plus an old local
 record cannot establish ownership of a mutable, machine-wide git value.** This
 could only come back if git-ai offered a non-destructive hook operation.
 
+**A blocked re-check never revokes coverage it already proved.** The guard
+refuses *before* git-ai is invoked, so nothing on the machine changed — and
+nothing we say about the machine may change either. The block is recorded as a
+separate `last_attempt`; the `hooks` record keeps naming the agents that are
+genuinely hooked and genuinely still collecting. So the sequence *install →
+Cursor appears → blocked re-check* ends on `hooks-incomplete` naming **Cursor**,
+not on `cli-only-trace2` claiming no attribution is collected at all. The two
+verdicts below mean different things and stay different: doing what the row told
+you to do must never make the report *less* accurate than not doing it.
+
+When git-ai does run and the outcome is bad (`failed`, `unverified`), coverage is
+**not** carried forward — the machine may have changed underneath us, and prior
+coverage is no longer proven.
+
 ### Why we never run their `install.sh`
 
 Their installer edits shell rc files, prepends to `PATH`, symlinks a `git` shim,
@@ -269,6 +283,7 @@ harness doctor
 # the LIFECYCLE — the only ways anything is downloaded, executed or written
 harness doctor --install-collector    # fetch + verify the pin, then hooks (guards first)
 harness doctor --recheck-collector    # detect a coding harness that appeared later
+                                      # (blocked by a guard? existing hooks are untouched)
 
 # maintainer only: hash all six artifacts for a tag and print a reviewable pin
 harness doctor --regenerate-collector-pin v1.6.22 [--pin-out /tmp/pin.ts]
@@ -287,9 +302,9 @@ doctor row, it **warns and never blocks**.
 | verdict | meaning |
 |---|---|
 | `healthy` | pinned binary present and hash-matching, hooks installed, daemon pid file present, note schema as pinned |
-| `cli-only-trace2` | **CLI installed, hooks not installed because trace2 is present.** Its own state: not healthy, not a failed install, not "could not determine" |
+| `cli-only-trace2` | **CLI installed, hooks NEVER installed because trace2 is present** — no attribution is being collected. Its own state: not healthy, not a failed install, not "could not determine". Unreachable once an install has been verified: a later block cannot demote proven coverage to this |
 | `cli-only-skills` | CLI installed, hooks not installed because real content sits where git-ai keeps its skill links |
-| `hooks-incomplete` | a coding harness appeared after the hooks went on; its edits are not being attributed |
+| `hooks-incomplete` | hooks are installed and collecting, **and** a coding harness appeared afterwards whose edits are not being attributed. Names the harness. When a re-check was blocked by a guard, `next_action` is the manual `git-ai install-hooks` command rather than "re-run the re-check", which we already know is blocked |
 | `degraded` | binary no longer matches the pin, hooks failed, hooks are `unverified` (a zero exit that left no evidence), or a note-schema mismatch |
 | `not-installed` | nothing installed, or an unsupported platform |
 | `could-not-determine` | we could not read what we needed — **never** rendered as healthy, never folded into "no data" |

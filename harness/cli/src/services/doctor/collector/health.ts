@@ -62,6 +62,13 @@ export interface CollectorHealth {
   };
   /** The trace2 observation this read is standing on, if any was ever recorded. */
   trace2: { observed: 'empty' | 'present' | 'unknown'; at: string } | null;
+  /**
+   * The last install/re-check ATTEMPT, which is a different fact from `hooks`
+   * above. A guard that refused to run git-ai changes this and nothing else —
+   * hook coverage is a fact about the machine and survives a blocked attempt
+   * intact (phase-1 review, round 3).
+   */
+  lastAttempt: { status: CollectorState['hooks']['status']; at: string; detail: string } | null;
 }
 
 export interface CollectorHealthDeps {
@@ -93,6 +100,7 @@ function undetermined(
     daemon: 'unknown',
     noteSchema: { expected: GITAI_PIN.expect_schema_version, observed: null, status: 'unknown' },
     trace2: null,
+    lastAttempt: null,
     ...extra,
   };
 }
@@ -115,6 +123,7 @@ export function readCollectorHealth(deps: CollectorHealthDeps): CollectorHealth 
       daemon: 'unknown',
       noteSchema: { expected: manifest.expect_schema_version, observed: null, status: 'unknown' },
       trace2: null,
+      lastAttempt: null,
     };
   }
 
@@ -149,6 +158,7 @@ export function readCollectorHealth(deps: CollectorHealthDeps): CollectorHealth 
       daemon: 'unknown',
       noteSchema: { expected: manifest.expect_schema_version, observed: null, status: 'unknown' },
       trace2: null,
+      lastAttempt: null,
     };
   }
   if (state === null) {
@@ -171,12 +181,15 @@ export function readCollectorHealth(deps: CollectorHealthDeps): CollectorHealth 
   const daemon: CollectorHealth['daemon'] = deps.fs.exists(daemonPidPathFor(deps.host.home))
     ? 'pidfile-present'
     : 'pidfile-absent';
+  const attempt = state.last_attempt ?? null;
   const base = {
     binary,
     hooks: { status: state.hooks.status, missing: missing.map((agent) => agent.id) },
     daemon,
     noteSchema: state.note_schema,
     trace2: latestTrace2(state),
+    lastAttempt:
+      attempt === null ? null : { status: attempt.status, at: attempt.at, detail: attempt.detail },
   };
 
   if (digest === 'mismatch') {
@@ -228,14 +241,36 @@ export function readCollectorHealth(deps: CollectorHealthDeps): CollectorHealth 
     };
   }
   if (missing.length > 0) {
+    // The gap is about the NEW harness, never about the collector as a whole:
+    // the hooks that are on are still on and still collecting. When a re-check
+    // has already been blocked by a guard, saying "re-run the re-check" is
+    // advice we know does not work — name the manual command instead.
+    const labels = missing.map((agent) => agent.label).join(', ');
+    const covered = `hooks remain installed and collecting for ${state.hooks.agents.length} agent(s)${
+      state.hooks.agents.length === 0 ? '' : ` (${state.hooks.agents.join(', ')})`
+    }`;
+    if (attempt?.status === 'skipped-trace2') {
+      return {
+        ...base,
+        verdict: 'hooks-incomplete',
+        detail: `${covered}, but ${labels} is NOT instrumented — the automatic re-install was blocked because a global trace2 config is present`,
+        next_action: `Back up your global trace2 keys, then run \`${binaryPath} install-hooks\` yourself to cover ${labels} (it deletes the whole global trace2 section, so harness will not do it for you). The hooks already installed are unaffected either way.`,
+      };
+    }
+    if (attempt?.status === 'skipped-skills') {
+      return {
+        ...base,
+        verdict: 'hooks-incomplete',
+        detail: `${covered}, but ${labels} is NOT instrumented — the automatic re-install was blocked because real content sits where git-ai keeps its skill links: ${attempt.detail}`,
+        next_action: `Move or rename the reported skill paths if they are yours to keep, then re-run \`harness doctor --recheck-collector\` to cover ${labels}. The hooks already installed are unaffected either way.`,
+      };
+    }
     return {
       ...base,
       verdict: 'hooks-incomplete',
-      detail: `a coding harness appeared since the hooks were installed: ${missing
-        .map((agent) => agent.label)
-        .join(', ')} — its edits are not being attributed`,
+      detail: `a coding harness appeared since the hooks were installed: ${labels} — its edits are not being attributed (${covered})`,
       next_action:
-        'Re-run `harness doctor --install-collector` to install hooks for the new harness (the trace2 guard runs again first).',
+        'Run `harness doctor --recheck-collector` to install hooks for the new harness (the trace2 guard runs again first).',
     };
   }
   if (digest === 'unknown') {

@@ -55,6 +55,33 @@ export interface Trace2Observation {
   phase: 'guard' | 'post-install';
 }
 
+/**
+ * The LAST hook-install ATTEMPT, kept apart from hook COVERAGE on purpose
+ * (phase-1 review, round 3).
+ *
+ * These are two different kinds of fact and they were previously one field:
+ *
+ * - `hooks` is a fact about the MACHINE — which agents git-ai has actually been
+ *   hooked for, verified by re-reading the global config at the time.
+ * - `last_attempt` is a fact about ONE ATTEMPT — that on this date we tried to
+ *   add coverage and a precondition guard refused to let us.
+ *
+ * Collapsing the second onto the first is how following our own advice made the
+ * report worse: hooks were on for Claude and Codex, Cursor appeared, the
+ * operator ran `--recheck-collector`, the trace2 guard blocked (correctly), and
+ * the block overwrote coverage with `agents: []` — after which doctor announced
+ * that NO attribution was being collected. That is false, and it also discarded
+ * the new-agent gap the re-check had just found. A blocked attempt changes
+ * nothing on the machine, so it may not change what we say about the machine.
+ */
+export interface HookAttempt {
+  status: HooksInstallStatus;
+  at: string;
+  detail: string;
+  /** Agent ids this attempt was meant to cover and could not. */
+  uncovered: string[];
+}
+
 export interface CollectorState {
   schema: typeof COLLECTOR_STATE_SCHEMA;
   updated_at: string;
@@ -81,6 +108,12 @@ export interface CollectorState {
     agents: string[];
     detail: string;
   };
+  /**
+   * The outcome of the most recent install/re-check attempt, or `null` if none
+   * has ever been recorded. NEVER a substitute for {@link CollectorState.hooks}
+   * — see {@link HookAttempt}.
+   */
+  last_attempt: HookAttempt | null;
   /** Newest-first, bounded. Written on EVERY guard read, including re-checks. */
   trace2: Trace2Observation[];
   note_schema: {
@@ -119,6 +152,7 @@ export function emptyCollectorState(
       detail: 'git-ai has not been installed by harness on this machine',
     },
     hooks: { status: 'not-attempted', at: null, agents: [], detail: 'hooks not attempted' },
+    last_attempt: null,
     trace2: [],
     note_schema: { expected: manifest.expect_schema_version, observed: null, status: 'unknown' },
   };
@@ -138,7 +172,10 @@ export function readCollectorState(fs: CollectorFsPort, cwd: string): CollectorS
     const parsed = JSON.parse(raw) as Partial<CollectorState>;
     if (parsed.schema !== COLLECTOR_STATE_SCHEMA) return null;
     if (parsed.cli === undefined || parsed.hooks === undefined) return null;
-    return parsed as CollectorState;
+    // A state file written before `last_attempt` existed is still OURS and still
+    // schema-current; it simply records no attempt. Normalising here keeps every
+    // reader from having to know that.
+    return { ...parsed, last_attempt: parsed.last_attempt ?? null } as CollectorState;
   } catch {
     return null;
   }
