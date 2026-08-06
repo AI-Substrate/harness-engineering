@@ -1,0 +1,27 @@
+docs/how/gitai-collector.md
+  s_3873580dee1f09::t_a9d2f7d966fd5f 173-188,225-230,271
+harness/cli/src/services/doctor/collector/install.ts
+  s_3873580dee1f09::t_a9ce4123b6446b 169-175,191
+harness/cli/src/services/doctor/collector/trace2.ts
+  s_3873580dee1f09::t_721938370d9188 39-40,42-45,47-52,54-58,60-63,75-90,124
+harness/cli/test/services/doctor/collector/install.test.ts
+  s_3873580dee1f09::t_f894f5ba638afd 233-235,241-259,362-366,372,383-386
+harness/cli/test/services/doctor/collector/trace2.test.ts
+  s_3873580dee1f09::t_d765af91295a51 7,107-187
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2f653afe756a321192d8eaddc6de55cc2eb05069",
+  "prompts": {},
+  "sessions": {
+    "s_3873580dee1f09": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "bddf45ce-c84d-4702-aee9-259da767de25",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
