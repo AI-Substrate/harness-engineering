@@ -1,0 +1,65 @@
+harness/cli/src/services/doctor/collector/agents.ts
+  s_0d7e9cb8b1f54d::t_f889ddc4a61433 1-62
+harness/cli/src/services/doctor/collector/download.ts
+  s_0d7e9cb8b1f54d::t_0e6c30971a5ec3 1-195
+harness/cli/src/services/doctor/collector/health.ts
+  s_0d7e9cb8b1f54d::t_f1a47dae0569c9 1-251
+harness/cli/src/services/doctor/collector/index.ts
+  s_0d7e9cb8b1f54d::t_6dd8c523df7664 1-79
+harness/cli/src/services/doctor/collector/pin.ts
+  s_0d7e9cb8b1f54d::t_d17365ccb74b6f 1-56
+harness/cli/src/services/doctor/collector/platform.ts
+  s_0d7e9cb8b1f54d::t_88e2831157bc48 1-83
+harness/cli/src/services/doctor/collector/regenerate.ts
+  s_0d7e9cb8b1f54d::t_6d5516a65e7e82 1-158
+harness/cli/src/services/doctor/collector/state.ts
+  s_0d7e9cb8b1f54d::t_ab6496eca581ef 1-156
+harness/cli/src/services/doctor/collector/trace2.ts
+  s_0d7e9cb8b1f54d::t_8d3cf637b9c8d4 1-137
+harness/cli/test/services/doctor/collector/pin.test.ts
+  s_0d7e9cb8b1f54d::t_6ea698c19865d9 1-133
+harness/cli/test/services/doctor/collector/trace2.test.ts
+  s_0d7e9cb8b1f54d::t_7e3a0d2cbab601 1-116
+harness/cli/src/services/doctor/collector/install.ts
+  s_0d7e9cb8b1f54d::t_168b1f9d3b6faa 1-466
+harness/cli/src/services/doctor/collector/types.ts
+  s_3873580dee1f09::t_42988e1d39bb80 1-124
+harness/cli/src/services/doctor/doctor-service.ts
+  s_3873580dee1f09::t_927d8db292d8b2 6,27-28,59-74,958-998,1022-1024
+harness/cli/test/services/doctor/collector-layer.test.ts
+  s_3873580dee1f09::t_73f876e932f17a 1-173
+harness/cli/test/services/doctor/collector/download.test.ts
+  s_3873580dee1f09::t_60b9e724c68e02 1-212
+harness/cli/test/services/doctor/collector/health.test.ts
+  s_3873580dee1f09::t_bdd3eea06c0088 1-251
+harness/cli/test/services/doctor/collector/install.test.ts
+  s_3873580dee1f09::t_21bbcb925b9bfe 1-345
+harness/cli/test/services/doctor/collector/regenerate.test.ts
+  s_3873580dee1f09::t_9f900c2830386d 1-153
+harness/cli/test/support/collector-fakes.ts
+  s_3873580dee1f09::t_303828172b95b7 1-151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4383f76370d5c1b1f543538c8f435585c51b0250",
+  "prompts": {},
+  "sessions": {
+    "s_0d7e9cb8b1f54d": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "52565a14-e0c6-4c5b-ae28-1718f0469ff0",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_3873580dee1f09": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "bddf45ce-c84d-4702-aee9-259da767de25",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
