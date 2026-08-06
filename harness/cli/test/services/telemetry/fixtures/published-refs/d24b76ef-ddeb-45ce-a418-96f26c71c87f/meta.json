@@ -1,0 +1,15 @@
+{
+  "ref": "refs/harness-telemetry/2026/08/04/d24b76ef-ddeb-45ce-a418-96f26c71c87f",
+  "session": "d24b76ef-ddeb-45ce-a418-96f26c71c87f",
+  "ref_date": "2026/08/04",
+  "files": [
+    "2.json",
+    "5.json",
+    "7.json",
+    "9.json",
+    "manifest.json",
+    "session.logs.jsonl",
+    "session.metrics.jsonl"
+  ],
+  "note": "Verbatim bytes from this public repo's own published telemetry ref. Captured for the FX007 residue: `harness.tool.control` carries the kvlist keys `git commit` and `git push`, which the shipped SAFE_IDENTIFIER refused for containing a space \u2014 stranding the session on the OTLP logs path."
+}

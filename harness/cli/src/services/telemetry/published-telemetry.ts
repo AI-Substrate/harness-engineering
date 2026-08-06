@@ -471,7 +471,30 @@ function hasExactKeys(
   );
 }
 
-const SAFE_IDENTIFIER = /^[A-Za-z0-9_.:@+/{}-]{1,256}$/;
+/**
+ * kvlist ENTRY keys are producer DATA labels — tool names, gate names, counter
+ * names — not schema. The shipped constant admitted a colon but not a space, so
+ * `git commit` and `git push` (real `harness.tool.control` keys) stranded nine
+ * published refs. This is the same defect FX007 fixed on the segment path, in the
+ * OTLP path's own constant: a grammar written by hand rather than derived from
+ * producer output.
+ *
+ * Derived from every kvlist key in the published corpus. The bounds that carry
+ * weight are kept — the 256-character cap on the whole key, the character class,
+ * and the credential-shape denylist — and the word count is bounded so this stays
+ * a label grammar rather than a free-text channel.
+ */
+const SAFE_IDENTIFIER_WORD = /^[A-Za-z0-9_.:@+/{}-]{1,256}$/;
+const SAFE_IDENTIFIER_MAX_WORDS = 4;
+
+function isSafeAttributeKey(value: string): boolean {
+  if (value.length === 0 || value.length > 256 || isCredentialShaped(value)) return false;
+  const words = value.split(' ');
+  return (
+    words.length <= SAFE_IDENTIFIER_MAX_WORDS && words.every((w) => SAFE_IDENTIFIER_WORD.test(w))
+  );
+}
+
 const DECIMAL_INTEGER = /^(?:0|[1-9]\d*)$/;
 const UINT64_MAX = '18446744073709551615';
 
@@ -1056,7 +1079,7 @@ function validAttributeValue(
       pair === null ||
       !hasExactKeys(pair, ['key', 'value']) ||
       typeof pair.key !== 'string' ||
-      !SAFE_IDENTIFIER.test(pair.key) ||
+      !isSafeAttributeKey(pair.key) ||
       keys.has(pair.key) ||
       !validAttributeValue(pair.value, false)
     ) {
