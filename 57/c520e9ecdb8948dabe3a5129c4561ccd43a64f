@@ -1,0 +1,50 @@
+docs/how/telemetry.md
+  s_87faacf6c119c9::t_0f77220a1e7e7d 20-23,39-54,57-62,65,81,298-302,327,353,355-356,360-362,365-372,492-493,603-606,609,628-631,635,638,663,667-669,768,770,849-892
+  s_87faacf6c119c9::t_50617dc28b5e72 17-19
+  s_87faacf6c119c9::t_564949e8a766ff 893-895
+  s_87faacf6c119c9::t_6e554ea7c89091 3-16,896-936,939-946
+docs/how/gitai-collector.md
+  s_87faacf6c119c9::t_72bdb81b8b79c2 353-354
+docs/how/harness-value-measures.md
+  s_87faacf6c119c9::t_72bdb81b8b79c2 287-292,416-419
+.harness/extensions/checks/extension.ts
+  s_87faacf6c119c9::t_72bdb81b8b79c2 173-174
+docs/how/telemetry-otlp.md
+  s_87faacf6c119c9::t_72bdb81b8b79c2 223-224
+  s_87faacf6c119c9::t_0f402200fa62f1 225-226
+  s_87faacf6c119c9::t_9fd19ecbdb7887 3-7,10-13,19-21,107,109-111,156-159,211,213-217
+docs/how/detailed-system-overview.md
+  s_87faacf6c119c9::t_72bdb81b8b79c2 299,301-303,313,327,345-347,350
+harness/cli/src/services/docs/docs-content.ts
+  s_87faacf6c119c9::t_0749add1a6b1e8 67,73,76,85,94
+docs/how/flow-conformance-eval.md
+  s_87faacf6c119c9::t_72bdb81b8b79c2 487-490
+harness/cli/src/services/docs/docs-manifest.json
+  s_87faacf6c119c9::t_72bdb81b8b79c2 56
+docs/guide/14-metrics-and-measures.md
+  s_87faacf6c119c9::t_72bdb81b8b79c2 174-176,180-182,186-188,203-204
+docs/how/cohort-telemetry-insights.md
+  s_87faacf6c119c9::t_b9c0e9d3236605 3-7,111-112
+docs/how/telemetry-fixtures.md
+  s_87faacf6c119c9::t_b66e7668b59e20 184-186,190,192-193
+docs/how/telemetry-pull.md
+  s_87faacf6c119c9::t_c22dc84ddea4ad 274
+docs/how/telemetry-reports.md
+  s_87faacf6c119c9::t_989bc2ac1130b3 3,17-21,50-58,66,166,168-170,232-235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "57c520e9ecdb8948dabe3a5129c4561ccd43a64f",
+  "prompts": {},
+  "sessions": {
+    "s_87faacf6c119c9": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "d674c556-6731-4d7e-bb12-e78448940f25",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
