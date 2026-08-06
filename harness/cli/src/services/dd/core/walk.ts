@@ -112,7 +112,13 @@ export function validateWalk(
               class: 'address-target-untracked',
               severity: 'WARN',
               location: link.location,
-              message: `address target is not tracked: ${targetPath}`,
+              // FX014: the message NAMES its mechanism. "not tracked" alone left
+              // the reader to infer which ledger does the tracking, and the
+              // nearest plausible answer — the references ledger the docs call
+              // "the thing that tracks targets" — is wrong. A diagnostic that
+              // omits its mechanism does not produce confusion; it produces a
+              // confident wrong model.
+              message: `address target is not tracked by git: ${targetPath} — track it with \`git add ${targetPath}\``,
             },
             current.path,
           ),
