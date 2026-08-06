@@ -1,21 +1,26 @@
 # Harness telemetry
 
-How the harness captures a **counts-only**, per-session telemetry `segment` on
-every command, buffers it out of your working tree, and rolls it up into **one
-out-of-tree git ref per session, keyed at the session's start date**, for the
-eng-thrive measurement program — plus how it is pushed (manually, or
-automatically on `checks`), how to disable it, the structure it takes, and the
-privacy / offline guarantees.
+The front door for harness telemetry: what changed when
+[git-ai became the collector](./gitai-collector.md), how to read the frozen
+`refs/harness-telemetry/*` corpus, and the counts-only segment, event-stream,
+OTLP, reporting, attribution, privacy, and offline contracts that remain
+authoritative for those already-published records.
 
-> **This is the sensor, not the analyst.** Telemetry **emits + commits** faithful
-> counts. It builds no scanner, no dashboard, no correlation. Downstream
-> eng-thrive tooling reads the committed ref and engineers the measures — see
-> [Harness value measures](./harness-value-measures.md).
+> **Capture is off by default. Reading is not.** A shipped harness with a clean
+> environment produces and publishes no new harness telemetry. The legacy
+> producer remains intact behind `HARNESS_TELEMETRY_CAPTURE=1` so v2 can migrate
+> it rather than rebuild it. `telemetry ls`, `pull`, `session save`, `report`,
+> `sweep`, `insights`, and the schema/read contracts remain live.
 
-> **Stored shape is OTEL/OTLP.** The segment is re-serialized as OTLP Logs +
-> Metrics (one file per signal) and published in that form — collector-ingestible
-> with zero translation. The on-disk layout, the `schema_url` policy, the
-> keep-and-harden ref contract, and the downstream read contract live in
+> **This was the sensor, not the analyst.** The legacy producer emitted and
+> committed faithful counts; it built no scanner, dashboard, or correlation.
+> Downstream tooling can still read the committed refs and engineer measures —
+> see [Harness value measures](./harness-value-measures.md).
+
+> **Stored shape is OTEL/OTLP.** Published segments were re-serialized as OTLP
+> Logs + Metrics (one file per signal), collector-ingestible with zero
+> translation. The on-disk layout, the `schema_url` policy, the keep-and-harden
+> ref contract, and the downstream read contract live in
 > [Harness telemetry — the OTLP/OTEL stored shape](./telemetry-otlp.md).
 
 > **Remote retrospective retrieval.** `harness telemetry ls` inventories
@@ -31,31 +36,33 @@ privacy / offline guarantees.
 
 ## The model in one minute
 
-Every `harness <verb>` runs a tiny, fail-safe **capture preamble** before the
-command does its work. It detects the innermost agent harness (Claude Code,
-Copilot CLI, Cursor, Copilot-VSCode), reads everything that happened *since the last
-command* via a per-session cursor, and writes one normalized `segment` — tokens,
-skills, tools, subagents, files, plan links, model/branch/timecode — to a
-**gitignored buffer**. Nothing is pushed on the hot path.
+There are now two distinct paths:
 
-A separate, explicit step — `harness telemetry sync` — rolls each session's
-buffered segments up into **one ref per session, keyed at the session's start
-date** (`refs/harness-telemetry/<start-YYYY>/<MM>/<DD>/<session>`), via plumbing
-(never touching your index or working tree), and force-pushes that single ref.
-Each sync rewrites the ref with a fresh orphan commit whose tree — rebuilt from
-the whole local buffer — carries the **entire** session (`session.logs.jsonl` +
-`session.metrics.jsonl` + a `manifest.json`), so a reader that peels only the tip
-tree always sees the complete session. One ref per session (rather than one per
-capture-date, and rather than funnelling a whole team into one shared ref) is
-what keeps a multi-day session to a single place *and* makes concurrent writers
-safe (see [Team scale](#team-scale--many-engineers-one-repo)).
+1. **Current default — read the archive.** Published session refs remain
+   queryable and reportable. No capture gate is applied to the read path.
+2. **Legacy producer — explicit opt-in only.** With
+   `HARNESS_TELEMETRY_CAPTURE=1`, each `harness <verb>` runs the old fail-safe
+   capture preamble before the command body. It detects the innermost agent
+   harness, reads the per-session delta, and writes one normalized `segment` to
+   the gitignored buffer.
+
+When that opt-in is set, `harness telemetry sync` rolls buffered segments into
+**one ref per session, keyed at the session's start date**
+(`refs/harness-telemetry/<start-YYYY>/<MM>/<DD>/<session>`), without touching
+the index or working tree. The existing corpus has this shape, so the storage
+and reader contracts below remain operationally important even though the
+default producer is dormant.
 
 ```
-harness <verb>   ──preamble──▶  .harness/temp/telemetry/<session>/<seq>.json          (gitignored buffer)
-harness telemetry sync          ──plumbing──▶  refs/harness-telemetry/<start-date>/<session>  ──force-push──▶  central scraper
+published refs ──read-only──▶ telemetry ls / pull / session save / report / sweep / insights
+
+HARNESS_TELEMETRY_CAPTURE=1 harness <verb>
+                 ──preamble──▶ .harness/temp/telemetry/<session>/<seq>.json
+harness telemetry sync
+                 ──plumbing──▶ refs/harness-telemetry/<start-date>/<session>
 ```
 
-The **first** `harness telemetry sync` in a repo that still holds old
+Historically, the **first** opted-in `harness telemetry sync` in a repo that still holds old
 per-capture-date refs also runs a one-time **migration**: it discovers every old
 ref (the one sanctioned `ls-remote` + fetch), unions each session's segments
 across its full commit history — recovering any buried by the earlier
@@ -71,7 +78,7 @@ pre-plan-049 CLIs) is not auto-detected. Recovery is one command:
 `rm .harness/temp/telemetry/.migrated` — the next sync re-scans and migrates
 it.
 
-Two properties make this safe to run on **every** command:
+Two properties made the opted-in producer safe to run on every command:
 
 - **Zero host impact.** Capture is wrapped so it can never change the host
   command's stdout, stderr, or exit code. Any error inside it is swallowed.
@@ -288,6 +295,11 @@ discipline numbers are permanently unmeasurable** — reports declare this as
 
 ### Capture liveness & late recovery (plan 070)
 
+> **Legacy producer diagnostic.** This layer evaluates lanes created by
+> explicitly enabled harness capture. A default-off install creates no lanes,
+> so a green `capture-liveness` result proves only that no legacy lane is owed;
+> it does **not** prove that git-ai or any other collector is recording work.
+
 Some agent harnesses write their transcripts **lazily** — cursor-agent (since
 ~July 2026) buffers the transcript in memory during an agent turn and flushes
 at turn boundaries, so a long agentic run is a 2-line stub on disk for its
@@ -312,7 +324,7 @@ an error**. Two instruments make that class observable and recoverable:
   recovered; unrecoverable lanes say why (`no reconcile adapter…`, `source
   has no usable evidence`, `source file no longer exists`) and never get a
   sync suggestion that would quietly never come true. All WARN, never error.
-  Green means **nothing is owed anywhere**.
+  For an enabled legacy producer, green means no existing lane is owed.
 - **Reconciliation** — on an explicit `harness telemetry sync` (the
   post-commit hook runs one; hourly-debounced; the `checks` auto-push path
   deliberately does not sweep), owed lanes are re-read from the recorded
@@ -338,19 +350,26 @@ worktree destroys markers, buffers, and watermarks together — nothing can
 recover what no longer exists); and the last session before a repo goes
 quiet stays thin until anything touches that repo again.
 
-## Disabling telemetry
+## Capture controls
 
-Two switches, broad and narrow. Both are environment variables (telemetry is on
-by default when unset):
+Harness capture is off when all telemetry environment variables are unset.
+Three controls remain:
 
 | Variable | Effect |
 |---|---|
-| `HARNESS_NO_TELEMETRY=1` | **Off entirely** — no capture, no sync, no ref writes, zero side effects. The hard kill-switch. |
-| `HARNESS_NO_TELEMETRY_AUTOSYNC=1` | **Unprompted pushes off** — capture and **manual** `harness telemetry sync` still work, but pushes that happen *without you asking* — the `checks` auto-push, the post-commit hook's flush (plan 067), and the flow tooling's loop-close / `ship` flushes — are suppressed (`checks` falls back to a passive nudge). |
+| `HARNESS_TELEMETRY_CAPTURE=1` | **Opt in to the legacy producer** — enables capture, publishing, and capture housekeeping for this process. |
+| `HARNESS_NO_TELEMETRY=1` | **Hard off** — no capture, sync, ref writes, or capture housekeeping. This wins even when the opt-in is set. |
+| `HARNESS_NO_TELEMETRY_AUTOSYNC=1` | With legacy capture enabled, suppress unprompted pushes while leaving capture and manual sync available. |
 
 ```bash
-export HARNESS_NO_TELEMETRY=1            # this shell captures and pushes nothing
-export HARNESS_NO_TELEMETRY_AUTOSYNC=1   # still captures; no unprompted pushes (checks/hook/loop/ship) — sync manually
+# Default: harness captures and publishes nothing.
+harness checks
+
+# Explicit migration/testing escape hatch for the old producer.
+HARNESS_TELEMETRY_CAPTURE=1 harness checks
+
+# Absolute operator kill-switch; wins over the opt-in.
+HARNESS_NO_TELEMETRY=1 HARNESS_TELEMETRY_CAPTURE=1 harness checks
 ```
 
 ## Plan links
@@ -470,8 +489,8 @@ member has no `~/.pij` descriptor (closed) but its `run.json` entry carries a
 teardown:
 
 ```sh
-# 1. flush every still-live lane's buffer into its ref rollup
-harness telemetry sync
+# 1. If the legacy producer was explicitly enabled, flush its live buffers.
+HARNESS_TELEMETRY_CAPTURE=1 harness telemetry sync
 # 2. close each spawned copilot/codex peer so it writes its shutdown/rollout ledger
 #    (this ALSO deletes its ~/.pij descriptor — expected; the run.json roster is the join now)
 pij close <peer-id>            # for each peer you spawned
@@ -581,11 +600,13 @@ harness telemetry get-fleet <root-pij-id> --json    # → sessions[].semantics.m
 
 ## Syncing — `harness telemetry sync`
 
-Capture is decoupled from push. Run sync explicitly (e.g. at the end of a session,
-from a `ship` step, or on a schedule):
+The command remains for migration and for sessions that explicitly opt in to
+legacy capture. With the shipped default it performs no capture publication.
+With `HARNESS_TELEMETRY_CAPTURE=1`, capture is decoupled from push and sync can
+be run explicitly:
 
 ```bash
-harness telemetry sync
+HARNESS_TELEMETRY_CAPTURE=1 harness telemetry sync
 ```
 
 It rolls every buffered segment up into **one ref per session, keyed at the
@@ -604,17 +625,17 @@ re-syncing with nothing new re-pushes the same content without a duplicate commi
 
 ### Automatic sync on `checks`
 
-You rarely need to run sync by hand. The two **well-known** commands carry
-telemetry housekeeping, surfaced as an additive `housekeeping[]` field on their
-JSON envelope (and one stderr line each in human mode) — they never change the
-command's own status or exit code:
+This behavior is dormant by default. When the legacy producer is explicitly
+enabled, the two well-known commands carry the old telemetry housekeeping,
+surfaced as an additive `housekeeping[]` field without changing the host
+command's status or exit code:
 
 | Command | Behaviour |
 |---|---|
-| `checks` | **Auto-pushes** buffered telemetry (best-effort), unless disabled. `checks` is the wrap-up gate, so it is the natural flush point. |
+| `checks` | With `HARNESS_TELEMETRY_CAPTURE=1`, auto-pushes buffered telemetry (best-effort), unless autosync is disabled. |
 | `boot` · `doctor` | **Nudge only** — if telemetry is unpushed they warn you to run `harness telemetry sync`; they never push. |
 
-Because the capture preamble runs **before** every command's body, by the time
+In the opted-in path, because the capture preamble runs before the command body, by the time
 `checks` reaches its auto-push the segment for that run is already buffered —
 **capture strictly precedes push**. Since plan 069, `checks` also writes its own
 **verdict marker** (a zero-width self-observed segment, see § Discipline signals)
@@ -639,12 +660,13 @@ bounded by a timeout) is *reported*, never thrown, and never fails `checks`:
                    "command": "harness telemetry sync", "details": { "count": 4, "sessions": 1 } }]
 ```
 
-To keep the auto-push but silence it, or to turn it off, see
-[Disabling telemetry](#disabling-telemetry).
+To enable or suppress this path, see [Capture controls](#capture-controls).
 
 ### The git hooks — capture at pre-commit, flush at post-commit
 
-`just install-hooks` (sets `core.hooksPath=.githooks`) arms **two** hooks:
+`just install-hooks` still arms the telemetry hooks, but the capture gate makes
+their harness telemetry work a no-op on a default install. With
+`HARNESS_TELEMETRY_CAPTURE=1`, their historical behavior is:
 
 - **`.githooks/pre-commit`** (plan 068) — one counts-only **capture**, so file
   evidence anchors to the commit's true parent no matter whether any harness
@@ -743,9 +765,9 @@ when unset).
 
 ## Best-effort, not billing-grade
 
-Capture is best-effort. The window after the *last* command of a session is a
+When explicitly enabled, capture is best-effort. The window after the *last* command of a session is a
 trailing tail — captured by **session-end flush**: because the capture preamble
-runs before *every* command (including `harness telemetry sync`), wiring a host
+runs before every opted-in command (including `harness telemetry sync`), wiring a host
 **SessionEnd hook to `harness telemetry sync`** records that tail segment (the
 cursor delta) and flushes it in one step — no extra command. the-flow's `ship`
 already runs `telemetry sync`, so a shipped session flushes its tail for free; a
@@ -824,8 +846,104 @@ end-to-end:
   in `totals.files_delta_unavailable` — never zeros, never a number in the
   claim, never diluting measured totals.
 
+## Authorship attribution — then and now
+
+The archived harness refs and git-ai answer related questions with different
+evidence.
+
+### Reading the archived harness-join era
+
+The historical method joined attributed-but-partial telemetry `file` events to
+complete-but-anonymous git diffs. For commit `X` with parent `P`:
+
+```text
+agent_lines(X, file) = Σ lines_added in file events whose product_commit == P
+total_lines(X, file) = git diff --numstat P..X for that path
+```
+
+Match on the parent SHA, not timestamps. `product_commit` records the base the
+work was built on, so the join survives delayed publication, rebases,
+cherry-picks, branch switches, and independent worktrees.
+
+This method measured **gross agent churn** against **net committed diff**.
+Rewrites and reverted work inflated the numerator; blind spots such as shell
+writes or an unrecognized write-tool vocabulary deflated it. In one dated
+harness-join example:
+
+| File | agent lines | git lines | ratio |
+|---|---:|---:|---:|
+| `file-capture-check/extension.ts` | 579 | 597 | 97% |
+| `golden/expected-authorship.json` | 56 | 53 | 106% |
+| `file-capture-check/instructions.md` | 18 | 14 | 129% |
+| `changes/…/design.md` | 5 | 185 | 3% |
+| `changes/…/tasks.md` | 38 | 107 | 36% |
+| **Total** | **737** | **995** | **74%** |
+
+Three of nine per-file ratios exceeded 100% (worst 129%); clamping moved the
+aggregate from 74% to 73%. The low rows represented mixed authorship, while
+checkbox edits showed how modification could be counted as authorship. This is
+dated historical evidence from the harness-join era, not a git-ai result.
+
+The archived data supports file-touch attribution, edit volume, and an
+approximate aggregate share. It does **not** support exact line identity or an
+exact per-file percentage. A path-only row with `delta_unavailable` names a file
+the agent wrote but contributes nothing to line sums; a null delta is never zero.
+The two error directions do not cancel in any principled way, so do not treat
+their coexistence as accuracy.
+
+FX009 is the lasting warning: one Cursor session wrote 410 lines but emitted no
+`file` events, producing a confident 0.0% agent share rather than an explicit
+gap. Any attribution collector, including git-ai, needs a detector for
+"activity observed, attribution absent"; health checks that prove only process
+liveness are insufficient.
+
+### What git-ai changes
+
+The old method proposed per-line fingerprints as the route to exact attribution
+but rejected hashes of common source lines (`}`, `return;`) because dictionary
+attacks could reverse them. git-ai delivers the useful outcome more safely:
+**line ranges**, which carry no source content.
+
+That structurally removes gross-churn inflation for dead code: code that does
+not survive into the commit receives no range. It does **not** preserve the old
+written-versus-kept measure. git-ai has no churn signal, and its current
+`ai_additions` equals `ai_accepted`, so acceptance reads 100%. The honest
+trade is not "the bias is gone"; it is **written-versus-kept is no longer
+measurable**.
+
+## Live git-ai dogfood findings
+
+The first live install established limits that installation and health surfaces
+must disclose:
+
+- `git ai install-hooks --help` performs a full install. Unknown arguments are
+  ignored, so near-miss spellings of `--dry-run` also fail open and mutate the
+  machine.
+- Hook installation cannot be scoped to selected agents. It also installs a VS
+  Code extension and rewrites editor `settings.json`.
+- Already-running agents remain uninstrumented until restart, and work before
+  that restart is attributed to the human.
+- On the dogfood machine, git-ai did not attribute Cursor IDE work. Cursor
+  dispatched complete write-hook payloads and the daemon ingested them without
+  error, but the note writer was reached only from a trace2-observed commit.
+  Cursor's sandboxed shell hid that commit, and there is no reconciliation
+  sweep for commits without notes (known open upstream issues #909 and #1968).
+- The failure is worse than silence: the recovery ladder can assign `h_`
+  known-human attestations to the unattributed lines. This was observed on
+  agent-written lines.
+- Binary, hooks, daemon, trace2, and checkpoint checks all remained healthy.
+  No shipped health signal detected the missing or wrongly-human attribution.
+
 ## See also
 
+- [The git-ai collector handover](./gitai-collector.md) — the current collector,
+  installation contract, losses, and v1 proof ceiling.
+- [Harness telemetry — reports & rollups](./telemetry-reports.md) — read and
+  render the frozen published corpus.
+- [Pull published telemetry from remote repositories](./telemetry-pull.md) —
+  retrieve complete published sessions without enabling capture.
+- [Harness telemetry — the OTLP/OTEL stored shape](./telemetry-otlp.md) — the
+  frozen wire contract and read path.
 - [Harness value measures](./harness-value-measures.md) — how the `segment`
   contract feeds the team/repo-grain eng-thrive measures.
 - `harness/cli/src/services/telemetry/segment.schema.json` — the machine schema.

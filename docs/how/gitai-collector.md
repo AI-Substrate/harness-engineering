@@ -350,4 +350,5 @@ and it is written down here so it cannot be closed silently.
   and the read path it left alone.
 - [Pull published telemetry from remote repositories](./telemetry-pull.md) — how
   the existing 123 published refs stay queryable.
-- [Measuring AI contribution](./measuring-ai-contribution.md).
+- [Harness telemetry § Authorship attribution](./telemetry.md#authorship-attribution--then-and-now)
+  — the archived join method, its bias, and the trade made by line ranges.

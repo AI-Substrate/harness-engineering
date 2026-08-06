@@ -296,9 +296,11 @@ flowchart LR
 
 ---
 
-## 6. Telemetry (the counts-only sensor)
+## 6. Telemetry (the archived counts-only sensor)
 
-A fail-safe **capture preamble** runs before *every* command: it detects the
+Harness capture is now **off by default**; git-ai owns current attribution. With
+the explicit migration/testing opt-in `HARNESS_TELEMETRY_CAPTURE=1`, the legacy
+fail-safe capture preamble runs before each command: it detects the
 innermost agent harness, reads everything since the last command via a per-session
 cursor, and writes one **counts-only** `segment` to a gitignored buffer. A
 separate `harness telemetry sync` flushes buffered segments to **per-(date,
@@ -308,7 +310,7 @@ counts and never content (no prompt text, no file contents, no tool-arg strings)
 
 ```mermaid
 flowchart TD
-    PRE["capture preamble (before every verb)"]
+    PRE["opt-in capture preamble (before every verb)"]
     PRE --> DET{"detect innermost harness (env precedence)"}
     DET -->|"COPILOT_AGENT_SESSION_ID"| CO["copilot adapter<br/>events.jsonl + process logs"]
     DET -->|"CURSOR_CONVERSATION_ID"| CU["cursor adapter<br/>transcript + state.vscdb"]
@@ -322,7 +324,7 @@ flowchart TD
     BUF -->|"harness telemetry sync"| SHARD["group by (capture-date, session)"]
     SHARD -->|"git plumbing: mktree · commit-tree · update-ref"| REF["refs/harness-telemetry/YYYY/MM/DD/&lt;session&gt;"]
     REF -->|"push (ambient git creds)"| SCR["eng-thrive scraper"]
-    CHK["checks"] -.->|"auto-push (best-effort)"| BUF
+    CHK["checks + explicit capture opt-in"] -.->|"auto-push (best-effort)"| BUF
     BD["boot / doctor"] -.->|"nudge only"| BUF
 
     classDef sink fill:#eaf6ea,stroke:#2e7d32;
@@ -340,12 +342,12 @@ flowchart TD
 - **Safe on the hot path:** zero host impact (any error swallowed) and PR-invisible
   (buffer self-ignores; the durable write is an out-of-tree ref). Sharding by
   session makes every push a clean create-or-fast-forward.
-- **Attribution is team/repo-grained, never per-person** (fixed non-individual
-  commit identity; shards keyed by opaque session id). Disable with
-  `HARNESS_NO_TELEMETRY=1` (all off) or `HARNESS_NO_TELEMETRY_AUTOSYNC=1` (no
-  unprompted pushes).
+- **Usage is team/repo-grained, never a productivity score.** The frozen refs
+  are still readable; see the telemetry front door for the current capture
+  controls and contributor-commit attribution contract.
 
 **See also:** [Harness telemetry](telemetry.md) ·
+[The git-ai collector handover](gitai-collector.md) ·
 `harness/cli/src/services/telemetry/segment.schema.json`.
 
 ---
