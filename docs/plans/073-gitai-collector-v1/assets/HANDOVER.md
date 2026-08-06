@@ -133,9 +133,36 @@ defines "certainty" describes the *other* scale. Choosing between `Confident` an
 `Partial` would mean inventing the semantics of a vocabulary this seat does not own.
 Recorded as underdetermined rather than guessed.
 
+**The raw material for whoever rules the rungs** (prime asked for this explicitly — it
+is the most useful thing here). The rating rationale is a **distribution**, so the three
+rungs can be defined against coverage distributions rather than from taste:
+
+| bucket | count | meaning |
+|---|---|---|
+| paved sensor already exists | 19 of 22 | |
+| needs a named extension | 2 | |
+| needs a build | 1 | |
+| honestly ABSENT | 2 | *(overlaps the above — no sensor at all)* |
+
 **To close it**: once the schema's rungs are given stated meanings, set it with one
 command —
 `harness dd set assets/backpressure.dd.json#meta <json> --value-json`.
+
+**Prime's ordering constraint** (2026-08-06, recorded with my name on it): the exemplar
+`docs/how/dd/exemplar/backpressure.dd.md:15` carries `certainty | Partial` **too**, as
+does plan 071's. Three documents hold the value, and one of them is the document new
+authors copy — so this is inherited by imitation, not a local mistake. The fix therefore
+has a forced sequence:
+
+```
+1. define member semantics   ← nothing else is possible without this
+2. rename the clashing member
+3. re-rate all three existing documents (including the exemplar)
+4. generate the prose from the enum
+```
+
+Run the generator first and the gate goes green across three documents holding
+underdetermined values — with the green then arguing the vocabulary is consistent.
 
 Note for whoever ships the generator prime allocated: **generation cannot fix this
 one.** It closes the twin (`BUILDABLE`/`BUILD`) and the missing member
