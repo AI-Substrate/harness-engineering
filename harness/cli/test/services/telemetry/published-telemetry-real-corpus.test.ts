@@ -50,6 +50,7 @@ interface CapturedRef {
   refDate: string;
   entries: RemoteTelemetryBlob[];
   segments: Record<string, unknown>[];
+  logs: Record<string, unknown>[];
 }
 
 function loadCapturedRefs(): CapturedRef[] {
@@ -75,12 +76,21 @@ function loadCapturedRefs(): CapturedRef[] {
         .map(
           (path) => JSON.parse(readFileSync(join(dir, path), 'utf8')) as Record<string, unknown>,
         );
+      const logs = meta.files
+        .filter((path) => path.endsWith('.logs.jsonl'))
+        .flatMap((path) =>
+          readFileSync(join(dir, path), 'utf8')
+            .split('\n')
+            .filter(Boolean)
+            .map((line) => JSON.parse(line) as Record<string, unknown>),
+        );
       return {
         session,
         refName: meta.ref,
         refDate: meta.ref_date.replaceAll('/', '-'),
         entries,
         segments,
+        logs,
       };
     });
 }
@@ -131,6 +141,29 @@ function labelKeysOf(segment: Record<string, unknown>): string[] {
   return keys;
 }
 
+/**
+ * Every kvlist ENTRY key in an OTLP logs document — the producer's data labels as
+ * they cross the wire. These are validated by a DIFFERENT constant from the
+ * segment-path label maps, which is why the segment-path fix did not reach them.
+ */
+function kvlistKeysOf(node: unknown, out: string[] = []): string[] {
+  if (Array.isArray(node)) {
+    for (const item of node) kvlistKeysOf(item, out);
+    return out;
+  }
+  if (node === null || typeof node !== 'object') return out;
+  for (const [key, child] of Object.entries(node as Record<string, unknown>)) {
+    if (key === 'kvlistValue' && child !== null && typeof child === 'object') {
+      for (const entry of ((child as Record<string, unknown>).values as unknown[]) ?? []) {
+        const pair = entry as { key?: unknown };
+        if (typeof pair.key === 'string') out.push(pair.key);
+      }
+    }
+    kvlistKeysOf(child, out);
+  }
+  return out;
+}
+
 describe('published telemetry reads this repo real published refs', () => {
   it('has captured refs to read', () => {
     expect(capturedRefs.length).toBeGreaterThan(0);
@@ -155,5 +188,16 @@ describe('published telemetry reads this repo real published refs', () => {
     const keys = new Set(capturedRefs.flatMap((c) => c.segments.flatMap(labelKeysOf)));
     expect(keys).toContain('check:docs');
     expect(keys).toContain('dd doctor');
+  });
+
+  /**
+   * The OTLP path's own version of the same defect. `SAFE_IDENTIFIER` admitted a
+   * colon but not a space, so `git commit` under `harness.tool.control` stranded
+   * the whole session on `validLogs` — a second hand-written grammar that had
+   * never been checked against producer output.
+   */
+  it('carries the multi-word kvlist keys that stranded the OTLP logs path', () => {
+    const keys = new Set(capturedRefs.flatMap((c) => c.logs.flatMap((doc) => kvlistKeysOf(doc))));
+    expect(keys).toContain('git commit');
   });
 });
