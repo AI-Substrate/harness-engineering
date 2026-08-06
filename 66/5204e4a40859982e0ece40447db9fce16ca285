@@ -1,0 +1,59 @@
+harness/cli/test/services/telemetry/capture-perf.test.ts
+  s_0d7e9cb8b1f54d::t_35946b0cfb3664 54-57
+harness/cli/test/services/telemetry/capture-service.test.ts
+  s_0d7e9cb8b1f54d::t_8c01853a5336fe 211-214,319-323,327-331,347-349,353-357
+harness/cli/test/services/telemetry/flow-events.test.ts
+  s_0d7e9cb8b1f54d::t_cae513efd8f821 59-63,217-221
+harness/cli/test/services/telemetry/flow-log.test.ts
+  s_0d7e9cb8b1f54d::t_4aca7859ac9c40 212-216,274-278,315-319
+harness/cli/test/services/telemetry/future-harness-adapter.test.ts
+  s_0d7e9cb8b1f54d::t_cf9c8a79e3bd6f 114-117
+harness/cli/test/services/telemetry/plans-touched-union.test.ts
+  s_0d7e9cb8b1f54d::t_34eda66cd19f8f 73-77
+harness/cli/test/services/telemetry/post-prune-durability.test.ts
+  s_0d7e9cb8b1f54d::t_e04859eada0ac2 363-367
+docs/how/gitai-collector.md
+  s_3873580dee1f09::t_045a08a9eec391 1-265
+harness/cli/src/services/doctor/collector/health.ts
+  s_3873580dee1f09::t_aa4800209be0bf 248-253,255
+harness/cli/src/services/doctor/collector/install.ts
+  s_3873580dee1f09::t_afcfe7ecc9277f 64-88,158,226-239,247
+harness/cli/src/services/doctor/collector/state.ts
+  s_3873580dee1f09::t_d4ea5267617694 40-49
+harness/cli/src/services/telemetry/capture-service.ts
+  s_3873580dee1f09::t_4a5c093b1d8439 22
+harness/cli/src/services/telemetry/sync-service.ts
+  s_3873580dee1f09::t_82df8d4c283be1 14
+harness/cli/test/acts/telemetry.test.ts
+  s_3873580dee1f09::t_d6258a0394fc6b 76-78
+harness/cli/test/adapters/git/exec-remote-telemetry-git.int.test.ts
+  s_3873580dee1f09::t_d4b610d668512c 44-54
+harness/cli/test/integration/pre-commit-hook.test.ts
+  s_3873580dee1f09::t_776c2a2408c158 101-103,113-120,122-132,200-214
+harness/cli/test/services/doctor/collector/install.test.ts
+  s_3873580dee1f09::t_05d2a0d480c195 6,209-212,214,217-218,350-436
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "665204e4a40859982e0ece40447db9fce16ca285",
+  "prompts": {},
+  "sessions": {
+    "s_0d7e9cb8b1f54d": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "52565a14-e0c6-4c5b-ae28-1718f0469ff0",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_3873580dee1f09": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "bddf45ce-c84d-4702-aee9-259da767de25",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
