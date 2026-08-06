@@ -3,6 +3,7 @@ import type { DbPort } from '../../adapters/db/db-port.js';
 import type { EnvPort } from '../../adapters/env/env-port.js';
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { GitPort } from '../../adapters/git/git-port.js';
+import type { HashPort } from '../../adapters/hash/hash-port.js';
 import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { type Envelope, formatDegraded, formatOk } from '../../output/envelope.js';
 import { ErrorCodes } from '../../output/error-codes.js';
@@ -23,6 +24,8 @@ import {
   sourceExtent,
 } from '../telemetry/capture-liveness.js';
 import { laneRecoveryReason, type SkipLaneReason } from '../telemetry/capture-reconcile.js';
+import { readCollectorHealth } from './collector/health.js';
+import type { HostTarget } from './collector/types.js';
 
 /** Adapters the doctor service depends on (injected — never constructed here). */
 export interface DoctorDeps {
@@ -53,6 +56,22 @@ export interface DoctorDeps {
    * fact recover it, i.e. crying wolf on the one surface that must not.
    */
   db?: DbPort;
+  /**
+   * The host the git-ai collector resolves against (plan 073) — platform, arch
+   * and home. Present ONLY when the composition root supplies it: `ProcessPort`
+   * carries no platform/arch, so a service cannot invent this without reading
+   * `process` directly (P2). Absent → the collector row is omitted entirely
+   * rather than reported as an unknown, because a row that says "could not
+   * determine" on every host with no wiring teaches operators to ignore it.
+   */
+  collectorHost?: HostTarget;
+  /**
+   * SHA-256 for the collector row (plan 073 · ac-000a). With it, the pinned
+   * binary's digest is RE-verified on every doctor run; without it the digest
+   * falls back to the recorded install value and can never read `healthy` on
+   * evidence this run did not gather.
+   */
+  hash?: HashPort;
 }
 
 /** One layer of the doctor report. */
@@ -937,6 +956,47 @@ function checkPrecommitLatency(fs: FsPort, proc: ProcessPort): LayerReport {
 }
 
 /**
+ * The **git-ai collector** layer (plan 073 · ac-000a, ac-000b, ac-000c, ac-0014).
+ *
+ * Harness stopped collecting its own telemetry, so this row is the only place a
+ * developer learns that nothing is collecting instead. It reports a bounded read
+ * — pinned binary present and hash-matching, hooks installed and covering every
+ * coding harness on the machine, daemon pid file, note schema as pinned — and
+ * refuses to overclaim: it never says collection IS occurring, because no signal
+ * available in v1 can distinguish a broken collector from a clean tree
+ * (ac-0012).
+ *
+ * Three verdicts are deliberately NOT healthy and deliberately not each other:
+ * `cli-only-trace2` (installed, hooks skipped because someone's global trace2
+ * config is present), `could-not-determine` (we could not read what we needed),
+ * and `not-installed`. Absent is not green; empty is not clean.
+ *
+ * NEVER invokes anything (P7) — a pure fs/port read over the state the install
+ * path wrote down. Warn-only: like every doctor row it degrades the envelope and
+ * exits 0 (ac-000c).
+ */
+function checkCollector(
+  fs: FsPort,
+  proc: ProcessPort,
+  host: HostTarget,
+  hash?: HashPort,
+): LayerReport {
+  const name = 'gitai-collector';
+  const health = readCollectorHealth({
+    fs,
+    host,
+    cwd: toPosix(proc.cwd()),
+    ...(hash !== undefined ? { hash } : {}),
+  });
+  return {
+    name,
+    ok: health.verdict === 'healthy',
+    detail: `${health.verdict} — ${health.detail}`,
+    ...(health.next_action !== undefined ? { next_action: health.next_action } : {}),
+  };
+}
+
+/**
  * Gather the doctor report via the injected adapters + the assembled verb
  * registry. Pure of `process.exit` and direct Node I/O — all side effects go
  * through the ports, so the whole thing is unit-testable with fakes. The optional
@@ -959,6 +1019,9 @@ export function buildDoctorReport(
     checkSensorWatcher(deps.fs, deps.clock, deps.proc, registry),
     checkTelemetryHook(deps.fs, deps.proc, deps.git, deps.env),
     checkCaptureLiveness(deps.fs, deps.proc, deps.env, deps.clock, deps.adapters, deps.db),
+    ...(deps.collectorHost !== undefined
+      ? [checkCollector(deps.fs, deps.proc, deps.collectorHost, deps.hash)]
+      : []),
     checkDd(deps.fs, deps.proc),
     checkPrecommitLatency(deps.fs, deps.proc),
     checkCoreInstructions(),
