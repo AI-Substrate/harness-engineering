@@ -1,0 +1,71 @@
+harness/cli/test/services/telemetry/capture-default-off-073.test.ts
+  s_a76964380084ef::t_f2acb1c09d8c20 1-161
+harness/cli/src/services/telemetry/capture-gate.ts
+  s_3873580dee1f09::t_3ce9ac1a9c8e18 1-60
+harness/cli/src/services/telemetry/capture-service.ts
+  s_3873580dee1f09::t_732e4c2f394abf 9,595-600,630-632,638-639
+harness/cli/src/services/telemetry/housekeeping.ts
+  s_3873580dee1f09::t_2ffad60be86398 8,101-104
+harness/cli/src/services/telemetry/sync-service.ts
+  s_3873580dee1f09::t_425ebb1184c253 16,559-562
+harness/cli/test/services/telemetry/buffer-prune.test.ts
+  s_3873580dee1f09::t_733fe393b37f40 60
+harness/cli/test/services/telemetry/capture-perf.test.ts
+  s_3873580dee1f09::t_a9ef1a9f747893 54
+harness/cli/test/services/telemetry/capture-service.test.ts
+  s_3873580dee1f09::t_e82b2fb2c578ce 61,113,121,127,135,211,274,289,316,322,327,338,342,356,516,678,732,790,821,865
+harness/cli/test/services/telemetry/capture-stall-070.int.test.ts
+  s_3873580dee1f09::t_646e51cece47f4 102-105,144
+harness/cli/test/services/telemetry/flow-events.test.ts
+  s_3873580dee1f09::t_f5b168472a6e8d 59,183,213
+harness/cli/test/services/telemetry/flow-log.test.ts
+  s_3873580dee1f09::t_3d84321538eecc 212,270,307
+harness/cli/test/services/telemetry/future-harness-adapter.test.ts
+  s_3873580dee1f09::t_5ece964eb1b71f 52,100,114
+harness/cli/test/services/telemetry/fx001-ref-fallback.test.ts
+  s_3873580dee1f09::t_365c51403886f5 107,129,270,398,739
+harness/cli/test/services/telemetry/housekeeping.test.ts
+  s_3873580dee1f09::t_dcf3ea64b3d485 63
+harness/cli/test/services/telemetry/killswitch-failsafe.test.ts
+  s_3873580dee1f09::t_08f288823e681b 8-12,19-20,22-28,71-87,97-122
+harness/cli/test/services/telemetry/otlp-spool.test.ts
+  s_3873580dee1f09::t_59c954fa38c6ce 58
+harness/cli/test/services/telemetry/plan-id-cwd.test.ts
+  s_3873580dee1f09::t_151c45496539b8 59
+harness/cli/test/services/telemetry/plans-touched-union.test.ts
+  s_3873580dee1f09::t_ed134e78a1b381 73
+harness/cli/test/services/telemetry/post-prune-durability.test.ts
+  s_3873580dee1f09::t_8f9d172f3e15e1 81,122,148,194,219,252,363,384
+harness/cli/test/services/telemetry/sync-cost.test.ts
+  s_3873580dee1f09::t_c69d5085419efc 137
+harness/cli/test/services/telemetry/sync-migration.test.ts
+  s_3873580dee1f09::t_5916fc7de1a715 80
+harness/cli/test/services/telemetry/sync-service.test.ts
+  s_3873580dee1f09::t_fcae5c77be57f5 115
+harness/cli/test/services/telemetry/read-path-ungated-073.test.ts
+  s_3873580dee1f09::t_f5b85a3a3eed86 1-216
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4521a4e322a76d27ef088372f2583b4d7e3857a3",
+  "prompts": {},
+  "sessions": {
+    "s_3873580dee1f09": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "bddf45ce-c84d-4702-aee9-259da767de25",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
