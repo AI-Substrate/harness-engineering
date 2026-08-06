@@ -1,0 +1,21 @@
+docs/plans/073-gitai-collector-v1/the-flow.json
+  s_a76964380084ef::t_cf32752f37ed9d 129-182,343,359-369,375,392-402
+docs/plans/073-gitai-collector-v1/the-flow.md
+  s_a76964380084ef::t_17fae8612f8173 4,20,51-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "078a2485303382cf824ede45f9b9fdfd08fe3595",
+  "prompts": {},
+  "sessions": {
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
