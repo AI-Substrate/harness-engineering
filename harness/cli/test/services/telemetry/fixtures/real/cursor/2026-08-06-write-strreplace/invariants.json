@@ -1,0 +1,154 @@
+{
+  "tokens": null,
+  "models": [],
+  "user_prompts": [
+    12,
+    24,
+    24,
+    24,
+    24,
+    24,
+    24
+  ],
+  "tools": {
+    "Read": 7,
+    "Shell": 21,
+    "Glob": 2,
+    "Grep": 3,
+    "Write": 6,
+    "Await": 2,
+    "StrReplace": 8
+  },
+  "files": {
+    "written": [
+      "demo/textstat/lib.mjs",
+      "demo/textstat/lib.test.mjs",
+      "demo/textstat/fixtures/sample.txt",
+      "demo/textstat/fixtures/unicode.txt",
+      "demo/textstat/cli.mjs",
+      "demo/textstat/README.md"
+    ],
+    "edited": [
+      "demo/textstat/lib.test.mjs",
+      "demo/textstat/cli.mjs",
+      "demo/textstat/README.md"
+    ]
+  },
+  "file_deltas": [
+    {
+      "path": "demo/textstat/lib.mjs",
+      "change": "written",
+      "lines_added": 79,
+      "lines_removed": 0,
+      "bytes_added": 1610,
+      "bytes_removed": 0
+    },
+    {
+      "path": "demo/textstat/lib.test.mjs",
+      "change": "written",
+      "lines_added": 139,
+      "lines_removed": 0,
+      "bytes_added": 3566,
+      "bytes_removed": 0
+    },
+    {
+      "path": "demo/textstat/fixtures/sample.txt",
+      "change": "written",
+      "lines_added": 3,
+      "lines_removed": 0,
+      "bytes_added": 203,
+      "bytes_removed": 0
+    },
+    {
+      "path": "demo/textstat/fixtures/unicode.txt",
+      "change": "written",
+      "lines_added": 3,
+      "lines_removed": 0,
+      "bytes_added": 148,
+      "bytes_removed": 0
+    },
+    {
+      "path": "demo/textstat/lib.test.mjs",
+      "change": "edited",
+      "lines_added": 0,
+      "lines_removed": 9,
+      "bytes_added": 0,
+      "bytes_removed": 273
+    },
+    {
+      "path": "demo/textstat/lib.test.mjs",
+      "change": "edited",
+      "lines_added": 0,
+      "lines_removed": 7,
+      "bytes_added": 0,
+      "bytes_removed": 202
+    },
+    {
+      "path": "demo/textstat/cli.mjs",
+      "change": "written",
+      "lines_added": 116,
+      "lines_removed": 0,
+      "bytes_added": 2604,
+      "bytes_removed": 0
+    },
+    {
+      "path": "demo/textstat/cli.mjs",
+      "change": "edited",
+      "lines_added": 2,
+      "lines_removed": 1,
+      "bytes_added": 77,
+      "bytes_removed": 48
+    },
+    {
+      "path": "demo/textstat/cli.mjs",
+      "change": "edited",
+      "lines_added": 1,
+      "lines_removed": 1,
+      "bytes_added": 85,
+      "bytes_removed": 65
+    },
+    {
+      "path": "demo/textstat/README.md",
+      "change": "written",
+      "lines_added": 67,
+      "lines_removed": 0,
+      "bytes_added": 1048,
+      "bytes_removed": 0
+    },
+    {
+      "path": "demo/textstat/README.md",
+      "change": "edited",
+      "lines_added": 6,
+      "lines_removed": 4,
+      "bytes_added": 152,
+      "bytes_removed": 84
+    },
+    {
+      "path": "demo/textstat/lib.test.mjs",
+      "change": "edited",
+      "lines_added": 3,
+      "lines_removed": 0,
+      "bytes_added": 122,
+      "bytes_removed": 0
+    },
+    {
+      "path": "demo/textstat/lib.test.mjs",
+      "change": "edited",
+      "lines_added": 6,
+      "lines_removed": 0,
+      "bytes_added": 151,
+      "bytes_removed": 0
+    },
+    {
+      "path": "demo/textstat/lib.test.mjs",
+      "change": "edited",
+      "lines_added": 7,
+      "lines_removed": 0,
+      "bytes_added": 202,
+      "bytes_removed": 0
+    }
+  ],
+  "event_count": 14,
+  "event_stream_present": true,
+  "timestamps": "interval"
+}

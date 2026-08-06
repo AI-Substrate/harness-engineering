@@ -1,0 +1,125 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "FX009 — Cursor Write/StrReplace file telemetry",
+        "slug": "fx009-cursor-write-strreplace",
+        "status": "draft",
+        "summary": ""
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Cursor's IDE agent edits files with Write and StrReplace, but cursor-adapter.ts only extracts file evidence from ApplyPatch string payloads. Those edits emit zero file events, so attribution silently reports 0% agent on code an agent wrote entirely — a well-formed report with a confident wrong number, not an error. This adds both tool vocabularies behind a closed registry, and a read-side honesty counter that fires when write-shaped calls yielded no file events, so the next Cursor rename is loud instead of silent."
+    },
+    {
+      "name": "goals",
+      "value": [
+        "Cursor Write/StrReplace edits produce file events with correct per-file line and byte deltas",
+        "A Cursor session's agent-contribution share computes correctly end to end, not as 0%",
+        "Both tool vocabularies coexist — ApplyPatch never deprecated, since this is a Cursor version rename not a surface split",
+        "A future Cursor tool rename surfaces as a named gap rather than a silent zero"
+      ]
+    },
+    {
+      "name": "non_goals",
+      "value": [
+        "Fixing the Claude adapter's Map.set churn loss — logged, not worked",
+        "Diagnosing the win=0..0 capture stall — plan-070 class, judged only after this lands",
+        "V4A 'Move to:' rename handling — dropped to follow-up, no local specimen exercises it",
+        "Changing the segment wire version — additionalProperties:false pins 2.7, so the counter is read-side by construction"
+      ]
+    },
+    {
+      "name": "acceptance_criteria",
+      "value": [
+        {
+          "id": "ac-0001",
+          "claim": "A Write tool_use yields one 'written' file event whose lines_added equals the content line count and whose bytes_added is a real UTF-8 encode (proven with a multibyte body, so a char-count implementation fails)",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-0002",
+          "claim": "A StrReplace tool_use yields one 'edited' file event with an old-to-new multiset delta; unchanged context lines contribute nothing and a pure reorder yields zero",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-0003",
+          "claim": "ApplyPatch extraction is unchanged — the existing golden fixture 2026-08-03-applypatch-textstat passes byte-identical",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-0004",
+          "claim": "A path touched by Write then StrReplace repeatedly keeps every delta via array-push (not Map.set), so the specimen's lib.test.mjs x6 and cli.mjs x3 sum rather than overwrite",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-0005",
+          "claim": "cursor-object-write.test.ts passes UNMODIFIED — its two controls prove the adapter sees both calls, isolating the extraction gate as sole cause",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-0006",
+          "claim": "When write-shaped calls occurred and zero file events were extracted, SessionExport.summary.degraded carries an 'event_skipped:' prefixed marker, so the envelope downgrades by construction with no change to acts/telemetry.ts",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-0007",
+          "claim": "The tool registry is closed: any tool name absent from it classifies as unknown and fires the counter, so the next rename is loud",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-0008",
+          "claim": "The Cursor-scoping predicate is pinned to the corpus by a test asserting both real fixtures carry harness 'cursor-agent' — a scope gate that silently matches nothing is this defect one level up",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-0009",
+          "claim": "Both must-NOT-fire controls hold: 2026-06-25-checks-walkthrough (write-free, also guards registry completeness) and 2026-08-03-applypatch-textstat",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-000b",
+          "claim": "A synthetic unit test proves lowercase drive-letter confinement ('c:\\repo\\src\\x.ts' becomes repo-relative); the scrubbed fixture cannot carry this because scrubbing rebases the drive letter away",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-000c",
+          "claim": "A planted secret in contents / old_string / new_string never appears in the serialized segment (AC-04 privacy boundary)",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-000d",
+          "claim": "Every new assertion is proven non-vacuous — it goes RED when its branch is removed",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-000e",
+          "claim": "docs/how/measuring-ai-contribution.md's blind-spot list names the new write tools, closing the loop its own warning opened",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-000f",
+          "claim": "A new golden fixture minted from the scrubbed IDE-agent specimen reproduces 432 lines added and 22 removed across 14 events over 6 distinct paths, computed with the repo's OWN computeFileDelta/writtenDelta (a multiset diff, so StrReplace anchor lines present on both sides cancel). The reporting agent's simulator gives 438 - a reimplementation, not this repo's semantics. The golden must never be tuned to match it.",
+          "state": "unchecked"
+        }
+      ]
+    },
+    {
+      "name": "phases",
+      "value": [
+        {
+          "id": "ph-d8fd",
+          "title": "Extraction coverage + honesty counter",
+          "brief": "",
+          "state": "unchecked",
+          "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
+        }
+      ]
+    }
+  ]
+}

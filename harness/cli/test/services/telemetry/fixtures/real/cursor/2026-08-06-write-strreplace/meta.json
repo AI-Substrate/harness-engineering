@@ -1,0 +1,16 @@
+{
+  "surface": "cursor",
+  "captured_utc": "2026-08-06",
+  "harness": "cursor-agent",
+  "scrubbed": true,
+  "scrub_categories": [
+    "machine-paths",
+    "windows-drive-letters",
+    "home-username",
+    "person-names",
+    "git-handles",
+    "emails",
+    "secrets"
+  ],
+  "note": "real cursor-agent session from the FX009 reporting machine: the Write/StrReplace tool vocabulary (Shell 21, StrReplace 8, Read 7, Write 6, Grep 3, Glob 2, Await 2, ApplyPatch 0) whose OBJECT tool inputs the adapter dropped entirely, publishing a confident 0.0% agent share. Transcript verbatim apart from the scrub; no cursorDiskKV bubbles (the store belongs to another machine), so every event is interval-grade at the pinned capture wall-clock. SCRUB CONSEQUENCE, stated: the source paths were lowercase drive-letter absolute Windows paths and the scrub rebased them onto /home/dev/repo, so this fixture exercises Windows SEPARATOR handling (the backslashes survive) but NOT drive-letter confinement — that is covered by synthetic unit tests in cursor-file-events.test.ts, which need no real machine data."
+}

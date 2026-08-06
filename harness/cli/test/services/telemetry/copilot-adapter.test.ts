@@ -6,6 +6,7 @@ import {
   copilotAdapter,
   copilotEventsPath,
   copilotLogsDir,
+  parseApplyPatchDeltas,
 } from '../../../src/services/telemetry/adapters/copilot-adapter.js';
 import type { HarnessSource } from '../../../src/services/telemetry/adapters/harness-adapter.js';
 import { type SegmentInput, serializeSegment } from '../../../src/services/telemetry/segment.js';
@@ -523,5 +524,60 @@ describe('P063 finding 06 — typed usage suppression must not discard process-l
     // The graceful final still wins outright — the process log does not perturb it.
     expect(evidence.fields.input).toMatchObject({ value: 40 });
     expect(evidence.fields.output).toMatchObject({ value: 50 });
+  });
+});
+
+/**
+ * FX009 — `parseApplyPatchDeltas` header hardening.
+ *
+ * This is the V4A parser CURSOR's `ApplyPatch` branch calls, so it sits on Cursor's
+ * own path; Copilot benefits as a side effect. Two defects, both found while fixing
+ * the Cursor extraction gate:
+ *
+ *  1. the header regex ran against `raw.trim()`, so an INDENTED line that merely
+ *     looks like a header parsed as a real one and published BODY TEXT as a file
+ *     PATH — a privacy-shaped failure, not just a counting one;
+ *  2. `(.+)` meant a blank-path header could not match at all, so the empty-path
+ *     reset below it was unreachable and the malformed header's orphaned body was
+ *     counted against whatever file was patched BEFORE it.
+ */
+describe('FX009 — parseApplyPatchDeltas: only a COLUMN-0 header is a header', () => {
+  it('does not treat an INDENTED header-shaped line as a header (no body text as a path)', () => {
+    const patch = [
+      '*** Begin Patch',
+      '*** Update File: docs/how/patching.md',
+      '+Here is how V4A patches look:',
+      '+    *** Add File: not/a/real/path.ts',
+      '+ …end of example',
+      '*** End Patch',
+    ].join('\n');
+    const out = parseApplyPatchDeltas(patch);
+    expect(out.map((f) => f.path)).toEqual(['docs/how/patching.md']);
+    expect(JSON.stringify(out)).not.toContain('not/a/real/path.ts');
+    // the quoted example line is COUNTED as an addition to the real file, not split off
+    expect(out[0].delta.lines_added).toBe(3);
+  });
+
+  it('tolerates CRLF — a `\\r`-terminated header still parses, and its path has no `\\r`', () => {
+    const out = parseApplyPatchDeltas('*** Add File: src/a.ts\r\n+one\r\n');
+    expect(out.map((f) => f.path)).toEqual(['src/a.ts']);
+    expect(out[0].delta.lines_added).toBe(1);
+  });
+
+  it('RESETS on an empty-path header so its orphaned body is not billed to the previous file', () => {
+    // Pre-fix, `(.+)` could not match `*** Add File:` at all, so `cur` still pointed
+    // at `real.ts` and the malformed section's body inflated it.
+    const patch = [
+      '*** Begin Patch',
+      '*** Add File: real.ts',
+      '+kept',
+      '*** Add File: ',
+      '+orphaned body line',
+      '+another orphan',
+      '*** End Patch',
+    ].join('\n');
+    const out = parseApplyPatchDeltas(patch);
+    expect(out.map((f) => f.path)).toEqual(['real.ts']);
+    expect(out[0].delta.lines_added).toBe(1); // 1, not 3
   });
 });

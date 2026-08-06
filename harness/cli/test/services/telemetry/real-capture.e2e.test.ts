@@ -578,3 +578,217 @@ describe('real cursor ApplyPatch fixture → segment (plan 066)', () => {
     }
   });
 });
+
+// ── cursor · FX009 (Write/StrReplace OBJECT inputs) ──────────────────────────
+// The corpus had no session in Cursor's `Write`/`StrReplace` vocabulary, which is
+// exactly why the defect shipped: the adapter gated file extraction on
+// `name === 'ApplyPatch' && typeof input === 'string'`, and an OBJECT input fails
+// BOTH halves. The tools were still counted, zero `file` events were emitted, and
+// downstream published a well-formed report crediting 100% of the agent's lines to
+// a human — 410 committed lines → 0.0% agent, with no error and no gap marker.
+//
+// This instance is the reporting machine's OWN session, scrubbed. It is the only
+// real evidence of this vocabulary anywhere in the corpus:
+//   Shell 21 · StrReplace 8 · Read 7 · Write 6 · Grep 3 · Glob 2 · Await 2 —
+// and ApplyPatch ZERO, so nothing here can pass through the old branch by accident.
+//
+// SCRUB CONSEQUENCE, stated rather than papered over: the source paths were
+// lowercase drive-letter absolute (`c:\src\…`) and the scrub rebased them onto
+// `/home/dev/repo`. The BACKSLASH separators survive, so this fixture does exercise
+// Windows separator handling end to end — but drive-letter confinement is no longer
+// carried here and is covered by a synthetic unit test (`cursor-file-events.test.ts`),
+// which needs no real machine data.
+//
+// Headless with respect to THIS machine: the conversation's `cursorDiskKV` bubbles
+// live on the reporter's box, so there is no `raw.rows.json` and no FakeDb — every
+// event is interval-grade at the pinned capture wall-clock.
+//
+// Minted at the CURRENT schema, so its goldens compare EXACTLY. Re-mint after an
+// intentional adapter change with:
+//   REGEN_FX009_GOLDEN=1 npx vitest run test/services/telemetry/real-capture.e2e.test.ts
+// then re-review the diff before committing (goldens are derived, never hand-edited).
+const WR_DIR = 'cursor/2026-08-06-write-strreplace';
+const WR_CONV = '71282df5-d151-4dce-82cc-17a1a3d31f93';
+const WR_CAPTURED_AT = '2026-08-06T02:00:00.000Z'; // pinned synthetic capture wall-clock
+const WR_FIXTURE_DIR = fileURLToPath(new URL(`./fixtures/real/${WR_DIR}`, import.meta.url));
+const WR_TRANSCRIPT = readFileSync(join(WR_FIXTURE_DIR, 'raw.jsonl'), 'utf8');
+const WR_TRANSCRIPTS_DIR = `${HOME}/.cursor/projects/home-dev-repo/agent-transcripts`;
+const WR_LINES = WR_TRANSCRIPT.split('\n').filter((l) => l.trim().length > 0).length;
+const wrWindow = { since: 'session-start', from: 0, to: WR_LINES } as const;
+
+function writeStrReplaceSegment() {
+  const fs = new FakeFs({
+    [cursorTranscriptPath(WR_TRANSCRIPTS_DIR, WR_CONV)]: WR_TRANSCRIPT,
+  });
+  const env = new FakeEnv(
+    { [CURSOR_SESSION_ENV]: WR_CONV, [CURSOR_TRANSCRIPTS_ENV]: WR_TRANSCRIPTS_DIR },
+    HOME,
+  );
+  const caps = cursorAdapter.extract({
+    env,
+    fs,
+    repoRoot: REPO,
+    harness: 'cursor-agent',
+    window: wrWindow,
+    capturedAt: WR_CAPTURED_AT,
+  });
+  const input: SegmentInput = {
+    command: 'flow',
+    harness: 'cursor-agent',
+    harness_version: '0.0.0-fixture', // pinned synthetic version (decoupled from the live release)
+    harness_session_id: WR_CONV,
+    timecode: '2026-08-06T02:00:00Z',
+    window: wrWindow,
+    branch: null,
+    tokens: caps.tokens,
+    models: caps.models ?? {},
+    effort: caps.effort,
+    skills: caps.skills ?? {},
+    tools: caps.tools ?? {},
+    user_prompts: caps.user_prompts ?? [],
+    subagents: caps.subagents ?? [],
+    files: caps.files ?? { written: [], edited: [] },
+    plans_touched: [],
+    events: {
+      compactions: caps.compactions ?? [],
+      api_errors: caps.api_errors ?? 0,
+      local_commands: caps.local_commands ?? 0,
+    },
+    thinking: caps.thinking,
+    event_stream: caps.event_stream ?? undefined,
+  };
+  return serializeSegment(input, REPO);
+}
+
+/** The self-describing invariants block — minted from the segment, human-reviewed, committed. */
+function wrInvariantsOf(seg: ReturnType<typeof writeStrReplaceSegment>) {
+  return {
+    tokens: seg.tokens, // null — Cursor keeps consumption server-side
+    models: Object.keys(seg.models ?? {}).sort(), // [] — no bubbles on this machine
+    user_prompts: seg.user_prompts ?? [],
+    tools: seg.tools ?? {},
+    files: seg.files,
+    file_deltas: seg.event_stream
+      .filter((e) => e.kind === 'file')
+      .map((e) => ({ path: e.path, change: e.change, ...e.delta })),
+    event_count: seg.event_stream.length,
+    event_stream_present: seg.event_stream.length > 0,
+    timestamps: 'interval', // untimed transcript + NO bubble anchor → capture-window stamp
+  };
+}
+
+const wrSeg = writeStrReplaceSegment();
+const wrLogs = segmentToOtlpLogs(wrSeg);
+const wrMetrics = rollupToOtlpMetrics(wrSeg);
+
+if (process.env.REGEN_FX009_GOLDEN) {
+  writeFileSync(
+    join(WR_FIXTURE_DIR, 'expected-segment.json'),
+    `${JSON.stringify(wrSeg, null, 2)}\n`,
+  );
+  writeFileSync(
+    join(WR_FIXTURE_DIR, 'invariants.json'),
+    `${JSON.stringify(wrInvariantsOf(wrSeg), null, 2)}\n`,
+  );
+  writeFileSync(join(WR_FIXTURE_DIR, 'expected-otlp-logs.jsonl'), `${JSON.stringify(wrLogs)}\n`);
+  writeFileSync(
+    join(WR_FIXTURE_DIR, 'expected-otlp-metrics.jsonl'),
+    `${JSON.stringify(wrMetrics)}\n`,
+  );
+}
+
+describe('real cursor Write/StrReplace fixture → segment (FX009)', () => {
+  it('matches the committed expected-segment.json golden EXACTLY', () => {
+    expect(wrSeg).toEqual(
+      JSON.parse(readFileSync(join(WR_FIXTURE_DIR, 'expected-segment.json'), 'utf8')),
+    );
+  });
+
+  it('matches the committed (human-reviewed) invariants.json', () => {
+    expect(wrInvariantsOf(wrSeg)).toEqual(
+      JSON.parse(readFileSync(join(WR_FIXTURE_DIR, 'invariants.json'), 'utf8')),
+    );
+  });
+
+  it('matches the committed OTLP logs/metrics goldens, and both conform to the OTLP protos', () => {
+    expect(conformLogs(wrLogs)).toEqual({ ok: true });
+    expect(conformMetrics(wrMetrics)).toEqual({ ok: true });
+    expect(wrLogs).toEqual(
+      JSON.parse(readFileSync(join(WR_FIXTURE_DIR, 'expected-otlp-logs.jsonl'), 'utf8')),
+    );
+    expect(wrMetrics).toEqual(
+      JSON.parse(readFileSync(join(WR_FIXTURE_DIR, 'expected-otlp-metrics.jsonl'), 'utf8')),
+    );
+  });
+
+  it('carries the Write/StrReplace vocabulary and ZERO ApplyPatch — the defect payload', () => {
+    // The pre-fix adapter counted every one of these and emitted no file event at all.
+    expect(wrSeg.tools).toEqual({
+      Shell: 21,
+      StrReplace: 8,
+      Read: 7,
+      Write: 6,
+      Grep: 3,
+      Glob: 2,
+      Await: 2,
+    });
+    expect(wrSeg.tools.ApplyPatch).toBeUndefined(); // nothing here reaches the old branch
+  });
+
+  it('extracts a file event for EVERY Write and StrReplace call (14 = 6 written + 8 edited)', () => {
+    // MUTATION: restoring the `name === 'ApplyPatch' && typeof input === 'string'`
+    // gate empties this list → RED, and the segment publishes a confident zero.
+    const files = wrSeg.event_stream.filter((e) => e.kind === 'file');
+    expect(files).toHaveLength(14);
+    expect(files.filter((e) => e.change === 'written')).toHaveLength(6);
+    expect(files.filter((e) => e.change === 'edited')).toHaveLength(8);
+    // Every event carries a measured delta — a file event with an all-zero delta
+    // would be the silent zero wearing the fix's clothes.
+    expect(files.filter((e) => e.delta.lines_added > 0 || e.delta.lines_removed > 0)).toHaveLength(
+      14,
+    );
+  });
+
+  it('keeps SAME-PATH churn as separate events (array push, never last-write-wins)', () => {
+    // The specimen edits some files repeatedly. A keyed map (the claude adapter's
+    // `Map.set`) would collapse those to one delta per path and permanently
+    // under-count churn in this golden — the join sums per path downstream.
+    const files = wrSeg.event_stream.filter((e) => e.kind === 'file');
+    const distinct = new Set(files.map((e) => e.path));
+    expect(files.length).toBeGreaterThan(distinct.size); // churn survives, provably
+  });
+
+  it('handles WINDOWS separators end to end — no backslash and no absolute path survives', () => {
+    // The raw transcript's paths use `\` separators (the reporting machine is
+    // Windows). Confinement normalizes them at serialize time; a miss would publish
+    // an absolute machine path.
+    expect(WR_TRANSCRIPT).toContain('\\\\'); // JSON-escaped `\` — the raw shape really is Windows
+    for (const e of wrSeg.event_stream.filter((e) => e.kind === 'file')) {
+      expect(e.path).not.toContain('\\');
+      expect(e.path.startsWith('/')).toBe(false);
+      expect(e.path).not.toBe('<external>');
+    }
+    for (const p of [...wrSeg.files.written, ...wrSeg.files.edited]) {
+      expect(p).not.toContain('\\');
+      expect(p.startsWith('/')).toBe(false);
+    }
+  });
+
+  it('never carries file CONTENT — `contents`/`old_string`/`new_string` are full file text', () => {
+    // The payloads this fixture feeds the adapter are whole files and edit pairs.
+    // Only integer counts may survive them (AC-04).
+    const serialized = JSON.stringify(wrSeg);
+    for (const line of WR_TRANSCRIPT.split('\n').filter((l) => l.trim() !== '')) {
+      const o = JSON.parse(line) as { message?: { content?: Record<string, unknown>[] } };
+      for (const b of o.message?.content ?? []) {
+        if (b.type !== 'tool_use') continue;
+        const input = (b.input ?? {}) as Record<string, unknown>;
+        for (const key of ['contents', 'content', 'old_string', 'new_string']) {
+          const text = input[key];
+          if (typeof text !== 'string' || text.trim().length < 24) continue;
+          expect(serialized).not.toContain(text.trim().slice(0, 24));
+        }
+      }
+    }
+  });
+});
