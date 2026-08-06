@@ -196,3 +196,154 @@ future third git-ai trace2 key fails closed, which is safe.
 `just checks` completed with the stated baseline only: arch-check 2,
 markdown-lint 196, and windows-check 6 warn-launch findings; all other gates
 passed.
+
+## Round 3
+
+**Verdict: REJECT**
+
+### Round 2 P0 — closed: a re-check cannot pass over any trace2 configuration
+
+`mayInstallHooks()` now accepts only `Trace2Reading` and returns true only for
+`status === 'empty'` (`trace2.ts:60-64`). Production has exactly one caller,
+`installHooks()` (`install.ts:191`), and it supplies no ownership/state hint.
+Neither `priorInstallVerified` nor the git-ai-key allowlist remains in
+production source.
+
+On any present or unreadable reading, `installHooks()` records
+`skipped-trace2`, writes the observation, returns manual instructions, and
+returns before its only `install-hooks` invocation (`install.ts:193-211`).
+The re-check test proves a newly detected Cursor is still named and reported
+while the hook invocation is skipped (`install.test.ts:349-369`).
+
+I independently applied the new/changed tests to the parent of `2f653afe` and
+ran them against the reverted implementation. They produced exactly the claimed
+five failures: the ownership-hint guard, second-install observation, verified
+prior-install re-install, new-agent re-check, and near-prefix verification.
+The restored implementation passes all 106 tests across the eight requested
+collector files.
+
+### Round 2 P1 — closed: post-install verification compares the exact key
+
+`trace2KeyOf()` splits at the first whitespace or `=` and lowercases the key;
+`verifyInstalledTrace2()` now compares it exactly to
+`trace2.eventtarget` (`trace2.ts:88-91,124`). There is no production
+`startsWith('trace2.eventtarget')` remaining. The new regression case rejects
+`eventtarget_custom`, `eventtargetanything`, and mixed-case `eventTargetX=`,
+while accepting the exact space- and `=`-delimited spellings
+(`trace2.test.ts:157-176`).
+
+### P1 — A safe re-check discards proven hook coverage and makes doctor lie
+
+The new safety posture must not erase the fact that an earlier hook install was
+verified. On a machine where Claude/Codex were hooked and Cursor appears later,
+plain doctor correctly reports `hooks-incomplete`. But
+`recheckCollector()` calls `installHooks()` (`install.ts:531`); its trace2 block
+then replaces the state with `hooks.status: 'skipped-trace2'` and `agents: []`
+(`install.ts:193-211`). The next doctor read takes the higher-priority
+`cli-only-trace2` branch before it calculates missing agents
+(`health.ts:170,195-202,230-239`) and says that *no* AI attribution is being
+collected. That is false for the previously hooked agents, and it loses the
+specific new-agent gap the re-check just detected.
+
+This also means `hooks-incomplete` is **not** the steady state raised in the
+packet: it is the state before the operator follows the re-check instruction.
+After that command, the row becomes the less accurate `cli-only-trace2`.
+The documentation promises these as distinct meanings
+(`docs/how/gitai-collector.md:289-293`), but the transition conflates them.
+
+**Recommendation:** retain verified existing hook coverage and the missing-agent
+set when a re-check is trace2-blocked; record the failed automatic re-install as
+a separate last-attempt/block reason. Doctor should stay yellow with the exact
+manual command and say that the *new* harness is uninstrumented. That persistent
+warning is honest, rather than warning fatigue, while the unverified coverage
+gap remains. Add an end-to-end state/health test for successful install → new
+agent → trace2-blocked re-check so it cannot regress into either a false healthy
+row or a false claim that all attribution is absent.
+
+## Jordan's standing checks — Round 3
+
+1. **Every new test must run in CI:** The regression and lifecycle cases remain
+   fake-port tests, requiring no installed git-ai, daemon, agent, writable
+   global config, trace2 socket, or external service. The focused suite passes,
+   and `just checks` completed at the stated warn-launch baseline only:
+   arch-check 2, markdown-lint 196, windows-check 6.
+2. **No new dependencies:** Confirmed. `2f653afe` changes only collector
+   source, tests, and documentation; no manifest or lockfile changed.
+3. **No network at test time:** Confirmed. This round adds no networked test;
+   the modified regression and lifecycle tests use fakes only.
+
+   ## Round 4
+
+   **Verdict: ACCEPT**
+
+   ### Round 3 P1 — closed: blocked re-checks preserve proven coverage
+
+   `hooks` now remains the verified fact about machine coverage, while
+   `last_attempt` records the outcome of the attempted re-install. A
+   trace2-blocked re-check preserves the prior `installed` coverage and names its
+   uncovered agents; health consequently remains `hooks-incomplete`, identifies
+   both the agents still collecting and the new uninstrumented harness, and gives
+   the manual command that can actually proceed. The new sequence test proves the
+   complete install -> new agent -> blocked re-check -> health path and rejects
+   both a false healthy row and the prior false `cli-only-trace2` claim.
+
+   The narrowed preservation rule is correct. `skipped-trace2` and
+   `skipped-skills` happen before `git-ai` is invoked, so neither can have changed
+   the machine and they preserve prior verified coverage. An execution failure or
+   failed post-install verification can have changed the machine without proving
+   what survived; those outcomes deliberately replace coverage with `failed` or
+   `unverified`. This is conservative and honest.
+
+   ### Modified trace2-observation test — accepted, not regression laundering
+
+   The changed assertion previously required a second, trace2-blocked invocation
+   to overwrite verified hooks with `skipped-trace2`. That described the Round 3
+   defect, rather than correct behavior. It now asserts both facts separately:
+   `last_attempt.status` is `skipped-trace2`, and machine coverage remains
+   `installed` for Claude and Codex. The independent end-to-end state and health
+   test exercises the same seam from a fresh install, so this is not a
+   self-confirming assertion change.
+
+   `cli-only-trace2` remains reachable for a first installation blocked by trace2,
+   when no coverage was ever proven. It is unreachable after a verified install:
+   the only later guard paths preserve `hooks.status === 'installed'`; bad
+   post-invocation outcomes become `failed` or `unverified`, not
+   `skipped-trace2`. The two documented verdicts therefore retain distinct
+   meanings.
+
+   `readCollectorState()` normalizes an absent `last_attempt` in an older
+   otherwise-valid state to `null`. It does not derive or upgrade coverage:
+   `hooks` is retained exactly as stored. Thus it reads older verified installs
+   correctly without minting a false preserved-coverage record. The skills guard
+   uses the same pre-invocation rule and is likewise safe: it preserves coverage
+   only when it refused before `git-ai` ran.
+
+   ### Independent mutation evidence
+
+   I reran the three stated mutations against the focused collector suite:
+
+   1. Forcing `recordAttempt()` not to preserve coverage caused exactly three
+      failures: the changed guard-observation test plus both end-to-end state and
+      health checks.
+   2. Disabling the trace2-blocked `hooks-incomplete` health branch caused exactly
+      one failure in the end-to-end health report test.
+   3. Forcing the preserved-warning condition false caused exactly one failure in
+      the warning text test.
+
+   Restored code passes all eight focused collector files. The independently
+   observed count is **102/102**, rather than the reported 110/110; this is a
+   count-reporting discrepancy, not a behavioral gap.
+
+   ## Jordan's standing checks — Round 4
+
+   1. **Every new test must run in CI:** Confirmed. The added sequence test uses
+      fake filesystem, clock, download, executable, path-kind, and exec ports; it
+      requires no installed git-ai, daemon, writable global Git config, trace2
+      socket, or external service.
+   2. **No new dependencies:** Confirmed. No dependency manifest or lockfile
+      changes are in this commit.
+   3. **No network at test time:** Confirmed. The new test uses `FakeDownload`;
+      no external request is possible.
+
+   `just checks` completed with the stated warn-launch baseline only: arch-check
+   2, markdown-lint 196, and windows-check 6. All hard gates passed.
