@@ -1,0 +1,31 @@
+docs/how/gitai-collector.md
+  s_3873580dee1f09::t_ff702f6cc212db 190-203,286,305,307
+harness/cli/src/acts/doctor.ts
+  s_3873580dee1f09::t_b7564d2e40cdb8 282-284,289,296-298,312
+harness/cli/src/services/doctor/collector/health.ts
+  s_3873580dee1f09::t_1a846f2610dea1 65-71,103,126,161,184,191-192,244-267,271,273
+harness/cli/src/services/doctor/collector/install.ts
+  s_3873580dee1f09::t_3e5e3b091675c7 1,9,166-216,228-231,249-256,262-264,277-284,289-293,306-311,317-324,352-357,372-377,538-542,544-549,564-567,577-578,583,593,606
+harness/cli/src/services/doctor/collector/state.ts
+  s_3873580dee1f09::t_b7d515b66fd577 58-84,111-116,155,175-178
+harness/cli/test/services/doctor/collector/install.test.ts
+  s_3873580dee1f09::t_fc1883404418b8 241-246
+harness/cli/test/services/doctor/collector/recheck-coverage.test.ts
+  s_3873580dee1f09::t_0bf52ef1f1888d 1-197
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4c22bef0dfb0c677062a8a9cf334517fb2abc137",
+  "prompts": {},
+  "sessions": {
+    "s_3873580dee1f09": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "bddf45ce-c84d-4702-aee9-259da767de25",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
