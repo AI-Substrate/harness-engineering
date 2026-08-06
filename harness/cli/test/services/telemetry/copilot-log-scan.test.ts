@@ -8,6 +8,7 @@ import {
   copilotLogsDir,
 } from '../../../src/services/telemetry/adapters/copilot-adapter.js';
 import type { HarnessSource } from '../../../src/services/telemetry/adapters/harness-adapter.js';
+import { transcriptEvidenceReason } from '../../../src/services/telemetry/token-evidence.js';
 
 /**
  * Regression guard — `findProcessLog` must not read the whole log directory.
@@ -143,5 +144,53 @@ describe('copilot process-log lookup is bounded (regression guard)', () => {
     fs.setMtime(`${DIR}/${STALE}`, 2_000);
     const caps = copilotAdapter.extract({ ...source(fs), window: WINDOW });
     expect(caps.tokens ?? null).toBeNull();
+  });
+});
+
+/**
+ * The ceiling's losslessness argument is about the CURRENT corpus, not about the
+ * bound: today every log over the limit is unreadable anyway, but a single
+ * long-running session's OWN log can cross 512 MiB (logs on the machine that
+ * motivated this reached 3.23 GB while the live one was 8.6 MB). When that happens
+ * the correct answer is unreachable, and going quiet about it would install exactly
+ * the silent-degradation defect `token_unavailable_reason` exists to prevent.
+ */
+describe('an unreadable-because-oversize log is NAMED, not silently skipped', () => {
+  /** Only candidate is THIS session's own log — and it is over the ceiling. */
+  function oversizeLiveFs(): FakeFs {
+    const fs = new FakeFs(
+      {
+        [copilotEventsPath(HOME, SESSION)]: EVENTS,
+        [`${DIR}/${LIVE}`]: PROCLOG,
+      },
+      { [DIR]: [LIVE] },
+    );
+    fs.reportedSizes.set(`${DIR}/${LIVE}`, HUGE_BYTES);
+    fs.setMtime(`${DIR}/${LIVE}`, 3_000);
+    return fs;
+  }
+
+  it('reports WHY tokens are absent when the only candidate is over the ceiling', () => {
+    const caps = copilotAdapter.extract({ ...source(oversizeLiveFs()), window: WINDOW });
+    expect(caps.tokens ?? null).toBeNull();
+    // Maps onto the closed taxonomy's `transcript_oversize` — not a new vocabulary.
+    expect(caps.token_unavailable_reason).toBe('oversize');
+    expect(transcriptEvidenceReason(caps.token_unavailable_reason ?? undefined)).toBe(
+      'transcript_oversize',
+    );
+  });
+
+  it('stays silent when there is genuinely nothing to read — absence is not degradation', () => {
+    const fs = new FakeFs({ [copilotEventsPath(HOME, SESSION)]: EVENTS }, { [DIR]: [] });
+    const caps = copilotAdapter.extract({ ...source(fs), window: WINDOW });
+    expect(caps.tokens ?? null).toBeNull();
+    expect(caps.token_unavailable_reason ?? null).toBeNull();
+  });
+
+  it('does not cry oversize when the right log was found anyway', () => {
+    const fs = logsFs(); // HUGE is skipped, but LIVE resolves
+    const caps = copilotAdapter.extract({ ...source(fs), window: WINDOW });
+    expect(caps.tokens?.total).toBe(260);
+    expect(caps.token_unavailable_reason ?? null).toBeNull();
   });
 });

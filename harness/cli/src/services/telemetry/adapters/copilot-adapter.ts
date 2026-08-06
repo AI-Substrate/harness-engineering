@@ -235,7 +235,27 @@ const MAX_COPILOT_PROCESS_LOG_BYTES = 536_870_888;
  * two sources (or two tests) sharing a home directory can never read each other's
  * answer. Keeps a second extraction in the same process from re-walking the dir.
  */
-const processLogMemo = new WeakMap<FsPort, Map<string, string | null>>();
+const processLogMemo = new WeakMap<FsPort, Map<string, ProcessLogLookup>>();
+
+/**
+ * The resolved log, plus whether a candidate was passed over for exceeding
+ * {@link MAX_COPILOT_PROCESS_LOG_BYTES}.
+ *
+ * The flag exists because the ceiling's losslessness argument is about the CURRENT
+ * corpus, not about the bound: today every log above the limit is unreadable anyway,
+ * but a single long-running session's OWN log can cross 512 MiB, and at that moment
+ * the correct answer becomes unreachable. Returning a bare `null` there would report
+ * "this session has no process log" — indistinguishable from a session that genuinely
+ * has none — and telemetry would go quiet with nothing saying it had. That is the
+ * silent-degradation class {@link HarnessCapabilities.token_unavailable_reason} was
+ * introduced to kill ("a token-blind session could only be diagnosed by
+ * source-diving"), so the skip is carried out and named rather than swallowed.
+ */
+interface ProcessLogLookup {
+  readonly text: string | null;
+  /** A candidate existed but was too large to read — the answer may be WRONG, not absent. */
+  readonly oversizeSkipped: boolean;
+}
 
 /**
  * Locate the process log whose contents reference this session id.
@@ -251,7 +271,7 @@ const processLogMemo = new WeakMap<FsPort, Map<string, string | null>>();
  * visited in a better order and bounded by a ceiling that excludes exclusively
  * files that could not have matched anyway.
  */
-function findProcessLog(src: HarnessSource, home: string, sessionId: string): string | null {
+function findProcessLog(src: HarnessSource, home: string, sessionId: string): ProcessLogLookup {
   const dir = copilotLogsDir(home);
   const key = `${dir}\u0000${sessionId}`;
   let memo = processLogMemo.get(src.fs);
@@ -267,7 +287,7 @@ function findProcessLog(src: HarnessSource, home: string, sessionId: string): st
   return found;
 }
 
-function scanProcessLogs(src: HarnessSource, dir: string, sessionId: string): string | null {
+function scanProcessLogs(src: HarnessSource, dir: string, sessionId: string): ProcessLogLookup {
   const candidates = src.fs
     .readdir(dir)
     .filter((name) => name.startsWith('process-') && name.endsWith('.log'))
@@ -279,12 +299,16 @@ function scanProcessLogs(src: HarnessSource, dir: string, sessionId: string): st
     // filesystem-order dependent.
     .sort((a, b) => b.mtime - a.mtime || (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
 
+  let oversizeSkipped = false;
   for (const { path } of candidates) {
     const read = src.fs.readTextFileNoFollow(dir, path, MAX_COPILOT_PROCESS_LOG_BYTES);
-    if (read.status !== 'ok') continue;
-    if (read.text.includes(sessionId)) return read.text;
+    if (read.status !== 'ok') {
+      oversizeSkipped ||= read.reason === 'oversize';
+      continue;
+    }
+    if (read.text.includes(sessionId)) return { text: read.text, oversizeSkipped };
   }
-  return null;
+  return { text: null, oversizeSkipped };
 }
 
 const nullCaps: HarnessCapabilities = {
@@ -729,7 +753,8 @@ export const copilotAdapter: HarnessAdapter = {
       string,
       { in: number; out: number; cache_read: number; cache_create: number }
     >();
-    const log = findProcessLog(ctx, home, sessionId);
+    const logLookup = findProcessLog(ctx, home, sessionId);
+    const log = logLookup.text;
     if (log !== null) {
       for (const obj of extractJsonObjects(log)) {
         if (obj.kind !== 'assistant_usage') continue;
@@ -877,6 +902,14 @@ export const copilotAdapter: HarnessAdapter = {
     return {
       harness_session_id: null,
       tokens,
+      // A log-shaped candidate existed but was too large to read, and we ended up
+      // token-blind: say WHY. `transcriptEvidenceReason` maps this onto the closed
+      // taxonomy's existing `transcript_oversize`, so the segment carries a
+      // diagnosable cause instead of the generic `no_observation` a bare
+      // `tokens: null` renders as on every surface (finding 07).
+      ...(tokens === null && logLookup.oversizeSkipped
+        ? { token_unavailable_reason: 'oversize' }
+        : {}),
       models: Object.keys(models).length > 0 ? models : null,
       effort,
       skills: null,
