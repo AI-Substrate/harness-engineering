@@ -3,6 +3,7 @@ import { FakeClock } from '../../../../src/adapters/clock/fake-clock.js';
 import { FakeExec } from '../../../../src/adapters/exec/fake-exec.js';
 import { NodeHash } from '../../../../src/adapters/hash/node-hash.js';
 import {
+  FORBIDDEN_HOOK_ARGS,
   GITAI_PIN_CONFIG,
   INSTALL_HOOKS_DISCLOSURES,
   installCollector,
@@ -205,13 +206,16 @@ describe('installCollector — stage 2 is INDEPENDENT of stage 1 (ac-0013, ac-00
 
     await installCollector(d);
     const first = readCollectorState(d.fs, REPO);
-    expect(first?.trace2[0]).toMatchObject({ observed: 'empty', entries: [], at: NOW });
+    const guards = (state: typeof first) =>
+      (state?.trace2 ?? []).filter((entry) => entry.phase === 'guard');
+    expect(guards(first)).toHaveLength(1);
+    expect(guards(first)[0]).toMatchObject({ observed: 'empty', entries: [], at: NOW });
 
-    // A second run records a SECOND observation: the guard is not first-run-only.
+    // A second run records a SECOND guard observation: not first-run-only.
     await installCollector(d);
     const second = readCollectorState(d.fs, REPO);
-    expect(second?.trace2).toHaveLength(2);
-    expect(second?.trace2.every((entry) => entry.observed === 'empty')).toBe(true);
+    expect(guards(second)).toHaveLength(2);
+    expect(guards(second).every((entry) => entry.observed === 'empty')).toBe(true);
   });
 
   it('an unreadable trace2 config fails closed — hooks are not installed', async () => {
@@ -341,5 +345,92 @@ describe('recheckCollector — a new coding harness is detected and reported (ac
     expect(recheck.newAgents).toEqual(['gemini']);
     expect(recheck.hooks).toBe('skipped-trace2');
     expect(guarded.calls.some((call) => call.args[0] === 'install-hooks')).toBe(false);
+  });
+});
+
+/**
+ * Live-dogfood findings, 2026-08-06 (`assets/research/dogfood-live-install.md`).
+ *
+ * These are not hypotheses; they were walked into on a real machine. The sharpest
+ * one: `git ai install-hooks --help` performed a FULL, silent, machine-wide
+ * install, because `parse_install_options` ends in `_ => {}`. Every near-miss
+ * spelling of `--dry-run` does the same. **Their safety flag fails open**, so the
+ * collector never uses one — and never trusts an exit code about what happened to
+ * the global config either.
+ */
+describe('the dogfood hazards are encoded, not remembered', () => {
+  it('passes NO argument that could fail open into a real install', async () => {
+    const d = deps();
+
+    await installCollector(d);
+
+    const hookCalls = d.exec.calls.filter((call) => call.args[0] === 'install-hooks');
+    expect(hookCalls).toHaveLength(1);
+    expect(hookCalls[0]?.args).toEqual(['install-hooks']);
+    for (const forbidden of FORBIDDEN_HOOK_ARGS) {
+      expect(hookCalls[0]?.args).not.toContain(forbidden);
+    }
+  });
+
+  it('no collector source file passes a dry-run or help spelling to git-ai', async () => {
+    const { readdirSync, readFileSync } = await import('node:fs');
+    const { dirname, join } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const collector = join(
+      dirname(fileURLToPath(import.meta.url)),
+      '../../../../src/services/doctor/collector',
+    );
+
+    // Scan the ARGUMENT ARRAYS of every exec call in the collector, not the file
+    // text: the forbidden spellings are legitimately NAMED in the constant and in
+    // the prose that explains why they are dangerous. What must never happen is
+    // one of them reaching git-ai as an argument.
+    const argArrays: string[] = [];
+    for (const name of readdirSync(collector).filter((file) => file.endsWith('.ts'))) {
+      const source = readFileSync(join(collector, name), 'utf8');
+      for (const match of source.matchAll(/exec\.run\([^,]+,\s*(\[[^\]]*\])/g)) {
+        if (match[1] !== undefined) argArrays.push(match[1]);
+      }
+    }
+
+    expect(argArrays.length).toBeGreaterThan(0);
+    for (const args of argArrays) {
+      for (const forbidden of FORBIDDEN_HOOK_ARGS) {
+        expect(args).not.toContain(`'${forbidden}'`);
+      }
+    }
+  });
+
+  it('verifies the trace2 outcome by RE-READING the config, not from the exit code', async () => {
+    const exec = new FakeExec({
+      [TRACE2_GET]: { code: 1, stdout: '' },
+      [`${BINARY} install-hooks`]: { code: 0, stdout: 'claude: installed\n' },
+      [`${BINARY} status --json`]: { code: 0, stdout: '{"schema_version":"authorship/3.0.0"}' },
+    });
+    const d = deps({ exec });
+
+    const result = await installCollector(d);
+
+    // Two reads: the guard before, the verification after.
+    const reads = d.exec.calls.filter((call) => call.args.includes('--get-regexp'));
+    expect(reads).toHaveLength(2);
+    const phases = result.state.trace2.map((entry) => entry.phase);
+    expect(phases).toContain('guard');
+    expect(phases).toContain('post-install');
+  });
+
+  it('says out loud that already-running agents stay uninstrumented until restart', async () => {
+    const result = await installCollector(deps());
+
+    expect(result.state.hooks.detail).toContain('restart');
+    expect(result.disclosures.join(' ')).toContain('already running');
+  });
+
+  it('discloses the reach it cannot narrow: no per-agent selector, and a VS Code extension', () => {
+    const disclosures = INSTALL_HOOKS_DISCLOSURES.join(' ');
+
+    expect(disclosures).toContain('CANNOT be scoped to chosen agents');
+    expect(disclosures).toContain('VS Code extension');
+    expect(disclosures).toContain('Code-Insiders');
   });
 });

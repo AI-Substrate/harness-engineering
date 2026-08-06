@@ -11,9 +11,9 @@ import {
 import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { posixJoin, toPosix } from '../shared/posix-path.js';
 import type { HarnessAdapter } from './adapters/harness-adapter.js';
+import { isCaptureEnabled } from './capture-gate.js';
 import { LIVENESS_SUFFIX } from './capture-liveness.js';
 import { reconcileOrphanLanes } from './capture-reconcile.js';
-import { isCaptureEnabled } from './capture-gate.js';
 import { readFlushed, telemetryDir } from './cursor.js';
 import { reconstructSegmentFromOtlpLogs } from './otlp/logs.js';
 import type { LogsData } from './otlp/types.js';

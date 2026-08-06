@@ -208,7 +208,10 @@ describe('P063 T004 — standard Claude locator inputs are composed once', () =>
       env: { CLAUDE_CODE_SESSION_ID: 'claude-session' },
       adapters: [recordingClaudeAdapter(seen)],
     });
-    d.env = new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', CLAUDE_CODE_SESSION_ID: 'claude-session' }, '/home/standard-user');
+    d.env = new FakeEnv(
+      { HARNESS_TELEMETRY_CAPTURE: '1', CLAUDE_CODE_SESSION_ID: 'claude-session' },
+      '/home/standard-user',
+    );
     d.git = git;
 
     captureTelemetry(d);
@@ -313,13 +316,19 @@ describe('v2.5 — selectCapturedEnv finite pij contract', () => {
     '-----BEGIN PRIVATE KEY-----',
   ])('drops credential-shaped values from an otherwise allowed key', (credential) => {
     const { PIJ_SPAWN_ID: _omitted, ...expected } = CURRENT_ENV;
-    expect(selectCapturedEnv(new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', ...CURRENT_ENV, PIJ_SPAWN_ID: credential }))).toEqual(
-      expected,
-    );
+    expect(
+      selectCapturedEnv(
+        new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', ...CURRENT_ENV, PIJ_SPAWN_ID: credential }),
+      ),
+    ).toEqual(expected);
   });
 
   it('returns empty when nothing matches (the dominant host case → field omitted)', () => {
-    expect(selectCapturedEnv(new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', HOME: '/home/u', PATH: '/usr/bin' }))).toEqual({});
+    expect(
+      selectCapturedEnv(
+        new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', HOME: '/home/u', PATH: '/usr/bin' }),
+      ),
+    ).toEqual({});
   });
 });
 
@@ -335,11 +344,17 @@ describe('Phase 6 — copilot-vscode detection + cwd session resolution (AC-20/A
 
   it('AC-20 negative control — TERM_PROGRAM=vscode alone does NOT trigger copilot-vscode', () => {
     // a copilot-cli run inside VS Code's integrated terminal must not false-match
-    expect(detectHarness(new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', TERM_PROGRAM: 'vscode' }))).toBeNull();
+    expect(
+      detectHarness(new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', TERM_PROGRAM: 'vscode' })),
+    ).toBeNull();
   });
 
   it('AC-20 — copilot-cli (its own session-id var) is unaffected by the AI_AGENT path', () => {
-    expect(detectHarness(new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', COPILOT_AGENT_SESSION_ID: 'cop-9' }))).toEqual({
+    expect(
+      detectHarness(
+        new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', COPILOT_AGENT_SESSION_ID: 'cop-9' }),
+      ),
+    ).toEqual({
       harness: 'copilot-cli',
       sessionId: 'cop-9',
     });

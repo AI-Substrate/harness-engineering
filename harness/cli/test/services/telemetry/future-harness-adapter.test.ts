@@ -111,7 +111,10 @@ describe('T007 — future-harness adapter (AC-12)', () => {
     const fs = new FakeFs({});
     const deps: CaptureDeps = {
       fs,
-      env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', CLAUDE_CODE_SESSION_ID: 'sess1' }, '/home/x'),
+      env: new FakeEnv(
+        { HARNESS_TELEMETRY_CAPTURE: '1', CLAUDE_CODE_SESSION_ID: 'sess1' },
+        '/home/x',
+      ),
       clock: new FakeClock('2026-06-23T04:58:00.000Z'),
       proc: new FakeProcess({}, REPO),
       git: new FakeGit({ isRepo: true, branch: 'b', remoteUrl: 'github.com/x/y' }),

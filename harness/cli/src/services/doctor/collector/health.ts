@@ -245,7 +245,13 @@ export function readCollectorHealth(deps: CollectorHealthDeps): CollectorHealth 
   };
 }
 
+/**
+ * The most recent GUARD reading — never a post-install verification read. After a
+ * successful install the post read legitimately shows git-ai's own two trace2
+ * keys; reporting that as the guard's answer would read as "we installed hooks
+ * over someone's trace2 config", which is the one thing that never happens.
+ */
 function latestTrace2(state: CollectorState): CollectorHealth['trace2'] {
-  const latest = state.trace2[0];
+  const latest = state.trace2.find((entry) => entry.phase !== 'post-install');
   return latest === undefined ? null : { observed: latest.observed, at: latest.at };
 }

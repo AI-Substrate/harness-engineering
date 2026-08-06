@@ -6,7 +6,6 @@ import type { GitPort } from '../../adapters/git/git-port.js';
 import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { posixJoin, toPosix } from '../shared/posix-path.js';
 import { ensureTemp } from '../shared/temp.js';
-import { isCaptureEnabled } from './capture-gate.js';
 import {
   COPILOT_VSCODE_AI_AGENT,
   COPILOT_VSCODE_HARNESS,
@@ -20,6 +19,7 @@ import {
   nullDefaultAdapter,
 } from './adapters/harness-adapter.js';
 import { artifactSemanticsEvents } from './artifact-semantics.js';
+import { isCaptureEnabled } from './capture-gate.js';
 import {
   type CaptureProbe,
   classifyAttempt,

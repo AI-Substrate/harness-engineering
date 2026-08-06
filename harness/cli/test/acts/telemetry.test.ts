@@ -73,7 +73,9 @@ describe('registerTelemetryAct — telemetry sync', () => {
     io: CliIo,
     fs: FakeFs,
     git: FakeGitWrite,
-    env: FakeEnv = new FakeEnv(),
+    // Plan 073: capture/publish are OFF by default, so a sync test that wants
+    // the buffer flushed must opt in exactly as a migrating operator would.
+    env: FakeEnv = new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1' }),
   ): number {
     let code = -1;
     vi.spyOn(process, 'exit').mockImplementation(((c?: number) => {

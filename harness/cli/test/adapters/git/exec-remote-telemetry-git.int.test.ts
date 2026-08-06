@@ -41,6 +41,17 @@ function hermeticGitEnv(): NodeJS.ProcessEnv {
   for (const key of Object.keys(env)) {
     if (AMBIENT_GIT_CONFIG_ENV.test(key)) delete env[key];
   }
+  // Plan 073: once git-ai is installed on a machine it sets a GLOBAL
+  // `trace2.eventTarget`, so its daemon observes EVERY git command on the box and
+  // writes `refs/notes/ai` into whatever repository just committed — including
+  // the throwaway fixtures here. That breaks this file's caller-purity
+  // assertions with a ref nothing in the harness created, which reads as a
+  // harness bug and is really a machine-wide side effect of an external
+  // collector. `GIT_TRACE2_EVENT` overrides the config, so setting it off makes
+  // these fixtures hermetic again without weakening a single assertion.
+  env.GIT_TRACE2_EVENT = '0';
+  env.GIT_TRACE2 = '0';
+  env.GIT_TRACE2_PERF = '0';
   return env;
 }
 

@@ -37,6 +37,16 @@ export interface Trace2Observation {
   observed: 'empty' | 'present' | 'unknown';
   entries: string[];
   at: string;
+  /**
+   * WHY we looked. `guard` is the pre-`install-hooks` read that decides whether
+   * the hooks may go on at all; `post-install` is the verification read taken
+   * afterwards, because git-ai's safety flag fails open and the only trustworthy
+   * statement about what it changed is a fresh read of the config. Keeping them
+   * distinct matters: after a successful install the post read is legitimately
+   * `present` (git-ai's own two keys), and a reader that confused the two would
+   * conclude the guard had been bypassed.
+   */
+  phase: 'guard' | 'post-install';
 }
 
 export interface CollectorState {

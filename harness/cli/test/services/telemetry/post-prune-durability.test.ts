@@ -360,7 +360,11 @@ describe('finding 02 — a mid-session sync/prune must not shrink what a read re
 
     const fleet = await getFleetEvidence(
       PIJ,
-      { fs, env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1' }, '/home/u'), proc: new FakeProcess({}, REPO) },
+      {
+        fs,
+        env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1' }, '/home/u'),
+        proc: new FakeProcess({}, REPO),
+      },
       { rosterPath: `${REPO}/roster.json`, gitRead: gitReadFor(git) },
     );
 

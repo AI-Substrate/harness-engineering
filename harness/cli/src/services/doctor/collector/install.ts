@@ -61,6 +61,31 @@ export const INSTALL_HOOKS_DISCLOSURES: readonly string[] = [
   'stops and restarts the git-ai background daemon',
   'rewrites each detected agent config file in place (Claude/Codex/Gemini/Droid/Cursor/Windsurf/… ), reformatting it and discarding JSONC comments — git-ai keeps no backups',
   'runs `uninstall_skills` whenever `--skills` is absent, removing git-ai skill links on every invocation — so we always invoke WITHOUT `--skills`, and it always removes them',
+  'CANNOT be scoped to chosen agents — there is no per-agent selector, so it hooks every coding harness it detects in one shot (ten of them on the dogfood machine)',
+  'installs a VS Code extension into BOTH Code and Code-Insiders and rewrites both settings.json files',
+  'does NOT instrument agents that are already running — a live session stays uninstrumented until it restarts, and its prior work is attributed to the human',
+];
+
+/**
+ * Argument spellings we must NEVER pass to `install-hooks` (live dogfood, 2026-08-06).
+ *
+ * `parse_install_options` ends in `_ => {}` (`install_hooks.rs:357-388`), so an
+ * unrecognised argument is silently ignored and the command runs with defaults
+ * — a FULL, machine-wide install. `git ai install-hooks --help` installed
+ * everything on the dogfood machine, and every near-miss spelling of the safety
+ * flag (`--dryrun`, `--dry_run`, `--dry-run=1`, `--dry-run true`) does the same.
+ *
+ * The safety flag fails OPEN. So the collector never relies on one: it passes
+ * exactly `['install-hooks']` and verifies the outcome by RE-READING the global
+ * git config afterwards, never by trusting an exit code or a flag.
+ */
+export const FORBIDDEN_HOOK_ARGS: readonly string[] = [
+  '--help',
+  '-h',
+  '--dryrun',
+  '--dry_run',
+  '--dry-run=1',
+  '--dry-run',
 ];
 
 /**
@@ -130,6 +155,7 @@ export async function installHooks(
     observed: reading.status,
     entries: reading.entries,
     at: reading.observedAt,
+    phase: 'guard',
   });
 
   if (!mayInstallHooks(reading)) {
@@ -197,6 +223,20 @@ export async function installHooks(
   const reported = parseInstalledAgents(result.stdout);
   const agents =
     reported.length > 0 ? reported : detectAgents(deps.fs, deps.host.home).map((a) => a.id);
+
+  // VERIFY BY RE-READING, never by trusting the exit code (live dogfood): their
+  // safety flag fails open, so the only trustworthy statement about what
+  // install-hooks did to the global config is a fresh read of that config. This
+  // second observation also records what git-ai left behind — the next reader can
+  // see we found trace2 empty and that git-ai's own keys are now there.
+  const after = await readGlobalTrace2({ exec: deps.exec, cwd: deps.cwd }, deps.clock.nowIso());
+  next = recordTrace2Observation(next, {
+    observed: after.status,
+    entries: after.entries,
+    at: after.observedAt,
+    phase: 'post-install',
+  });
+
   next = {
     ...next,
     updated_at: now,
@@ -204,7 +244,7 @@ export async function installHooks(
       status: 'installed',
       at: now,
       agents,
-      detail: `hooks installed for ${agents.length} agent(s): ${agents.join(', ') || '(none detected)'}`,
+      detail: `hooks installed for ${agents.length} agent(s): ${agents.join(', ') || '(none detected)'} — agents already RUNNING stay uninstrumented until they restart`,
     },
   };
   writeCollectorState(deps.fs, deps.cwd, next);
