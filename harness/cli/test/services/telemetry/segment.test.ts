@@ -146,7 +146,7 @@ describe('T001 — PRIVACY: planted-secret negative control (AC-04)', () => {
     expect(Object.keys(seg)).not.toContain('rawToolArgs');
   });
 
-  it('relativizes in-repo paths and never leaks an absolute /Users/ path', () => {
+  it('relativizes in-repo paths and collapses an absolute /Users/ path to <external>', () => {
     const input: SegmentInput = {
       ...baseInput(),
       files: {
@@ -162,14 +162,18 @@ describe('T001 — PRIVACY: planted-secret negative control (AC-04)', () => {
     // in-repo absolute → repo-relative
     expect(seg.files.written).toContain('src/services/telemetry/segment.ts');
     expect(seg.files.edited).toContain('harness/cli/package.json');
-    // out-of-repo absolute → basename only (the dir, incl. /Users/, is dropped)
-    expect(seg.files.written).toContain('keys.env');
-    expect(seg.files.written).not.toContain('/Users/jordan/secrets/keys.env');
+    // out-of-repo absolute → the `<external>` sentinel (FX009). This used to keep
+    // the BASENAME, publishing the filename of a file outside the repo — while the
+    // `file` EVENT for the same write already collapsed to `<external>`. One write,
+    // two surfaces, and the quieter one was the honest one.
+    expect(seg.files.written).toContain('<external>');
+    expect(seg.files.written).not.toContain('keys.env');
+    expect(json).not.toContain('keys.env');
     // an already-relative path is preserved as-is
     expect(seg.files.edited).toContain('already/relative/x.ts');
   });
 
-  it('reduces a ../ traversal that climbs outside the repo to a basename (F001)', () => {
+  it('collapses a ../ traversal that climbs outside the repo to <external> (F001 · FX009)', () => {
     const input: SegmentInput = {
       ...baseInput(),
       files: {
@@ -181,11 +185,14 @@ describe('T001 — PRIVACY: planted-secret negative control (AC-04)', () => {
     const seg = serializeSegment(input, REPO);
     const json = JSON.stringify(seg);
 
-    // no traversal segment, no absolute leak survives
+    // no traversal segment, no absolute leak, and no out-of-repo FILENAME survives
     expect(json).not.toContain('..');
     expect(json).not.toContain('/Users/');
-    expect(seg.files.written).toContain('secret.txt');
-    expect(seg.files.written).toContain('x.ts');
+    expect(json).not.toContain('secret.txt');
+    expect(json).not.toContain('x.ts');
+    // TWO distinct out-of-repo files collapse to ONE sentinel: deduped, so the
+    // COUNT of external files is deliberately not recoverable from this surface.
+    expect(seg.files.written).toEqual(['<external>']);
     // an in-repo relative path is still preserved
     expect(seg.files.edited).toContain('src/inside.ts');
   });

@@ -119,6 +119,19 @@ const PATCH_ENCODER = new TextEncoder();
  * `+`/`-` hunk lines are COUNTED (line + UTF-8 byte add/remove), never retained —
  * a counts-only measure, so no file text travels (P12). Context (` `), hunk (`@@`)
  * and `*** …` marker lines contribute nothing. One entry per `*** …File:` section.
+ *
+ * The header is anchored at COLUMN 0 (FX009). It used to be matched against
+ * `raw.trim()`, so an INDENTED line that merely looks like a header — a context
+ * line of a patch that is itself patching a patch, or any body line quoting the
+ * V4A grammar — parsed as a real header and published its body text as a file
+ * PATH. V4A headers are never indented, so trimming bought nothing and cost a
+ * path-shaped leak. Only a trailing `\r` is tolerated (CRLF transcripts).
+ *
+ * The path group is `(.*)`, not `(.+)`, for the same reason (FX009): with `(.+)` a
+ * blank-path header could not match at all, which made the empty-path branch below
+ * unreachable and left `cur` pointing at the PREVIOUS file — so the orphaned body
+ * lines of a malformed header were counted against whatever was patched before it.
+ * A header with no path now RESETS the current file, discarding its body.
  */
 export function parseApplyPatchDeltas(
   patch: string,
@@ -126,7 +139,8 @@ export function parseApplyPatchDeltas(
   const out: { path: string; add: boolean; delta: FileDelta }[] = [];
   let cur: { path: string; add: boolean; delta: FileDelta } | null = null;
   for (const raw of patch.split('\n')) {
-    const header = /^\*\*\* (Add|Update|Delete) File: (.+)$/.exec(raw.trim());
+    const line = raw.endsWith('\r') ? raw.slice(0, -1) : raw;
+    const header = /^\*\*\* (Add|Update|Delete) File:(.*)$/.exec(line);
     if (header !== null) {
       const p = header[2].trim();
       if (p.length === 0) {

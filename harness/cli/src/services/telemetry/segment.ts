@@ -519,36 +519,24 @@ export interface SegmentInput {
 
 const ABSOLUTE_LOGICAL = /^([A-Za-z]:)?\//;
 
-/**
- * Reduce a path to a privacy-safe, repo-relative form:
- * - inside the repo (absolute OR relative) → relative to `repoRoot` (e.g. `src/x.ts`);
- * - OUTSIDE the repo (absolute, OR a `..`-climbing relative path) → basename only
- *   — the directory (incl. any `/Users/…` or `../…`) is dropped, never leaked.
- *
- * A relative input is resolved against `repoRoot` BEFORE the containment check so
- * a `../outside/secret.txt` traversal can never pass through unchanged
- * (companion F001 — AC-04).
- */
-function relativizePath(raw: string, repoRoot: string): string {
-  const root = posixNormalize(toPosix(repoRoot));
-  const p = toPosix(raw);
-  const abs = ABSOLUTE_LOGICAL.test(p) ? posixNormalize(p) : posixNormalize(posixJoin(root, p));
-  if (isWithin(root, abs)) {
-    const rel = posixRelative(root, abs);
-    return rel === '' ? '.' : rel;
-  }
-  return abs.split('/').pop() ?? '';
-}
-
 /** The literal path a `file` event carries for an out-of-repo write (D2, plan 056). */
 export const FILE_EXTERNAL = '<external>';
 
 /**
- * Confine a `file` event's path (plan 056 · D2). Repo-relative form when inside
- * the repo (absolute OR relative resolved against `repoRoot` first); the literal
- * {@link FILE_EXTERNAL} sentinel when OUTSIDE — the out-of-repo directory (and its
- * basename) is NEVER leaked. Deliberately NOT {@link relativizePath}, which drops
- * an out-of-repo path to its basename and would leak the filename (finding 04).
+ * Confine a path to a privacy-safe, repo-relative form (plan 056 · D2):
+ * - inside the repo (absolute OR relative) → relative to `repoRoot` (e.g. `src/x.ts`);
+ * - OUTSIDE the repo (absolute, OR a `..`-climbing relative path) → the literal
+ *   {@link FILE_EXTERNAL} sentinel. The out-of-repo directory AND its basename are
+ *   NEVER leaked (finding 04).
+ *
+ * A relative input is resolved against `repoRoot` BEFORE the containment check so a
+ * `../outside/secret.txt` traversal can never pass through unchanged (companion
+ * F001 — AC-04).
+ *
+ * This is the ONLY path reducer on the serializer (FX009). An earlier
+ * `relativizePath` fell back to the BASENAME for out-of-repo paths and was applied
+ * to `files.written`/`files.edited` while `file` events used this one — so the same
+ * out-of-repo write was `<external>` on one surface and `keys.env` on the other.
  */
 function confineFilePath(raw: string, repoRoot: string): string {
   const root = posixNormalize(toPosix(repoRoot));
@@ -559,6 +547,28 @@ function confineFilePath(raw: string, repoRoot: string): string {
     return rel === '' ? '.' : rel;
   }
   return FILE_EXTERNAL;
+}
+
+/**
+ * Confine every path in a `files.written`/`files.edited` list (FX009).
+ *
+ * Repeated `<external>` entries collapse to ONE — N out-of-repo files would
+ * otherwise publish their COUNT through N identical sentinels. In-repo duplicates
+ * are PRESERVED: a file edited six times in a window appears six times, and that
+ * multiplicity is real churn evidence the read path consumes.
+ */
+function confineFileList(paths: readonly string[], repoRoot: string): string[] {
+  const out: string[] = [];
+  let sawExternal = false;
+  for (const raw of paths) {
+    const confined = confineFilePath(raw, repoRoot);
+    if (confined === FILE_EXTERNAL) {
+      if (sawExternal) continue;
+      sawExternal = true;
+    }
+    out.push(confined);
+  }
+  return out;
 }
 
 function dedupe(values: readonly string[]): string[] {
@@ -1473,8 +1483,16 @@ export function serializeSegment(input: SegmentInput, repoRoot: string): Segment
   if (userPrompts.length > 0) seg.user_prompts = [...userPrompts];
   const subagents = groupSubagents(input.subagents ?? []);
   if (subagents.length > 0) seg.subagents = subagents;
-  const written = (input.files?.written ?? []).map((p) => relativizePath(p, repoRoot));
-  const edited = (input.files?.edited ?? []).map((p) => relativizePath(p, repoRoot));
+  // FX009 — CONFINED, not relativized. `relativizePath` drops an out-of-repo path
+  // to its BASENAME, which publishes the filename (`keys.env`) of a file outside
+  // the repo; `file` EVENTS already collapse the same paths to the `<external>`
+  // sentinel, so the two surfaces of one write disagreed about the same secret.
+  // Cursor populates BOTH, so extending its extraction increases the exposure this
+  // surface carries — the swap is a consequence of that change, not a drive-by.
+  // Dedupe follows: N out-of-repo files now collapse to ONE `<external>` entry, so
+  // the COUNT of distinct external files is deliberately no longer recoverable here.
+  const written = confineFileList(input.files?.written ?? [], repoRoot);
+  const edited = confineFileList(input.files?.edited ?? [], repoRoot);
   if (written.length > 0 || edited.length > 0) seg.files = { written, edited };
   const plans = dedupe(input.plans_touched ?? []);
   if (plans.length > 0) seg.plans_touched = plans;

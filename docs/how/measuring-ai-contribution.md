@@ -142,7 +142,9 @@ each. That is *modification* being counted as *authorship*.
   per-file **deltas are unknowable** and it emits no `file` events. Line-based share for
   this surface must be reported as *unavailable*, never as zero contribution. (`cursor`
   has the full capability since plan 066: its `ApplyPatch` patches yield per-file deltas,
-  at `interval` time precision when the session has no bubble timeline.)
+  at `interval` time precision when the session has no bubble timeline. Since FX009 the
+  same holds for its `Write`/`StrReplace` vocabulary, whose object-shaped tool inputs the
+  extraction previously dropped.)
 
 > **Path-only authorship rows (plan 068).** The report's authorship table can
 > now carry rows whose delta fields are `null` with a `delta_unavailable`
@@ -158,14 +160,26 @@ Capture is deliberately limited to agent Write/Edit tool calls. It does not see:
 - files written via Bash redirects (`>`, `>>`, `tee`) or by MCP writers;
 - surfaces that expose no per-file path (above);
 - any commit made with no intervening capture flush — there is no segment to match, so those
-  commits have no agent attribution rather than a zero one.
+  commits have no agent attribution rather than a zero one;
+- **an agent write tool this repo has never seen.** Cursor's `Write`/`StrReplace` vocabulary
+  went unextracted until FX009: every call was counted in the tool histogram while zero `file`
+  events were emitted, so a session that wrote 410 lines published a *confident* 0.0% agent
+  share — not a gap, a wrong number. Cursor sessions now carry a read-side guard: a window
+  whose write-capable tools produced no `file` event is marked
+  `event_skipped:unhandled_write_tools:<tool>` in the session export's `degraded[]`, which
+  degrades the envelope rather than passing as measured. **That guard covers Cursor only** —
+  a Claude or Copilot write-tool rename is still an unguarded silent drift, and closing that
+  needs a per-harness tool registry those adapters do not yet have.
 
 Each blind spot removes lines from the numerator only, which pushes the measured agent share
 **down**, partially offsetting the gross-churn inflation. The two errors do not cancel in any
 principled way, so do not treat their coexistence as accuracy.
 
 **Adding a new agent tool that writes files requires updating this list**, or the share will
-drift downward silently.
+drift downward silently. For Cursor, "updating" is concrete: add the name to the closed
+registry in `harness/cli/src/services/telemetry/adapters/cursor-tools.ts`. A name missing from
+that table is treated as write-capable, so the guard above fires rather than the share
+quietly sagging.
 
 ## If you need exact per-line attribution
 

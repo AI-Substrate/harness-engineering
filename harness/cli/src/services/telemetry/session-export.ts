@@ -2,6 +2,7 @@ import type { EnvPort } from '../../adapters/env/env-port.js';
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { posixJoin } from '../shared/posix-path.js';
+import { mayWriteFiles } from './adapters/cursor-tools.js';
 import { telemetryDir } from './cursor.js';
 import type { Event } from './events.js';
 import {
@@ -546,11 +547,90 @@ function buildTokens(
 }
 
 /**
+ * FX009 — the read-side unhandled-write-tool counter.
+ *
+ * THE TRIGGER IS EMPTY EXTRACTION, NOT AN UNKNOWN NAME. A name-triggered check
+ * would reinstall the very defect it is meant to catch: add a `Write` branch,
+ * guess its payload keys wrong, and the tool is now KNOWN — the branch runs,
+ * yields nothing, and a name-triggered counter never fires. The silent zero moves
+ * one level deeper and gets harder to find. So the condition is, per segment:
+ *
+ *   write-capable tool calls > 0  AND  `file` events == 0  →  fire.
+ *
+ * It therefore guards OUR OWN GUESS about the `Write`/`StrReplace` payload shape
+ * (INHERITED — UNVERIFIED; no specimen exists on this machine) as well as the next
+ * Cursor rename, and it needs no payload access at all, so no privacy question
+ * arises. "Write-capable" is {@link mayWriteFiles}: a known write tool OR an
+ * UNKNOWN name — the one thing we know about a name we do not recognise is that we
+ * cannot rule out that it writes.
+ *
+ * READ-SIDE, deliberately: it classifies segments ALREADY on the wire,
+ * retroactively, including the session that triggered this report — a capture-side
+ * counter could only ever help sessions captured after it shipped. And it is
+ * schema-neutral: the marker rides the EXISTING `degraded: string[]`, so no segment
+ * field and no `schema_version` bump.
+ *
+ * IT RIDES THE `event_skipped:` FAMILY ON PURPOSE. `acts/telemetry.ts` filters
+ * `degraded` by that prefix and DOWNGRADES the envelope when it matches, so the
+ * marker changes the status consumers actually read — by construction, with no gate
+ * change. A marker in an array that nothing reacts to would be this very defect
+ * one level up: a signal that never reaches the surface anyone looks at. And it is
+ * literally true: the `file` events for that window were not carried.
+ */
+const UNHANDLED_WRITE_TOOL_MARKER = 'event_skipped:unhandled_write_tools';
+
+/** The harness whose tool registry {@link mayWriteFiles} speaks (FX009 is Cursor's stream). */
+const CURSOR_HARNESS = 'cursor-agent';
+
+/**
+ * Bounded shape for a tool name echoed into `degraded[]`. The names are already on
+ * the wire (`segment.tools` / `tools` events), so naming them is no new exposure —
+ * but a marker string is a report surface, so an ill-shaped name degrades to the
+ * literal `unknown` rather than riding it verbatim.
+ */
+const TOOL_NAME_SHAPE = /^[A-Za-z0-9_.-]{1,64}$/;
+
+/**
+ * Every tool name a segment observed, from BOTH surfaces that can carry it: the
+ * v1-compat `tools` histogram (omitted when empty, and absent from a logs-only
+ * shard) and the `tools` events (which survive the OTLP round trip). Names only —
+ * the counts are irrelevant to a presence test.
+ */
+function observedToolNames(read: SeqRead): Set<string> {
+  const names = new Set<string>(Object.keys(read.seg.tools ?? {}));
+  for (const event of read.events) {
+    if (event.kind === 'tools') names.add(event.name);
+  }
+  return names;
+}
+
+/**
+ * `unhandled_write_tools:<name>` for every write-capable tool that produced NO
+ * `file` event in its own segment — deduplicated across the session and sorted, so
+ * the marker set is stable regardless of segment order.
+ */
+function unhandledWriteToolMarkers(reads: readonly SeqRead[]): string[] {
+  const flagged = new Set<string>();
+  for (const read of reads) {
+    // Scoped to Cursor: the registry is Cursor's vocabulary, so another harness's
+    // tool names would all classify as unknown and fire on every window. A marker
+    // that fires everywhere is ignored, and an ignored marker is the silent zero
+    // again. Other harnesses need their own registry, not this one's noise.
+    if (read.seg.harness !== CURSOR_HARNESS) continue;
+    if (read.events.some((event) => event.kind === 'file')) continue;
+    for (const name of observedToolNames(read)) {
+      if (!mayWriteFiles(name)) continue;
+      flagged.add(TOOL_NAME_SHAPE.test(name) ? name : 'unknown');
+    }
+  }
+  return [...flagged].sort().map((name) => `${UNHANDLED_WRITE_TOOL_MARKER}:${name}`);
+}
+
+/**
  * Concatenate two logs productions into one `LogsData`, preserving each side's own
  * `ResourceLogs` (and therefore its resource-level provenance). Used only when a
  * session mixes live and reconciled capture; the skipped-kind notes union.
- */
-function mergeLogs(
+ */ function mergeLogs(
   live: OtlpLogsProduction | undefined,
   reconciled: OtlpLogsProduction,
 ): OtlpLogsProduction {
@@ -694,6 +774,10 @@ function combineSessionAtPin(
     ? '2.7'
     : (reads[0]?.seg.schema_version ?? 'unknown');
   if (hasV1) degraded.push('v1_segments');
+  // FX009 — write-shaped work that yielded no measurable file change. A `file`-less
+  // window whose tools COULD have written is a GAP, not a measured zero; without
+  // this the pipeline publishes a confident 0.0% agent share over it.
+  degraded.push(...unhandledWriteToolMarkers(reads));
 
   // A pure-temp read of a session the sync has already flushed sees only the delta
   // since the last commit — the prune deleted the rest (finding 02). The committed ref

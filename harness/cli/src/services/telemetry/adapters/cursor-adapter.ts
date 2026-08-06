@@ -8,10 +8,12 @@ import {
   skillDigitArg,
 } from '../command-signature.js';
 import { buildEventStream } from '../event-builder.js';
-import type { Event, HarnessEvent } from '../events.js';
+import type { Event, FileDelta, HarnessEvent } from '../events.js';
+import { computeFileDelta, writtenDelta } from '../file-delta.js';
 import type { SkillOpen, ToolCall } from '../rollup.js';
 import type { SegmentModelStat } from '../segment.js';
 import { parseApplyPatchDeltas } from './copilot-adapter.js';
+import { cursorToolRole } from './cursor-tools.js';
 import type {
   HarnessAdapter,
   HarnessCapabilities,
@@ -146,6 +148,61 @@ function wordCount(text: string): number {
 
 function blocksOf(message: Record<string, unknown>): Record<string, unknown>[] {
   return Array.isArray(message.content) ? (message.content as Record<string, unknown>[]) : [];
+}
+
+/** One file's measured change, as every write-shaped Cursor payload reduces to. */
+interface FileChange {
+  path: string;
+  /** `true` → the whole file was written (`written`); `false` → an in-place edit. */
+  add: boolean;
+  delta: FileDelta;
+}
+
+/** The first non-blank string among the given candidate values, else undefined. */
+function firstString(...values: unknown[]): string | undefined {
+  for (const v of values) {
+    if (typeof v === 'string' && v.trim() !== '') return v;
+  }
+  return undefined;
+}
+
+/**
+ * Per-file measured deltas from ONE write-shaped `tool_use` payload — the only
+ * place a Cursor edit payload is ever read (AC-04).
+ *
+ * TWO PAYLOAD SHAPES, one per Cursor vocabulary, both live simultaneously:
+ *
+ *  • a STRING input is the raw V4A patch (`ApplyPatch`) — parsed by the shared
+ *    counting parser, header paths + `+`/`-` counts only;
+ *  • an OBJECT input is the `Write`/`StrReplace` family — whole-file `contents`
+ *    (every line an addition) or an `old_string`→`new_string` pair.
+ *
+ * KEY NAMES ARE CONFIRMED, MATCHING STAYS TOLERANT. They entered as INHERITED —
+ * UNVERIFIED from an external report and were later checked against the reporter's
+ * own transcript: `Write` carries `{contents, path}`, `StrReplace` carries
+ * `{old_string, new_string, path}`. The alternates (`file_path`, `content`) are
+ * still matched, and the tolerance is NOT narrowed just because the shape is known
+ * today — this toolset has already been renamed more than once. If nothing matches,
+ * this yields NOTHING, deliberately: the read-side unhandled-write-tool counter
+ * (`session-export`) then fires on the empty extraction and names the gap. Green
+ * synthetic tests prove self-consistency, never shape.
+ *
+ * PRIVACY: `contents`/`content`/`old_string`/`new_string` are FULL FILE TEXT. They
+ * are passed straight into the delta helpers and only the returned integer counts
+ * escape this function — never stored on an event, logged, or retained.
+ */
+function fileChanges(input: unknown): FileChange[] {
+  if (typeof input === 'string') return parseApplyPatchDeltas(input);
+  if (input === null || typeof input !== 'object' || Array.isArray(input)) return [];
+  const o = input as Record<string, unknown>;
+  const path = firstString(o.path, o.file_path);
+  if (path === undefined) return [];
+  const contents = firstString(o.contents, o.content);
+  if (contents !== undefined) return [{ path, add: true, delta: writtenDelta(contents) }];
+  const oldText = typeof o.old_string === 'string' ? o.old_string : undefined;
+  const newText = typeof o.new_string === 'string' ? o.new_string : undefined;
+  if (oldText === undefined && newText === undefined) return [];
+  return [{ path, add: false, delta: computeFileDelta(oldText ?? '', newText ?? '') }];
 }
 
 function readTranscript(src: HarnessSource): string | null {
@@ -357,15 +414,23 @@ export const cursorAdapter: HarnessAdapter = {
           if (b.type !== 'tool_use') continue;
           const name = typeof b.name === 'string' ? b.name : 'unknown';
           tools[name] = (tools[name] ?? 0) + 1;
-          // ApplyPatch (cursor's file-edit tool): `input` is the raw V4A patch
-          // STRING — the same `*** Add/Update File:` grammar as copilot's
-          // apply_patch, so the counting parser is shared (plan 056 lineage).
-          // Counts + header paths only; body text never travels (AC-04). The
-          // transcript is untimed, so without a bubble anchor the event takes the
-          // capture wall-clock at `t_precision: 'interval'` (within this window).
-          if (name === 'ApplyPatch' && typeof b.input === 'string') {
+          // Cursor's file-edit tools, dispatched through the CLOSED registry
+          // (`cursor-tools.ts`) rather than a chain of name comparisons — the
+          // June (`Read`/`Glob`) and August (`ReadFile`/`ApplyPatch`) vocabularies
+          // are both live, and `Write`/`StrReplace` is a third. `ApplyPatch` takes
+          // the raw V4A patch STRING (shared counting parser, plan 056 lineage);
+          // `Write`/`StrReplace` take an OBJECT. Counts + paths only; file text
+          // never travels (AC-04) — see {@link fileChanges}. The transcript is
+          // untimed, so without a bubble anchor the event takes the capture
+          // wall-clock at `t_precision: 'interval'` (within this window), and with
+          // neither the event is DROPPED rather than given a fabricated time.
+          //
+          // Same-path churn is an ARRAY PUSH, never a keyed last-write-wins map:
+          // a file edited six times in one window must contribute six deltas (the
+          // downstream join sums per path). Collapsing them under-counts churn.
+          if (cursorToolRole(name) === 'write') {
             const fallbackT = ctx.capturedAt;
-            for (const f of parseApplyPatchDeltas(b.input)) {
+            for (const f of fileChanges(b.input)) {
               (f.add ? written : edited).add(f.path);
               const t = at ?? fallbackT;
               if (t === undefined) continue;

@@ -326,3 +326,193 @@ describe('cursorAdapter · ApplyPatch malformed input (never throws)', () => {
     expect(fileEvents(text).map((e) => e.path)).toEqual(['a.ts']);
   });
 });
+
+/**
+ * FX009 — the OBJECT-input write vocabulary (`Write` / `StrReplace`).
+ *
+ * SHAPE PROVENANCE, stated: these key names entered as INHERITED — UNVERIFIED from
+ * an external defect report and were later CONFIRMED against the reporter's own
+ * scrubbed transcript (`Write` → `{contents, path}`, `StrReplace` →
+ * `{old_string, new_string, path}`), which is committed as the
+ * `2026-08-06-write-strreplace` corpus instance. These remain SYNTHETIC unit
+ * controls: they pin the negative and edge cases one captured session cannot
+ * supply, and the tolerant alternates below are NOT evidence of a producer — they
+ * are deliberate slack the read-side counter guards.
+ */
+describe('cursorAdapter · Write/StrReplace object inputs (FX009)', () => {
+  function objectCall(name: string, input: unknown): string {
+    return `${JSON.stringify({
+      role: 'assistant',
+      message: { content: [{ type: 'tool_use', name, input }] },
+    })}\n`;
+  }
+
+  it('matches the CONFIRMED keys and the tolerant alternates alike', () => {
+    // `file_path`/`content` are slack, not observation. Keeping them costs nothing;
+    // narrowing them because the confirmed shape passes would remove the only give
+    // the extraction has when this toolset is renamed again — and it has been, twice.
+    const confirmed = fileEvents(objectCall('Write', { path: 'a.ts', contents: 'one\ntwo\n' }));
+    const tolerant = fileEvents(objectCall('Write', { file_path: 'a.ts', content: 'one\ntwo\n' }));
+    expect(confirmed).toEqual(tolerant);
+    expect(confirmed[0].delta.lines_added).toBe(2);
+  });
+
+  it('counts a StrReplace as a MULTISET difference — shared anchor lines are not churn', () => {
+    const events = fileEvents(
+      objectCall('StrReplace', {
+        path: 'a.ts',
+        old_string: 'const anchor = 0;\nconst x = 1;\n',
+        new_string: 'const anchor = 0;\nconst x = 2;\nconst y = 3;\n',
+      }),
+    );
+    expect(events).toHaveLength(1);
+    expect(events[0].change).toBe('edited');
+    // `const anchor = 0;` appears on both sides → contributes nothing. Bytes are
+    // measured per line WITHOUT the separator: `const x = 2;` + `const y = 3;` = 24.
+    expect(events[0].delta).toEqual({
+      lines_added: 2,
+      lines_removed: 1,
+      bytes_added: 24,
+      bytes_removed: 12,
+    });
+  });
+
+  it('keeps SAME-PATH churn as separate events (array push, never last-write-wins)', () => {
+    const text = `${objectCall('StrReplace', {
+      path: 'a.ts',
+      old_string: 'one\n',
+      new_string: 'two\n',
+    })}${objectCall('StrReplace', { path: 'a.ts', old_string: 'two\n', new_string: 'three\n' })}`;
+    const events = fileEvents(text);
+    expect(events).toHaveLength(2); // a keyed map would collapse these and lose the churn
+    expect(events.every((e) => e.path === 'a.ts')).toBe(true);
+  });
+
+  it('produces NOTHING (never a fabricated zero) when no path key matches', () => {
+    // This is the branch the read-side counter exists for: extraction runs, yields
+    // nothing, and the gap is named downstream instead of passing as a measured 0.
+    for (const input of [
+      { target_file: 'a.ts', contents: 'x\n' }, // unknown path key
+      { path: '   ', contents: 'x\n' }, // blank path
+      { path: 'a.ts' }, // no payload at all
+      { path: 'a.ts', contents: 42 }, // non-string payload
+    ]) {
+      expect(fileEvents(objectCall('Write', input))).toEqual([]);
+    }
+  });
+
+  it('never carries file CONTENT out of the adapter (AC-04, both object branches)', () => {
+    const text = `${objectCall('Write', {
+      path: 'w.ts',
+      contents: 'const token = "SUPER_SECRET_WRITE";\n',
+    })}${objectCall('StrReplace', {
+      path: 'e.ts',
+      old_string: 'const old = "SUPER_SECRET_OLD";\n',
+      new_string: 'const neu = "SUPER_SECRET_NEW";\n',
+    })}`;
+    const caps = extract(text, { capturedAt: CAPTURED_AT });
+    const serialized = JSON.stringify(caps);
+    for (const secret of ['SUPER_SECRET_WRITE', 'SUPER_SECRET_OLD', 'SUPER_SECRET_NEW']) {
+      expect(serialized).not.toContain(secret);
+    }
+    // …and the measurement still happened: counts survive, text does not.
+    expect(caps.tools).toEqual({ Write: 1, StrReplace: 1 });
+    expect((caps.event_stream ?? []).filter((e) => e.kind === 'file')).toHaveLength(2);
+  });
+
+  it('never carries content through the SERIALIZED segment either (AC-04, end to end)', () => {
+    const events = serialize(
+      objectCall('Write', { path: 'w.ts', contents: 'password = "hunter2"\n' }),
+    );
+    expect(JSON.stringify(events)).not.toContain('hunter2');
+  });
+});
+
+/**
+ * FX009 — WINDOWS path shape. The Cursor build that produced the reported session
+ * runs on Windows and emits lowercase drive-letter absolute paths (`c:\src\…`).
+ * The corpus cannot carry that form: the fixture scrub rebases machine paths, so
+ * the committed transcript keeps the BACKSLASH separators but loses the drive
+ * letter. These synthetic controls hold the drive-letter half — no real machine
+ * data is involved, so there is nothing to scrub.
+ */
+describe('cursorAdapter · Windows path confinement (FX009)', () => {
+  const WIN_REPO = 'c:\\repo';
+
+  function winSerialize(input: unknown, repoRoot = WIN_REPO): Event[] {
+    return serialize(
+      `${JSON.stringify({
+        role: 'assistant',
+        message: { content: [{ type: 'tool_use', name: 'Write', input }] },
+      })}\n`,
+      repoRoot,
+    );
+  }
+
+  it('relativizes a lowercase drive-letter path INSIDE the repo (separators normalized)', () => {
+    const files = winSerialize({ path: 'c:\\repo\\src\\deep\\x.ts', contents: 'a\n' }).filter(
+      (e) => e.kind === 'file',
+    );
+    expect(files.map((e) => e.path)).toEqual(['src/deep/x.ts']);
+  });
+
+  it('is drive-letter CASE insensitive (`C:` repo root vs a `c:` payload path)', () => {
+    const files = winSerialize({ path: 'c:\\repo\\src\\x.ts', contents: 'a\n' }, 'C:\\repo').filter(
+      (e) => e.kind === 'file',
+    );
+    expect(files.map((e) => e.path)).toEqual(['src/x.ts']);
+  });
+
+  it('collapses an out-of-repo Windows path to `<external>` — the filename never leaks', () => {
+    const files = winSerialize({
+      path: 'c:\\Users\\dev\\secrets\\creds.env',
+      contents: 'a\n',
+    }).filter((e) => e.kind === 'file');
+    expect(files.map((e) => e.path)).toEqual(['<external>']);
+    expect(JSON.stringify(files)).not.toContain('creds.env');
+    expect(JSON.stringify(files)).not.toContain('Users');
+  });
+
+  it('collapses a DIFFERENT DRIVE to `<external>` (a sibling path is not containment)', () => {
+    const files = winSerialize({ path: 'd:\\repo\\src\\x.ts', contents: 'a\n' }).filter(
+      (e) => e.kind === 'file',
+    );
+    expect(files.map((e) => e.path)).toEqual(['<external>']);
+  });
+
+  it('confines the `files.written`/`files.edited` surface the same way (FX009 §6.2)', () => {
+    // Those lists used to go through a BASENAME fallback while `file` events already
+    // collapsed to `<external>` — one write, two surfaces, and the quieter one was
+    // the honest one. Cursor populates both, so the fix increases exposure here.
+    const caps = extract(
+      `${JSON.stringify({
+        role: 'assistant',
+        message: {
+          content: [
+            {
+              type: 'tool_use',
+              name: 'Write',
+              input: { path: 'c:\\Users\\dev\\secrets\\creds.env', contents: 'a\n' },
+            },
+          ],
+        },
+      })}\n`,
+      { capturedAt: CAPTURED_AT },
+    );
+    const input: SegmentInput = {
+      command: 'flow',
+      harness: 'cursor-agent',
+      harness_version: '0.0.0-test',
+      harness_session_id: CONV,
+      timecode: CAPTURED_AT,
+      window: { since: 'session-start', from: 0, to: 99 },
+      branch: null,
+      tokens: null,
+      files: caps.files ?? { written: [], edited: [] },
+      event_stream: caps.event_stream ?? undefined,
+    };
+    const seg = serializeSegment(input, WIN_REPO);
+    expect(seg.files).toEqual({ written: ['<external>'], edited: [] });
+    expect(JSON.stringify(seg)).not.toContain('creds.env');
+  });
+});
