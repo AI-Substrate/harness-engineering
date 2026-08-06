@@ -1,0 +1,21 @@
+docs/plans/073-gitai-collector-v1/assets/tasks/phase-1/tasks.dd.json
+  s_3873580dee1f09::t_cc885cbaf264b1 25,34,42,52,61,73,81,89,97,105,114,123,133,141,149,157
+docs/plans/073-gitai-collector-v1/assets/tasks/phase-1/tasks.dd.md
+  s_3873580dee1f09::t_9c70fd21b25ca7 38-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b47a59d11400fe2da4ee2f95930ecd1b05a24c1e",
+  "prompts": {},
+  "sessions": {
+    "s_3873580dee1f09": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "bddf45ce-c84d-4702-aee9-259da767de25",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
