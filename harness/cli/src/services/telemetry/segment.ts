@@ -103,6 +103,7 @@ const PIJ_SPAWN_ID_VALUE = /^spawn-[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/;
 const PIJ_STATUS_VALUE = /^status\/[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const PIJ_PANE_VALUE = /^%[0-9]{1,10}$/;
 const TELEMETRY_ATOM = /^[A-Za-z0-9][A-Za-z0-9._:@+-]*$/;
+const TELEMETRY_LABEL_WORD = /^[A-Za-z0-9_.-][A-Za-z0-9._:@+-]*$/;
 const TELEMETRY_COMMAND = /^[a-z][a-z0-9]*(?:[ -][a-z0-9][a-z0-9-]*){0,3}$/;
 const TELEMETRY_SEMVER =
   /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$/;
@@ -143,6 +144,32 @@ export function isTelemetryExtensionString(value: string): boolean {
   );
 }
 
+/**
+ * The producer's placeholder for "a model we could not name" — a sentinel, not a
+ * model. It is enumerated rather than matched by grammar so widening never
+ * follows from it.
+ */
+export const SYNTHETIC_MODEL_NAME = '<synthetic>';
+
+/**
+ * The ONE key grammar for producer-emitted label maps — gate names, counter
+ * names, enum keys. Derived from the published corpus (119 refs / 22,343
+ * documents), not guessed: real keys are npm-style colon-namespaced
+ * (`check:docs`, `check:dd-docs`) and multi-word command labels (`dd doctor`,
+ * `dd build`), alongside the plain atoms (`tests`, `arch-check`) the reader
+ * already admitted.
+ *
+ * Both bounds that carry weight are kept: the 64-character length cap and the
+ * credential-shape denylist. What is dropped is only the accident that a colon
+ * or a space made a machine-generated label unreadable forever — published refs
+ * are immutable, so a reader that rejects them strands the whole back catalogue.
+ */
+export function isTelemetryLabelKey(value: string): boolean {
+  if (isCredentialShaped(value) || value.length === 0 || value.length > 64) return false;
+  const words = value.split(' ');
+  return words.length <= 4 && words.every((word) => TELEMETRY_LABEL_WORD.test(word));
+}
+
 export function isTelemetryHarness(value: string): boolean {
   return (
     !isCredentialShaped(value) &&
@@ -181,6 +208,7 @@ export function isTelemetrySessionId(value: string): boolean {
 }
 
 export function isTelemetryModel(value: string): boolean {
+  if (value === SYNTHETIC_MODEL_NAME) return true;
   if (isCredentialShaped(value) || value.length > 192) return false;
   const [model, effort, extra] = value.split(':');
   if (
