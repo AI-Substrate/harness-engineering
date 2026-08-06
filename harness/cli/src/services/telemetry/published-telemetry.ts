@@ -30,6 +30,7 @@ import {
   isTelemetryCommand,
   isTelemetryExtensionString,
   isTelemetryHarness,
+  isTelemetryLabelKey,
   isTelemetryModel,
   isTelemetryRelativePath,
   isTelemetryServiceVersion,
@@ -207,9 +208,80 @@ const KNOWN_KEYS = new Set<string>([
   'agent_s',
   'human_s',
   'idle_s',
+  // FX007 — the producer's own field names, derived by sweeping every document in
+  // this repo's published refs rather than written from memory. `privacySafe`
+  // sets a STICKY `strictUnknown` the moment it meets a name that is not here,
+  // and `safeString(value, true)` then rejects every string beneath that point.
+  // So an absent name is not cosmetic: it is a hard reject of real telemetry,
+  // which is how the reader came to refuse 100% of its own repo's sessions.
+  'agent_working_s',
+  'working_ratio',
+  'gates',
+  'enums',
+  'counts',
+  'size',
+  'lines',
+  'bytes',
+  'outcomes',
+  'exits',
+  'checks',
+  'flow_stage_time_s',
+  'result_tokens',
+  'signature',
+  'verb',
+  'observe_kind',
+  'artifact_type',
+  'mark_kind',
+  'exit',
+  'arg',
+  'op',
+  'node',
+  'edge_op',
+  'flow',
+  'stage',
+  'plan_id',
+  'api_errors',
+  'compactions',
+  'local_commands',
+  'trigger',
+  'pre_tokens',
+  'post_tokens',
+  'runs',
+  'abandoned',
+  'superseded',
+  'type',
+  'agent_name',
+  'tool_uses',
+  'branch_changed',
+  'bash_commands',
+  'harness_commands',
+  'code_changes',
+  'files_modified',
+  'premium_requests',
 ]);
 
-const DYNAMIC_MAP_KEYS = new Set(['captured_env', 'skills', 'tools', 'harness_commands', 'models']);
+/**
+ * Producer-owned maps whose KEYS are data, not schema. `privacySafe` defers on
+ * these: it neither key-checks nor strict-checks their contents, because the
+ * owning contract (`validSegmentKnownField` / `validEvent`) is what actually
+ * enforces their grammar. Anything missing from this set is treated as an
+ * unknown additive object, and `safeString(value, true)` then rejects every
+ * string inside it unconditionally — which is how FX007 shipped a reader that
+ * refused its own `gates` maps regardless of the gate names.
+ */
+const DYNAMIC_MAP_KEYS = new Set([
+  'captured_env',
+  'skills',
+  'tools',
+  'harness_commands',
+  'models',
+  'gates',
+  'enums',
+  'counts',
+  'exits',
+  'activity',
+  'flow_stage_time_s',
+]);
 
 class StrictJsonParser {
   private offset = 0;
@@ -488,7 +560,9 @@ function validNumericMap(value: unknown): boolean {
     map !== null &&
     Object.entries(map).every(
       ([key, count]) =>
-        SAFE_UNKNOWN_KEY.test(key) && isTelemetryExtensionString(key) && nonNegativeInteger(count),
+        (isTelemetryLabelKey(key) ||
+          (SAFE_UNKNOWN_KEY.test(key) && isTelemetryExtensionString(key))) &&
+        nonNegativeInteger(count),
     )
   );
 }
@@ -636,7 +710,7 @@ function validEvent(value: unknown, version: PublishedSegmentVersion): boolean {
       if (
         gates === null ||
         Object.entries(gates).some(
-          ([gate, state]) => !SAFE_UNKNOWN_KEY.test(gate) || !safeIdentity(state),
+          ([gate, state]) => !isTelemetryLabelKey(gate) || !safeIdentity(state),
         )
       ) {
         return false;
@@ -648,7 +722,7 @@ function validEvent(value: unknown, version: PublishedSegmentVersion): boolean {
       if (
         enums === null ||
         Object.entries(enums).some(
-          ([enumKey, enumValue]) => !SAFE_UNKNOWN_KEY.test(enumKey) || !safeIdentity(enumValue),
+          ([enumKey, enumValue]) => !isTelemetryLabelKey(enumKey) || !safeIdentity(enumValue),
         )
       ) {
         return false;
@@ -722,7 +796,7 @@ function validRollup(value: unknown): boolean {
     Object.entries(skills).some(([key, skill]) => {
       const item = record(skill);
       return (
-        !SAFE_UNKNOWN_KEY.test(key) ||
+        !isTelemetryLabelKey(key) ||
         item === null ||
         !hasExactKeys(item, ['runs', 'abandoned', 'superseded']) ||
         Object.values(item).some((count) => !nonNegativeInteger(count))
