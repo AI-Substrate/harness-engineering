@@ -1,0 +1,19 @@
+docs/plans/073-gitai-collector-v1/assets/BRIEF-telemetry-docs.md
+  s_a76964380084ef::t_5483b6d168b60a 1-291
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "74a1b858fab7fb3b1abe2f61d6c654bb2e8380ff",
+  "prompts": {},
+  "sessions": {
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
