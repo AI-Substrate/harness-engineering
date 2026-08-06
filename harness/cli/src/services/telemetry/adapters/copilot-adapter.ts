@@ -1,3 +1,4 @@
+import type { FsPort } from '../../../adapters/fs/fs-port.js';
 import {
   commandSignatures,
   controlSignatures,
@@ -211,13 +212,77 @@ function extractJsonObjects(content: string): Record<string, unknown>[] {
   return objs;
 }
 
-/** Locate the process log whose contents reference this session id. */
+/**
+ * V8 cannot build a string longer than ~512 MiB, so a `process-*.log` above this
+ * ceiling can never be searched: `readText` is `readFileSync(path, 'utf8')`, which
+ * throws `ERR_STRING_TOO_LONG` there, and the port swallows the throw to `null`.
+ * Reading such a file therefore buys a GUARANTEED miss, and the bytes are not
+ * hypothetical — one working machine carried 11.79 GB of such logs out of 15.25 GB
+ * total. Enforcing the ceiling through `readTextFileNoFollow` makes an oversize log
+ * cost an `fstat` instead of a multi-gigabyte read (`node-fs` rejects on
+ * `opened.size > maxBytes` before it allocates).
+ *
+ * The value is V8's exact limit rather than a round number so the bound stays
+ * LOSSLESS: every log that can be read today is still read. (A log whose bytes
+ * exceed the limit but whose decoded length would not — only possible with heavy
+ * multi-byte content, which these ASCII logs are not — is the one case this skips
+ * that `readText` might have managed.)
+ */
+const MAX_COPILOT_PROCESS_LOG_BYTES = 536_870_888;
+
+/**
+ * Resolutions already paid for, keyed by the filesystem port that produced them so
+ * two sources (or two tests) sharing a home directory can never read each other's
+ * answer. Keeps a second extraction in the same process from re-walking the dir.
+ */
+const processLogMemo = new WeakMap<FsPort, Map<string, string | null>>();
+
+/**
+ * Locate the process log whose contents reference this session id.
+ *
+ * Ordered NEWEST-FIRST and stopped at the first match, because the log carrying a
+ * live session is by definition the one Copilot is still appending to — so the
+ * answer is normally the first candidate, and the directory's dead weight is never
+ * touched. This replaced a full `readText` sweep of every `process-*.log`, which
+ * cost ~8.8 s on EVERY harness command from a Copilot seat (including every
+ * `git commit`, via the post-commit hook) on a 15.25 GB log directory.
+ *
+ * Correctness is unchanged: the same predicate over the same candidate set, only
+ * visited in a better order and bounded by a ceiling that excludes exclusively
+ * files that could not have matched anyway.
+ */
 function findProcessLog(src: HarnessSource, home: string, sessionId: string): string | null {
   const dir = copilotLogsDir(home);
-  for (const name of src.fs.readdir(dir)) {
-    if (!name.startsWith('process-') || !name.endsWith('.log')) continue;
-    const content = src.fs.readText(`${dir}/${name}`);
-    if (content?.includes(sessionId)) return content;
+  const key = `${dir}\u0000${sessionId}`;
+  let memo = processLogMemo.get(src.fs);
+  if (memo === undefined) {
+    memo = new Map();
+    processLogMemo.set(src.fs, memo);
+  }
+  const memoized = memo.get(key);
+  if (memoized !== undefined) return memoized;
+
+  const found = scanProcessLogs(src, dir, sessionId);
+  memo.set(key, found);
+  return found;
+}
+
+function scanProcessLogs(src: HarnessSource, dir: string, sessionId: string): string | null {
+  const candidates = src.fs
+    .readdir(dir)
+    .filter((name) => name.startsWith('process-') && name.endsWith('.log'))
+    .map((name) => `${dir}/${name}`)
+    // `mtimeMs` is a stat, not a read — cheap enough to pay for all candidates in
+    // exchange for reading, typically, exactly one of them.
+    .map((path) => ({ path, mtime: src.fs.mtimeMs(path) ?? 0 }))
+    // Path breaks mtime ties so the choice is deterministic rather than
+    // filesystem-order dependent.
+    .sort((a, b) => b.mtime - a.mtime || (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
+
+  for (const { path } of candidates) {
+    const read = src.fs.readTextFileNoFollow(dir, path, MAX_COPILOT_PROCESS_LOG_BYTES);
+    if (read.status !== 'ok') continue;
+    if (read.text.includes(sessionId)) return read.text;
   }
   return null;
 }
