@@ -1,0 +1,21 @@
+docs/plans/073-gitai-collector-v1/assets/reviews/phase-1-review.md
+  s_36aebbd614216e::t_ef2d841cc4d63e 57-58
+  s_36aebbd614216e::t_eb3431c67ef023 109-198
+  s_36aebbd614216e::t_ba8fa317af2360 1-56,59-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "94960854b3bc46450fa8bb85c76c3ba1a7421161",
+  "prompts": {},
+  "sessions": {
+    "s_36aebbd614216e": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "0feea8cc-1ceb-4568-b00c-61125b37017a",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
