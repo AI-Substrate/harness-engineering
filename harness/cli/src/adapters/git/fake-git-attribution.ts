@@ -9,6 +9,13 @@ export interface FakeCommitCall {
 /** Seed state for {@link FakeGitAttribution}. Every field has an honest default. */
 export interface FakeGitAttributionState {
   trace2Target?: string | null;
+  /**
+   * This repository's identity — the git COMMON dir. Defaults to `/repo/.git`,
+   * matching the `/repo` cwd every attribution test uses, so a sidecar sha
+   * recorded by one fake repo reads as FOREIGN to a fake with a different value
+   * (review round 2's two-repository regression).
+   */
+  commonDir?: string | null;
   /** Paths reported as staged. Defaults to one path, so `commit` has something to do. */
   staged?: string[];
   /** Shas that already carry a `refs/notes/ai` note. */
@@ -62,6 +69,11 @@ export class FakeGitAttribution implements GitAttributionPort {
   globalTrace2Target(): string | null {
     this.calls.push('globalTrace2Target');
     return this.state.trace2Target ?? null;
+  }
+
+  gitCommonDir(): string | null {
+    this.calls.push('gitCommonDir');
+    return this.state.commonDir === undefined ? '/repo/.git' : this.state.commonDir;
   }
 
   stage(pathspecs: readonly string[]): CommitResult {

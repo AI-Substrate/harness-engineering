@@ -187,3 +187,54 @@ None.
 ### Handback
 
 Fixes go back through the implement verb (same flags), then re-run this review.
+
+---
+
+## Round 2 — fix commit `9b30835e`
+
+**Verdict: FIX_REQUIRED**
+
+| Finding | Status | Evidence |
+|---|---|---|
+| F001 | CLOSED | `commitShasIn()` reads only the sidecar; the revert-message test proves the foreign SHA is never looked up. |
+| F002 | CLOSED | Every invocation enumerates `segment-*.jsonl`; prior retained segments force `retained` with retry guidance, while the clean-directory control remains `no-buffer`. |
+| F003 | NOT CLOSED | The stated prerequisite order is correct, but becomes unexecutable after the F005 containment change: after reconfiguring to `af_unix`, `resolveBuffer()` rejects the old out-of-repo file target as `buffer-refused`. |
+| F004 | CLOSED | Only absolute paths classify as `file`; disabled, descriptor, and relative forms take the harness-buffered branch. |
+| F005 | CLOSED WITH COUPLED DEFECT | Relative paths resolve under the repo; unsafe paths are refused and filesystem failures degrade. Its live-target containment rule causes the F003 recovery failure above. |
+| F006 | CLOSED | `SocketOverrides` injects a probe into the report path; the `GIT_CONFIG_GLOBAL` test proves the fake receives the forced `af_unix` probe. |
+| F007 | CLOSED | A successful commit with unreadable `HEAD` yields a degraded, non-rerunnable `shaUnknown` outcome; real Git failures still error. |
+
+### New regression — shared file-target sidecar poisons other repositories
+
+`globalTrace2Target()` reads a machine-global absolute file target, while
+`recordBufferedSha()` appends every repository's SHA to the single
+`<target>.shas` sidecar (`commit-service.ts:153-161, 306-327`). Nudge confirms
+those SHAs using the current repository's `git notes`; commits from another
+repository cannot be resolved there and remain missing forever. The segment is
+therefore retained and reports unrelated commits as unattributed. Scope the
+file-target sidecar by repository (or ignore foreign-object entries) and add a
+two-repository regression test.
+
+### Required repair
+
+Make the post-reconfiguration file-target drain both **authorized** and
+repository-scoped. The recovery identity must survive switching
+`trace2.eventTarget` from `file` to `af_unix` without trusting arbitrary paths,
+and a shared global target must not mix SHA confirmation sets across
+repositories. Cover the composed reconfigure-then-drain path and two
+repositories using one target.
+
+### Dim-0 evidence
+
+- Replaced the live segment's sidecar identity with `null`; the nudge suite went
+  **RED** with 11 failures, including the F001 foreign-SHA regression.
+- Bypassed the post-run segment enumeration; the nudge suite went **RED** with
+  4 failures, including retained-segment visibility and failed-delete reporting.
+- Both mutations were restored. The focused restored suite passed: 95 tests
+  across nudge, ingress, commit-service, and doctor-act.
+
+### Gate evidence
+
+- Complete plan validation: 0 errors, 0 warnings, 0 open items.
+- `just checks`: completed at the recorded non-blocking baseline: arch 2,
+  markdown 196, Windows 6.

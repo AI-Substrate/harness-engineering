@@ -8,6 +8,7 @@ import {
 } from '../../../../src/adapters/net/fake-socket-probe.js';
 import type { ProbeOutcome } from '../../../../src/adapters/net/socket-probe-port.js';
 import { FakeProcess } from '../../../../src/adapters/process/fake-process.js';
+import { type CommitDeps, harnessCommit } from '../../../../src/services/commit/commit-service.js';
 import { readIngress } from '../../../../src/services/doctor/collector/ingress.js';
 import {
   commitShasIn,
@@ -233,7 +234,13 @@ describe('plan 074 · ac-0006 — delete ONLY when every named sha is confirmed'
     expect(out.recovered).toEqual([SHA_A]);
     expect(out.stillMissing).toEqual([SHA_B]);
     expect(out.retained).toEqual([
-      { path: SEGMENT, stillMissing: [SHA_B], recovered: [SHA_A], reason: 'partial' },
+      {
+        path: SEGMENT,
+        stillMissing: [SHA_B],
+        recovered: [SHA_A],
+        handedOff: [],
+        reason: 'partial',
+      },
     ]);
     // The retained file is the WHOLE original stream — no partial rewrite.
     expect(fs.readText(SEGMENT)).toBe(payload());
@@ -482,7 +489,7 @@ describe('plan 074 · ac-0006 — F002: EVERY remaining segment is enumerated, e
 
     expect(out.status).toBe('retained');
     expect(out.retained).toEqual([
-      { path: OLD, stillMissing: [SHA_B], recovered: [], reason: 'partial' },
+      { path: OLD, stillMissing: [SHA_B], recovered: [], handedOff: [], reason: 'partial' },
     ]);
     expect(out.next_action).toContain(`--buffer ${OLD}`);
     // Nothing was replayed, and the old segment is untouched.
@@ -522,7 +529,7 @@ describe('plan 074 · ac-0006 — F002: EVERY remaining segment is enumerated, e
     const out = await telemetryNudge(d);
 
     expect(out.retained).toEqual([
-      { path: OLD, stillMissing: [], recovered: [], reason: 'unconfirmable' },
+      { path: OLD, stillMissing: [], recovered: [], handedOff: [], reason: 'unconfirmable' },
     ]);
   });
 
@@ -640,5 +647,269 @@ describe('plan 074 · ac-0006 — F005: --buffer is RESOLVED, CONTAINED, and nev
     expect(out.recovered).toEqual([SHA_A]);
     expect(out.status).toBe('retained');
     expect(out.retained.map((r) => r.path)).toContain(SEGMENT);
+  });
+});
+
+/**
+ * Review round 2 — one root cause, two symptoms.
+ *
+ * A `file` trace2 target is MACHINE-GLOBAL: `trace2.eventTarget` is read from
+ * global config only, so the buffer and its sidecar live outside the repository
+ * and are shared by every repo on the box. Two mechanisms assumed the opposite.
+ */
+describe('plan 074 · ac-0005/ac-0006 — R2: the buffer is machine-global, not repo-local', () => {
+  const TARGET_DIR = '/var/tmp/trace2';
+  const TARGET = `${TARGET_DIR}/agent.jsonl`;
+  const TARGET_SEGMENT = `${TARGET_DIR}/${SEGMENT_NAME}`;
+  const REPO_A = '/repoA';
+  const REPO_B = '/repoB';
+  const ID_A = `${REPO_A}/.git`;
+  const ID_B = `${REPO_B}/.git`;
+
+  /** `harnessCommit` deps for a repo at `cwd`, sharing one filesystem. */
+  function commitDeps(cwd: string, git: FakeGitAttribution, fs: FakeFs, ing: never): CommitDeps {
+    return {
+      git,
+      ingress: ing,
+      fs,
+      proc: new FakeProcess({ node: '/usr/bin/node' }, cwd),
+      clock: new FakeClock(NOW),
+      sleep: () => Promise.resolve(),
+      verifyTimeoutMs: 500,
+    };
+  }
+
+  /** `telemetryNudge` deps for a repo at `cwd`, sharing one filesystem. */
+  function nudgeDeps(
+    cwd: string,
+    git: FakeGitAttribution,
+    fs: FakeFs,
+    ing: Awaited<ReturnType<typeof ingress>>,
+    bufferPath: string,
+  ): NudgeDeps & { relay: FakeSocketRelay } {
+    const relay = new FakeSocketRelay();
+    return {
+      fs,
+      relay,
+      git,
+      proc: new FakeProcess({ node: '/usr/bin/node' }, cwd),
+      clock: new FakeClock(NOW),
+      ingress: ing,
+      bufferPath,
+      sleep: () => Promise.resolve(),
+      confirmTimeoutMs: 500,
+    };
+  }
+
+  it('F003 — reconfigure THEN drain actually works: the recorded target is authorized', async () => {
+    // The composed path the file branch prescribes, end to end. Pre-fix it was
+    // unexecutable: containment only authorized the CURRENTLY configured file
+    // target, so the moment step 2 pointed trace2 back at the socket, step 3 was
+    // refused as `buffer-refused` — the verb rejected the exact path it had just
+    // told the operator to drain.
+
+    // 1. A commit while trace2.eventTarget names a plain FILE outside the repo.
+    const fs = new FakeFs();
+    const git = new FakeGitAttribution({ commitSha: SHA_A, commonDir: `${REPO}/.git` });
+    const fileIngress = (await ingress('connected', TARGET)) as never;
+    const commit = await harnessCommit(commitDeps(REPO, git, fs, fileIngress), 'msg', ['a.ts']);
+    expect(commit.mode).toBe('file-buffered');
+    // It wrote BOTH records: which commit the target covers, and that this repo
+    // buffered into that path at all.
+    expect(fs.readText(`${TARGET}.shas`)).toBe(`${SHA_A} ${REPO}/.git\n`);
+    expect(fs.readText(`${REPO}/.harness/temp/trace2/known-targets`)).toBe(`${TARGET}\n`);
+
+    // git wrote its events there while the commit ran.
+    fs.mkdirp(TARGET_DIR);
+    fs.writeText(TARGET, payload());
+
+    // 2. The prescribed reconfiguration: the live target is now the socket, and
+    //    TARGET is no longer named by git config anywhere.
+    const socketIngress = await ingress('connected');
+    expect(socketIngress.target.kind).toBe('af_unix');
+
+    // 3. The drain.
+    const drainGit = new FakeGitAttribution({
+      commonDir: `${REPO}/.git`,
+      notesAfterDelay: [SHA_A],
+    });
+    const d = nudgeDeps(REPO, drainGit, fs, socketIngress, TARGET);
+    const out = await telemetryNudge(d);
+
+    expect(out.reason).toBeUndefined();
+    expect(out.status).toBe('replayed');
+    expect(out.segment).toBe(TARGET_SEGMENT);
+    expect(out.recovered).toEqual([SHA_A]);
+    expect(d.relay.sends.map((s) => s.payload)).toEqual([payload()]);
+    // Confirmed in full, so the segment and its sidecar are gone.
+    expect(fs.exists(TARGET_SEGMENT)).toBe(false);
+    expect(fs.exists(`${TARGET_SEGMENT}.shas`)).toBe(false);
+  });
+
+  it('F005 — the containment guard is NOT weakened: an unrecorded path is still refused', async () => {
+    // Authorizing by RECORD must not become "any absolute path is fine now".
+    // A repo with a perfectly good recorded target still refuses a path nothing
+    // ever wrote down.
+    const fs = new FakeFs();
+    fs.mkdirp(`${REPO}/.harness/temp/trace2`);
+    fs.writeText(`${REPO}/.harness/temp/trace2/known-targets`, `${TARGET}\n`);
+    fs.writeText('/etc/passwd', 'root:x:0:0\n');
+    const d = deps({
+      fs,
+      ingress: await ingress('connected'),
+      bufferPath: '/etc/passwd',
+    });
+
+    const out = await telemetryNudge(d);
+
+    expect(out.status).toBe('skipped');
+    expect(out.reason).toBe('buffer-refused');
+    expect(fs.renames).toEqual([]);
+    expect(fs.deletes).toEqual([]);
+    expect(fs.readText('/etc/passwd')).toBe('root:x:0:0\n');
+    expect(d.relay.sends).toEqual([]);
+  });
+
+  /**
+   * Two repositories, one machine-global file target, one shared sidecar.
+   *
+   * Pre-fix the nudge confirmed EVERY sha in that sidecar against the current
+   * repo's `refs/notes/ai`. Another repository's commit cannot resolve there —
+   * the object is not in this object store — so it was reported missing forever,
+   * the segment was retained forever, and unrelated commits showed up as
+   * unattributed in a repo that never made them.
+   */
+  for (const [label, mine, theirs, myId, theirId, mySha, theirSha] of [
+    ['repo A drains', REPO_A, REPO_B, ID_A, ID_B, SHA_A, SHA_B],
+    ['repo B drains', REPO_B, REPO_A, ID_B, ID_A, SHA_B, SHA_A],
+  ] as const) {
+    it(`R2 — two repos share one target: ${label}, confirms only its own, and terminates`, async () => {
+      const fs = new FakeFs();
+      const fileIngress = (await ingress('connected', TARGET)) as never;
+
+      // Both repos commit through the same machine-global file target.
+      await harnessCommit(
+        commitDeps(
+          REPO_A,
+          new FakeGitAttribution({ commitSha: SHA_A, commonDir: ID_A }),
+          fs,
+          fileIngress,
+        ),
+        'a',
+        ['a.ts'],
+      );
+      await harnessCommit(
+        commitDeps(
+          REPO_B,
+          new FakeGitAttribution({ commitSha: SHA_B, commonDir: ID_B }),
+          fs,
+          fileIngress,
+        ),
+        'b',
+        ['b.ts'],
+      );
+      expect(fs.readText(`${TARGET}.shas`)).toBe(`${SHA_A} ${ID_A}\n${SHA_B} ${ID_B}\n`);
+
+      fs.mkdirp(TARGET_DIR);
+      fs.writeText(TARGET, payload());
+
+      // One of them drains, after the prescribed reconfiguration to the socket.
+      // Only ITS OWN commit ever gains a note here — the other repo's cannot.
+      const git = new FakeGitAttribution({ commonDir: myId, notesAfterDelay: [mySha] });
+      const d = nudgeDeps(mine, git, fs, await ingress('connected'), TARGET);
+
+      const out = await telemetryNudge(d);
+
+      // The WHOLE segment was replayed — the daemon attributes each commit in
+      // its own repo, so replaying a foreign event is correct, not a leak.
+      expect(d.relay.sends.map((s) => s.payload)).toEqual([payload()]);
+      // Only this repo's sha is confirmed…
+      expect(out.recovered).toEqual([mySha]);
+      // …and the other repo's is NEVER accused.
+      expect(out.stillMissing).toEqual([]);
+      expect(out.retained).toEqual([]);
+      expect(out.handedOff).toEqual([{ sha: theirSha, repo: theirId }]);
+      expect(out.detail).toContain(theirId);
+      expect(out.detail).toContain('handed off');
+      // The other repo's sha was never even looked up here.
+      expect(git.calls).not.toContain(`hasAiNote:${theirSha}`);
+      // The lifecycle TERMINATES: nothing is retained on a foreign sha.
+      expect(out.status).toBe('replayed');
+      expect(fs.exists(TARGET_SEGMENT)).toBe(false);
+      expect(fs.exists(`${TARGET_SEGMENT}.shas`)).toBe(false);
+      // Not the repo running the drain — so `${theirs}` never appears as an
+      // owner of anything this run claims.
+      expect(out.recovered).not.toContain(theirSha);
+      expect(theirs).not.toBe(mine);
+    });
+  }
+
+  it('R2 — a segment whose every commit is foreign is enumerated as handed off, never retained', async () => {
+    // The leftover shape: another repo rotated a segment and left it. This repo
+    // must NAME it without owning it — flipping to `retained` here would be the
+    // same false alarm, one invocation later.
+    const fs = new FakeFs({}, { [TARGET_DIR]: [SEGMENT_NAME] });
+    fs.mkdirp(TARGET_DIR);
+    fs.writeText(TARGET_SEGMENT, payload());
+    fs.writeText(`${TARGET_SEGMENT}.shas`, `${SHA_B} ${ID_B}\n`);
+    fs.writeText(`${REPO_A}/.harness/temp/trace2/known-targets`, `${TARGET}\n`);
+    const git = new FakeGitAttribution({ commonDir: ID_A });
+    const d = nudgeDeps(REPO_A, git, fs, await ingress('connected'), TARGET);
+
+    const out = await telemetryNudge(d);
+
+    expect(out.status).toBe('skipped');
+    expect(out.reason).toBe('no-buffer');
+    expect(out.retained).toEqual([
+      {
+        path: TARGET_SEGMENT,
+        stillMissing: [],
+        recovered: [],
+        handedOff: [{ sha: SHA_B, repo: ID_B }],
+        reason: 'handed-off',
+      },
+    ]);
+    expect(out.detail).toContain('belong to other repositories');
+    // No retry pointer at a segment this repo cannot clear, and nothing touched.
+    expect(out.next_action).toBeUndefined();
+    expect(fs.renames).toEqual([]);
+    expect(fs.deletes).toEqual([]);
+  });
+
+  it('R2 — a pre-identity sidecar is read by LOCATION: repo-local is ours, global is not', async () => {
+    // Entries written before identity was recorded carry no repo. Guessing
+    // either way is wrong, so location decides: a sidecar inside this repository
+    // was written by it; a machine-global one could belong to anybody.
+    const fs = new FakeFs({}, { [TARGET_DIR]: [SEGMENT_NAME] });
+    fs.mkdirp(TARGET_DIR);
+    fs.writeText(TARGET_SEGMENT, payload());
+    fs.writeText(`${TARGET_SEGMENT}.shas`, sidecarNaming(SHA_B));
+    fs.writeText(`${REPO_A}/.harness/temp/trace2/known-targets`, `${TARGET}\n`);
+    const git = new FakeGitAttribution({ commonDir: ID_A });
+    const d = nudgeDeps(REPO_A, git, fs, await ingress('connected'), TARGET);
+
+    const out = await telemetryNudge(d);
+
+    expect(out.retained[0]?.reason).toBe('handed-off');
+    expect(out.retained[0]?.handedOff).toEqual([{ sha: SHA_B, repo: null }]);
+    expect(git.calls).not.toContain(`hasAiNote:${SHA_B}`);
+    expect(out.detail).toContain('belong to other repositories');
+    expect(out.detail).not.toContain(SHA_B);
+
+    // The other half of the same rule: an untagged sidecar INSIDE the repo is
+    // this repository's own — that is the pre-identity `.harness/temp/trace2/`
+    // case, and reading it as foreign would stop confirming commits we made.
+    const localFs = new FakeFs();
+    localFs.mkdirp(`${REPO}/.harness/temp/trace2`);
+    localFs.writeText(BUFFER, payload());
+    localFs.writeText(SIDECAR, sidecarNaming(SHA_A));
+    const localGit = new FakeGitAttribution({ notesAfterDelay: [SHA_A] });
+    const local = await telemetryNudge(
+      deps({ fs: localFs, git: localGit, ingress: await ingress('connected') }),
+    );
+
+    expect(local.status).toBe('replayed');
+    expect(local.recovered).toEqual([SHA_A]);
+    expect(local.handedOff).toEqual([]);
   });
 });

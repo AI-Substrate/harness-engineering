@@ -387,6 +387,13 @@ are what fall into the sandbox. It probes first, then:
 - **anything else** → commits with trace2 buffered to a file under the gitignored
   `.harness/temp/`, and names both that buffer and the recovery command.
 
+When the configured target is already a plain file, `harness commit` writes two
+records beside its work: the commit sha **tagged with this repository's identity**
+in a `<target>.shas` sidecar, and the target path itself in the repo-local
+`.harness/temp/trace2/known-targets`. The first is what lets a later drain
+confirm *only* this repo's commits out of a machine-global buffer; the second is
+what lets the drain touch that path at all after the prescribed reconfiguration.
+
 Only an **absolute path** counts as a file target. git's disabled forms (`0`,
 `false`), its stderr/fd forms (`1`, `2`, `true`, `3`–`9`) and any relative path
 send no drainable events at all, so they take the buffered branch rather than
@@ -413,18 +420,31 @@ live traffic. Its lifecycle is deliberate:
    a byte is read, so a concurrent `git` can never race a truncation.
 2. **Replay the whole segment** — the daemon reconstructs state from the event
    stream, so a filtered replay is a corrupted story.
-3. **Delete only on full confirmation** — the segment goes only when *every*
-   commit its **sidecar** names carries a note. Identity comes from the sidecar
-   `harness commit` writes and from nowhere else: git's trace2 stream names no
-   commit sha, and its `start` event carries git's own argv, so scanning the
-   payload would let a `Revert <sha>` message enrol an unrelated historical
-   commit. A partly-confirmed segment is **retained intact** (never partially
-   rewritten) and listed for an explicit retry; a segment with no sidecar is
+3. **Delete only on full confirmation — of *this repository's* commits** — the
+   segment goes only when every commit its **sidecar** names *and this repository
+   owns* carries a note. Identity comes from the sidecar `harness commit` writes
+   and from nowhere else: git's trace2 stream names no commit sha, and its
+   `start` event carries git's own argv, so scanning the payload would let a
+   `Revert <sha>` message enrol an unrelated historical commit. A
+   partly-confirmed segment is **retained intact** (never partially rewritten)
+   and listed for an explicit retry; a segment with no sidecar is
    `unconfirmable` and is kept, never deleted on a vacuous confirmation.
-4. **Enumerate every run** — nothing carries state between invocations, so each
+4. **Foreign commits are handed off, never accused** — a `file` target is
+   machine-global, so one buffer collects commits from *every* repository on the
+   box. Each sidecar line therefore records the **git common dir** that made the
+   commit (the common dir, not the worktree root, because `refs/notes/ai` is
+   shared across linked worktrees — so a sibling worktree's commit is genuinely
+   confirmable here). Foreign entries are replayed with the rest (the daemon
+   attributes each commit in its own repo), but they are never confirmed here —
+   `git notes` cannot resolve another repo's commit, so "still missing a note"
+   would be a structural impossibility reported as a finding. They are reported
+   as *replayed and handed off*, they never appear as unattributed commits in
+   this repo, and they never block deletion.
+5. **Enumerate every run** — nothing carries state between invocations, so each
    run lists `segment-*.jsonl` beside the buffer and reports **every** one still
-   on disk with a retry pointer. A run that leaves any segment behind is
-   `retained`, never a healthy "no buffer, nothing to do".
+   on disk with a retry pointer. A run that leaves any segment *this repository
+   still owes* is `retained`, never a healthy "no buffer, nothing to do". A
+   segment whose commits are all another repository's is named, not owned.
 
 v1 **never automatically re-replays** a retained segment. A live-daemon spike did
 find duplicate replay to be idempotent — notes came back byte-identical and the
@@ -440,14 +460,20 @@ unreachable it **does not rotate**, because rotating would cost the buffer for
 nothing.
 
 `--buffer` is resolved against the repo and **contained**: this verb renames and
-can delete what it is handed, so it accepts only a path inside the repository or
-one beside the trace2 file target your own git config names. Anything else is
-refused, untouched.
+can delete what it is handed, so it accepts only three roots — a path inside the
+repository, one beside the trace2 file target your git config names *right now*,
+or one beside a file target **the harness itself recorded** buffering into
+(`.harness/temp/trace2/known-targets`, gitignored). Anything else is refused,
+untouched. The third root is authorization **by record**, not by shape: an
+arbitrary absolute path is still refused, because nothing wrote it down.
 
 When `trace2.eventTarget` names a **plain file**, the drain is a *two-step* and
 the order is load-bearing: point the target back at the git-ai socket first —
 while it names a file there is no ingress to replay into, so the nudge would
-simply skip — then run it with `--buffer <that file>`.
+simply skip — then run it with `--buffer <that file>`. The recorded-target root
+is what makes that second step *executable*: once the reconfiguration lands, the
+old file is no longer the configured target, and only the harness's own record
+still vouches for it.
 
 ### What is and is not promised
 

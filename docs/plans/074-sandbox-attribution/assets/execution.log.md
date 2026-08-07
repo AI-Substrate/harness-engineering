@@ -192,3 +192,60 @@ One incidental find: `npm run lint` reports 10 biome **warnings** at `HEAD` that
 this plan (`acts/plan/index.ts`, `acts/plan/pr-body.ts`, two telemetry tests). They are
 warn-severity, so `biome check` exits 0 and the gate is green — they are recorded here,
 not fixed, because they are unrelated to this plan.
+
+---
+
+## Fix round 2 — review `assets/reviews/phase-1-review.md` § Round 2 (FIX_REQUIRED)
+
+Round 2 closed F001, F002, F004, F006 and F007. It left **F003 not closed**, a **coupled
+defect in the otherwise-correct F005 guard**, and found a **new cross-repo regression** —
+and all three are one root cause:
+
+> **A `file` trace2 target is MACHINE-GLOBAL. Two mechanisms assumed it was repo-local.**
+
+`trace2.eventTarget` is read from *global* git config only (dossier F-08), so a file target
+is an absolute path outside the repository, shared by every repo on the box. Round 1 fixed
+the two mechanisms independently and each one quietly assumed ownership of that path.
+
+| # | what was wrong | what changed | the guarding test |
+|---|---|---|---|
+| F003 | The ordering advice ("reconfigure FIRST, then drain") was correct but **unexecutable**: the instant `trace2.eventTarget` is pointed back at the socket, the old file is no longer the *configured* target, and round 1's containment rule authorized only the configured one. The verb refused the exact path it had just told the operator to drain — `buffer-refused`. | **Authorize by RECORD.** `harness commit`'s file branch now writes the target path into repo-local, gitignored `.harness/temp/trace2/known-targets`. `resolveBuffer()` authorizes three roots: inside the repo, the *currently configured* file target, or a *harness-recorded* one. The path is trusted because **the harness wrote it down**, never because a caller supplied it. | `nudge.test.ts` — "F003 — reconfigure THEN drain actually works": the composed path end to end (file-target commit → records path + tagged sidecar → reconfigure to `af_unix` → nudge drains the external target, confirms, and deletes). `commit-service.test.ts` — the ledger is written, deduped, and written even when the sha is unknown. |
+| F005 (coupled) | The containment guard itself is right and stays; its *two-root* rule is what made F003's remedy unreachable. | Widened by **one authorized source**, not by shape. An arbitrary out-of-repo path is still refused with zero renames and zero deletes. | `nudge.test.ts` — "F005 — the containment guard is NOT weakened": a repo *with* a valid recorded target still refuses `/etc/passwd`. |
+| new | **Cross-repo sidecar poisoning.** `<target>.shas` accumulated every repo's shas. The nudge confirmed all of them against *this* repo's `refs/notes/ai`, where another repo's commit cannot resolve at all — so it read as "still missing a note" forever, the segment was retained forever, and unrelated commits were reported as unattributed here. | **Scope confirmation by repository; replay stays whole.** Sidecar lines are now `<sha> <git-common-dir>`. The nudge replays the **whole** segment (the daemon attributes each commit in its own repo — replaying a foreign event is correct, not a leak), confirms **only** this repo's shas, and reports the rest as *replayed and handed off*, naming the owning repo. Foreign entries never appear as missing and never block deletion. | `nudge.test.ts` — "two repos share one target" (run **both ways**: each repo confirms only its own sha, never looks the other's up, `handedOff` names the owner, and the segment is deleted so the lifecycle terminates), plus the leftover-segment and pre-identity variants. |
+
+### Decisions taken in this round
+
+- **Repo identity is the git COMMON dir, not the worktree root.** `git rev-parse
+  --git-common-dir` resolves to the *main* repository's `.git` for every linked worktree,
+  and `refs/notes/ai` lives there — shared by all of them. So a commit made in one worktree
+  genuinely **is** confirmable from a sibling worktree, and the common dir is exactly the
+  boundary of "shas this process can check". The worktree root would split one repository
+  into several false identities and make sibling-worktree commits look foreign — inventing
+  the very bug this fix removes. Read with `--path-format=absolute` (git 2.31+) so the same
+  repo never reads as two identities depending on cwd; older git falls back to the bare read
+  resolved against cwd rather than reporting a wrong identity.
+- **Deletion rule: every OWN sha confirms, and no own sha remains unconfirmed.** A segment
+  whose commits are *all* foreign is deleted after a successful replay. This is **not** the
+  vacuous confirmation the no-sidecar branch still refuses: there, identity is *unknown*;
+  here it is known precisely, and known not to be ours. Retaining instead would let foreign
+  entries block deletion forever and make every later run in this repo report a segment it
+  structurally cannot clear — the same false alarm, one invocation later.
+- **A pre-identity (untagged) sidecar entry is read by LOCATION, not by a guess.** A sidecar
+  *inside* the repository was written by it — that is the existing `.harness/temp/trace2/`
+  case and it is correct, so every round-1 test keeps passing untouched. A machine-global
+  one could belong to anybody, so it is handed off rather than claimed. Guessing "ours"
+  there would re-create the accusation bug for legacy files; guessing "theirs" for the local
+  buffer would stop confirming commits we really made.
+- **`handed-off` does not flip the status.** `withRemainingSegments` lists a foreign segment
+  but does not count it as unrecovered. Naming it is honest; owning it is not.
+
+### Gate after the fix round
+
+```
+just checks → tests:ok biome:ok typecheck:ok check:docs:ok check:flows:ok
+              check:telemetry-fixtures:ok check:doctrine-parity:ok check:dd-docs:ok
+              root-invocation-smoke:ok dd doctor:ok skills-check:ok
+              arch-check:2  markdown-lint:196  windows-check:6      ← baseline, unchanged
+```
+
+Tests: **4967 → 4976 passing**, 339 files, no skips.

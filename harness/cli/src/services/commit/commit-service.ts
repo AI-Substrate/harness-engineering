@@ -79,6 +79,35 @@ export const TRACE2_SHAS_SUFFIX = '.shas';
 export const TRACE2_SHAS_FILE = `${TRACE2_BUFFER_FILE}${TRACE2_SHAS_SUFFIX}`;
 
 /**
+ * The repo-local ledger of every FILE trace2 target this harness has committed
+ * into (review round 2 · direction A).
+ *
+ * `trace2.eventTarget` is read from GLOBAL config only, so a `file` target is a
+ * MACHINE-GLOBAL absolute path outside the repository. The nudge's containment
+ * guard — correctly — refuses to rename or delete an arbitrary path handed to
+ * `--buffer`. But the recovery `harness commit` prescribes is "reconfigure to
+ * the socket FIRST, then drain the old file", and the instant the reconfigure
+ * lands the live target is no longer that file, so containment refused the very
+ * path it had just told the operator to drain. The advice was unexecutable.
+ *
+ * The fix is not to widen the guard to "any absolute path" — that would give the
+ * guard away. It is to authorize by RECORD: the harness writes down the target
+ * it buffered into, and the nudge later trusts THAT because the harness itself
+ * wrote it, not because a caller asked nicely. One absolute POSIX path per line.
+ */
+export const TRACE2_TARGETS_FILE = 'known-targets';
+
+/** The gitignored directory the buffer, its sidecar, and the target ledger share. */
+export function trace2Dir(cwd: string): string {
+  return posixJoin(toPosix(cwd), HARNESS_DIR, TEMP_DIR, TRACE2_BUFFER_DIR);
+}
+
+/** Where {@link TRACE2_TARGETS_FILE} lives for a repo rooted at `cwd`. */
+export function knownTargetsPath(cwd: string): string {
+  return posixJoin(trace2Dir(cwd), TRACE2_TARGETS_FILE);
+}
+
+/**
  * The environment variable that REPLACES git's configured trace2 target.
  *
  * Named once, here, because "replaces" is the entire reason ac-0005's branches
@@ -134,8 +163,12 @@ export interface CommitDeps {
 
 /** Ensure the gitignored buffer directory exists and hand back the buffer path. */
 function bufferPath(deps: CommitDeps): string {
-  const cwd = toPosix(deps.proc.cwd());
-  const dir = posixJoin(cwd, HARNESS_DIR, TEMP_DIR, TRACE2_BUFFER_DIR);
+  return posixJoin(ensureTrace2Dir(deps), TRACE2_BUFFER_FILE);
+}
+
+/** Create the gitignored trace2 directory on first use and hand back its path. */
+function ensureTrace2Dir(deps: CommitDeps): string {
+  const dir = trace2Dir(deps.proc.cwd());
   if (!deps.fs.exists(dir)) deps.fs.mkdirp(dir);
   // Self-gitignore on first use, exactly as the shared temp guarantee does: the
   // buffer must be uncommittable even in a repo that never added the root rule.
@@ -143,20 +176,50 @@ function bufferPath(deps: CommitDeps): string {
   if (!deps.fs.exists(ignore)) {
     deps.fs.writeText(ignore, '# Buffered trace2 events — never committed.\n*\n');
   }
-  return posixJoin(dir, TRACE2_BUFFER_FILE);
+  return dir;
 }
 
 /**
- * Append `sha` to the buffer's sidecar. APPEND, because one buffer legitimately
- * accumulates several commits before anyone runs the nudge.
+ * Write down a FILE trace2 target this repository buffered into, so the nudge
+ * can still authorize draining it AFTER the prescribed reconfigure to `af_unix`
+ * has taken that path out of the live git config.
+ *
+ * Repo-local and gitignored: the record is this repository's own statement about
+ * a path it actually used, never a shared or user-supplied list.
+ */
+function recordFileTarget(deps: CommitDeps, target: string): void {
+  ensureTrace2Dir(deps);
+  const path = knownTargetsPath(deps.proc.cwd());
+  const existing = deps.fs.readText(path) ?? '';
+  const normalized = toPosix(target);
+  if (existing.split('\n').includes(normalized)) return;
+  deps.fs.writeText(
+    path,
+    `${existing}${existing.endsWith('\n') || existing === '' ? '' : '\n'}${normalized}\n`,
+  );
+}
+
+/**
+ * Append `sha` to the buffer's sidecar, TAGGED WITH THIS REPOSITORY'S IDENTITY.
+ *
+ * APPEND, because one buffer legitimately accumulates several commits before
+ * anyone runs the nudge — and, for a `file` target, commits from several
+ * REPOSITORIES, because that target is machine-global. That is the round 2
+ * regression: an untagged sidecar let every repo try to confirm every sha
+ * against its own `refs/notes/ai`, so another repository's commits could never
+ * resolve there, the segment was retained forever, and unrelated commits were
+ * reported as unattributed. The line format is `<sha> <git-common-dir>`; a bare
+ * sha is a pre-identity entry, read by LOCATION instead (see the nudge).
  */
 function recordBufferedSha(deps: CommitDeps, buffer: string, sha: string): void {
   const sidecar = `${buffer}${TRACE2_SHAS_SUFFIX}`;
+  const repo = deps.git.gitCommonDir();
+  const line = repo === null ? sha : `${sha} ${toPosix(repo)}`;
   const existing = deps.fs.readText(sidecar) ?? '';
-  if (existing.split('\n').includes(sha)) return;
+  if (existing.split('\n').includes(line)) return;
   deps.fs.writeText(
     sidecar,
-    `${existing}${existing.endsWith('\n') || existing === '' ? '' : '\n'}${sha}\n`,
+    `${existing}${existing.endsWith('\n') || existing === '' ? '' : '\n'}${line}\n`,
   );
 }
 
@@ -257,6 +320,10 @@ export async function harnessCommit(
     // operator to re-run and double-commit. So: honest DEGRADED, never an error,
     // and the buffer is left in place so its events are still recoverable.
     const fileTarget = deps.ingress.target.kind === 'file' ? deps.ingress.target.path : null;
+    // Even with no sha to record, WRITE THE TARGET DOWN: the segment is real and
+    // the operator will be told to drain it after reconfiguring, which only the
+    // record makes authorizable.
+    if (fileTarget !== null) recordFileTarget(deps, fileTarget);
     const written = buffer ?? fileTarget;
     return {
       ok: true,
@@ -307,7 +374,10 @@ export async function harnessCommit(
     const target = deps.ingress.target.path;
     // The sidecar goes beside the FILE TARGET too, not just the harness buffer.
     // Without it the eventual drain of that file could confirm nothing, and an
-    // unconfirmable segment is one the nudge must keep forever.
+    // unconfirmable segment is one the nudge must keep forever. The target path
+    // itself is recorded repo-locally so the nudge can still authorize draining
+    // it once `trace2.eventTarget` has been pointed back at the socket.
+    recordFileTarget(deps, target);
     recordBufferedSha(deps, target, result.sha);
     return {
       ok: true,

@@ -27,6 +27,8 @@ import { FakeCollectorFs } from '../../support/collector-fakes.js';
 
 const SOCK = '/home/u/.git-ai/internal/daemon/trace2.sock';
 const REPO = '/repo';
+/** The default {@link FakeGitAttribution} identity — this repo's git COMMON dir. */
+const REPO_ID = '/repo/.git';
 const SHA = 'a'.repeat(40);
 
 /** Every outcome ac-0001 defines, plus the non-socket target kinds. */
@@ -180,7 +182,12 @@ describe('plan 074 · ac-0005 — EVERY other outcome buffers under the harness 
     const git = new FakeGitAttribution({ commitSha: SHA });
     await harnessCommit({ ...deps(git, await socketIngress('denied')), fs }, 'msg', ['a.ts']);
 
-    expect(fs.readText(`${REPO}/.harness/temp/trace2/buffer.jsonl.shas`)).toBe(`${SHA}\n`);
+    // TAGGED with this repository's git common dir (review round 2): one
+    // machine-global buffer can collect commits from several repos, and only the
+    // repo that made a commit can confirm it.
+    expect(fs.readText(`${REPO}/.harness/temp/trace2/buffer.jsonl.shas`)).toBe(
+      `${SHA} ${REPO_ID}\n`,
+    );
   });
 
   it('APPENDS across several buffered commits, and never duplicates a sha', async () => {
@@ -193,7 +200,7 @@ describe('plan 074 · ac-0005 — EVERY other outcome buffers under the harness 
     await harnessCommit({ ...deps(second, ingress), fs }, 'two again', ['b.ts']);
 
     expect(fs.readText(`${REPO}/.harness/temp/trace2/buffer.jsonl.shas`)).toBe(
-      `${SHA}\n${'b'.repeat(40)}\n`,
+      `${SHA} ${REPO_ID}\n${'b'.repeat(40)} ${REPO_ID}\n`,
     );
   });
 
@@ -320,7 +327,54 @@ describe('plan 074 · ac-0005 — F003: the FILE-target recovery advice is execu
 
     // Without this the drained segment names no commit, so the nudge can only
     // report it `unconfirmable` and must keep it forever.
-    expect(fs.readText(`${target}.shas`)).toBe(`${SHA}\n`);
+    expect(fs.readText(`${target}.shas`)).toBe(`${SHA} ${REPO_ID}\n`);
+  });
+
+  it('RECORDS the file target repo-locally, so the drain is authorizable after the reconfigure', async () => {
+    // Review round 2: the drain runs AFTER `trace2.eventTarget` has been pointed
+    // back at the socket, so by then the nudge's containment guard no longer
+    // sees that path in git config. The path is authorized because the harness
+    // WROTE IT DOWN, not because a caller asked for it.
+    const fs = new FakeFs();
+    const git = new FakeGitAttribution({ commitSha: SHA });
+    const target = '/tmp/agent-trace2.jsonl';
+    await harnessCommit(depsWithFs(git, (await nonSocketIngress(target)) as never, fs), 'msg', [
+      'a.ts',
+    ]);
+
+    expect(fs.readText(`${REPO}/.harness/temp/trace2/known-targets`)).toBe(`${target}\n`);
+    // Repeated commits into the same target do not grow the ledger.
+    await harnessCommit(depsWithFs(git, (await nonSocketIngress(target)) as never, fs), 'two', [
+      'b.ts',
+    ]);
+    expect(fs.readText(`${REPO}/.harness/temp/trace2/known-targets`)).toBe(`${target}\n`);
+  });
+
+  it('records the file target even when the sha is UNKNOWN — the segment is still real', async () => {
+    // A successful commit whose HEAD could not be read still buffered events to
+    // that file. Skipping the record here would make the advice unexecutable
+    // again, in exactly the case the operator most needs it.
+    const fs = new FakeFs();
+    const git = new FakeGitAttribution({ headUnreadable: true });
+    const target = '/tmp/agent-trace2.jsonl';
+    const out = await harnessCommit(
+      depsWithFs(git, (await nonSocketIngress(target)) as never, fs),
+      'msg',
+      ['a.ts'],
+    );
+
+    expect(out.shaUnknown).toBe(true);
+    expect(fs.readText(`${REPO}/.harness/temp/trace2/known-targets`)).toBe(`${target}\n`);
+    // No sha to record, so no sidecar is invented.
+    expect(fs.exists(`${target}.shas`)).toBe(false);
+  });
+
+  it('writes NO target record on the harness-buffered branch — that buffer is repo-local', async () => {
+    const fs = new FakeFs();
+    const git = new FakeGitAttribution({ commitSha: SHA });
+    await harnessCommit(depsWithFs(git, await socketIngress('denied'), fs), 'msg', ['a.ts']);
+
+    expect(fs.exists(`${REPO}/.harness/temp/trace2/known-targets`)).toBe(false);
   });
 });
 

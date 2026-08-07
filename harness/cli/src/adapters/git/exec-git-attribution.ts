@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { isAbsolute, resolve as resolvePath } from 'node:path';
 import { GIT_MAX_BUFFER } from './exec-git-limits.js';
 import type { CommitResult, CommitWindow, GitAttributionPort } from './git-attribution-port.js';
 
@@ -51,6 +52,21 @@ export class ExecGitAttribution implements GitAttributionPort {
 
   globalTrace2Target(): string | null {
     return this.readLine(['config', '--global', '--get', 'trace2.eventTarget']);
+  }
+
+  /**
+   * `--path-format=absolute` because the bare form returns a RELATIVE `.git`
+   * from inside the main worktree, which would make the same repository read as
+   * two different identities depending on the cwd the command ran from. The flag
+   * needs git 2.31+, so an older git falls back to the bare read and resolves it
+   * against the process cwd rather than reporting a wrong identity.
+   */
+  gitCommonDir(): string | null {
+    const absolute = this.readLine(['rev-parse', '--path-format=absolute', '--git-common-dir']);
+    if (absolute !== null) return absolute;
+    const bare = this.readLine(['rev-parse', '--git-common-dir']);
+    if (bare === null) return null;
+    return isAbsolute(bare) ? bare : resolvePath(this.cwd ?? process.cwd(), bare);
   }
 
   stage(pathspecs: readonly string[]): CommitResult {

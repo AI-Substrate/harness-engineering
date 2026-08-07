@@ -58,6 +58,27 @@ export interface GitAttributionPort {
    */
   globalTrace2Target(): string | null;
 
+  /**
+   * The absolute GIT COMMON DIR — this repository's IDENTITY, or `null` outside
+   * a repo.
+   *
+   * It exists because a `file` trace2 target is MACHINE-GLOBAL (see
+   * {@link globalTrace2Target}), so one buffer — and one sha sidecar beside it —
+   * accumulates commits from EVERY repository on the box. Confirming those shas
+   * against the current repo's `refs/notes/ai` reports another repository's
+   * commits as unattributed forever (review round 2). So each recorded sha
+   * carries the repo that made it, and only this repo's shas are confirmed here.
+   *
+   * COMMON dir and not the worktree root, deliberately: `git rev-parse
+   * --git-common-dir` resolves to the MAIN repository's `.git` for every linked
+   * worktree, and `refs/notes/ai` lives there — shared by all of them. So a
+   * commit made in one worktree IS confirmable from a sibling worktree, and the
+   * common dir is exactly the boundary of "shas this process can check". The
+   * worktree root would split one repository into several false identities and
+   * make sibling-worktree commits look foreign.
+   */
+  gitCommonDir(): string | null;
+
   /** Stage EXPLICIT pathspecs. There is no `--all` form on this port, by design (tk-0006). */
   stage(pathspecs: readonly string[]): CommitResult;
 
