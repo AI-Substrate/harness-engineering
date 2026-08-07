@@ -1,0 +1,48 @@
+docs/plans/076-commit-guidance-convergence/plan.dd.json
+  s_17d65f429c4464::t_ac5e5c417d677e 17
+  s_17d65f429c4464::t_98a7b36bf7905d 57
+docs/plans/076-commit-guidance-convergence/assets/tasks/phase-1/tasks.dd.md
+  s_17d65f429c4464::t_98a7b36bf7905d 41,43
+harness/cli/test/services/instructions/commit-guidance.test.ts
+  s_17d65f429c4464::t_d41babb6f84058 291-320
+  s_17d65f429c4464::t_5948385db568a0 344-355
+  s_17d65f429c4464::t_63db55d3b5ba31 1
+docs/plans/076-commit-guidance-convergence/plan.dd.md
+  s_17d65f429c4464::t_ac5e5c417d677e 32,34
+  s_17d65f429c4464::t_98a7b36bf7905d 63
+docs/plans/076-commit-guidance-convergence/assets/tasks/phase-1/tasks.dd.json
+  s_17d65f429c4464::t_98a7b36bf7905d 62,81
+harness/cli/src/services/instructions/commit-guidance.ts
+  s_17d65f429c4464::t_154f7489f89d56 176-178,181-188,197-204
+  s_17d65f429c4464::t_e72264a3523808 28-29,34-37
+  s_17d65f429c4464::t_6083ad89bf81eb 32-33
+  s_17d65f429c4464::t_44672f189329e7 321
+docs/plans/076-commit-guidance-convergence/assets/reviews/phase-1-review.md
+  s_a3a6dd35a962d0::t_b9be775ace227a 232-271
+docs/plans/076-commit-guidance-convergence/assets/tasks/phase-1/execution.log.md
+  s_17d65f429c4464::t_1f2e4a2bfaa27d 388-462
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3ffa22839aa506a102dec36944ba4e4a474f17cd",
+  "prompts": {},
+  "sessions": {
+    "s_17d65f429c4464": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "525f6cb0-27f0-4852-afe9-9b27a51e10d0",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_a3a6dd35a962d0": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "bbb862ae-a19e-4724-9bb4-2b9404e14fbd",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
