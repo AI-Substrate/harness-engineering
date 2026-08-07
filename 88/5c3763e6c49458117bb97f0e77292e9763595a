@@ -1,0 +1,65 @@
+docs/plans/074-sandbox-attribution/assets/research-dossier.md
+  s_a76964380084ef::t_fa45393f9d9d1c 1-80
+docs/plans/074-sandbox-attribution/assets/research/01-sandbox-attribution-gap.md
+  s_a76964380084ef::t_966da1d602b56d 1-207
+docs/plans/074-sandbox-attribution/assets/research/02-brief-sandbox-detection.md
+  s_a76964380084ef::t_32595565eebd6a 1-211
+docs/plans/074-sandbox-attribution/assets/research/03-scratch-cursor-sandbox-investigation.md
+  s_a76964380084ef::t_2da90485019f7b 1-170
+docs/plans/074-sandbox-attribution/assets/research/04-scratch-workarounds-proven.md
+  s_a76964380084ef::t_3da72fe4bfe4db 1-136
+docs/plans/074-sandbox-attribution/assets/research/cursor-runs/CURSOR-RUN-3.md
+  s_a76964380084ef::t_1b7ee2e0c4621f 1-101
+docs/plans/074-sandbox-attribution/assets/research/cursor-runs/CURSOR-RUN-4.md
+  s_a76964380084ef::t_c354cf1973bf08 1-80
+docs/plans/074-sandbox-attribution/assets/research/cursor-runs/CURSOR-RUN-5.md
+  s_a76964380084ef::t_22b0c5760b49a0 1-63
+docs/plans/074-sandbox-attribution/assets/research/cursor-runs/CURSOR-RUN-6.md
+  s_a76964380084ef::t_129e78b2d23975 1-98
+docs/plans/074-sandbox-attribution/assets/research/cursor-runs/CURSOR-RUN-7.md
+  s_a76964380084ef::t_8f3421042c6e39 1-57
+docs/plans/074-sandbox-attribution/assets/research/cursor-runs/commit.mjs.txt
+  s_a76964380084ef::t_db6fb20e29e273 1-89
+docs/plans/074-sandbox-attribution/assets/research/cursor-runs/relay.mjs.txt
+  s_a76964380084ef::t_c234c15c0ec4d6 1-152
+docs/plans/074-sandbox-attribution/assets/research/cursor-runs/run-1.md
+  s_a76964380084ef::t_e507aeb6a6681c 1-137
+docs/plans/074-sandbox-attribution/assets/research/cursor-runs/run-4.md
+  s_a76964380084ef::t_c42c7fd1c0193f 1-178
+docs/plans/074-sandbox-attribution/assets/research/cursor-runs/run-5.md
+  s_a76964380084ef::t_acf778268136c5 1-165
+docs/plans/074-sandbox-attribution/assets/research/cursor-runs/run-6.md
+  s_a76964380084ef::t_4536ffa86106c0 1-54
+docs/plans/074-sandbox-attribution/assets/research/cursor-runs/run-7.md
+  s_a76964380084ef::t_3dfd8608752d7b 1-11
+docs/plans/074-sandbox-attribution/assets/tasks/phase-1/tasks.dd.json
+  s_a76964380084ef::t_4940958b32ff52 1-129
+docs/plans/074-sandbox-attribution/assets/tasks/phase-1/tasks.dd.md
+  s_a76964380084ef::t_6376801ba02b1e 1-55
+docs/plans/074-sandbox-attribution/original-ask.md
+  s_a76964380084ef::t_949d05389c50bc 1-15
+docs/plans/074-sandbox-attribution/plan.dd.json
+  s_a76964380084ef::t_afe63cd1b6b334 1-110
+docs/plans/074-sandbox-attribution/plan.dd.md
+  s_a76964380084ef::t_fd3cf203aeea80 1-76
+docs/plans/074-sandbox-attribution/the-flow.json
+  s_a76964380084ef::t_43179e9868e1b0 1-431
+docs/plans/074-sandbox-attribution/the-flow.md
+  s_a76964380084ef::t_f6ad1725b17e82 1-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "885c3763e6c49458117bb97f0e77292e9763595a",
+  "prompts": {},
+  "sessions": {
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
