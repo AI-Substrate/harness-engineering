@@ -520,9 +520,39 @@ never run it. Recovery happens only when it is explicitly invoked.
 
 ### Windows
 
-git's `af_unix` trace2 target is Unix-only, so on Windows the resolver simply
-never yields a socket to probe and the whole path is a platform-guarded no-op.
-Windows is *must-not-break* here, not *must-work*.
+git's `af_unix` trace2 target is Unix-only, so on Windows there is no socket for
+the resolver to yield and no ingress for `telemetry-nudge` to replay into.
+Windows is *must-not-break* here, not *must-work* — but the no-op is now
+**guarded explicitly rather than reached by accident** (plan 075).
+
+What that means concretely:
+
+- A **Windows named pipe** (`\\.\pipe\…`) resolves to its own target kind,
+  `named_pipe`, classified *before* the absolute-path test. It is a **live
+  ingress**, not a drainable buffer. Until plan 075 it matched the absolute-path
+  test — a pipe path begins with a separator — and was reported as a plain
+  `file`, so `harness commit` claimed the events were *buffered* to it, wrote a
+  `.shas` sidecar beside the pipe path, and pointed at a nudge that then refused
+  with "is a plain file". Four wrong statements from one misclassification.
+- A **legitimate UNC file target** (`\\server\share\trace.jsonl`) is unaffected
+  and still classifies as `file`. The pipe rule is a *split* of that case, not a
+  narrowing of it.
+- `harness commit` on a pipe target takes **neither** the file branch nor the
+  buffered branch: no `GIT_TRACE2_EVENT` override (overriding would *divert*
+  events away from a live ingress), no sidecar, no `known-targets` record. It
+  reports plainly that **attribution was not verified on this platform** — not
+  that anything was buffered, and not that a note is missing.
+- `harness doctor telemetry-nudge` **refuses** on a pipe target, and refuses on
+  a win32 host generally, with **zero renames and zero deletes**. It names the
+  transport and the platform and offers no reconfiguration, because none would
+  help.
+
+**What is still unknown, and is not claimed here**: which transport git-ai's
+Windows build actually listens on. Named pipe, a plain file plus a poller, or
+something else — nobody has measured it. Making replay *work* on Windows needs
+that question answered first and is a separate piece of work. Plan 075 only
+stops the tools from stating things they cannot support: an honest refusal beats
+a misleading instruction.
 
 ---
 

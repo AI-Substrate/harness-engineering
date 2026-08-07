@@ -439,3 +439,165 @@ describe('plan 074 · ac-0005 — F007: a commit that HAPPENED is never reported
     expect(envelopeFor(noop, clock).status).toBe('ok');
   });
 });
+
+/**
+ * Plan 075 · ac-0005 — a Windows named pipe takes NEITHER existing branch.
+ *
+ * Before this, `\\.\pipe\git-ai` classified as `file`, so `harness commit` told
+ * the operator their events were "buffered" to a LIVE INGRESS, wrote a `.shas`
+ * sidecar beside the pipe path, recorded the pipe in `known-targets` as a
+ * drainable target, and pointed at a nudge that then refused with "is a plain
+ * file". Four wrong statements from one misclassification.
+ *
+ * Every assertion below is about something the verb must NOT do. That is
+ * deliberate: the plan does not make Windows work, it stops the tools lying.
+ */
+describe('plan 075 · ac-0005 — a named-pipe ingress is never called a buffer', () => {
+  const PIPE = '\\\\.\\pipe\\git-ai';
+
+  function depsWithFs(
+    git: FakeGitAttribution,
+    ingress: Awaited<ReturnType<typeof socketIngress>>,
+    fs: FakeFs,
+  ): CommitDeps {
+    return {
+      git,
+      ingress,
+      fs,
+      proc: new FakeProcess({ node: '/usr/bin/node' }, REPO),
+      clock: new FakeClock('2026-08-07T00:00:00.000Z'),
+      sleep: () => Promise.resolve(),
+      verifyTimeoutMs: 500,
+    } satisfies CommitDeps;
+  }
+
+  it('commits with NO GIT_TRACE2_EVENT override — a live ingress is never diverted', async () => {
+    // The buffered branch would have fired here (the probe is null, not
+    // `connected`), and setting the env var REPLACES the pipe target — so the
+    // "safety" buffer would have severed the very ingress it was protecting.
+    const git = new FakeGitAttribution({ commitSha: SHA });
+    const out = await harnessCommit(
+      depsWithFs(git, (await nonSocketIngress(PIPE)) as never, new FakeFs()),
+      'msg',
+      ['a.ts'],
+    );
+
+    expect(git.commits).toEqual([{ message: 'msg', env: undefined }]);
+    expect(out.mode).toBe('ingress-unverified');
+    expect(out.mode).not.toBe('file-buffered');
+    expect(out.mode).not.toBe('harness-buffered');
+  });
+
+  it('writes NO sidecar and NO target record beside the pipe path', async () => {
+    const fs = new FakeFs();
+    const git = new FakeGitAttribution({ commitSha: SHA });
+    await harnessCommit(depsWithFs(git, (await nonSocketIngress(PIPE)) as never, fs), 'msg', [
+      'a.ts',
+    ]);
+
+    expect(fs.exists(`${PIPE}.shas`)).toBe(false);
+    expect(fs.exists(`${REPO}/.harness/temp/trace2/known-targets`)).toBe(false);
+    // Nothing at all was written next to the pipe — not by any name.
+    expect(fs.writes.filter((path) => path.includes('pipe'))).toEqual([]);
+  });
+
+  it('the envelope never claims the events were buffered', async () => {
+    const git = new FakeGitAttribution({ commitSha: SHA });
+    const out = await harnessCommit(
+      depsWithFs(git, (await nonSocketIngress(PIPE)) as never, new FakeFs()),
+      'msg',
+      ['a.ts'],
+    );
+
+    expect(out.buffer).toBeNull();
+    expect(out.detail).not.toMatch(/buffered to/i);
+    expect(out.detail).not.toMatch(/plain FILE/i);
+    expect(out.detail).not.toMatch(/DEFERRED/i);
+  });
+
+  it('states plainly that attribution was NOT VERIFIED on this platform', async () => {
+    const git = new FakeGitAttribution({ commitSha: SHA });
+    const out = await harnessCommit(
+      depsWithFs(git, (await nonSocketIngress(PIPE)) as never, new FakeFs()),
+      'msg',
+      ['a.ts'],
+    );
+
+    expect(out.detail).toContain('NAMED PIPE');
+    expect(out.detail).toContain('NOT VERIFIED');
+    expect(out.detail).toContain('UNKNOWN');
+    expect(out.verify).toBe('skipped');
+    // Never asserted as landed, never accused as missing: nothing was measured.
+    expect(out.verify).not.toBe('landed');
+    expect(out.verify).not.toBe('missing');
+  });
+
+  it('does NOT send the operator to a nudge that will refuse them', async () => {
+    // The old path pointed at `telemetry-nudge`, which then said "is a plain
+    // file" about a pipe. An instruction that is guaranteed to fail is worse
+    // than none — it reads as recovery.
+    const git = new FakeGitAttribution({ commitSha: SHA });
+    const out = await harnessCommit(
+      depsWithFs(git, (await nonSocketIngress(PIPE)) as never, new FakeFs()),
+      'msg',
+      ['a.ts'],
+    );
+
+    expect(out.next_action).toMatch(/Do NOT run/);
+    expect(out.next_action).toContain('git notes --ref=ai');
+  });
+
+  it('the commit still HAPPENED: ok, exit 0, degraded envelope', async () => {
+    const git = new FakeGitAttribution({ commitSha: SHA });
+    const out = await harnessCommit(
+      depsWithFs(git, (await nonSocketIngress(PIPE)) as never, new FakeFs()),
+      'msg',
+      ['a.ts'],
+    );
+    const envelope = envelopeFor(out, new FakeClock('2026-08-07T00:00:00.000Z'));
+
+    expect(out.ok).toBe(true);
+    expect(out.sha).toBe(SHA);
+    // Unproven attribution degrades; it never blocks and never errors.
+    expect(envelope.status).toBe('degraded');
+  });
+
+  it('an UNREADABLE head on a pipe ingress is unverified, not direct-verified', async () => {
+    // The sha-unknown path had its own branch selection, and it would have
+    // called this `direct-verified` — a claim about a verification that never
+    // ran.
+    const fs = new FakeFs();
+    const git = new FakeGitAttribution({ headUnreadable: true });
+    const out = await harnessCommit(
+      depsWithFs(git, (await nonSocketIngress(PIPE)) as never, fs),
+      'msg',
+      ['a.ts'],
+    );
+
+    expect(out.shaUnknown).toBe(true);
+    expect(out.mode).toBe('ingress-unverified');
+    expect(out.buffer).toBeNull();
+    expect(fs.exists(`${REPO}/.harness/temp/trace2/known-targets`)).toBe(false);
+  });
+
+  it('a legitimate UNC FILE target still takes the file branch — the other direction', async () => {
+    // PRIME CONSTRAINT. A pipe is UNC-shaped, so the split had to be made
+    // WITHOUT taking real UNC file targets with it. This is the assertion that
+    // would catch that regression, and nothing else in this suite would.
+    const fs = new FakeFs();
+    const git = new FakeGitAttribution({ commitSha: SHA });
+    const unc = '\\\\server\\share\\trace2.jsonl';
+    const out = await harnessCommit(
+      depsWithFs(git, (await nonSocketIngress(unc)) as never, fs),
+      'msg',
+      ['a.ts'],
+    );
+
+    expect(out.mode).toBe('file-buffered');
+    expect(out.buffer).toBe(unc);
+    expect(fs.readText(`${unc}.shas`)).toBe(`${SHA} ${REPO_ID}\n`);
+    expect(fs.readText(`${REPO}/.harness/temp/trace2/known-targets`)).toBe(
+      '//server/share/trace2.jsonl\n',
+    );
+  });
+});

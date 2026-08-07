@@ -2,7 +2,7 @@ import type {
   CommitWindowRule,
   GitAttributionPort,
 } from '../../../adapters/git/git-attribution-port.js';
-import { type IngressReading, ingressProves } from './ingress.js';
+import { type IngressReading, ingressProves, trace2Policy, trace2TargetPath } from './ingress.js';
 
 /**
  * AT-RISK ENUMERATION (plan 074 · ac-0003) — the honest answer to "did anything
@@ -114,9 +114,12 @@ export function enumerateAtRisk(deps: AtRiskDeps): AtRiskReport {
 /** Why nothing could be proven, in operator language. */
 function describeIngress(ingress: IngressReading | undefined): string {
   if (ingress === undefined) return 'was not probed on this run';
-  if (ingress.target.kind === 'unconfigured') return 'is not configured (no trace2 target)';
-  if (ingress.target.kind === 'file') {
-    return `is a plain FILE target (${ingress.target.path}) — events buffer there rather than reaching the collector`;
+  // The kind table owns the non-socket descriptions, so a new target kind
+  // cannot arrive here and be described by the probe fallback below — which
+  // would report "could not be probed" about something that was never probeable
+  // (that is how a named pipe used to read).
+  if (ingress.target.kind !== 'af_unix') {
+    return trace2Policy(ingress.target).describe(trace2TargetPath(ingress.target) ?? '');
   }
   switch (ingress.outcome) {
     case 'denied':

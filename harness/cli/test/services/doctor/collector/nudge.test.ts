@@ -1442,3 +1442,178 @@ describe('plan 074 · ac-0004/ac-0006 — R6: the parity guard enforces the CONT
     expectTextParity(out);
   });
 });
+
+/**
+ * Plan 075 · ac-0004 / ac-0006 — the two HONEST REFUSALS.
+ *
+ * Both share one shape and it is the whole point of the plan: the verb states
+ * what it cannot do, names why, and touches NOTHING. Zero renames and zero
+ * deletes are asserted on every one of them (the plan-074 F005 containment
+ * assertions, reused), because a mutating verb that refuses must be provably
+ * inert — "it skipped" is a claim, `fs.renames === []` is evidence.
+ */
+describe('plan 075 · ac-0004 — a named-pipe ingress is refused, never drained', () => {
+  const PIPE = '\\\\.\\pipe\\git-ai';
+
+  async function pipeDeps(over: { platform?: string } = {}) {
+    const fs = new FakeFs();
+    fs.mkdirp(`${REPO}/.harness/temp/trace2`);
+    // A REAL buffer is present: the refusal must not be the accident of there
+    // being nothing to do. `no-buffer` here would be the misleading answer.
+    fs.writeText(BUFFER, payload());
+    fs.writeText(SIDECAR, sidecarNaming(SHA_A));
+    const d = deps({ fs, ingress: await ingress('connected', PIPE) });
+    return { fs, d: { ...d, ...(over.platform !== undefined && { platform: over.platform }) } };
+  }
+
+  it('skips with a reason naming the TRANSPORT and the PLATFORM', async () => {
+    const { d } = await pipeDeps({ platform: 'win32' });
+    const out = await telemetryNudge(d);
+
+    expect(out.status).toBe('skipped');
+    expect(out.reason).toBe('unsupported-platform');
+    expect(out.detail).toContain('NAMED PIPE');
+    expect(out.detail).toContain(PIPE);
+    expect(out.detail).toContain('Windows');
+  });
+
+  it('never says no-buffer and never says there is nothing to do', async () => {
+    // The buffer EXISTS and holds events. Reporting `no-buffer` — or "nothing to
+    // replay" — would be a confident wrong answer about recoverable data.
+    const { d } = await pipeDeps({ platform: 'win32' });
+    const out = await telemetryNudge(d);
+
+    expect(out.reason).not.toBe('no-buffer');
+    expect(out.reason).not.toBe('empty-buffer');
+    expect(out.detail).not.toMatch(/nothing to replay/i);
+    expect(out.detail).not.toMatch(/nothing to do/i);
+    // And it must not repeat the OLD lie either.
+    expect(out.detail).not.toMatch(/plain file/i);
+  });
+
+  it('performs ZERO renames and ZERO deletes, and sends nothing', async () => {
+    const { fs, d } = await pipeDeps({ platform: 'win32' });
+    const out = await telemetryNudge(d);
+
+    expect(fs.renames).toEqual([]);
+    expect(fs.deletes).toEqual([]);
+    expect(fs.readText(BUFFER)).toBe(payload());
+    expect(fs.readText(SIDECAR)).toBe(sidecarNaming(SHA_A));
+    expect(d.relay.sends).toEqual([]);
+    expect(out.segment).toBeNull();
+    expect(out.bytes).toBe(0);
+    expect(out.recovered).toEqual([]);
+  });
+
+  it('offers no reconfiguration, because no reconfiguration would help', async () => {
+    // The FILE branch's guidance ("point trace2.eventTarget back at the socket,
+    // THEN drain") is right for a file and WRONG here — there is no drain to
+    // perform and no socket this host can produce. Naming one would be exactly
+    // the misleading instruction this plan exists to remove.
+    const { d } = await pipeDeps({ platform: 'win32' });
+    const out = await telemetryNudge(d);
+
+    expect(out.next_action).not.toContain('--buffer');
+    expect(out.next_action).not.toContain('--install-collector');
+    expect(out.next_action).toMatch(/do not re-run/i);
+  });
+
+  it('the transport is refused on a POSIX host too — the target decides, not the OS', async () => {
+    // A pipe target read on a POSIX host is nonsense config, but it is still a
+    // pipe: the classification, not the platform, is what makes it unreplayable.
+    const { fs, d } = await pipeDeps({ platform: 'linux' });
+    const out = await telemetryNudge(d);
+
+    expect(out.reason).toBe('unsupported-platform');
+    expect(out.detail).toContain('NAMED PIPE');
+    expect(fs.renames).toEqual([]);
+    expect(fs.deletes).toEqual([]);
+  });
+
+  it('a pipe target NEVER authorizes draining beside it', async () => {
+    // Containment: the live target's directory is authorized only when the
+    // target is DRAINABLE. `\\.\pipe\` is not a directory the verb may rename in.
+    const fs = new FakeFs();
+    fs.writeText('/pipe/git-ai.jsonl', payload());
+    const d = {
+      ...deps({ fs, ingress: await ingress('connected', PIPE), bufferPath: '/pipe/git-ai.jsonl' }),
+      platform: 'win32',
+    };
+
+    const out = await telemetryNudge(d);
+
+    expect(out.status).toBe('skipped');
+    expect(out.reason).toBe('buffer-refused');
+    expect(fs.renames).toEqual([]);
+    expect(fs.deletes).toEqual([]);
+  });
+});
+
+describe('plan 075 · ac-0006 — the win32 guard plan 074 claimed and did not have', () => {
+  async function win32Deps(target?: string) {
+    const fs = new FakeFs();
+    fs.mkdirp(`${REPO}/.harness/temp/trace2`);
+    fs.writeText(BUFFER, payload());
+    fs.writeText(SIDECAR, sidecarNaming(SHA_A));
+    const base = deps({
+      fs,
+      ingress: await ingress('connected', target ?? `af_unix:stream:${SOCK}`),
+    });
+    return { fs, d: { ...base, platform: 'win32' } };
+  }
+
+  it('a win32 host is a deliberate no-op, even with a CONNECTED af_unix target', async () => {
+    // The unreachable-by-construction case made explicit: git on Windows has no
+    // af_unix trace2 target, so a reading that says otherwise is not a reason to
+    // start renaming files on a platform whose transport nobody has measured.
+    const { fs, d } = await win32Deps();
+    const out = await telemetryNudge(d);
+
+    expect(out.status).toBe('skipped');
+    expect(out.reason).toBe('unsupported-platform');
+    expect(out.detail).toContain('Windows');
+    expect(out.detail).toContain('af_unix');
+    expect(fs.renames).toEqual([]);
+    expect(fs.deletes).toEqual([]);
+    expect(d.relay.sends).toEqual([]);
+    expect(fs.readText(BUFFER)).toBe(payload());
+  });
+
+  it('the SAME reading on a POSIX host replays exactly as before', async () => {
+    // The negative control. If the guard changed anything but the platform, this
+    // is where it shows up.
+    const fs = new FakeFs();
+    fs.mkdirp(`${REPO}/.harness/temp/trace2`);
+    fs.writeText(BUFFER, payload());
+    fs.writeText(SIDECAR, sidecarNaming(SHA_A));
+    const d = {
+      ...deps({
+        fs,
+        ingress: await ingress('connected'),
+        git: new FakeGitAttribution({ notesAfterDelay: [SHA_A] }),
+      }),
+      platform: 'darwin',
+    };
+
+    const out = await telemetryNudge(d);
+
+    expect(out.status).toBe('replayed');
+    expect(out.recovered).toEqual([SHA_A]);
+    expect(fs.renames.length).toBeGreaterThan(0);
+  });
+
+  it('omitting the platform keeps the POSIX behaviour these suites already prove', async () => {
+    // The default is `process.platform`, and CI is POSIX. Stated as a test so
+    // the whole plan-074 suite passing untouched is a deliberate result rather
+    // than a coincidence of a field nobody set.
+    const fs = new FakeFs();
+    fs.mkdirp(`${REPO}/.harness/temp/trace2`);
+    fs.writeText(BUFFER, payload());
+    const d = deps({ fs, ingress: await ingress('connected') });
+    expect((d as { platform?: string }).platform).toBeUndefined();
+
+    const out = await telemetryNudge(d);
+
+    expect(out.reason).not.toBe('unsupported-platform');
+  });
+});

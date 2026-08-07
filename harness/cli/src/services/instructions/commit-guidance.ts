@@ -41,13 +41,17 @@ be the thing that tells the truth.
 
     harness commit "<message>" -- <path> [<path>…]
 
-  VERIFIED OR NAMED. It probes the ingress first, then takes one of two paths:
+  VERIFIED OR NAMED. It probes the ingress first, then takes one of three paths:
 
   - ingress reachable -> commits with no trace2 override, then waits (bounded)
     for the refs/notes/ai note and TELLS YOU whether it landed.
   - ingress blocked / absent / unconfigured -> commits with trace2 buffered to a
     file under the gitignored .harness/temp/, and names both that buffer and the
     command that drains it.
+  - trace2 points at a Windows NAMED PIPE (\\\\.\\pipe\\…) -> commits with no
+    override (git talks to the pipe as usual), buffers NOTHING, writes nothing
+    beside the pipe, and says plainly that attribution was NOT VERIFIED on this
+    platform. It does not send you to the nudge, which would refuse.
 
   It never rolls back, never blocks your commit, and never swallows git's exit
   code. Staging is EXPLICIT pathspecs only — nothing is swept in for you.
@@ -70,11 +74,17 @@ you; the commit looks completely healthy.
 ## What is and is not guaranteed
 
 - **Guaranteed**: a \`harness commit\` is never SILENT about attribution. It
-  either verifies the note landed, or names the buffer and the recovery command.
+  verifies the note landed, or names the buffer and the recovery command, or
+  states that attribution could not be verified on this platform. What it never
+  does is claim a delivery it has not measured.
 - **NOT guaranteed**: delivery. A blocked ingress is blocked. Buffered events
   reach the collector only when the nudge is run from somewhere that can reach
   the socket, and commits made before git-ai was installed will never gain a
   note.
+- **NOT supported on Windows**: replay. git's \`af_unix\` trace2 target is
+  Unix-only, so \`telemetry-nudge\` has no ingress to replay into and refuses on
+  a win32 host without touching a single file. Attribution there is unproven,
+  not recoverable — see docs/how/gitai-collector.md § Windows.
 
 Check the current state any time with \`harness doctor\` — the
 \`gitai-collector\` and \`attribution-at-risk\` rows report the ingress verdict

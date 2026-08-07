@@ -28,21 +28,54 @@ import type { CollectorFsPort } from './types.js';
 export type Trace2Target =
   | { kind: 'unconfigured' }
   | { kind: 'file'; path: string }
-  | { kind: 'af_unix'; path: string };
+  | { kind: 'af_unix'; path: string }
+  /**
+   * A Windows NAMED PIPE — `\\.\pipe\…`. A LIVE INGRESS, and the reason this
+   * arm exists (plan 075 · ac-0001): the pipe path begins with a separator, so
+   * it matched {@link ABSOLUTE_TARGET} and was classified `file` — a drainable
+   * buffer. Calling a live ingress a buffer is the one thing this feature must
+   * never do: it made `harness commit` tell the operator their events were
+   * buffered to a pipe, write a `.shas` sidecar beside it, and point at a nudge
+   * that then refused with "is a plain file".
+   */
+  | { kind: 'named_pipe'; path: string };
+
+/** Every arm of {@link Trace2Target}, as the key set the exhaustive tables use. */
+export type Trace2TargetKind = Trace2Target['kind'];
 
 /**
  * A path git will actually open as a trace2 FILE target: absolute, POSIX (`/…`),
  * Windows drive-rooted (`C:\…`), or UNC. git's own rule is explicit — a trace2
  * target that is not one of its keyword/fd forms is used as a file ONLY when it
  * is absolute; anything else disables trace2 with a warning.
+ *
+ * NOTE the UNC admission is DELIBERATE — `\\server\share\trace.jsonl` is a real
+ * file target — which is precisely why {@link WINDOWS_NAMED_PIPE} is a SPLIT of
+ * this case rather than a narrowing of it. Excluding pipes by tightening this
+ * expression would break legitimate UNC file targets, and that is the failure
+ * mode plan 075 pins in both directions.
  */
 const ABSOLUTE_TARGET = /^([A-Za-z]:)?[\\/]/;
+
+/**
+ * The Win32 named-pipe NAMESPACE: `\\.\pipe\…` and `\\?\pipe\…`, either
+ * separator, case-insensitive (Windows pipe names are).
+ *
+ * Anchored on the whole `pipe` segment — `(?:[\\/]|$)` — so the near misses are
+ * refused rather than swept in: `\\.\pipexyz` and `\\.\pipeline\x` are OTHER
+ * devices, and `\\server\pipe\trace.jsonl` is an ordinary share that happens to
+ * be named `pipe`. Those stay FILE targets, because that is what git does with
+ * them.
+ */
+const WINDOWS_NAMED_PIPE = /^[\\/]{2}[.?][\\/]pipe(?:[\\/]|$)/i;
 
 /**
  * Classify a raw `trace2.eventTarget` value. PURE — no probe, no filesystem.
  *
  * git accepts `af_unix:<path>`, `af_unix:stream:<path>` and `af_unix:dgram:<path>`.
- * Only an ABSOLUTE path is a plain FILE target (the buffering shape from F-07).
+ * A Windows named pipe (`\\.\pipe\…`) is its own kind — a LIVE ingress, split
+ * out BEFORE the absolute test (plan 075). Of what remains, only an ABSOLUTE
+ * path is a plain FILE target (the buffering shape from F-07).
  * EVERYTHING else reads as `unconfigured`, and the set is wider than it looks —
  * this is the ac-0001 correction the review caught, and the reason it matters is
  * that `unconfigured` and `file` drive OPPOSITE commit branches:
@@ -70,9 +103,89 @@ export function resolveTrace2Target(raw: string | null | undefined): Trace2Targe
   }
   // Keyword + fd forms: a destination (or none at all), never a drainable buffer.
   if (/^(?:0|1|2|true|false|[3-9])$/.test(value)) return { kind: 'unconfigured' };
+  // BEFORE the absolute test, and the ORDER is the whole fix (plan 075 · ac-0001):
+  // a pipe path is absolute-shaped, so anything downstream of `ABSOLUTE_TARGET`
+  // would already have called this live ingress a file.
+  if (WINDOWS_NAMED_PIPE.test(value)) return { kind: 'named_pipe', path: value };
   // A relative path is not a file target — git warns and disables trace2.
   if (!ABSOLUTE_TARGET.test(value)) return { kind: 'unconfigured' };
   return { kind: 'file', path: value };
+}
+
+/**
+ * What a target kind IS — the vocabulary every consumer branches on, in ONE
+ * place, so "is this a buffer or an ingress?" is answered once rather than
+ * re-derived at each call site (that re-derivation is how a pipe came to be
+ * treated as a file in three different verbs).
+ */
+export interface Trace2TargetPolicy {
+  /**
+   * Is something ALREADY receiving this commit's events?
+   *
+   * - `always` — a file that git is writing into, or a live pipe git can talk
+   *   to. `harness commit` must NOT redirect: overriding `GIT_TRACE2_EVENT`
+   *   REPLACES the configured target, so it would DIVERT events rather than
+   *   duplicate them.
+   * - `when-probe-connected` — a socket, and only the probe can say.
+   * - `never` — nothing is listening; the harness buffers.
+   */
+  readonly receives: 'always' | 'when-probe-connected' | 'never';
+  /** May the drain path rotate, replay and delete this path as a buffer of PAST events? */
+  readonly drainable: boolean;
+  /** Can `telemetry-nudge` replay a buffer INTO this transport today? */
+  readonly replayInto: boolean;
+  /** Operator-facing description of the target, given its path. */
+  readonly describe: (path: string) => string;
+}
+
+/**
+ * The EXHAUSTIVE kind table (plan 075 · ac-0006, applying plan 074's F011
+ * lesson: a guarantee about FUTURE code needs the type system, not a test).
+ *
+ * `satisfies Record<Trace2TargetKind, …>` is the guard. Add an arm to
+ * {@link Trace2Target} and `tsc` refuses this object until the new kind
+ * declares whether it is a buffer or an ingress — which is exactly the question
+ * that went unanswered for `named_pipe`. It lives in `src` because the
+ * typecheck `include` is `["src"]`: the same contract in a test file compiles
+ * nowhere CI looks.
+ */
+export const TRACE2_TARGET_POLICY = {
+  unconfigured: {
+    receives: 'never',
+    drainable: false,
+    replayInto: false,
+    describe: () => 'is not configured (no trace2 target)',
+  },
+  file: {
+    receives: 'always',
+    drainable: true,
+    replayInto: false,
+    describe: (path: string) =>
+      `is a plain FILE target (${path}) — events buffer there rather than reaching the collector`,
+  },
+  af_unix: {
+    receives: 'when-probe-connected',
+    drainable: false,
+    replayInto: true,
+    describe: (path: string) => `is an af_unix socket (${path})`,
+  },
+  named_pipe: {
+    receives: 'always',
+    drainable: false,
+    replayInto: false,
+    describe: (path: string) =>
+      `is a Windows NAMED PIPE (${path}) — a LIVE collector ingress, not a drainable file`,
+  },
+} as const satisfies Record<Trace2TargetKind, Trace2TargetPolicy>;
+
+/** The policy for a resolved target. */
+export function trace2Policy(target: Trace2Target): Trace2TargetPolicy {
+  return TRACE2_TARGET_POLICY[target.kind];
+}
+
+/** The target's path, or `null` for the one kind that has none. */
+export function trace2TargetPath(target: Trace2Target): string | null {
+  return target.kind === 'unconfigured' ? null : target.path;
 }
 
 /**
