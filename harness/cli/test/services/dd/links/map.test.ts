@@ -1162,3 +1162,86 @@ describe('dd graph map — the 80-column contract, on addresses that break it (T
     expect(next).toContain('\u2502');
   });
 });
+
+/**
+ * `nodeId` \u2014 D5, plan 108. Byte-identical shape to `plan/index-plan.ts`'s
+ * `itemKey` (A2): a raw path is the identity two producers must spell alike.
+ *
+ * NOT-REPRODUCED via the CLI \u2014 every ingress into `mapAddress` is traced POSIX
+ * (`acts/dd/shared.ts:331`, `resolveMapSeed` -> `resolveInRepo`, `scanCorpus` ->
+ * `posixJoin`, edges -> `resolveAddressFile` -> `normalizeFilePath`). This test
+ * reaches `nodeId` directly through `mapAddress`'s edge list \u2014 a legitimate way
+ * to pin the invariant even though no external consumer can reach it \u2014 by
+ * constructing two edges that cite the SAME logical document under two
+ * spellings, exactly what a raw filesystem-walk-vs-parsed-address mismatch
+ * would produce. Do not read this as a live CLI defect.
+ */
+describe('nodeId \u2014 D5 identity-spelling (plan 108, latent hardening)', () => {
+  const REPO_WIN = 'C:\\repo';
+  const SEED_PATH_WIN = 'C:\\repo\\docs\\plan.dd.json';
+  const TARGET_NATIVE = 'C:\\repo\\docs\\pressure.dd.json';
+  const TARGET_POSIX = 'C:/repo/docs/pressure.dd.json';
+
+  function nativeSpellingCorpus() {
+    const target = doc('map/pressure', [
+      { name: 'rows', value: [{ id: 'bp-0001', criterion: 'the pressure', state: 'checked' }] },
+    ]);
+    const seed = doc('map/plan', [
+      { name: 'meta', value: { title: 'A plan' } },
+      {
+        name: 'rows',
+        value: [
+          { id: 'ac-0001', claim: 'first', state: 'checked', pressure: 'x#rows/bp-0001' },
+          { id: 'ac-0002', claim: 'second', state: 'checked', pressure: 'x#rows/bp-0001' },
+        ],
+      },
+    ]);
+    // Both spellings resolve to a real document \u2014 isolates the KEY-dedup defect
+    // from a document-loading failure, which is a different concern entirely.
+    const docs = new Map<string, DdDoc>([
+      [SEED_PATH_WIN, seed],
+      [TARGET_NATIVE, target],
+      [TARGET_POSIX, target],
+    ]);
+    const deps = { schemaResolver: new MapSchemaResolver(), docLoader: new MapDocLoader(docs) };
+    // Hand-built rather than run through `traverseCorpus`: that walk always
+    // normalises `edge.to` via `resolveAddressFile` (POSIX), which is precisely
+    // why the CLI route never reproduces this. The two edges below are what a
+    // native filesystem walk feeding an already-POSIX-spelled address boundary
+    // would look like if that normalisation were ever skipped.
+    const edges: DdLinkEdge[] = [
+      {
+        from: SEED_PATH_WIN,
+        to: TARGET_NATIVE,
+        address: 'x#rows/bp-0001',
+        location: '$.sections[rows].value[0].pressure',
+        rel: 'ref',
+        sameDocument: false,
+      },
+      {
+        from: SEED_PATH_WIN,
+        to: TARGET_POSIX,
+        address: 'x#rows/bp-0001',
+        location: '$.sections[rows].value[1].pressure',
+        rel: 'ref',
+        sameDocument: false,
+      },
+    ];
+    return { deps, edges };
+  }
+
+  it('two spellings of one target document resolve to ONE outbound node, not two', () => {
+    const built = nativeSpellingCorpus();
+    const result = mapAddress({ path: SEED_PATH_WIN, interior: [] }, built.edges, built.deps, {
+      repoRoot: REPO_WIN,
+      depth: 1,
+      maxNodes: 20,
+      direction: 'out',
+    });
+
+    const outNodes = result.nodes.filter((node) => node.arm === 'out');
+    expect(outNodes).toHaveLength(1);
+    expect(outNodes[0]?.resolved).toBe(true);
+    expect(outNodes[0]?.address).toBe('docs/pressure.dd.json#rows/bp-0001');
+  });
+});

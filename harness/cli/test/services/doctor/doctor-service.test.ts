@@ -687,6 +687,27 @@ describe('telemetry-flush-hook check (plan 038 follow-up — the deterministic f
     expect(hookLayer(report)?.detail).toContain('active');
   });
 
+  /**
+   * D3, plan 108 — `core.hooksPath` set to a Windows-shaped ABSOLUTE path.
+   * `resolveHooksDir`'s old `p.startsWith('/') ? p : posixJoin(cwd, p)` never
+   * recognised a drive-letter path as absolute, so it got glued onto `cwd`
+   * (measured: `hooksPath='C:/repo/.githooks'` → `'C:/repo/C:/repo/.githooks'`,
+   * a path nothing on disk matches) and `harness doctor` reported the flush
+   * hook MISSING while it was actually present — a diagnostic lying
+   * about a control's presence, worse than no diagnostic. Fires ONLY on an
+   * ABSOLUTE `core.hooksPath`; the relative form above (our own
+   * `just install-hooks` paved path) was never affected.
+   */
+  it('capturing WITH core.hooksPath an absolute drive-letter path → still finds the active hook', () => {
+    const fs = capturingFs({
+      '/repo/.git/config': '[core]\n\thooksPath = C:/repo/.githooks\n',
+      'C:/repo/.githooks/post-commit': '#!/usr/bin/env bash\nnode "$bin" telemetry sync\n',
+    });
+    const report = buildDoctorReport(deps({ fs }), EMPTY);
+    expect(hookLayer(report)?.ok).toBe(true);
+    expect(hookLayer(report)?.detail).toContain('active');
+  });
+
   it('kill-switch (HARNESS_NO_TELEMETRY=1) → ok even while capturing (no nag when telemetry is off)', () => {
     const report = buildDoctorReport(
       deps({ fs: capturingFs(), env: new FakeEnv({ HARNESS_NO_TELEMETRY: '1' }) }),

@@ -1,4 +1,4 @@
-import { posixRelative, resolveInRepo } from '../../shared/posix-path.js';
+import { posixRelative, resolveInRepo, toPosix } from '../../shared/posix-path.js';
 import { isAddressFailure, parseAddress } from '../core/address.js';
 import { DEFAULT_GATE_TERMINAL_STATES } from '../core/constants.js';
 import { deriveItems } from '../core/derive.js';
@@ -349,8 +349,17 @@ export function resolveMapSeed(
   };
 }
 
+/**
+ * Byte-identical shape to `plan/index-plan.ts`'s `itemKey` — the same identity
+ * hazard (D5): a filesystem walk yields native separators on Windows, a parsed
+ * dd address always yields forward slashes. `toPosix` collapses both spellings
+ * of one document into one key. No CLI route re-arms this today (plan 108 ·
+ * dlg-0003) — every ingress into `mapAddress` is already POSIX — so this is
+ * hardening the function in isolation, not a live-defect fix.
+ */
 function nodeId(path: string, interior: readonly string[]): string {
-  return interior.length > 0 ? `${path}#${interior.join('/')}` : path;
+  const posixPath = toPosix(path);
+  return interior.length > 0 ? `${posixPath}#${interior.join('/')}` : posixPath;
 }
 
 function displayAddress(repoRoot: string, path: string, interior: readonly string[]): string {

@@ -8,6 +8,7 @@ import { shouldExcludeFromSweep } from '../../services/dd/core/walk.js';
 import type { DdAdapterGap, DdDoctorFinding } from '../../services/dd/links/index.js';
 import { runDoctor, scanCorpus } from '../../services/dd/links/index.js';
 import { adapterGapSource, collectAdapterGaps } from '../../services/dd/render/gaps.js';
+import { resolveInRepo } from '../../services/shared/posix-path.js';
 import { createLinkContext, DD_ISSUE_CODES, type DdActDeps } from './shared.js';
 
 /** An adapter gap keeps the render layer's own code (AC-04 repeats it, it does not rename it). */
@@ -28,7 +29,7 @@ export function registerDoctorCommand(dd: Command, io: CliIo, deps: DdActDeps): 
     .option('--path <dir>', 'scope the sweep to a subtree (default: the repository root)')
     .action(async (opts: { path?: string }) => {
       const ctx = await createLinkContext(io, deps);
-      const root = opts.path ? resolveScope(opts.path, ctx.repoRoot) : ctx.repoRoot;
+      const root = opts.path ? resolveInRepo(opts.path, ctx.repoRoot) : ctx.repoRoot;
 
       // Phase 3's adapter aggregation, injected for real (P5 T004 seam 1).
       //
@@ -123,8 +124,4 @@ export function registerDoctorCommand(dd: Command, io: CliIo, deps: DdActDeps): 
         ctx.port,
       );
     });
-}
-
-function resolveScope(path: string, repoRoot: string): string {
-  return path.startsWith('/') ? path : `${repoRoot}/${path}`.replace(/\/+$/, '');
 }

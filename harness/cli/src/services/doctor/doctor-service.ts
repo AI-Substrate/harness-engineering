@@ -16,7 +16,13 @@ import type { VerbRegistry } from '../extensions/registry.js';
 import { AGENTS_FILE, readAgentsBlock } from '../instructions/commit-guidance.js';
 import type { RecordRegistry, RecordTypeEntry } from '../record/registry.js';
 import { SensorStateStore } from '../sensors/state-store.js';
-import { posixDirname, posixJoin, posixRelative, toPosix } from '../shared/posix-path.js';
+import {
+  posixDirname,
+  posixJoin,
+  posixRelative,
+  resolveInRepo,
+  toPosix,
+} from '../shared/posix-path.js';
 import { HARNESS_DIR, TEMP_DIR } from '../shared/temp.js';
 import type { HarnessAdapter } from '../telemetry/adapters/harness-adapter.js';
 import { coreTelemetryAdapters } from '../telemetry/adapters/index.js';
@@ -655,8 +661,7 @@ function resolveHooksDir(fs: FsPort, cwd: string): string {
     : null;
   const m = cfg?.match(/^\s*hooksPath\s*=\s*(.+?)\s*$/m);
   if (m?.[1]) {
-    const p = m[1].trim();
-    return p.startsWith('/') ? p : posixJoin(cwd, p);
+    return resolveInRepo(m[1].trim(), cwd);
   }
   return posixJoin(cwd, '.git/hooks');
 }
