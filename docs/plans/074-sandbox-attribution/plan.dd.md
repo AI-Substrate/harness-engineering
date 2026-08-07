@@ -22,6 +22,7 @@
 | created | — |
 | confidence | — |
 | complexity_breakdown | — |
+| validated_in_sandbox | 2026-08-07 — assets/validations/ (both branches proven live under a real Seatbelt block) |
 
 <a id="summary"></a>
 

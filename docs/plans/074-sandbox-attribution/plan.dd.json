@@ -11,7 +11,8 @@
         "status": "ready",
         "summary": "",
         "mode": "Simple",
-        "complexity": "CS-3"
+        "complexity": "CS-3",
+        "validated_in_sandbox": "2026-08-07 — assets/validations/ (both branches proven live under a real Seatbelt block)"
       }
     },
     {
