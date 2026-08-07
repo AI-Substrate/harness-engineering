@@ -56,7 +56,7 @@ function captureInto(cwd: string, env: Record<string, string>): Segment | null {
   const fs = new FakeFs({});
   const d: CaptureDeps = {
     fs,
-    env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'cl-1', ...env }),
+    env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', CLAUDE_CODE_SESSION_ID: 'cl-1', ...env }),
     clock: new FakeClock('2026-06-23T11:00:00.000Z'),
     proc: new FakeProcess({}, cwd),
     command: 'flow',

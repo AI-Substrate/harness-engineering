@@ -6,17 +6,26 @@ import { FakeGit } from '../../../src/adapters/git/fake-git.js';
 import { FakeProcess } from '../../../src/adapters/process/fake-process.js';
 import type { HarnessAdapter } from '../../../src/services/telemetry/adapters/harness-adapter.js';
 import {
+  CAPTURE_DEFAULT_ENABLED,
+  captureDisabledReason,
+  isCaptureEnabled,
+} from '../../../src/services/telemetry/capture-gate.js';
+import {
   type CaptureDeps,
   captureTelemetry,
 } from '../../../src/services/telemetry/capture-service.js';
 
 /**
- * T009 (plan 1.8 · AC-05, AC-09) — the kill-switch + fail-safe wrapper.
+ * T009 (plan 1.8 · AC-05, AC-09) — the kill-switch + fail-safe wrapper, now the
+ * DEFAULT-OFF gate (plan 073 · ac-0001).
  *
- * AC-05: `HARNESS_NO_TELEMETRY=1` → ZERO side effects. AC-09: an adapter that
- * throws (corrupt source / parse error) is swallowed — capture can NEVER break
- * the host command. This last-resort catch-all is DISTINCT from T005's designed
- * edge no-ops (zero-harness / missing source / corrupt cursor).
+ * AC-05: capture produces ZERO side effects when the gate is closed. Two ways it
+ * closes: `HARNESS_NO_TELEMETRY=1` (the operator kill-switch) and — since the
+ * collector handover — a plain default install with NO telemetry env set at all.
+ * AC-09: an adapter that throws (corrupt source / parse error) is swallowed —
+ * capture can NEVER break the host command. This last-resort catch-all is
+ * DISTINCT from T005's designed edge no-ops (zero-harness / missing source /
+ * corrupt cursor).
  */
 
 const REPO = '/repo';
@@ -59,14 +68,55 @@ describe('T009 — kill-switch (AC-05)', () => {
     expect(fs.renames).toEqual([]);
   });
 
-  it('default (unset) still captures — buffer segment AND the OTLP spool pair', () => {
-    const { d, fs } = deps({ CLAUDE_CODE_SESSION_ID: 'sess1' }, [liveAdapter]);
+  it('the kill-switch BEATS the opt-in — an operator who turned telemetry off stays off', () => {
+    const { d, fs } = deps(
+      {
+        CLAUDE_CODE_SESSION_ID: 'sess1',
+        HARNESS_NO_TELEMETRY: '1',
+        HARNESS_TELEMETRY_CAPTURE: '1',
+      },
+      [liveAdapter],
+    );
+    captureTelemetry(d);
+    expect(fs.writes).toEqual([]);
+  });
+
+  it('opted IN (HARNESS_TELEMETRY_CAPTURE=1) captures — buffer segment AND the OTLP spool pair', () => {
+    const { d, fs } = deps({ CLAUDE_CODE_SESSION_ID: 'sess1', HARNESS_TELEMETRY_CAPTURE: '1' }, [
+      liveAdapter,
+    ]);
     captureTelemetry(d);
     expect(fs.writes.some((p) => p.includes('/telemetry/'))).toBe(true);
     // T015: the spool .jsonl pair is part of the captured output (T010) — so the
     // kill-switch test above (writes === []) also proves the spool is suppressed.
     expect(fs.writes.some((p) => p.includes('.logs.jsonl'))).toBe(true);
     expect(fs.writes.some((p) => p.includes('.metrics.jsonl'))).toBe(true);
+  });
+});
+
+/**
+ * Plan 073 · ac-0001 — the CAPTURE enforcement point on a default install.
+ *
+ * The shipped harness now hands collection to git-ai, so a live harness session
+ * with a live adapter and a real transcript window must still write NOTHING when
+ * no telemetry environment variable is set. This is the flip itself, asserted at
+ * the point that used to be on: no kill-switch, no opt-in, no side effects.
+ */
+describe('plan 073 — capture is OFF by default (ac-0001, ac-0019 · enforcement point 1/3)', () => {
+  it('a default install with NO telemetry env set produces ZERO side effects', () => {
+    const { d, fs } = deps({ CLAUDE_CODE_SESSION_ID: 'sess1' }, [liveAdapter]);
+    captureTelemetry(d);
+    expect(fs.writes).toEqual([]);
+    expect(fs.mkdirs).toEqual([]);
+    expect(fs.renames).toEqual([]);
+  });
+
+  it('the default lives in CODE, not in the environment (the gate constant IS the switch)', () => {
+    expect(CAPTURE_DEFAULT_ENABLED).toBe(false);
+    expect(isCaptureEnabled(new FakeEnv({}))).toBe(false);
+    expect(captureDisabledReason(new FakeEnv({}))).toBe('default-off');
+    expect(captureDisabledReason(new FakeEnv({ HARNESS_NO_TELEMETRY: '1' }))).toBe('kill-switch');
+    expect(captureDisabledReason(new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1' }))).toBeNull();
   });
 });
 

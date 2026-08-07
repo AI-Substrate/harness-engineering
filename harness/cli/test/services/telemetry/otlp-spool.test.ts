@@ -55,7 +55,7 @@ describe('OTLP spool emit at the capture seam (T010)', () => {
     const fs = new FakeFs({});
     const d: CaptureDeps = {
       fs,
-      env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'sess-1' }),
+      env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', CLAUDE_CODE_SESSION_ID: 'sess-1' }),
       clock: new FakeClock('2026-06-23T04:01:00.000Z'),
       proc: new FakeProcess({}, REPO),
       git: new FakeGit({ isRepo: true, branch: 'main', remoteUrl: 'github.com/x/y' }),

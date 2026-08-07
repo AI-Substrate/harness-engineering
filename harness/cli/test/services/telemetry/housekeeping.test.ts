@@ -60,7 +60,7 @@ function decorator(
 ) {
   return buildHousekeepingDecorator({
     fs,
-    env: new FakeEnv(over.env ?? {}),
+    env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1', ...(over.env ?? {}) }),
     proc: new FakeProcess({}, REPO),
     gitWrite: git,
     mode: over.mode ?? 'json',

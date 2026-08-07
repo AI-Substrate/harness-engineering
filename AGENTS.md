@@ -134,3 +134,22 @@ This repo uses [`minih`](https://github.com/AI-Substrate/minih) agents to exerci
 - **Always collect feedback + magic wand after EVERY minih agent run.** Every minih agent emits a `retrospective` (`workedWell`, `confusing`, `magicWand`, plus self-numbered `difficulties` MH-NNN). After any run completes, the calling agent/human MUST review that feedback (and `minih difficulties` across runs), then act on it: route project-layer friction into harness/CLI/skill improvements and the difficulty ledger, and minih-layer friction upstream. Encode fixes so the next run never hits the same friction — the harness is a self-improving product, not a static test tool.
 
 
+
+<!-- BEGIN harness:commit-guidance -->
+## Committing in this repo
+
+Use `harness commit "<message>" -- <paths>` rather than a chained
+`git add … && git commit …`.
+
+A `harness commit` is **verified or named**: it probes the collector ingress,
+commits, and then either confirms a `refs/notes/ai` note landed or names the
+buffer holding the events plus the command that drains it
+(`harness doctor telemetry-nudge`). It never blocks and never rolls back.
+
+A chained or compound `git commit` can **silently lose attribution** — agent
+command sandboxes block git-ai's socket, git quietly disables trace2, and the
+commit's authorship may later be recorded as human.
+
+Neither shape guarantees delivery. What `harness commit` guarantees is that the
+outcome is never silent. Read `harness instructions commit` for the detail.
+<!-- END harness:commit-guidance -->

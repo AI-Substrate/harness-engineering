@@ -1,15 +1,21 @@
 import type { Command } from 'commander';
 import type { Clock } from '../adapters/clock/clock-port.js';
 import type { FsPort } from '../adapters/fs/fs-port.js';
+import { NodeProcess } from '../adapters/process/node-process.js';
 import { type Envelope, formatError, formatOk, formatUnconfigured } from '../output/envelope.js';
 import { ErrorCodes } from '../output/error-codes.js';
 import { exitWithEnvelope } from '../output/exit.js';
 import { type CliIo, createOutputPort, type OutputPort } from '../output/output-port.js';
 import type { VerbRegistry } from '../services/extensions/registry.js';
 import {
+  CORE_INSTRUCTION_PAGES,
+  injectAgentsBlock,
+} from '../services/instructions/commit-guidance.js';
+import {
   buildCoreInstructions,
   loadVerbInstructions,
 } from '../services/instructions/instructions-service.js';
+import { toPosix } from '../services/shared/posix-path.js';
 
 /** The ports the `instructions` act injects (a subset of VerbActDeps). */
 export interface InstructionsActDeps {
@@ -39,13 +45,77 @@ export function registerInstructionsAct(
       "Print the harness's agent briefing, or one verb's instructions.md (the calling agent's role)",
     )
     .argument('[verb]', 'verb whose extension briefing to print; omit for the core briefing')
-    .action((verb: string | undefined) => {
+    .option(
+      '--inject',
+      'For `commit`: write or refresh the managed harness:commit-guidance block in AGENTS.md (idempotent; only ever touches the region between its own markers)',
+    )
+    .action((verb: string | undefined, opts: { inject?: boolean }) => {
       if (verb === undefined) {
         emitCore(io, deps, registry);
         return;
       }
+      if (opts.inject === true) {
+        emitInject(verb, io, deps);
+        return;
+      }
       emitVerb(verb, io, deps, registry);
     });
+}
+
+/**
+ * `harness instructions commit --inject` (plan 074 · ac-0008, seam 2) — the
+ * EXPLICIT write that puts the managed guidance block into `AGENTS.md`.
+ *
+ * A separate, opt-in invocation on purpose. `doctor` warns when the block is
+ * absent and never edits the file; the edit happens only when a human or the
+ * adopt flow's guidance step asks for it, with the user's consent. Idempotent by
+ * construction — the fenced markers delimit exactly the region this owns.
+ */
+function emitInject(verb: string, io: CliIo, deps: InstructionsActDeps): void {
+  const command = `instructions ${verb} --inject`;
+  if (CORE_INSTRUCTION_PAGES[verb] === undefined) {
+    exitWithEnvelope(
+      formatUnconfigured(
+        command,
+        `\`--inject\` is only defined for core guidance pages; \`${verb}\` has none. Run \`harness instructions commit --inject\` (the pages that support it: ${Object.keys(CORE_INSTRUCTION_PAGES).join(', ')}).`,
+        deps.clock,
+      ),
+      createOutputPort(io.mode === 'json' ? 'json' : 'human', io.writers),
+    );
+  }
+  const cwd = toPosix(new NodeProcess().cwd());
+  const outcome = injectAgentsBlock({ fs: deps.fs, cwd });
+  if (!outcome.ok) {
+    exitWithEnvelope(
+      formatError(
+        command,
+        ErrorCodes.INSTRUCTIONS_UNREADABLE,
+        `${outcome.path} exists but could not be read, so the managed block was not written.`,
+        deps.clock,
+        { next_action: `Check permissions on ${outcome.path} and re-run.` },
+      ),
+      createOutputPort(io.mode === 'json' ? 'json' : 'human', io.writers),
+    );
+  }
+  const result = outcome as Extract<typeof outcome, { ok: true }>;
+  const envelope = formatOk(command, { path: result.path, action: result.action }, deps.clock, {
+    evidence: [{ label: 'AGENTS.md commit-guidance block', path: result.path }],
+    next_action:
+      result.action === 'unchanged'
+        ? 'Nothing changed — the block was already current.'
+        : 'Review the block and commit it with `harness commit "<message>" -- AGENTS.md`.',
+  });
+  const port: OutputPort =
+    io.mode === 'json'
+      ? createOutputPort('json', io.writers)
+      : {
+          emit: () => {
+            io.writers.out(
+              `${result.action} the harness:commit-guidance block in ${result.path}\n`,
+            );
+          },
+        };
+  exitWithEnvelope(envelope, port);
 }
 
 /** Bare `harness instructions` → the baked core briefing (always available). */

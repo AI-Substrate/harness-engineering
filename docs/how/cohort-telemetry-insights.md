@@ -1,5 +1,10 @@
 # Cohort telemetry insights
 
+> **Frozen corpus, reproducible analysis.** Harness capture is off by default.
+> Every session this command can analyse was captured before the v1 collector
+> handover (or under an explicit legacy-capture opt-in). Re-running the same
+> saved reports is reproducible; new default-install months are empty.
+
 Turn a month of committed telemetry into **practice analytics** — where the time
 and tokens actually go across a cohort of sessions — rendered as one
 self-contained HTML page, with an LLM at the very edge writing prose over the
@@ -103,3 +108,5 @@ pretty page. A recurring finding becomes work, per the normal harness rule:
   program engineers from committed telemetry.
 - [Harness telemetry — the OTLP stored shape](./telemetry-otlp.md) — the
   counts-only spool the whole pipeline reads.
+- [The git-ai collector handover](./gitai-collector.md) — why the corpus stopped
+  growing and what captures current line attribution.

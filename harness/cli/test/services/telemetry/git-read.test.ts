@@ -22,6 +22,7 @@ import {
   combineSession,
   type SessionExport,
 } from '../../../src/services/telemetry/session-export.js';
+import { hermeticGitEnv } from '../../support/hermetic-git.js';
 
 /**
  * Plan 047 Phase 3 (T004–T008) — the git-ref READ path.
@@ -379,7 +380,8 @@ describe('ExecGitRead — real-git round-trip + read-only invariant (T006/T008, 
    */
   const seedRepo = (prefix: string): string => {
     const repo = mkdtempSync(join(tmpdir(), prefix));
-    const git = (...args: string[]) => spawnSync('git', args, { cwd: repo, encoding: 'utf8' });
+    const git = (...args: string[]) =>
+      spawnSync('git', args, { cwd: repo, encoding: 'utf8', env: hermeticGitEnv() });
     git('init', '-q', '-b', 'main');
     git('config', 'user.email', 'test@example.com');
     git('config', 'user.name', 'Test');

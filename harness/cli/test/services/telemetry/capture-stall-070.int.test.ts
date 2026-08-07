@@ -99,9 +99,10 @@ function deps(
 ): CaptureDeps {
   return {
     fs: new NodeFs(),
-    env: new FakeEnv(
-      over.env ?? { CURSOR_CONVERSATION_ID: SESSION, AGENT_TRANSCRIPTS: transcripts },
-    ),
+    env: new FakeEnv({
+      HARNESS_TELEMETRY_CAPTURE: '1',
+      ...(over.env ?? { CURSOR_CONVERSATION_ID: SESSION, AGENT_TRANSCRIPTS: transcripts }),
+    }),
     clock: over.clock ?? new FakeClock(NOW),
     proc: new FakeProcess({}, repo),
     git: new FakeGit({ isRepo: true, branch: STALL_FIXTURE.buffer_markers.branch }),
@@ -140,7 +141,7 @@ function livenessLayer(nowIso = NOW): { ok: boolean; detail: string; next_action
       fs: new NodeFs(),
       proc: new FakeProcess({ node: '/usr/bin/node' }, repo),
       git: new FakeGit({ isRepo: true, branch: STALL_FIXTURE.buffer_markers.branch }),
-      env: new FakeEnv(),
+      env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1' }),
       clock: new FakeClock(nowIso),
     },
     registry,

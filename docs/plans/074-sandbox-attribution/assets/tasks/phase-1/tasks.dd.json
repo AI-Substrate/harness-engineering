@@ -1,0 +1,131 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Phase 1: Implementation",
+        "slug": "phase-1",
+        "status": "draft",
+        "summary": ""
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Ordering is TDD-first inside each feature (Hybrid strategy: TDD for probe/at-risk/nudge/commit logic on fake ports; lightweight for guidance, wiring, docs). Fakes only in CI; the live-daemon replay is a local manual verification task. Repo guardrails: never git add -A; explicit pathspecs; HARNESS_NO_TELEMETRY=1 prefix + timeout 30 git commit --no-verify for own commits; never link global harness; never touch government/, the-flow files, refs/harness-telemetry/*. 073 surface additive-only."
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-0001",
+          "title": "Define SocketProbePort (adapters/net/) + fake; TDD the classification of connected/denied/refused/absent from injected error codes; add the resolver that maps trace2 config to unconfigured/file/af_unix targets.",
+          "state": "checked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001"
+          ]
+        },
+        {
+          "id": "tk-0002",
+          "title": "Implement the node:net real adapter (bounded timeout, destroy-on-settle, never sends). Unit-test only the pure parts; the adapter itself is exercised in local manual verification, not CI.",
+          "state": "checked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001",
+            "../../../plan.dd.json#acceptance_criteria/ac-000a"
+          ]
+        },
+        {
+          "id": "tk-0003",
+          "title": "TDD the ingress-blocked verdict into the collector health read (health.ts additive): denied+file-exists -> warning; markers explain, never decide (markers+connected -> no warning); wire doctor rendering, warn-never-block.",
+          "state": "checked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0002"
+          ]
+        },
+        {
+          "id": "tk-0004",
+          "title": "TDD at-risk enumeration: unattributed commits on branch within bounded window via git port; honest wording; empty-under-blocked -> unproven. Wire into doctor output.",
+          "state": "checked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0003"
+          ]
+        },
+        {
+          "id": "tk-0005",
+          "title": "Fix capture-liveness gating: no green when capture disabled; test on default install asserts non-healthy verdict; own review attention per standing ruling (a verdict change, not a wording change).",
+          "state": "checked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0004"
+          ]
+        },
+        {
+          "id": "tk-0006",
+          "title": "TDD harness commit verb: probe-first branch logic per ac-0005 (reachable -> plain commit + bounded note-verify; blocked -> GIT_TRACE2_EVENT buffer under the gitignored harness temp dir + degraded envelope naming nudge). Staging is EXPLICIT PATHSPECS ONLY (no --all flag in v1; the buffer path must be unstageable by location). execFile git, no shell. Port of the proven commit.mjs prototype, corrected per validation finding 1.",
+          "state": "checked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0005"
+          ]
+        },
+        {
+          "id": "tk-0007",
+          "title": "AFTER spike tk-000b: TDD harness doctor telemetry-nudge per ac-0006 — rotate -> replay whole segment (node:net; port of relay.mjs prototype) -> all-confirm-delete / partial-retain (no partial rewrite, no auto re-replay in v1) -> honest counts -> graceful no-op paths.",
+          "state": "checked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0006",
+            "../../../plan.dd.json#acceptance_criteria/ac-000a"
+          ]
+        },
+        {
+          "id": "tk-0008",
+          "title": "AFTER spike tk-000b: wire detection into doctor + checks per ac-0007 (read-only: detect unattributed commits, name the nudge command in next_action; no mutation from bare doctor/checks). Service-level tests with fakes: detection present, mutation absent.",
+          "state": "checked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0007"
+          ]
+        },
+        {
+          "id": "tk-0009",
+          "title": "Ship guidance: harness instructions commit page (two safe shapes + why); point doctor warning and verify-miss message at it; AGENTS.md managed block injected/refreshed idempotently through the existing guidance seam; doctor warns when block absent.",
+          "state": "checked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0008"
+          ]
+        },
+        {
+          "id": "tk-000a",
+          "title": "Docs: sandbox-attribution section in docs/how/gitai-collector.md (+ nudge/commit coverage), regenerate manifest if needed; check:docs green, lint at baseline.",
+          "state": "checked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0009"
+          ]
+        },
+        {
+          "id": "tk-000b",
+          "title": "SPIKE — gates tk-0007/tk-0008 nudge semantics (run before them; local, never CI): using a REPEATABLE fixture — fresh temp repo, missing-note commits manufactured by committing with GIT_TRACE2_EVENT pointed at a file (the proven repro; no dependency on any pre-existing repo or commits) — establish against the live daemon: (a) replay recovers a buffered commit, (b) duplicate-replay behavior (double notes? corruption? idempotent?), (c) staleness/window limits. Record outcomes in the execution log; nudge retry defaults and U-1/U-2 wording are finalized from these results.",
+          "state": "checked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001",
+            "../../../plan.dd.json#acceptance_criteria/ac-0005",
+            "../../../plan.dd.json#acceptance_criteria/ac-0006"
+          ],
+          "receipt": "SPIKE (local, live daemon): replay recovered 3/3 buffered commits; duplicate replay IDEMPOTENT (notes byte-identical, ref entries 3->3); 30s-stale replay landed; empty replay safe no-op. scratch/074-spike/spike-run-1.log"
+        },
+        {
+          "id": "tk-000c",
+          "title": "Dependency + surface audit: no new production deps, no CI test touching daemon/socket/network/sandbox, 073 surface additive-only; run just checks at baseline.",
+          "state": "checked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-000a"
+          ],
+          "receipt": "just checks at baseline: arch-check 2, markdown-lint 196, windows-check 6; tests/biome/typecheck/check:docs all ok; no new production deps (node:net + node:child_process builtins only)"
+        }
+      ]
+    },
+    {
+      "name": "done_when",
+      "value": {}
+    }
+  ]
+}

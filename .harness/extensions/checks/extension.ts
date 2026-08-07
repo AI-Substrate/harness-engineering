@@ -170,7 +170,8 @@ const checks: HarnessVerb = {
       gates.push(
         await runCmdGate(ctx, 'check:telemetry-fixtures', 'npm', ['run', 'check:telemetry-fixtures'], {
           cwd: root,
-          failNote: 'Telemetry goldens drifted \u2014 run `npm run gen:telemetry-fixtures` and commit the result.',
+          failNote:
+            'Telemetry goldens drifted \u2014 they are frozen compatibility evidence; preserve them and run `npm run check:telemetry-fixtures`.',
         }),
       );
       // Doctrine-parity guard (WARN-LAUNCH): the harness chore/seam `doctrine-parity:039` block

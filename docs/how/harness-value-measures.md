@@ -284,14 +284,12 @@ suspiciously clean count as a clean bill of health.
 
 ## (e) The telemetry `segment` — a counts-only sensor contract
 
-Alongside the `harness-bypass` / `harness-change` records above, the harness now
-emits a per-session **`segment`** on every command (plan 034) — an ambient,
-counts-only sensor that makes *how* teams build with agents measurable. Like the
-records, it is a **contract the eng-thrive measures consume**, not a computation
-this repo performs. The mechanics (capture model, the disable switches, sync —
-manual and auto-on-`checks` — the dated shard refs, offline behaviour, path
-semantics) live in the [telemetry guide](./telemetry.md); what matters here is the
-measurement contract.
+Alongside the `harness-bypass` / `harness-change` records above, the frozen
+harness telemetry corpus contains per-session **`segment`** records captured by
+the former ambient sensor. Harness capture is now off by default, but the
+segment remains a contract the eng-thrive measures can consume from published
+refs. The archived mechanics and live read path are in the
+[telemetry guide](./telemetry.md).
 
 **What the measures may read.** The enumerated field set is the segment's plan
 (`docs/plans/034-harness-telemetry-collection/…` `### Segment Schema`) and the
@@ -415,9 +413,10 @@ later.
 
 ## See also
 
-- [Harness telemetry](./telemetry.md) — the counts-only per-session `segment`
-  sensor: capture model, kill-switch, `harness telemetry sync`, the per-session
-  dated shard refs, and the privacy/offline guarantees.
+- [Harness telemetry](./telemetry.md) — the frozen counts-only `segment`
+  contract, live read path, and explicit legacy-capture escape hatch.
+- [The git-ai collector handover](./gitai-collector.md) — current attribution
+  collection and the v1 proof ceiling.
 - [Record and record types](./record-and-record-types.md) — the `harness record
   <type>` command, the two new core types' body-key contracts, and the
   provenance header section.

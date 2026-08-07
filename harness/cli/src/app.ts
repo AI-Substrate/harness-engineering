@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import { registerCommitAct } from './acts/commit.js';
 import { registerDdAct } from './acts/dd/index.js';
 import { registerDocsAct } from './acts/docs.js';
 import { registerDoctorAct } from './acts/doctor.js';
@@ -384,6 +385,9 @@ export function buildProgram(
 
   registerHelpAct(program, io, registry, deps.fs);
   registerDoctorAct(program, io, registry, recordRegistry);
+  // plan 074 — a CORE verb: the sandbox failure it guards is a property of the
+  // MACHINE, not of any repo's toolchain, so it cannot be a per-consumer extension.
+  registerCommitAct(program, io);
   registerInitAct(program, io, deps);
   registerNewAct(program, io, deps);
   registerDocsAct(program, io);

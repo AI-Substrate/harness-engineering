@@ -75,7 +75,9 @@ export interface ExtensionRegistryOptions {
  * `observe` since plan 015 — the friction-capture act; `init` since plan 008
  * FX001 — the governance-doc inception writer; `sensors` since plan 059; `dd`
  * and `plan` since plan 065 — both recorded as deviations in that plan's ledger,
- * because a core verb is a departure from "verbs are extension-owned").
+ * because a core verb is a departure from "verbs are extension-owned"); `commit`
+ * since plan 074 — the safe commit path, core because the sandbox failure it
+ * guards against belongs to the machine rather than to any repo's toolchain.
  */
 export const RESERVED_NAMES: ReadonlySet<string> = new Set([
   'help',
@@ -91,6 +93,7 @@ export const RESERVED_NAMES: ReadonlySet<string> = new Set([
   'dd',
   'plan',
   'sensors',
+  'commit',
 ]);
 
 /**

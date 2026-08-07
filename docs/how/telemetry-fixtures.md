@@ -181,19 +181,18 @@ git commit -m "test(telemetry): add real <surface> fixture (<instance>)"
 ```
 
 If anything is wrong: **do not commit.** Delete the promoted `corpusDir/`, re-capture
-with a better `--names` set or a different session. If you changed an adapter and the
-goldens legitimately moved, regenerate them with `npm run gen:telemetry-fixtures` and
-re-review the diff before committing.
+with a better `--names` set or a different session. The committed Segment-2.4 /
+OTLP-v0.1 goldens are frozen compatibility evidence; adapter changes must preserve
+them and pass `npm run check:telemetry-fixtures`.
 
 ---
 
-## Regenerating goldens (not capture)
+## Verifying frozen goldens (not capture)
 
-The committed goldens are **derived** — never hand-edited. To rebuild them from the
-current adapters over the already-committed raw fixtures:
+The committed legacy goldens are **derived and frozen** — never hand-edited and
+not regenerated. Verify that current adapters remain compatible:
 
 ```bash
-npm run gen:telemetry-fixtures      # rewrite every expected-segment.json + invariants.json
 npm run check:telemetry-fixtures    # drift guard — fails non-zero if a golden is stale
 ```
 
