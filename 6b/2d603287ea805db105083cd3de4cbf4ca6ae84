@@ -1,0 +1,32 @@
+docs/plans/074-sandbox-attribution/assets/reviews/phase-1-review.md
+  s_40dc55d5b47a87::t_827aef74a91068 304-367
+  s_40dc55d5b47a87::t_0bf2208809c382 301-303
+docs/plans/074-sandbox-attribution/the-flow.json
+  s_a76964380084ef::t_8427fe01b9a486 177-203,397,414-424
+docs/plans/074-sandbox-attribution/the-flow.md
+  s_a76964380084ef::t_a702620400b92e 4,20,51-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "6b2d603287ea805db105083cd3de4cbf4ca6ae84",
+  "prompts": {},
+  "sessions": {
+    "s_40dc55d5b47a87": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "82e01a2f-8b51-432f-9149-9b988bb2b5ae",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
