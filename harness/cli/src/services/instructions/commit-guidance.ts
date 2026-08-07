@@ -1,4 +1,5 @@
 import type { FsPort } from '../../adapters/fs/fs-port.js';
+import type { CommitMode } from '../commit/commit-service.js';
 import { posixJoin, toPosix } from '../shared/posix-path.js';
 
 /**
@@ -9,7 +10,8 @@ import { posixJoin, toPosix } from '../shared/posix-path.js';
  * The guidance is careful about what it promises, because overclaiming here
  * would recreate the exact failure the plan exists to kill. A `harness commit`
  * is **verified or named**: either a note landed and it says so, or the events
- * were buffered and it names both the buffer and the command that drains it. It
+ * were buffered and it names both the buffer and the command that drains it, or
+ * it states plainly that attribution could not be verified on this platform. It
  * is NOT a guarantee of delivery — nothing can promise that, since a blocked
  * ingress is blocked. What it guarantees is that the outcome is never SILENT.
  *
@@ -18,6 +20,137 @@ import { posixJoin, toPosix } from '../shared/posix-path.js';
  * does, the commit lands unattributed and git-ai's recovery ladder may later
  * attest those lines as known-human (F-03).
  */
+
+/** What one reader-facing commit outcome promises, and what to do about it. */
+export interface CommitOutcome {
+  /** The outcome's name in the guidance's own vocabulary. */
+  readonly label: string;
+  /** What `harness commit` actually did and actually claims. Never more. */
+  readonly promise: string;
+  /** What the reader does next — including, where it applies, what NOT to run. */
+  readonly remedy: string;
+  /**
+   * Is `harness doctor telemetry-nudge` the recovery for this outcome?
+   *
+   * Stated as data because getting it wrong is the plan-076 defect itself: the
+   * pre-075 block sent EVERY reader to the nudge, and on a Windows named pipe
+   * there is no buffer to drain and no replay path, so it refuses.
+   */
+  readonly nudge: 'drains-this' | 'not-the-remedy';
+}
+
+/**
+ * The outcomes an agent can actually receive, in the order the guidance tells
+ * them. Modes collapse ONTO these — see {@link COMMIT_OUTCOME_GUIDANCE}.
+ *
+ * Separating outcome from mode is what makes the collapse honest: two modes that
+ * share a prose outcome share the SAME promise and remedy object, so the collapse
+ * cannot hide a difference in what is promised. A mode whose promise genuinely
+ * differs cannot be folded in — it needs an outcome of its own.
+ */
+export const COMMIT_OUTCOMES = {
+  verified: {
+    label: 'confirmed',
+    promise:
+      'harness commits with no trace2 override, waits (bounded) for the `refs/notes/ai` note, and tells you whether it landed.',
+    remedy: 'A landed note is the healthy shape; a miss is reported to you, never hidden.',
+    nudge: 'not-the-remedy',
+  },
+  buffered: {
+    label: 'buffered and named',
+    promise:
+      "the commit is made with its trace2 events going to a buffer file instead of the collector, so attribution is DEFERRED, not lost — and it isn't proven yet either.",
+    remedy:
+      'The command names the buffer it used and the exact recovery command for it — run that from an UNSANDBOXED shell (a plain-FILE target must be pointed back at the socket first).',
+    nudge: 'drains-this',
+  },
+  unverified: {
+    label: 'NOT VERIFIED on this platform',
+    promise:
+      'the commit is made with no trace2 override (git talks to the pipe as usual), nothing was buffered, nothing was written beside the pipe — and nothing is claimed about attribution, because nothing was measured.',
+    remedy:
+      'Check for yourself with `git notes --ref=ai show HEAD`. Do NOT run `harness doctor telemetry-nudge` — there is no buffer to drain and no replay path for this transport, and it will refuse.',
+    nudge: 'not-the-remedy',
+  },
+} as const satisfies Record<string, CommitOutcome>;
+
+export type CommitOutcomeId = keyof typeof COMMIT_OUTCOMES;
+
+/** How one `CommitMode` reaches the reader: which outcome, and what selected it. */
+export interface CommitOutcomeGuidance {
+  /**
+   * The outcome this mode produces. Two modes MAY name the same outcome — the
+   * collapse is DECLARED here and never inferred from prose similarity (ac-0004).
+   */
+  readonly outcome: CommitOutcomeId;
+  /** The condition that selects this mode, in the reader's terms. */
+  readonly when: string;
+}
+
+/**
+ * The EXHAUSTIVE mode table (plan 076 · ac-0002) — the ONLY declaration of what
+ * each commit outcome promises, and the third application of the house pattern
+ * already proven by `TRACE2_TARGET_POLICY` (ingress.ts) and
+ * `RETAINED_FIELD_RENDERING` (nudge.ts).
+ *
+ * `satisfies Record<CommitMode, …>` is the guard. Add an arm to {@link CommitMode}
+ * and `tsc` refuses this object until the new mode declares which outcome it
+ * gives the reader and what selects it — which is exactly the question that went
+ * unanswered when plan 075 added `ingress-unverified` and the managed block kept
+ * promising two outcomes. This is DL-007: a guarantee about FUTURE code needs the
+ * type system, not a test. It lives in `src` because the typecheck `include` is
+ * `["src"]` — the same contract in a test file compiles nowhere CI looks (F011).
+ *
+ * Both guidance surfaces render their outcome list from here, so there is no
+ * second hand-maintained copy left to drift.
+ */
+export const COMMIT_OUTCOME_GUIDANCE = {
+  'direct-verified': {
+    outcome: 'verified',
+    when: 'the collector ingress socket is reachable',
+  },
+  'file-buffered': {
+    outcome: 'buffered',
+    when: "git's configured trace2 target is a plain FILE",
+  },
+  'harness-buffered': {
+    outcome: 'buffered',
+    when: 'the ingress is blocked, absent or unconfigured',
+  },
+  'ingress-unverified': {
+    outcome: 'unverified',
+    when: 'trace2 points at a Windows NAMED PIPE (\\\\.\\pipe\\…)',
+  },
+} as const satisfies Record<CommitMode, CommitOutcomeGuidance>;
+
+/**
+ * Render the outcome list ONCE, for both surfaces.
+ *
+ * Modes are walked in table order and grouped by the outcome they declare, so a
+ * collapsed outcome states every condition that reaches it rather than silently
+ * describing one mode and implying the other. One renderer, one output, used
+ * verbatim in both places — the strongest available anti-drift shape, and the
+ * reason neither surface can be updated without the other.
+ */
+export function commitOutcomeLines(): string {
+  const order: CommitOutcomeId[] = [];
+  const whens = new Map<CommitOutcomeId, string[]>();
+  for (const mode of Object.keys(COMMIT_OUTCOME_GUIDANCE) as CommitMode[]) {
+    const { outcome, when } = COMMIT_OUTCOME_GUIDANCE[mode];
+    if (!whens.has(outcome)) {
+      order.push(outcome);
+      whens.set(outcome, []);
+    }
+    whens.get(outcome)?.push(when);
+  }
+  return order
+    .map((id) => {
+      const { label, promise, remedy } = COMMIT_OUTCOMES[id];
+      const condition = (whens.get(id) ?? []).join(', or when ');
+      return `- **${label}** — when ${condition}: ${promise} ${remedy}`;
+    })
+    .join('\n');
+}
 
 /** The instructions page `harness instructions commit` resolves (ac-0008 seam 1). */
 export const COMMIT_INSTRUCTIONS = `# harness commit — the safe commit path
@@ -41,20 +174,13 @@ be the thing that tells the truth.
 
     harness commit "<message>" -- <path> [<path>…]
 
-  VERIFIED OR NAMED. It probes the ingress first, then takes one of three paths:
+VERIFIED OR NAMED. It probes the ingress first, then takes exactly one of these
+paths and TELLS YOU which one it took:
 
-  - ingress reachable -> commits with no trace2 override, then waits (bounded)
-    for the refs/notes/ai note and TELLS YOU whether it landed.
-  - ingress blocked / absent / unconfigured -> commits with trace2 buffered to a
-    file under the gitignored .harness/temp/, and names both that buffer and the
-    command that drains it.
-  - trace2 points at a Windows NAMED PIPE (\\\\.\\pipe\\…) -> commits with no
-    override (git talks to the pipe as usual), buffers NOTHING, writes nothing
-    beside the pipe, and says plainly that attribution was NOT VERIFIED on this
-    platform. It does not send you to the nudge, which would refuse.
+${commitOutcomeLines()}
 
-  It never rolls back, never blocks your commit, and never swallows git's exit
-  code. Staging is EXPLICIT pathspecs only — nothing is swept in for you.
+It never rolls back, never blocks your commit, and never swallows git's exit
+code. Staging is EXPLICIT pathspecs only — nothing is swept in for you.
 
     harness doctor telemetry-nudge
 
@@ -74,9 +200,8 @@ you; the commit looks completely healthy.
 ## What is and is not guaranteed
 
 - **Guaranteed**: a \`harness commit\` is never SILENT about attribution. It
-  verifies the note landed, or names the buffer and the recovery command, or
-  states that attribution could not be verified on this platform. What it never
-  does is claim a delivery it has not measured.
+  reports which of the outcomes above it took, and never claims a delivery it
+  has not measured.
 - **NOT guaranteed**: delivery. A blocked ingress is blocked. Buffered events
   reach the collector only when the nudge is run from somewhere that can reach
   the socket, and commits made before git-ai was installed will never gain a
@@ -109,7 +234,11 @@ export const CORE_INSTRUCTION_PAGES: Readonly<Record<string, string>> = Object.f
 export const AGENTS_BLOCK_BEGIN = '<!-- BEGIN harness:commit-guidance -->';
 export const AGENTS_BLOCK_END = '<!-- END harness:commit-guidance -->';
 
-/** The managed block's body — the same guarantee the instructions page states. */
+/**
+ * The managed block's body — the same outcome contract the instructions page
+ * states, rendered from the SAME table (plan 076 · ac-0003). There is no second
+ * hand-maintained enumeration here to drift out of step with the code.
+ */
 export function commitGuidanceBlock(): string {
   return `${AGENTS_BLOCK_BEGIN}
 ## Committing in this repo
@@ -118,9 +247,10 @@ Use \`harness commit "<message>" -- <paths>\` rather than a chained
 \`git add … && git commit …\`.
 
 A \`harness commit\` is **verified or named**: it probes the collector ingress,
-commits, and then either confirms a \`refs/notes/ai\` note landed or names the
-buffer holding the events plus the command that drains it
-(\`harness doctor telemetry-nudge\`). It never blocks and never rolls back.
+commits, and then tells you WHICH outcome you got. It never blocks and never
+rolls back. The outcomes are:
+
+${commitOutcomeLines()}
 
 A chained or compound \`git commit\` can **silently lose attribution** — agent
 command sandboxes block git-ai's socket, git quietly disables trace2, and the

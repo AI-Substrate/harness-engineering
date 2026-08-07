@@ -12,6 +12,7 @@ import { buildDoctorReport, type DoctorDeps } from '../../../src/services/doctor
 import type { VerbRegistry } from '../../../src/services/extensions/registry.js';
 import { commitGuidanceBlock } from '../../../src/services/instructions/commit-guidance.js';
 import { FakeCollectorFs } from '../../support/collector-fakes.js';
+import { PRE_075_BLOCK } from '../../support/pre-075-block.js';
 
 /**
  * Plan 074 · ac-0004, ac-0007, ac-0008 — the doctor SURFACE.
@@ -232,5 +233,28 @@ describe('plan 074 · ac-0008 — commit-guidance warns, and never edits', () =>
     expect(row.detail).toContain('STALE');
     // The file is untouched: doctor reports, the explicit verb edits.
     expect(fs.readText('/repo/AGENTS.md')).toBe(`${stale}\n`);
+  });
+
+  it('plan 076 · ac-0005 — the VERBATIM pre-075 block migrates as `stale`, and doctor still edits nothing', () => {
+    /*
+    Test Doc:
+    - Why: every repo in the wild carries the pre-075 block, which promises exactly
+      two outcomes and routes a named-pipe reader to a nudge that refuses. Migration
+      must be graceful: the old text has to read `stale` — never `current` (which
+      would leave the wrong promise in place forever) and never `absent` (which
+      would tell an adopted repo it was never adopted).
+    - Contract: doctor's row is not-ok, says STALE, names `--inject`, mutates nothing.
+    - Quality Contribution: pins the ONE state that makes the fix reachable for
+      already-adopted repos, against the real historical bytes rather than a mutation
+      of today's block.
+    */
+    const fs = new FakeFs({ ...BUILT_CLI, '/repo/AGENTS.md': `${PRE_075_BLOCK}\n` });
+    const report = buildDoctorReport(deps({ fs }), EMPTY);
+    const row = layer(report, 'commit-guidance');
+
+    expect(row.ok).toBe(false);
+    expect(row.detail).toContain('STALE');
+    expect(row.next_action).toContain('harness instructions commit --inject');
+    expect(fs.readText('/repo/AGENTS.md')).toBe(`${PRE_075_BLOCK}\n`);
   });
 });

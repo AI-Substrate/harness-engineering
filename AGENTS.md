@@ -142,9 +142,12 @@ Use `harness commit "<message>" -- <paths>` rather than a chained
 `git add … && git commit …`.
 
 A `harness commit` is **verified or named**: it probes the collector ingress,
-commits, and then either confirms a `refs/notes/ai` note landed or names the
-buffer holding the events plus the command that drains it
-(`harness doctor telemetry-nudge`). It never blocks and never rolls back.
+commits, and then tells you WHICH outcome you got. It never blocks and never
+rolls back. The outcomes are:
+
+- **confirmed** — when the collector ingress socket is reachable: harness commits with no trace2 override, waits (bounded) for the `refs/notes/ai` note, and tells you whether it landed. A landed note is the healthy shape; a miss is reported to you, never hidden.
+- **buffered and named** — when git's configured trace2 target is a plain FILE, or when the ingress is blocked, absent or unconfigured: the commit is made with its trace2 events going to a buffer file instead of the collector, so attribution is DEFERRED, not lost — and it isn't proven yet either. The command names the buffer it used and the exact recovery command for it — run that from an UNSANDBOXED shell (a plain-FILE target must be pointed back at the socket first).
+- **NOT VERIFIED on this platform** — when trace2 points at a Windows NAMED PIPE (\\.\pipe\…): the commit is made with no trace2 override (git talks to the pipe as usual), nothing was buffered, nothing was written beside the pipe — and nothing is claimed about attribution, because nothing was measured. Check for yourself with `git notes --ref=ai show HEAD`. Do NOT run `harness doctor telemetry-nudge` — there is no buffer to drain and no replay path for this transport, and it will refuse.
 
 A chained or compound `git commit` can **silently lose attribution** — agent
 command sandboxes block git-ai's socket, git quietly disables trace2, and the

@@ -1,0 +1,90 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Phase 1: Converge the managed block on the mode union",
+        "slug": "phase-1",
+        "status": "draft",
+        "summary": ""
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Add the CommitMode-keyed guidance table, render both guidance surfaces from it, prove the drift is now a compile error rather than a review catch, and refresh this repo's own block."
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-0001",
+          "title": "TDD the table FIRST. Add `CommitOutcomeGuidance` and the exported `COMMIT_OUTCOME_GUIDANCE: Record<CommitMode, CommitOutcomeGuidance>` to commit-guidance.ts, importing `CommitMode` from commit-service. Each entry declares: the reader-facing outcome label, what harness PROMISES for that mode, and the remedy — which for `ingress-unverified` is explicitly NOT the nudge. Keep it in `src`: typecheck `include` is [\"src\"], so a contract parked in a test file is compiled nowhere CI looks.",
+          "state": "checked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0002",
+            "../../../plan.dd.json#acceptance_criteria/ac-0004"
+          ],
+          "receipt": "COMMIT_OUTCOMES + COMMIT_OUTCOME_GUIDANCE ('as const satisfies Record<CommitMode, CommitOutcomeGuidance>') added to src/services/instructions/commit-guidance.ts; CommitMode imported type-only from commit-service. TDD: assertions run RED first (6 failed | 24 passed) before the source moved."
+        },
+        {
+          "id": "tk-0002",
+          "title": "Render `commitGuidanceBlock()` from the table. Delete the hand-written two-outcome sentence; the outcome list is now generated over the table's entries. Preserve the block's existing voice and the two fence markers byte-exactly — idempotency and stale detection both hang off those markers.",
+          "state": "checked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001",
+            "../../../plan.dd.json#acceptance_criteria/ac-0003"
+          ],
+          "receipt": "commitGuidanceBlock() renders commitOutcomeLines(); the hand-written two-outcome sentence is deleted. AGENTS_BLOCK_BEGIN/END byte-identical and now pinned by a test against the pre-075 fixture."
+        },
+        {
+          "id": "tk-0003",
+          "title": "Render the outcome section of `COMMIT_INSTRUCTIONS` from the same table. Leave the surrounding prose alone: why the verb exists, the shapes to avoid, and the Windows not-supported note are all still correct and are not this plan's business.",
+          "state": "checked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0003"
+          ],
+          "receipt": "COMMIT_INSTRUCTIONS renders the same commitOutcomeLines(); the third enumeration in 'What is and is not guaranteed' derived away per ac-0003. Surrounding prose untouched."
+        },
+        {
+          "id": "tk-0004",
+          "title": "Tests. (a) the block names the unverified outcome and does NOT offer the nudge as its remedy; (b) every table entry's outcome text appears in BOTH surfaces, so a new entry cannot be silently omitted from either; (c) the mode->outcome mapping is pinned, so a future mode cannot be quietly folded into an existing outcome; (d) an AGENTS.md carrying the verbatim pre-075 block reads `stale`, and doctor's row is not-ok with the --inject command in next_action; (e) a refresh inside a file with user content on BOTH sides leaves that content byte-identical, and a second run reports `unchanged`.",
+          "state": "checked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001",
+            "../../../plan.dd.json#acceptance_criteria/ac-0003",
+            "../../../plan.dd.json#acceptance_criteria/ac-0004",
+            "../../../plan.dd.json#acceptance_criteria/ac-0005",
+            "../../../plan.dd.json#acceptance_criteria/ac-0007"
+          ],
+          "receipt": "All five cases land: (a)+(a') block names the unverified outcome and pins nudge='not-the-remedy'; (b) both surfaces iterate the TABLE; (c) mode->outcome mapping pinned; (d) verbatim pre-075 fixture (test/support/pre-075-block.ts, from 5dae6e9c) reads stale + doctor row not-ok with --inject; (e) refresh with user content both sides byte-identical, second run unchanged. 30 passed (30)."
+        },
+        {
+          "id": "tk-0005",
+          "title": "Refresh this repo's own AGENTS.md block by running `harness instructions commit --inject` from the worktree, then verify by diff that nothing outside the managed markers moved. The repo that ships the guidance must not itself be carrying a stale copy.",
+          "state": "checked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0006"
+          ],
+          "receipt": "'harness instructions commit --inject' -> action: refreshed. git diff AGENTS.md is 11 lines, ALL between the two markers (verified by eye in the diff); nothing outside the fences moved."
+        },
+        {
+          "id": "tk-0006",
+          "title": "Run `just checks` green, and confirm `harness doctor` from the worktree reports `commit-guidance: ok`. Record the Dim-0 evidence for ac-0002: adding a fifth `CommitMode` member must fail tsc AT THE GUIDANCE TABLE — if it only fails inside commit-service, the guarantee this plan exists to create does not hold.",
+          "state": "checked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0002",
+            "../../../plan.dd.json#acceptance_criteria/ac-0006"
+          ],
+          "receipt": "just checks: every hard gate ok (tests, biome, typecheck, docs/flows/telemetry/doctrine/dd-docs drift, root-invocation-smoke, dd doctor, skills-check); the 3 warn-launch degradeds confirmed pre-existing and outside this diff. doctor: commit-guidance ok. Dim-0: a fifth CommitMode member fails tsc with BOTH errors in commit-guidance.ts (TS1360 at the table, line 124; TS7053 at the renderer, line 139) while commit-service.ts compiles clean — transcript in execution.log.md."
+        }
+      ]
+    },
+    {
+      "name": "done_when",
+      "value": {}
+    }
+  ]
+}

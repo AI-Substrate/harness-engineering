@@ -8,13 +8,17 @@ import type { VerbRegistry } from '../../../src/services/extensions/registry.js'
 import {
   AGENTS_BLOCK_BEGIN,
   AGENTS_BLOCK_END,
+  COMMIT_OUTCOME_GUIDANCE,
+  COMMIT_OUTCOMES,
   CORE_INSTRUCTION_PAGES,
+  type CommitOutcomeId,
   commitGuidanceBlock,
   injectAgentsBlock,
   readAgentsBlock,
 } from '../../../src/services/instructions/commit-guidance.js';
 import { loadVerbInstructions } from '../../../src/services/instructions/instructions-service.js';
 import { FakeCollectorFs } from '../../support/collector-fakes.js';
+import { PRE_075_BLOCK } from '../../support/pre-075-block.js';
 
 /**
  * Plan 074 · ac-0008 — the two guidance seams.
@@ -126,6 +130,122 @@ describe('plan 074 · ac-0008 seam 2 — the AGENTS.md managed block', () => {
     expect(block).toContain('outcome is never silent');
     expect(block).toContain('Neither shape guarantees delivery');
     expect(block).toContain('harness instructions commit');
+  });
+});
+
+describe('plan 076 — the outcome contract is ONE table, and both surfaces render from it', () => {
+  /*
+  Test Doc:
+  - Why: `CommitMode` gained a fourth member in plan 075 and the managed block was
+    left promising two outcomes, so a Windows agent was told to expect an outcome
+    it cannot get and sent to a recovery command that refuses there. The words were
+    wrong because the CONTRACT existed twice, in two hand-maintained prose copies.
+  - Contract: one exported `Record<CommitMode, …>` table; both surfaces render the
+    same outcome list from it; the mode→outcome collapse is declared, never inferred.
+  - Quality Contribution: the compile error (ac-0002) is the real guard — these
+    tests pin what the compiler cannot: that the rendered WORDS actually reach both
+    surfaces, and that a future mode cannot be quietly folded into an existing outcome.
+  */
+
+  it('ac-0002/ac-0004 — the table is TOTAL over CommitMode, and the collapse is declared', () => {
+    // The four modes are exactly commit-service's union. A fifth member fails
+    // `tsc` at COMMIT_OUTCOME_GUIDANCE (Dim-0 evidence in the execution log) —
+    // this assertion only pins the mapping the compiler cannot judge.
+    expect(Object.keys(COMMIT_OUTCOME_GUIDANCE).sort()).toEqual([
+      'direct-verified',
+      'file-buffered',
+      'harness-buffered',
+      'ingress-unverified',
+    ]);
+
+    // The prose collapse is DECLARED: the two buffered modes name the same
+    // outcome, and the other two do not share with anyone. A future mode folded
+    // into an existing outcome has to change this line to do it.
+    expect(COMMIT_OUTCOME_GUIDANCE['direct-verified'].outcome).toBe('verified');
+    expect(COMMIT_OUTCOME_GUIDANCE['file-buffered'].outcome).toBe('buffered');
+    expect(COMMIT_OUTCOME_GUIDANCE['harness-buffered'].outcome).toBe('buffered');
+    expect(COMMIT_OUTCOME_GUIDANCE['ingress-unverified'].outcome).toBe('unverified');
+  });
+
+  it('ac-0003 — every outcome the table declares appears in BOTH surfaces', () => {
+    const block = commitGuidanceBlock();
+    const page = CORE_INSTRUCTION_PAGES.commit ?? '';
+
+    // Iterating the TABLE, not a list of its own: an entry cannot be added and
+    // silently omitted from either surface (the F011 lesson — a guard that checks
+    // instances instead of the contract is false comfort).
+    for (const id of Object.keys(COMMIT_OUTCOMES) as CommitOutcomeId[]) {
+      const outcome = COMMIT_OUTCOMES[id];
+      for (const text of [outcome.label, outcome.promise, outcome.remedy]) {
+        expect(block).toContain(text);
+        expect(page).toContain(text);
+      }
+    }
+    // Every mode's selecting condition reaches both surfaces too, so a reader can
+    // tell WHICH outcome they got and not merely that the set has four members.
+    for (const mode of Object.keys(
+      COMMIT_OUTCOME_GUIDANCE,
+    ) as (keyof typeof COMMIT_OUTCOME_GUIDANCE)[]) {
+      expect(block).toContain(COMMIT_OUTCOME_GUIDANCE[mode].when);
+      expect(page).toContain(COMMIT_OUTCOME_GUIDANCE[mode].when);
+    }
+  });
+
+  it('ac-0001 — the block names the unverified outcome and does NOT offer the nudge as its remedy', () => {
+    const block = commitGuidanceBlock();
+    const unverified = COMMIT_OUTCOMES.unverified;
+
+    expect(block).toContain('NOT VERIFIED');
+    expect(block).toContain('nothing was buffered');
+    // The remedy for a named-pipe reader is a git command they can actually run,
+    // and an explicit "do NOT" on the one that refuses on their platform.
+    expect(unverified.nudge).toBe('not-the-remedy');
+    expect(unverified.remedy).toContain('Do NOT run `harness doctor telemetry-nudge`');
+    expect(block).toContain('Do NOT run `harness doctor telemetry-nudge`');
+  });
+
+  it('ac-0001 — the block no longer states or implies a two-member outcome set', () => {
+    const block = commitGuidanceBlock();
+
+    // The pre-075 sentence promised exactly two outcomes. Its absence is the fix.
+    expect(block).not.toContain('either confirms a `refs/notes/ai` note landed or');
+    expect(block).not.toBe(PRE_075_BLOCK);
+  });
+
+  it('ac-0007 — the markers are byte-exact, so blocks already in the wild are still found', () => {
+    // Idempotency and stale-detection both hang off these two strings; changing
+    // either orphans every block already injected into a consumer repo.
+    expect(AGENTS_BLOCK_BEGIN).toBe('<!-- BEGIN harness:commit-guidance -->');
+    expect(AGENTS_BLOCK_END).toBe('<!-- END harness:commit-guidance -->');
+    expect(PRE_075_BLOCK.startsWith(AGENTS_BLOCK_BEGIN)).toBe(true);
+    expect(PRE_075_BLOCK.endsWith(AGENTS_BLOCK_END)).toBe(true);
+  });
+
+  it('ac-0005/ac-0007 — a stale block refreshes in place with user content on BOTH sides intact', () => {
+    const head = '# Agents\n\nHouse rules, above.\n\n';
+    const tail = '\n\n## Local conventions\n\nHouse rules, below.\n';
+    const fs = new FakeFs({ '/repo/AGENTS.md': `${head}${PRE_075_BLOCK}${tail}` });
+
+    expect(readAgentsBlock({ fs, cwd: CWD })).toBe('stale');
+
+    const first = injectAgentsBlock({ fs, cwd: CWD });
+    expect(first).toEqual({ ok: true, path: '/repo/AGENTS.md', action: 'refreshed' });
+
+    const text = fs.readText('/repo/AGENTS.md') ?? '';
+    // BYTE-identical on both sides — the block owns the region between its fences
+    // and nothing else.
+    expect(text.slice(0, head.length)).toBe(head);
+    expect(text.slice(text.length - tail.length)).toBe(tail);
+    expect(text).toBe(`${head}${commitGuidanceBlock()}${tail}`);
+    expect(readAgentsBlock({ fs, cwd: CWD })).toBe('current');
+
+    // A second run is `unchanged` and writes nothing new.
+    expect(injectAgentsBlock({ fs, cwd: CWD })).toEqual({
+      ok: true,
+      path: '/repo/AGENTS.md',
+      action: 'unchanged',
+    });
+    expect(fs.readText('/repo/AGENTS.md')).toBe(text);
   });
 });
 
