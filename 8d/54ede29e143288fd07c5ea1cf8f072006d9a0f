@@ -1,0 +1,77 @@
+docs/plans/076-commit-guidance-convergence/assets/reviews/phase-1-fix-tasks.md
+  s_a3a6dd35a962d0::t_5b9217da59b81d 1-42
+AGENTS.md
+  s_17d65f429c4464::t_a6c277b3e9b693 149-150
+  s_17d65f429c4464::t_5ae9854cacf12a 148
+docs/plans/076-commit-guidance-convergence/plan.dd.json
+  s_17d65f429c4464::t_e4e7f395fffaee 45,51,57,63,75
+docs/plans/076-commit-guidance-convergence/assets/REVIEWER-BRIEF.md
+  s_a76964380084ef::t_55eaa39fa67890 1-79
+docs/plans/076-commit-guidance-convergence/plan.dd.md
+  s_17d65f429c4464::t_e4e7f395fffaee 61-64,66
+harness/cli/src/services/instructions/commit-guidance.ts
+  s_17d65f429c4464::t_9407fd2c80c7fc 47-60
+  s_17d65f429c4464::t_1703d7ea6b552a 24-46,61-62,69-91,108-110,117,121,127-131,137-139,142
+  s_17d65f429c4464::t_47243ffb423184 92
+  s_17d65f429c4464::t_d365caa6d0d338 118-120
+  s_17d65f429c4464::t_c3355e593a88fb 140-141
+  s_17d65f429c4464::t_9ba6a415db79cd 217,219
+  s_17d65f429c4464::t_83db0325dd4cb9 93-100
+docs/plans/076-commit-guidance-convergence/assets/reviews/phase-1-review.md
+  s_a3a6dd35a962d0::t_5b9217da59b81d 1-190
+docs/how/gitai-collector.md
+  s_17d65f429c4464::t_251b44b424dcca 378,383-394
+docs/plans/076-commit-guidance-convergence/assets/tasks/phase-1/execution.log.md
+  s_17d65f429c4464::t_7a5c3ba707d4b4 82-89
+  s_17d65f429c4464::t_5029cca0d9bb06 183-301
+harness/cli/test/services/instructions/commit-guidance.test.ts
+  s_17d65f429c4464::t_54f63a15f1398a 243-260
+  s_17d65f429c4464::t_c3355e593a88fb 17
+  s_17d65f429c4464::t_b6602eeb5b7863 181,185-186,188-189,201-214,223-226,229-230,232-233,239-242,261-289,298,300
+  s_17d65f429c4464::t_bfa40a5826e18e 215-222,227-228,231,234-238
+  s_17d65f429c4464::t_4cbc94cb9da04b 19,187
+docs/plans/076-commit-guidance-convergence/assets/tasks/phase-1/tasks.dd.json
+  s_2a2451d95e064e::t_8285577ec6f42b 30,62,71,81
+docs/plans/076-commit-guidance-convergence/assets/tasks/phase-1/tasks.dd.md
+  s_2a2451d95e064e::t_1b954511ff312d 38,41-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8d54ede29e143288fd07c5ea1cf8f072006d9a0f",
+  "prompts": {},
+  "sessions": {
+    "s_17d65f429c4464": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "525f6cb0-27f0-4852-afe9-9b27a51e10d0",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_2a2451d95e064e": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "587f8924-3447-4784-b872-2fb1c784af82",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_a3a6dd35a962d0": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "bbb862ae-a19e-4724-9bb4-2b9404e14fbd",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
