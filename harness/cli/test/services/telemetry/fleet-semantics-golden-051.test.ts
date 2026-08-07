@@ -57,7 +57,10 @@ function fixture(rel: string): string {
 function plan051(rel: string): string {
   return readFileSync(
     fileURLToPath(
-      new URL(`../../../../../docs/plans/051-pij-fleet-session-eval/${rel}`, import.meta.url),
+      new URL(
+        `../../../../../docs/plans/archive/051-pij-fleet-session-eval/${rel}`,
+        import.meta.url,
+      ),
     ),
     'utf8',
   );
@@ -77,24 +80,25 @@ const CODEX_ROLLOUT =
 const ORCH_ARTIFACTS: Array<{ rel: string; repoRel: string }> = [
   {
     rel: 'pij-fleet-session-eval-plan.md',
-    repoRel: 'docs/plans/051-pij-fleet-session-eval/pij-fleet-session-eval-plan.md',
+    repoRel: 'docs/plans/archive/051-pij-fleet-session-eval/pij-fleet-session-eval-plan.md',
   },
   {
     rel: 'workshops/001-fleet-join-and-eval-design.md',
-    repoRel: 'docs/plans/051-pij-fleet-session-eval/workshops/001-fleet-join-and-eval-design.md',
+    repoRel:
+      'docs/plans/archive/051-pij-fleet-session-eval/workshops/001-fleet-join-and-eval-design.md',
   },
   {
     rel: 'research-dossier.md',
-    repoRel: 'docs/plans/051-pij-fleet-session-eval/research-dossier.md',
+    repoRel: 'docs/plans/archive/051-pij-fleet-session-eval/research-dossier.md',
   },
   {
     rel: 'backpressure-coverage.md',
-    repoRel: 'docs/plans/051-pij-fleet-session-eval/backpressure-coverage.md',
+    repoRel: 'docs/plans/archive/051-pij-fleet-session-eval/backpressure-coverage.md',
   },
-  { rel: 'the-flow.json', repoRel: 'docs/plans/051-pij-fleet-session-eval/the-flow.json' },
+  { rel: 'the-flow.json', repoRel: 'docs/plans/archive/051-pij-fleet-session-eval/the-flow.json' },
   {
     rel: 'tasks/phase-1/execution.log.md',
-    repoRel: 'docs/plans/051-pij-fleet-session-eval/tasks/phase-1/execution.log.md',
+    repoRel: 'docs/plans/archive/051-pij-fleet-session-eval/tasks/phase-1/execution.log.md',
   },
 ];
 

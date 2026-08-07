@@ -1005,7 +1005,7 @@ describe('cellWidth — characters are not columns (T005)', () => {
 
 describe('dd graph map — the 80-column contract, on addresses that break it (T005)', () => {
   /** Deep enough that even the header's folder line has to continue. */
-  const DEEP = 'docs/plans/065-deterministic-documents/tasks/phase-7-graph-map/evidence';
+  const DEEP = 'docs/plans/archive/065-deterministic-documents/tasks/phase-7-graph-map/evidence';
   /** Long enough that a single address cannot fit a line on its own. */
   const LONG = 'unreasonably-but-entirely-legitimate-document-name-nobody-plans-for';
 

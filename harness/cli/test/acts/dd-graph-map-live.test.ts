@@ -467,7 +467,7 @@ describe('dd graph map — live over a real corpus', () => {
  */
 describe('dd graph map — 80 columns over the whole terminal surface (T005)', () => {
   /** Deep enough that the header's folder line alone cannot fit. */
-  const DEEP = 'docs/plans/065-deterministic-documents/tasks/phase-7-graph-map/evidence';
+  const DEEP = 'docs/plans/archive/065-deterministic-documents/tasks/phase-7-graph-map/evidence';
   /** Long enough that no single address fits a line. */
   const LONG = 'unreasonably-but-entirely-legitimate-document-name-nobody-plans-for';
   const SEED = `${DEEP}/plan-${LONG}.dd.json#acceptance_criteria/ac-0201`;

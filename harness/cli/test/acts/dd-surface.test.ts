@@ -6,7 +6,7 @@ import { PLAN_CHECK_KINDS } from '../../src/services/dd/plan/index.js';
 
 const MANIFEST = readFileSync(
   new URL(
-    '../../../../docs/plans/065-deterministic-documents/tasks/phase-1-dd-core-foundations/dd-surface.md',
+    '../../../../docs/plans/archive/065-deterministic-documents/tasks/phase-1-dd-core-foundations/dd-surface.md',
     import.meta.url,
   ),
   'utf8',

@@ -43,6 +43,7 @@ import { flowLogEvents } from './flow-log.js';
 import { flowEventFromFlightPlan } from './flow-nav.js';
 import { segmentToOtlpLogs } from './otlp/logs.js';
 import { rollupToOtlpMetrics } from './otlp/metrics.js';
+import { planDirCandidates, planIdFromPath } from './plan-paths.js';
 import {
   CURRENT_CAPTURED_ENV_KEYS,
   isCapturedEnvEntry,
@@ -316,13 +317,13 @@ export function writeSegmentFile(
 /**
  * Derive the plan id from a cwd under `docs/plans/<id>/` (the `<ordinal>-<slug>`
  * dir name), or null (plan 034 Phase 4, T006 — closes AC-08's "run inside
- * `docs/plans/<id>/`" clause; capture otherwise only saw `HARNESS_PLAN_ID`). The
- * regex requires the literal `docs/plans/` segment, so `docs/plansfoo/…` never
- * false-matches; it works from any depth below the plan dir.
+ * `docs/plans/<id>/`" clause; capture otherwise only saw `HARNESS_PLAN_ID`). It
+ * works from any depth below the plan dir, and from an archived plan
+ * (`docs/plans/archive/<id>/`) — see {@link planIdFromPath} for why the archive
+ * segment is a location and never part of the id.
  */
 export function planIdFromCwd(cwd: string): string | null {
-  const m = /(?:^|\/)docs\/plans\/([^/]+)/.exec(toPosix(cwd));
-  return m ? (m[1] ?? null) : null;
+  return planIdFromPath(cwd);
 }
 
 /** Plan link: explicit `HARNESS_PLAN_ID` wins; else derive from the cwd (T006). */
@@ -347,9 +348,8 @@ function plansFromTouchedFiles(files: HarnessCapabilities['files']): string[] {
   const seen = new Set<string>();
   const paths = [...(files?.written ?? []), ...(files?.edited ?? [])];
   for (const p of paths) {
-    const m = /(?:^|\/)docs\/plans\/([^/]+)/.exec(toPosix(p));
-    const id = m?.[1];
-    if (id !== undefined && id.length > 0 && !seen.has(id)) {
+    const id = planIdFromPath(p);
+    if (id !== null && !seen.has(id)) {
       seen.add(id);
       ids.push(id);
     }
@@ -412,16 +412,22 @@ function selectFlightPlanId(
  * `HARNESS_PLAN_ID`-overridden) `planId`, which also resolves an explicit plan id
  * that differs from the cwd's own plan (companion F005).
  *
+ * Returns the LIVE and ARCHIVED candidates in that order rather than one path.
+ * The plan id deliberately does not record which of the two it is
+ * ({@link planIdFromPath}), so the resolver tries both instead of guessing —
+ * otherwise an archived plan's flight plan reads as absent, which is
+ * indistinguishable from a plan that never had one.
+ *
  * Known limit: when cwd is NOT under any `docs/plans/<id>` (e.g. `…/harness/cli`)
  * there is no repo-root signal, so the plan dir is assumed to hang off cwd — the
  * same cwd≈repoRoot assumption the rest of capture already makes (path
  * relativization). Explicit-env plan links then resolve only from the repo root.
  */
-function flightPlanPath(cwd: string, planId: string): string {
+function flightPlanPaths(cwd: string, planId: string): readonly string[] {
   const c = toPosix(cwd);
   const idx = c.indexOf('/docs/plans/');
   const root = idx !== -1 ? c.slice(0, idx) : c;
-  return posixJoin(root, 'docs', 'plans', planId, 'the-flow.json');
+  return planDirCandidates(planId).map((dir) => posixJoin(root, dir, 'the-flow.json'));
 }
 
 /**
@@ -432,13 +438,16 @@ function flightPlanPath(cwd: string, planId: string): string {
  */
 function readFlightPlan(fs: FsPort, cwd: string, planId: string | null): unknown | null {
   if (planId === null) return null;
-  const text = fs.readText(flightPlanPath(cwd, planId));
-  if (text === null) return null;
-  try {
-    return JSON.parse(text);
-  } catch {
-    return null;
+  for (const candidate of flightPlanPaths(cwd, planId)) {
+    const text = fs.readText(candidate);
+    if (text === null) continue; // not here — try the archived location
+    try {
+      return JSON.parse(text);
+    } catch {
+      return null; // present but malformed is an answer; do not fall through to a stale twin
+    }
   }
+  return null;
 }
 
 /**
