@@ -59,7 +59,7 @@
             "../../../plan.dd.json#acceptance_criteria/ac-0005",
             "../../../plan.dd.json#acceptance_criteria/ac-0007"
           ],
-          "receipt": "All five original cases land, plus round-2/3 guards: (F002) no authored string in the table may contain 'telemetry-nudge' — renderRecovery() is its only writer, so disposition and prose cannot disagree; (F001) the buffered outcome states the POSIX prerequisite in BOTH surfaces, covering the two Windows-reachable buffered modes; (F002 follow-on) the verified outcome uses 'not-applicable' and stays silent about the verb, because commit-service's verify-miss next_action names it and a blanket 'Do NOT' would contradict shipped code; (R2-F001) the page carries the prerequisite at least TWICE and the text after the rotate/replay sentence still names it, pinning 'the prerequisite travels with every standalone recovery instruction'. 34 passed (34)."
+          "receipt": "All five original cases land, plus the review guards: (F002) no authored string in COMMIT_OUTCOMES may name the verb; (F001) the buffered outcome states the POSIX prerequisite in BOTH surfaces; (F002 follow-on) verified uses 'not-applicable' so guidance never contradicts commit-service's verify-miss next_action; (R2-F001) the page carries the prerequisite at least twice; (R3-F002) that assertion is BOUNDED to the recovery section — mutation-proven: stripping the prerequisite from RECOVERY_SECTION while adding an unrelated later mention fails the bounded test and would have passed the page-end version; (R3-F001) a source-reading test pins the literal 'harness doctor telemetry-nudge' to EXACTLY ONE occurrence, the NUDGE_VERB declaration — mutation-proven, hand-typing it elsewhere fails with 'expected 2 to be 1'. 35 passed (35)."
         },
         {
           "id": "tk-0005",
@@ -78,7 +78,7 @@
             "../../../plan.dd.json#acceptance_criteria/ac-0002",
             "../../../plan.dd.json#acceptance_criteria/ac-0006"
           ],
-          "receipt": "just checks: every hard gate ok; the 3 warn-launch degradeds confirmed pre-existing — re-verified after the doc edits, 0 markdown findings for AGENTS.md and 0 for docs/how/gitai-collector.md. doctor: commit-guidance ok. Dim-0 re-run after the round-2 restructure: a fifth CommitMode member fails tsc with BOTH errors in commit-guidance.ts (:192 table, :207 renderer) while commit-service.ts compiles clean and keeps a zero-line diff vs base. Round 3 changed no behaviour the Dim-0 proof depends on. Transcripts in execution.log.md."
+          "receipt": "just checks: every hard gate ok across all four rounds; the 3 warn-launch degradeds confirmed pre-existing and outside this diff. doctor: commit-guidance ok. Dim-0 for ac-0002 (round 2): a fifth CommitMode member fails tsc with BOTH errors in commit-guidance.ts (:192 table, :207 renderer) while commit-service.ts compiles clean and keeps a zero-line diff vs base; rounds 3-4 changed nothing that proof depends on and the zero-line diff was re-verified each round. Round 4 added two further mutation proofs (R3-F001 named-once guard, R3-F002 bounded slice). Transcripts in execution.log.md."
         }
       ]
     },

@@ -385,3 +385,78 @@ the sentence is strictly better than fixing the design to match a sentence.
 | # | tag | what |
 | --- | --- | --- |
 | D5 | Noteworthy | Both round-3 findings are the same failure at different layers: a *claim of single ownership* that one hand-written exception quietly falsified — once in a source comment (R2-F001), once in an acceptance criterion (R2-F002). Worth naming, because the defect this plan set out to fix is itself "a surface claiming more than the code delivers", and it kept reappearing one layer up each round. The lesson generalises: when you assert "X is the only writer of Y", grep for Y before writing the sentence. |
+
+---
+
+# Round 4 — review CHANGES on `c84b126a` (one MEDIUM, one LOW)
+
+The three recovery arms were confirmed correct a second time.
+
+## R3-F001 — the fourth instance, and then two more the sweep found
+
+The reviewer was told to assume a fourth instance existed and hunt it. It did:
+`commit-guidance.ts:172`, the doc comment directly above `COMMIT_OUTCOME_GUIDANCE`, still
+called that table "the ONLY declaration of what each commit outcome promises" — which
+`COMMIT_OUTCOMES` plainly contradicts. Same defect as F002, R2-F001 and R2-F002, sitting
+one line above the table the plan's honesty rests on.
+
+**The instructed sweep of every `only`/`sole`/`single` assertion found two more that the
+reviewer had not named:**
+
+- The `CommitRecovery` doc comment claimed "the renderer OWNS **every** mention of the
+  verb". False — `RECOVERY_SECTION` mentions it too.
+- Worse: the replacement *I wrote for that comment* said the verb "appears in exactly two
+  places, both interpolating `NUDGE_VERB`". Also false, immediately — the page's
+  "**NOT supported on Windows**" bullet named `telemetry-nudge` by hand, in rendered
+  output. **Six instances of the same overclaim across four rounds, the sixth in a comment
+  written minutes earlier.**
+
+**So this one is ENCODED, not reworded.** Rewording a seventh time fixes today's sentence
+and leaves tomorrow's exception free — the exact failure mode this plan exists to kill, and
+exactly what D5 warned about.
+
+- The Windows bullet now interpolates `${NUDGE_VERB}` like every other site.
+- A test **reads this source file** and asserts the literal
+  `harness doctor telemetry-nudge` appears **exactly once**, at the `NUDGE_VERB`
+  declaration — plus that both rendered surfaces really do contain the verb, so "named
+  once" can never be satisfied by simply not mentioning it.
+- **Mutation-proven**: hand-typing the verb into the page body fails the suite
+  (`AssertionError: expected 2 to be 1`). Reverted.
+
+That is the same move as ac-0002's compile error, one layer over: a claim about future
+edits enforced by a mechanism rather than by reviewer attention. The doc comments now
+state only what the mechanism delivers.
+
+Also corrected: the plan `summary` said the plan "converges both surfaces on a single
+table" — narrowed to "one `CommitMode`-keyed table over a companion outcome map", and the
+recurrence itself is now recorded in the summary so the next reader inherits the lesson.
+
+## R3-F002 — a test that could pass for the wrong reason
+
+The round-3 standalone-recovery test sliced from the rotate/replay sentence to **page
+end**, so a later, unrelated prerequisite mention could satisfy it even after the recovery
+section regressed. In a plan about not claiming more than you can prove, that is the same
+bug in the test layer.
+
+**Bounded to the section**: the slice now runs from `RECOVERY, on a POSIX host.` to the
+next `\n## ` heading, and asserts both the replay sentence and the prerequisite live
+*inside that slice*.
+
+**Mutation-proven, against the exact regression the reviewer described**: removing
+`NUDGE_PREREQUISITE` from `RECOVERY_SECTION` while adding an unrelated mention later in the
+page makes the bounded test FAIL (`expected 'RECOVERY, on a POSIX host. Run it fro…' to
+contain 'Recovery is POSIX-ONLY…'`) — the page-end version would have passed. Reverted.
+
+## Round-4 evidence
+
+- Tests: **35 passed (35)**; two independent mutation proofs above.
+- `just checks`: green on every hard gate; the three warn-launch degradeds unchanged.
+- `commit-service.ts`: still a **zero-line diff** against `5dae6e9c`.
+- `AGENTS.md`: `instructions commit --inject` reports **`unchanged`** — round 4 touched no
+  rendered block text — still `6	3` against base and fence-confined.
+
+## Round-4 discoveries
+
+| # | tag | what |
+| --- | --- | --- |
+| D6 | Noteworthy | D5 was recorded as a lesson and then violated twice in the same file within the hour, once by the very comment written to fix it. A lesson in prose does not survive its own author; the fix that held was the source-reading test. **Encode, don't remind** — the general form of DL-007, and the reason this plan's own doc comments are now narrower than they were. |

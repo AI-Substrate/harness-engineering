@@ -229,3 +229,43 @@ values are declared by the distinct exported `COMMIT_OUTCOMES` map. The
 receipt now correctly says that compilation proves declaration totality, not
 semantic correctness; the goal and acceptance-criterion claim must say the
 same.
+
+---
+
+## Round 3 Review - Commit c84b126a
+
+**Verdict: CHANGES**
+
+Round 3 resolves the two Round 2 findings. `RECOVERY_SECTION` interpolates the
+one verb constant and carries the POSIX prerequisite with its replay claim.
+The rendered surfaces are now truthful for Windows, and the three recovery
+arms remain sufficient: the direct-verified verify-miss action is
+command-output-specific, so `not-applicable` is correctly silent rather than a
+fourth outcome-level disposition.
+
+### Round 3 Findings
+
+| ID | Severity | File | Summary | Recommendation |
+| --- | --- | --- | --- | --- |
+| R3-F001 | MEDIUM | `/Users/jordanknight/substrate/harness-engineering-worktrees/s076-commit-guidance-block/harness/cli/src/services/instructions/commit-guidance.ts` | The mode-map comment still calls `COMMIT_OUTCOME_GUIDANCE` the "ONLY declaration of what each commit outcome promises"; `COMMIT_OUTCOMES` declares those promises and recoveries. | Align the source comment with the narrowed ac-0002 language. |
+| R3-F002 | LOW | `/Users/jordanknight/substrate/harness-engineering-worktrees/s076-commit-guidance-block/harness/cli/test/services/instructions/commit-guidance.test.ts` | The standalone-recovery test searches from the replay sentence to end-of-page, so a future unrelated prerequisite later in the page could satisfy it after the recovery section lost its own prerequisite. | Bound the assertion to the recovery section or test `RECOVERY_SECTION` through a narrowly exported/rendered helper. |
+
+#### R3-F001 - the fourth stale single-declaration claim
+
+The plan goal and ac-0002 now accurately describe a total mode-to-outcome map
+over a companion map. The source comment immediately above
+`COMMIT_OUTCOME_GUIDANCE` was not narrowed: it retains the older "ONLY
+declaration of what each commit outcome promises" claim. That statement is
+false for the delivered two-level design, because `COMMIT_OUTCOMES` supplies
+`label`, `promise`, and `recovery`. This is documentation only, but it is the
+same ownership overclaim the preceding review rounds removed elsewhere.
+
+#### R3-F002 - the test is presently effective but not structurally complete
+
+The current implementation passes the intent: it has exactly one prerequisite
+in the outcome list and one in `RECOVERY_SECTION`. The test's
+`afterReplay = page.slice(page.indexOf(...))` assertion, however, spans the
+rest of `COMMIT_INSTRUCTIONS`, not the recovery section. A later unrelated
+occurrence of the prerequisite could make the test green if the standalone
+section regressed. The test should delimit the section before the next heading
+to encode the stated "travels with every recovery instruction" rule.

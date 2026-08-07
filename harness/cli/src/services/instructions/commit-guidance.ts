@@ -25,12 +25,16 @@ import { posixJoin, toPosix } from '../shared/posix-path.js';
  * What a reader does about an outcome — a DISCRIMINATED disposition, not prose.
  *
  * The nudge disposition is data because getting it wrong *is* the plan-076
- * defect: the pre-075 block sent every reader to `harness doctor telemetry-nudge`,
- * and that verb refuses on a Windows named pipe. Review F002 then found the
+ * defect: the pre-075 block sent every reader to the recovery verb, and that
+ * verb refuses on a Windows named pipe. Review F002 then found the
  * disposition was declared but never rendered — a guard-shaped datum free to
  * disagree with the prose beside it, which is the same false comfort one layer
- * up. So the renderer OWNS every mention of the verb and derives the instruction
- * from this union; no authored string here may name it (pinned by test).
+ * up. So the instruction is DERIVED from this union rather than written beside
+ * it: {@link renderRecovery} is the only writer of the outcome list's recovery
+ * text, and no authored string in {@link COMMIT_OUTCOMES} may name the verb.
+ * More broadly, every mention of the verb anywhere in this module's OUTPUT is
+ * interpolated from {@link NUDGE_VERB} — pinned by a test that reads this source
+ * file and requires the literal to appear exactly once, at that declaration.
  */
 export type CommitRecovery =
   | {
@@ -169,10 +173,18 @@ export interface CommitOutcomeGuidance {
 }
 
 /**
- * The EXHAUSTIVE mode table (plan 076 · ac-0002) — the ONLY declaration of what
- * each commit outcome promises, and the third application of the house pattern
- * already proven by `TRACE2_TARGET_POLICY` (ingress.ts) and
+ * The EXHAUSTIVE mode table (plan 076 · ac-0002) — the declaration of WHICH
+ * outcome each commit mode gives the reader, and the third application of the
+ * house pattern already proven by `TRACE2_TARGET_POLICY` (ingress.ts) and
  * `RETAINED_FIELD_RENDERING` (nudge.ts).
+ *
+ * What each outcome PROMISES is declared once each in {@link COMMIT_OUTCOMES},
+ * not here — deliberately, so the two buffered modes share one promise object
+ * instead of carrying two copies of it. This comment used to call this table
+ * "the ONLY declaration of what each commit outcome promises", which
+ * `COMMIT_OUTCOMES` plainly contradicts: the same single-ownership overclaim
+ * this plan exists to remove, one layer above the table the plan's honesty rests
+ * on (review R3-F001). The claim now states the width the design delivers.
  *
  * `satisfies Record<CommitMode, …>` is the guard. Add an arm to {@link CommitMode}
  * and `tsc` refuses this object until the new mode declares which outcome it
@@ -182,8 +194,14 @@ export interface CommitOutcomeGuidance {
  * type system, not a test. It lives in `src` because the typecheck `include` is
  * `["src"]` — the same contract in a test file compiles nowhere CI looks (F011).
  *
- * Both guidance surfaces render their outcome list from here, so there is no
- * second hand-maintained copy left to drift.
+ * The BOUND, stated plainly: compilation proves every mode is DECLARED. It does
+ * not prove a mode was pointed at the RIGHT outcome — a fifth mode aimed at
+ * `buffered` still compiles. That is carried by the shared-outcome-object design,
+ * by {@link renderRecovery} owning the outcome list's recovery text, and by tests.
+ *
+ * Both guidance surfaces render their outcome list from here, and
+ * `docs/how/gitai-collector.md` points here rather than restating it, so no
+ * hand-maintained prose copy of the outcome list is left to drift.
  */
 export const COMMIT_OUTCOME_GUIDANCE = {
   'direct-verified': {
@@ -300,7 +318,7 @@ you; the commit looks completely healthy.
   the socket, and commits made before git-ai was installed will never gain a
   note.
 - **NOT supported on Windows**: replay. git's \`af_unix\` trace2 target is
-  Unix-only, so \`telemetry-nudge\` has no ingress to replay into and refuses on
+  Unix-only, so \`${NUDGE_VERB}\` has no ingress to replay into and refuses on
   a win32 host without touching a single file. Attribution there is unproven,
   not recoverable — see docs/how/gitai-collector.md § Windows.
 

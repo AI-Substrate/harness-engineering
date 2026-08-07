@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { FakeFs } from '../../../src/adapters/fs/fake-fs.js';
 import { FakeGitAttribution } from '../../../src/adapters/git/fake-git-attribution.js';
@@ -287,6 +288,36 @@ describe('plan 076 — the outcome contract is ONE table, and both surfaces rend
     }
   });
 
+  it('review R3-F001 — the verb is named ONCE in source, so "interpolated everywhere" is enforced, not asserted', () => {
+    /*
+    Test Doc:
+    - Why: this exact overclaim recurred SIX times across four review rounds — a
+      single-ownership claim ("X is the only writer of Y") that one hand-written
+      exception falsified, in a source comment, an acceptance criterion, the doc
+      comment above the table itself, and a rendered Windows bullet. Rewording it a
+      seventh time would fix today's sentence and leave tomorrow's exception free.
+    - Contract: the literal `harness doctor telemetry-nudge` appears EXACTLY ONCE in
+      commit-guidance.ts — at the NUDGE_VERB declaration. Every other mention, in
+      prose or rendered output, must interpolate it.
+    - Quality Contribution: turns the claim into a check. Hand-typing the verb
+      anywhere in this module now fails the suite instead of quietly making a
+      comment untrue — the same move as ac-0002's compile error, one layer over.
+    */
+    const source = readFileSync(
+      new URL('../../../src/services/instructions/commit-guidance.ts', import.meta.url),
+      'utf8',
+    );
+
+    const occurrences = source.split('harness doctor telemetry-nudge').length - 1;
+    expect(occurrences).toBe(1);
+    expect(source).toContain("const NUDGE_VERB = 'harness doctor telemetry-nudge';");
+
+    // …and the rendered surfaces really do carry the verb, so "named once" can
+    // never be satisfied by simply not mentioning it.
+    expect(commitGuidanceBlock()).toContain('harness doctor telemetry-nudge');
+    expect(CORE_INSTRUCTION_PAGES.commit ?? '').toContain('harness doctor telemetry-nudge');
+  });
+
   it('review R2-F001 — EVERY standalone recovery instruction carries the prerequisite, not just the outcome list', () => {
     /*
     Test Doc:
@@ -310,10 +341,18 @@ describe('plan 076 — the outcome contract is ONE table, and both surfaces rend
     expect(page).toContain('RECOVERY, on a POSIX host.');
     expect(page).not.toContain('RECOVERY. Run it from an UNSANDBOXED shell.');
 
-    // The replay assertion and the prerequisite are in the same section: the text
-    // after the rotate/replay sentence still names the POSIX-only condition.
-    const afterReplay = page.slice(page.indexOf('rotates the\nbuffer to a segment'));
-    expect(afterReplay).toContain(NUDGE_PREREQUISITE);
+    // BOUNDED to the recovery section itself (review R3-F002). Slicing to the end
+    // of the page would let a later, unrelated mention satisfy this even after a
+    // regression here — a test that passes for the wrong reason, which is this
+    // plan's own defect in the test layer.
+    const start = page.indexOf('RECOVERY, on a POSIX host.');
+    expect(start).toBeGreaterThan(-1);
+    const nextHeading = page.indexOf('\n## ', start);
+    expect(nextHeading).toBeGreaterThan(start);
+    const recoverySection = page.slice(start, nextHeading);
+
+    expect(recoverySection).toContain('rotates the\nbuffer to a segment');
+    expect(recoverySection).toContain(NUDGE_PREREQUISITE);
   });
 
   it('ac-0001 — the block names the unverified outcome and does NOT offer the nudge as its remedy', () => {
