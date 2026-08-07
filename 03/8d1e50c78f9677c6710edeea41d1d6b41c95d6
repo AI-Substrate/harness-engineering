@@ -1,0 +1,27 @@
+harness/cli/test/adapters/git/cat-file-batch.int.test.ts
+  s_a76964380084ef::t_66ddb894dd4bd2 2,25-47,139,175
+harness/cli/test/acts/plan-review.test.ts
+  s_a76964380084ef::t_2ea512c0a44fea 5,118-136
+harness/cli/test/integration/post-commit-hook.test.ts
+  s_a76964380084ef::t_b773256fb94e17 2-11,16,60-64,81-101,103-109,111-114,116-126
+harness/cli/test/integration/pre-commit-hook.test.ts
+  s_a76964380084ef::t_5c38d05be8a1c0 3,71-74
+harness/cli/test/support/external-binary.ts
+  s_a76964380084ef::t_b7613ecc404656 1-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "038d1e50c78f9677c6710edeea41d1d6b41c95d6",
+  "prompts": {},
+  "sessions": {
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
