@@ -1,0 +1,43 @@
+docs/how/gitai-collector.md
+  s_caff156b1b7e66::t_c2ffdafcc3bea1 461-472
+docs/plans/074-sandbox-attribution/assets/execution.log.md
+  s_caff156b1b7e66::t_ae7c6341c5d14b 354-420
+harness/cli/test/services/doctor/collector/nudge.test.ts
+  s_caff156b1b7e66::t_7b1b88eec88bab 1137-1273
+harness/cli/src/services/doctor/collector/nudge.ts
+  s_caff156b1b7e66::t_c665f680feba60 550,663
+  s_caff156b1b7e66::t_ca21d9164becc9 484-496,507-512,531-538,546-549,551-565,574
+  s_caff156b1b7e66::t_bf11474025809e 409-414,421-426
+  s_caff156b1b7e66::t_308e1d00f1ac8f 572-573
+  s_caff156b1b7e66::t_b7d67c69a8a758 519-523
+  s_caff156b1b7e66::t_5e2e3127946185 844,859
+  s_caff156b1b7e66::t_5ac7bef853f2c4 483
+docs/plans/074-sandbox-attribution/assets/reviews/phase-1-review.md
+  s_40dc55d5b47a87::t_844ac1c53d871c 304-346
+  s_40dc55d5b47a87::t_05f1248fb4a9a3 301-303
+  s_40dc55d5b47a87::t_1342c4736eec3a 297-300
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ff41bd376dccb9190f79fcc3847a0e0e7b3b8a0d",
+  "prompts": {},
+  "sessions": {
+    "s_40dc55d5b47a87": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "82e01a2f-8b51-432f-9149-9b988bb2b5ae",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_caff156b1b7e66": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "008f57e1-541c-4033-80be-e47316058c9d",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
