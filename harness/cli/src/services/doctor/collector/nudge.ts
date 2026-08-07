@@ -10,6 +10,7 @@ import {
   TRACE2_SHAS_SUFFIX,
 } from '../../commit/commit-service.js';
 import {
+  IS_WIN32,
   isWithin,
   posixDirname,
   posixJoin,
@@ -18,7 +19,7 @@ import {
   toPosix,
 } from '../../shared/posix-path.js';
 import { HARNESS_DIR, TEMP_DIR } from '../../shared/temp.js';
-import type { IngressReading } from './ingress.js';
+import { type IngressReading, trace2Policy } from './ingress.js';
 
 /**
  * `harness doctor telemetry-nudge` (plan 074 · ac-0006) — best-effort recovery
@@ -151,6 +152,15 @@ export type NudgeSkipReason =
   | 'empty-buffer'
   | 'no-socket'
   | 'non-af-unix'
+  /**
+   * The transport this host's collector listens on is one the harness has no
+   * replay path for — a Windows named pipe, or a win32 host generally (plan
+   * 075 · ac-0004/ac-0006). Distinct from `non-af-unix`, which means "the
+   * target is a FILE you can drain once you reconfigure": there is no
+   * reconfiguration that makes this one work, so offering one would be the
+   * misleading instruction this verb exists to stop issuing.
+   */
+  | 'unsupported-platform'
   | 'relay-failed'
   | 'unconfirmable'
   | 'buffer-refused'
@@ -286,6 +296,19 @@ export interface NudgeDeps {
   sleep?: (ms: number) => Promise<void>;
   /** How long to let git-ai's ASYNCHRONOUS note write settle before judging. */
   confirmTimeoutMs?: number;
+  /**
+   * The host platform, in `process.platform` spelling. The REAL platform guard
+   * (plan 075 · ac-0006) — plan 074's non-goal claimed Windows was a
+   * "platform-guarded no-op" and no such guard existed, which is the same
+   * claiming-more-than-you-can-prove failure the feature exists to kill, this
+   * time in the plan's own prose.
+   *
+   * Injected rather than read from the global inside the branch (Constitution
+   * P3: pass the parameter, never patch `process.platform`), and defaulted from
+   * {@link IS_WIN32} so the guard is consulted whether or not a caller supplies
+   * it. The composition root passes `process.platform` explicitly.
+   */
+  platform?: string;
 }
 
 /**
@@ -380,7 +403,10 @@ function resolveBuffer(deps: NudgeDeps): BufferResolution {
   if (isWithin(cwd, resolved)) return { ok: true, path: resolved };
   const live = deps.ingress.target;
   const authorized = [
-    ...(live.kind === 'file' ? [live.path] : []),
+    // DRAINABLE, not merely "has a path": a live named pipe has a path too, and
+    // authorizing its directory would let this verb rename or delete beside a
+    // collector ingress.
+    ...(trace2Policy(live).drainable && live.kind !== 'unconfigured' ? [live.path] : []),
     ...recordedTargets(deps, cwd),
   ].map((target) => posixDirname(posixNormalize(toPosix(target))));
   if (authorized.some((dir) => isWithin(dir, resolved))) return { ok: true, path: resolved };
@@ -674,6 +700,23 @@ function fsMessage(err: unknown): string {
 }
 
 /**
+ * The platform guard's one reading of the host (plan 075 · ac-0006).
+ *
+ * Explicit `deps.platform` wins; otherwise the module-level {@link IS_WIN32}
+ * constant, which is `process.platform === 'win32'`. Read through one function
+ * so the drain path has exactly ONE place that consults the platform, and tests
+ * drive it by passing a value rather than by patching a global.
+ */
+function isWin32(deps: NudgeDeps): boolean {
+  return deps.platform === undefined ? IS_WIN32 : deps.platform === 'win32';
+}
+
+/** The host named the way an operator would say it, for the refusal text. */
+function platformName(deps: NudgeDeps): string {
+  return isWin32(deps) ? 'Windows (win32)' : (deps.platform ?? 'non-win32');
+}
+
+/**
  * Rotate, replay, confirm — then report every segment still on disk.
  *
  * Never throws, never fails the host command: a filesystem error is one more
@@ -714,6 +757,11 @@ async function runNudge(
   ownRepo: string | null,
 ): Promise<NudgeOutcome> {
   // ---- the graceful no-ops, checked BEFORE anything is moved ---------------
+  //
+  // ORDER: transport first, then platform. Both are honest on a win32 host with
+  // a pipe target, and the transport statement is the MORE specific of the two
+  // — it names what the collector is actually listening on, which is the fact
+  // an operator can go and check.
   if (deps.ingress.target.kind === 'unconfigured') {
     return skip(
       'non-af-unix',
@@ -721,11 +769,41 @@ async function runNudge(
       'Install the collector with `harness doctor --install-collector`, then re-run this verb.',
     );
   }
-  if (deps.ingress.target.kind !== 'af_unix') {
+  if (deps.ingress.target.kind === 'named_pipe') {
+    // ac-0004. NOT `no-buffer` and NOT "nothing to do": there may well be a
+    // buffer sitting right there. What is missing is a replay path INTO a named
+    // pipe, and saying so is the whole point — an honest refusal beats a
+    // misleading instruction. Nothing is renamed, nothing is deleted, nothing
+    // is sent, and no reconfiguration is offered, because none would help.
+    const pipe = deps.ingress.target.path;
+    return skip(
+      'unsupported-platform',
+      `the configured trace2 target is a Windows NAMED PIPE (${pipe}) on a ${platformName(deps)} host — a LIVE collector ingress, not a drainable buffer. This verb replays into an af_unix socket, git on Windows has no af_unix trace2 target, and no replay path for the named-pipe transport has been established. NOTHING was moved, deleted or sent, and any buffered events are exactly where they were.`,
+      'Nothing here is recoverable by this verb. Commit from a host where the collector ingress is an af_unix socket, or treat this host as unproven for attribution recovery — do not re-run expecting a different answer.',
+    );
+  }
+  if (isWin32(deps)) {
+    // The guard plan 074 CLAIMED. Replay needs an af_unix socket; git on
+    // Windows cannot produce one, so every path past here is unreachable by
+    // construction. Refusing early and by name makes the no-op deliberate
+    // rather than accidental — and keeps a mutating verb from touching a
+    // filesystem on a platform whose transport nobody has measured.
+    return skip(
+      'unsupported-platform',
+      `this is a ${platformName(deps)} host: git on Windows has no af_unix trace2 target, so there is no ingress this verb can replay into, and the transport git-ai listens on here has not been established. NOTHING was moved, deleted or sent.`,
+      'Run this verb from a POSIX host (macOS or Linux) where the collector ingress is an af_unix socket. Buffered events on this host stay on disk, untouched.',
+    );
+  }
+  if (!trace2Policy(deps.ingress.target).replayInto) {
+    // The FILE target today, and — by construction — any future kind the
+    // compiler forces to declare `replayInto: false`. The description comes
+    // from the kind table rather than being re-asserted here, so a new
+    // transport cannot inherit the word "file" by accident.
+    const path = deps.ingress.target.path;
     return skip(
       'non-af-unix',
-      `the configured trace2 target is a plain file (${deps.ingress.target.path}), not an af_unix socket — there is no ingress to replay into, and this verb cannot invent one. Nothing was moved or sent.`,
-      `FIRST point \`trace2.eventTarget\` back at the git-ai socket (\`harness doctor --install-collector\`) — until then there is nowhere to replay to — THEN re-run \`harness doctor telemetry-nudge --buffer ${deps.ingress.target.path}\` to drain the file.`,
+      `the configured trace2 target ${trace2Policy(deps.ingress.target).describe(path)}, not an af_unix socket — there is no ingress to replay into, and this verb cannot invent one. Nothing was moved or sent.`,
+      `FIRST point \`trace2.eventTarget\` back at the git-ai socket (\`harness doctor --install-collector\`) — until then there is nowhere to replay to — THEN re-run \`harness doctor telemetry-nudge --buffer ${path}\` to drain the file.`,
     );
   }
   const socket = deps.ingress.target.path;

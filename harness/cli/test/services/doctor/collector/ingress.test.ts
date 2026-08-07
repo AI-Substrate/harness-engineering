@@ -8,6 +8,8 @@ import {
   markerExplanation,
   readIngress,
   resolveTrace2Target,
+  TRACE2_TARGET_POLICY,
+  trace2Policy,
 } from '../../../../src/services/doctor/collector/ingress.js';
 import { FakeCollectorFs } from '../../../support/collector-fakes.js';
 
@@ -81,6 +83,159 @@ describe('plan 074 · ac-0001 — resolveTrace2Target classifies without probing
     '//server/share/trace2.jsonl',
   ])('only an ABSOLUTE path is a FILE target: %s', (raw) => {
     expect(resolveTrace2Target(raw)).toEqual({ kind: 'file', path: raw });
+  });
+});
+
+/**
+ * Plan 075 · ac-0001/ac-0002 — the WINDOWS NAMED PIPE split.
+ *
+ * The defect this pins: `ABSOLUTE_TARGET` (`/^([A-Za-z]:)?[\\/]/`) matches
+ * `\\.\pipe\…` because a pipe path begins with a separator, so a LIVE INGRESS
+ * was classified `{kind:'file'}` — a drainable buffer. `harness commit` then
+ * told the operator their events were buffered to a pipe, wrote a `.shas`
+ * sidecar beside it, and pointed at a nudge that refused with "is a plain file".
+ *
+ * **This is a SPLIT of an intentional case, not a gap being filled.** The
+ * resolver deliberately admits UNC FILE targets, and a named pipe is
+ * UNC-SHAPED. So both directions are pinned in the same table: excluding pipes
+ * while breaking `\\server\share\trace.jsonl` would be its own defect, and one
+ * only the other direction can catch.
+ */
+describe('plan 075 · ac-0001 — a Windows named pipe is an INGRESS, never a buffer', () => {
+  it.each([
+    ['\\\\.\\pipe\\git-ai', 'the documented git-ai pipe form'],
+    ['\\\\?\\pipe\\git-ai', 'the \\\\?\\ (long-path) pipe prefix'],
+    ['\\\\.\\PIPE\\Git-AI', 'Windows pipe names are CASE-INSENSITIVE'],
+    ['\\\\.\\pipe\\git-ai\\daemon\\trace2', 'a nested pipe name'],
+    ['//./pipe/git-ai', 'the forward-slash spelling Win32 accepts identically'],
+    ['\\\\.\\pipe', 'the pipe NAMESPACE root is still not a drainable file'],
+  ])('%s classifies as named_pipe (%s)', (raw) => {
+    expect(resolveTrace2Target(raw)).toEqual({ kind: 'named_pipe', path: raw });
+  });
+
+  it('the regression guard, stated once and plainly', () => {
+    // If this ever reads `file` again, `harness commit` is writing a `.shas`
+    // sidecar beside a live pipe and calling an ingress a buffer.
+    expect(resolveTrace2Target('\\\\.\\pipe\\git-ai').kind).not.toBe('file');
+  });
+
+  it.each([
+    // PRIME CONSTRAINT, the other direction. These are the cases the split must
+    // NOT take with it: a real UNC file share IS a legitimate trace2 file target
+    // and git will happily write events into it.
+    ['\\\\server\\share\\trace.jsonl', 'file'],
+    ['//server/share/trace2.jsonl', 'file'],
+    ['\\\\server\\share\\pipe\\trace.jsonl', 'file'],
+    ['C:\\Users\\dev\\trace2.jsonl', 'file'],
+    ['/tmp/trace2-events.jsonl', 'file'],
+    ['\\\\.\\pipe\\git-ai', 'named_pipe'],
+    ['\\\\?\\pipe\\git-ai', 'named_pipe'],
+    ['af_unix:/var/run/t.sock', 'af_unix'],
+    ['af_unix:stream:/var/run/t.sock', 'af_unix'],
+    ['trace2.jsonl', 'unconfigured'],
+    ['0', 'unconfigured'],
+    ['2', 'unconfigured'],
+    ['4', 'unconfigured'],
+    ['', 'unconfigured'],
+  ] as const)('%s → %s (both directions, one table)', (raw, kind) => {
+    expect(resolveTrace2Target(raw).kind).toBe(kind);
+  });
+});
+
+describe('plan 075 · ac-0003 — the classifier is proven by what it REFUSES', () => {
+  /**
+   * A classifier only ever run against inputs it handles has been DEMONSTRATED,
+   * not tested. These are the known-bad fixtures: strings that LOOK like the
+   * thing and must not be taken for it.
+   */
+  it.each([
+    ['\\\\.\\pipexyz', 'no separator after `pipe` — a different device, not the pipe namespace'],
+    ['\\\\.\\pipeline\\x', '`pipeline` merely STARTS with `pipe`'],
+    ['\\\\.\\PhysicalDrive0', 'another `\\\\.\\` device that is emphatically not a pipe'],
+    ['\\\\server\\pipe\\trace.jsonl', 'a share literally NAMED `pipe` on a real server'],
+    ['pipe\\git-ai', 'the pipe name with no namespace prefix at all'],
+    ['\\pipe\\git-ai', 'one leading separator, not two'],
+  ])('%s is NOT a named_pipe (%s)', (raw) => {
+    expect(resolveTrace2Target(raw).kind).not.toBe('named_pipe');
+  });
+
+  it.each([
+    ['pipe\\git-ai', 'RELATIVE — git warns and disables trace2'],
+    ['.\\pipe\\git-ai', 'RELATIVE — git warns and disables trace2'],
+    ['0', 'git DISABLES trace2 entirely'],
+    ['4', 'a raw file DESCRIPTOR — no path to drain later'],
+  ])('%s is REFUSED outright (%s)', (raw) => {
+    // The point is a refusal, not a reclassification: these reach neither the
+    // pipe branch nor the file branch.
+    expect(resolveTrace2Target(raw)).toEqual({ kind: 'unconfigured' });
+  });
+
+  it('a near-miss that is refused as a PIPE is still handled honestly as a path', () => {
+    // `\\.\pipexyz` is absolute, so git would open it as a file. Refusing it as
+    // a pipe must not also strand it: it stays in the branch git actually uses.
+    expect(resolveTrace2Target('\\\\.\\pipexyz')).toEqual({
+      kind: 'file',
+      path: '\\\\.\\pipexyz',
+    });
+  });
+});
+
+describe('plan 075 · ac-0001 — a named pipe is never probed', () => {
+  it('readIngress classifies the pipe and makes NO connect attempt', async () => {
+    const d = deps({ target: '\\\\.\\pipe\\git-ai' });
+    const reading = await readIngress(d);
+    expect(reading.target).toEqual({ kind: 'named_pipe', path: '\\\\.\\pipe\\git-ai' });
+    // There is no af_unix connect to make against a pipe, and a probe that
+    // cannot mean anything must not be run.
+    expect(reading.outcome).toBeNull();
+    expect(d.probe.calls).toEqual([]);
+    expect(reading.socketExists).toBe(false);
+  });
+
+  it('an unprobed pipe PROVES nothing and REACHES nothing', async () => {
+    const reading = await readIngress(deps({ target: '\\\\.\\pipe\\git-ai' }));
+    // Honest by construction: we never measured this transport, so no verdict
+    // may lean on it.
+    expect(ingressProves(reading)).toBe(false);
+    expect(ingressReaches(reading)).toBe(false);
+    expect(ingressBlocked(reading)).toBe(false);
+  });
+});
+
+describe('plan 075 · ac-0006 — the kind table is exhaustive by CONSTRUCTION', () => {
+  it('every Trace2Target kind declares a policy', () => {
+    // The compile-time guarantee is `satisfies Record<Trace2TargetKind, …>` in
+    // `ingress.ts` — this only pins the VALUES. A new kind added to the union
+    // fails `tsc`, not this test (plan 074 F011: a contract in a test file
+    // compiles nowhere CI looks).
+    expect(Object.keys(TRACE2_TARGET_POLICY).sort()).toEqual([
+      'af_unix',
+      'file',
+      'named_pipe',
+      'unconfigured',
+    ]);
+  });
+
+  it('a named pipe is a LIVE ingress that is neither drainable nor replayable', () => {
+    const policy = trace2Policy({ kind: 'named_pipe', path: '\\\\.\\pipe\\git-ai' });
+    expect(policy.receives).toBe('always');
+    expect(policy.drainable).toBe(false);
+    expect(policy.replayInto).toBe(false);
+  });
+
+  it('a file target is drainable; an af_unix socket is replayable', () => {
+    expect(trace2Policy({ kind: 'file', path: '/tmp/b.jsonl' }).drainable).toBe(true);
+    expect(trace2Policy({ kind: 'af_unix', path: SOCK }).replayInto).toBe(true);
+    expect(trace2Policy({ kind: 'af_unix', path: SOCK }).receives).toBe('when-probe-connected');
+    expect(trace2Policy({ kind: 'unconfigured' }).receives).toBe('never');
+  });
+
+  it('the description of a pipe never uses the word buffer', () => {
+    const detail = trace2Policy({ kind: 'named_pipe', path: '\\\\.\\pipe\\git-ai' }).describe(
+      '\\\\.\\pipe\\git-ai',
+    );
+    expect(detail).toContain('NAMED PIPE');
+    expect(detail).not.toMatch(/buffer/i);
   });
 });
 

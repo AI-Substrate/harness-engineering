@@ -48,7 +48,7 @@ Agent command sandboxes (Cursor/Seatbelt today; any unix-socket-blocking sandbox
 - No sandbox detection beyond the ingress probe: env markers never produce a verdict
 - No guarantee of retroactive recovery: nudge is best-effort v1, replay-what-is-buffered; the transcript-sweep wake (F-09) is recorded as observed, not relied on (U-1)
 - No Cursor-side configuration shipped or required (allowlist/sandbox.json are documented user options only)
-- No Windows sandbox support: Windows is must-not-break (platform-guarded no-op), not must-work (U-5)
+- No Windows sandbox support: Windows is must-not-break, not must-work (U-5). CORRECTED by plan 075: this plan shipped NO platform guard — `win32`/`process.platform` appeared nowhere in ingress.ts, nudge.ts or commit-service.ts, and a Windows named pipe was in fact MISCLASSIFIED as a drainable file buffer. The guarded no-op became true in plan 075, not here.
 - No new or external dependencies; no CI test may need a daemon, real socket, or sandbox
 
 <a id="acceptance-criteria"></a>

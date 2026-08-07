@@ -4,6 +4,7 @@ import type { GitAttributionPort } from '../../adapters/git/git-attribution-port
 import type { ProbeOutcome } from '../../adapters/net/socket-probe-port.js';
 import type { ProcessPort } from '../../adapters/process/process-port.js';
 import type { IngressReading } from '../doctor/collector/ingress.js';
+import { trace2Policy } from '../doctor/collector/ingress.js';
 import { posixJoin, toPosix } from '../shared/posix-path.js';
 import { HARNESS_DIR, TEMP_DIR } from '../shared/temp.js';
 
@@ -21,7 +22,7 @@ import { HARNESS_DIR, TEMP_DIR } from '../shared/temp.js';
  *
  * ## The branch partition is EXHAUSTIVE, and the exclusivity is not optional
  *
- * Every {@link ProbeOutcome}, plus `unconfigured`, lands in exactly one of three
+ * Every {@link ProbeOutcome}, plus `unconfigured`, lands in exactly one of four
  * branches:
  *
  * - **`connected`** → commit with NO trace2 override, then bounded verify that a
@@ -29,11 +30,19 @@ import { HARNESS_DIR, TEMP_DIR } from '../shared/temp.js';
  * - **`file`** (target is already a plain file) → commit with NO override; the
  *   configured target is already buffering, and overriding it would only move
  *   the buffer somewhere the user did not choose.
+ * - **`named_pipe`** (a live Windows ingress) → commit with NO override, no
+ *   sidecar, and NO claim: the transport cannot be probed, so this branch
+ *   reports plainly that attribution was not verified on this platform rather
+ *   than calling a live ingress a buffer (plan 075 · ac-0005).
  * - **EVERY other outcome** (`denied` | `refused` | `absent` | `timeout` |
  *   `error:<code>` | `unconfigured`) → commit with `GIT_TRACE2_EVENT` pointed at
  *   a buffer file under the gitignored harness temp dir, and skip note-verify,
  *   because delivery is DEFERRED BY DESIGN and a missing note there is expected
  *   rather than a finding.
+ *
+ * The selection is made from `TRACE2_TARGET_POLICY`, so a NEW target kind cannot
+ * reach any of these branches without first declaring, to the compiler, whether
+ * anything is already receiving events for it.
  *
  * The connected and buffered branches are mutually exclusive because
  * `GIT_TRACE2_EVENT` **replaces** the configured socket target rather than
@@ -120,8 +129,19 @@ export const TRACE2_EVENT_ENV = 'GIT_TRACE2_EVENT';
 export const VERIFY_TIMEOUT_MS = 5_000;
 export const VERIFY_POLL_MS = 250;
 
-/** Which of the three ac-0005 branches ran. Reported, so the choice is never implicit. */
-export type CommitMode = 'direct-verified' | 'file-buffered' | 'harness-buffered';
+/** Which of the four ac-0005 branches ran. Reported, so the choice is never implicit. */
+export type CommitMode =
+  | 'direct-verified'
+  | 'file-buffered'
+  | 'harness-buffered'
+  /**
+   * The target is a LIVE ingress the harness cannot probe or verify against —
+   * today, a Windows named pipe (plan 075 · ac-0005). The commit is made with
+   * NO trace2 override, because overriding would DIVERT events away from a
+   * collector that may well be receiving them; and nothing is claimed about
+   * attribution afterwards, because nothing was measured.
+   */
+  | 'ingress-unverified';
 
 /** Did attribution land? `skipped` is the buffered branch, where a miss is by design. */
 export type VerifyResult = 'landed' | 'missing' | 'skipped';
@@ -288,8 +308,22 @@ export async function harnessCommit(
   }
 
   // ---- branch selection: EXHAUSTIVE over every ac-0001 outcome -------------
-  // `file` and `connected` commit with NO override; everything else buffers.
-  const bufferedBranch = deps.ingress.target.kind !== 'file' && probe !== 'connected';
+  //
+  // The question is NOT "is this a file?" — that framing is what made a Windows
+  // named pipe take the file branch (plan 075). The question is "is anything
+  // ALREADY receiving this commit's events?", and the kind table answers it for
+  // every target kind, with the compiler refusing a kind that has not answered.
+  //
+  // - `always`             — a file git is writing into, or a live pipe git can
+  //                          talk to. Overriding would REPLACE that target, so
+  //                          it would divert events rather than duplicate them.
+  // - `when-probe-connected` — a socket; only the probe can say.
+  // - `never`              — nothing is listening; the harness buffers.
+  const policy = trace2Policy(deps.ingress.target);
+  const receiving =
+    policy.receives === 'always' ||
+    (policy.receives === 'when-probe-connected' && probe === 'connected');
+  const bufferedBranch = !receiving;
   const buffer = bufferedBranch ? bufferPath(deps) : null;
 
   const result = deps.git.commit(
@@ -319,7 +353,10 @@ export async function harnessCommit(
     // confident wrong answer in its most damaging form, because it invites the
     // operator to re-run and double-commit. So: honest DEGRADED, never an error,
     // and the buffer is left in place so its events are still recoverable.
-    const fileTarget = deps.ingress.target.kind === 'file' ? deps.ingress.target.path : null;
+    const fileTarget =
+      policy.drainable && deps.ingress.target.kind !== 'unconfigured'
+        ? deps.ingress.target.path
+        : null;
     // Even with no sha to record, WRITE THE TARGET DOWN: the segment is real and
     // the operator will be told to drain it after reconfiguring, which only the
     // record makes authorizable.
@@ -331,7 +368,12 @@ export async function harnessCommit(
         ? 'harness-buffered'
         : fileTarget !== null
           ? 'file-buffered'
-          : 'direct-verified',
+          : // A live-but-unprobeable ingress (a named pipe) is NOT
+            // `direct-verified`: nothing here was verified, and saying so is the
+            // point.
+            policy.receives === 'always'
+            ? 'ingress-unverified'
+            : 'direct-verified',
       probe,
       sha: null,
       shaUnknown: true,
@@ -370,7 +412,39 @@ export async function harnessCommit(
     };
   }
 
-  if (deps.ingress.target.kind === 'file') {
+  if (deps.ingress.target.kind === 'named_pipe') {
+    // ac-0005. Everything this branch does NOT do is the point:
+    //
+    // - no `GIT_TRACE2_EVENT` override — git talked to the pipe exactly as it
+    //   normally would, and diverting a live ingress to "protect" it would turn
+    //   the fix into the bug (the F-08 exclusivity rule, applied to a transport
+    //   we cannot probe);
+    // - no `.shas` sidecar and no known-targets record beside the pipe path —
+    //   those are the bookkeeping of a DRAINABLE buffer, and writing them next
+    //   to a pipe both asserts a falsehood and may simply fail;
+    // - no verify, and therefore no claim: `refs/notes/ai` may well have landed,
+    //   but nobody has established how the collector behaves on this transport,
+    //   and reporting an unmeasured miss as `missing` would be the same
+    //   confident wrong answer in the opposite direction.
+    const pipe = deps.ingress.target.path;
+    return {
+      ok: true,
+      mode: 'ingress-unverified',
+      probe,
+      sha: result.sha,
+      shaUnknown: false,
+      staged,
+      verify: 'skipped',
+      // NOT a buffer. Nothing was buffered, and naming one here is precisely the
+      // lie this plan exists to stop telling.
+      buffer: null,
+      gitCode: 0,
+      detail: `committed ${short} — DEGRADED: the collector ingress is a Windows NAMED PIPE (${pipe}). The commit was made with NO trace2 override, so git wrote its events to that pipe as usual — but attribution was NOT VERIFIED on this platform, and nothing here was buffered. Whether the note landed is UNKNOWN, not proven and not disproven.`,
+      next_action: `Check for yourself with \`git notes --ref=ai show ${short}\`. Do NOT run \`harness doctor telemetry-nudge\` — there is no buffer to drain and no replay path for the named-pipe transport; it will refuse.`,
+    };
+  }
+
+  if (policy.drainable && deps.ingress.target.kind !== 'unconfigured') {
     const target = deps.ingress.target.path;
     // The sidecar goes beside the FILE TARGET too, not just the harness buffer.
     // Without it the eventual drain of that file could confirm nothing, and an

@@ -285,6 +285,10 @@ function registerTelemetryNudge(doctor: Command, io: CliIo, sockets?: SocketOver
         relay,
         git: attribution,
         ingress,
+        // The composition root reads the global, never the service (P2). The
+        // drain path's own default is the same value; passing it explicitly
+        // keeps the guard visible at the wiring layer too (plan 075 · ac-0006).
+        platform: process.platform,
         ...(opts.buffer !== undefined ? { bufferPath: toPosix(opts.buffer) } : {}),
       });
       // NEVER fails the run (ac-0006): a nudge that found nothing to do, or that
