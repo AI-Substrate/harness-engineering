@@ -57,10 +57,11 @@ import type { IngressReading } from './ingress.js';
  *    commit, so "still missing a note" would be a structural impossibility
  *    reported as a finding. They are reported as replayed-and-handed-off, they
  *    never appear as unattributed commits here, and they never block deletion.
- *    An entry whose origin was never recorded is claimed only when it sits in
- *    the harness's OWN default buffer directory — ours by construction. In any
- *    configured or recorded target, even one located inside this worktree, an
- *    untagged entry has no provable owner and is handed off too.
+ *    An entry whose origin was NEVER RECORDED is a third thing: not ours, not
+ *    known-foreign, but UNPROVABLE. It takes the same arm as a segment with no
+ *    sidecar at all — replayed whole, never confirmed, never accused, and the
+ *    segment RETAINED and reported. Nothing about a file's LOCATION is allowed
+ *    to promote it out of that arm (round 4's F009 — see `partitionByRepo`).
  * 5. **NO AUTOMATIC RE-REPLAY IN v1.** A retained segment is LISTED with an
  *    explicit retry instruction and left alone. The tk-000b spike did establish
  *    that duplicate replay is idempotent against a live daemon (notes came back
@@ -166,6 +167,12 @@ export interface RetainedSegment {
    * in its own repo), never confirmed here, and never counted as missing.
    */
   handedOff: HandedOffSha[];
+  /**
+   * Shas whose sidecar line predates repo identity (ac-0005). Provenance is
+   * UNPROVABLE, so they are never confirmed and never accused — but they do
+   * keep the segment. Reported so the operator can see exactly what is stuck.
+   */
+  unknown: string[];
   /** Why it was kept: partly confirmed, unconfirmable, foreign, or the replay failed. */
   reason: 'partial' | 'unconfirmable' | 'relay-failed' | 'handed-off';
 }
@@ -173,8 +180,12 @@ export interface RetainedSegment {
 /** A commit this repository replayed but structurally cannot check. */
 export interface HandedOffSha {
   sha: string;
-  /** The git common dir that owns it, or `null` when the entry predates identity. */
-  repo: string | null;
+  /**
+   * The git common dir that owns it. NEVER null: an entry only reaches this arm
+   * because its sidecar line NAMED another repository. An entry with no
+   * recorded origin is `unknown`, not handed off (round 4's F009).
+   */
+  repo: string;
 }
 
 export interface NudgeOutcome {
@@ -254,28 +265,6 @@ function defaultBuffer(deps: NudgeDeps): string {
   return posixJoin(cwd, HARNESS_DIR, TEMP_DIR, TRACE2_BUFFER_DIR, TRACE2_BUFFER_FILE);
 }
 
-/**
- * Is this buffer/segment one THE HARNESS ITSELF created — ours BY CONSTRUCTION?
- *
- * The only path that qualifies is this repository's DEFAULT buffer directory,
- * `<repo>/.harness/temp/trace2/`: `harness commit` creates it, writes into it,
- * and gitignores it, and no `trace2.eventTarget` any operator configures ever
- * lands there. Every OTHER location — a configured target, a recorded target,
- * or any other path that merely happens to sit under the worktree — is
- * machine-global by nature, because `trace2.eventTarget` is read from SYSTEM
- * and GLOBAL config only and may legally name `<repo>/trace2/agent.jsonl`.
- *
- * This is round 3's F008. The earlier rule was "anywhere under the repo is
- * ours", which is true of the harness's own directory and false of a global
- * target that happens to live there: an untagged FOREIGN sha in
- * `<repo>/trace2/agent.jsonl.shas` was claimed as own, queried against notes
- * that cannot exist here, and retained forever — the exact permanent-retention
- * failure this plan exists to kill, reappearing through the migration format.
- */
-function isHarnessOwned(deps: NudgeDeps, path: string): boolean {
-  return isWithin(posixDirname(defaultBuffer(deps)), path);
-}
-
 /** A rotated segment: `segment-<iso>-<salt>.jsonl`, beside the buffer it came from. */
 export const SEGMENT_PREFIX = 'segment-';
 export const SEGMENT_SUFFIX = '.jsonl';
@@ -310,6 +299,12 @@ function isSegmentName(name: string): boolean {
  * absolute path is fine now" — that would give the guard away. It is that the
  * path is authorized BECAUSE THE HARNESS WROTE IT DOWN, not because a caller
  * asked for it.
+ *
+ * **This is a SAFETY guard, not a provenance claim.** It answers "may this verb
+ * rename/delete that path?", never "whose commits are in it?". Ownership is
+ * read from the sidecar's recorded repo identity and from nothing else — a path
+ * being authorized here says nothing about who wrote the events inside it (see
+ * `partitionByRepo`, and round 4's F009).
  */
 type BufferResolution = { ok: true; path: string } | { ok: false; detail: string };
 
@@ -341,7 +336,8 @@ function resolveBuffer(deps: NudgeDeps): BufferResolution {
 }
 
 /**
- * Which sidecar entries THIS repository can actually confirm.
+ * Which sidecar entries THIS repository can actually confirm — THREE arms, all
+ * provable, and no fourth.
  *
  * A `file` trace2 target is machine-global, so its sidecar accumulates commits
  * from every repository on the box. `git notes --ref=ai show <sha>` for another
@@ -350,33 +346,43 @@ function resolveBuffer(deps: NudgeDeps): BufferResolution {
  * impossibility as a finding, retains the segment forever, and accuses unrelated
  * commits. That is round 2's cross-repo regression.
  *
- * An entry with no recorded origin falls back to LOCATION rather than a guess —
- * but only to a location that is ours BY CONSTRUCTION. A sidecar in the
- * harness's own default buffer directory was written by this repository (that
- * is the pre-identity `.harness/temp/trace2/` migration case, and it is
- * correct). A sidecar ANYWHERE ELSE — including a configured or recorded file
- * target that happens to sit inside this worktree — is machine-global, its
- * untagged history has no provable owner, so it is handed off rather than
- * claimed. Claiming it would query a note that cannot exist here and retain the
- * segment forever (round 3's F008); accusing it would be the very
- * mis-attribution step 4 exists to prevent.
+ * | entry | arm |
+ * |---|---|
+ * | origin recorded, and it is this repo's git common dir | **own** — confirmed against `refs/notes/ai`; gates deletion |
+ * | origin recorded, and it is another repo | **handed off** — replayed, delete-eligible, never accused |
+ * | origin NOT recorded (or ours unreadable) | **unknown** — replayed, never confirmed, never accused, segment RETAINED |
+ *
+ * The third arm used to be decided by the sidecar's LOCATION, and that idea was
+ * wrong twice. Round 3 (F008) killed "anywhere under the worktree is ours".
+ * Round 4 (F009) killed its narrowing, "the harness's own default buffer
+ * directory is ours", by simply configuring a global `trace2.eventTarget` to
+ * that exact path — git accepts any absolute path, so a foreign pre-identity
+ * sidecar can sit in the one directory the predicate trusted most, where it was
+ * claimed, queried against a note that cannot exist here, and retained forever.
+ *
+ * The general lesson, and the reason this is a DELETION rather than a third
+ * narrowing: **path location cannot prove provenance.** A location the harness
+ * merely PREFERS is not one it can PROVE, and every rule of that shape has a
+ * next counterexample. So an untagged entry is exactly as unknown as no sidecar
+ * at all, and takes that same honest arm. Its segment is retained — acceptable
+ * only because every run REPORTS it with the reason and an operator
+ * instruction. Visible-and-stuck beats silently-wrong, and this is a
+ * legacy-only path: every sidecar written since ac-0005 carries repo identity,
+ * so it ages out on its own.
  */
 function partitionByRepo(
   entries: readonly SidecarEntry[],
   ownRepo: string | null,
-  sidecarIsHarnessOwned: boolean,
-): { own: string[]; handedOff: HandedOffSha[] } {
+): { own: string[]; handedOff: HandedOffSha[]; unknown: string[] } {
   const own: string[] = [];
   const handedOff: HandedOffSha[] = [];
+  const unknown: string[] = [];
   for (const entry of entries) {
-    const mine =
-      ownRepo !== null && entry.repo !== null
-        ? posixNormalize(toPosix(entry.repo)) === ownRepo
-        : sidecarIsHarnessOwned;
-    if (mine) own.push(entry.sha);
+    if (ownRepo === null || entry.repo === null) unknown.push(entry.sha);
+    else if (posixNormalize(toPosix(entry.repo)) === ownRepo) own.push(entry.sha);
     else handedOff.push({ sha: entry.sha, repo: entry.repo });
   }
-  return { own, handedOff };
+  return { own, handedOff, unknown };
 }
 
 /** This repository's identity, normalized once per run. Never throws. */
@@ -392,27 +398,52 @@ function ownRepoId(deps: NudgeDeps): string | null {
 /** Prose for a hand-off, naming the owning repository whenever one was recorded. */
 function describeHandedOff(handedOff: readonly HandedOffSha[]): string {
   if (handedOff.length === 0) return '';
-  const repos = [...new Set(handedOff.map((h) => h.repo ?? 'an unrecorded repository'))];
+  const repos = [...new Set(handedOff.map((h) => h.repo))];
   return ` ${handedOff.length} commit(s) in it belong to ${repos.join(', ')} and were REPLAYED and handed off to the daemon — this repository cannot confirm them and does not claim them.`;
+}
+
+/**
+ * Prose for the legacy arm. Retaining a segment forever is only acceptable
+ * while every run SAYS SO, in words that name the cause and do not accuse the
+ * commits — so this string is load-bearing, not decoration.
+ */
+function describeUnknown(unknown: readonly string[]): string {
+  return `${unknown.length} commit(s) in it have UNKNOWN provenance — written before sidecars carried repo identity, so this repository can neither prove nor disprove it owns them. They were REPLAYED (the daemon attributes each in whichever repo made it), never checked against local notes, and are NOT counted as missing attribution: ${unknown.join(', ')}.`;
+}
+
+/** The operator instruction that makes an unprovable retention actionable rather than a dead end. */
+function unknownNextAction(segment: string): string {
+  return `Nothing here can confirm those commits automatically, and v1 adds no way to. Check \`harness doctor\`'s attribution-at-risk row in whichever repository made them, then delete ${segment} (and its \`${TRACE2_SHAS_SUFFIX}\` sidecar) yourself. Commits made through \`harness commit\` since this release record their repository and confirm automatically, so this case ages out.`;
 }
 
 /** What a segment on disk still owes, read from its sidecar. Pure reads — never mutates. */
 function inspectSegment(deps: NudgeDeps, path: string, ownRepo: string | null): RetainedSegment {
   const entries = sidecarEntries(deps.fs.readText(`${path}${TRACE2_SHAS_SUFFIX}`));
-  const { own, handedOff } = partitionByRepo(entries, ownRepo, isHarnessOwned(deps, path));
+  const { own, handedOff, unknown } = partitionByRepo(entries, ownRepo);
   if (entries.length === 0) {
-    return { path, stillMissing: [], recovered: [], handedOff: [], reason: 'unconfirmable' };
+    return {
+      path,
+      stillMissing: [],
+      recovered: [],
+      handedOff: [],
+      unknown: [],
+      reason: 'unconfirmable',
+    };
   }
-  if (own.length === 0) {
-    return { path, stillMissing: [], recovered: [], handedOff, reason: 'handed-off' };
+  if (own.length === 0 && unknown.length === 0) {
+    return { path, stillMissing: [], recovered: [], handedOff, unknown, reason: 'handed-off' };
   }
+  // `unknown` shas are NEVER queried: there is nothing here that could prove
+  // ownership, so asking `git notes` about them either fabricates a claim or
+  // manufactures a finding. They keep the segment; they never accuse it.
   const stillMissing = own.filter((sha) => !deps.git.hasAiNote(sha));
   return {
     path,
     stillMissing,
     recovered: own.filter((sha) => !stillMissing.includes(sha)),
     handedOff,
-    reason: 'partial',
+    unknown,
+    reason: stillMissing.length === 0 && unknown.length > 0 ? 'unconfirmable' : 'partial',
   };
 }
 
@@ -480,7 +511,7 @@ function withRemainingSegments(outcome: NudgeOutcome, remaining: RetainedSegment
         ? `${outcome.detail}${foreignNote}`
         : `${outcome.detail} ${others.length} earlier segment(s) are ALSO still on disk and unrecovered: ${others.map((r) => r.path).join(', ')}.${foreignNote}`,
     ...(retry !== undefined && {
-      next_action: `Re-run \`harness doctor telemetry-nudge --buffer ${retry}\` (repeat for each remaining segment) from a shell that can reach the collector socket. Segments with no \`harness commit\` sidecar can never be confirmed automatically — delete those yourself once \`harness doctor\`'s attribution-at-risk row is clean.`,
+      next_action: `Re-run \`harness doctor telemetry-nudge --buffer ${retry}\` (repeat for each remaining segment) from a shell that can reach the collector socket. Segments with no \`harness commit\` sidecar — and legacy ones whose sidecar predates repo identity — can never be confirmed automatically; delete those yourself once \`harness doctor\`'s attribution-at-risk row is clean.`,
     }),
   };
 }
@@ -613,8 +644,9 @@ async function runNudge(
   }
 
   const entries = sidecarEntries(sidecarText);
-  const { own, handedOff } = partitionByRepo(entries, ownRepo, isHarnessOwned(deps, buffer));
+  const { own, handedOff, unknown } = partitionByRepo(entries, ownRepo);
   // Only shas that were MISSING before the replay can be "recovered" by it.
+  // `unknown` shas are never queried at all — see `partitionByRepo`.
   const before = own.filter((sha) => !deps.git.hasAiNote(sha));
 
   const sent = await deps.relay.send(socket, payload);
@@ -630,7 +662,14 @@ async function runNudge(
       stillMissing: before,
       handedOff,
       retained: [
-        { path: segment, stillMissing: before, recovered: [], handedOff, reason: 'relay-failed' },
+        {
+          path: segment,
+          stillMissing: before,
+          recovered: [],
+          handedOff,
+          unknown,
+          reason: 'relay-failed',
+        },
       ],
       detail: `the replay into ${socket} failed (${sent.outcome}). The rotated segment is RETAINED INTACT at ${segment} — nothing was lost.`,
       next_action: `Fix the ingress (see \`harness doctor\`), then re-run \`harness doctor telemetry-nudge --buffer ${segment}\` to retry this segment.`,
@@ -653,7 +692,14 @@ async function runNudge(
       stillMissing: [],
       handedOff: [],
       retained: [
-        { path: segment, stillMissing: [], recovered: [], handedOff: [], reason: 'unconfirmable' },
+        {
+          path: segment,
+          stillMissing: [],
+          recovered: [],
+          handedOff: [],
+          unknown: [],
+          reason: 'unconfirmable',
+        },
       ],
       detail: `replayed ${sent.bytes} bytes into ${socket}, but delivery could NOT be confirmed: this buffer records no commit sha (git's trace2 events never name one, and no \`harness commit\` sidecar was found beside it). The segment is RETAINED INTACT at ${segment} rather than deleted on an unprovable claim.`,
       next_action: `Check \`harness doctor\`'s attribution-at-risk row to see whether the commits gained notes; delete ${segment} yourself once you are satisfied. Commits made through \`harness commit\` record their sha and confirm automatically.`,
@@ -671,15 +717,18 @@ async function runNudge(
     }
   };
 
-  if (own.length === 0) {
-    // Every commit this segment names belongs to ANOTHER repository — the shape
-    // a machine-global `file` target produces. The replay was accepted, and the
-    // daemon attributes each of those commits in its own repo, so the hand-off
-    // is complete from here. Deleting is NOT the vacuous confirmation the
-    // no-sidecar branch above refuses: there, identity was unknown; here it is
-    // known precisely, and known not to be ours. Retaining instead would let
-    // foreign entries block deletion forever and make every later run in this
-    // repo report an unrecoverable segment it structurally cannot clear.
+  if (own.length === 0 && unknown.length === 0) {
+    // Every commit this segment names belongs to ANOTHER repository, and every
+    // one of them SAID SO — the shape a machine-global `file` target produces.
+    // The replay was accepted, and the daemon attributes each of those commits
+    // in its own repo, so the hand-off is complete from here. Deleting is NOT
+    // the vacuous confirmation the no-sidecar branch above refuses: there,
+    // identity was unknown; here it is known precisely, and known not to be
+    // ours. Retaining instead would let foreign entries block deletion forever
+    // and make every later run in this repo report an unrecoverable segment it
+    // structurally cannot clear. An UNKNOWN entry is excluded from this branch
+    // on purpose (round 4's F009): "not provably mine" is not "provably not
+    // mine", and only the second one may delete.
     deleteSegment();
     return {
       status: 'replayed',
@@ -696,10 +745,11 @@ async function runNudge(
   const stillMissing = await settleNotes(deps, before);
   const recovered = before.filter((sha) => !stillMissing.includes(sha));
 
-  if (stillMissing.length === 0) {
+  if (stillMissing.length === 0 && unknown.length === 0) {
     // FULLY confirmed: every commit this segment named AND THIS REPOSITORY OWNS
-    // now carries a note. Foreign entries never gate this — they cannot be
-    // checked here at all, so waiting on them would be waiting forever.
+    // now carries a note, and nothing in it is of unknown provenance. Foreign
+    // entries never gate this — they cannot be checked here at all, so waiting
+    // on them would be waiting forever.
     deleteSegment();
     return {
       status: 'replayed',
@@ -717,6 +767,28 @@ async function runNudge(
     };
   }
 
+  if (stillMissing.length === 0) {
+    // LEGACY: nothing here is unconfirmed except entries whose sidecar lines
+    // predate repo identity, so this repository cannot prove it owns them and
+    // will not query, claim, or accuse them. The segment is kept rather than
+    // deleted on a location guess (round 4's F009), and the operator is told
+    // exactly why and what to do — visible-and-stuck beats silently-wrong.
+    return {
+      status: 'retained',
+      reason: 'unconfirmable',
+      segment,
+      bytes: sent.bytes,
+      recovered,
+      stillMissing: [],
+      handedOff,
+      retained: [
+        { path: segment, stillMissing: [], recovered, handedOff, unknown, reason: 'unconfirmable' },
+      ],
+      detail: `replayed ${sent.bytes} bytes into ${socket}. The segment is RETAINED INTACT at ${segment}: ${describeUnknown(unknown)}${describeHandedOff(handedOff)}`,
+      next_action: unknownNextAction(segment),
+    };
+  }
+
   // PARTIAL: keep the segment whole. Never rewrite it to drop the confirmed
   // part — the unconfirmed commits need that event context on a retry.
   return {
@@ -726,8 +798,8 @@ async function runNudge(
     recovered,
     stillMissing,
     handedOff,
-    retained: [{ path: segment, stillMissing, recovered, handedOff, reason: 'partial' }],
-    detail: `replayed ${sent.bytes} bytes into ${socket}: ${recovered.length} commit(s) recovered, ${stillMissing.length} still missing a note. The segment is RETAINED INTACT at ${segment} (it is never partially rewritten), and v1 does NOT automatically re-replay it.${describeHandedOff(handedOff)}`,
-    next_action: `Re-run \`harness doctor telemetry-nudge --buffer ${segment}\` to retry this segment explicitly. Commits made before git-ai was installed will never gain a note and will stay listed here.`,
+    retained: [{ path: segment, stillMissing, recovered, handedOff, unknown, reason: 'partial' }],
+    detail: `replayed ${sent.bytes} bytes into ${socket}: ${recovered.length} commit(s) recovered, ${stillMissing.length} still missing a note. The segment is RETAINED INTACT at ${segment} (it is never partially rewritten), and v1 does NOT automatically re-replay it.${describeHandedOff(handedOff)}${unknown.length === 0 ? '' : ` ${describeUnknown(unknown)}`}`,
+    next_action: `Re-run \`harness doctor telemetry-nudge --buffer ${segment}\` to retry this segment explicitly. Commits made before git-ai was installed will never gain a note and will stay listed here.${unknown.length === 0 ? '' : ` ${unknownNextAction(segment)}`}`,
   };
 }

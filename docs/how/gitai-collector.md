@@ -439,14 +439,25 @@ live traffic. Its lifecycle is deliberate:
    `git notes` cannot resolve another repo's commit, so "still missing a note"
    would be a structural impossibility reported as a finding. They are reported
    as *replayed and handed off*, they never appear as unattributed commits in
-   this repo, and they never block deletion. An entry written **before** identity
-   was recorded carries no repo, and location decides — narrowly: only a sidecar
-   in the harness's **own** default buffer directory (`.harness/temp/trace2/`,
-   which `harness commit` creates and gitignores) is ours *by construction*. A
-   configured or recorded file target is machine-global by definition and may
-   legally sit *inside* a worktree, so its untagged history has no provable owner
-   and is handed off too — claimed instead, it would be queried against a note
-   that cannot exist here and retained forever.
+   this repo, and they never block deletion.
+
+   An entry written **before** identity was recorded carries no repo, and it is
+   **not** resolved by location — that idea was tried twice and disproved twice.
+   "Anywhere under the worktree is ours" fell to a machine-global
+   `trace2.eventTarget` configured *inside* a worktree; its narrowing, "the
+   harness's own `.harness/temp/trace2/` is ours by construction", fell to a
+   global target configured straight *into that directory* — git accepts any
+   absolute path, so nothing stops it. The general rule is that **path location
+   cannot prove provenance**: a location the harness merely *prefers* is not one
+   it can *prove*, and every rule of that shape has a next counterexample. So an
+   untagged entry is exactly as unknown as no sidecar at all and takes that same
+   arm — replayed, never confirmed, never accused, and its segment **retained
+   and reported** with the reason (`provenance unknown — written before sidecars
+   carried repo identity`) and an operator instruction. That leaves **three
+   arms, all provable**: known-and-ours confirms, known-and-foreign hands off and
+   is delete-eligible, unknown is retained. Visible-and-stuck beats
+   silently-wrong, and the case ages out on its own: every sidecar written since
+   this release carries repo identity.
 5. **Enumerate every run** — nothing carries state between invocations, so each
    run lists `segment-*.jsonl` beside the buffer and reports **every** one still
    on disk with a retry pointer. A run that leaves any segment *this repository

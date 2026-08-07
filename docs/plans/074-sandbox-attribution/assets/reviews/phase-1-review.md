@@ -298,3 +298,53 @@ regression above.
   0 errors, 0 warnings, 0 open items.
 - `just checks`: completed at the recorded non-blocking baseline -- arch 2,
   markdown 196, Windows 6.
+
+---
+
+## Round 4 — fix commit `e817f431`
+
+**Verdict: FIX_REQUIRED**
+
+| Item | Status | Evidence |
+|---|---|---|
+| F008's original in-worktree target case | CLOSED | Both `runNudge` and `inspectSegment` now call `isHarnessOwned`. The new run and enumeration regressions show an untagged foreign sidecar at `/repoA/trace2/agent.jsonl` is handed off, never queried locally, and does not retain the segment. |
+| Four-way partition | NOT CLOSED | Known-own, known-foreign, unknown-at-an-ordinary-shared target, and no-sidecar all behave as specified. But the implementation adds an unproven fifth arm: untagged entries under the default harness buffer directory are presumed own solely by location. |
+| F001-F007 and tagged cross-repository regression sweep | CLOSED | Restored focused suites passed: 107 tests across nudge, commit service, ingress, and doctor act. Tagged two-repository recovery continues to cover both drain directions. |
+
+### New finding — F009: a global file target can be the default harness buffer
+
+The F008 repair's central claim is false: Git accepts any absolute path for the global
+`trace2.eventTarget`, including
+`/repoA/.harness/temp/trace2/buffer.jsonl`. This review set that value in an isolated
+`GIT_CONFIG_GLOBAL` and Git read it back verbatim.
+
+Consequently, a foreign pre-identity sidecar at that configured target follows the
+supposedly "harness-owned" path. A temporary regression probe seeded bare `SHA_B` beside
+the default buffer, ran nudge in repo A, and expected `replayed` plus
+`handedOff=[{ sha: SHA_B, repo: null }]`; it failed RED with `retained`. The implementation
+queried the foreign SHA against repo A's notes, recreating F008's permanent-retention
+failure at the one path the new predicate trusts most.
+
+Path location cannot establish provenance once an operator may configure a machine-global
+target to that path. Do not treat any untagged sidecar as automatically owned without a
+durable provenance record. The safe repair is to classify legacy untagged entries as
+ambiguous (retain explicitly or hand off only under a separately proven policy), while new
+sidecars remain tagged; alternatively add a durable marker that distinguishes harness
+buffer provenance before relying on automatic confirmation or deletion. Add the probe
+above as a regression.
+
+### Independent Dim-0 evidence
+
+- Disabled the retained-segment no-sidecar classification guard; its targeted set went
+  **RED** with the legacy segment changing from `unconfirmable` to `handed-off`.
+- Inverted the full-confirmation delete guard; its targeted set went **RED** with 5
+  failures across all-confirm, partial-retain, delayed-note, and both tagged
+  two-repository directions.
+- Both mutations and the temporary F009 probe were removed before the restored suite.
+
+### Gates
+
+- `node harness/cli/bin/harness.js plan validate docs/plans/074-sandbox-attribution --complete`:
+  0 errors, 0 warnings, 0 open items.
+- `just checks`: completed at the recorded non-blocking baseline -- arch 2,
+  markdown 196, Windows 6.

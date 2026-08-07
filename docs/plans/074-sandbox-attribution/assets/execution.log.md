@@ -288,3 +288,66 @@ just checks → tests:ok biome:ok typecheck:ok check:docs:ok check:flows:ok
 ```
 
 Tests: **4976 → 4979 passing**, 339 files, no skips.
+
+## Fix round 4 — review r4 (F009): the heuristic was DELETED, not narrowed again
+
+Round 4's verdict closed F008's original case but rejected the repair's premise. The
+reviewer set a global `trace2.eventTarget` to `/repoA/.harness/temp/trace2/buffer.jsonl` in an
+isolated `GIT_CONFIG_GLOBAL` and git read it back verbatim — so a foreign pre-identity sidecar
+can sit in the one directory round 3's predicate trusted most. The probe went RED there.
+
+**The shape of the mistake, three rounds running.** Each time, the defect was the *fix's own
+assumption*, always the same species:
+
+| round | the assumption | how it died |
+|---|---|---|
+| r1 | identity inferred from payload text | a `Revert <sha>` message enrolled an unrelated commit → the scan was deleted |
+| r3 | ownership inferred from "inside the repo" | a machine-global target legally sits inside a worktree → narrowed to the harness dir |
+| r4 | ownership inferred from "the harness dir" | a global target can be configured INTO the harness dir → **stop narrowing** |
+
+Each narrowing produced a smaller *wrong* claim, never a right one. The reviewer's finding is
+general and correct: **path location cannot prove provenance.** A location the harness merely
+*prefers* is not one it can *prove*, and any rule of that shape has a next counterexample.
+
+| # | what was wrong | what changed | the guarding test |
+|---|---|---|---|
+| F009 | `isHarnessOwned()` presumed an untagged entry under the harness's default buffer directory was ours *by location*. Git accepts any absolute path for the global `trace2.eventTarget`, including that one, so a foreign pre-identity sidecar there was claimed, queried against a note that cannot exist in this object store, reported missing, and its segment retained forever. | **`isHarnessOwned()` DELETED**, and with it every location-based ownership inference (`grep` proves no caller remains). `partitionByRepo` now takes only the entries and this repo's identity, and returns **three** buckets. An untagged entry — or any entry when our own common dir is unreadable — is `unknown`: replayed whole, never queried, never claimed, never accused, and its segment **retained and reported**. `HandedOffSha.repo` tightened from `string \| null` to `string`, so the type itself now carries the invariant that a handed-off sha always names its owner. | `nudge.test.ts` R4 block — "F009 — a global target configured INTO the harness buffer path is still unprovable" (the reviewer's scenario: replayed, `hasAiNote` **never** called for it, `unconfirmable`/`retained`, segment kept, detail + `next_action` carry the reason and the operator instruction); "F008 collapses into the same arm"; "**the LOCATION heuristic is gone** — the same untagged sha reads the same everywhere" (one sha planted in the harness dir, an in-repo global target, and `/tmp` — all three must return `unconfirmable`); "a TAGGED sidecar is unaffected"; "a MIXED segment confirms what it can prove and keeps what it cannot". The R2 test that asserted the location rule was rewritten to assert its absence, and round 3's negative control — which encoded the disproved rule — was **removed**, not repaired. |
+
+**Three arms, all provable, and no fourth:**
+
+| entry | arm | outcome |
+|---|---|---|
+| origin recorded = this repo's git common dir | **own** | confirmed against `refs/notes/ai`; gates deletion |
+| origin recorded = another repo | **handed off** | replayed, delete-eligible, never accused |
+| origin NOT recorded (or ours unreadable) | **unknown** | replayed, never confirmed, never accused, segment RETAINED + reported |
+| no sidecar at all | (same as unknown) | `unconfirmable`, retained (unchanged since r1) |
+
+**Why retention is acceptable here.** It is *visible*: every run reports the segment with a
+reason (`UNKNOWN provenance — written before sidecars carried repo identity`), the shas, and a
+concrete operator instruction (check the attribution-at-risk row in whichever repo made them,
+then delete the segment and its sidecar). No auto-resolution was invented and no CLI surface
+was added this late. Visible-and-stuck beats silently-wrong, and this is a legacy-only path:
+every sidecar written since ac-0005 carries repo identity, so it ages out on its own.
+
+Mutation checks (both restored afterwards):
+
+- Reintroducing round 3's exact predicate (`isWithin(dirname(defaultBuffer), path)`) → **4 RED**,
+  including the "heuristic is gone" structural guard.
+- Removing the `unknown.length === 0` gate on the delete branch → **4 RED**.
+
+Sidecar fixtures in the test file now use the REAL tagged format (`<sha> <repo>`); a new
+`sidecarUntagged()` helper marks the legacy shape explicitly, so no test can quietly depend on
+untagged-means-ours again.
+
+### Gate after the fix round
+
+```
+just checks → tests:ok biome:ok typecheck:ok check:docs:ok check:flows:ok
+              check:telemetry-fixtures:ok check:doctrine-parity:ok check:dd-docs:ok
+              root-invocation-smoke:ok dd doctor:ok skills-check:ok
+              arch-check:2  markdown-lint:196  windows-check:6      ← baseline, unchanged
+```
+
+Tests: **4979 → 4981 passing**, 339 files, no skips. `plan validate --complete`: 0 errors,
+0 warnings, 0 open, 130 items. `docs/how/gitai-collector.md` step 4 rewritten — it stated the
+disproved rule.
