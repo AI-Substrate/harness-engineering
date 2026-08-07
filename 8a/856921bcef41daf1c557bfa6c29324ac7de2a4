@@ -1,0 +1,67 @@
+docs/plans/076-commit-guidance-convergence/plan.dd.md
+  s_17d65f429c4464::t_92d6167428ccfe 1-64,68-74
+  s_62ae2013f851ba::t_f53991bdbfbb8d 65-67,75
+docs/plans/076-commit-guidance-convergence/original-ask.md
+  s_a76964380084ef::t_a4c8da2206edf8 1-68
+AGENTS.md
+  s_17d65f429c4464::t_f319032a71f206 145-150
+harness/cli/test/support/pre-075-block.ts
+  s_17d65f429c4464::t_c804652f41b6f5 1-31
+docs/plans/076-commit-guidance-convergence/assets/tasks/phase-1/execution.log.md
+  s_17d65f429c4464::t_d122b600b4ffaa 1-177
+docs/plans/076-commit-guidance-convergence/assets/tasks/phase-1/tasks.dd.json
+  s_17d65f429c4464::t_63bc89c40eac82 54,61-62,67,70-71,76,80-81
+  s_17d65f429c4464::t_942604acda9d8f 1-53,55-60,63-66,68-69,72-75,77-79,82-90
+docs/plans/076-commit-guidance-convergence/assets/CODER-BRIEF.md
+  s_a76964380084ef::t_88a01aecc9c787 1-75
+docs/plans/076-commit-guidance-convergence/plan.dd.json
+  s_17d65f429c4464::t_92d6167428ccfe 1-65,67-68,70-71,73-74,76-77,79-80,82-91,95-99
+  s_62ae2013f851ba::t_4a9cbedd109942 66,69,72,75,78,81,92-94
+harness/cli/test/services/instructions/commit-guidance.test.ts
+  s_17d65f429c4464::t_757eed7be9a066 136-185,189-251
+  s_17d65f429c4464::t_624f847e7f9243 186-188
+  s_17d65f429c4464::t_61484e41265b17 11-12,14,21
+docs/plans/076-commit-guidance-convergence/assets/tasks/phase-1/tasks.dd.md
+  s_17d65f429c4464::t_63bc89c40eac82 41-43
+  s_17d65f429c4464::t_942604acda9d8f 1-40,44-49
+harness/cli/test/services/doctor/attribution-surface.test.ts
+  s_17d65f429c4464::t_f4162567e9a9a8 15
+  s_17d65f429c4464::t_3586a48770d806 237-259
+harness/cli/src/services/instructions/commit-guidance.ts
+  s_17d65f429c4464::t_678dc44e5a5e38 177-178,180,182-183,203-204
+  s_17d65f429c4464::t_f6989d14afc708 2,13-14,24-153
+  s_17d65f429c4464::t_75d80f4acc0428 237-241,250-253
+  s_17d65f429c4464::t_a5c8b9ca7ca3c4 154
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8a856921bcef41daf1c557bfa6c29324ac7de2a4",
+  "prompts": {},
+  "sessions": {
+    "s_17d65f429c4464": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "525f6cb0-27f0-4852-afe9-9b27a51e10d0",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_62ae2013f851ba": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "c02794fe-689f-44a9-a7bf-2040d9a1d920",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
