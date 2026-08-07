@@ -1,0 +1,173 @@
+harness/cli/src/acts/instructions.ts
+  s_caff156b1b7e66::t_b8f2cc64401f1e 48-52,57-60,65-79,81-100,108-112,116-118
+  s_caff156b1b7e66::t_9381afa0dbf5d4 101-107,113-115
+  s_caff156b1b7e66::t_b13621fa389ec4 4,10-13,18
+  s_caff156b1b7e66::t_0079fbf54a785f 80
+  s_caff156b1b7e66::t_84b279576a8e5f 119-120
+docs/plans/074-sandbox-attribution/plan.dd.md
+  s_caff156b1b7e66::t_5e69f770f55211 59-68,76
+harness/cli/test/acts/instructions.test.ts
+  s_caff156b1b7e66::t_ba7ac30c242889 82
+AGENTS.md
+  s_caff156b1b7e66::t_7e88615f589d08 137-155
+harness/cli/src/services/doctor/doctor-service.ts
+  s_caff156b1b7e66::t_56542be5b34478 1024,1032,1042-1072,1076
+  s_caff156b1b7e66::t_da24584169638a 80-95
+  s_caff156b1b7e66::t_ae772a4cd56146 779-791,794-800
+  s_caff156b1b7e66::t_152a861271fbcd 1134-1137
+  s_caff156b1b7e66::t_f76a832a07ef74 1142
+  s_caff156b1b7e66::t_9381afa0dbf5d4 16,23,801-802
+  s_caff156b1b7e66::t_e1b768d91ec7c1 30,32
+  s_caff156b1b7e66::t_bb05764815fc42 5
+  s_caff156b1b7e66::t_7fc4cdf43a2f9d 96
+  s_caff156b1b7e66::t_a34625d8bdf10b 1073-1074,1077-1109
+  s_caff156b1b7e66::t_591548fbb55176 1075
+harness/cli/src/services/doctor/collector/ingress.ts
+  s_caff156b1b7e66::t_42eb6ce824bf3f 1,3-126
+  s_caff156b1b7e66::t_9381afa0dbf5d4 2
+harness/cli/test/adapters/net/socket-probe.test.ts
+  s_caff156b1b7e66::t_6dff31a2e63d98 1-186
+harness/cli/test/services/instructions/instructions-service.test.ts
+  s_caff156b1b7e66::t_ba7ac30c242889 52-54,70
+  s_caff156b1b7e66::t_37a1dc5b7310cb 71-73
+  s_caff156b1b7e66::t_856eae8d96b5be 63
+harness/cli/test/services/doctor/attribution-surface.test.ts
+  s_caff156b1b7e66::t_b91afb7c192fa1 1-10,12-119,126-179,183-202,207-236
+  s_caff156b1b7e66::t_9381afa0dbf5d4 11,120-125,180-182,203-206
+harness/cli/src/services/doctor/collector/at-risk.ts
+  s_caff156b1b7e66::t_9381afa0dbf5d4 1-4,80-83
+  s_caff156b1b7e66::t_b06279c290e609 5-50,52-60,65-69,72-79,84-133
+  s_caff156b1b7e66::t_297672ef5102cb 51,61-64,70-71
+harness/cli/src/acts/doctor.ts
+  s_caff156b1b7e66::t_f650ae4869c13f 110
+  s_caff156b1b7e66::t_baf92feea4dbae 126-131,157,162-174,181-286,292-296
+  s_caff156b1b7e66::t_9381afa0dbf5d4 175-178,180
+  s_caff156b1b7e66::t_ccc78c3648c537 10,13,19,21
+harness/cli/test/services/instructions/commit-guidance.test.ts
+  s_caff156b1b7e66::t_786886be562847 1-2,4-6,8-11,13-210
+  s_caff156b1b7e66::t_9381afa0dbf5d4 3,7,12
+docs/plans/074-sandbox-attribution/assets/tasks/phase-1/tasks.dd.json
+  s_caff156b1b7e66::t_de9252f685192c 25,33,42,50,58,66,74,83,91,99,107,118
+  s_caff156b1b7e66::t_ee821cbb54c77e 112-113,121-122
+docs/plans/074-sandbox-attribution/assets/tasks/phase-1/tasks.dd.md
+  s_caff156b1b7e66::t_de9252f685192c 38-47
+  s_caff156b1b7e66::t_ee821cbb54c77e 48-49
+harness/cli/test/app.test.ts
+  s_caff156b1b7e66::t_97e0f4d40f6dd5 142-143,174-175
+docs/plans/074-sandbox-attribution/assets/execution.log.md
+  s_caff156b1b7e66::t_f8a1266fd13c79 133-134
+  s_caff156b1b7e66::t_4a4bb510aa681f 1-132,135-140
+harness/cli/test/integration/cli-commands.test.ts
+  s_caff156b1b7e66::t_786e50ef681535 32,36,53-56,65-66,73-74,81-82,90-91
+harness/cli/src/adapters/net/socket-probe-port.ts
+  s_caff156b1b7e66::t_b791ce9c23ffea 1-84
+skills/eng-harness-flow/references/stages/adopt.md
+  s_caff156b1b7e66::t_a228c867178c09 153-161
+harness/cli/src/services/doctor/collector/health.ts
+  s_caff156b1b7e66::t_1ffeff6bff25cc 93-102
+  s_caff156b1b7e66::t_413a14dadf28b0 211
+  s_caff156b1b7e66::t_a56ec8e51f8299 312-333
+  s_caff156b1b7e66::t_e2d3b329b49169 3
+  s_caff156b1b7e66::t_c1e70fb2e33dbd 38
+  s_caff156b1b7e66::t_5b0cc19722b784 74-79
+harness/cli/test/integration/update-banner.test.ts
+  s_caff156b1b7e66::t_786e50ef681535 41,45,72-74,79,88-89,94-95,99-100,110-111,113,115
+docs/plans/074-sandbox-attribution/plan.dd.json
+  s_caff156b1b7e66::t_5e69f770f55211 48,53,58,63,68,73,78,83,88,93,104
+harness/cli/test/acts/doctor.test.ts
+  s_caff156b1b7e66::t_6366019e71d7ed 65-67,71-72,113
+  s_caff156b1b7e66::t_786e50ef681535 29-32,40,44,46,84,86,93
+harness/cli/src/services/commit/commit-service.ts
+  s_caff156b1b7e66::t_b0c513e97f7884 3-62,90-118,120-141,156-218,220-223,225-243,248-330
+  s_caff156b1b7e66::t_ecc626551889a1 63,82-89
+  s_caff156b1b7e66::t_0d8d976528f888 142-148,153-155
+  s_caff156b1b7e66::t_abfb799e836745 224
+  s_caff156b1b7e66::t_1751e4de6e88d3 64-81
+  s_caff156b1b7e66::t_7f1083a36e29bd 119
+  s_caff156b1b7e66::t_9381afa0dbf5d4 1-2,149-152,219
+  s_caff156b1b7e66::t_8d30618d44230d 244-247
+harness/cli/src/adapters/git/fake-git-attribution.ts
+  s_caff156b1b7e66::t_9381afa0dbf5d4 1
+  s_caff156b1b7e66::t_4550b6413c05b8 2-98,104-114
+  s_caff156b1b7e66::t_a2e8113a206ed8 99-103
+docs/how/gitai-collector.md
+  s_caff156b1b7e66::t_183089544cd1f9 312,319-439
+  s_caff156b1b7e66::t_4afd1195e8ab77 280-281,284-285
+  s_caff156b1b7e66::t_818da9b73d309a 286
+  s_caff156b1b7e66::t_50ccf7662b0c48 440
+harness/cli/src/services/extensions/registry.ts
+  s_caff156b1b7e66::t_533125f8b2520c 78-80,96
+harness/cli/src/acts/commit.ts
+  s_caff156b1b7e66::t_69c39f53d9d8fd 1-120
+harness/cli/src/adapters/net/node-socket-probe.ts
+  s_caff156b1b7e66::t_63452857544ec4 1-150
+harness/cli/test/index.test.ts
+  s_caff156b1b7e66::t_97e0f4d40f6dd5 65-66
+harness/cli/src/app.ts
+  s_caff156b1b7e66::t_533125f8b2520c 2,388-390
+harness/cli/src/services/doctor/collector/nudge.ts
+  s_caff156b1b7e66::t_3b9cdeaf2088c0 59,61-72,74,76-79
+  s_caff156b1b7e66::t_0cd0d344f0f4a3 92-93
+  s_caff156b1b7e66::t_015bac60a3ec8e 1,4,11-58,60,73,75,80-91,94-100,103-131,163-228,231,236,238-251,253-257,279-283,285-293,295-306,308-311
+  s_caff156b1b7e66::t_94745e02ce04f0 229-230,232-235,237,252,258-277,284,294,307
+  s_caff156b1b7e66::t_fea0d6ff56c8d7 101-102
+  s_caff156b1b7e66::t_9381afa0dbf5d4 2-3,5-10
+  s_caff156b1b7e66::t_396870becda345 132-162
+  s_caff156b1b7e66::t_7def1de4d99d8e 278
+harness/cli/src/adapters/net/fake-socket-probe.ts
+  s_caff156b1b7e66::t_0a1588ba4564f1 1-57
+harness/cli/test/services/doctor/collector/ingress.test.ts
+  s_caff156b1b7e66::t_12900fe17b0522 1-175,192-197
+  s_caff156b1b7e66::t_9381afa0dbf5d4 176-191
+harness/cli/src/adapters/git/exec-git-attribution.ts
+  s_caff156b1b7e66::t_0ea888c1502c7d 1-2,4-76,92-107,109-124
+  s_caff156b1b7e66::t_9381afa0dbf5d4 3,108
+  s_caff156b1b7e66::t_b7d6d20fda2fa3 77-91
+harness/cli/test/services/doctor/collector/at-risk.test.ts
+  s_caff156b1b7e66::t_9381afa0dbf5d4 117-125,127-131
+  s_caff156b1b7e66::t_91ff2557994696 1-83,92-116,126,132-188,190-191
+  s_caff156b1b7e66::t_6bcb485a11c98d 84-91,189
+harness/cli/src/services/instructions/commit-guidance.ts
+  s_caff156b1b7e66::t_daa5cfd76afb75 1-192
+harness/cli/src/services/instructions/instructions-service.ts
+  s_caff156b1b7e66::t_136ce916c77eb5 54,60-62,64
+  s_caff156b1b7e66::t_68cca09f02d72e 4
+  s_caff156b1b7e66::t_786fb46ccb5f70 79-88
+  s_caff156b1b7e66::t_9381afa0dbf5d4 63
+harness/cli/test/services/doctor/doctor-service.test.ts
+  s_caff156b1b7e66::t_bde1ba58fe39ac 17,23-25,29,43-46
+  s_caff156b1b7e66::t_8e00120444c01d 115-117,233
+harness/cli/src/adapters/git/git-attribution-port.ts
+  s_caff156b1b7e66::t_30d009c23c4848 80-91
+  s_caff156b1b7e66::t_2502cba4310d04 1-79,92-105
+harness/cli/test/services/doctor/collector/nudge.test.ts
+  s_caff156b1b7e66::t_74bd5d5642c9bf 34-35,40-51
+  s_caff156b1b7e66::t_7ec6af6a0022cc 89-97,100-102,110-111,123-125,131-132,142,151-152,166,172-173,186-188,190-191,199-200,263-264,275-276,350-351,362
+  s_caff156b1b7e66::t_bed1e352d400d8 216-258
+  s_caff156b1b7e66::t_c1763e5f551dad 1-4,9-33,36-39,52-81,85-88,98-99,103-109,117-122,126-130,133-141,143-150,153-165,167-171,174-185,189,192-198,201-215,261-262,265-274,277-303,318,325-349,352-361,363,401-402
+  s_caff156b1b7e66::t_9381afa0dbf5d4 5-8,112-116,259-260,304-317,319-324
+  s_caff156b1b7e66::t_0ca09e884d652b 82-84,364-400
+harness/cli/test/services/telemetry/capture-reconcile.test.ts
+  s_caff156b1b7e66::t_0ff330bc1d74b7 1015-1018,1120-1123
+harness/cli/test/services/commit/commit-service.test.ts
+  s_caff156b1b7e66::t_864b930c9904db 1,4-11,13-21,23-88,90-147,149-167,169-172,207-225,227-275
+  s_caff156b1b7e66::t_a916cf7328f61f 173-206
+  s_caff156b1b7e66::t_9381afa0dbf5d4 2-3,168
+  s_caff156b1b7e66::t_398e622606acdc 12,22,89,148,226
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0bdf3a7ba27172da40c65a109aae8bcb6178bc41",
+  "prompts": {},
+  "sessions": {
+    "s_caff156b1b7e66": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "008f57e1-541c-4033-80be-e47316058c9d",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
