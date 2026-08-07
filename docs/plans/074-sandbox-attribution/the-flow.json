@@ -174,6 +174,33 @@
         "from": "known",
         "to": "in_progress"
       }
+    },
+    {
+      "id": "UPD-006",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-07T04:45:12.029Z",
+      "details": {
+        "node": "observe-1",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-006",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-07T04:45:12.344Z",
+      "details": {
+        "node": "observe-1",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
     }
   ],
   "nodes": [
@@ -367,7 +394,7 @@
       "id": "observe-1",
       "type": "observe",
       "label": "Observe: P1",
-      "status": "known",
+      "status": "done",
       "branch_of": "phase-1",
       "next": [
         "phase-1"
@@ -384,7 +411,17 @@
         "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
         "Terminalize at phase end BEFORE the retro drain, receipt first, status second: harness flow comment --path <flow-path> --node observe-1 --kind validation --source agent --text \"captures:<count> pointer:<real capture record> time:<…>\" THEN harness flow status --path <flow-path> --node observe-1 --to done — done only after at least one real capture. Human decline instead: harness flow comment --path <flow-path> --node observe-1 --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node observe-1 --to skipped.",
         "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
-      ]
+      ],
+      "comments": [
+        {
+          "at": "2026-08-07T04:45:12.029Z",
+          "text": "decision:done real captures: DL-007 (test cannot enforce a future-code guarantee; use a type-level total map in src) and DL-008 (rounds 5-7 defects were in our own safeguards, same species as the feature bug one layer up). Buffer: .harness/temp/agent/session-buffer.md time:2026-08-07T04:45Z",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "modified_at": "2026-08-07T04:45:12.344Z",
+      "ran_at": "2026-08-07T04:45:12.344Z"
     },
     {
       "id": "retro-1",

@@ -301,6 +301,73 @@ regression above.
 
 ---
 
+## Round 7 — fix commit `c575823a`
+
+**Verdict: APPROVE_WITH_NOTES**
+
+| AC | Final confidence | Evidence |
+|---|---|---|
+| ac-0001 | High | Socket probe/relay ports and trace2 target classification are fake-driven, bounded, and cover configured, disabled, descriptor, and absolute-file forms. |
+| ac-0002 | High | The additive ingress-blocked verdict is probe-driven and covered without changing pre-existing verdict paths. |
+| ac-0003 | High | At-risk history is bounded, batched, and reports its evidence rule rather than overclaiming a clean state. |
+| ac-0004 | High | Capture-liveness and the nudge's sole healthy claim are gated by observable state; a retained segment cannot read healthy. |
+| ac-0005 | High | `harness commit` partitions direct, file, and harness-buffered paths; file recovery is recorded, contained, and sidecar-tagged. |
+| ac-0006 | High | Rotate/replay/confirm/delete is conservative: tagged identity governs ownership, unknown legacy entries retain, and all retained work is text-visible. |
+| ac-0007 | High | Doctor/checks receive probe-only capability; replay is isolated to the explicit nudge subcommand. |
+| ac-0008 | High | Core commit guidance, injection, and doctor wiring are additive and idempotent. |
+| ac-0009 | High | The public collector guide states the shipped recovery limits and machine-global target behavior. |
+| ac-000a | High | The implementation uses built-in adapters and fake-driven tests; the final composite gate passed at its documented warning baseline. |
+
+### F011 closure
+
+The rendering contract lives under `src`, which is the actual `tsconfig` include set. Adding and
+populating an optional `RetainedSegment.reviewOnly` field without a disposition failed both
+independent enforcement layers: `tsc` rejected the incomplete total map, and the test-only
+own-key sweep rejected the populated runtime value. The contract also exposed and repaired
+text invisibility for `handedOff`: enumerated and relay-failed segments now name their foreign
+owners, while the relay-failed wording deliberately makes no claim that replay succeeded.
+
+### Independent Dim-0 evidence
+
+- Suppressed foreign-owner rendering; the R6 relay-failed and enumerated-owner cases went
+  **RED** (2 failures).
+- Suppressed the legacy manual-action prose; the R5 legacy and mixed-retry cases went
+  **RED** (3 failures).
+- The populated optional-field mutation independently produced compiler error TS2741 and,
+  with typechecking skipped, a runtime own-key failure. All mutations were restored.
+
+### Residual risks
+
+- `FakeFs.rename()` and `writeText()` do not naturally update directory listings; telemetry
+  tests explicitly seed `readdir` fixtures, so that fake-fidelity gap remains deferred.
+- U-4 remains unproven: the `harness` allowlist prefix itself has not been demonstrated from a
+  Cursor sandbox (only the underlying `git` and `node` shapes are proven).
+- U-1/U-2 transcript-sweep behavior is recorded but not relied upon by this feature.
+- Pre-identity sidecars retain until a human verifies attribution and deletes them; new
+  `harness commit` sidecars are repository-tagged, so this legacy path ages out.
+- Mixed recovery guidance says to repeat the retry for remaining segments while also naming
+  legacy segments for manual deletion; the actionable per-segment paths remain explicit, but
+  that broad wording is a minor clarity risk.
+
+### PR closing paragraph
+
+Phase 1 is approved for PR #104: it adds a bounded, observable attribution recovery path
+without weakening the read-only doctor surface. Buffered commits now retain provable identity,
+replay conservatively, and name recovery work in both JSON and default text output. Legacy
+sidecars remain intentionally manual rather than guessed, while new sidecars are
+repository-tagged so the gap ages out. The remaining risks are explicitly documented: fake
+directory-listing fidelity, the unproven `harness` allowlist prefix, and recorded-but-unrelied-on
+transcript-sweep behavior.
+
+### Gates
+
+- `node harness/cli/bin/harness.js plan validate docs/plans/074-sandbox-attribution --complete`:
+  0 errors, 0 warnings, 0 open items.
+- `just checks`: completed at the recorded non-blocking baseline -- arch 2,
+  markdown 196, Windows 6.
+
+---
+
 ## Round 5 — fix commit `6c9c8286`
 
 **Verdict: FIX_REQUIRED**
