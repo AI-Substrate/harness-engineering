@@ -1,0 +1,49 @@
+harness/cli/test/services/dd/plan/index-plan.test.ts
+  s_2a2451d95e064e::t_cd0c3ba244bee5 1-232
+harness/cli/src/services/doctor/doctor-service.ts
+  s_2a2451d95e064e::t_cd0c3ba244bee5 19-25,664
+harness/cli/src/acts/dd/graph.ts
+  s_2a2451d95e064e::t_cd0c3ba244bee5 20,31
+harness/cli/src/acts/dd/doctor.ts
+  s_2a2451d95e064e::t_ef68e7e747430a 11
+  s_2a2451d95e064e::t_9f7378bb6fb6fe 32
+harness/cli/test/acts/dd-path-scope-absoluteness.test.ts
+  s_2a2451d95e064e::t_cd0c3ba244bee5 1-84
+harness/cli/src/services/dd/links/map.ts
+  s_2a2451d95e064e::t_cd0c3ba244bee5 1,352-359,361-362
+harness/cli/src/services/dd/plan/index-plan.ts
+  s_2a2451d95e064e::t_cd0c3ba244bee5 188,210,213,220
+  s_ce8780b5f4694f::t_5af3a8afa527a5 42,140,145,209
+  s_2a2451d95e064e::t_4e4b5af5b81088 50-64
+  s_2a2451d95e064e::t_505b33f5335c78 49,113,115-129
+  s_2a2451d95e064e::t_09fa04911f244e 1,35-40,45-48,65-73,114,136-139,146-158
+harness/cli/test/services/doctor/doctor-service.test.ts
+  s_2a2451d95e064e::t_cd0c3ba244bee5 690-704
+  s_2a2451d95e064e::t_7b24080078dfcf 684-689
+harness/cli/test/services/dd/links/map.test.ts
+  s_2a2451d95e064e::t_cd0c3ba244bee5 1165-1247
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a9d07788a63e57a69116aeed547bd1b4f4b4d565",
+  "prompts": {},
+  "sessions": {
+    "s_2a2451d95e064e": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "587f8924-3447-4784-b872-2fb1c784af82",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_ce8780b5f4694f": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "b3ecad2b-897e-46d4-948e-d39f0bb9e67b",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
