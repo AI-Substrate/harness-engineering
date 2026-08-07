@@ -19,30 +19,20 @@ import { ExecRemoteTelemetryGit } from '../../../src/adapters/git/exec-remote-te
 import type { RemoteRepository } from '../../../src/adapters/git/remote-telemetry-git-port.js';
 import { FakeHash } from '../../../src/adapters/hash/fake-hash.js';
 import { listPublishedTelemetry } from '../../../src/services/telemetry/remote-telemetry-service.js';
+import { hermeticGitEnv as sharedHermeticGitEnv } from '../../support/hermetic-git.js';
 
 /**
- * Fixture git runs must not inherit AMBIENT `GIT_CONFIG_*` env-config.
+ * Fixture git runs go through the SHARED hermetic environment
+ * (`test/support/hermetic-git.ts`): ambient `GIT_CONFIG_*` env-config stripped,
+ * and trace2 disabled so a machine-wide git-ai daemon cannot write
+ * `refs/notes/ai` into these throwaway repositories mid-assertion.
  *
- * Some environments (agent sessions in this repo among them) export
- * `GIT_CONFIG_COUNT` plus `GIT_CONFIG_KEY_n`/`GIT_CONFIG_VALUE_n`. Git then reads
- * that env-config as a config source for a plain `git config <key> <value>`
- * write and the call dies with `fatal: not in a git directory` — a failure of the
- * HOST, not of the code under test. It cost three phases of this plan a green
- * full-suite proof (P1 DL-003, P2 DL-004, P3/P4 DL-004), so the fixture builder
- * is made hermetic here rather than re-diagnosed a fourth time.
- *
- * Scope is deliberately this helper only: the poison-isolation cases further down
- * inject their own variables on purpose, and they drive the ADAPTER, not this.
+ * Global-config isolation is deliberately NOT taken here: several cases in this
+ * file exercise `GIT_CONFIG_GLOBAL` handling directly, and pinning it from the
+ * outside would test the helper instead of the code under test.
  */
-const AMBIENT_GIT_CONFIG_ENV = /^GIT_CONFIG_(COUNT|KEY_\d+|VALUE_\d+)$/;
-
-function hermeticGitEnv(): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = { ...process.env };
-  for (const key of Object.keys(env)) {
-    if (AMBIENT_GIT_CONFIG_ENV.test(key)) delete env[key];
-  }
-  return env;
-}
+const hermeticGitEnv = (): NodeJS.ProcessEnv =>
+  sharedHermeticGitEnv({}, { isolateGlobalConfig: false });
 
 const git = (cwd: string, args: string[]): string =>
   execFileSync('git', args, { cwd, encoding: 'utf8', env: hermeticGitEnv() }).trim();

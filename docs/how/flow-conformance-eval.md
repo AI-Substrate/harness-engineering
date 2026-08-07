@@ -484,10 +484,10 @@ self-report. (Caveat under repair: evidence globs currently match records
 committed at the base ref too — scope to new-since-base when judging, tracked
 as a resolver improvement.)
 
-One practical prerequisite the hard way taught: **the pinned `base.ref` must
-carry current telemetry capture** (env-join key, skill events) or the entire
-telemetry lane resolves `unknown` — pin old bases only when you *want* the
-ambient/capability-only reading.
+One practical prerequisite the hard way taught: a scenario that requires the
+legacy telemetry lane must use a base where capture exists and explicitly opt
+in to it; otherwise env-join keys and skill events resolve `unknown`. Pin old
+bases only when you want the ambient/capability-only reading.
 
 ## See also
 

@@ -98,6 +98,9 @@ function git(cwd: string, args: string[], extraEnv: Record<string, string> = {})
     delete env[leaked];
   }
   if (!(('HARNESS_NO_TELEMETRY' as string) in extraEnv)) delete env.HARNESS_NO_TELEMETRY;
+  // Plan 073: the capture opt-in is scrubbed the same way, so a test that does not
+  // ask for capture genuinely runs as a default install rather than inheriting one.
+  if (!(('HARNESS_TELEMETRY_CAPTURE' as string) in extraEnv)) delete env.HARNESS_TELEMETRY_CAPTURE;
   if (!(('COPILOT_AGENT_SESSION_ID' as string) in extraEnv)) delete env.COPILOT_AGENT_SESSION_ID;
   return execFileSync('git', args, {
     cwd,
@@ -107,9 +110,26 @@ function git(cwd: string, args: string[], extraEnv: Record<string, string> = {})
   });
 }
 
-/** Session env for a capture-eligible commit. */
+/**
+ * Session env for a capture-eligible commit.
+ *
+ * Plan 073 flipped harness capture OFF by default, so "capture-eligible" now
+ * means a live session AND the explicit opt-in — the same two things a migrating
+ * operator sets. The shipped default (opt-in absent) has its own test below, so
+ * the flip is proved at the hook rather than assumed from the unit tests.
+ */
 function sessionEnv(box: Sandbox, extra: Record<string, string> = {}): Record<string, string> {
-  return { HOME: box.home, COPILOT_AGENT_SESSION_ID: SESSION, ...extra };
+  return {
+    HOME: box.home,
+    COPILOT_AGENT_SESSION_ID: SESSION,
+    HARNESS_TELEMETRY_CAPTURE: '1',
+    ...extra,
+  };
+}
+
+/** The shipped default: a live session with NO telemetry env set at all. */
+function defaultInstallEnv(box: Sandbox): Record<string, string> {
+  return { HOME: box.home, COPILOT_AGENT_SESSION_ID: SESSION };
 }
 
 /** Advance the transcript window — WITHOUT this, capture correctly spools nothing. */
@@ -175,6 +195,21 @@ describe.skipIf(process.platform === 'win32')(
         readFileSync(join(box.telemetryDir, spooled[spooled.length - 1] as string), 'utf8'),
       );
       expect(last.product_commit).toBe(base);
+    }, 60_000);
+
+    it('plan 073 — a DEFAULT install captures nothing, even from a live session', () => {
+      /*
+    Test Doc:
+    - Why: the collector handover is only real if the shipped default is silent at the
+      hook too — this is the path that fires on every commit of every repo.
+    - Contract: a live agent session with NO telemetry env set spools zero segments;
+      the SAME work spools the moment the opt-in is set (non-vacuity).
+    */
+      const box = sandbox();
+      commit(box, 'a.txt', defaultInstallEnv(box));
+      expect(segments(box).length).toBe(0);
+      commit(box, 'b.txt', sessionEnv(box));
+      expect(segments(box).length).toBe(1);
     }, 60_000);
 
     it('C5 negative — HARNESS_NO_TELEMETRY=1 is a no-op even though the window advanced', () => {

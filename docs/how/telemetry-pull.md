@@ -6,6 +6,11 @@ selection as a deterministic, integrity-verifiable folder. Both commands read
 explicit remote repositories only. They do not infer the current checkout,
 `origin`, local telemetry refs, a runtime store, or a cache.
 
+> **The corpus is frozen.** Harness stopped capturing its own telemetry at v1 — see
+> [git-ai as the collector](./gitai-collector.md). Everything described here still works
+> exactly as documented against the sessions published before that point; what changes is
+> that `ls` returns a fixed set which will not grow.
+
 Prerequisites:
 
 - the repository has published telemetry refs;
@@ -271,7 +276,7 @@ Both OTLP signals remain present:
 - Logs are the lossless per-segment reconstruction substrate;
 - Metrics remain published, retrieved, and report-compatible derived evidence.
 
-Current Segment 2.5 records use OTLP schema v0.2/scope 2.5 and may carry
+Current Segment 2.7 records use OTLP schema v0.4.0/scope 2.7 and may carry
 `harness.product.commit` in each Logs resource. The rollup-v1 manifest's optional
 `product_commits` is a verified aggregate/index, not the sole proof. Current
 `captured_env` is finite: exactly eight pij identity/orchestration keys with

@@ -104,7 +104,7 @@ function capture(
 function syncDeps(fs: FakeFs, git: FakeGitWrite): SyncDeps {
   return {
     fs,
-    env: new FakeEnv({}),
+    env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1' }),
     proc: new FakeProcess({}, REPO),
     git,
     clock: new FakeClock('2026-08-05T10:05:00.000Z'),
@@ -126,7 +126,7 @@ function gitReadFor(git: FakeGitWrite, refs: readonly string[]): FakeGitRead {
 function deps(fs: FakeFs, gitRead?: FakeGitRead): SessionEvidenceDeps {
   return {
     fs,
-    env: new FakeEnv({}, '/home/u'),
+    env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1' }, '/home/u'),
     proc: new FakeProcess({}, REPO),
     ...(gitRead ? { gitRead } : {}),
   };
@@ -267,7 +267,7 @@ describe('FX001 T3 — the ref fallback, controls both ways', () => {
     };
     const outcome = await resolveSessionEvidence(PIJ, {
       fs: throwingFs,
-      env: new FakeEnv({}, '/home/u'),
+      env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1' }, '/home/u'),
       proc: new FakeProcess({}, REPO),
       gitRead: new FakeGitRead(),
     });
@@ -395,7 +395,7 @@ async function runGet(
     fs,
     proc: new FakeProcess({}, REPO),
     clock: new FakeClock('2026-08-05T10:06:00.000Z'),
-    env: new FakeEnv({}, '/home/u'),
+    env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1' }, '/home/u'),
     gitWrite: new FakeGitWrite(),
     gitRead,
   });
@@ -736,7 +736,7 @@ describe('FX001 R3 — an unchecked surface names itself', () => {
       fs: new FakeFs({}, {}),
       proc: new FakeProcess({}, REPO),
       clock: new FakeClock('2026-08-05T10:06:00.000Z'),
-      env: new FakeEnv({}, '/home/u'),
+      env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1' }, '/home/u'),
       gitWrite: new FakeGitWrite(),
     });
     await expect(

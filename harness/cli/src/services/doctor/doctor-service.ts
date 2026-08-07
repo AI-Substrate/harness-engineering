@@ -2,7 +2,9 @@ import type { Clock } from '../../adapters/clock/clock-port.js';
 import type { DbPort } from '../../adapters/db/db-port.js';
 import type { EnvPort } from '../../adapters/env/env-port.js';
 import type { FsPort } from '../../adapters/fs/fs-port.js';
+import type { GitAttributionPort } from '../../adapters/git/git-attribution-port.js';
 import type { GitPort } from '../../adapters/git/git-port.js';
+import type { HashPort } from '../../adapters/hash/hash-port.js';
 import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { type Envelope, formatDegraded, formatOk } from '../../output/envelope.js';
 import { ErrorCodes } from '../../output/error-codes.js';
@@ -11,18 +13,24 @@ import { shouldExcludeFromSweep } from '../dd/core/walk.js';
 import { DD_SUFFIX, scanCorpus } from '../dd/links/scan.js';
 import type { ExtensionRecord } from '../extensions/contract.js';
 import type { VerbRegistry } from '../extensions/registry.js';
+import { AGENTS_FILE, readAgentsBlock } from '../instructions/commit-guidance.js';
 import type { RecordRegistry, RecordTypeEntry } from '../record/registry.js';
 import { SensorStateStore } from '../sensors/state-store.js';
 import { posixDirname, posixJoin, posixRelative, toPosix } from '../shared/posix-path.js';
 import { HARNESS_DIR, TEMP_DIR } from '../shared/temp.js';
 import type { HarnessAdapter } from '../telemetry/adapters/harness-adapter.js';
 import { coreTelemetryAdapters } from '../telemetry/adapters/index.js';
+import { captureDisabledReason } from '../telemetry/capture-gate.js';
 import {
   evaluateCaptureLiveness,
   readLivenessRecords,
   sourceExtent,
 } from '../telemetry/capture-liveness.js';
 import { laneRecoveryReason, type SkipLaneReason } from '../telemetry/capture-reconcile.js';
+import { type AtRiskReport, enumerateAtRisk } from './collector/at-risk.js';
+import { readCollectorHealth } from './collector/health.js';
+import type { IngressReading } from './collector/ingress.js';
+import type { HostTarget } from './collector/types.js';
 
 /** Adapters the doctor service depends on (injected — never constructed here). */
 export interface DoctorDeps {
@@ -53,6 +61,39 @@ export interface DoctorDeps {
    * fact recover it, i.e. crying wolf on the one surface that must not.
    */
   db?: DbPort;
+  /**
+   * The host the git-ai collector resolves against (plan 073) — platform, arch
+   * and home. Present ONLY when the composition root supplies it: `ProcessPort`
+   * carries no platform/arch, so a service cannot invent this without reading
+   * `process` directly (P2). Absent → the collector row is omitted entirely
+   * rather than reported as an unknown, because a row that says "could not
+   * determine" on every host with no wiring teaches operators to ignore it.
+   */
+  collectorHost?: HostTarget;
+  /**
+   * SHA-256 for the collector row (plan 073 · ac-000a). With it, the pinned
+   * binary's digest is RE-verified on every doctor run; without it the digest
+   * falls back to the recorded install value and can never read `healthy` on
+   * evidence this run did not gather.
+   */
+  hash?: HashPort;
+  /**
+   * An ALREADY-PERFORMED ingress probe (plan 074 · ac-0002). The probe is async
+   * and this report is sync, so the composition root probes once and injects the
+   * reading. Absent → the ingress rung is not evaluated and the at-risk row is
+   * omitted entirely rather than reported against evidence nobody gathered.
+   */
+  ingress?: IngressReading;
+  /**
+   * The narrow git surface the at-risk enumeration reads (plan 074 · ac-0003).
+   * Present only when the composition root wires it; absent → no at-risk row.
+   *
+   * READ-ONLY here BY CONSTRUCTION (ac-0007): doctor is handed the `commitWindow`
+   * + `hasAiNote` reads and nothing else, so a bare doctor run structurally
+   * cannot stage, commit, replay, or move a ref. The write half of the port and
+   * the relay port are given only to the explicitly-invoked verbs.
+   */
+  attribution?: Pick<GitAttributionPort, 'commitWindow' | 'listNotedShas'>;
 }
 
 /** One layer of the doctor report. */
@@ -735,11 +776,30 @@ function checkCaptureLiveness(
 ): LayerReport {
   const name = 'capture-liveness';
   const cwd = toPosix(proc.cwd());
-  if (env.get(TELEMETRY_KILL_SWITCH) === '1') {
+  // GATED ON CAPTURE BEING ENABLED (plan 074 · ac-0004). This is the fix for the
+  // GREEN-FOREVER failure mode: after plan 073 inverted the capture default,
+  // this layer answered `ok:true` on every default install forever — "no capture
+  // lane to watch" reads as reassurance, and it was reassurance about a
+  // measurement that had stopped being taken at all.
+  //
+  // Capture-off is not healthy and it is not broken; it is UNDETERMINABLE. There
+  // is no capture lane, so nothing about liveness can be established either way,
+  // and the honest verdict is the one 073 already established for exactly this
+  // shape: `could-not-determine` — never rendered as healthy, never folded into
+  // good news. Warn-only, like every doctor rung: doctor exits 0 (073 ac-000c).
+  const disabled = captureDisabledReason(env);
+  if (disabled !== null) {
     return {
       name,
-      ok: true,
-      detail: 'telemetry disabled (HARNESS_NO_TELEMETRY=1) — nothing to prove live',
+      ok: false,
+      detail:
+        disabled === 'kill-switch'
+          ? 'could-not-determine — harness telemetry capture is OFF via HARNESS_NO_TELEMETRY=1, so there is no capture lane and liveness cannot be established either way (this is NOT a healthy reading; it is an absent one)'
+          : 'could-not-determine — harness telemetry capture is OFF by default since the git-ai collector handover, so there is no capture lane and liveness cannot be established either way (this is NOT a healthy reading; it is an absent one)',
+      next_action:
+        disabled === 'kill-switch'
+          ? "Nothing to fix if that is intended. AI attribution is git-ai's job now — check it with the `gitai-collector` row. To watch harness-side capture again, unset HARNESS_NO_TELEMETRY and set HARNESS_TELEMETRY_CAPTURE=1."
+          : "Nothing to fix if that is intended — AI attribution is git-ai's job now, so read the `gitai-collector` row for collection health. Set HARNESS_TELEMETRY_CAPTURE=1 to re-enable harness-side capture and make this layer measurable again.",
     };
   }
   if (!fs.exists(posixJoin(cwd, HARNESS_DIR, TEMP_DIR, 'telemetry'))) {
@@ -937,6 +997,117 @@ function checkPrecommitLatency(fs: FsPort, proc: ProcessPort): LayerReport {
 }
 
 /**
+ * The **git-ai collector** layer (plan 073 · ac-000a, ac-000b, ac-000c, ac-0014).
+ *
+ * Harness stopped collecting its own telemetry, so this row is the only place a
+ * developer learns that nothing is collecting instead. It reports a bounded read
+ * — pinned binary present and hash-matching, hooks installed and covering every
+ * coding harness on the machine, daemon pid file, note schema as pinned — and
+ * refuses to overclaim: it never says collection IS occurring, because no signal
+ * available in v1 can distinguish a broken collector from a clean tree
+ * (ac-0012).
+ *
+ * Three verdicts are deliberately NOT healthy and deliberately not each other:
+ * `cli-only-trace2` (installed, hooks skipped because someone's global trace2
+ * config is present), `could-not-determine` (we could not read what we needed),
+ * and `not-installed`. Absent is not green; empty is not clean.
+ *
+ * NEVER invokes anything (P7) — a pure fs/port read over the state the install
+ * path wrote down. Warn-only: like every doctor row it degrades the envelope and
+ * exits 0 (ac-000c).
+ */
+function checkCollector(
+  fs: FsPort,
+  proc: ProcessPort,
+  host: HostTarget,
+  hash?: HashPort,
+  ingress?: IngressReading,
+): LayerReport {
+  const name = 'gitai-collector';
+  const health = readCollectorHealth({
+    fs,
+    host,
+    cwd: toPosix(proc.cwd()),
+    ...(hash !== undefined ? { hash } : {}),
+    ...(ingress !== undefined ? { ingress } : {}),
+  });
+  return {
+    name,
+    ok: health.verdict === 'healthy',
+    detail: `${health.verdict} — ${health.detail}`,
+    ...(health.next_action !== undefined ? { next_action: health.next_action } : {}),
+  };
+}
+
+/**
+ * The **attribution-at-risk** row (plan 074 · ac-0003, ac-0007) — commits on
+ * this branch that carry no `refs/notes/ai` entry.
+ *
+ * READ-ONLY, and that is the whole contract of this row. It DETECTS and it
+ * REPORTS, and its `next_action` NAMES the recovery command
+ * (`harness doctor telemetry-nudge`) — but it never runs it. No bare `doctor`
+ * and no `checks` run ever mutates a socket, a buffer, or a ref; recovery
+ * happens only when a human or agent explicitly invokes the nudge. A doctor that
+ * quietly replayed events would be a diagnostic with side effects, which is the
+ * one thing a diagnostic must never be (P7).
+ *
+ * Its honesty rule mirrors the collector read above: an empty list under a
+ * blocked or unprobeable ingress reports `unproven`, never `clean`.
+ */
+function checkAttributionAtRisk(
+  attribution: NonNullable<DoctorDeps['attribution']>,
+  ingress?: IngressReading,
+): { layer: LayerReport; report: AtRiskReport } {
+  const report = enumerateAtRisk({
+    git: attribution,
+    ...(ingress !== undefined ? { ingress } : {}),
+  });
+  return {
+    layer: {
+      name: 'attribution-at-risk',
+      ok: report.status === 'clean',
+      detail: `${report.status} — ${report.detail}`,
+      ...(report.next_action !== undefined ? { next_action: report.next_action } : {}),
+    },
+    report,
+  };
+}
+
+/**
+ * The **commit-guidance** row (plan 074 · ac-0008) — is the managed `AGENTS.md`
+ * block present and current?
+ *
+ * WARNS, NEVER EDITS. `AGENTS.md` is the user's own agent-context surface; a
+ * diagnostic that silently rewrote it would be a side effect nobody asked for
+ * (P7). So this row reports, names the exact command that injects or refreshes
+ * the block, and stops there.
+ */
+function checkCommitGuidance(fs: FsPort, proc: ProcessPort): LayerReport {
+  const name = 'commit-guidance';
+  const state = readAgentsBlock({ fs, cwd: toPosix(proc.cwd()) });
+  if (state === 'current') {
+    return {
+      name,
+      ok: true,
+      detail: `${AGENTS_FILE} carries the managed harness:commit-guidance block`,
+    };
+  }
+  const detail =
+    state === 'no-file'
+      ? `no ${AGENTS_FILE} in this repo, so agents have no committed cue to use \`harness commit\` — a chained \`git add … && git commit\` can silently lose AI attribution`
+      : state === 'absent'
+        ? `${AGENTS_FILE} carries no harness:commit-guidance block — agents have no committed cue to use \`harness commit\`, and a chained \`git add … && git commit\` can silently lose AI attribution`
+        : `${AGENTS_FILE}'s harness:commit-guidance block is STALE — it no longer matches the guidance this CLI ships`;
+  return {
+    name,
+    ok: false,
+    detail,
+    next_action:
+      'Run `harness instructions commit --inject` to write or refresh the managed block (idempotent; it only ever touches the region between its own markers). Read the page itself with `harness instructions commit`.',
+  };
+}
+
+/**
  * Gather the doctor report via the injected adapters + the assembled verb
  * registry. Pure of `process.exit` and direct Node I/O — all side effects go
  * through the ports, so the whole thing is unit-testable with fakes. The optional
@@ -959,9 +1130,16 @@ export function buildDoctorReport(
     checkSensorWatcher(deps.fs, deps.clock, deps.proc, registry),
     checkTelemetryHook(deps.fs, deps.proc, deps.git, deps.env),
     checkCaptureLiveness(deps.fs, deps.proc, deps.env, deps.clock, deps.adapters, deps.db),
+    ...(deps.collectorHost !== undefined
+      ? [checkCollector(deps.fs, deps.proc, deps.collectorHost, deps.hash, deps.ingress)]
+      : []),
+    ...(deps.attribution !== undefined
+      ? [checkAttributionAtRisk(deps.attribution, deps.ingress).layer]
+      : []),
     checkDd(deps.fs, deps.proc),
     checkPrecommitLatency(deps.fs, deps.proc),
     checkCoreInstructions(),
+    checkCommitGuidance(deps.fs, deps.proc),
     checkRecordTypes(recordTypes),
   ];
   const branch = deps.git.isRepo() ? deps.git.currentBranch() : null;

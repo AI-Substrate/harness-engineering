@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ExecGitRead } from '../../../src/adapters/git/exec-git-read.js';
 import { ExecGitWrite } from '../../../src/adapters/git/exec-git-write.js';
 import { TELEMETRY_REF_GLOB, telemetryRefFor } from '../../../src/adapters/git/git-write-port.js';
+import { hermeticGitEnv } from '../../support/hermetic-git.js';
 
 /**
  * Plan 067 — the BATCHED `cat-file` tree read + the header-only shape probe, against
@@ -24,7 +25,12 @@ const REF = telemetryRefFor('2026/06/24', SID);
 let repo: string;
 
 function git(...args: string[]): string {
-  return spawnSync('git', args, { cwd: repo, encoding: 'utf8' }).stdout ?? '';
+  // Shared hermetic env — see test/support/hermetic-git.ts. Without it an
+  // installed git-ai daemon writes `refs/notes/ai` into this fixture repo, which
+  // shows up as a ref this suite never published.
+  return (
+    spawnSync('git', args, { cwd: repo, encoding: 'utf8', env: hermeticGitEnv() }).stdout ?? ''
+  );
 }
 
 /** Publish a flat tree of `name → content` as an orphan telemetry ref. */

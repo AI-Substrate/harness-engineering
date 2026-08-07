@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { ExecGit } from '../../../src/adapters/git/exec-git.js';
 import { FakeGit } from '../../../src/adapters/git/fake-git.js';
+import { hermeticGitEnv } from '../../support/hermetic-git.js';
 
 describe('FakeGit', () => {
   it('given_seeded_state_when_queried_then_returns_state_and_records_calls', () => {
@@ -104,8 +105,11 @@ describe('ExecGit', () => {
 
   it('handles no-repo, unborn, and detached repositories without guessing provenance', () => {
     const dir = mkdtempSync(join(tmpdir(), 'harness-current-commit-'));
+    // Shared hermetic env: no ambient GIT_CONFIG_*, no global/system config, and
+    // trace2 off so an installed git-ai daemon cannot write refs into this
+    // throwaway repo while the provenance assertions below are running.
     const git = (cwd: string, args: string[]): string =>
-      execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
+      execFileSync('git', args, { cwd, encoding: 'utf8', env: hermeticGitEnv() }).trim();
     try {
       expect(new ExecGit(dir).currentCommit()).toBeNull();
 

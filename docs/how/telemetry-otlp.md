@@ -1,22 +1,24 @@
 # Harness telemetry — the OTLP/OTEL stored shape
 
-How the counts-only telemetry `segment` (see [Harness telemetry](./telemetry.md))
-is **stored and published as OTEL/OTLP** — one file per signal, directly
-ingestible by any OTEL collector with zero translation — while still storing
-locally and reconstructing the full session timeline.
+How the archived counts-only telemetry `segment` (see
+[Harness telemetry](./telemetry.md)) is stored and read as OTEL/OTLP — one file
+per signal, directly ingestible by any OTEL collector with zero translation.
+Harness capture is off by default, but this remains the authoritative contract
+for published refs and the explicit legacy-capture escape hatch.
 
 > **Versioned additive contract.** The internal typed event/rollup model is
-> unchanged; only the stored output shape is OTLP. Already-published Segment 2.4 /
-> OTLP v0.1 records remain readable and byte-identical. Current Segment 2.5 / OTLP
-> v0.2 adds optional per-segment product-commit resource metadata; the schema and
-> freeze tests pin both versions.
+> unchanged; only the stored output shape is OTLP. Already-published predecessor
+> records remain readable and byte-identical. Current Segment 2.7 / OTLP v0.4.0
+> adds reconciled-capture provenance; the schema and freeze tests pin every
+> identity.
 
 ---
 
 ## The model in one minute
 
-The capture preamble still writes a counts-only `segment` to the gitignored
-buffer. Beside each buffer entry it now also writes the segment **re-serialized as
+With `HARNESS_TELEMETRY_CAPTURE=1`, the legacy capture preamble writes a
+counts-only `segment` to the gitignored buffer. Beside each buffer entry it also
+writes the segment re-serialized as
 OTLP/JSON**, one file per signal:
 
 ```
@@ -102,9 +104,11 @@ retrieval.
 
 ---
 
-## Transport — keep-and-harden git refs
+## Archived transport — keep-and-harden git refs
 
-`harness telemetry sync` rolls the OTLP spool up into **one ref per session, keyed
+The frozen corpus occupies one ref per session, keyed at the session's start
+date. When legacy capture is explicitly enabled, `harness telemetry sync` uses
+the same contract:
 at the session's start date** — one commit, one tree carrying the whole session:
 
 ```
@@ -149,10 +153,10 @@ refs/harness-telemetry/<start-YYYY>/<MM>/<DD>/<session>
   entry, or a crash *between* the two atomic spool writes), the full segment
   `<seq>.json` is carried loose in the tree instead — the reconstruction oracle, so
   nothing is ever dropped.
-- **First-run migration.** The first sync that finds old per-capture-date refs unions
-  each session's full commit history (recovering any segments buried by the old
-  clobber), rewrites them to the new start-date rolled refs, verifies, and deletes the
-  old refs — a one-time, sentinel-gated pass; steady state stays fetch-free.
+- **Historical migration.** The legacy producer included a one-time,
+  sentinel-gated migration from per-capture-date refs to the start-date layout.
+  It is retained for explicitly opted-in migration work, not exercised by a
+  default install.
 
 ---
 
@@ -204,30 +208,22 @@ written after the session's last harness command is recovered by a later
 
 ---
 
-## Graduation — keep → store-and-forward
+## Historical graduation record
 
-git refs are the **right transport now** (low volume, single-writer, zero infra),
-not the end state. The emit is transport-agnostic (the spool is just files), so
-graduation is a transport swap, not a reshape.
-
-- **Tripwire**: when `refs/harness-telemetry/*` ref count crosses an operational
-  threshold (the "too many refs" anti-pattern — fetch latency, pack bloat),
-  graduate to **store-and-forward**: a local spool → async uploader → OTEL
-  Collector endpoint (or object storage). The spool files are already in the exact
-  shape an `otlpjsonfilereceiver` consumes.
-- **Staged, not built here (plan 038 non-goals)**:
-  - **H1 — dedicated telemetry repo**: documented + staged; the cheap hardening
-    (scoped ref advertisement, session-id entropy, idempotent retry) landed now, the
-    dedicated-repo move is a follow-up.
-  - **The shipper itself** (async uploader → collector) is the graduation plan, not
-    this one. This plan landed the transport-agnostic spool emit only.
+The old producer expected ref growth eventually to trigger a move from git refs
+to store-and-forward: local spool → async uploader → OTEL Collector or object
+storage. Plan 073 froze the corpus before that tripwire could fire. The useful
+design result survives: the spool is transport-agnostic and already matches the
+shape an `otlpjsonfilereceiver` consumes, so v2 can migrate rather than reshape.
 
 ---
 
 ## See also
 
-- [Harness telemetry](./telemetry.md) — the capture preamble, the buffer, sync, the
-  kill switch, and the counts-only privacy model.
+- [Harness telemetry](./telemetry.md) — the frozen segment contract, live read
+  path, explicit legacy-capture opt-in, and counts-only privacy model.
+- [The git-ai collector handover](./gitai-collector.md) — why the v1 producer is
+  dormant and what collects current attribution instead.
 - [Harness value measures](./harness-value-measures.md) — what the downstream
   program engineers from the committed telemetry.
 - `harness/cli/src/services/telemetry/otlp/` — the serializer (`logs.ts`,

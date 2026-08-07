@@ -1012,7 +1012,10 @@ describe('doctor is the operator surface for owed and unrecoverable lanes', () =
         fs: new NodeFs(),
         proc: new FakeProcess({ node: '/usr/bin/node' }, repo),
         git: new FakeGit({ isRepo: true, branch: STALL_FIXTURE.buffer_markers.branch }),
-        env: new FakeEnv({}, '/home/test'),
+        // plan 074 · ac-0004 — capture-liveness is now GATED on capture being
+        // enabled. This case exercises the liveness LOGIC, so it opts capture in;
+        // a default (capture-off) env now correctly reports could-not-determine.
+        env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1' }, '/home/test'),
         clock: new FakeClock(NOW),
         adapters: over.adapters ?? [cursorAdapter],
       },
@@ -1114,7 +1117,10 @@ describe('doctor is the operator surface for owed and unrecoverable lanes', () =
         fs: new NodeFs(),
         proc: new FakeProcess({ node: '/usr/bin/node' }, repo),
         git: new FakeGit({ isRepo: true, branch: STALL_FIXTURE.buffer_markers.branch }),
-        env: new FakeEnv({}, '/home/test'),
+        // plan 074 · ac-0004 — capture-liveness is now GATED on capture being
+        // enabled. This case exercises the liveness LOGIC, so it opts capture in;
+        // a default (capture-off) env now correctly reports could-not-determine.
+        env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1' }, '/home/test'),
         clock: new FakeClock(NOW),
       },
       registry,

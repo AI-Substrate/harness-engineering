@@ -12,10 +12,14 @@ import { ErrorCodes } from '../../output/error-codes.js';
 import { exitWithEnvelope } from '../../output/exit.js';
 import { type CliIo, createOutputPort, type OutputPort } from '../../output/output-port.js';
 import { parse } from '../../services/dd/core/parse.js';
-import type { DdIssueClass } from '../../services/dd/core/validate.js';
+import type { DdIssue, DdIssueClass } from '../../services/dd/core/validate.js';
 import type { DocLoader, DocLoadResult } from '../../services/dd/core/walk.js';
 import { MemoizingDocLoader } from '../../services/dd/links/index.js';
-import type { DdLinkIssue, DdLinkIssueClass } from '../../services/dd/links/model.js';
+import type {
+  DdLinkIssue,
+  DdLinkIssueClass,
+  DdLinkUnresolvedReason,
+} from '../../services/dd/links/model.js';
 import { ConventionSchemaResolver } from '../../services/dd/schema/resolve.js';
 import { posixJoin, toPosix } from '../../services/shared/posix-path.js';
 import { NodeSchemaFs } from './schema-fs.js';
@@ -96,15 +100,138 @@ export function codedLinkIssues(issues: readonly DdLinkIssue[]) {
   return issues.map((issue) => ({ ...issue, code: DD_ISSUE_CODES[issue.class] }));
 }
 
-export function nextActionFor(issues: readonly DdLinkIssue[], address: string): string {
-  const reason = issues[0]?.reason;
-  if (reason === 'no-base-document') {
-    return 'Address the file explicitly — `<path>#<interior>`. A bare-"#" address only means something inside its own document.';
+/**
+ * Anything dd reports that can carry a remedy. `DdIssue` (dd-core / the walk) and
+ * `DdLinkIssue` (the links layer) are separate types with separate vocabularies,
+ * and both reach a `next_action`.
+ */
+export type DdReportedIssue = DdIssue | DdLinkIssue;
+
+/** Every key the remedy table answers — the two class unions plus the reasons. */
+export type DdRemedyKey = DdIssueClass | DdLinkIssueClass | DdLinkUnresolvedReason;
+
+/**
+ * The ONE key a finding is answered by.
+ *
+ * `DdLinkIssue` carries `reason` and `DdIssue` does not, and that asymmetry is
+ * deliberate on both sides: all nine resolution failures collapse into the single
+ * class `link-unresolved` (`links/model.ts`: *"the class does not discriminate
+ * them — the reason does"*), while `DdIssue`'s own 15-member `class` IS its
+ * discriminator. Re-keying the whole mapper on `class` was tried and rejected —
+ * it would hand `dd address validate` / `dd link resolve` / `dd graph` ONE remedy
+ * where they get nine today, a regression on three working acts caused by the fix
+ * for the fourth.
+ *
+ * So the mapper normalises instead of choosing: reason when there is one, class
+ * otherwise. That merges two key namespaces that were never designed to share
+ * one, which is a real hazard in both directions (one key/two concepts, and one
+ * concept/two keys) — `test/acts/dd-remedy-keyspace.test.ts` is the control that
+ * holds the merged space to a DECLARED list of irregularities.
+ */
+export function discriminatorOf(issue: DdReportedIssue): DdRemedyKey {
+  return 'reason' in issue && issue.reason !== undefined ? issue.reason : issue.class;
+}
+
+/**
+ * Finding → what to DO about it. Exhaustive over the merged key space, so the
+ * compiler refuses a new class or reason that nobody wrote a remedy for.
+ *
+ * Static text, never interpolated: the twinned keys (`malformed`/
+ * `address-malformed`, `path-escape`/`address-path-escape`) are the SAME failure
+ * reported through two layers, and their remedies are held identical by text
+ * equality in the key-space control. Interpolating the address would make that
+ * comparison impossible to state.
+ */
+export const DD_REMEDIES: Record<DdRemedyKey, string> = {
+  // --- twinned: the same failure, named by dd-core and by the links layer ----
+  malformed:
+    'Generate the address instead of writing it: `harness dd address generate "<interior>" --path <file>`.',
+  'address-malformed':
+    'Generate the address instead of writing it: `harness dd address generate "<interior>" --path <file>`.',
+  'path-escape':
+    'The address leaves the repository. Re-address the target with a repository-relative path: `harness dd address generate "<interior>" --path <file-inside-the-repo>`.',
+  'address-path-escape':
+    'The address leaves the repository. Re-address the target with a repository-relative path: `harness dd address generate "<interior>" --path <file-inside-the-repo>`.',
+
+  // --- shared: ONE key, deliberately one remedy (see the key-space control) ---
+  // Subject-neutral by requirement: `core/validate.ts` resolves THIS document's
+  // schema and `links/resolver.ts` resolves the TARGET's. Same resolver, same
+  // failure, different subject — a remedy written for either is wrong for the
+  // other, silently. So it names neither, and points at the resolver instead.
+  'schema-unresolvable':
+    'A referenced schema did not resolve. List what is installed with `harness dd schema list`, then fix the `dd.schema` of the document that names it.',
+
+  // --- dd-core classes ------------------------------------------------------
+  'address-path-absolute': 'Addresses are repository-relative — drop the leading `/`, then re-run.',
+  'address-path-non-posix':
+    'Use POSIX separators in the address (`a/b`, never `a\\b`), then re-run.',
+  'address-target-missing':
+    'The address names a file that is not there. Create it, or re-point the address with `harness dd address generate "<interior>" --path <file>`.',
+  // FX014: the message names git and the command; so does the remedy. A reader
+  // who does not already know which ledger "tracked" means infers one, and the
+  // nearest plausible answer is the references ledger — confidently wrong.
+  'address-target-untracked':
+    'Track the target with git so the address survives a fresh clone: `git add <path>`, then re-run.',
+  'basis-stale':
+    'The recorded basis no longer matches the target. Re-read it, then move the basis with `harness dd link verify-basis <address> --sha <sha> --update <doc>`.',
+  'duplicate-id': 'Two rows in that section share an id — rename one, then re-run.',
+  'enum-invalid':
+    'The value is outside the declared enum. List the allowed values with `harness dd schema show <schema>`, then re-run.',
+  'human-skipped-receipt-required':
+    'A skipped human step needs a receipt saying who decided and why — record one, then re-run.',
+  'id-invalid':
+    'Ids must start with a letter and contain only `[A-Za-z0-9._-]` — rename the row, then re-run.',
+  'link-type-mismatch':
+    'The address resolves to the wrong declared type. Check what the column declares with `harness dd schema show <schema>`, then re-point it.',
+  'schema-shape':
+    'The document does not match its schema. Compare it against `harness dd schema show <schema>`, then re-run.',
+  'state-note-required': 'That state requires a note — add one, then re-run.',
+
+  // --- links-layer classes (a link finding that carries no reason) -----------
+  'adapter-gap':
+    'No render adapter answers that document kind. Declare one in `.harness/adapters`, then re-run `harness dd doctor`.',
+  'link-scan-failed':
+    'The outbound scan could not complete. Run `harness dd doctor` and fix the first document it names.',
+  'link-scan-incomplete':
+    'Part of the outbound neighbourhood was not scanned. Run `harness dd doctor` to see what was skipped, then re-run.',
+  'link-unresolved':
+    'Check the target with `harness dd links <target>`, then fix the address that names it.',
+
+  // --- resolution reasons ---------------------------------------------------
+  'file-unreadable':
+    'The address names a document that is missing or unreadable. Check the path, then re-run.',
+  'id-not-found':
+    'No entry with that id in the target container. List what is there with `harness dd get <container-address>`.',
+  'no-base-document':
+    'Address the file explicitly — `<path>#<interior>`. A bare-"#" address only means something inside its own document.',
+  'not-a-container':
+    'That segment names a leaf, not a container — drop the trailing segments, or address the container that holds them.',
+  'part-unknown':
+    'The schema declares no such part. List the shape with `harness dd schema show <schema>`, then re-address.',
+  'section-unknown':
+    'The document has no such section. List its sections with `harness dd schema show <schema>`, then re-address.',
+};
+
+/**
+ * The remedy for the finding an envelope is reporting — the ONE address a dd
+ * remedy lives at, on every act that reports one.
+ *
+ * FX013: this mapper already carried authored remedies, and `graph`/`address`/
+ * `link` already imported it — but `dd validate` did not, so a bad address inside
+ * an AUTHORED document (the likeliest way to meet one) was the single surface
+ * that answered with verb-local generic text. Both issue types are accepted here
+ * precisely so that gap cannot reopen.
+ */
+export function nextActionFor(issues: readonly DdReportedIssue[], address: string): string {
+  const issue = issues[0];
+  if (issue === undefined) {
+    return `Check the target with \`harness dd links <target>\`, then fix ${address}.`;
   }
-  if (reason === 'malformed') {
-    return 'Generate the address instead of writing it: `harness dd address generate "<interior>" --path <file>`.';
-  }
-  return `Check the target with \`harness dd links <target>\`, then fix ${address}.`;
+  // The remedy says what to DO; the subject says where. Both are needed: the
+  // human renders wrap this line and it is the only place the failing address
+  // reaches a reader on some surfaces, so dropping it would send someone looking
+  // for a target the envelope never named.
+  return `${DD_REMEDIES[discriminatorOf(issue)]} Reported at ${address}.`;
 }
 
 /**

@@ -1,6 +1,6 @@
 # Harness telemetry — reports, rollups & the central store
 
-How a saved session becomes a **report** and a **rendered view** — the
+How an archived or explicitly captured session becomes a **report** and a **rendered view** — the
 `session save → report → report-render` pipeline (plan 047) — and how those leaves
 lay out **centrally**, at fleet scale, so an org/repo/day rollup is just a recursive
 sweep. This sits on top of the [OTLP stored shape](./telemetry-otlp.md): the git
@@ -13,6 +13,11 @@ refs hold the counts-only OTLP spool; this page is about reading it back into a
 > every report says, in-band, exactly how each number was derived. Nothing reads a
 > person's identity: the read path issues only `for-each-ref` + `cat-file`, never
 > `git config user.email`.
+
+> **The corpus is frozen, the reader is live.** Harness capture is off by
+> default under plan 073, but published refs and saved exports remain readable.
+> New default-install sessions do not appear here; use
+> [git-ai](./gitai-collector.md) for current collection.
 
 ---
 
@@ -42,7 +47,15 @@ Each data verb **co-produces** its own self-contained HTML view (suppress with
 
 ---
 
-## The three verbs
+## The five verbs
+
+This page details the three core report verbs below. Two additional shipped
+read verbs operate above them:
+
+- `telemetry sweep` reads a month of committed telemetry and caches per-session
+  exports.
+- `telemetry insights` joins saved reports into cohort analytics; see
+  [Cohort telemetry insights](./cohort-telemetry-insights.md).
 
 ### `harness telemetry session save <session-id>`
 
@@ -50,7 +63,7 @@ Combine a session's buffered segments into one schema-valid `SessionExport`.
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `--source <temp\|git-ref\|auto>` | `temp` | Where to read: `temp` (local buffer), `git-ref` (committed shards read read-only from `refs/harness-telemetry/*`), or `auto` (git-ref shadows temp for the same `<seq>`) |
+| `--source <temp\|git-ref\|auto>` | `auto` | Where to read: `temp` (local buffer), `git-ref` (committed shards read read-only from `refs/harness-telemetry/*`), or `auto` (git-ref shadows temp for the same `<seq>`) |
 | `--out <path>` | `<session-id>.session.json` | Output path for the `.session.json` |
 | `--no-html` | HTML on | Suppress the co-produced self-contained HTML view |
 
@@ -150,11 +163,11 @@ block declares this in-band so a reader never mistakes an estimate for a ledger.
 
 ---
 
-## The central storage layout
+## The archived central storage layout
 
-At fleet scale — many repos × many users × many days — saved sessions and their
-reports lay out under a single central root, keyed by **repo then date** so every
-rollup level is just a recursive sweep:
+The frozen v1 archive uses a single central root keyed by **repo then date** so
+every rollup level remains a recursive sweep. No default v1 producer adds new
+leaves; v2 may re-enter this contract:
 
 ```
 <central-root>/
@@ -214,26 +227,12 @@ The counts-only floor extends to every **tracked** artifact this pipeline emits:
 
 ---
 
-## Reading token coverage
-
-`SessionExport.summary.token_evidence` and fleet lanes expose additive per-field
-evidence. Read `coverage` before scalar totals:
-
-- `measured` — all primary token buckets are present;
-- `partial` — some buckets are measured and absent buckets remain `null`;
-- `unavailable` — no measured token bucket exists.
-
-Partial and unavailable session-save results use a `degraded` envelope with a
-closed reason and `next_action`; they never report a false zero/ok. Reports count
-measured, partial, and unavailable sessions in `provenance.token_coverage` while
-retaining `unmeasured` for compatibility. HTML and sweep output consume the same
-report object, so coverage cannot diverge between JSON and rendered views.
-
-
 ## See also
 
-- [Harness telemetry](./telemetry.md) — the capture preamble, the buffer, sync, and
-  the counts-only privacy model.
+- [The git-ai collector handover](./gitai-collector.md) — why new default-install
+  sessions no longer enter this archive.
+- [Harness telemetry](./telemetry.md) — the frozen segment contract, read path,
+  and explicit legacy-capture escape hatch.
 - [Harness telemetry — the OTLP/OTEL stored shape](./telemetry-otlp.md) — how the
   segment is stored/published as OTLP and the keep-and-harden git refs the read path
   walks.

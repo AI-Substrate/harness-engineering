@@ -14,7 +14,13 @@ import { validateWalk } from '../../services/dd/core/walk.js';
 import { ConventionSchemaResolver } from '../../services/dd/schema/resolve.js';
 import { resolveInRepo, toPosix } from '../../services/shared/posix-path.js';
 import { NodeSchemaFs } from './schema-fs.js';
-import { DD_ISSUE_CODES, type DdActDeps, FsDocLoader, trackedPaths } from './shared.js';
+import {
+  DD_ISSUE_CODES,
+  type DdActDeps,
+  FsDocLoader,
+  nextActionFor,
+  trackedPaths,
+} from './shared.js';
 
 interface ReportedIssue extends DdIssue {
   code: string;
@@ -112,10 +118,15 @@ export function registerValidateCommand(dd: Command, io: CliIo, deps: DdActDeps)
       };
 
       if (blocking) {
+        // FX013: the remedy comes from the SHARED mapper, exactly as it does on
+        // `dd address validate` / `dd link resolve` / `dd graph`. This verb used
+        // to answer every finding with "Fix <owner> at <location>" — true of any
+        // finding, and therefore an instruction about none of them. The location
+        // it named is still right here, in `details.issues[]`.
         exitWithEnvelope(
           formatError('dd validate', blocking.code, blocking.message, clock, {
             details: data,
-            next_action: `Fix ${blocking.owner} at ${blocking.location}, then re-run \`harness dd validate ${path}\`.`,
+            next_action: nextActionFor([blocking], path),
           }),
           port,
         );

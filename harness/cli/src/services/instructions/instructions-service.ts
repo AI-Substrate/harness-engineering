@@ -1,6 +1,7 @@
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { VerbRegistry } from '../extensions/registry.js';
 import { posixDirname, posixJoin } from '../shared/posix-path.js';
+import { CORE_INSTRUCTION_PAGES } from './commit-guidance.js';
 import { CORE_INSTRUCTIONS } from './core-instructions.js';
 
 /** The bare `harness instructions` payload (plan 014 AC-1). */
@@ -50,13 +51,17 @@ export function instructionsPathFor(verbName: string, registry: VerbRegistry): s
  * about what is queryable right now.
  */
 export function buildCoreInstructions(registry: VerbRegistry, fs: FsPort): CoreInstructionsPayload {
-  const verbs_with_instructions = registry.verbs
+  const fromExtensions = registry.verbs
     .filter((verb) => {
       const path = instructionsPathFor(verb.name, registry);
       return path !== null && fs.exists(path);
     })
     .map((verb) => verb.name);
-  return { instructions: CORE_INSTRUCTIONS, verbs_with_instructions };
+  // CORE pages are always resolvable — they are baked into the binary, so unlike
+  // an extension briefing there is no file to probe and no way for one to be
+  // missing (plan 074 · ac-0008).
+  const core = Object.keys(CORE_INSTRUCTION_PAGES).filter((verb) => !fromExtensions.includes(verb));
+  return { instructions: CORE_INSTRUCTIONS, verbs_with_instructions: [...core, ...fromExtensions] };
 }
 
 /**
@@ -71,6 +76,16 @@ export function loadVerbInstructions(
   registry: VerbRegistry,
   fs: FsPort,
 ): VerbInstructionsOutcome {
+  // CORE pages resolve FIRST (plan 074 · ac-0008). Before this, the surface
+  // resolved only extension-registry verbs, so a core verb like `commit` could
+  // carry no briefing at all — an agent asking `harness instructions commit`
+  // got `unknown-verb` for a command that exists. The registration is additive:
+  // an extension can still author its own briefing, and every other resolution
+  // path below is unchanged.
+  const corePage = CORE_INSTRUCTION_PAGES[verbName];
+  if (corePage !== undefined) {
+    return { kind: 'ok', verb: verbName, path: '(core)', instructions: corePage };
+  }
   const path = instructionsPathFor(verbName, registry);
   if (path === null) {
     return { kind: 'unknown-verb', verb: verbName };

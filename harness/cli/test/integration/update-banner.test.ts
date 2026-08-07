@@ -38,11 +38,11 @@ function depsWith(fs: FakeFs, env: FakeEnv): VerbActDeps {
   };
 }
 
-function run(
+async function run(
   argv: string[],
   mode: OutputMode,
   opts: { cacheLatest?: string } = {},
-): { out: string; err: string; code: number } {
+): Promise<{ out: string; err: string; code: number }> {
   const files = opts.cacheLatest
     ? {
         [CACHE_PATH]: JSON.stringify({
@@ -69,13 +69,14 @@ function run(
     code = c ?? 0;
     throw new Error(`exit:${code}`);
   }) as never);
-  expect(() =>
-    buildProgram('9.9.9', io, depsWith(fs, env), { verbs: [], records: [] }).parse([
+  // `parseAsync` since plan 074 — `doctor` awaits one ingress probe.
+  await expect(
+    buildProgram('9.9.9', io, depsWith(fs, env), { verbs: [], records: [] }).parseAsync([
       'node',
       'harness',
       ...argv,
     ]),
-  ).toThrow(/^exit:/);
+  ).rejects.toThrow(/^exit:/);
   return { out, err, code };
 }
 
@@ -84,19 +85,19 @@ describe('update banner reaches every emit path (T006B / KF-09)', () => {
     vi.restoreAllMocks();
   });
 
-  it('appears on a BESPOKE human-port act (doctor) — the path the naive fix would miss', () => {
-    const { out, err } = run(['doctor'], 'human', { cacheLatest: '9.9.10' });
+  it('appears on a BESPOKE human-port act (doctor) — the path the naive fix would miss', async () => {
+    const { out, err } = await run(['doctor'], 'human', { cacheLatest: '9.9.10' });
     expect(err).toContain(BANNER); // bespoke {emit} writes the report to err; banner precedes it
     expect(out).not.toContain('update available'); // banner is stderr-only, never stdout
   });
 
-  it('appears on the SHARED createOutputPort human path (bare orientation)', () => {
-    const { err } = run([], 'human', { cacheLatest: '9.9.10' });
+  it('appears on the SHARED createOutputPort human path (bare orientation)', async () => {
+    const { err } = await run([], 'human', { cacheLatest: '9.9.10' });
     expect(err).toContain(BANNER);
   });
 
-  it('appears as the additive JSON field on doctor --json (no human line)', () => {
-    const { out, err } = run(['doctor'], 'json', { cacheLatest: '9.9.10' });
+  it('appears as the additive JSON field on doctor --json (no human line)', async () => {
+    const { out, err } = await run(['doctor'], 'json', { cacheLatest: '9.9.10' });
     const env = JSON.parse(out);
     expect(env.update_available).toEqual({
       installed: '9.9.9',
@@ -106,12 +107,12 @@ describe('update banner reaches every emit path (T006B / KF-09)', () => {
     expect(err).not.toContain('update available'); // no human line in json mode
   });
 
-  it('does NOT appear when the cached latest is not newer (negative control)', () => {
-    const same = run(['doctor'], 'human', { cacheLatest: '9.9.9' });
+  it('does NOT appear when the cached latest is not newer (negative control)', async () => {
+    const same = await run(['doctor'], 'human', { cacheLatest: '9.9.9' });
     expect(same.err).not.toContain('update available');
-    const none = run(['doctor'], 'human'); // no cache at all
+    const none = await run(['doctor'], 'human'); // no cache at all
     expect(none.err).not.toContain('update available');
-    const olderJson = run(['doctor'], 'json', { cacheLatest: '9.9.8' });
+    const olderJson = await run(['doctor'], 'json', { cacheLatest: '9.9.8' });
     expect(JSON.parse(olderJson.out).update_available).toBeUndefined();
   });
 });

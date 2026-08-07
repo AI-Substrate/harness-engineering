@@ -57,7 +57,7 @@ function makeDeps(
   const git = new FakeGitWrite();
   const deps: SyncDeps = {
     fs,
-    env: new FakeEnv({}),
+    env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1' }),
     proc: new FakeProcess({}, REPO),
     git,
     clock: new FakeClock(clockIso),

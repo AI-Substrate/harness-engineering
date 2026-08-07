@@ -77,7 +77,7 @@ function makeDeps(
   const fs = new FakeFs(opts.files ?? {}, opts.dirs ?? {});
   const deps: SyncDeps = {
     fs,
-    env: new FakeEnv({}),
+    env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1' }),
     proc: new FakeProcess({}, REPO),
     git,
     clock: new FakeClock(opts.today ?? TODAY),

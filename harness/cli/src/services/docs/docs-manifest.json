@@ -53,7 +53,7 @@
     {
       "id": "telemetry",
       "title": "Harness telemetry",
-      "summary": "Counts-only per-session `segment` capture on every command, the gitignored buffer, `harness telemetry sync` (and auto-sync on `checks`) to per-session dated shard refs, the disable switches, and the privacy/offline guarantees.",
+      "summary": "Front door for the frozen counts-only telemetry corpus: capture off by default, the live read/report path, segment and event-stream contracts, the explicit legacy-capture opt-in, and the git-ai handover.",
       "audience": "both",
       "sourcePath": "docs/how/telemetry.md"
     },

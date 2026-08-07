@@ -49,7 +49,9 @@ describe('buildCoreInstructions', () => {
     const result = buildCoreInstructions(registry(), fs);
     expect(result.instructions).toBe(CORE_INSTRUCTIONS);
     expect(result.instructions.length).toBeGreaterThan(200);
-    expect(result.verbs_with_instructions).toEqual(['flow']);
+    // plan 074 · ac-0008 — CORE pages (`commit`) are always resolvable and lead
+    // the list; they are baked into the binary, so none can be missing.
+    expect(result.verbs_with_instructions).toEqual(['commit', 'flow']);
   });
 
   it('lists every verb of a multi-verb extension when its shared file exists (AC-2)', () => {
@@ -58,14 +60,17 @@ describe('buildCoreInstructions', () => {
       [`${SURVEY_DIR}/instructions.md`]: '# Survey pack',
     });
     expect(buildCoreInstructions(registry(), fs).verbs_with_instructions).toEqual([
+      'commit',
       'flow',
       'survey',
       'report',
     ]);
   });
 
-  it('returns an empty verb list when no extension carries a briefing', () => {
-    expect(buildCoreInstructions(registry(), new FakeFs()).verbs_with_instructions).toEqual([]);
+  it('lists only the CORE pages when no extension carries a briefing', () => {
+    expect(buildCoreInstructions(registry(), new FakeFs()).verbs_with_instructions).toEqual([
+      'commit',
+    ]);
   });
 });
 

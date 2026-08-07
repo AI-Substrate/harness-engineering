@@ -14,14 +14,19 @@ import {
 } from '../../../src/services/doctor/doctor-service.js';
 import type { ExtensionRecord, HarnessVerb } from '../../../src/services/extensions/contract.js';
 import type { RegisteredSensor, VerbRegistry } from '../../../src/services/extensions/registry.js';
+import { commitGuidanceBlock } from '../../../src/services/instructions/commit-guidance.js';
 import { buildRecordRegistry, coreRecordTypes } from '../../../src/services/record/registry.js';
 
 const ALL_TOOLS = { node: '/usr/bin/node', just: '/usr/bin/just', biome: '/usr/bin/biome' };
 // Dev-mode seed (FX001): the tsconfig marker makes checkCliBuild treat the fake tree as
 // the harness's home; dist present → built. Without the marker the tree reads as a consumer.
+// plan 074 · ac-0008 — a repo whose AGENTS.md already carries the managed
+// commit-guidance block, so "every layer is ready" keeps meaning what it meant.
+// The dedicated commit-guidance cases below seed the absent/stale shapes.
 const BUILT_CLI = {
   'harness/cli/tsconfig.json': '{}',
   'harness/cli/dist/index.js': '// built',
+  '/repo/AGENTS.md': `${commitGuidanceBlock()}\n`,
 };
 
 const mkVerb = (name: string): HarnessVerb => ({
@@ -35,7 +40,10 @@ function deps(over: Partial<DoctorDeps> = {}): DoctorDeps {
     fs: over.fs ?? new FakeFs(BUILT_CLI),
     proc: over.proc ?? new FakeProcess(ALL_TOOLS, '/repo'),
     git: over.git ?? new FakeGit({ isRepo: true, branch: 'main' }),
-    env: over.env ?? new FakeEnv(),
+    // plan 074 · ac-0004 — capture-liveness is GATED on capture being enabled,
+    // so a healthy baseline must opt in. A default (capture-off) env now
+    // correctly reports could-not-determine; that is asserted on its own below.
+    env: over.env ?? new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1' }),
     clock: over.clock ?? new FakeClock('2026-06-08T07:20:00.000Z'),
   };
 }
@@ -104,7 +112,9 @@ describe('buildDoctorReport', () => {
       with healthy tools the whole envelope is ok (not falsely degraded).
     - Quality Contribution: pins consumer-mode honesty without changing dev-repo behaviour.
     */
-    const fs = new FakeFs(); // empty tree = consumer clone, no harness/cli/
+    // Consumer clone: no harness/cli/, but an ADOPTED repo carries the managed
+    // commit-guidance block — the assertion here is that no OTHER layer degrades.
+    const fs = new FakeFs({ '/repo/AGENTS.md': `${commitGuidanceBlock()}\n` });
     const report = buildDoctorReport(deps({ fs }), EMPTY);
     const layer = report.layers.find((l) => l.name === 'cli-build');
     expect(layer?.ok).toBe(true);
@@ -220,7 +230,7 @@ describe('buildDoctorReport', () => {
       and the whole envelope is not degraded by it.
     - Quality Contribution: pins that the core stops enforcing a foreign toolchain.
     */
-    const fs = new FakeFs(); // consumer clone — no dev marker
+    const fs = new FakeFs({ '/repo/AGENTS.md': `${commitGuidanceBlock()}\n` }); // consumer clone — no dev marker
     const proc = new FakeProcess({ node: '/usr/bin/node' }); // just/biome absent
     const report = buildDoctorReport(deps({ fs, proc }), EMPTY);
     const toolchain = report.layers.find((l) => l.name === 'toolchain');

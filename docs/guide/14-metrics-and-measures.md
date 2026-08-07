@@ -171,16 +171,21 @@ git ls-tree -r     refs/harness-telemetry/2026/03/23/<sessionA>          # the <
 git push origin --delete 'refs/harness-telemetry/2026/03/23/<sessionA>'  # prune after ingest
 ```
 
-### How to disable it
+### Capture controls
+
+Harness telemetry capture is off by default after the git-ai handover.
 
 | Variable | Effect |
 |---|---|
-| `HARNESS_NO_TELEMETRY=1` | **Off entirely** — no capture, no sync, no ref writes. |
-| `HARNESS_NO_TELEMETRY_AUTOSYNC=1` | **Unprompted pushes off** — capture and manual `harness telemetry sync` still work; the automatic pushes (`checks`, the post-commit hook, the harness-loop close, the-flow `ship`) are suppressed (`checks` falls back to a nudge). |
+| `HARNESS_TELEMETRY_CAPTURE=1` | Opt in to the dormant harness producer for migration/testing. |
+| `HARNESS_NO_TELEMETRY=1` | Hard off; wins over the opt-in. |
+| `HARNESS_NO_TELEMETRY_AUTOSYNC=1` | With capture enabled, suppress unprompted pushes while leaving manual sync available. |
 
 ### Privacy
 
-Team/repo-grained **by construction** — never per-individual. Commits are authored by a fixed non-individual identity (`harness-telemetry <noreply@…>`); your `git config user.email` is never read or stored; shards are keyed by session, not engineer. Token counts and the like are aggregate diagnostics, **not** performance management.
+Usage is team/repo-grained, never an individual productivity scoreboard.
+Telemetry commits retain the contributor identity for traceability, while shards
+remain keyed by opaque session rather than engineer.
 
 The exhaustive reference — offline behaviour, the watermark/consume mechanism, server-side ref-hiding, and the full field contract — is [Harness telemetry](../how/telemetry.md).
 
@@ -195,7 +200,8 @@ The exhaustive reference — offline behaviour, the watermark/consume mechanism,
 ## See also
 
 - [harness-value-measures.md](../how/harness-value-measures.md) — the two measures in detail: bypass rate, change rate, the PR denominator, DORA correlation, anti-gaming guardrails.
-- [telemetry.md](../how/telemetry.md) — the sensor reference: capture, push, segment contract, offline behaviour, disabling.
+- [telemetry.md](../how/telemetry.md) — the archived sensor and live read-contract reference.
+- [gitai-collector.md](../how/gitai-collector.md) — the current collection handover.
 - [10 · Encoding & Learning Loops](10-encoding-and-learning-loops.md) — how friction becomes an encoded fix.
 
 Source: EngThrive — Houck, Bozarth, Liu, Carignan, *Make It Fast and Easy to Do Great Work*, Microsoft Research 2026 (arXiv:2605.04259).

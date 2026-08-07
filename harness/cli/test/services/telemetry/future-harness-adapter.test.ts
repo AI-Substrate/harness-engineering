@@ -49,7 +49,7 @@ const futureAdapter: HarnessAdapter = {
 describe('T007 — future-harness adapter (AC-12)', () => {
   it('partial caps serialize to a schema-shaped, all-null-filled segment', () => {
     const caps = futureAdapter.extract({
-      env: new FakeEnv({}, '/home/x'),
+      env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1' }, '/home/x'),
       fs: new FakeFs({}),
       repoRoot: REPO,
       harness: 'acme-harness-9000',
@@ -97,7 +97,7 @@ describe('T007 — future-harness adapter (AC-12)', () => {
   it('the null-default safety net handles ANY unknown harness id', () => {
     expect(nullDefaultAdapter.handles('acme-harness-9000')).toBe(true);
     const caps = nullDefaultAdapter.extract({
-      env: new FakeEnv({}, '/home/x'),
+      env: new FakeEnv({ HARNESS_TELEMETRY_CAPTURE: '1' }, '/home/x'),
       fs: new FakeFs({}),
       repoRoot: REPO,
       harness: 'acme-harness-9000',
@@ -111,7 +111,10 @@ describe('T007 — future-harness adapter (AC-12)', () => {
     const fs = new FakeFs({});
     const deps: CaptureDeps = {
       fs,
-      env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'sess1' }, '/home/x'),
+      env: new FakeEnv(
+        { HARNESS_TELEMETRY_CAPTURE: '1', CLAUDE_CODE_SESSION_ID: 'sess1' },
+        '/home/x',
+      ),
       clock: new FakeClock('2026-06-23T04:58:00.000Z'),
       proc: new FakeProcess({}, REPO),
       git: new FakeGit({ isRepo: true, branch: 'b', remoteUrl: 'github.com/x/y' }),

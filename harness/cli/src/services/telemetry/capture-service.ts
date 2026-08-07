@@ -19,6 +19,7 @@ import {
   nullDefaultAdapter,
 } from './adapters/harness-adapter.js';
 import { artifactSemanticsEvents } from './artifact-semantics.js';
+import { isCaptureEnabled } from './capture-gate.js';
 import {
   type CaptureProbe,
   classifyAttempt,
@@ -600,8 +601,12 @@ function buildInput(
   };
 }
 
-/** The env kill-switch (naming-consistent with `HARNESS_NO_EXTENSIONS`). */
-export const KILL_SWITCH_ENV = 'HARNESS_NO_TELEMETRY';
+/**
+ * The env kill-switch, re-exported from the gate that now owns it (plan 073).
+ * The gate — not this constant — decides whether capture may run: the default is
+ * OFF in code, and `HARNESS_TELEMETRY_CAPTURE=1` is the opt-in back on.
+ */
+export { KILL_SWITCH_ENV } from './capture-gate.js';
 
 /**
  * Re-entrancy guard env var. The kernel sets `HARNESS_TELEMETRY_DEPTH` in the
@@ -631,15 +636,16 @@ export function hasActivity(seg: Segment): boolean {
  * Capture telemetry for the current command. The named entry the kernel preamble
  * (Phase 3) calls. Synchronous, ports-only, best-effort.
  *
- * Fail-safe by contract: the kill-switch short-circuits to ZERO side effects
- * (AC-05), and ANY error inside capture is swallowed (AC-09) — telemetry can
+ * Fail-safe by contract: a disabled gate short-circuits to ZERO side effects
+ * (AC-05; plan 073 ac-0001 — capture is OFF by default, so this is the shipped
+ * path), and ANY error inside capture is swallowed (AC-09) — telemetry can
  * never change the host command's behaviour or exit code. This last-resort
  * catch-all is distinct from the DESIGNED edge no-ops in {@link captureUnsafe}.
  */
 export function captureTelemetry(deps: CaptureDeps): void {
   try {
-    if (deps.env.get(KILL_SWITCH_ENV) === '1') {
-      return; // kill-switch → zero side effects (AC-05)
+    if (!isCaptureEnabled(deps.env)) {
+      return; // capture disabled (default-off, or kill-switch) → zero side effects (AC-05)
     }
     // Re-entrancy guard: a nested harness invocation (a sub-verb / drift-gate child
     // spawned by `harness checks`, or any self-spawned child) inherits a non-zero

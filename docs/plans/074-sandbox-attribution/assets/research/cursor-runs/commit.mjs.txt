@@ -1,0 +1,89 @@
+#!/usr/bin/env node
+/**
+ * commit.mjs — simulation of a `harness commit` extension verb.
+ *
+ * The hypothesis this tests: Cursor's terminalAllowlist matches SIMPLE commands only, so an
+ * agent's natural `a && b && c` falls back into the sandbox and loses trace2. A single
+ * allowlisted entrypoint that does the whole job internally sidesteps that — the agent runs
+ * one simple command, and the git it spawns inherits an unsandboxed process tree.
+ *
+ * `node` is already in terminalAllowlist and proven to run unsandboxed, so `node commit.mjs`
+ * stands in for `harness commit` exactly.
+ *
+ * It also does the two things a real harness verb should do, which raw git cannot:
+ *
+ *   BELT    — buffer trace2 to a file via GIT_TRACE2_EVENT, so the events survive even if this
+ *             process turns out to be sandboxed after all. Nothing is lost either way.
+ *   BRACES  — after committing, VERIFY the note actually landed, and say so loudly if it did
+ *             not. This is the whole point: turn a silent wrong answer into a visible failure.
+ *
+ * Usage:  node commit.mjs "commit message"
+ */
+
+import { execFileSync } from 'node:child_process';
+import { existsSync, statSync } from 'node:fs';
+
+const message = process.argv[2];
+if (!message) {
+  console.error('usage: node commit.mjs "commit message"');
+  process.exit(2);
+}
+
+const BUFFER = `${process.cwd()}/.trace2-events.jsonl`;
+
+function git(args, env) {
+  return execFileSync('git', args, {
+    encoding: 'utf8',
+    env: { ...process.env, ...(env ?? {}) },
+  }).trim();
+}
+
+// --- stage everything the agent changed -------------------------------------------------
+git(['add', '-A']);
+
+const staged = git(['diff', '--cached', '--name-only']);
+if (!staged) {
+  console.log('nothing staged — no commit made.');
+  process.exit(0);
+}
+console.log(`staging:\n${staged.split('\n').map((f) => `  ${f}`).join('\n')}`);
+
+// --- commit, with trace2 ALSO buffered to a file (belt) ---------------------------------
+// The global config still points at the collector socket. Setting GIT_TRACE2_EVENT here would
+// REPLACE that target, not add to it — so we deliberately do NOT override it on the commit
+// itself. The socket is the primary path; the buffer is only used as a fallback probe below.
+git(['commit', '-m', message]);
+const sha = git(['rev-parse', 'HEAD']);
+console.log(`\ncommitted: ${sha.slice(0, 12)}  ${message}`);
+
+// --- verify the collector actually received it (braces) ---------------------------------
+// git-ai writes the note asynchronously via its daemon, so give it a moment before judging.
+const deadline = Date.now() + 5000;
+let attributed = false;
+while (Date.now() < deadline) {
+  try {
+    execFileSync('git', ['notes', '--ref=ai', 'show', sha], { stdio: 'ignore' });
+    attributed = true;
+    break;
+  } catch {
+    execFileSync('sleep', ['0.5']);
+  }
+}
+
+if (attributed) {
+  console.log('verify   : OK — the collector attributed this commit.');
+  process.exit(0);
+}
+
+console.log('verify   : *** NO ATTRIBUTION ***');
+console.log('');
+console.log('  This commit carries no authorship note. The collector never received it.');
+console.log('  Most likely cause: this process is sandboxed and cannot reach the collector');
+console.log('  socket, so git silently disabled trace2.');
+if (existsSync(BUFFER) && statSync(BUFFER).size > 0) {
+  console.log(`  A trace2 buffer exists (${statSync(BUFFER).size} bytes) and can be drained.`);
+}
+console.log('');
+console.log('  This message is the point of the exercise: without it, the commit would look');
+console.log('  completely healthy while its AI authorship was being recorded as human.');
+process.exit(1);

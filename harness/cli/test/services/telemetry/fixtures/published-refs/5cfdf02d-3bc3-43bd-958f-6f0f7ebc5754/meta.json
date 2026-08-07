@@ -1,0 +1,14 @@
+{
+  "ref": "refs/harness-telemetry/2026/08/04/5cfdf02d-3bc3-43bd-958f-6f0f7ebc5754",
+  "session": "5cfdf02d-3bc3-43bd-958f-6f0f7ebc5754",
+  "ref_date": "2026/08/04",
+  "files": [
+    "2.json",
+    "3.json",
+    "5.json",
+    "manifest.json",
+    "session.logs.jsonl",
+    "session.metrics.jsonl"
+  ],
+  "note": "Verbatim bytes from this public repo's own published telemetry ref. Captured for FX007: the shipped reader rejected this session E222."
+}

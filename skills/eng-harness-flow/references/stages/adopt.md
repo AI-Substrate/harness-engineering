@@ -150,6 +150,15 @@ An installed harness that nothing calls **disappears on the next cold agent star
 
    A declined weave is a fine outcome — record what was decided either way (a map row can say `declined` or `manual`).
 
+   **While you are in `AGENTS.md` anyway, offer the commit-guidance block.** Where git-ai is the collector, an agent's natural `git add … && git commit …` can silently lose AI attribution — agent command sandboxes block git-ai's socket, git quietly disables trace2, and the commit's authorship may later be recorded as human. The CLI owns that guidance as a **managed block** with fenced markers; do not hand-write it:
+
+   ```bash
+   harness instructions commit           # read the page first
+   harness instructions commit --inject  # write or refresh the managed block
+   ```
+
+   It is idempotent and only ever touches the region between its own markers, so a re-run is safe and the user's own prose is never at risk. Same consent rule as every other row here — show the edit, ask, then apply. `harness doctor`'s `commit-guidance` row warns when the block is absent and never edits the file itself.
+
 5. **Record the injection map** in the governance doc (`.harness/engineering-harness.md`) under a `## Injection map` heading — one row per lifecycle hook: the hook, where it fires from, and what fires it. This is the durable artifact the router reads to know injection is done; without it, the stateless router re-offers this step on every call. `harness init` stamps the `## Injection map` section as an empty table; this step fills its rows. **If the governance doc isn't present yet** (`harness init` wasn't run, or an older CLI predates it), propose the map in conversation, note it as pending, and move on; never hand-create the governance doc here — run `harness init` to stamp it first. See [`../governance-doc.md`](../governance-doc.md).
 
 **Ask first, always.** The weave edits the user's own files; nothing in this step is applied without the user having seen the specific change and said yes to it. Keep descriptions of the host flow generic and public-safe (name the flow's *shape*, never private tooling identifiers the repo doesn't already commit).

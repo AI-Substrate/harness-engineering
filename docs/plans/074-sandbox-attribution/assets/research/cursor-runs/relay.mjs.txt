@@ -1,0 +1,152 @@
+#!/usr/bin/env node
+/**
+ * relay.mjs — prototype of the harness trace2 drain (plan: sandbox detection, phase 2).
+ *
+ * Deliberately written the way HARNESS would have to write it: node builtins only
+ * (`node:net`, `node:fs`, `node:child_process`), no dependencies, no shelling out to `nc`.
+ * If this works, the harness implementation works — that is the whole point of running it here.
+ *
+ * It does two things, which are the two halves of the feature:
+ *
+ *   1. PROBE   — can this process reach the collector's ingress socket at all?
+ *                Classifies into the same outcomes the doctor check will use.
+ *   2. DRAIN   — replay the buffered trace2 events into that socket, then truncate.
+ *
+ * Run it from an unsandboxed shell and it should drain. Run it from inside Cursor's
+ * agent sandbox and the probe should come back `denied` — which is itself the finding.
+ *
+ * Usage:  node relay.mjs [--probe-only]
+ */
+
+import { execFileSync } from 'node:child_process';
+import { existsSync, readFileSync, statSync, truncateSync } from 'node:fs';
+import net from 'node:net';
+
+const PROBE_TIMEOUT_MS = 750;
+const probeOnly = process.argv.includes('--probe-only');
+
+/** Read a git config value, or null. Never throws. */
+function gitConfig(args) {
+  try {
+    return execFileSync('git', ['config', ...args], { encoding: 'utf8' }).trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+/** Where the daemon listens: the GLOBAL target, which git-ai sets at install. */
+function resolveSocketPath() {
+  const target = gitConfig(['--global', '--get', 'trace2.eventTarget']);
+  if (!target) return null;
+  const m = /^af_unix:(?:stream:|dgram:)?(.+)$/.exec(target);
+  return m ? m[1] : null;
+}
+
+/**
+ * Where the sandboxed git writes its events.
+ *
+ * NOT from repo-local git config: git reads trace2 settings from the SYSTEM and GLOBAL
+ * config only — repository-local config is ignored. That is a real constraint on the
+ * harness design, not a detail: a per-repo relay cannot be configured through
+ * `.git/config`. The buffer is addressed by path (argv) or by convention, and the
+ * producing side must set `GIT_TRACE2_EVENT` in the agent's environment.
+ */
+function resolveEventsFile() {
+  const fromArgv = process.argv.slice(2).find((a) => !a.startsWith('--'));
+  return fromArgv ?? `${process.cwd()}/.trace2-events.jsonl`;
+}
+
+/**
+ * Ground truth for ingress reachability. This is the probe the doctor check needs:
+ * the sandbox denies the connect(), so we simply attempt it and classify the error.
+ */
+function probe(path) {
+  return new Promise((resolve) => {
+    if (!existsSync(path)) return resolve('absent');
+    let settled = false;
+    const done = (outcome) => {
+      if (settled) return;
+      settled = true;
+      try {
+        sock.destroy();
+      } catch {}
+      resolve(outcome);
+    };
+    const sock = net.createConnection({ path });
+    sock.setTimeout(PROBE_TIMEOUT_MS, () => done('timeout'));
+    sock.on('connect', () => done('connected'));
+    sock.on('error', (err) => {
+      const code = err.code;
+      if (code === 'EACCES' || code === 'EPERM') return done('denied');
+      if (code === 'ECONNREFUSED') return done('refused');
+      if (code === 'ENOENT') return done('absent');
+      done(`error:${code ?? 'unknown'}`);
+    });
+  });
+}
+
+/** Replay the buffered events into the socket. Resolves to bytes written. */
+function drain(path, payload) {
+  return new Promise((resolve, reject) => {
+    const sock = net.createConnection({ path });
+    sock.on('error', reject);
+    sock.on('connect', () => {
+      sock.end(payload, () => resolve(payload.length));
+    });
+  });
+}
+
+const socketPath = resolveSocketPath();
+const eventsFile = resolveEventsFile();
+
+console.log(`socket : ${socketPath ?? '(none — global trace2.eventTarget is not af_unix)'}`);
+console.log(`events : ${eventsFile ?? '(none — local trace2.eventTarget is not a file)'}`);
+
+if (!socketPath) {
+  console.log('\nverdict: ingress-unconfigured — nothing to drain into.');
+  process.exit(2);
+}
+
+const outcome = await probe(socketPath);
+console.log(`probe  : ${outcome}`);
+
+if (outcome !== 'connected') {
+  const why =
+    outcome === 'denied'
+      ? 'SANDBOXED — the sandbox blocks the socket connect(). This process cannot attribute commits.'
+      : outcome === 'absent'
+        ? 'the daemon socket does not exist (daemon not running).'
+        : outcome === 'refused'
+          ? 'stale socket — nothing is listening.'
+          : 'could not determine.';
+  console.log(`\nverdict: ${why}`);
+  process.exit(1);
+}
+
+if (probeOnly) {
+  console.log('\nverdict: ingress reachable (probe only, nothing drained).');
+  process.exit(0);
+}
+
+if (!eventsFile || !existsSync(eventsFile)) {
+  console.log('\nverdict: ingress reachable, but no buffered events file to drain.');
+  process.exit(0);
+}
+
+const size = statSync(eventsFile).size;
+if (size === 0) {
+  console.log('\nverdict: ingress reachable, buffer empty — nothing to replay.');
+  process.exit(0);
+}
+
+const payload = readFileSync(eventsFile);
+const lines = payload.toString('utf8').split('\n').filter(Boolean).length;
+const commitOps = (payload.toString('utf8').match(/"commit"/g) ?? []).length;
+
+const written = await drain(socketPath, payload);
+// Truncate ONLY after a successful flush, so a failed drain is retried rather than lost.
+truncateSync(eventsFile, 0);
+
+console.log(`\ndrained: ${written} bytes, ${lines} events (${commitOps} mentioning "commit")`);
+console.log('verdict: replayed into the collector and buffer truncated.');
+console.log('\nCheck for a note:  git notes --ref=ai list | wc -l');

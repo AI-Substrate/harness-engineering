@@ -1,0 +1,515 @@
+# Code Review: Phase 1 — Sandbox Attribution
+
+**Plan**: `/Users/jordanknight/substrate/harness-engineering-worktrees/s073-gitai-collector-v1/docs/plans/074-sandbox-attribution/plan.dd.json`  
+**Spec**: `/Users/jordanknight/substrate/harness-engineering-worktrees/s073-gitai-collector-v1/docs/plans/074-sandbox-attribution/plan.dd.md`  
+**Phase**: Simple Mode — Phase 1: Implementation  
+**Date**: 2026-08-07  
+**Reviewer**: Independent adversarial review  
+**Testing Approach**: Fake-port unit tests plus the recorded live-daemon spike
+
+## A) Verdict
+
+**FIX_REQUIRED**
+
+**Key failure areas**:
+- **Implementation**: Trace2 text can add foreign commit SHAs to a nudge confirmation set, permanently retaining a segment and misreporting another commit.
+- **Recovery lifecycle**: Retained segments disappear from later nudge reports, which can call the state healthy while recovery work remains.
+- **Commit recovery guidance**: The file-target branch names a nudge command that necessarily skips under that very target configuration.
+- **Constraint compliance**: A doctor act test constructs the real socket adapter and can perform a real socket connect when the test machine has a configured target.
+
+## B) Summary
+
+The change is thoughtfully structured around separate probe and relay ports, a fake-driven test seam, and a good first-pass implementation of rotate, replay, settle, and delete. The mutation tests demonstrate that the important commit partition and full-confirmation guards are live. However, the recovery path still makes confidence claims it cannot support: its SHA scan accepts arbitrary commit-message text, and it does not surface previously retained segments. The core commit paths also point users to a recovery command that is guaranteed to refuse work for a plain-file target. These defects are material to the plan's safety claim, so this phase cannot be approved.
+
+## C) Checklist
+
+**Testing Approach: Hybrid**
+
+- [x] Core validation tests present
+- [x] Critical branch and lifecycle guards mutation-tested
+- [x] Plan completion documents validate strictly
+- [x] No production dependency added
+- [ ] CI tests hermetic with respect to real sockets
+- [ ] Recovery paths retain and enumerate every deferred segment correctly
+- [x] Domain compliance N/A (domain mode is off)
+
+## D) Findings Table
+
+| ID | Severity | File:Lines | Category | Summary | Recommendation |
+|----|----------|------------|----------|---------|----------------|
+| F001 | HIGH | `harness/cli/src/services/doctor/collector/nudge.ts:80` | correctness | Payload SHA scanning treats 40-hex commit-message text as a covered commit. | Trust the sidecar or parse only a schema-proven commit identifier. |
+| F002 | HIGH | `harness/cli/src/services/doctor/collector/nudge.ts:212-219` | recovery | Previously retained segments are neither enumerated nor reported. | Enumerate segment files on every run and never report `no-buffer` as healthy while any are retained. |
+| F003 | MEDIUM | `harness/cli/src/services/commit/commit-service.ts:276`; `harness/cli/src/services/doctor/collector/nudge.ts:196-203` | correctness | File-target recovery guidance names a command that immediately skips. | Make `--buffer` usable with a reachable socket, or state the required target reconfiguration first. |
+| F004 | MEDIUM | `harness/cli/src/services/doctor/collector/ingress.ts:41-51` | correctness | Disabled and fd trace2 target forms are classified as buffering files. | Classify Git's false/disabled and fd forms as non-ingress targets; only absolute paths should be `file`. |
+| F005 | MEDIUM | `harness/cli/src/acts/doctor.ts:267`; `harness/cli/src/services/doctor/collector/nudge.ts:225-228` | error handling | A relative `--buffer` constructs a malformed segment path; arbitrary absolute paths are not contained. | Resolve and contain the option under the repo, use a pathname helper, and degrade rather than throw on filesystem errors. |
+| F006 | MEDIUM | `harness/cli/test/acts/doctor.test.ts:35-46` | testing | The doctor act test uses the production composition root and can invoke `net.createConnection`. | Inject a fake collector/probe into the act test so CI never reaches a real socket. |
+| F007 | MEDIUM | `harness/cli/src/services/commit/commit-service.ts:220-247`; `harness/cli/src/adapters/git/exec-git-attribution.ts:67-71` | recovery | A successful commit whose follow-up `rev-parse HEAD` fails is reported failed and never gets a sidecar SHA. | Separate commit failure from unknown SHA; report the commit degraded and preserve recoverability. |
+
+## E) Detailed Findings
+
+### E.1) Implementation Quality
+
+#### F001 — foreign SHA poisoning retains segments indefinitely
+
+`commitShasIn()` unions sidecar SHAs with every 40-hex token in trace2 payload text. The trace2 `start` event contains the literal `git commit -m` arguments. A standard revert or cherry-pick message can therefore introduce the SHA of an unrelated historical commit. If that older commit has no AI note, the nudge reports it as still missing, waits through the confirmation timeout, and retains this segment forever. The current test fixture omits argv text, so it cannot expose this path.
+
+#### F002 — retained segments are lost on the next invocation
+
+The only `retained` value is the segment created by the current invocation. `NudgeDeps.fs` has no directory-enumeration capability, so a later nudge with no live `buffer.jsonl` returns `no-buffer` and says this is the healthy shape even though `segment-*.jsonl` files remain beside it. This directly misses AC-0006's requirement to list retained segments with an explicit retry instruction.
+
+#### F003 — file-target recovery command cannot run
+
+The file-target commit branch directs users to `harness doctor telemetry-nudge --buffer <target>`. The nudge reads ingress first and rejects every non-`af_unix` target before reading `bufferPath`; by definition, the branch's configured target is a file. The command therefore always skips until configuration changes, but the instruction does not name that prerequisite.
+
+#### F004 — non-file Git target forms receive false buffering claims
+
+`resolveTrace2Target()` recognizes only `1`, `2`, and `true` as non-ingress targets. Git's disabled values such as `0` and `false`, and file-descriptor forms `3` through `9`, fall through as `{ kind: 'file' }`. The commit command then leaves trace2 unoverridden and claims the configured target buffers events, even though disabled trace2 sends no events at all.
+
+#### F005 — unsafe `--buffer` path handling can break an always-degraded verb
+
+The doctor act passes a relative `--buffer` value unchanged. For `buffer.jsonl`, `lastIndexOf('/')` is `-1`, so the segment directory becomes `buffer.json`; `renameSync` can throw. There is no containing-path check for an absolute path outside the repository either, despite the command renaming and deleting it after confirmation.
+
+#### F007 — a committed change can be declared absent
+
+`ExecGitAttribution.commit()` reports success before separately resolving `HEAD`. If the read fails after a successful `git commit`, `harnessCommit()` treats `sha === null` as commit failure, returns exit 1, and does not write the buffered sidecar. The commit occurred but is reported as not committed, and its buffered trace2 record becomes unconfirmable.
+
+### E.2) Domain Compliance
+
+| Check | Status | Details |
+|-------|--------|---------|
+| File placement | N/A | Domain mode is off. |
+| Contract-only imports | N/A | Domain mode is off. |
+| Dependency direction | N/A | Domain mode is off. |
+| Domain.md updated | N/A | Domain mode is off. |
+| Registry current | N/A | Domain mode is off. |
+| No orphan files | N/A | Domain mode is off. |
+| Map nodes current | N/A | Domain mode is off. |
+| Map edges current | N/A | Domain mode is off. |
+| No circular business deps | N/A | Domain mode is off. |
+| Concepts documented | N/A | Domain mode is off. |
+
+### E.3) Anti-Reinvention
+
+| New Component | Existing Match? | Domain | Status |
+|--------------|----------------|--------|--------|
+| Socket probe/relay ports | None found | CLI adapter/service | Proceed; the separate read/write capability split is appropriate. |
+| Git attribution port | None found | CLI adapter/service | Proceed; it centralizes child-process semantics. |
+
+### E.4) Testing & Evidence
+
+**Coverage confidence**: 65%
+
+The supplied fake-based tests exercise normal probe mappings, one commit branch per enumerated outcome, and the all-confirm versus partial-retain nudge lifecycle. The two mutation tests below prove those named guards are meaningful. Coverage is reduced by untested target forms, trace2 argv payloads, retained-segment discovery, `--buffer` containment/relative paths, and the successful-commit/unknown-SHA path.
+
+#### F006 — test isolation is not assured
+
+`registerDoctorAct()` creates `NodeSocketProbe` through the production root. Its default connection factory reaches `net.createConnection` when a machine's global target is `af_unix`. This contradicts the feature's stated fake-only CI strategy and makes the test environment-dependent.
+
+### E.5) Doctrine Compliance
+
+The additive core registration, managed guidance block, dependency diff, and read-only doctor/relay split align with the repo's architecture. F002-F005 violate the more important doctrine for this phase: a recovery surface must not report a confidence state or instruction that its own implementation cannot establish or execute.
+
+## F) Coverage Map
+
+| AC | Description | Evidence | Confidence |
+|----|-------------|----------|------------|
+| ac-0001 | Probe port and resolver | Fake outcomes and injected sockets cover the stated adapter mapping; resolver misclassifies disabled/fd target forms. | Partial |
+| ac-0002 | Blocked ingress verdict | Predicate is probe-and-file based; markers remain explanatory. | High |
+| ac-0003 | At-risk enumeration | Windowing, cap, wording, and blocked-ingress `unproven` behavior are covered; empty/read-failed windows can still claim clean. | Partial |
+| ac-0004 | Capture liveness | Capture-off now returns `could-not-determine`, not healthy. | High |
+| ac-0005 | Safe commit partition | Main paths and mutations are covered; file recovery advice and post-commit unknown-SHA handling are unsafe. | Partial |
+| ac-0006 | Nudge lifecycle | Rotation, settle, full delete, and partial retention are covered; retained segments are not later listed and payload scan can poison confirmation. | Partial |
+| ac-0007 | Read-only doctor/checks | Probe-only interface is handed to doctor; relay exists only in explicit nudge act. | High |
+| ac-0008 | Core commit guidance | Core page, explicit managed-block injection, and warning seam are implemented. | High |
+| ac-0009 | Documentation and baseline | Sandbox-attribution section is self-contained; documented warning baseline remains 2/196/6. | High |
+| ac-000a | Constraints | No production dependency added; test isolation can reach a real socket. | Partial |
+
+**Overall coverage confidence**: 65%
+
+## G) Commands Executed
+
+```bash
+git show --stat --oneline 0bdf3a7b
+git diff --name-status 885c3763..0bdf3a7b
+git diff --check 885c3763..0bdf3a7b
+git diff --no-ext-diff 885c3763..0bdf3a7b -- package.json
+cd harness/cli && npx vitest run test/services/commit/commit-service.test.ts
+cd harness/cli && npx vitest run test/services/doctor/collector/nudge.test.ts
+cd harness/cli && npx vitest run test/services/commit/commit-service.test.ts test/services/doctor/collector/nudge.test.ts
+node harness/cli/bin/harness.js plan validate docs/plans/074-sandbox-attribution --complete
+just checks
+git status --short
+git diff --check
+git diff --exit-code -- harness/cli/src harness/cli/test
+```
+
+**Dim-0 mutation evidence**:
+
+- Changed `bufferedBranch` from `probe !== 'connected'` to `probe === 'connected'`; the targeted commit-service suite went **RED** (14 failures), including every buffered outcome and the connected no-override assertion. Restored before baseline re-run.
+- Changed nudge full-confirmation guard from `stillMissing.length === 0` to `> 0`; the targeted nudge suite went **RED** (7 failures), including all-confirm-delete and partial-retain. Restored before baseline re-run.
+- Restored targets passed: 42 tests across the two suites. Source and test paths are clean.
+
+**Gate results**: `just checks` completed with its recorded non-blocking baseline: arch-check 2, markdown-lint 196, windows-check 6. Strict plan validation reported 0 errors and 0 warnings.
+
+## H) Handover Brief
+
+**Review result**: FIX_REQUIRED
+
+**Plan**: `/Users/jordanknight/substrate/harness-engineering-worktrees/s073-gitai-collector-v1/docs/plans/074-sandbox-attribution/plan.dd.json`  
+**Spec**: `/Users/jordanknight/substrate/harness-engineering-worktrees/s073-gitai-collector-v1/docs/plans/074-sandbox-attribution/plan.dd.md`  
+**Phase**: Simple Mode — Phase 1: Implementation  
+**Tasks dossier**: inline in plan  
+**Execution log**: `/Users/jordanknight/substrate/harness-engineering-worktrees/s073-gitai-collector-v1/docs/plans/074-sandbox-attribution/assets/execution.log.md`  
+**Review file**: `/Users/jordanknight/substrate/harness-engineering-worktrees/s073-gitai-collector-v1/docs/plans/074-sandbox-attribution/assets/reviews/phase-1-review.md`
+
+### Files Reviewed
+
+| File (absolute path) | Status | Domain | Action Needed |
+|---------------------|--------|--------|---------------|
+| `/Users/jordanknight/substrate/harness-engineering-worktrees/s073-gitai-collector-v1/harness/cli/src/services/doctor/collector/nudge.ts` | Changes required | CLI | Fix F001, F002, F003, F005. |
+| `/Users/jordanknight/substrate/harness-engineering-worktrees/s073-gitai-collector-v1/harness/cli/src/services/commit/commit-service.ts` | Changes required | CLI | Fix F003 and F007. |
+| `/Users/jordanknight/substrate/harness-engineering-worktrees/s073-gitai-collector-v1/harness/cli/src/services/doctor/collector/ingress.ts` | Changes required | CLI | Fix F004. |
+| `/Users/jordanknight/substrate/harness-engineering-worktrees/s073-gitai-collector-v1/harness/cli/test/acts/doctor.test.ts` | Changes required | CLI | Fix F006. |
+
+### Required Fixes
+
+| # | File (absolute path) | What To Fix | Why |
+|---|---------------------|-------------|-----|
+| 1 | `/Users/jordanknight/substrate/harness-engineering-worktrees/s073-gitai-collector-v1/harness/cli/src/services/doctor/collector/nudge.ts` | Do not infer commit identity from arbitrary payload text; enumerate retained segments and report retry pointers. | Prevent permanent retention, false missing-sha reports, and false healthy reports. |
+| 2 | `/Users/jordanknight/substrate/harness-engineering-worktrees/s073-gitai-collector-v1/harness/cli/src/services/commit/commit-service.ts` | Make file-target recovery actionable and distinguish successful commit/unknown SHA from commit failure. | Preserve the safe-commit promise and sidecar recovery evidence. |
+| 3 | `/Users/jordanknight/substrate/harness-engineering-worktrees/s073-gitai-collector-v1/harness/cli/src/services/doctor/collector/ingress.ts` | Fully classify Git's disable/fd target values. | Avoid calling non-buffering configurations an attribution buffer. |
+| 4 | `/Users/jordanknight/substrate/harness-engineering-worktrees/s073-gitai-collector-v1/harness/cli/src/acts/doctor.ts` | Resolve/contain `--buffer` and make the act test inject a fake probe. | Prevent unexpected throws or external mutations and restore hermetic CI. |
+
+### Domain Artifacts to Update
+
+None.
+
+### Handback
+
+Fixes go back through the implement verb (same flags), then re-run this review.
+
+---
+
+## Round 2 — fix commit `9b30835e`
+
+**Verdict: FIX_REQUIRED**
+
+| Finding | Status | Evidence |
+|---|---|---|
+| F001 | CLOSED | `commitShasIn()` reads only the sidecar; the revert-message test proves the foreign SHA is never looked up. |
+| F002 | CLOSED | Every invocation enumerates `segment-*.jsonl`; prior retained segments force `retained` with retry guidance, while the clean-directory control remains `no-buffer`. |
+| F003 | NOT CLOSED | The stated prerequisite order is correct, but becomes unexecutable after the F005 containment change: after reconfiguring to `af_unix`, `resolveBuffer()` rejects the old out-of-repo file target as `buffer-refused`. |
+| F004 | CLOSED | Only absolute paths classify as `file`; disabled, descriptor, and relative forms take the harness-buffered branch. |
+| F005 | CLOSED WITH COUPLED DEFECT | Relative paths resolve under the repo; unsafe paths are refused and filesystem failures degrade. Its live-target containment rule causes the F003 recovery failure above. |
+| F006 | CLOSED | `SocketOverrides` injects a probe into the report path; the `GIT_CONFIG_GLOBAL` test proves the fake receives the forced `af_unix` probe. |
+| F007 | CLOSED | A successful commit with unreadable `HEAD` yields a degraded, non-rerunnable `shaUnknown` outcome; real Git failures still error. |
+
+### New regression — shared file-target sidecar poisons other repositories
+
+`globalTrace2Target()` reads a machine-global absolute file target, while
+`recordBufferedSha()` appends every repository's SHA to the single
+`<target>.shas` sidecar (`commit-service.ts:153-161, 306-327`). Nudge confirms
+those SHAs using the current repository's `git notes`; commits from another
+repository cannot be resolved there and remain missing forever. The segment is
+therefore retained and reports unrelated commits as unattributed. Scope the
+file-target sidecar by repository (or ignore foreign-object entries) and add a
+two-repository regression test.
+
+### Required repair
+
+Make the post-reconfiguration file-target drain both **authorized** and
+repository-scoped. The recovery identity must survive switching
+`trace2.eventTarget` from `file` to `af_unix` without trusting arbitrary paths,
+and a shared global target must not mix SHA confirmation sets across
+repositories. Cover the composed reconfigure-then-drain path and two
+repositories using one target.
+
+### Dim-0 evidence
+
+- Replaced the live segment's sidecar identity with `null`; the nudge suite went
+  **RED** with 11 failures, including the F001 foreign-SHA regression.
+- Bypassed the post-run segment enumeration; the nudge suite went **RED** with
+  4 failures, including retained-segment visibility and failed-delete reporting.
+- Both mutations were restored. The focused restored suite passed: 95 tests
+  across nudge, ingress, commit-service, and doctor-act.
+
+### Gate evidence
+
+- Complete plan validation: 0 errors, 0 warnings, 0 open items.
+- `just checks`: completed at the recorded non-blocking baseline: arch 2,
+  markdown 196, Windows 6.
+
+---
+
+## Round 3 — fix commit `dbc14a07`
+
+**Verdict: FIX_REQUIRED**
+
+| Item | Status | Evidence |
+|---|---|---|
+| F003 + coupled F005 | CLOSED | The file branch records its absolute target in the repo-local `known-targets` ledger. After reconfiguration to `af_unix`, the composed test drains that target, confirms its sidecar SHA, and deletes both segment and sidecar. An unrelated `/etc/passwd` remains refused with zero renames, deletes, or relay sends even when a valid recorded target exists. `.harness/temp/` is ignored by the repository rule and by the trace2 directory's self-ignore. |
+| Cross-repository tagged sidecars | CLOSED | Sidecar records are `<sha> <git-common-dir>`. The two-repository test runs both A-drains and B-drains directions: each confirms only its own SHA, never queries the foreign SHA, reports the foreign owner in `handedOff`, and deletes the completed segment. |
+| F001, F002, F004, F006, F007 regression sweep | CLOSED | Restored focused suites passed: 104 tests across nudge, commit service, ingress, and doctor act. |
+
+### Decision attacks
+
+| Decision | Result | Review |
+|---|---|---|
+| Identity is git common dir | PASS | `refs/notes/ai` is shared by linked worktrees, so common-dir identity avoids falsely separating sibling worktrees. The adapter uses `--path-format=absolute`; its older-Git fallback resolves a relative result from the adapter cwd, preserving an absolute identity. |
+| Delete an all-foreign segment after successful replay | PASS | This is distinct from a sidecar-less segment: every entry is explicitly tagged, known not to belong to the current repository, and relay success is required before deletion. A no-sidecar segment remains `unconfirmable` and retained. |
+| Untagged entries use location | **NOT CLOSED** | `isWithin(cwd, path)` treats every sidecar physically under the repo as local. A machine-global file target may itself be located under that repo, so an untagged foreign entry in `<repo>/trace2/agent.jsonl.shas` is wrongly claimed as own, queried locally, and retained as missing. |
+
+### New finding — F008: untagged sidecars at a global target inside a repository are misclassified
+
+`partitionByRepo()` receives `sidecarIsRepoLocal` from a broad containment test in
+`nudge.ts`. That is sound for the harness-controlled
+`.harness/temp/trace2/buffer.jsonl`, but not for every path beneath the worktree:
+`trace2.eventTarget` is machine-global and can legally name
+`<repo>/trace2/agent.jsonl`. An older/unidentified sidecar at that target can contain
+another repository's untagged SHA. The current location rule calls it ours, queries a
+note that cannot exist in this repository, and retains the segment indefinitely -- the
+cross-repository poisoning fixed for tagged entries reappears for the migration/fallback
+format.
+
+A temporary regression probe with an untagged foreign `SHA_B` at
+`/repoA/trace2/agent.jsonl` and repo A's recorded target failed RED: expected
+`replayed` plus `handedOff=[{ sha: SHA_B, repo: null }]`, received `retained`.
+The temporary test was removed before the restored suite.
+
+Restrict the local-location fallback to the harness-owned default buffer/its segment
+directory, not arbitrary paths within the repository. Treat untagged entries at a
+configured or recorded file target as ambiguous/global and hand them off. Add the
+regression above.
+
+### Dim-0 evidence
+
+- Disabled the recorded-target authorization predicate; the targeted nudge set went
+  **RED** with 3 failures: the composed F003 drain and both two-repository directions
+  were refused.
+- Replaced own-vs-foreign partitioning with `mine = false`; the targeted set went
+  **RED** with 3 failures: both ownership directions lost their recovery and the
+  local pre-identity control no longer confirmed.
+- Both mutations were restored. No production or test modification remains from this
+  review; only this review artifact is changed.
+
+### Gates
+
+- `node harness/cli/bin/harness.js plan validate docs/plans/074-sandbox-attribution --complete`:
+  0 errors, 0 warnings, 0 open items.
+- `just checks`: completed at the recorded non-blocking baseline -- arch 2,
+  markdown 196, Windows 6.
+
+---
+
+## Round 7 — fix commit `c575823a`
+
+**Verdict: APPROVE_WITH_NOTES**
+
+| AC | Final confidence | Evidence |
+|---|---|---|
+| ac-0001 | High | Socket probe/relay ports and trace2 target classification are fake-driven, bounded, and cover configured, disabled, descriptor, and absolute-file forms. |
+| ac-0002 | High | The additive ingress-blocked verdict is probe-driven and covered without changing pre-existing verdict paths. |
+| ac-0003 | High | At-risk history is bounded, batched, and reports its evidence rule rather than overclaiming a clean state. |
+| ac-0004 | High | Capture-liveness and the nudge's sole healthy claim are gated by observable state; a retained segment cannot read healthy. |
+| ac-0005 | High | `harness commit` partitions direct, file, and harness-buffered paths; file recovery is recorded, contained, and sidecar-tagged. |
+| ac-0006 | High | Rotate/replay/confirm/delete is conservative: tagged identity governs ownership, unknown legacy entries retain, and all retained work is text-visible. |
+| ac-0007 | High | Doctor/checks receive probe-only capability; replay is isolated to the explicit nudge subcommand. |
+| ac-0008 | High | Core commit guidance, injection, and doctor wiring are additive and idempotent. |
+| ac-0009 | High | The public collector guide states the shipped recovery limits and machine-global target behavior. |
+| ac-000a | High | The implementation uses built-in adapters and fake-driven tests; the final composite gate passed at its documented warning baseline. |
+
+### F011 closure
+
+The rendering contract lives under `src`, which is the actual `tsconfig` include set. Adding and
+populating an optional `RetainedSegment.reviewOnly` field without a disposition failed both
+independent enforcement layers: `tsc` rejected the incomplete total map, and the test-only
+own-key sweep rejected the populated runtime value. The contract also exposed and repaired
+text invisibility for `handedOff`: enumerated and relay-failed segments now name their foreign
+owners, while the relay-failed wording deliberately makes no claim that replay succeeded.
+
+### Independent Dim-0 evidence
+
+- Suppressed foreign-owner rendering; the R6 relay-failed and enumerated-owner cases went
+  **RED** (2 failures).
+- Suppressed the legacy manual-action prose; the R5 legacy and mixed-retry cases went
+  **RED** (3 failures).
+- The populated optional-field mutation independently produced compiler error TS2741 and,
+  with typechecking skipped, a runtime own-key failure. All mutations were restored.
+
+### Residual risks
+
+- `FakeFs.rename()` and `writeText()` do not naturally update directory listings; telemetry
+  tests explicitly seed `readdir` fixtures, so that fake-fidelity gap remains deferred.
+- U-4 remains unproven: the `harness` allowlist prefix itself has not been demonstrated from a
+  Cursor sandbox (only the underlying `git` and `node` shapes are proven).
+- U-1/U-2 transcript-sweep behavior is recorded but not relied upon by this feature.
+- Pre-identity sidecars retain until a human verifies attribution and deletes them; new
+  `harness commit` sidecars are repository-tagged, so this legacy path ages out.
+- Mixed recovery guidance says to repeat the retry for remaining segments while also naming
+  legacy segments for manual deletion; the actionable per-segment paths remain explicit, but
+  that broad wording is a minor clarity risk.
+
+### PR closing paragraph
+
+Phase 1 is approved for PR #104: it adds a bounded, observable attribution recovery path
+without weakening the read-only doctor surface. Buffered commits now retain provable identity,
+replay conservatively, and name recovery work in both JSON and default text output. Legacy
+sidecars remain intentionally manual rather than guessed, while new sidecars are
+repository-tagged so the gap ages out. The remaining risks are explicitly documented: fake
+directory-listing fidelity, the unproven `harness` allowlist prefix, and recorded-but-unrelied-on
+transcript-sweep behavior.
+
+### Gates
+
+- `node harness/cli/bin/harness.js plan validate docs/plans/074-sandbox-attribution --complete`:
+  0 errors, 0 warnings, 0 open items.
+- `just checks`: completed at the recorded non-blocking baseline -- arch 2,
+  markdown 196, Windows 6.
+
+---
+
+## Round 5 — fix commit `6c9c8286`
+
+**Verdict: FIX_REQUIRED**
+
+| Item | Status | Evidence |
+|---|---|---|
+| F009 and the location-heuristic category | CLOSED | `partitionByRepo(entries, ownRepo)` takes no path argument. A source sweep found path use only in buffer authorization, not ownership. The structural three-location regression proves the same untagged sidecar stays `unknown` everywhere; no fourth provenance-by-location counterexample remains. |
+| Three ownership arms and deletion gates | CLOSED | Tagged own entries confirm; tagged foreign entries hand off; absent/unreadable identity is `unknown`. Both delete branches require `unknown.length === 0`, so only provably foreign or fully confirmed-and-known segments can be deleted. |
+| F001-F008 and tagged cross-repository regression sweep | CLOSED | Restored focused suites passed: 109 tests across nudge, commit service, ingress, and doctor act. |
+| Retained legacy segment visible on every run | **NOT CLOSED** | The first replay is explicit, but a later enumeration-only run exposes `unknown` only inside JSON data. The default text surface omits both its unknown-provenance reason and SHA. |
+
+### New finding — F010: later text-mode runs hide legacy provenance and SHA
+
+For a retained legacy segment with no live buffer, `runNudge()` produces the normal
+`no-buffer` detail and `withRemainingSegments()` appends only the segment path. The resulting
+text still calls that shape healthy before noting an earlier segment. Although
+`retained[0].unknown` is present in the JSON envelope, `registerTelemetryNudge()` prints only
+`outcome.detail` and `outcome.next_action` in the default human mode. Neither contains
+`UNKNOWN provenance` or the affected SHA.
+
+A temporary regression probe failed RED: a later run with an untagged `SHA_A` retained segment
+expected its text detail to include `UNKNOWN provenance` and `SHA_A`; it received only the
+no-buffer/earlier-segment prose. This is a **legacy-only recovery path**, but it blocks
+approval: the shipped rationale for retaining forever is that every run visibly states the
+reason, SHA, and concrete operator action. A nested JSON field is not sufficient when the
+default command output hides it.
+
+Make `withRemainingSegments()` render each unknown segment's provenance and SHA into the text
+detail (and use its legacy-specific operator instruction), with a regression for the later
+no-buffer invocation. It should not call a run healthy while known retained recovery work
+exists.
+
+### Independent Dim-0 evidence
+
+- Inverted the tagged own-vs-foreign common-dir equality; the targeted nudge set went
+  **RED** with 5 failures across full confirmation, both cross-repository directions,
+  tagged deletion, and mixed ownership.
+- Disabled the live no-sidecar guard; its targeted set went **RED** with 2 failures,
+  demonstrating deletion on an empty identity set is caught.
+- Both mutations and the temporary F010 probe were removed before the restored suite.
+
+### Gates
+
+- `node harness/cli/bin/harness.js plan validate docs/plans/074-sandbox-attribution --complete`:
+  0 errors, 0 warnings, 0 open items.
+- `just checks`: completed at the recorded non-blocking baseline -- arch 2,
+  markdown 196, Windows 6.
+
+---
+
+## Round 4 — fix commit `e817f431`
+
+**Verdict: FIX_REQUIRED**
+
+| Item | Status | Evidence |
+|---|---|---|
+| F008's original in-worktree target case | CLOSED | Both `runNudge` and `inspectSegment` now call `isHarnessOwned`. The new run and enumeration regressions show an untagged foreign sidecar at `/repoA/trace2/agent.jsonl` is handed off, never queried locally, and does not retain the segment. |
+| Four-way partition | NOT CLOSED | Known-own, known-foreign, unknown-at-an-ordinary-shared target, and no-sidecar all behave as specified. But the implementation adds an unproven fifth arm: untagged entries under the default harness buffer directory are presumed own solely by location. |
+| F001-F007 and tagged cross-repository regression sweep | CLOSED | Restored focused suites passed: 107 tests across nudge, commit service, ingress, and doctor act. Tagged two-repository recovery continues to cover both drain directions. |
+
+### New finding — F009: a global file target can be the default harness buffer
+
+The F008 repair's central claim is false: Git accepts any absolute path for the global
+`trace2.eventTarget`, including
+`/repoA/.harness/temp/trace2/buffer.jsonl`. This review set that value in an isolated
+`GIT_CONFIG_GLOBAL` and Git read it back verbatim.
+
+Consequently, a foreign pre-identity sidecar at that configured target follows the
+supposedly "harness-owned" path. A temporary regression probe seeded bare `SHA_B` beside
+the default buffer, ran nudge in repo A, and expected `replayed` plus
+`handedOff=[{ sha: SHA_B, repo: null }]`; it failed RED with `retained`. The implementation
+queried the foreign SHA against repo A's notes, recreating F008's permanent-retention
+failure at the one path the new predicate trusts most.
+
+Path location cannot establish provenance once an operator may configure a machine-global
+target to that path. Do not treat any untagged sidecar as automatically owned without a
+durable provenance record. The safe repair is to classify legacy untagged entries as
+ambiguous (retain explicitly or hand off only under a separately proven policy), while new
+sidecars remain tagged; alternatively add a durable marker that distinguishes harness
+buffer provenance before relying on automatic confirmation or deletion. Add the probe
+above as a regression.
+
+### Independent Dim-0 evidence
+
+- Disabled the retained-segment no-sidecar classification guard; its targeted set went
+  **RED** with the legacy segment changing from `unconfirmable` to `handed-off`.
+- Inverted the full-confirmation delete guard; its targeted set went **RED** with 5
+  failures across all-confirm, partial-retain, delayed-note, and both tagged
+  two-repository directions.
+- Both mutations and the temporary F009 probe were removed before the restored suite.
+
+### Gates
+
+- `node harness/cli/bin/harness.js plan validate docs/plans/074-sandbox-attribution --complete`:
+  0 errors, 0 warnings, 0 open items.
+- `just checks`: completed at the recorded non-blocking baseline -- arch 2,
+  markdown 196, Windows 6.
+
+---
+
+## Round 6 — fix commit `ff41bd37`
+
+**Verdict: FIX_REQUIRED**
+
+| Item | Status | Evidence |
+|---|---|---|
+| F010 text-mode visibility | CLOSED | `HEALTHY_NO_BUFFER` has one emission site, reached only after merging retained segments and only for an empty set. Later legacy runs now render their unknown-provenance reason, SHA, and delete-by-hand instruction in text; a genuinely empty run is the sole healthy control. |
+| Retry pointer | CLOSED | Retry selection uses the first owed segment with `stillMissing` SHAs. Purely unknown legacy segments receive only the manual-delete instruction; mixed sets receive both the resolvable retry and the legacy instruction. |
+| F001-F009 / provenance / three-arm regression sweep | CLOSED | Restored focused suites passed: 114 tests across nudge, commit service, ingress, and doctor act. |
+| Future JSON/text parity guarantee | **NOT CLOSED** | `expectTextParity()` checks only today's `path` and `unknown` fields. It cannot detect a future JSON-only `RetainedSegment` field. |
+
+### New finding — F011: the parity guard is not generic
+
+The F010 behavior is correct today, but its new guard does not provide the stated
+future-field protection. A temporary optional `reviewOnly` field was added to
+`RetainedSegment` and populated in an enumerated retained segment without adding it to
+`detail` or `next_action`. All five R5 text/parity tests stayed green. The helper iterates
+known fields (`path`, `unknown`) rather than a complete schema-derived rendering contract,
+so a new JSON-only field can bypass it silently.
+
+This is not a present runtime feature defect or a legacy-only migration issue. It is a
+test-integrity and maintenance defect in the explicit safeguard introduced for F010. In my
+judgment it blocks this ship gate because the packet specifically requires a guard that
+catches a new JSON-only field; recording it as a known gap would contradict the safety claim
+made by the implementation and documentation.
+
+Define a complete, compiler-enforced retained-segment rendering contract (or a
+schema-derived parity assertion) so adding any serialised retained-segment field requires an
+explicit text-rendering decision, then prove the temporary-field mutation fails.
+
+### Independent Dim-0 evidence
+
+- Expanded the empty-merged-set healthy condition to accept one retained segment; the R5
+  no-buffer legacy cases went **RED** (2 failures), proving no retained set may reach the
+  healthy path.
+- Suppressed the unknown-segment manual instruction; the R5 text/retry cases went **RED**
+  (3 failures), including pure-legacy and mixed retry paths.
+- Both mutations and the temporary F011 field were removed before the restored suite.
+
+### Gates
+
+- `node harness/cli/bin/harness.js plan validate docs/plans/074-sandbox-attribution --complete`:
+  0 errors, 0 warnings, 0 open items.
+- `just checks`: completed at the recorded non-blocking baseline -- arch 2,
+  markdown 196, Windows 6.
