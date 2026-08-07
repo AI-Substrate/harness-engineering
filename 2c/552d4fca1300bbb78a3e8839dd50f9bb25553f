@@ -1,0 +1,31 @@
+docs/plans/074-sandbox-attribution/assets/validations/README.md
+  s_a76964380084ef::t_2655da0a658a94 1-109
+docs/plans/074-sandbox-attribution/assets/validations/cursor-run-1-reachable.md
+  s_a76964380084ef::t_6693d7426f7970 1-100
+docs/plans/074-sandbox-attribution/assets/validations/cursor-run-2-blocked.md
+  s_a76964380084ef::t_fd24d9013eda96 1-103
+docs/plans/074-sandbox-attribution/assets/validations/prompt-run-1.md
+  s_a76964380084ef::t_144e86359bf929 1-88
+docs/plans/074-sandbox-attribution/assets/validations/prompt-run-2.md
+  s_a76964380084ef::t_e9237104bffde9 1-95
+docs/plans/074-sandbox-attribution/plan.dd.json
+  s_a76964380084ef::t_7ee024c8b96e3d 14-15
+docs/plans/074-sandbox-attribution/plan.dd.md
+  s_a76964380084ef::t_6edddef35c12b7 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2c552d4fca1300bbb78a3e8839dd50f9bb25553f",
+  "prompts": {},
+  "sessions": {
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
