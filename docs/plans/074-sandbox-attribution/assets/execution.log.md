@@ -418,3 +418,84 @@ just checks → tests:ok biome:ok typecheck:ok check:docs:ok check:flows:ok
 Tests: **4981 → 4986 passing**, 339 files, no skips. `plan validate --complete`: 0 errors,
 0 warnings, 0 open, 130 items. `docs/how/gitai-collector.md` step 5 rewritten — it described
 enumeration without saying the report has to reach the *default* surface.
+
+## Fix round 6 — F011: the guard advertised more than its mechanism delivered
+
+Round 6 closed F010 and everything before it. The one finding left was not about the *behaviour*
+round 5 shipped — that was judged correct — but about the **safeguard** shipped with it.
+
+**The defect.** `expectTextParity()` was introduced as a guarantee that a future JSON-only
+`RetainedSegment` field could not be added without text rendering. The reviewer disproved the
+guarantee experimentally: he added a populated optional field to the interface, rendered it
+nowhere, and **all five R5 parity tests stayed green**. The helper iterated the fields that existed
+the day it was written (`path`, `unknown`), so it tested *instances*, not the *contract*.
+
+This is a test-integrity defect, and it is the same shape as the bug it was written to prevent, one
+level up: an advertised guarantee whose mechanism cannot deliver it. A longer hardcoded field list
+would not fix it — it would just move the expiry date.
+
+**The fix — compiler-enforced completeness.** `RETAINED_FIELD_RENDERING` is a total map
+`Record<keyof RetainedSegment, RetainedFieldRendering>`, and each entry is either
+`{ kind: 'text', contract }` (legible from `detail`/`next_action`, with the guarantee stated) or
+`{ kind: 'json-only', because }` (a stated reason no operator needs it). Adding a field to
+`RetainedSegment` — **optional or not** — now fails `tsc` until someone declares its disposition.
+
+It lives in **`src`, not the test file**, deliberately: the repo's typecheck gate is
+`tsc --noEmit -p harness/cli/tsconfig.json`, whose `include` is `["src"]`. A contract in the test
+file would have compiled nowhere CI looks, and the compile-time refusal would have been imaginary.
+
+`expectTextParity` now iterates that map, giving two independent nets:
+
+1. **typecheck** — a new field with no declared disposition fails the gate;
+2. **runtime** — for each retained segment, every own key must appear in the contract, so a
+   populated undeclared field goes RED even if the typecheck is skipped. Declaring a field `text`
+   with no assertion in the test is also RED.
+
+**The second advertised guarantee had the same hole, and the completed contract found it.** Writing
+`handedOff`'s disposition down forced the question of whether it was actually rendered, and it was
+not: `describeHandedOff` runs only on `runNudge`'s replayed branches. An **enumerated** foreign
+segment and a **relay-failed** one both reported an owning repository in JSON and nowhere the
+operator looks. Fixed with `describeForeignOwners` — the same fact with **no replay claim attached**
+(saying "were REPLAYED and handed off" after a failed send would be a lie) — emitted as a
+`handoffNote` for every non-own retained segment, and appended to the relay-failed detail along with
+the unknown-provenance prose that branch was also missing.
+
+Dispositions recorded: `path`, `stillMissing`, `handedOff`, `unknown` → text (each with its exact
+guarantee); `recovered` → JSON-only (a resolved state owes no action); `reason` → JSON-only (a
+machine-facing token whose *consequence* is what renders).
+
+**Proof — the reviewer's mutation reproduced.** Added `reviewOnly?: string` to `RetainedSegment`
+and populated it in `inspectSegment`:
+
+```
+error TS2741: Property 'reviewOnly' is missing in type '{ path: …; reason: …; }'
+  but required in type 'Record<keyof RetainedSegment, RetainedFieldRendering>'.
+216 export const RETAINED_FIELD_RENDERING: Record<keyof RetainedSegment, RetainedFieldRendering>
+```
+
+and with the typecheck skipped, **5 RED** — including
+`AssertionError: expected { path: …, …(5) } to have property "reviewOnly"` at the own-key sweep in
+`expectTextParity`. Mutation reverted.
+
+Two further mutation checks on the hand-off fix (both restored): dropping `handoffNote` → **2 RED**;
+dropping the relay-failed hand-off/unknown prose → **1 RED**.
+
+**Guards (4 new, 53 tests in the file).** The contract's own totality and assertion-coverage check;
+the rogue-field runtime refusal; a relay failure that names its foreign repositories and unprovable
+shas without claiming a replay; an enumerated mixed segment that names the foreign owner *and* keeps
+its retry pointer. `expectTextParity` was hoisted to module scope and also applied to the R2
+enumerated-hand-off test.
+
+### Gate after the fix round
+
+```
+just checks → tests:ok biome:ok typecheck:ok check:docs:ok check:flows:ok
+              check:telemetry-fixtures:ok check:doctrine-parity:ok check:dd-docs:ok
+              root-invocation-smoke:ok dd doctor:ok skills-check:ok
+              arch-check:2  markdown-lint:196  windows-check:6      ← baseline, unchanged
+```
+
+Tests: **4986 → 4990 passing**, 339 files, no skips. `plan validate --complete`: 0 errors,
+0 warnings, 0 open, 130 items. `docs/how/gitai-collector.md` step 5 updated — it stated the parity
+requirement as a blanket claim about "anything the JSON envelope knows", which is exactly the
+overclaim F011 is about; it now describes the declared-disposition mechanism that enforces it.

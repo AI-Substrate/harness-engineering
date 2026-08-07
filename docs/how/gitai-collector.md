@@ -464,12 +464,18 @@ live traffic. Its lifecycle is deliberate:
    segment *this repository still owes* is `retained`, never a healthy "no
    buffer, nothing to do". A segment whose commits are all another repository's
    is named, not owned. The report must reach the **default** surface: the verb
-   prints only its `detail` and `next_action` in text mode, so anything the JSON
-   envelope knows about a retained segment — including an unknown-provenance
-   reason and its shas — is rendered into those two strings. A field carried only
-   in JSON is invisible to the operator who has to act on it, which is the same
-   "green while something is owed" failure one layer out, in the renderer instead
-   of the check. Only *no buffer **and** nothing retained* may read as healthy.
+   prints only its `detail` and `next_action` in text mode. So each field of a
+   retained segment carries a **declared disposition** — rendered into those two
+   strings (the path, the retry, the owning repositories, the unknown-provenance
+   reason and its shas), or deliberately JSON-only with a stated reason (a
+   *recovered* sha owes nobody an action; the internal `reason` enum renders its
+   consequence instead). The dispositions are a total map over the type, so
+   adding a field fails the typecheck until someone decides which it is —
+   otherwise the guarantee would only ever cover the fields that existed the day
+   it was written. A field carried only in JSON by accident is invisible to the
+   operator who has to act on it, which is the same "green while something is
+   owed" failure one layer out, in the renderer instead of the check. Only *no
+   buffer **and** nothing retained* may read as healthy.
 
 v1 **never automatically re-replays** a retained segment. A live-daemon spike did
 find duplicate replay to be idempotent — notes came back byte-identical and the

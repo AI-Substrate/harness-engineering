@@ -398,3 +398,51 @@ above as a regression.
   0 errors, 0 warnings, 0 open items.
 - `just checks`: completed at the recorded non-blocking baseline -- arch 2,
   markdown 196, Windows 6.
+
+---
+
+## Round 6 — fix commit `ff41bd37`
+
+**Verdict: FIX_REQUIRED**
+
+| Item | Status | Evidence |
+|---|---|---|
+| F010 text-mode visibility | CLOSED | `HEALTHY_NO_BUFFER` has one emission site, reached only after merging retained segments and only for an empty set. Later legacy runs now render their unknown-provenance reason, SHA, and delete-by-hand instruction in text; a genuinely empty run is the sole healthy control. |
+| Retry pointer | CLOSED | Retry selection uses the first owed segment with `stillMissing` SHAs. Purely unknown legacy segments receive only the manual-delete instruction; mixed sets receive both the resolvable retry and the legacy instruction. |
+| F001-F009 / provenance / three-arm regression sweep | CLOSED | Restored focused suites passed: 114 tests across nudge, commit service, ingress, and doctor act. |
+| Future JSON/text parity guarantee | **NOT CLOSED** | `expectTextParity()` checks only today's `path` and `unknown` fields. It cannot detect a future JSON-only `RetainedSegment` field. |
+
+### New finding — F011: the parity guard is not generic
+
+The F010 behavior is correct today, but its new guard does not provide the stated
+future-field protection. A temporary optional `reviewOnly` field was added to
+`RetainedSegment` and populated in an enumerated retained segment without adding it to
+`detail` or `next_action`. All five R5 text/parity tests stayed green. The helper iterates
+known fields (`path`, `unknown`) rather than a complete schema-derived rendering contract,
+so a new JSON-only field can bypass it silently.
+
+This is not a present runtime feature defect or a legacy-only migration issue. It is a
+test-integrity and maintenance defect in the explicit safeguard introduced for F010. In my
+judgment it blocks this ship gate because the packet specifically requires a guard that
+catches a new JSON-only field; recording it as a known gap would contradict the safety claim
+made by the implementation and documentation.
+
+Define a complete, compiler-enforced retained-segment rendering contract (or a
+schema-derived parity assertion) so adding any serialised retained-segment field requires an
+explicit text-rendering decision, then prove the temporary-field mutation fails.
+
+### Independent Dim-0 evidence
+
+- Expanded the empty-merged-set healthy condition to accept one retained segment; the R5
+  no-buffer legacy cases went **RED** (2 failures), proving no retained set may reach the
+  healthy path.
+- Suppressed the unknown-segment manual instruction; the R5 text/retry cases went **RED**
+  (3 failures), including pure-legacy and mixed retry paths.
+- Both mutations and the temporary F011 field were removed before the restored suite.
+
+### Gates
+
+- `node harness/cli/bin/harness.js plan validate docs/plans/074-sandbox-attribution --complete`:
+  0 errors, 0 warnings, 0 open items.
+- `just checks`: completed at the recorded non-blocking baseline -- arch 2,
+  markdown 196, Windows 6.

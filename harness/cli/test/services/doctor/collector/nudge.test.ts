@@ -13,6 +13,8 @@ import { readIngress } from '../../../../src/services/doctor/collector/ingress.j
 import {
   commitShasIn,
   type NudgeDeps,
+  RETAINED_FIELD_RENDERING,
+  type RetainedSegment,
   telemetryNudge,
 } from '../../../../src/services/doctor/collector/nudge.js';
 import { FakeCollectorFs } from '../../../support/collector-fakes.js';
@@ -109,6 +111,74 @@ function deps(over: {
     confirmTimeoutMs: 500,
     ...(over.bufferPath !== undefined && { bufferPath: over.bufferPath }),
   };
+}
+
+/** The phrase that makes an unprovable retention legible rather than a bare path. */
+const UNKNOWN_REASON = 'UNKNOWN provenance';
+
+/**
+ * The parity contract, as an assertion. `harness doctor telemetry-nudge`
+ * prints `detail` and `next_action` and NOTHING else in its default text mode,
+ * so every retained segment the JSON envelope describes must be legible from
+ * those two strings alone. A field added to `retained[]` and nowhere else is
+ * invisible to the operator who has to act on it.
+ *
+ * Round 6's F011: this helper used to check `path` and `unknown` because those
+ * were the fields that existed the day it was written. The reviewer added a
+ * populated optional field to `RetainedSegment`, rendered it nowhere, and all
+ * five of these tests stayed green — the guard tested instances, not the
+ * contract, so its advertised future-field protection was not real.
+ *
+ * It now iterates `RETAINED_FIELD_RENDERING` (the src-side total map over
+ * `keyof RetainedSegment`), which gives two independent nets:
+ *   1. a new field fails `tsc -p harness/cli/tsconfig.json` until its
+ *      disposition is declared — the repo's actual typecheck gate, which does
+ *      NOT cover this test file, which is why the map lives in `src`;
+ *   2. even with the typecheck skipped, the own-keys sweep below goes RED the
+ *      moment such a field is POPULATED on a real segment.
+ * Declaring a field `text` with no assertion here is itself RED.
+ */
+const FIELD_ASSERTIONS: Record<string, (segment: RetainedSegment, text: string) => void> = {
+  path: (segment, text) => {
+    expect(text).toContain(segment.path);
+  },
+  stillMissing: (segment, text) => {
+    if (segment.stillMissing.length === 0) return;
+    // Per-segment, never per-sha: the operator's move is to re-run the buffer.
+    expect(text).toContain('--buffer');
+  },
+  handedOff: (segment, text) => {
+    for (const repo of new Set(segment.handedOff.map((h) => h.repo))) {
+      expect(text).toContain(repo);
+    }
+  },
+  unknown: (segment, text) => {
+    if (segment.unknown.length === 0) return;
+    expect(text).toContain(UNKNOWN_REASON);
+    for (const sha of segment.unknown) expect(text).toContain(sha);
+  },
+};
+
+function expectTextParity(out: Awaited<ReturnType<typeof telemetryNudge>>): void {
+  const text = `${out.detail} ${out.next_action ?? ''}`;
+  for (const [field, rendering] of Object.entries(RETAINED_FIELD_RENDERING)) {
+    // A field the contract PROMISES to render, with nothing here checking it,
+    // is an advertised guarantee with no mechanism — F011's exact shape.
+    if (rendering.kind === 'text') expect(FIELD_ASSERTIONS[field]).toBeDefined();
+  }
+  for (const segment of out.retained) {
+    // Runtime completeness. Serialising a field with no declared disposition is
+    // the reviewer's mutation; this catches it without needing the typecheck.
+    for (const key of Object.keys(segment)) {
+      expect(RETAINED_FIELD_RENDERING).toHaveProperty(key);
+    }
+    for (const [field, rendering] of Object.entries(RETAINED_FIELD_RENDERING)) {
+      if (rendering.kind !== 'text') continue;
+      FIELD_ASSERTIONS[field]?.(segment, text);
+    }
+  }
+  // Nothing retained may be described as the healthy shape.
+  if (out.retained.length > 0) expect(text).not.toContain('healthy shape');
 }
 
 describe('plan 074 · ac-0006 — which commits a segment covers', () => {
@@ -899,6 +969,10 @@ describe('plan 074 · ac-0005/ac-0006 — R2: the buffer is machine-global, not 
       },
     ]);
     expect(out.detail).toContain('belong to other repositories');
+    // Round 6's F011: the OWNING repo was in the JSON and nowhere the operator
+    // looks. Naming the segment without naming who can clear it is a dead end.
+    expect(out.detail).toContain(ID_B);
+    expectTextParity(out);
     // No retry pointer at a segment this repo cannot clear, and nothing touched.
     expect(out.next_action).toBeUndefined();
     expect(fs.renames).toEqual([]);
@@ -1138,32 +1212,12 @@ describe('plan 074 · ac-0005/ac-0006 — R4: location cannot prove provenance (
 describe('plan 074 · ac-0004/ac-0006 — R5: the TEXT surface reports what the JSON knows (F010)', () => {
   const OLD_NAME = 'segment-2026-08-06T00-00-00-000Z-a.jsonl';
   const OLD = `${REPO}/.harness/temp/trace2/${OLD_NAME}`;
-  const UNKNOWN_REASON = 'UNKNOWN provenance';
 
   /** A trace2 dir whose LISTING already contains an earlier run's segment. */
   function fsWithOldSegment(): FakeFs {
     const fs = new FakeFs({}, { [`${REPO}/.harness/temp/trace2`]: [OLD_NAME] });
     fs.mkdirp(`${REPO}/.harness/temp/trace2`);
     return fs;
-  }
-
-  /**
-   * The parity contract, as an assertion. `harness doctor telemetry-nudge`
-   * prints `detail` and `next_action` and NOTHING else in its default text mode,
-   * so every retained segment the JSON envelope describes must be legible from
-   * those two strings alone. A field added to `retained[]` and nowhere else is
-   * invisible to the operator who has to act on it.
-   */
-  function expectTextParity(out: Awaited<ReturnType<typeof telemetryNudge>>): void {
-    const text = `${out.detail} ${out.next_action ?? ''}`;
-    for (const segment of out.retained) {
-      expect(text).toContain(segment.path);
-      if (segment.unknown.length === 0) continue;
-      expect(text).toContain(UNKNOWN_REASON);
-      for (const sha of segment.unknown) expect(text).toContain(sha);
-    }
-    // Nothing retained may be described as the healthy shape.
-    if (out.retained.length > 0) expect(text).not.toContain('healthy shape');
   }
 
   it('F010 — a LATER run with no live buffer states the legacy reason, the sha, and the action', async () => {
@@ -1269,5 +1323,122 @@ describe('plan 074 · ac-0004/ac-0006 — R5: the TEXT surface reports what the 
     expect(out.reason).toBe('no-buffer');
     expect(out.retained).toEqual([]);
     expect(out.detail).toContain('healthy shape');
+  });
+});
+
+/**
+ * Review round 6 — F011: the guard must enforce the CONTRACT, not today's fields.
+ *
+ * Round 5 closed the text/JSON parity gap and advertised a guard against future
+ * JSON-only fields. The reviewer disproved the advertisement: a populated optional
+ * `RetainedSegment` field, rendered nowhere, left all five R5 tests green, because
+ * the helper checked the fields that existed the day it was written.
+ *
+ * The mechanism now lives in `src`: `RETAINED_FIELD_RENDERING` is a total map over
+ * `keyof RetainedSegment`, so a new field fails the repo's typecheck gate until its
+ * disposition is stated (the gate covers `src` only — that is why the map is there
+ * and not here), and `expectTextParity` iterates it rather than a list of its own.
+ *
+ * Applying the completed contract immediately found the SECOND instance of F010 it
+ * was built to find: `handedOff` named its owning repositories only on the branch
+ * that replayed them, so an enumerated foreign segment and a relay-failed one both
+ * reported an owner in JSON that no operator would ever see.
+ */
+describe('plan 074 · ac-0004/ac-0006 — R6: the parity guard enforces the CONTRACT (F011)', () => {
+  it('every serialised field has a stated disposition, and every rendered one has an assertion', () => {
+    // The contract is what makes the guard generic; an empty or partial map would
+    // make `expectTextParity` vacuous without failing anything else.
+    const fields = Object.keys(RETAINED_FIELD_RENDERING);
+    expect(fields.length).toBeGreaterThan(0);
+    for (const [field, rendering] of Object.entries(RETAINED_FIELD_RENDERING)) {
+      if (rendering.kind === 'text') {
+        expect(rendering.contract.length).toBeGreaterThan(0);
+        // A promise with no mechanism is exactly the defect this round is about.
+        expect(FIELD_ASSERTIONS[field]).toBeDefined();
+      } else {
+        expect(rendering.because.length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('a populated field with no disposition is REFUSED at runtime, not just by tsc', () => {
+    // The reviewer's mutation, simulated on the assertion itself: a segment
+    // carrying a field the contract does not know about must fail. `tsc` is the
+    // first net and catches the declaration; this is the second, and catches the
+    // VALUE — so the guard still bites in a run where the typecheck was skipped.
+    const rogue = {
+      path: SEGMENT,
+      stillMissing: [],
+      recovered: [],
+      handedOff: [],
+      unknown: [],
+      reason: 'unconfirmable',
+      reviewOnly: 'a future JSON-only field',
+    } as unknown as RetainedSegment;
+
+    expect(() =>
+      expectTextParity({
+        status: 'retained',
+        segment: SEGMENT,
+        bytes: 0,
+        recovered: [],
+        stillMissing: [],
+        handedOff: [],
+        retained: [rogue],
+        detail: `The segment is RETAINED INTACT at ${SEGMENT}.`,
+      }),
+    ).toThrow();
+  });
+
+  it('a relay failure still names the repositories and the unprovable shas it is holding', async () => {
+    // Found BY the completed contract. The rotated segment carries a foreign
+    // entry and a legacy one; the send failed, so `describeHandedOff`'s
+    // "were REPLAYED and handed off" would be a lie — and saying nothing at all
+    // was the F010 shape. It now states ownership without claiming a replay.
+    const fs = new FakeFs();
+    fs.mkdirp(`${REPO}/.harness/temp/trace2`);
+    fs.writeText(BUFFER, payload());
+    fs.writeText(SIDECAR, `${SHA_A} /elsewhere/.git\n${SHA_B}\n`);
+    const d = deps({
+      fs,
+      ingress: await ingress('connected'),
+      relay: new FakeSocketRelay({ ok: false, outcome: 'denied' }),
+    });
+
+    const out = await telemetryNudge(d);
+
+    expect(out.status).toBe('retained');
+    expect(out.reason).toBe('relay-failed');
+    expect(out.retained[0]?.handedOff).toEqual([{ sha: SHA_A, repo: '/elsewhere/.git' }]);
+    expect(out.retained[0]?.unknown).toEqual([SHA_B]);
+    // Ownership named, with NO replay claim attached to it.
+    expect(out.detail).toContain('/elsewhere/.git');
+    expect(out.detail).not.toContain('were REPLAYED and handed off');
+    expect(out.detail).toContain(UNKNOWN_REASON);
+    expectTextParity(out);
+  });
+
+  it('an ENUMERATED segment that also names foreign commits says whose they are', async () => {
+    // The mixed case the R2 hand-off tests never reached: an earlier run left a
+    // segment this repo partly owns and partly cannot. `describeHandedOff` runs
+    // only on this run's own segment, so the foreign owner reached JSON alone.
+    const dir = `${REPO}/.harness/temp/trace2`;
+    const OLD_NAME = 'segment-2026-08-06T00-00-00-000Z-a.jsonl';
+    const OLD = `${dir}/${OLD_NAME}`;
+    const fs = new FakeFs({}, { [dir]: [OLD_NAME] });
+    fs.mkdirp(dir);
+    fs.writeText(OLD, payload());
+    fs.writeText(`${OLD}.shas`, `${SHA_A} ${OWN_ID}\n${SHA_B} /elsewhere/.git\n`);
+    const d = deps({ fs, ingress: await ingress('connected') });
+
+    const out = await telemetryNudge(d);
+
+    expect(out.status).toBe('retained');
+    expect(out.retained[0]?.handedOff).toEqual([{ sha: SHA_B, repo: '/elsewhere/.git' }]);
+    expect(out.retained[0]?.stillMissing).toEqual([SHA_A]);
+    expect(out.detail).toContain('/elsewhere/.git');
+    // And the owned half still gets its retry pointer.
+    expect(out.next_action).toContain(`--buffer ${OLD}`);
+    expectTextParity(out);
   });
 });

@@ -188,6 +188,61 @@ export interface HandedOffSha {
   repo: string;
 }
 
+/** How one serialised `RetainedSegment` field reaches (or deliberately does not reach) the operator. */
+export type RetainedFieldRendering =
+  /** Legible from `detail`/`next_action`. `contract` states exactly what is guaranteed. */
+  | { kind: 'text'; contract: string }
+  /** Deliberately JSON-only. `because` must say why no operator has to see it. */
+  | { kind: 'json-only'; because: string };
+
+/**
+ * What the JSON envelope owes the TEXT surface, field by field.
+ *
+ * Round 5 (F010) fixed a field that reached `retained[]` and never reached the
+ * default output. Round 6 (F011) found the GUARD written for it was no better
+ * than the bug: it asserted the fields that happened to exist that day, so a new
+ * JSON-only field could be added and every parity test stayed green. A guard
+ * that checks instances instead of the contract is the same false comfort one
+ * layer up — an advertised guarantee its mechanism cannot deliver.
+ *
+ * So the contract is a TOTAL map over `keyof RetainedSegment`. Adding a field to
+ * that interface — optional or not — fails `tsc` here until someone states its
+ * disposition, and the parity test iterates THIS instead of a list of its own.
+ * `harness doctor telemetry-nudge` prints only `detail` and `next_action` in its
+ * default mode, so "text" always means "legible from those two strings alone".
+ */
+export const RETAINED_FIELD_RENDERING: Record<keyof RetainedSegment, RetainedFieldRendering> = {
+  path: {
+    kind: 'text',
+    contract: 'Every retained path is named — the path IS the thing an operator acts on.',
+  },
+  stillMissing: {
+    kind: 'text',
+    contract:
+      "While any segment still owes THIS repository a note, the text carries a `--buffer` retry instruction. The action is per-segment, never per-sha, so the shas themselves are `harness doctor`'s attribution-at-risk row to report, not this verb's.",
+  },
+  handedOff: {
+    kind: 'text',
+    contract:
+      "When non-empty, the text names every owning repository — for EVERY retained segment, not just the one this run replayed. The individual foreign shas are not listed: they are another repository's to act on, and the repo name is what routes the operator there.",
+  },
+  unknown: {
+    kind: 'text',
+    contract:
+      'When non-empty, the text states the UNKNOWN-provenance reason and names every sha. Nothing here can ever resolve them, so the operator needs the shas themselves to go and check the repository that made them.',
+  },
+  recovered: {
+    kind: 'json-only',
+    because:
+      'A recovered sha is a RESOLVED state and owes the operator no action. This contract exists so that nothing OWED can hide; branches still count recoveries in prose where it helps, but no guarantee rides on it.',
+  },
+  reason: {
+    kind: 'json-only',
+    because:
+      'The enum token is machine-facing. Every value renders its CONSEQUENCE through the fields above — the retry pointer, the legacy instruction, the hand-off, the relay failure — and the consequence is the part an operator can act on.',
+  },
+};
+
 export interface NudgeOutcome {
   status: 'replayed' | 'retained' | 'skipped';
   reason?: NudgeSkipReason;
@@ -403,6 +458,21 @@ function describeHandedOff(handedOff: readonly HandedOffSha[]): string {
 }
 
 /**
+ * The same fact for a segment this run did NOT replay — enumerated from disk, or
+ * rotated and then failed to send. Deliberately makes no replay claim.
+ *
+ * Round 6's F011: `handedOff` is in the JSON envelope for every retained segment,
+ * but only `describeHandedOff` rendered it, and only `runNudge`'s replayed
+ * branches call that. An enumerated foreign segment, or one whose relay failed,
+ * named its owning repositories in JSON and nowhere the operator would look.
+ */
+function describeForeignOwners(handedOff: readonly HandedOffSha[]): string {
+  if (handedOff.length === 0) return '';
+  const repos = [...new Set(handedOff.map((h) => h.repo))];
+  return ` ${handedOff.length} commit(s) in it belong to ${repos.join(', ')} — this repository cannot confirm them and does not claim them.`;
+}
+
+/**
  * Prose for the legacy arm. Retaining a segment forever is only acceptable
  * while every run SAYS SO, in words that name the cause and do not accuse the
  * commits — so this string is load-bearing, not decoration.
@@ -509,7 +579,8 @@ const HEALTHY_NO_BUFFER =
  * JSON envelope reports about a retained segment must reach `detail`/`next_action`
  * too, because `harness doctor telemetry-nudge` prints only those two fields in
  * its default text mode. A field that exists only in `retained[]` is invisible to
- * the operator who actually has to act on it.
+ * the operator who actually has to act on it. `RETAINED_FIELD_RENDERING` is that
+ * obligation written down field by field, and it is what the parity test asserts.
  */
 function withRemainingSegments(outcome: NudgeOutcome, remaining: RetainedSegment[]): NudgeOutcome {
   const known = new Map(remaining.map((r) => [r.path, r]));
@@ -536,11 +607,18 @@ function withRemainingSegments(outcome: NudgeOutcome, remaining: RetainedSegment
     .filter((r) => r.path !== outcome.segment)
     .map((r) => ` ${r.path} is RETAINED and cannot be resolved here: ${describeUnknown(r.unknown)}`)
     .join('');
+  // Same rule for the hand-off (round 6's F011): the repositories a segment names
+  // are in the JSON for EVERY retained segment, so they must be in the text for
+  // every one too — not only for the segment this run happened to replay.
+  const handoffNote = merged
+    .filter((r) => r.handedOff.length > 0 && r.path !== outcome.segment)
+    .map((r) => ` ${r.path}:${describeForeignOwners(r.handedOff)}`)
+    .join('');
   if (owed.length === 0) {
     return {
       ...outcome,
       retained: merged,
-      detail: `${outcome.detail}${foreignNote}`,
+      detail: `${outcome.detail}${foreignNote}${handoffNote}`,
     };
   }
   // Only a segment with shas THIS repository owns and cannot yet confirm is worth
@@ -569,8 +647,8 @@ function withRemainingSegments(outcome: NudgeOutcome, remaining: RetainedSegment
     retained: merged,
     detail:
       others.length === 0
-        ? `${outcome.detail}${foreignNote}${unknownNote}`
-        : `${outcome.detail} ${others.length} earlier segment(s) are ALSO still on disk and unrecovered: ${others.map((r) => r.path).join(', ')}.${foreignNote}${unknownNote}`,
+        ? `${outcome.detail}${foreignNote}${handoffNote}${unknownNote}`
+        : `${outcome.detail} ${others.length} earlier segment(s) are ALSO still on disk and unrecovered: ${others.map((r) => r.path).join(', ')}.${foreignNote}${handoffNote}${unknownNote}`,
     next_action: nextParts.join(' '),
   };
 }
@@ -727,7 +805,7 @@ async function runNudge(
           reason: 'relay-failed',
         },
       ],
-      detail: `the replay into ${socket} failed (${sent.outcome}). The rotated segment is RETAINED INTACT at ${segment} — nothing was lost.`,
+      detail: `the replay into ${socket} failed (${sent.outcome}). The rotated segment is RETAINED INTACT at ${segment} — nothing was lost.${describeForeignOwners(handedOff)}${unknown.length === 0 ? '' : ` ${describeUnknown(unknown)}`}`,
       next_action: `Fix the ingress (see \`harness doctor\`), then re-run \`harness doctor telemetry-nudge --buffer ${segment}\` to retry this segment.`,
     };
   }
