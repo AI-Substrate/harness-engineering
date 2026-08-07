@@ -45,6 +45,7 @@ Plan 074 shipped telemetry-nudge and harness commit with no platform guard. On W
 - Making replay actually work on Windows — that requires establishing what transport git-ai uses there (scratch/gitai/10-cursor-testing-playbook.md section 5) and is a separate, larger piece
 - Any change to POSIX af_unix behaviour: the existing suites must pass untouched
 - Any git-ai patch or upstream filing (standing instruction)
+- DEFERRED, OWNED, NOT A NOTE — the managed AGENTS.md block (commitGuidanceBlock() in services/instructions/commit-guidance.ts) still promises TWO commit outcomes; this plan adds a third (ingress-unverified). Deliberately NOT edited here. Prime ruled option (c) on 2026-08-07: the staleness test is byte-exact (existing === commitGuidanceBlock() ? current : stale), so ANY edit flips every consumer repo's block to stale — and that warning is the ONLY mechanism telling a consumer to re-sync, so firing it is a message, not a side effect. Riding it on a Windows platform fix would give consumers a warning whose cause is undiscoverable from their side. FOLLOW-UP IDENTITY: a separate change, batched with any other pending edit to the same block (ask prime what is queued before filing), whose commit message is written to be findable by a consumer searching why their block went stale. Affordable because doctor only WARNS and never edits (074 ac-0008) — the cost is noise, not breakage.
 
 <a id="acceptance-criteria"></a>
 
@@ -66,5 +67,4 @@ Plan 074 shipped telemetry-nudge and harness commit with no platform guard. On W
 
 | id | title | brief | state | note | receipt | depends_on | tasks | objective | delivers | key_risks |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| ph-3257 | Phase 1: Implementation | — | [x] checked | — | — | — | [tasks](assets/tasks/phase-1/tasks.dd.md#tasks) | — | — | — |
 | ph-3258 | Phase 1: Implementation | Split the named_pipe case out of file, make both verbs report honestly, add the real platform guard, pin both UNC directions with a known-bad fixture. | [x] checked | — | — | — | [tasks](assets/tasks/phase-1/tasks.dd.md#tasks) | — | — | — |
