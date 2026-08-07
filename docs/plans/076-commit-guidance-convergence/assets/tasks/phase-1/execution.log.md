@@ -79,9 +79,14 @@ Result: `30 passed (30)` across the two files; full suite green under `just chec
 ## tk-0005 — this repo's own block
 
 `node harness/cli/bin/harness.js instructions commit --inject` → `refreshed`.
-`git diff AGENTS.md` is **11 lines, all between the two markers** (3 removed, 6 added,
-verified by eye): three prose lines replaced by two prose lines, a blank, and the three
-rendered outcome bullets. Nothing outside the fences moved.
+`git diff --numstat 5dae6e9c -- AGENTS.md` → **`6	3	AGENTS.md`: 6 lines added, 3 removed**,
+all between the two markers (verified by eye in the diff). Three prose lines were replaced
+by two prose lines, a blank, and the three rendered outcome bullets. Nothing outside the
+fences moved.
+
+*(Round 1 of this log said "11 lines" — review F004. That number was wrong: it counted the
+diff hunk's context lines. The change is 6 added / 3 removed. In a plan about not
+overclaiming, a wrong evidence number is not a rounding error.)*
 
 ## tk-0006 — evidence
 
@@ -175,3 +180,122 @@ application of the TRACE2_TARGET_POLICY / RETAINED_FIELD_RENDERING pattern.
 
 No commit behaviour changes: commit-service.ts has a zero-line diff.
 ```
+
+---
+
+# Round 2 — review CHANGES on `8a856921`
+
+Review: `assets/reviews/phase-1-review.md` · Fix tasks: `assets/reviews/phase-1-fix-tasks.md`.
+All four findings accepted; none disputed.
+
+## F001 (HIGH) — buffered recovery was false on Windows
+
+**Verified in source before fixing.** `runNudge()` (`nudge.ts`) checks
+`if (isWin32(deps))` *before every replay path* and returns `unsupported-platform`:
+"git on Windows has no af_unix trace2 target, so there is no ingress this verb can replay
+into… Buffered events on this host stay on disk, untouched." Both `file-buffered` and
+`harness-buffered` are reachable on Windows and both collapse onto the shared `buffered`
+outcome — which told the reader to run that command. We fixed the named-pipe branch's
+honesty in round 1 and left the buffered branch lying on the same platform.
+
+**Fix — state the prerequisite, never detect the platform.** `NUDGE_PREREQUISITE` is
+emitted by the renderer for *every* `drains-this` outcome, unconditionally:
+
+> Recovery is POSIX-ONLY: the drain replays into an af_unix socket, so on a Windows host
+> `harness doctor telemetry-nudge` refuses on platform grounds and drains nothing — the
+> buffered events stay on disk, untouched, until they are drained from a host whose
+> collector ingress is an af_unix socket.
+
+`process.platform` appears nowhere in the renderer, by design and not by omission: this
+text is committed into an `AGENTS.md` that any OS may check out, so **the machine that
+renders it is not the machine that reads it**. A platform branch would bake one host's
+answer into a file read on another. An unconditional prerequisite is true on every host.
+
+## F002 (MEDIUM) — `nudge` was dead data
+
+Round 1 declared the disposition and never rendered it: a guard-shaped datum free to
+disagree with the prose beside it. Took the reviewer's **preferred** option — the datum is
+now load-bearing.
+
+- `CommitOutcome.remedy` (free text) is **gone**. It is replaced by
+  `CommitOutcome.recovery: CommitRecovery`, a discriminated union.
+- `renderRecovery()` derives the instruction from the disposition and is the **only writer
+  of the string `harness doctor telemetry-nudge`** anywhere in the guidance.
+- A test asserts **no authored string in the table may contain `telemetry-nudge`**. An
+  author who hand-writes "run the nudge" into a promise fails the suite, so the disposition
+  and the rendered instruction structurally cannot drift apart.
+
+### The third arm — a contradiction this fix would otherwise have created
+
+Making the datum load-bearing naively renders "Do NOT run the nudge" for every
+non-drainable outcome. That would have been **wrong for `direct-verified`**: its
+verify-MISS branch in `commit-service.ts` names that very command in its own
+`next_action`. Guidance contradicting the shipped command is the same overclaim in a new
+place — caught by reading the branch rather than trusting the shape.
+
+So `CommitRecovery` has three arms, and the distinction is real:
+
+| arm | outcome | renders |
+| --- | --- | --- |
+| `drains-this` | buffered | the drain instruction + the POSIX prerequisite |
+| `not-the-remedy` | unverified | "Do NOT run …" + why it refuses |
+| `not-applicable` | verified | what to do, and **silence about the verb** |
+
+A test pins `verified.recovery.nudge === 'not-applicable'` and that its rendered text never
+names the verb, so a later tidy-up cannot collapse three dispositions into two and
+reintroduce the contradiction.
+
+## F003 (LOW) — the third enumeration
+
+`docs/how/gitai-collector.md` § "The two safe commit shapes" carried a stale two-outcome
+list (`ingress reachable` / `anything else`) — written before plan 075's fourth mode.
+**Converged by pointing, not by restating**: the section now says the outcome list is
+deliberately not restated there, names `COMMIT_OUTCOME_GUIDANCE` as the source, tells the
+reader to run `harness instructions commit` for the live list, and records that this very
+section had already gone stale once. Restating it in prose would have made a *fourth*
+hand-maintained copy. The code fence's comment was also corrected to `POSIX-only`.
+
+## F004 (LOW) — the wrong evidence count
+
+"11 lines" → the real numbers, `6	3	AGENTS.md` (6 added, 3 removed), from
+`git diff --numstat 5dae6e9c -- AGENTS.md`. Corrected in the tk-0005 section above and in
+the ac-0006 receipt.
+
+## Round-2 evidence
+
+**ac-0002 Dim-0, re-run against the restructured table** — `dim0-fifth-mode` added to
+`CommitMode`, `npx tsc --noEmit` → exit 2, **exactly 2 errors, both in
+`commit-guidance.ts`**:
+
+```text
+src/services/instructions/commit-guidance.ts:192:12 - error TS1360: … does not satisfy the expected type 'Record<CommitMode, CommitOutcomeGuidance>'.
+  Property '"dim0-fifth-mode"' is missing in type '…' but required in type 'Record<CommitMode, CommitOutcomeGuidance>'.
+192 } as const satisfies Record<CommitMode, CommitOutcomeGuidance>;
+
+src/services/instructions/commit-guidance.ts:207:31 - error TS7053: … expression of type 'CommitMode' can't be used to index type '…'.
+207     const { outcome, when } = COMMIT_OUTCOME_GUIDANCE[mode];
+
+Found 2 errors in the same file, starting at: src/services/instructions/commit-guidance.ts:192
+```
+
+Reverted; `git diff --quiet 5dae6e9c -- harness/cli/src/services/commit/commit-service.ts`
+passes (**zero-line diff against base**, still true after round 2).
+
+**What that compile error does and does not prove** (the reviewer is right, and the receipt
+now says so): it proves **declaration totality** — a new mode cannot exist without an entry.
+It does **not** prove the entry is semantically right; pointing a fifth mode at `buffered`
+still compiles. Semantic correctness is carried by the renderer owning every nudge mention,
+by the shared-outcome-object design, and by the tests — not by the type system, and the
+receipts no longer imply otherwise.
+
+**Tests**: 33 passed (33) across the two files; `just checks` green on every hard gate.
+The three warn-launch degradeds are unchanged and pre-existing — re-verified after the doc
+edit: **0** markdown findings for `AGENTS.md`, **0** for `docs/how/gitai-collector.md`.
+
+**doctor**: `commit-guidance: ok`.
+
+## Round-2 discoveries
+
+| # | tag | what |
+| --- | --- | --- |
+| D4 | Noteworthy | The naive form of the F002 fix would have introduced a fresh contradiction with `commit-service.ts`'s verify-miss `next_action`. Found by reading the branch, not by any check. There is no guard that compares guidance prose against the `next_action` strings the commands actually emit — that is a real gap and a candidate for a future plan, not something this one should widen to cover. |

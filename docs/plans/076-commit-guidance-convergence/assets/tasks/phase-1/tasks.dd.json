@@ -27,7 +27,7 @@
             "../../../plan.dd.json#acceptance_criteria/ac-0002",
             "../../../plan.dd.json#acceptance_criteria/ac-0004"
           ],
-          "receipt": "COMMIT_OUTCOMES + COMMIT_OUTCOME_GUIDANCE ('as const satisfies Record<CommitMode, CommitOutcomeGuidance>') added to src/services/instructions/commit-guidance.ts; CommitMode imported type-only from commit-service. TDD: assertions run RED first (6 failed | 24 passed) before the source moved."
+          "receipt": "COMMIT_OUTCOMES + COMMIT_OUTCOME_GUIDANCE ('as const satisfies Record<CommitMode, CommitOutcomeGuidance>') in src/services/instructions/commit-guidance.ts; CommitMode imported type-only. TDD: assertions run RED first (6 failed | 24 passed) before the source moved. Round 2 (review F002): the free-text 'remedy' field is gone, replaced by a discriminated CommitRecovery ('drains-this' | 'not-the-remedy' | 'not-applicable') that renderRecovery() turns into prose — the disposition is now load-bearing."
         },
         {
           "id": "tk-0002",
@@ -59,7 +59,7 @@
             "../../../plan.dd.json#acceptance_criteria/ac-0005",
             "../../../plan.dd.json#acceptance_criteria/ac-0007"
           ],
-          "receipt": "All five cases land: (a)+(a') block names the unverified outcome and pins nudge='not-the-remedy'; (b) both surfaces iterate the TABLE; (c) mode->outcome mapping pinned; (d) verbatim pre-075 fixture (test/support/pre-075-block.ts, from 5dae6e9c) reads stale + doctor row not-ok with --inject; (e) refresh with user content both sides byte-identical, second run unchanged. 30 passed (30)."
+          "receipt": "All five original cases land, plus three round-2 guards: (F002) no authored string in the table may contain 'telemetry-nudge' — renderRecovery() is its only writer, so disposition and prose cannot disagree; (F001) the buffered outcome states the POSIX prerequisite in BOTH surfaces, covering the two Windows-reachable buffered modes; (F002 follow-on) the verified outcome uses 'not-applicable' and stays silent about the verb, because commit-service's verify-miss next_action names it and a blanket 'Do NOT' would contradict shipped code. 33 passed (33)."
         },
         {
           "id": "tk-0005",
@@ -68,7 +68,7 @@
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0006"
           ],
-          "receipt": "'harness instructions commit --inject' -> action: refreshed. git diff AGENTS.md is 11 lines, ALL between the two markers (verified by eye in the diff); nothing outside the fences moved."
+          "receipt": "'harness instructions commit --inject' -> refreshed. 'git diff --numstat 5dae6e9c -- AGENTS.md' -> 6 added, 3 removed, ALL between the two markers (corrected from the wrong '11 lines' in round 1 — review F004)."
         },
         {
           "id": "tk-0006",
@@ -78,7 +78,7 @@
             "../../../plan.dd.json#acceptance_criteria/ac-0002",
             "../../../plan.dd.json#acceptance_criteria/ac-0006"
           ],
-          "receipt": "just checks: every hard gate ok (tests, biome, typecheck, docs/flows/telemetry/doctrine/dd-docs drift, root-invocation-smoke, dd doctor, skills-check); the 3 warn-launch degradeds confirmed pre-existing and outside this diff. doctor: commit-guidance ok. Dim-0: a fifth CommitMode member fails tsc with BOTH errors in commit-guidance.ts (TS1360 at the table, line 124; TS7053 at the renderer, line 139) while commit-service.ts compiles clean — transcript in execution.log.md."
+          "receipt": "just checks: every hard gate ok; the 3 warn-launch degradeds confirmed pre-existing — re-verified after the round-2 doc edit, 0 markdown findings for AGENTS.md and 0 for docs/how/gitai-collector.md. doctor: commit-guidance ok. Dim-0 re-run after the restructure: a fifth CommitMode member fails tsc with BOTH errors in commit-guidance.ts (:192 table, :207 renderer) while commit-service.ts compiles clean and keeps a zero-line diff vs base. Transcripts in execution.log.md."
         }
       ]
     },

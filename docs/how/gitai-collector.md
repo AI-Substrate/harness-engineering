@@ -375,17 +375,23 @@ marker-driven verdict would have called that healthy session blocked.
 # VERIFIED OR NAMED — probe, commit, then prove attribution landed (or buffer it)
 harness commit "<message>" -- <path> [<path>…]
 
-# RECOVERY — replay buffered events; run from an UNSANDBOXED shell
+# RECOVERY — replay buffered events; POSIX-only, from an UNSANDBOXED shell
 harness doctor telemetry-nudge
 ```
 
 `harness commit` is one simple command with no chaining, because compound shapes
-are what fall into the sandbox. It probes first, then:
+are what fall into the sandbox. It probes first, then takes exactly one branch of
+the `CommitMode` union and tells you which one it took.
 
-- **ingress reachable** → commits with **no** trace2 override, then waits
-  (bounded) for the `refs/notes/ai` note and reports whether it landed.
-- **anything else** → commits with trace2 buffered to a file under the gitignored
-  `.harness/temp/`, and names both that buffer and the recovery command.
+**The outcome list is deliberately not restated here.** It is rendered from
+`COMMIT_OUTCOME_GUIDANCE` in
+`harness/cli/src/services/instructions/commit-guidance.ts`, a table total over
+`CommitMode` — adding a mode without describing it is a compile error at that
+table (plan 076). Read the live list with `harness instructions commit`, or from
+the managed block in this repo's `AGENTS.md`. A prose copy here would be exactly
+the hand-maintained duplicate that plan drift-proofed away, and it had already
+gone stale once: this section described **two** outcomes after plan 075 shipped a
+fourth commit mode.
 
 When the configured target is already a plain file, `harness commit` writes two
 records beside its work: the commit sha **tagged with this repository's identity**

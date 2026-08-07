@@ -14,7 +14,9 @@ import {
   type CommitOutcomeId,
   commitGuidanceBlock,
   injectAgentsBlock,
+  NUDGE_PREREQUISITE,
   readAgentsBlock,
+  renderRecovery,
 } from '../../../src/services/instructions/commit-guidance.js';
 import { loadVerbInstructions } from '../../../src/services/instructions/instructions-service.js';
 import { FakeCollectorFs } from '../../support/collector-fakes.js';
@@ -176,10 +178,15 @@ describe('plan 076 — the outcome contract is ONE table, and both surfaces rend
     // instances instead of the contract is false comfort).
     for (const id of Object.keys(COMMIT_OUTCOMES) as CommitOutcomeId[]) {
       const outcome = COMMIT_OUTCOMES[id];
-      for (const text of [outcome.label, outcome.promise, outcome.remedy]) {
+      for (const text of [outcome.label, outcome.promise]) {
         expect(block).toContain(text);
         expect(page).toContain(text);
       }
+      // The recovery reaches both surfaces too — rendered from the disposition,
+      // never authored twice.
+      const rendered = renderRecovery(outcome.recovery);
+      expect(block).toContain(rendered);
+      expect(page).toContain(rendered);
     }
     // Every mode's selecting condition reaches both surfaces too, so a reader can
     // tell WHICH outcome they got and not merely that the set has four members.
@@ -191,6 +198,95 @@ describe('plan 076 — the outcome contract is ONE table, and both surfaces rend
     }
   });
 
+  it('review F002 — the nudge disposition is LOAD-BEARING: no authored string may name the verb', () => {
+    /*
+    Test Doc:
+    - Why: round 1 declared `nudge` and never rendered it — a guard-shaped datum
+      free to disagree with the prose beside it, which is the same false comfort
+      the guarantee is supposed to remove.
+    - Contract: the renderer is the ONLY writer of the verb's name. An author who
+      hand-writes "run the nudge" into a promise fails here, so the disposition and
+      the rendered instruction cannot drift apart.
+    - Quality Contribution: converts an advertised-but-unenforced contract into an
+      enforced one, without pretending the type system did it.
+    */
+    for (const id of Object.keys(COMMIT_OUTCOMES) as CommitOutcomeId[]) {
+      const outcome = COMMIT_OUTCOMES[id];
+      const { recovery } = outcome;
+      const authored =
+        recovery.nudge === 'drains-this'
+          ? [recovery.before]
+          : recovery.nudge === 'not-the-remedy'
+            ? [recovery.instead, recovery.because]
+            : [recovery.instead];
+      for (const text of [outcome.label, outcome.promise, ...authored]) {
+        expect(text).not.toContain('telemetry-nudge');
+      }
+
+      // …and the rendered instruction always follows the disposition.
+      const rendered = renderRecovery(recovery);
+      if (recovery.nudge === 'drains-this') {
+        expect(rendered).toContain('Drain it with `harness doctor telemetry-nudge`');
+        expect(rendered).toContain(NUDGE_PREREQUISITE);
+      } else if (recovery.nudge === 'not-the-remedy') {
+        expect(rendered).toContain('Do NOT run `harness doctor telemetry-nudge`');
+        expect(rendered).not.toContain('Drain it with');
+      } else {
+        // `not-applicable` stays SILENT about the verb — it neither prescribes it
+        // nor forbids it, because `harness commit`'s own next_action names it on a
+        // verify miss and a blanket "Do NOT" here would contradict the code.
+        expect(rendered).not.toContain('telemetry-nudge');
+      }
+    }
+  });
+
+  it('review F002 follow-on — the VERIFIED outcome does not contradict what `harness commit` itself tells a verify miss', () => {
+    /*
+    Test Doc:
+    - Why: making `nudge` load-bearing naively would have rendered a blanket
+      "Do NOT run the nudge" for `direct-verified`. But commit-service's verify-MISS
+      branch names that very command in its own `next_action`. Guidance that
+      contradicts the shipped command is the same overclaim in a new place.
+    - Contract: the verified outcome uses the `not-applicable` arm — it states what
+      to do and stays silent about the verb, so neither surface argues with the code.
+    - Quality Contribution: pins the distinction so a later tidy-up cannot collapse
+      three dispositions back into two and reintroduce the contradiction.
+    */
+    expect(COMMIT_OUTCOMES.verified.recovery.nudge).toBe('not-applicable');
+    const rendered = renderRecovery(COMMIT_OUTCOMES.verified.recovery);
+    expect(rendered).not.toContain('telemetry-nudge');
+    expect(rendered).toContain('nothing to drain');
+  });
+
+  it('review F001 — the BUFFERED outcome states the POSIX prerequisite, so Windows readers are not sent to a nudge that refuses', () => {
+    /*
+    Test Doc:
+    - Why: `runNudge()` returns `unsupported-platform` for EVERY win32 host before
+      it reaches a replay path, so `file-buffered` and `harness-buffered` — both
+      reachable on Windows — were handed a recovery command that drains nothing.
+      We fixed the named-pipe branch's honesty and left this one lying.
+    - Contract: the drainable outcome states the prerequisite UNCONDITIONALLY, in
+      both surfaces. Not platform detection: this text is committed into an
+      AGENTS.md that any OS may check out, so the rendering host is not the
+      reading host and a `process.platform` branch would bake in the wrong answer.
+    - Quality Contribution: pins the one sentence that makes the shared buffered
+      promise true on every platform it can be read on.
+    */
+    const buffered = COMMIT_OUTCOMES.buffered;
+    expect(buffered.recovery.nudge).toBe('drains-this');
+    expect(NUDGE_PREREQUISITE).toContain('POSIX-ONLY');
+    expect(NUDGE_PREREQUISITE).toContain('refuses on platform grounds and drains nothing');
+    expect(NUDGE_PREREQUISITE).toContain('stay on disk');
+
+    // Both Windows-reachable buffered modes collapse onto it, so both are covered.
+    expect(COMMIT_OUTCOME_GUIDANCE['file-buffered'].outcome).toBe('buffered');
+    expect(COMMIT_OUTCOME_GUIDANCE['harness-buffered'].outcome).toBe('buffered');
+
+    for (const surface of [commitGuidanceBlock(), CORE_INSTRUCTION_PAGES.commit ?? '']) {
+      expect(surface).toContain(NUDGE_PREREQUISITE);
+    }
+  });
+
   it('ac-0001 — the block names the unverified outcome and does NOT offer the nudge as its remedy', () => {
     const block = commitGuidanceBlock();
     const unverified = COMMIT_OUTCOMES.unverified;
@@ -199,9 +295,9 @@ describe('plan 076 — the outcome contract is ONE table, and both surfaces rend
     expect(block).toContain('nothing was buffered');
     // The remedy for a named-pipe reader is a git command they can actually run,
     // and an explicit "do NOT" on the one that refuses on their platform.
-    expect(unverified.nudge).toBe('not-the-remedy');
-    expect(unverified.remedy).toContain('Do NOT run `harness doctor telemetry-nudge`');
+    expect(unverified.recovery.nudge).toBe('not-the-remedy');
     expect(block).toContain('Do NOT run `harness doctor telemetry-nudge`');
+    expect(block).toContain('git notes --ref=ai show HEAD');
   });
 
   it('ac-0001 — the block no longer states or implies a two-member outcome set', () => {

@@ -21,22 +21,83 @@ import { posixJoin, toPosix } from '../shared/posix-path.js';
  * attest those lines as known-human (F-03).
  */
 
+/**
+ * What a reader does about an outcome — a DISCRIMINATED disposition, not prose.
+ *
+ * The nudge disposition is data because getting it wrong *is* the plan-076
+ * defect: the pre-075 block sent every reader to `harness doctor telemetry-nudge`,
+ * and that verb refuses on a Windows named pipe. Review F002 then found the
+ * disposition was declared but never rendered — a guard-shaped datum free to
+ * disagree with the prose beside it, which is the same false comfort one layer
+ * up. So the renderer OWNS every mention of the verb and derives the instruction
+ * from this union; no authored string here may name it (pinned by test).
+ */
+export type CommitRecovery =
+  | {
+      readonly nudge: 'drains-this';
+      /** What the reader must know before draining. Never names the verb. */
+      readonly before: string;
+    }
+  | {
+      readonly nudge: 'not-the-remedy';
+      /** What to do instead. */
+      readonly instead: string;
+      /** Why the nudge is not it — rendered after "Do NOT run … —". */
+      readonly because: string;
+    }
+  | {
+      /**
+       * The nudge is neither the remedy nor a hazard worth warning against.
+       *
+       * A real distinction, not a hedge: `direct-verified` buffers nothing, so
+       * there is nothing to drain — but on a verify MISS `harness commit`'s own
+       * `next_action` names the nudge (commit-service.ts). Rendering a blanket
+       * "Do NOT run" here would contradict the shipped command, which is the
+       * exact defect class this plan exists to remove. So this arm says what to
+       * do and stays silent about the verb.
+       */
+      readonly nudge: 'not-applicable';
+      readonly instead: string;
+    };
+
 /** What one reader-facing commit outcome promises, and what to do about it. */
 export interface CommitOutcome {
   /** The outcome's name in the guidance's own vocabulary. */
   readonly label: string;
   /** What `harness commit` actually did and actually claims. Never more. */
   readonly promise: string;
-  /** What the reader does next — including, where it applies, what NOT to run. */
-  readonly remedy: string;
-  /**
-   * Is `harness doctor telemetry-nudge` the recovery for this outcome?
-   *
-   * Stated as data because getting it wrong is the plan-076 defect itself: the
-   * pre-075 block sent EVERY reader to the nudge, and on a Windows named pipe
-   * there is no buffer to drain and no replay path, so it refuses.
-   */
-  readonly nudge: 'drains-this' | 'not-the-remedy';
+  /** How the reader recovers — rendered by {@link renderRecovery}, never by hand. */
+  readonly recovery: CommitRecovery;
+}
+
+/** The recovery verb. Named ONCE so the renderer is its only source. */
+const NUDGE_VERB = 'harness doctor telemetry-nudge';
+
+/**
+ * The prerequisite every drainable outcome carries — stated UNCONDITIONALLY,
+ * on every platform, for a reason that is easy to get wrong (review F001).
+ *
+ * `runNudge()` refuses on any win32 host (`nudge.ts`, the `isWin32` guard) before
+ * it reaches a single replay path, so a Windows reader of a `file-buffered` or
+ * `harness-buffered` commit was being handed a recovery command that drains
+ * nothing. The fix is NOT platform detection: this text is committed into an
+ * `AGENTS.md` that any OS may check out, so the machine that RENDERS it is not
+ * the machine that READS it. A renderer that branched on `process.platform`
+ * would bake one host's answer into a file read on another. Stating the
+ * prerequisite is correct on every host, including the one it was written on.
+ */
+export const NUDGE_PREREQUISITE = `Recovery is POSIX-ONLY: the drain replays into an af_unix socket, so on a Windows host \`${NUDGE_VERB}\` refuses on platform grounds and drains nothing — the buffered events stay on disk, untouched, until they are drained from a host whose collector ingress is an af_unix socket.`;
+
+/** Turn a disposition into the reader's instruction. The ONLY writer of {@link NUDGE_VERB}. */
+export function renderRecovery(recovery: CommitRecovery): string {
+  switch (recovery.nudge) {
+    case 'drains-this':
+      return `${recovery.before} Drain it with \`${NUDGE_VERB}\` from an UNSANDBOXED shell. ${NUDGE_PREREQUISITE}`;
+    case 'not-the-remedy':
+      return `${recovery.instead} Do NOT run \`${NUDGE_VERB}\` — ${recovery.because}.`;
+    case 'not-applicable':
+      return recovery.instead;
+  }
 }
 
 /**
@@ -44,33 +105,41 @@ export interface CommitOutcome {
  * them. Modes collapse ONTO these — see {@link COMMIT_OUTCOME_GUIDANCE}.
  *
  * Separating outcome from mode is what makes the collapse honest: two modes that
- * share a prose outcome share the SAME promise and remedy object, so the collapse
- * cannot hide a difference in what is promised. A mode whose promise genuinely
- * differs cannot be folded in — it needs an outcome of its own.
+ * share a prose outcome share the SAME promise and recovery object, so the
+ * collapse cannot hide a difference in what is promised. A mode whose promise
+ * genuinely differs cannot be folded in — it needs an outcome of its own.
  */
 export const COMMIT_OUTCOMES = {
   verified: {
     label: 'confirmed',
     promise:
       'harness commits with no trace2 override, waits (bounded) for the `refs/notes/ai` note, and tells you whether it landed.',
-    remedy: 'A landed note is the healthy shape; a miss is reported to you, never hidden.',
-    nudge: 'not-the-remedy',
+    recovery: {
+      nudge: 'not-applicable',
+      instead:
+        "A landed note is the healthy shape, and a miss is reported to you rather than hidden — with the next step named in the command's own output. Nothing was buffered on this path, so there is nothing to drain.",
+    },
   },
   buffered: {
     label: 'buffered and named',
     promise:
       "the commit is made with its trace2 events going to a buffer file instead of the collector, so attribution is DEFERRED, not lost — and it isn't proven yet either.",
-    remedy:
-      'The command names the buffer it used and the exact recovery command for it — run that from an UNSANDBOXED shell (a plain-FILE target must be pointed back at the socket first).',
-    nudge: 'drains-this',
+    recovery: {
+      nudge: 'drains-this',
+      before:
+        '`harness commit` names the buffer it used; when the configured target is a plain FILE it must be pointed back at the socket first, because while it names a file there is no ingress to replay into.',
+    },
   },
   unverified: {
     label: 'NOT VERIFIED on this platform',
     promise:
       'the commit is made with no trace2 override (git talks to the pipe as usual), nothing was buffered, nothing was written beside the pipe — and nothing is claimed about attribution, because nothing was measured.',
-    remedy:
-      'Check for yourself with `git notes --ref=ai show HEAD`. Do NOT run `harness doctor telemetry-nudge` — there is no buffer to drain and no replay path for this transport, and it will refuse.',
-    nudge: 'not-the-remedy',
+    recovery: {
+      nudge: 'not-the-remedy',
+      instead: 'Check for yourself with `git notes --ref=ai show HEAD`.',
+      because:
+        'there is no buffer to drain and no replay path for the named-pipe transport, and it will refuse',
+    },
   },
 } as const satisfies Record<string, CommitOutcome>;
 
@@ -145,9 +214,9 @@ export function commitOutcomeLines(): string {
   }
   return order
     .map((id) => {
-      const { label, promise, remedy } = COMMIT_OUTCOMES[id];
+      const { label, promise, recovery } = COMMIT_OUTCOMES[id];
       const condition = (whens.get(id) ?? []).join(', or when ');
-      return `- **${label}** — when ${condition}: ${promise} ${remedy}`;
+      return `- **${label}** — when ${condition}: ${promise} ${renderRecovery(recovery)}`;
     })
     .join('\n');
 }
