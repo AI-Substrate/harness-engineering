@@ -1,4 +1,5 @@
 import type { Command } from 'commander';
+import type { Clock } from '../adapters/clock/clock-port.js';
 import { SystemClock } from '../adapters/clock/system-clock.js';
 import { NodeEnv } from '../adapters/env/node-env.js';
 import { NodeFs } from '../adapters/fs/node-fs.js';
@@ -63,11 +64,20 @@ async function run(io: CliIo, message: string, pathspecs: string[]): Promise<voi
   exitWithEnvelope(envelopeFor(outcome, clock), port(io, outcome));
 }
 
-function envelopeFor(outcome: CommitOutcome, clock: SystemClock) {
+/**
+ * Outcome → envelope. EXPORTED so the mapping is directly testable: the review's
+ * F007 was a wrong exit code, and an exit code is a claim about whether the work
+ * happened. That claim deserves its own test, not a live commit to observe it.
+ */
+export function envelopeFor(outcome: CommitOutcome, clock: Clock) {
   const evidence = [
-    outcome.sha === null
-      ? { label: 'commit', none: true }
-      : { label: `commit ${outcome.sha.slice(0, 12)}` },
+    outcome.sha !== null
+      ? { label: `commit ${outcome.sha.slice(0, 12)}` }
+      : outcome.shaUnknown
+        ? // The commit is REAL — only its identity is unknown. `none: true` here
+          // would read as "no commit was made", which is the one thing it is not.
+          { label: 'commit made, sha unreadable' }
+        : { label: 'commit', none: true },
   ];
   if (!outcome.ok) {
     return formatError(
@@ -87,14 +97,18 @@ function envelopeFor(outcome: CommitOutcome, clock: SystemClock) {
     mode: outcome.mode,
     probe: outcome.probe,
     sha: outcome.sha,
+    sha_unknown: outcome.shaUnknown,
     staged: outcome.staged,
     verify: outcome.verify,
     buffer: outcome.buffer,
     detail: outcome.detail,
   };
   // A commit that HAPPENED is never an error. When attribution is unproven the
-  // envelope degrades — visible, exit 0, never a block (073 ac-000c).
-  return outcome.verify === 'landed' || outcome.sha === null
+  // envelope degrades — visible, exit 0, never a block (073 ac-000c). A commit
+  // whose sha could not be read back is DEGRADED too, never ok: it really
+  // happened, and saying so quietly would invite a re-run and a double commit.
+  const nothingToDo = outcome.sha === null && !outcome.shaUnknown;
+  return outcome.verify === 'landed' || nothingToDo
     ? formatOk('commit', data, clock, { evidence })
     : formatDegraded(
         'commit',

@@ -30,12 +30,15 @@ const SOCK = '/home/u/.git-ai/internal/daemon/trace2.sock';
 const REPO = '/repo';
 const BUFFER = `${REPO}/.harness/temp/trace2/buffer.jsonl`;
 const NOW = '2026-08-07T01:02:03.000Z';
-const SEGMENT = `${REPO}/.harness/temp/trace2/segment-2026-08-07T01-02-03-000Z-a.jsonl`;
+const SEGMENT_NAME = 'segment-2026-08-07T01-02-03-000Z-a.jsonl';
+const SEGMENT = `${REPO}/.harness/temp/trace2/${SEGMENT_NAME}`;
 const SIDECAR = `${BUFFER}.shas`;
 const SEGMENT_SIDECAR = `${SEGMENT}.shas`;
 
 const SHA_A = 'a'.repeat(40);
 const SHA_B = 'b'.repeat(40);
+/** An unrelated historical commit, named only in a commit MESSAGE. */
+const FOREIGN_SHA = 'f'.repeat(40);
 
 /**
  * A REALISTIC trace2 stream: it names NO commit sha, because git's events never
@@ -44,6 +47,14 @@ const SHA_B = 'b'.repeat(40);
  */
 function payload(): string {
   return '{"event":"version"}\n{"event":"cmd_name","name":"commit"}\n{"event":"exit"}\n';
+}
+
+/**
+ * The same stream with git's own ARGV in it — the shape that broke the old
+ * payload scan. `git commit -m "Revert <sha>"` is an ordinary thing to do.
+ */
+function poisonedPayload(foreign: string): string {
+  return `{"event":"start","argv":["git","commit","-m","Revert \\"fix\\"\\n\\nThis reverts commit ${foreign}."]}\n{"event":"cmd_name","name":"commit"}\n{"event":"exit"}\n`;
 }
 
 /** The sidecar `harness commit` writes beside a buffer. */
@@ -87,19 +98,57 @@ function deps(over: {
 }
 
 describe('plan 074 · ac-0006 — which commits a segment covers', () => {
-  it('a REAL trace2 stream names no commit sha at all — the sidecar carries it', () => {
+  it('the SIDECAR is the sole identity source — a payload is never scanned', () => {
     // Verified against a live daemon: git emits its events while the commit is
-    // still being made, so the sha appears nowhere. Scanning the payload alone
-    // would make "every named sha has a note" vacuously true on every segment.
-    expect(commitShasIn(payload())).toEqual([]);
-    expect(commitShasIn(payload(), sidecarNaming(SHA_A, SHA_B)).sort()).toEqual(
-      [SHA_A, SHA_B].sort(),
-    );
+    // still being made, so the sha appears nowhere in the stream.
+    expect(commitShasIn(null)).toEqual([]);
+    expect(commitShasIn(sidecarNaming(SHA_A, SHA_B)).sort()).toEqual([SHA_A, SHA_B].sort());
   });
 
-  it('dedupes across the sidecar and the payload, and ignores non-sha lines', () => {
-    const withSha = `{"event":"x","oid":"${SHA_A}"}\n`;
-    expect(commitShasIn(withSha, `${SHA_A}\n# a comment\n\n`)).toEqual([SHA_A]);
+  it('dedupes and ignores non-sha lines', () => {
+    expect(commitShasIn(`${SHA_A}\n# a comment\n\n${SHA_A}\n`)).toEqual([SHA_A]);
+  });
+
+  it('F001 — a REVERT message in the trace2 argv never enrols a foreign commit', async () => {
+    // The review's F001: the trace2 `start` event carries git's own argv, so
+    // `git commit -m "Revert <sha>"` used to inject an UNRELATED historical
+    // commit into the confirmation set. That commit has no AI note (nothing
+    // pre-git-ai ever will), so the segment could never fully confirm — retained
+    // forever, and an innocent commit reported as missing attribution.
+    const fs = new FakeFs();
+    fs.mkdirp(`${REPO}/.harness/temp/trace2`);
+    fs.writeText(BUFFER, poisonedPayload(FOREIGN_SHA));
+    fs.writeText(SIDECAR, sidecarNaming(SHA_A));
+    const d = deps({
+      fs,
+      ingress: await ingress('connected'),
+      // Only the sidecar's own commit gains a note. The foreign sha never will.
+      git: new FakeGitAttribution({ notesAfterDelay: [SHA_A] }),
+    });
+
+    const out = await telemetryNudge(d);
+
+    // Fully confirmed on the sidecar alone → deleted, and the foreign sha is
+    // absent from every field. Pre-fix this was `retained`/`stillMissing`.
+    expect(out.status).toBe('replayed');
+    expect(out.recovered).toEqual([SHA_A]);
+    expect(out.stillMissing).toEqual([]);
+    expect(out.retained).toEqual([]);
+    expect(fs.exists(SEGMENT)).toBe(false);
+    expect(d.git.calls.some((c) => c.includes(FOREIGN_SHA))).toBe(false);
+  });
+
+  it('F001 — a segment with NO sidecar is unconfirmable even when its payload is full of shas', async () => {
+    const fs = new FakeFs();
+    fs.mkdirp(`${REPO}/.harness/temp/trace2`);
+    fs.writeText(BUFFER, poisonedPayload(FOREIGN_SHA));
+    const d = deps({ fs, ingress: await ingress('connected') });
+
+    const out = await telemetryNudge(d);
+
+    expect(out.reason).toBe('unconfirmable');
+    expect(out.stillMissing).toEqual([]);
+    expect(fs.readText(SEGMENT)).toBe(poisonedPayload(FOREIGN_SHA));
   });
 });
 
@@ -323,12 +372,20 @@ describe('plan 074 · ac-0006 — graceful no-ops that move and send NOTHING', (
     expect(d.relay.sends).toEqual([]);
   });
 
-  it('a non-af_unix target → skip, with the drain instruction', async () => {
+  it('a non-af_unix target → skip, and the guidance names the RECONFIGURATION FIRST', async () => {
     const d = deps({ ingress: await ingress('connected', '/tmp/agent.jsonl') });
     const out = await telemetryNudge(d);
 
     expect(out.reason).toBe('non-af-unix');
-    expect(out.next_action).toContain('--buffer');
+    // F003: the old text named `--buffer <target>` as if it would just work.
+    // It cannot — this very verb rejects a non-af_unix ingress before it ever
+    // reads `--buffer` — so the prerequisite has to come first, in order.
+    expect(out.next_action).toContain('FIRST');
+    expect(out.next_action).toContain('--install-collector');
+    const first = out.next_action?.indexOf('--install-collector') ?? -1;
+    const then = out.next_action?.indexOf('--buffer') ?? -1;
+    expect(first).toBeGreaterThanOrEqual(0);
+    expect(then).toBeGreaterThan(first);
     expect(d.relay.sends).toEqual([]);
   });
 
@@ -398,5 +455,190 @@ describe('plan 074 · ac-0006 — confirmation SETTLES, because git-ai writes no
 
     expect(out.status).toBe('retained');
     expect(out.stillMissing).toEqual([SHA_A]);
+  });
+});
+
+describe('plan 074 · ac-0006 — F002: EVERY remaining segment is enumerated, every run', () => {
+  const OLD_NAME = 'segment-2026-08-01T00-00-00-000Z-a.jsonl';
+  const OLD = `${REPO}/.harness/temp/trace2/${OLD_NAME}`;
+
+  /** A trace2 dir whose LISTING already contains an earlier run's segment. */
+  function fsWithOldSegment(): FakeFs {
+    const fs = new FakeFs({}, { [`${REPO}/.harness/temp/trace2`]: [OLD_NAME] });
+    fs.mkdirp(`${REPO}/.harness/temp/trace2`);
+    return fs;
+  }
+
+  it('a run with no live buffer is NOT healthy while an earlier segment remains', async () => {
+    // The review's F002: the only `retained` value used to be the segment the
+    // current run rotated, so a later nudge said "no buffer — this is the
+    // healthy shape" while unrecovered commits sat in a file beside it.
+    const fs = fsWithOldSegment();
+    fs.writeText(OLD, payload());
+    fs.writeText(`${OLD}.shas`, sidecarNaming(SHA_B));
+    const d = deps({ fs, ingress: await ingress('connected') });
+
+    const out = await telemetryNudge(d);
+
+    expect(out.status).toBe('retained');
+    expect(out.retained).toEqual([
+      { path: OLD, stillMissing: [SHA_B], recovered: [], reason: 'partial' },
+    ]);
+    expect(out.next_action).toContain(`--buffer ${OLD}`);
+    // Nothing was replayed, and the old segment is untouched.
+    expect(d.relay.sends).toEqual([]);
+    expect(fs.readText(OLD)).toBe(payload());
+  });
+
+  it('this run’s success does not hide an earlier segment', async () => {
+    const fs = fsWithOldSegment();
+    fs.writeText(OLD, payload());
+    fs.writeText(`${OLD}.shas`, sidecarNaming(SHA_B));
+    fs.writeText(BUFFER, payload());
+    fs.writeText(SIDECAR, sidecarNaming(SHA_A));
+    const d = deps({
+      fs,
+      ingress: await ingress('connected'),
+      git: new FakeGitAttribution({ notesAfterDelay: [SHA_A] }),
+    });
+
+    const out = await telemetryNudge(d);
+
+    // This run fully confirmed and deleted its own segment…
+    expect(fs.exists(SEGMENT)).toBe(false);
+    expect(out.recovered).toEqual([SHA_A]);
+    // …but the machine is NOT clean, so the status says so.
+    expect(out.status).toBe('retained');
+    expect(out.retained.map((r) => r.path)).toEqual([OLD]);
+    expect(out.detail).toContain('earlier segment(s) are ALSO still on disk');
+    expect(out.next_action).toContain(`--buffer ${OLD}`);
+  });
+
+  it('a segment with no sidecar enumerates as unconfirmable, not as clean', async () => {
+    const fs = fsWithOldSegment();
+    fs.writeText(OLD, payload());
+    const d = deps({ fs, ingress: await ingress('connected') });
+
+    const out = await telemetryNudge(d);
+
+    expect(out.retained).toEqual([
+      { path: OLD, stillMissing: [], recovered: [], reason: 'unconfirmable' },
+    ]);
+  });
+
+  it('a truly clean directory still reports the healthy no-buffer shape', async () => {
+    const fs = new FakeFs();
+    fs.mkdirp(`${REPO}/.harness/temp/trace2`);
+    const d = deps({ fs, ingress: await ingress('connected') });
+
+    const out = await telemetryNudge(d);
+
+    expect(out.status).toBe('skipped');
+    expect(out.reason).toBe('no-buffer');
+    expect(out.retained).toEqual([]);
+  });
+});
+
+describe('plan 074 · ac-0006 — F005: --buffer is RESOLVED, CONTAINED, and never throws', () => {
+  it('a RELATIVE --buffer resolves against the repo instead of building a nonsense sibling', async () => {
+    // Pre-fix: `lastIndexOf('/')` on a bare filename is -1, so the segment path
+    // became `buffer.json` (sliced!) and the rename threw out of a verb whose
+    // whole contract is that it never does.
+    const fs = new FakeFs();
+    fs.mkdirp(`${REPO}/.harness/temp/trace2`);
+    fs.writeText(BUFFER, payload());
+    fs.writeText(SIDECAR, sidecarNaming(SHA_A));
+    const d = deps({
+      fs,
+      ingress: await ingress('connected'),
+      bufferPath: '.harness/temp/trace2/buffer.jsonl',
+      git: new FakeGitAttribution({ notesAfterDelay: [SHA_A] }),
+    });
+
+    const out = await telemetryNudge(d);
+
+    expect(out.status).toBe('replayed');
+    expect(out.segment).toBe(SEGMENT);
+    expect(fs.exists(BUFFER)).toBe(false);
+  });
+
+  it('an absolute --buffer OUTSIDE the repo is refused — nothing is renamed or deleted', async () => {
+    const fs = new FakeFs();
+    fs.writeText('/etc/passwd', 'root:x:0:0\n');
+    const d = deps({
+      fs,
+      ingress: await ingress('connected'),
+      bufferPath: '/etc/passwd',
+    });
+
+    const out = await telemetryNudge(d);
+
+    expect(out.status).toBe('skipped');
+    expect(out.reason).toBe('buffer-refused');
+    expect(fs.renames).toEqual([]);
+    expect(fs.deletes).toEqual([]);
+    expect(fs.readText('/etc/passwd')).toBe('root:x:0:0\n');
+    expect(d.relay.sends).toEqual([]);
+  });
+
+  it('a --buffer beside the configured trace2 FILE target passes containment', async () => {
+    // The ac-0005 file branch's drain names a path outside the repo. Containment
+    // must allow the directory the operator's own git config points at — and
+    // must still stop before replaying, because a file target has no ingress
+    // (that is the F003 ordering: reconfigure FIRST, then drain).
+    const fs = new FakeFs();
+    const target = '/var/tmp/trace2/agent.jsonl';
+    fs.mkdirp('/var/tmp/trace2');
+    fs.writeText(target, payload());
+    const d = deps({
+      fs,
+      ingress: await ingress('connected', target),
+      bufferPath: target,
+    });
+
+    const out = await telemetryNudge(d);
+
+    // NOT `buffer-refused` — the path was accepted; the ingress is what stops it.
+    expect(out.reason).toBe('non-af-unix');
+    expect(fs.renames).toEqual([]);
+  });
+
+  it('a filesystem error during rotation DEGRADES instead of throwing', async () => {
+    const fs = new FakeFs();
+    fs.mkdirp(`${REPO}/.harness/temp/trace2`);
+    fs.writeText(BUFFER, payload());
+    fs.failRenames.add(BUFFER);
+    const d = deps({ fs, ingress: await ingress('connected') });
+
+    const out = await telemetryNudge(d);
+
+    expect(out.status).toBe('skipped');
+    expect(out.reason).toBe('fs-error');
+    expect(out.detail).toContain('NOTHING was moved or sent');
+    expect(d.relay.sends).toEqual([]);
+  });
+
+  it('a delete that fails leaves the segment reported, not thrown', async () => {
+    // The seeded listing stands in for what a real `readdir` would return after
+    // the rotation — `FakeFs.rename` deliberately does not mutate directory
+    // listings, so the post-rotation state is stated explicitly here.
+    const fs = new FakeFs({}, { [`${REPO}/.harness/temp/trace2`]: [SEGMENT_NAME] });
+    fs.mkdirp(`${REPO}/.harness/temp/trace2`);
+    fs.writeText(BUFFER, payload());
+    fs.writeText(SIDECAR, sidecarNaming(SHA_A));
+    fs.failDeletes.add(SEGMENT);
+    const d = deps({
+      fs,
+      ingress: await ingress('connected'),
+      git: new FakeGitAttribution({ notesAfterDelay: [SHA_A] }),
+    });
+
+    const out = await telemetryNudge(d);
+
+    // The replay DID happen and confirmed; the undeletable segment is reported
+    // by the enumeration pass rather than escaping as an exception.
+    expect(out.recovered).toEqual([SHA_A]);
+    expect(out.status).toBe('retained');
+    expect(out.retained.map((r) => r.path)).toContain(SEGMENT);
   });
 });

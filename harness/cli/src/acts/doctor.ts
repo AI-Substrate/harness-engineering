@@ -11,6 +11,7 @@ import { ExecGitAttribution } from '../adapters/git/exec-git-attribution.js';
 import { NodeHash } from '../adapters/hash/node-hash.js';
 import { NodeDownload } from '../adapters/http/node-download.js';
 import { NodeSocketProbe } from '../adapters/net/node-socket-probe.js';
+import type { SocketProbePort, SocketRelayPort } from '../adapters/net/socket-probe-port.js';
 import { NodeProcess } from '../adapters/process/node-process.js';
 import { formatDegraded, formatError, formatOk } from '../output/envelope.js';
 import { ErrorCodes } from '../output/error-codes.js';
@@ -69,6 +70,16 @@ function realCollectorDeps(host: HostTarget, cwd: string): CollectorDeps {
   };
 }
 
+/**
+ * Test-injectable sockets. TWO fields, not one, because the split IS ac-0007:
+ * the report path is handed the PROBE only and structurally cannot replay, while
+ * the nudge — the one mutating verb — is the only thing that gets a relay.
+ */
+export interface SocketOverrides {
+  probe: SocketProbePort;
+  relay?: SocketRelayPort;
+}
+
 interface CollectorOptions {
   installCollector?: boolean;
   recheckCollector?: boolean;
@@ -99,6 +110,14 @@ interface CollectorOptions {
  * `collectorOverride` exists so an act-level test can drive the whole lifecycle
  * through offline fakes — no network, no git-ai, no daemon — which is the only
  * honest way to prove this wiring in CI.
+ *
+ * `sockets` exists for the same reason and closes the same gap one level
+ * down (review F006): without it this act always constructed the REAL
+ * {@link NodeSocketProbe}, so on any developer or CI machine whose global
+ * `trace2.eventTarget` happens to be an `af_unix` path, a plain act test would
+ * perform a genuine `net.createConnection`. That makes the suite
+ * environment-dependent — the exact thing ac-000a forbids — so the seam is
+ * production-default, test-injectable.
  */
 export function registerDoctorAct(
   program: Command,
@@ -106,6 +125,7 @@ export function registerDoctorAct(
   registry: VerbRegistry,
   recordRegistry?: RecordRegistry,
   collectorOverride?: CollectorDeps,
+  sockets?: SocketOverrides,
 ): void {
   const doctor = program
     .command('doctor')
@@ -174,7 +194,7 @@ export function registerDoctorAct(
         // cannot replay anything (ac-0007).
         const ingress = await readIngress({
           git: attribution,
-          probe: new NodeSocketProbe(),
+          probe: sockets?.probe ?? new NodeSocketProbe(),
           fs,
           env,
         });
@@ -222,7 +242,7 @@ export function registerDoctorAct(
       }
     });
 
-  registerTelemetryNudge(doctor, io);
+  registerTelemetryNudge(doctor, io, sockets);
 }
 
 /**
@@ -234,7 +254,7 @@ export function registerDoctorAct(
  * segment. Making recovery a separate, explicitly-typed verb is what keeps the
  * diagnostic honest about being a diagnostic.
  */
-function registerTelemetryNudge(doctor: Command, io: CliIo): void {
+function registerTelemetryNudge(doctor: Command, io: CliIo, sockets?: SocketOverrides): void {
   doctor
     .command('telemetry-nudge')
     .description(
@@ -250,10 +270,11 @@ function registerTelemetryNudge(doctor: Command, io: CliIo): void {
       const fs = new NodeFs();
       const cwd = toPosix(proc.cwd());
       const attribution = new ExecGitAttribution(cwd);
-      const socket = new NodeSocketProbe();
+      const probe = sockets?.probe ?? new NodeSocketProbe();
+      const relay = sockets?.relay ?? new NodeSocketProbe();
       const ingress = await readIngress({
         git: attribution,
-        probe: socket,
+        probe,
         fs,
         env: new NodeEnv(),
       });
@@ -261,7 +282,7 @@ function registerTelemetryNudge(doctor: Command, io: CliIo): void {
         fs,
         proc,
         clock,
-        relay: socket,
+        relay,
         git: attribution,
         ingress,
         ...(opts.buffer !== undefined ? { bufferPath: toPosix(opts.buffer) } : {}),

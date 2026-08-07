@@ -387,6 +387,15 @@ are what fall into the sandbox. It probes first, then:
 - **anything else** → commits with trace2 buffered to a file under the gitignored
   `.harness/temp/`, and names both that buffer and the recovery command.
 
+Only an **absolute path** counts as a file target. git's disabled forms (`0`,
+`false`), its stderr/fd forms (`1`, `2`, `true`, `3`–`9`) and any relative path
+send no drainable events at all, so they take the buffered branch rather than
+being called a buffer that will never exist.
+
+A commit that succeeds but whose sha cannot be read back is reported **degraded
+with an unknown sha** — never as a failure. It really happened; saying otherwise
+invites a re-run and a double commit.
+
 Those branches are **mutually exclusive**, not belt-and-braces: `GIT_TRACE2_EVENT`
 *replaces* the configured socket target rather than adding to it, so setting the
 buffer on a healthy ingress would divert events away from the collector.
@@ -405,8 +414,17 @@ live traffic. Its lifecycle is deliberate:
 2. **Replay the whole segment** — the daemon reconstructs state from the event
    stream, so a filtered replay is a corrupted story.
 3. **Delete only on full confirmation** — the segment goes only when *every*
-   commit it named carries a note. A partly-confirmed segment is **retained
-   intact** (never partially rewritten) and listed for an explicit retry.
+   commit its **sidecar** names carries a note. Identity comes from the sidecar
+   `harness commit` writes and from nowhere else: git's trace2 stream names no
+   commit sha, and its `start` event carries git's own argv, so scanning the
+   payload would let a `Revert <sha>` message enrol an unrelated historical
+   commit. A partly-confirmed segment is **retained intact** (never partially
+   rewritten) and listed for an explicit retry; a segment with no sidecar is
+   `unconfirmable` and is kept, never deleted on a vacuous confirmation.
+4. **Enumerate every run** — nothing carries state between invocations, so each
+   run lists `segment-*.jsonl` beside the buffer and reports **every** one still
+   on disk with a retry pointer. A run that leaves any segment behind is
+   `retained`, never a healthy "no buffer, nothing to do".
 
 v1 **never automatically re-replays** a retained segment. A live-daemon spike did
 find duplicate replay to be idempotent — notes came back byte-identical and the
@@ -416,9 +434,20 @@ multi-repo interleaving. The conservative behaviour ships; the evidence is
 recorded for a future plan.
 
 The nudge never fails a doctor run, and every no-op path — no buffer, empty
-buffer, unreachable socket, non-`af_unix` target — is a report rather than an
-error. When the ingress is unreachable it **does not rotate**, because rotating
-would cost the buffer for nothing.
+buffer, unreachable socket, non-`af_unix` target, a `--buffer` outside the repo,
+a filesystem error — is a report rather than an error. When the ingress is
+unreachable it **does not rotate**, because rotating would cost the buffer for
+nothing.
+
+`--buffer` is resolved against the repo and **contained**: this verb renames and
+can delete what it is handed, so it accepts only a path inside the repository or
+one beside the trace2 file target your own git config names. Anything else is
+refused, untouched.
+
+When `trace2.eventTarget` names a **plain file**, the drain is a *two-step* and
+the order is load-bearing: point the target back at the git-ai socket first —
+while it names a file there is no ingress to replay into, so the nudge would
+simply skip — then run it with `--buffer <that file>`.
 
 ### What is and is not promised
 

@@ -21,6 +21,14 @@ export interface FakeGitAttributionState {
   commitFails?: number;
   /** Make `git add` fail with this exit code. */
   stageFails?: number;
+  /**
+   * `git commit` SUCCEEDS but the follow-up `rev-parse HEAD` fails, so the sha
+   * is unknown. The real adapter reports exactly this — `ok: true`, `sha: null`
+   * — and the two facts must stay separate (review F007): a caller that reads
+   * the null sha as "the commit failed" tells the operator to re-run a commit
+   * that is already in their history.
+   */
+  headUnreadable?: boolean;
   window?: CommitWindow;
   /**
    * Shas whose note appears only AFTER the first `hasAiNote` miss — models
@@ -76,6 +84,9 @@ export class FakeGitAttribution implements GitAttributionPort {
       return { ok: false, code, sha: null, stdout: '', stderr: 'commit failed' };
     }
     this.head = this.state.commitSha ?? 'a'.repeat(40);
+    if (this.state.headUnreadable === true) {
+      return { ok: true, code: 0, sha: null, stdout: '', stderr: '' };
+    }
     return { ok: true, code: 0, sha: this.head, stdout: '', stderr: '' };
   }
 

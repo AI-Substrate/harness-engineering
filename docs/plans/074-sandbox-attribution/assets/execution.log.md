@@ -138,3 +138,57 @@ test files, every one fake-driven.
 test requires a running daemon, a real socket, a sandbox, or a network: every one drives
 a fake port. The 073 surface changed additively only — one new verdict
 (`ingress-blocked`), two new verbs (`commit`, `doctor telemetry-nudge`), new ports.
+
+---
+
+## Fix round 1 — review `assets/reviews/phase-1-review.md` (FIX_REQUIRED, 7 findings)
+
+Independent adversarial review found seven defects. All seven are closed, each with a test
+that fails against the pre-fix code. The two HIGH findings share a theme, and it is the
+same theme the plan exists to attack: **a recovery surface claiming more than it can
+establish.**
+
+| # | sev | what was wrong | what changed | the guarding test |
+|---|---|---|---|---|
+| F001 | HIGH | `commitShasIn()` unioned the sidecar with **every 40-hex token in the payload**. trace2's `start` event carries git's own argv, so `git commit -m "Revert <sha>"` enrolled an unrelated historical commit. That commit has no note (nothing pre-git-ai ever will), so the segment could never fully confirm — retained forever, and an innocent commit reported as missing attribution. | The **sidecar is the sole identity source**. The payload scan is gone: a scan over author-controlled text cannot establish identity, so it does not get a vote. A sidecar-less segment is `unconfirmable` — honest, reportable, never a guess. | `nudge.test.ts` — "a REVERT message in the trace2 argv never enrols a foreign commit" (asserts the foreign sha is never even *looked up*), plus "a segment with NO sidecar is unconfirmable even when its payload is full of shas". |
+| F002 | HIGH | The only `retained` value was the segment the **current** run rotated. A later nudge with no live buffer returned `no-buffer` and called it "the healthy shape" while unrecovered segments sat beside it. | Nothing carries state between invocations, so **the directory listing IS the state**: every run enumerates `segment-*.jsonl`, inspects each against its sidecar, and reports all of them with a retry pointer. A run that leaves any segment behind is `retained` — never `replayed`, never a healthy `skipped`. `NudgeDeps.fs` gained `readdir`. | `nudge.test.ts` — "a run with no live buffer is NOT healthy while an earlier segment remains", "this run's success does not hide an earlier segment", and the negative control "a truly clean directory still reports the healthy no-buffer shape". |
+| F003 | MED | The file-target commit branch named `telemetry-nudge --buffer <target>` — a command that *necessarily* skips, because the nudge rejects a non-`af_unix` ingress before it ever reads `--buffer`, and that branch's target is by definition a file. | Chose the honest option of the two the review offered: **the guidance names the prerequisite, in order** — reconfigure FIRST (there is genuinely nowhere to replay to until then), drain SECOND. Both the commit advice and the nudge's own skip text now say it that way. Also: the file branch now writes its **sidecar beside the file target**, so the eventual drain is confirmable instead of permanently `unconfirmable`. | `commit-service.test.ts` — asserts the *ordering* (`--install-collector` before `telemetry-nudge --buffer`), and that the sidecar is written; `nudge.test.ts` asserts the same ordering in the skip. |
+| F004 | MED | `resolveTrace2Target()` treated git's disabled forms (`0`, `false`), fd forms (`3`–`9`) and relative paths as `{ kind: 'file' }`. `harness commit` then left trace2 unoverridden and told the operator their events were buffering in a file that will never exist. | Only an **absolute** path is a `file` target. Every other form reads `unconfigured` and takes the buffered branch, where the harness controls a real, drainable file. | `ingress.test.ts` — a table over `0`/`false`/`3`/`9`/relative asserting *not* a file target, plus an absolute-path table (POSIX, drive-letter, UNC). |
+| F005 | MED | A relative `--buffer` was taken verbatim and the segment path built with `lastIndexOf('/')` — `-1` for a bare filename, producing the sibling `buffer.json` and a `rename` that threw out of a verb whose contract is never to. No containment either, on a verb that renames and deletes. | `--buffer` is **resolved** (`resolveInRepo`) and **contained**: inside the repo, or beside the configured trace2 file target — the two roots the harness or the operator's own git config named. Anything else is `buffer-refused`, untouched. Segment paths use `posixDirname`. Rotation and deletion failures **degrade** (`fs-error`, or the enumeration pass reports the survivor); nothing escapes as an exception. | `nudge.test.ts` — relative `--buffer` resolves correctly; `/etc/passwd` is refused with zero renames and zero deletes; a forced rename failure degrades; a forced delete failure is reported rather than thrown. |
+| F006 | MED | `test/acts/doctor.test.ts` drove the production composition root, which built the real `NodeSocketProbe` — so on any machine whose global `trace2.eventTarget` is an `af_unix` path (every box with git-ai installed), the test performed a genuine `net.createConnection`. An ac-000a violation as shipped. | `registerDoctorAct` takes an optional `SocketOverrides` — **two fields, `probe` and `relay`, not one**, so ac-0007's read-only split survives the seam: the report path can only ever be handed a probe. | `doctor.test.ts` — a test that forces an `af_unix` target via `GIT_CONFIG_GLOBAL` (so the probe is *definitely* consulted, whatever the host config says) and asserts the **injected** fake received the call. |
+| F007 | MED | `!result.ok \|\| result.sha === null` collapsed two different facts. A successful `git commit` whose follow-up `rev-parse HEAD` failed was reported as **commit failure, exit 1, "nothing was committed"** — for a commit that is really in the history, inviting a re-run and a double commit. | The two facts are separate. `CommitOutcome` gained `shaUnknown`; commit-success-with-unknown-sha is a **degraded** envelope that says "the commit is real — do NOT re-run", keeps the buffer recoverable, and explains that the segment will read `unconfirmable`. `envelopeFor` is exported so the exit-code claim itself is testable. | `commit-service.test.ts` — the unknown-sha path on both the direct and buffered branches, the negative control that a real git failure is *still* a failure, and an envelope test asserting degraded-vs-ok. |
+
+### Decisions taken in this round
+
+- **F001: deleted the "belt", did not narrow it.** The original comment argued a permissive
+  scan was the safe direction because a false positive costs only a note lookup. That was
+  wrong, and the review's counter-example is decisive: a false positive costs a segment
+  that can **never** be deleted plus a false "missing attribution" report against an
+  innocent commit. Identity is not a thing you guess at cheaply.
+- **F003: chose "name the prerequisite" over "make `--buffer` work anyway".** The review
+  offered both. Making it work regardless would need a socket path, and in the file-target
+  state there is **no source for one** — git-ai's own config key is precisely what got
+  overwritten. Inventing a default socket path would be another confident guess. The
+  ordering fix is the one that keeps ac-0006 honest.
+- **`FakeFs` fidelity left alone.** Making `writeText`/`rename` maintain parent directory
+  listings (which real `readdir` would show) broke 12 telemetry tests that depend on the
+  current behaviour. That is a real fake-fidelity gap and a genuine finding, but fixing it
+  is a separate change with its own blast radius — **not** something to smuggle into a fix
+  round. The nudge tests seed the directory listing explicitly instead, with a comment
+  saying why. Logged as a difficulty, not silently absorbed.
+
+### Gate after the fix round
+
+```
+just checks → tests:ok biome:ok typecheck:ok check:docs:ok check:flows:ok
+              check:telemetry-fixtures:ok check:doctrine-parity:ok check:dd-docs:ok
+              root-invocation-smoke:ok dd doctor:ok skills-check:ok
+              arch-check:2  markdown-lint:196  windows-check:6      ← baseline, unchanged
+```
+
+Tests: **4941 → 4967 passing**, 339 files, no skips.
+
+One incidental find: `npm run lint` reports 10 biome **warnings** at `HEAD` that predate
+this plan (`acts/plan/index.ts`, `acts/plan/pr-body.ts`, two telemetry tests). They are
+warn-severity, so `biome check` exits 0 and the gate is green — they are recorded here,
+not fixed, because they are unrelated to this plan.

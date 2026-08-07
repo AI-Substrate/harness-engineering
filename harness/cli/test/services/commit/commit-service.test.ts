@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { envelopeFor } from '../../../src/acts/commit.js';
 import { FakeClock } from '../../../src/adapters/clock/fake-clock.js';
 import { FakeFs } from '../../../src/adapters/fs/fake-fs.js';
 import { FakeGitAttribution } from '../../../src/adapters/git/fake-git-attribution.js';
@@ -271,5 +272,116 @@ describe('plan 074 · ac-0005 — honest failure, never a swallowed exit code', 
     await harnessCommit(deps(git, await socketIngress('connected')), nasty, ['a.ts']);
 
     expect(git.commits[0]?.message).toBe(nasty);
+  });
+});
+
+describe('plan 074 · ac-0005 — F003: the FILE-target recovery advice is executable', () => {
+  /** `deps()` with a filesystem the test can inspect. */
+  function depsWithFs(git: FakeGitAttribution, ingress: CommitDeps['ingress'], fs: FakeFs) {
+    return {
+      git,
+      ingress,
+      fs,
+      proc: new FakeProcess({ node: '/usr/bin/node' }, REPO),
+      clock: new FakeClock('2026-08-07T00:00:00.000Z'),
+      sleep: () => Promise.resolve(),
+      verifyTimeoutMs: 500,
+    } satisfies CommitDeps;
+  }
+
+  it('names the RECONFIGURATION before the drain — the nudge refuses a file ingress', async () => {
+    // The review's F003: `harness doctor telemetry-nudge --buffer <target>` is
+    // guaranteed to skip while `trace2.eventTarget` names that same file, because
+    // the nudge rejects a non-af_unix ingress before it ever reads `--buffer`.
+    // Advice that cannot run is worse than no advice — it looks like recovery.
+    const git = new FakeGitAttribution({ commitSha: SHA });
+    const out = await harnessCommit(
+      deps(git, (await nonSocketIngress('/tmp/agent-trace2.jsonl')) as never),
+      'msg',
+      ['a.ts'],
+    );
+
+    const action = out.next_action ?? '';
+    const reconfigure = action.indexOf('--install-collector');
+    const drain = action.indexOf('telemetry-nudge --buffer');
+    expect(reconfigure).toBeGreaterThanOrEqual(0);
+    expect(drain).toBeGreaterThan(reconfigure);
+    expect(action).toContain('FIRST');
+    expect(action).toContain('THEN');
+  });
+
+  it('writes a sidecar beside the FILE target, so the eventual drain can confirm', async () => {
+    const fs = new FakeFs();
+    const git = new FakeGitAttribution({ commitSha: SHA });
+    const target = '/tmp/agent-trace2.jsonl';
+    await harnessCommit(depsWithFs(git, (await nonSocketIngress(target)) as never, fs), 'msg', [
+      'a.ts',
+    ]);
+
+    // Without this the drained segment names no commit, so the nudge can only
+    // report it `unconfirmable` and must keep it forever.
+    expect(fs.readText(`${target}.shas`)).toBe(`${SHA}\n`);
+  });
+});
+
+describe('plan 074 · ac-0005 — F007: a commit that HAPPENED is never reported as failed', () => {
+  it('git commit ok + rev-parse failed → ok, sha unknown, and NOT a failure', async () => {
+    const git = new FakeGitAttribution({ headUnreadable: true });
+    const out = await harnessCommit(deps(git, await socketIngress('connected')), 'msg', ['a.ts']);
+
+    // Pre-fix: ok=false, "git commit failed (exit 0)", "nothing was committed".
+    expect(out.ok).toBe(true);
+    expect(out.shaUnknown).toBe(true);
+    expect(out.sha).toBeNull();
+    expect(out.gitCode).toBe(0);
+    expect(out.detail).toContain('SUCCEEDED');
+    expect(out.detail).toContain('do NOT re-run');
+    expect(out.detail).not.toContain('failed (exit');
+    // No second commit attempt, ever.
+    expect(git.commits).toHaveLength(1);
+  });
+
+  it('the BUFFERED branch keeps its buffer recoverable and says it is unconfirmable', async () => {
+    const git = new FakeGitAttribution({ headUnreadable: true });
+    const out = await harnessCommit(deps(git, await socketIngress('denied')), 'msg', ['a.ts']);
+
+    expect(out.ok).toBe(true);
+    expect(out.shaUnknown).toBe(true);
+    expect(out.mode).toBe('harness-buffered');
+    expect(out.buffer).toContain(TRACE2_BUFFER_FILE);
+    expect(out.detail).toContain('still replayable');
+    expect(out.detail).toContain('unconfirmable');
+    // The events DID go to the buffer — the branch selection is unchanged.
+    expect(git.commits[0]?.env?.[TRACE2_EVENT_ENV]).toContain(TRACE2_BUFFER_FILE);
+  });
+
+  it('a REAL git failure is still a failure — the two are not conflated', async () => {
+    const git = new FakeGitAttribution({ commitFails: 128 });
+    const out = await harnessCommit(deps(git, await socketIngress('connected')), 'msg', ['a.ts']);
+
+    expect(out.ok).toBe(false);
+    expect(out.shaUnknown).toBe(false);
+    expect(out.gitCode).toBe(128);
+    expect(out.detail).toContain('git commit failed');
+    expect(out.next_action).toContain('nothing was committed');
+  });
+
+  it('the envelope DEGRADES on an unknown sha and stays OK on a genuine no-op', async () => {
+    const clock = new FakeClock('2026-08-07T00:00:00.000Z');
+    const unknown = await harnessCommit(
+      deps(new FakeGitAttribution({ headUnreadable: true }), await socketIngress('connected')),
+      'msg',
+      ['a.ts'],
+    );
+    const noop = await harnessCommit(
+      deps(new FakeGitAttribution({ staged: [] }), await socketIngress('connected')),
+      'msg',
+      [],
+    );
+
+    // A commit whose sha is unknown must be VISIBLE. Pre-fix it exited 1 as an
+    // error; treating it as plain `ok` would be the opposite mistake.
+    expect(envelopeFor(unknown, clock).status).toBe('degraded');
+    expect(envelopeFor(noop, clock).status).toBe('ok');
   });
 });

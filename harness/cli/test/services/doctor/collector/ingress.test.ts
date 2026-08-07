@@ -52,6 +52,21 @@ describe('plan 074 · ac-0001 — resolveTrace2Target classifies without probing
     expect(resolveTrace2Target(raw).kind).toBe(kind);
   });
 
+  // F004: these all used to fall through as `{ kind: 'file' }`, which made
+  // `harness commit` leave trace2 unoverridden and then tell the operator their
+  // events were buffering in a file that will never exist. `unconfigured` sends
+  // them to the buffered branch, where the harness controls a real, drainable file.
+  it.each([
+    ['0', 'git DISABLES trace2 entirely — no events at all'],
+    ['false', 'git DISABLES trace2 entirely — no events at all'],
+    ['3', 'a raw file DESCRIPTOR — no path to drain later'],
+    ['9', 'a raw file DESCRIPTOR — no path to drain later'],
+    ['trace2.jsonl', 'a RELATIVE path — git warns and disables trace2'],
+    ['./events/trace2.jsonl', 'a RELATIVE path — git warns and disables trace2'],
+  ])('%s is NOT a buffering file target (%s)', (raw) => {
+    expect(resolveTrace2Target(raw)).toEqual({ kind: 'unconfigured' });
+  });
+
   it.each([
     ['af_unix:/var/run/t.sock', '/var/run/t.sock'],
     ['af_unix:stream:/var/run/t.sock', '/var/run/t.sock'],
@@ -60,11 +75,12 @@ describe('plan 074 · ac-0001 — resolveTrace2Target classifies without probing
     expect(resolveTrace2Target(raw)).toEqual({ kind: 'af_unix', path });
   });
 
-  it('a plain path is a FILE target — the buffering shape, not an ingress', () => {
-    expect(resolveTrace2Target('/tmp/trace2-events.jsonl')).toEqual({
-      kind: 'file',
-      path: '/tmp/trace2-events.jsonl',
-    });
+  it.each([
+    '/tmp/trace2-events.jsonl',
+    'C:\\Users\\dev\\trace2.jsonl',
+    '//server/share/trace2.jsonl',
+  ])('only an ABSOLUTE path is a FILE target: %s', (raw) => {
+    expect(resolveTrace2Target(raw)).toEqual({ kind: 'file', path: raw });
   });
 });
 

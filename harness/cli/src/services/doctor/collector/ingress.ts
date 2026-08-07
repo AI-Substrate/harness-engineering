@@ -31,12 +31,35 @@ export type Trace2Target =
   | { kind: 'af_unix'; path: string };
 
 /**
+ * A path git will actually open as a trace2 FILE target: absolute, POSIX (`/…`),
+ * Windows drive-rooted (`C:\…`), or UNC. git's own rule is explicit — a trace2
+ * target that is not one of its keyword/fd forms is used as a file ONLY when it
+ * is absolute; anything else disables trace2 with a warning.
+ */
+const ABSOLUTE_TARGET = /^([A-Za-z]:)?[\\/]/;
+
+/**
  * Classify a raw `trace2.eventTarget` value. PURE — no probe, no filesystem.
  *
- * git accepts `af_unix:<path>`, `af_unix:stream:<path>` and `af_unix:dgram:<path>`;
- * anything else that is a path is a plain FILE target (the buffering shape from
- * F-07), and `1`/`true`/`2` are git's stderr forms, which carry no ingress at
- * all and so read as unconfigured.
+ * git accepts `af_unix:<path>`, `af_unix:stream:<path>` and `af_unix:dgram:<path>`.
+ * Only an ABSOLUTE path is a plain FILE target (the buffering shape from F-07).
+ * EVERYTHING else reads as `unconfigured`, and the set is wider than it looks —
+ * this is the ac-0001 correction the review caught, and the reason it matters is
+ * that `unconfigured` and `file` drive OPPOSITE commit branches:
+ *
+ * - `0` / `false` — git's DISABLED forms. Nothing is emitted at all. Reading
+ *   these as `file` would make `harness commit` leave trace2 unoverridden and
+ *   then tell the operator their events are buffering in a file that will never
+ *   exist: a confident wrong answer about recoverable attribution.
+ * - `1` / `2` / `true` — git's stderr/fd-1/fd-2 forms. A destination, but not an
+ *   ingress and not a buffer.
+ * - `3`–`9` — git's raw file-DESCRIPTOR forms. Events go to an already-open fd
+ *   inherited from the parent; there is no path to drain later.
+ * - a RELATIVE path — git refuses it (it warns and disables trace2), so treating
+ *   it as a buffer would name a file git never writes.
+ *
+ * Every one of those lands in the buffered branch instead, where `harness commit`
+ * points `GIT_TRACE2_EVENT` at a buffer it controls and can actually replay.
  */
 export function resolveTrace2Target(raw: string | null | undefined): Trace2Target {
   const value = (raw ?? '').trim();
@@ -45,8 +68,10 @@ export function resolveTrace2Target(raw: string | null | undefined): Trace2Targe
   if (unix?.[1] !== undefined && unix[1].trim() !== '') {
     return { kind: 'af_unix', path: unix[1].trim() };
   }
-  // git's own "just write to stderr" forms — a destination, but not an ingress.
-  if (value === '1' || value === '2' || value === 'true') return { kind: 'unconfigured' };
+  // Keyword + fd forms: a destination (or none at all), never a drainable buffer.
+  if (/^(?:0|1|2|true|false|[3-9])$/.test(value)) return { kind: 'unconfigured' };
+  // A relative path is not a file target — git warns and disables trace2.
+  if (!ABSOLUTE_TARGET.test(value)) return { kind: 'unconfigured' };
   return { kind: 'file', path: value };
 }
 

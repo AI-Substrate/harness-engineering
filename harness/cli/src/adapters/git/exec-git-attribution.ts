@@ -64,6 +64,14 @@ export class ExecGitAttribution implements GitAttributionPort {
     return out === null ? [] : out.split('\n').filter((line) => line.trim() !== '');
   }
 
+  /**
+   * Commit, then read the sha back. The two are SEPARATE facts and are reported
+   * as such (review F007): `ok` is git's own exit code for the commit, and `sha`
+   * is `null` when — and only when — reading `HEAD` afterwards failed. A caller
+   * must never collapse `sha === null` into "the commit failed", because a
+   * successful commit with an unreadable HEAD is a commit that is really in the
+   * history, and telling the operator otherwise invites a double commit.
+   */
   commit(message: string, env?: Record<string, string>): CommitResult {
     const outcome = this.result(['commit', '-m', message], env);
     if (!outcome.ok) return outcome;

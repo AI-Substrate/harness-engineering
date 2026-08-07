@@ -103,6 +103,14 @@ export interface CommitOutcome {
   /** The probe outcome that selected the branch. `null` for a non-socket target. */
   probe: ProbeOutcome | null;
   sha: string | null;
+  /**
+   * The commit SUCCEEDED but its sha could not be read back (`rev-parse HEAD`
+   * failed). A separate flag and not `sha === null`, because that value also
+   * means "nothing was staged, no commit made" — and conflating a commit that
+   * happened with one that did not is precisely the failure mode this whole plan
+   * exists to eliminate.
+   */
+  shaUnknown: boolean;
   staged: string[];
   verify: VerifyResult;
   /** The buffer file trace2 was pointed at, when a branch used one. */
@@ -189,6 +197,7 @@ export async function harnessCommit(
         mode: 'direct-verified',
         probe,
         sha: null,
+        shaUnknown: false,
         staged: [],
         verify: 'skipped',
         buffer: null,
@@ -206,6 +215,7 @@ export async function harnessCommit(
       mode: 'direct-verified',
       probe,
       sha: null,
+      shaUnknown: false,
       staged: [],
       verify: 'skipped',
       buffer: null,
@@ -223,18 +233,49 @@ export async function harnessCommit(
     message,
     buffer === null ? undefined : { [TRACE2_EVENT_ENV]: buffer },
   );
-  if (!result.ok || result.sha === null) {
+  if (!result.ok) {
     return {
       ok: false,
       mode: bufferedBranch ? 'harness-buffered' : 'direct-verified',
       probe,
       sha: null,
+      shaUnknown: false,
       staged,
       verify: 'skipped',
       buffer,
       gitCode: result.code,
       detail: `git commit failed (exit ${result.code}): ${result.stderr}`,
       next_action: 'Read the git error above; nothing was committed and nothing was buffered.',
+    };
+  }
+
+  if (result.sha === null) {
+    // The commit SUCCEEDED (git exited 0) but reading HEAD back failed. The
+    // review's F007: this used to be reported as a commit FAILURE — exit 1, "not
+    // committed" — for a commit that is really in the history. That is the
+    // confident wrong answer in its most damaging form, because it invites the
+    // operator to re-run and double-commit. So: honest DEGRADED, never an error,
+    // and the buffer is left in place so its events are still recoverable.
+    const fileTarget = deps.ingress.target.kind === 'file' ? deps.ingress.target.path : null;
+    const written = buffer ?? fileTarget;
+    return {
+      ok: true,
+      mode: bufferedBranch
+        ? 'harness-buffered'
+        : fileTarget !== null
+          ? 'file-buffered'
+          : 'direct-verified',
+      probe,
+      sha: null,
+      shaUnknown: true,
+      staged,
+      // Nothing can be verified without a sha — and an unverified commit is not
+      // a missing note, it is an unknown one.
+      verify: 'skipped',
+      buffer: written,
+      gitCode: 0,
+      detail: `git commit SUCCEEDED, but reading HEAD back failed, so this commit's sha is UNKNOWN to the harness. The commit is real and in your history — do NOT re-run this command.${written === null ? '' : ` Its trace2 events are in ${written} and are still replayable, but no sidecar sha could be recorded, so a nudge will report that segment as unconfirmable rather than delete it.`}`,
+      next_action: `Run \`git log -1\` to see the commit, then \`git notes --ref=ai show HEAD\` to check whether attribution landed.${written === null ? '' : ` If it did not, run \`harness doctor telemetry-nudge${bufferedBranch ? '' : ` --buffer ${written}`}\` from an unsandboxed shell.`}`,
     };
   }
 
@@ -250,6 +291,7 @@ export async function harnessCommit(
       mode: 'harness-buffered',
       probe,
       sha: result.sha,
+      shaUnknown: false,
       staged,
       // Verify is SKIPPED, not failed: the events went to a file by design, so
       // the daemon has not seen them yet and an absent note proves nothing.
@@ -263,17 +305,26 @@ export async function harnessCommit(
 
   if (deps.ingress.target.kind === 'file') {
     const target = deps.ingress.target.path;
+    // The sidecar goes beside the FILE TARGET too, not just the harness buffer.
+    // Without it the eventual drain of that file could confirm nothing, and an
+    // unconfirmable segment is one the nudge must keep forever.
+    recordBufferedSha(deps, target, result.sha);
     return {
       ok: true,
       mode: 'file-buffered',
       probe,
       sha: result.sha,
+      shaUnknown: false,
       staged,
       verify: 'skipped',
       buffer: target,
       gitCode: 0,
       detail: `committed ${short} — DEGRADED: the configured trace2 target is a plain FILE (${target}), so this commit's events buffered there rather than reaching the collector. Attribution is DEFERRED, not lost, and not yet proven.`,
-      next_action: `Run \`harness doctor telemetry-nudge --buffer ${target}\` from a shell that can reach the collector socket, to replay those events. See \`harness instructions commit\`.`,
+      // The ORDER is the point (review F003): while `trace2.eventTarget` names a
+      // file there is no socket to replay into, so a bare nudge would skip. The
+      // reconfiguration is a PREREQUISITE, not an afterthought — naming the drain
+      // command without it promises a recovery that cannot run.
+      next_action: `FIRST point \`trace2.eventTarget\` back at the git-ai socket (\`harness doctor --install-collector\`) — while it names a file there is no ingress to replay into — THEN run \`harness doctor telemetry-nudge --buffer ${target}\` from a shell that can reach the socket. See \`harness instructions commit\`.`,
     };
   }
 
@@ -284,6 +335,7 @@ export async function harnessCommit(
       mode: 'direct-verified',
       probe,
       sha: result.sha,
+      shaUnknown: false,
       staged,
       verify,
       buffer: null,
@@ -300,6 +352,7 @@ export async function harnessCommit(
     mode: 'direct-verified',
     probe,
     sha: result.sha,
+    shaUnknown: false,
     staged,
     verify: 'missing',
     buffer: null,

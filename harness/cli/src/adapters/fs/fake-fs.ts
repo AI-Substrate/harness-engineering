@@ -35,6 +35,11 @@ export class FakeFs implements FsPort, FileSystemWritePort {
    * real I/O error so a caller's error-swallowing (the T007 prune) is provable.
    */
   readonly failDeletes = new Set<string>();
+  /**
+   * Sources whose `rename` the fake should FAIL (throw) — models the real I/O
+   * error a recovery verb must DEGRADE on rather than let escape.
+   */
+  readonly failRenames = new Set<string>();
   /** Paths modelled as symlinks/devices for no-follow bundle checks. */
   readonly nonRegularPaths = new Set<string>();
   /** Paths modelled specifically as symlinks for typed no-follow failures. */
@@ -299,6 +304,9 @@ export class FakeFs implements FsPort, FileSystemWritePort {
 
   rename(from: string, to: string): void {
     this.renames.push(`${from}->${to}`);
+    if (this.failRenames.has(from)) {
+      throw new Error(`FakeFs.rename: forced failure: ${from}`);
+    }
     const contents = this.files[from];
     if (contents === undefined) {
       // Match NodeFs: renaming a missing source throws (callers map to an error).
