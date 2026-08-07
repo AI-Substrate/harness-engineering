@@ -1,0 +1,66 @@
+harness/cli/src/adapters/git/fake-git-attribution.ts
+  s_caff156b1b7e66::t_b2dd4fede940b5 12-18
+  s_caff156b1b7e66::t_b80058df5deb3e 74-78
+docs/plans/074-sandbox-attribution/assets/execution.log.md
+  s_caff156b1b7e66::t_6f00684f412103 195-251
+harness/cli/src/adapters/git/git-attribution-port.ts
+  s_caff156b1b7e66::t_1dd9eec2468c2f 61-81
+harness/cli/test/services/commit/commit-service.test.ts
+  s_caff156b1b7e66::t_a50cb38d9cbbbb 30-31,185-190,203,330
+  s_caff156b1b7e66::t_4552d22eddcc16 331-377
+harness/cli/src/services/doctor/collector/nudge.ts
+  s_caff156b1b7e66::t_2e7dc74c642d2a 209
+  s_caff156b1b7e66::t_514f629d8f9242 7
+  s_caff156b1b7e66::t_9ea9ccc48d61ed 156,158,160-173,186-190
+  s_caff156b1b7e66::t_c7282a8d75056e 492
+  s_caff156b1b7e66::t_789795ce214421 496,499,508,515-519
+  s_caff156b1b7e66::t_f2ec3e25a90458 401-405,411,415-423,431-445,452-453,468
+  s_caff156b1b7e66::t_b50dee554b64f3 587-592,594,607-610,616
+  s_caff156b1b7e66::t_3456659dc514b1 630-633,639-640,648-679,686,689-692,704-706
+  s_caff156b1b7e66::t_87b3eabce2d2e8 43-60,68,71-72
+  s_caff156b1b7e66::t_41567e1d0bd4e8 84-118,140
+  s_caff156b1b7e66::t_818cd5ec418442 83,269-286,290-299,305-310,313,317-366,368-376,378-381,385-386
+docs/plans/074-sandbox-attribution/assets/reviews/phase-1-review.md
+  s_40dc55d5b47a87::t_6eb80eb6f437d0 190-240
+harness/cli/src/services/commit/commit-service.ts
+  s_caff156b1b7e66::t_268e810a70b8ec 82-109
+  s_caff156b1b7e66::t_33d9288ece8fbd 323-326
+  s_caff156b1b7e66::t_c3d07e4daf4513 377-380
+  s_caff156b1b7e66::t_593c082d094c6c 166-171,179,183-212,216-217,219,222
+  s_caff156b1b7e66::t_0766240c4974ab 81
+docs/how/gitai-collector.md
+  s_caff156b1b7e66::t_0ad5073b3b641f 390-396,423-430,432-443,445-447,463-468,473-476
+harness/cli/src/adapters/git/exec-git-attribution.ts
+  s_caff156b1b7e66::t_907d496d55980c 57-71
+  s_caff156b1b7e66::t_dc8f202032f410 2
+harness/cli/test/services/doctor/collector/nudge.test.ts
+  s_caff156b1b7e66::t_7fa7e55d9a006b 492,532
+  s_caff156b1b7e66::t_f2e977873dcef2 898-913
+  s_caff156b1b7e66::t_9660c5da21d21a 896-897
+  s_caff156b1b7e66::t_a1a26c14f47095 11,237-243
+  s_caff156b1b7e66::t_bc298b526a3526 652-895,914-915
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "dbc14a07425e5a763b9e6b02172409a483115391",
+  "prompts": {},
+  "sessions": {
+    "s_40dc55d5b47a87": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "82e01a2f-8b51-432f-9149-9b988bb2b5ae",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_caff156b1b7e66": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "008f57e1-541c-4033-80be-e47316058c9d",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
