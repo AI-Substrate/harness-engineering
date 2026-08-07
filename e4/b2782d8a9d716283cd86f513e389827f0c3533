@@ -1,0 +1,104 @@
+docs/how/gitai-collector.md
+  s_9e6a42835b1143::t_9506b8b653e5c7 523-555
+docs/plans/074-sandbox-attribution/plan.dd.json
+  s_9e6a42835b1143::t_90f3e5858a76a8 39
+docs/plans/075-windows-nudge-honesty/assets/tasks/phase-1/tasks.dd.json
+  s_9e6a42835b1143::t_a9d9dc491ae17a 25-66
+  s_9e6a42835b1143::t_7c26ce409d5750 1-24,67-78
+harness/cli/src/acts/doctor.ts
+  s_9e6a42835b1143::t_a49d801b9718cf 288-291
+harness/cli/test/services/doctor/collector/ingress.test.ts
+  s_9e6a42835b1143::t_bcba9c046ce7ba 11-12
+  s_9e6a42835b1143::t_a4387f1e85ec86 89-241
+harness/cli/src/services/instructions/commit-guidance.ts
+  s_9e6a42835b1143::t_0c117280606283 77-79,84-87
+  s_9e6a42835b1143::t_c0b61e37a98a5b 44,51-54
+harness/cli/test/services/doctor/collector/nudge.test.ts
+  s_9e6a42835b1143::t_a30336057906c7 1445-1619
+docs/plans/074-sandbox-attribution/plan.dd.md
+  s_9e6a42835b1143::t_90f3e5858a76a8 51
+docs/plans/075-windows-nudge-honesty/plan.dd.md
+  s_9e6a42835b1143::t_4da62f90a36853 69-70
+  s_9e6a42835b1143::t_f0fa64599fbaa4 1-68
+harness/cli/src/services/doctor/collector/nudge.ts
+  s_9e6a42835b1143::t_beb4a32e3b4ea2 155-163
+  s_9e6a42835b1143::t_bac96b00acad88 760-764,772-797
+  s_9e6a42835b1143::t_06653f4a5b6c58 798-802,805-806
+  s_9e6a42835b1143::t_da1d225e1554d2 13,22
+  s_9e6a42835b1143::t_b7e96012b92fe6 406-409
+  s_9e6a42835b1143::t_daa4c84955c6b8 299-311
+  s_9e6a42835b1143::t_18812599d844d6 703-718
+  s_9e6a42835b1143::t_63a5c78a69e3bb 702
+docs/plans/075-windows-nudge-honesty/plan.dd.json
+  s_9e6a42835b1143::t_4da62f90a36853 92-99
+  s_dfbe7bea3d1b7e::t_8b726e85c69236 1-91,100-105
+harness/cli/src/services/doctor/collector/ingress.ts
+  s_9e6a42835b1143::t_e09044cc19c17f 106-109,115-189
+  s_9e6a42835b1143::t_e2d9ce4ab0d4d5 76-78
+  s_9e6a42835b1143::t_bb7c272f2367a9 31-40,43-44,51-56,60-70
+  s_cc38e74dcd6fd7::t_1c262a2f9c11e0 41-42,71,190
+docs/plans/075-windows-nudge-honesty/assets/tasks/phase-1/tasks.dd.md
+  s_9e6a42835b1143::t_a9d9dc491ae17a 38-43
+  s_9e6a42835b1143::t_6673dc78614ebf 1-37,44-49
+harness/cli/src/services/doctor/collector/at-risk.ts
+  s_9e6a42835b1143::t_4ab4592e4fb77d 5
+  s_9e6a42835b1143::t_aac911480e7a1b 117-122
+harness/cli/src/services/commit/commit-service.ts
+  s_9e6a42835b1143::t_99d6c927af5638 132
+  s_9e6a42835b1143::t_ecb34bdb4ecc5c 311-326
+  s_9e6a42835b1143::t_fa5734b2181808 25,33-36,43-45
+  s_9e6a42835b1143::t_e63645ccff5230 371-376
+  s_9e6a42835b1143::t_ac856c89c1a49b 7
+  s_9e6a42835b1143::t_33eaf37d0a66c3 415-446
+  s_9e6a42835b1143::t_15fc780c72ed63 133-144
+  s_9e6a42835b1143::t_ed6cb1ca6e583f 447
+  s_9e6a42835b1143::t_4ab4592e4fb77d 356-359
+  s_dfbe7bea3d1b7e::t_09e95511fa6147 46
+harness/cli/test/services/commit/commit-service.test.ts
+  s_9e6a42835b1143::t_4ab4592e4fb77d 479,481-483,506,508-510,520,522-524,540,542-544,552,554-556,571,573-575,590-594,601
+  s_9e6a42835b1143::t_ae74d72e833fb6 442-478,480,484-505,507,511-519,521,525-539,541,545-551,553,557-570,572,576-589,595-600,602-603
+docs/plans/075-windows-nudge-honesty/assets/research-dossier.md
+  s_a76964380084ef::t_900b6e88f06705 1-127
+docs/plans/075-windows-nudge-honesty/original-ask.md
+  s_a76964380084ef::t_b5a88347dab631 1-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e4b2782d8a9d716283cd86f513e389827f0c3533",
+  "prompts": {},
+  "sessions": {
+    "s_9e6a42835b1143": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "58af2b48-7b67-4412-93b5-70847a064c82",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_cc38e74dcd6fd7": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "b93ff3a6-bc04-43c8-8e79-1e0100fb7d1d",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_dfbe7bea3d1b7e": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "d854c5fd-5185-4f9c-99f4-40038b3158a0",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
