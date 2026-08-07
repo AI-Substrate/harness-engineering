@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import {
+  chmodSync,
   copyFileSync,
   existsSync,
   mkdirSync,
@@ -67,7 +68,10 @@ function sandbox(): Sandbox {
   mkdirSync(join(repo, 'harness/cli/bin'), { recursive: true });
   copyFileSync(eventsFixture, join(sessionDir, 'events.jsonl'));
   copyFileSync(hookSource, join(repo, '.githooks/pre-commit'));
-  execFileSync('chmod', ['+x', join(repo, '.githooks/pre-commit')]);
+  // Was `execFileSync('chmod', ['+x', …])` — an undeclared external binary,
+  // absent on Windows (#108). Verified equivalent to `chmod +x` on the real
+  // fixture before the binary was removed.
+  chmodSync(join(repo, '.githooks/pre-commit'), 0o755);
   // The shim lives at the EXACT path the hook resolves, so bin resolution is real.
   writeFileSync(
     join(repo, 'harness/cli/bin/harness.js'),

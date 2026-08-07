@@ -1,9 +1,19 @@
 import { spawnSync } from 'node:child_process';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { hasBinary, missingBinaryReason } from '../support/external-binary.js';
 
 /**
  * Plan 067 item 4 — the post-commit telemetry flush must honour BOTH opt-outs.
@@ -47,7 +57,11 @@ beforeEach(() => {
   spawnSync('git', ['init', '-q', '-b', 'main'], { cwd: repo });
 
   mkdirSync(join(repo, '.githooks'), { recursive: true });
-  spawnSync('cp', [HOOK, join(repo, '.githooks', 'post-commit')]);
+  // Was `spawnSync('cp', …)` — an undeclared external binary, absent on Windows
+  // (#108), and one whose exit status was never checked, so a failed copy was
+  // SILENT. copyFileSync throws instead, which is the point as much as the
+  // portability is.
+  copyFileSync(HOOK, join(repo, '.githooks', 'post-commit'));
 
   // The hook only acts when the CLI entrypoint exists at the repo root.
   mkdirSync(join(repo, 'harness', 'cli', 'bin'), { recursive: true });
@@ -64,24 +78,49 @@ afterEach(() => {
   rmSync(repo, { recursive: true, force: true });
 });
 
-describe('.githooks/post-commit — telemetry flush opt-outs (plan 067)', () => {
-  it('flushes by default (the guard assertions below are non-vacuous)', () => {
-    expect(runHook({})).toBe(0);
-    expect(existsSync(marker)).toBe(true);
-  });
+/**
+ * bash is the SUBJECT here, not the mechanism — do not reimplement the hook.
+ *
+ * These cases run the REAL TRACKED ARTEFACT (`.githooks/post-commit`) through a
+ * real shell. Reimplementing its logic in JS would test a copy of the hook
+ * rather than the hook we ship, which is the one thing this suite exists to
+ * check. On a host without bash the honest move is to skip loudly.
+ *
+ * NOTE for whoever arms the windows-latest leg: git-for-Windows bundles bash,
+ * so this MAY simply run there — but "shipped with git" and "on PATH in the
+ * runner's shell" are different facts and neither has been measured. This probe
+ * answers it truthfully either way rather than assuming.
+ */
+if (!hasBinary('bash')) {
+  console.warn(
+    missingBinaryReason(
+      'bash',
+      'that the SHIPPED .githooks/post-commit honours HARNESS_NO_TELEMETRY, exits 0 on an injected fault, and fires the flush exactly once per commit (plan 067).',
+    ),
+  );
+}
 
-  it('HARNESS_NO_TELEMETRY=1 suppresses the flush', () => {
-    expect(runHook({ HARNESS_NO_TELEMETRY: '1' })).toBe(0);
-    expect(existsSync(marker)).toBe(false);
-  });
+describe.skipIf(!hasBinary('bash'))(
+  '.githooks/post-commit — telemetry flush opt-outs (plan 067)',
+  () => {
+    it('flushes by default (the guard assertions below are non-vacuous)', () => {
+      expect(runHook({})).toBe(0);
+      expect(existsSync(marker)).toBe(true);
+    });
 
-  it('HARNESS_NO_TELEMETRY_AUTOSYNC=1 suppresses the flush — it IS an unprompted push', () => {
-    expect(runHook({ HARNESS_NO_TELEMETRY_AUTOSYNC: '1' })).toBe(0);
-    expect(existsSync(marker)).toBe(false);
-  });
+    it('HARNESS_NO_TELEMETRY=1 suppresses the flush', () => {
+      expect(runHook({ HARNESS_NO_TELEMETRY: '1' })).toBe(0);
+      expect(existsSync(marker)).toBe(false);
+    });
 
-  it('a value other than 1 does NOT opt out (only the documented switch value)', () => {
-    expect(runHook({ HARNESS_NO_TELEMETRY_AUTOSYNC: '0' })).toBe(0);
-    expect(existsSync(marker)).toBe(true);
-  });
-});
+    it('HARNESS_NO_TELEMETRY_AUTOSYNC=1 suppresses the flush — it IS an unprompted push', () => {
+      expect(runHook({ HARNESS_NO_TELEMETRY_AUTOSYNC: '1' })).toBe(0);
+      expect(existsSync(marker)).toBe(false);
+    });
+
+    it('a value other than 1 does NOT opt out (only the documented switch value)', () => {
+      expect(runHook({ HARNESS_NO_TELEMETRY_AUTOSYNC: '0' })).toBe(0);
+      expect(existsSync(marker)).toBe(true);
+    });
+  },
+);
