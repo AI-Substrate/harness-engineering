@@ -26,7 +26,10 @@ describe('registerDoctorAct', () => {
     vi.restoreAllMocks();
   });
 
-  function run(io: CliIo, registry: VerbRegistry = EMPTY): number {
+  // `parseAsync` since plan 074: doctor's report path awaits ONE ingress probe
+  // (a socket connect cannot be synchronous), so the act returns a promise on
+  // both branches. The composition root already parses with `parseAsync`.
+  async function run(io: CliIo, registry: VerbRegistry = EMPTY): Promise<number> {
     let code = -1;
     vi.spyOn(process, 'exit').mockImplementation(((c?: number) => {
       code = c ?? 0;
@@ -34,13 +37,13 @@ describe('registerDoctorAct', () => {
     }) as never);
     const program = new Command().name('harness');
     registerDoctorAct(program, io, registry);
-    expect(() => program.parse(['node', 'harness', 'doctor'])).toThrow(/^exit:/);
+    await expect(program.parseAsync(['node', 'harness', 'doctor'])).rejects.toThrow(/^exit:/);
     return code;
   }
 
-  it('json mode emits an envelope with data.layers (incl. extensions) and exits 0', () => {
+  it('json mode emits an envelope with data.layers (incl. extensions) and exits 0', async () => {
     const { io, out } = ioFor('json');
-    const code = run(io);
+    const code = await run(io);
     const env = JSON.parse(out());
     expect(env.command).toBe('doctor');
     expect(['ok', 'degraded']).toContain(env.status);
@@ -59,9 +62,14 @@ describe('registerDoctorAct', () => {
       // this row cannot say "nothing is collecting your AI attribution", which is
       // the only thing it exists to say.
       'gitai-collector',
+      // plan 074 · ac-0003 — the at-risk row, present because this act wires a
+      // real repo's attribution reads. READ-ONLY: it names the nudge, never runs it.
+      'attribution-at-risk',
       'dd-documents',
       'precommit-hook-latency',
       'instructions',
+      // plan 074 · ac-0008 — warns when AGENTS.md carries no managed block.
+      'commit-guidance',
       'record-types',
     ]);
     // Envelope contract: degraded always carries a next_action; ok need not (FX001 —
@@ -73,16 +81,16 @@ describe('registerDoctorAct', () => {
     expect(code).toBe(0);
   });
 
-  it('human mode writes the layered report to stderr and a summary to stdout, exits 0', () => {
+  it('human mode writes the layered report to stderr and a summary to stdout, exits 0', async () => {
     const { io, out, err } = ioFor('human');
-    const code = run(io);
+    const code = await run(io);
     expect(err()).toContain('toolchain');
     expect(err()).toContain('extensions');
     expect(out()).toContain('doctor:');
     expect(code).toBe(0);
   });
 
-  it('quiet JSON mode emits only extension names, statuses, and verb names', () => {
+  it('quiet JSON mode emits only extension names, statuses, and verb names', async () => {
     const { io, out } = ioFor('json');
     const verb: HarnessVerb = {
       name: 'demo',
@@ -102,7 +110,7 @@ describe('registerDoctorAct', () => {
       ],
     };
 
-    const code = run({ ...io, quiet: true }, registry);
+    const code = await run({ ...io, quiet: true }, registry);
     const env = JSON.parse(out());
     expect(env.data.extensions).toEqual([{ name: 'demo', status: 'loaded', verbs: ['demo'] }]);
     expect(code).toBe(0);

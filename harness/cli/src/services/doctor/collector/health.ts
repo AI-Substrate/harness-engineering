@@ -1,5 +1,6 @@
 import type { HashPort } from '../../../adapters/hash/hash-port.js';
 import { type AgentMarker, agentsMissingHooks, detectAgents } from './agents.js';
+import { type IngressReading, ingressBlocked, markerExplanation } from './ingress.js';
 import { GITAI_PIN } from './pin.js';
 import { binaryPathFor, daemonPidPathFor, resolveArtifact } from './platform.js';
 import { type CollectorState, readCollectorState } from './state.js';
@@ -34,6 +35,7 @@ export type CollectorVerdict =
   | 'cli-only-trace2'
   | 'cli-only-skills'
   | 'hooks-incomplete'
+  | 'ingress-blocked'
   | 'degraded'
   | 'could-not-determine';
 
@@ -69,6 +71,12 @@ export interface CollectorHealth {
    * intact (phase-1 review, round 3).
    */
   lastAttempt: { status: CollectorState['hooks']['status']; at: string; detail: string } | null;
+  /**
+   * The ingress probe this read stood on, when one was supplied (plan 074 ·
+   * ac-0002). `null` means nobody probed — which is NOT the same as a probe that
+   * came back clean, and is never rendered as one.
+   */
+  ingress?: IngressReading | null;
 }
 
 export interface CollectorHealthDeps {
@@ -82,6 +90,16 @@ export interface CollectorHealthDeps {
    */
   hash?: HashPort;
   manifest?: CollectorPin;
+  /**
+   * An ALREADY-PERFORMED ingress probe (plan 074 · ac-0002). The probe is
+   * asynchronous and this read is synchronous by design, so the composition root
+   * probes first and injects the reading — which also keeps the verdict logic a
+   * pure function of its inputs, drivable through every outcome with fakes.
+   *
+   * Absent → the ingress rung is simply not evaluated. Absence never upgrades to
+   * good news and never manufactures a warning.
+   */
+  ingress?: IngressReading;
 }
 
 /** Never `healthy`: a verdict that rests on evidence we did not actually read. */
@@ -190,6 +208,7 @@ export function readCollectorHealth(deps: CollectorHealthDeps): CollectorHealth 
     trace2: latestTrace2(state),
     lastAttempt:
       attempt === null ? null : { status: attempt.status, at: attempt.at, detail: attempt.detail },
+    ingress: deps.ingress ?? null,
   };
 
   if (digest === 'mismatch') {
@@ -287,6 +306,28 @@ export function readCollectorHealth(deps: CollectorHealthDeps): CollectorHealth 
       detail: `git-ai writes note schema ${state.note_schema.observed ?? 'unknown'} but the manifest expects ${state.note_schema.expected} — readers may misparse the notes`,
       next_action:
         'Review the manifest and the note readers together; bump `expect_schema_version` in manifest.ts only with the readers.',
+    };
+  }
+
+  // ADDITIVE (plan 074 · ac-0002): everything a filesystem can see is fine, and
+  // yet this process cannot reach the ingress. Placed here, immediately before
+  // `healthy`, so no pre-existing verdict path changes — the ONLY read it
+  // converts is one that would otherwise have said "collection is configured",
+  // which is exactly the read that would have been a lie.
+  //
+  // Why it matters more than it looks: a blocked ingress does not merely lose
+  // data. git-ai's recovery ladder attests the unrecorded lines as known-HUMAN
+  // (dossier F-03), so the output is a confident wrong number that no
+  // filesystem-level signal can see. Warn-only, like every doctor rung (073
+  // ac-000c) — this never blocks a commit or a run.
+  if (deps.ingress !== undefined && ingressBlocked(deps.ingress)) {
+    const socket = deps.ingress.target.kind === 'af_unix' ? deps.ingress.target.path : '(unknown)';
+    return {
+      ...base,
+      verdict: 'ingress-blocked',
+      detail: `git-ai ${manifest.version} is installed and hooked up, but this process CANNOT reach its ingress socket at ${socket} — the connect was denied while the socket file exists, which is what a command sandbox looks like${markerExplanation(deps.ingress)}. Commits made from here carry NO attribution, and git-ai may later attest their lines as known-human`,
+      next_action:
+        'Commit through `harness commit "<message>"`, which buffers trace2 to a file when the ingress is blocked and tells you whether attribution landed; then run `harness doctor telemetry-nudge` from an UNSANDBOXED shell to replay the buffer. See `harness instructions commit`.',
     };
   }
 

@@ -62,6 +62,8 @@ describe('buildProgram — composition root wiring', () => {
     expect(names).toEqual([
       'help',
       'doctor',
+      // plan 074 — a CORE verb (the safe commit path), registered right after doctor.
+      'commit',
       'init',
       'new',
       'docs',

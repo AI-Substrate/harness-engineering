@@ -277,8 +277,12 @@ path is made unreachable rather than chosen.
 The collector rides on `harness doctor`, and the split is deliberate:
 
 ```bash
-# the REPORT — a pure filesystem read; invokes nothing (doctor's P7 rule)
+# the REPORT — a bounded read plus ONE read-only ingress probe (connect + destroy,
+# never a byte sent); invokes nothing and mutates nothing (doctor's P7 rule)
 harness doctor
+
+# RECOVERY — the one collector-mutating verb, and it only ever runs when typed
+harness doctor telemetry-nudge [--buffer <path>]
 
 # the LIFECYCLE — the only ways anything is downloaded, executed or written
 harness doctor --install-collector    # fetch + verify the pin, then hooks (guards first)
@@ -305,11 +309,134 @@ doctor row, it **warns and never blocks**.
 | `cli-only-trace2` | **CLI installed, hooks NEVER installed because trace2 is present** — no attribution is being collected. Its own state: not healthy, not a failed install, not "could not determine". Unreachable once an install has been verified: a later block cannot demote proven coverage to this |
 | `cli-only-skills` | CLI installed, hooks not installed because real content sits where git-ai keeps its skill links |
 | `hooks-incomplete` | hooks are installed and collecting, **and** a coding harness appeared afterwards whose edits are not being attributed. Names the harness. When a re-check was blocked by a guard, `next_action` is the manual `git-ai install-hooks` command rather than "re-run the re-check", which we already know is blocked |
+| `ingress-blocked` | everything a filesystem can see is fine, **and this process cannot reach the collector socket** — the connect was denied while the socket file exists. See [Sandbox attribution](#sandbox-attribution-when-the-collector-cannot-see) below |
 | `degraded` | binary no longer matches the pin, hooks failed, hooks are `unverified` (a zero exit that left no evidence), or a note-schema mismatch |
 | `not-installed` | nothing installed, or an unsupported platform |
 | `could-not-determine` | we could not read what we needed — **never** rendered as healthy, never folded into "no data" |
 
 Absent is not green; empty is not clean.
+
+Two further rows ride alongside it, and both are **read-only**:
+
+| row | what it says |
+|---|---|
+| `attribution-at-risk` | commits on this branch with no `refs/notes/ai` entry — **unattributed**, which is not a claim that they are AI-authored. Reports `unproven` rather than `clean` when the ingress could not be reached |
+| `commit-guidance` | whether `AGENTS.md` carries the managed commit-guidance block. Warns; never edits the file |
+
+---
+
+## Sandbox attribution: when the collector cannot see
+
+git-ai has exactly **one ingress** — git's trace2 events over a unix socket. An
+agent command sandbox treats a unix-socket `connect()` as a network operation and
+denies it. When that happens git **silently disables trace2**, the commit lands
+with no authorship note, and git-ai's recovery ladder can later attest those
+lines as **known-human**.
+
+That last step is what makes this worth a feature rather than a footnote: the
+output is a **confident wrong number, not a gap**, and no filesystem-level health
+signal can see it. The binary is installed. The hooks are on. The daemon is
+running. Everything reads green, and the answer is wrong.
+
+A controlled investigation established two more things that shape the response:
+
+- Which commands get sandboxed is **command-shape dependent** — a standalone
+  `git commit` ran unsandboxed and attributed, while the compound
+  `git add … && git commit …` an agent writes by default was sandboxed and lost.
+- It is also **non-deterministic across sessions**: identical compound shapes ran
+  unsandboxed in a later session with no configuration change.
+
+So no editor configuration is a reliable fix. Detection and a safe commit path
+have to live in the harness.
+
+### The probe verdict
+
+Harness answers "can this process reach the ingress?" the only way that is
+honest — it **tries**, with a bounded (<1s) connect that is destroyed the moment
+it settles and **never sends a byte**:
+
+| outcome | meaning |
+|---|---|
+| `connected` | the ingress is reachable; trace2 will flow |
+| `denied` | the connect was refused while the socket exists — the **sandbox signature** |
+| `refused` | a stale socket with nothing listening |
+| `absent` | no socket file; the daemon is not running |
+| `timeout` | the connect neither settled nor failed inside the bound |
+| `error:<code>` | anything else, reported with its code rather than flattened |
+
+**Environment markers never decide.** `CURSOR_SANDBOX` and friends may appear in
+the warning text to *explain* a blocked probe, and that is all. The socket was
+observed **reachable from inside a sandbox** with those markers set — a
+marker-driven verdict would have called that healthy session blocked.
+
+### The two safe commit shapes
+
+```bash
+# VERIFIED OR NAMED — probe, commit, then prove attribution landed (or buffer it)
+harness commit "<message>" -- <path> [<path>…]
+
+# RECOVERY — replay buffered events; run from an UNSANDBOXED shell
+harness doctor telemetry-nudge
+```
+
+`harness commit` is one simple command with no chaining, because compound shapes
+are what fall into the sandbox. It probes first, then:
+
+- **ingress reachable** → commits with **no** trace2 override, then waits
+  (bounded) for the `refs/notes/ai` note and reports whether it landed.
+- **anything else** → commits with trace2 buffered to a file under the gitignored
+  `.harness/temp/`, and names both that buffer and the recovery command.
+
+Those branches are **mutually exclusive**, not belt-and-braces: `GIT_TRACE2_EVENT`
+*replaces* the configured socket target rather than adding to it, so setting the
+buffer on a healthy ingress would divert events away from the collector.
+
+It never rolls back, never blocks, never swallows git's exit code, and stages
+**explicit pathspecs only**.
+
+### The nudge
+
+`harness doctor telemetry-nudge` replays buffered events into the collector — a
+mechanism proven end-to-end: the daemon cannot distinguish a replayed stream from
+live traffic. Its lifecycle is deliberate:
+
+1. **Rotate first** — the live buffer is renamed to a timestamped segment before
+   a byte is read, so a concurrent `git` can never race a truncation.
+2. **Replay the whole segment** — the daemon reconstructs state from the event
+   stream, so a filtered replay is a corrupted story.
+3. **Delete only on full confirmation** — the segment goes only when *every*
+   commit it named carries a note. A partly-confirmed segment is **retained
+   intact** (never partially rewritten) and listed for an explicit retry.
+
+v1 **never automatically re-replays** a retained segment. A live-daemon spike did
+find duplicate replay to be idempotent — notes came back byte-identical and the
+notes ref did not grow — but that is one observation on one daemon, which is not
+enough to make an unattended retry loop safe across daemon restarts and
+multi-repo interleaving. The conservative behaviour ships; the evidence is
+recorded for a future plan.
+
+The nudge never fails a doctor run, and every no-op path — no buffer, empty
+buffer, unreachable socket, non-`af_unix` target — is a report rather than an
+error. When the ingress is unreachable it **does not rotate**, because rotating
+would cost the buffer for nothing.
+
+### What is and is not promised
+
+- **Guaranteed**: a `harness commit` is never *silent* about attribution. It
+  either verifies the note landed, or names the buffer and the recovery command.
+- **Not guaranteed**: delivery. A blocked ingress is blocked. Buffered events
+  reach the collector only when the nudge runs somewhere that can reach the
+  socket, and commits made before git-ai was installed will never gain a note.
+
+Detection is **read-only throughout**: `doctor` and `checks` probe (connect and
+destroy, no bytes), enumerate, and name `harness doctor telemetry-nudge` — they
+never run it. Recovery happens only when it is explicitly invoked.
+
+### Windows
+
+git's `af_unix` trace2 target is Unix-only, so on Windows the resolver simply
+never yields a socket to probe and the whole path is a platform-guarded no-op.
+Windows is *must-not-break* here, not *must-work*.
 
 ---
 

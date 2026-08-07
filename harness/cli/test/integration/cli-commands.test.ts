@@ -29,11 +29,11 @@ function deps(overrides: Partial<VerbActDeps> = {}): VerbActDeps {
   };
 }
 
-function harness(
+async function harness(
   argv: string[],
   mode: OutputMode,
   registry: VerbRegistry = { verbs: [], records: [] },
-): { out: string; err: string; code: number } {
+): Promise<{ out: string; err: string; code: number }> {
   let out = '';
   let err = '';
   let code = -1;
@@ -50,9 +50,10 @@ function harness(
     code = c ?? 0;
     throw new Error(`exit:${code}`);
   }) as never);
-  expect(() =>
-    buildProgram('9.9.9', io, deps(), registry).parse(['node', 'harness', ...argv]),
-  ).toThrow(/^exit:/);
+  // `parseAsync` since plan 074 — `doctor` awaits one ingress probe.
+  await expect(
+    buildProgram('9.9.9', io, deps(), registry).parseAsync(['node', 'harness', ...argv]),
+  ).rejects.toThrow(/^exit:/);
   return { out, err, code };
 }
 
@@ -61,24 +62,24 @@ describe('CLI integration (core commands)', () => {
     vi.restoreAllMocks();
   });
 
-  it('help --json → ok envelope, exit 0', () => {
-    const { out, code } = harness(['help'], 'json');
+  it('help --json → ok envelope, exit 0', async () => {
+    const { out, code } = await harness(['help'], 'json');
     const env = JSON.parse(out);
     expect(env.command).toBe('help');
     expect(env.status).toBe('ok');
     expect(code).toBe(0);
   });
 
-  it('doctor → degraded/ok layered report, exit 0', () => {
-    const { out, code } = harness(['doctor'], 'json');
+  it('doctor → degraded/ok layered report, exit 0', async () => {
+    const { out, code } = await harness(['doctor'], 'json');
     const env = JSON.parse(out);
     expect(env.command).toBe('doctor');
     expect(['degraded', 'ok']).toContain(env.status);
     expect(code).toBe(0);
   });
 
-  it('bare harness → orientation ok envelope, exit 0', () => {
-    const { out, code } = harness([], 'json');
+  it('bare harness → orientation ok envelope, exit 0', async () => {
+    const { out, code } = await harness([], 'json');
     const env = JSON.parse(out);
     expect(env.command).toBe('harness');
     expect(env.status).toBe('ok');
@@ -86,8 +87,8 @@ describe('CLI integration (core commands)', () => {
     expect(code).toBe(0);
   });
 
-  it('doctor (human) → layered report on stderr, summary on stdout, exit 0', () => {
-    const { out, err, code } = harness(['doctor'], 'human');
+  it('doctor (human) → layered report on stderr, summary on stdout, exit 0', async () => {
+    const { out, err, code } = await harness(['doctor'], 'human');
     expect(err).toContain('toolchain');
     expect(out).toContain('doctor:');
     expect(code).toBe(0);

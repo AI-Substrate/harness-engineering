@@ -7,14 +7,18 @@ import { NodeExecutableBit } from '../adapters/fs/node-executable-bit.js';
 import { NodeFs } from '../adapters/fs/node-fs.js';
 import { NodePathKind } from '../adapters/fs/node-path-kind.js';
 import { ExecGit } from '../adapters/git/exec-git.js';
+import { ExecGitAttribution } from '../adapters/git/exec-git-attribution.js';
 import { NodeHash } from '../adapters/hash/node-hash.js';
 import { NodeDownload } from '../adapters/http/node-download.js';
+import { NodeSocketProbe } from '../adapters/net/node-socket-probe.js';
 import { NodeProcess } from '../adapters/process/node-process.js';
 import { formatDegraded, formatError, formatOk } from '../output/envelope.js';
 import { ErrorCodes } from '../output/error-codes.js';
 import { exitWithEnvelope } from '../output/exit.js';
 import { type CliIo, createOutputPort, type OutputPort } from '../output/output-port.js';
+import { readIngress } from '../services/doctor/collector/ingress.js';
 import { installCollector, recheckCollector } from '../services/doctor/collector/install.js';
+import { telemetryNudge } from '../services/doctor/collector/nudge.js';
 import { regenerateGitAiPin } from '../services/doctor/collector/regenerate.js';
 import type { CollectorDeps, HostTarget } from '../services/doctor/collector/types.js';
 import {
@@ -103,7 +107,7 @@ export function registerDoctorAct(
   recordRegistry?: RecordRegistry,
   collectorOverride?: CollectorDeps,
 ): void {
-  program
+  const doctor = program
     .command('doctor')
     .description('Report what is configured + which extensions loaded (safe at session start)')
     .option(
@@ -119,13 +123,12 @@ export function registerDoctorAct(
       'Maintainer: hash all six published artifacts for a git-ai release tag and print the new pin source',
     )
     .option('--pin-out <path>', 'Write the regenerated pin source to this path instead of stdout')
-    // NOT an `async` action on purpose. The report path must reach
-    // `exitWithEnvelope` SYNCHRONOUSLY — an async action would turn its
-    // process-exit throw into a rejected promise, which the kernel (and every
-    // caller that uses `parse` rather than `parseAsync`) would swallow. Only the
-    // lifecycle branch returns a promise, and the composition root awaits it via
-    // `program.parseAsync`.
-    .action((opts: CollectorOptions): Promise<void> | void => {
+    // Returns a PROMISE on both branches now (plan 074): the ingress probe is a
+    // socket connect, which cannot be synchronous. The composition root parses
+    // with `parseAsync` and awaits, so `exitWithEnvelope`'s process-exit is
+    // reached exactly as before; a test driving this act must use `parseAsync`
+    // too. The lifecycle branch was already async for the same reason.
+    .action((opts: CollectorOptions): Promise<void> => {
       const clock = new SystemClock();
       const env = new NodeEnv();
       const proc = new NodeProcess();
@@ -148,47 +151,149 @@ export function registerDoctorAct(
             ),
             lifecyclePort(io),
           );
-          return;
         }
         return runCollectorLifecycle(
           opts,
-          collectorOverride ?? realCollectorDeps(host, toPosix(proc.cwd())),
+          collectorOverride ?? realCollectorDeps(host as HostTarget, toPosix(proc.cwd())),
           clock,
           io,
         );
       }
-      const report = buildDoctorReport(
-        {
-          fs: new NodeFs(),
-          proc,
-          git: new ExecGit(),
+      return runReport();
+
+      async function runReport(): Promise<void> {
+        const fs = new NodeFs();
+        const git = new ExecGit();
+        const cwd = toPosix(proc.cwd());
+        const attribution = new ExecGitAttribution(cwd);
+        // ONE probe per doctor run, taken here in the composition root because a
+        // socket connect is async and the report is a pure sync function of its
+        // inputs (plan 074 · ac-0002). READ-ONLY: `NodeSocketProbe.probe`
+        // connects and destroys without sending a byte, and doctor is handed the
+        // PROBE port only — never the relay — so a bare doctor run structurally
+        // cannot replay anything (ac-0007).
+        const ingress = await readIngress({
+          git: attribution,
+          probe: new NodeSocketProbe(),
+          fs,
           env,
-          clock,
-          runningVersion: readVersion(),
-          // plan 070 — doctor asks the reconciler whether each owed capture lane
-          // can actually be paid back. The adapter registry is the service's own
-          // default (a caller cannot forget it and raise a false alarm); the db is
-          // a port, so it is injected here — giving doctor the SAME sources sync
-          // will use is what keeps its verdict from disagreeing with the recovery.
-          db: new NodeDb(),
-          // plan 073 — the collector row, wired by DEFAULT. A doctor that omits
-          // it is indistinguishable from one that has no collector feature, and
-          // "nothing is collecting your AI attribution" is the single thing this
-          // row exists to be able to say.
-          ...(host !== undefined ? { collectorHost: host } : {}),
-          hash: new NodeHash(),
-        },
-        registry,
-        recordRegistry,
-      );
-      const envelope = doctorEnvelope(report, clock, io.quiet === true);
+        });
+        const report = buildDoctorReport(
+          {
+            fs,
+            proc,
+            git,
+            env,
+            clock,
+            runningVersion: readVersion(),
+            // plan 070 — doctor asks the reconciler whether each owed capture lane
+            // can actually be paid back. The adapter registry is the service's own
+            // default (a caller cannot forget it and raise a false alarm); the db is
+            // a port, so it is injected here — giving doctor the SAME sources sync
+            // will use is what keeps its verdict from disagreeing with the recovery.
+            db: new NodeDb(),
+            // plan 073 — the collector row, wired by DEFAULT. A doctor that omits
+            // it is indistinguishable from one that has no collector feature, and
+            // "nothing is collecting your AI attribution" is the single thing this
+            // row exists to be able to say.
+            ...(host !== undefined ? { collectorHost: host } : {}),
+            hash: new NodeHash(),
+            ingress,
+            // plan 074 · ac-0003 — the at-risk row, and ONLY inside a repo: a
+            // window over a history that does not exist would report "unproven"
+            // forever on every non-repo directory, which teaches operators to
+            // ignore the row that matters most.
+            ...(git.isRepo() ? { attribution } : {}),
+          },
+          registry,
+          recordRegistry,
+        );
+        const envelope = doctorEnvelope(report, clock, io.quiet === true);
+        const port: OutputPort =
+          io.mode === 'json'
+            ? createOutputPort('json', io.writers)
+            : {
+                emit: (e) => {
+                  io.writers.err(renderDoctorText(report));
+                  io.writers.out(`doctor: ${e.status}\n`);
+                },
+              };
+        exitWithEnvelope(envelope, port);
+      }
+    });
+
+  registerTelemetryNudge(doctor, io);
+}
+
+/**
+ * `harness doctor telemetry-nudge` (plan 074 · ac-0006) — the RECOVERY verb.
+ *
+ * A subcommand of `doctor` and not a flag on it, because the distinction is the
+ * whole of ac-0007: a bare `doctor` run is read-only and must stay so, while
+ * this MUTATES — it rotates a buffer, writes into a socket, and can delete a
+ * segment. Making recovery a separate, explicitly-typed verb is what keeps the
+ * diagnostic honest about being a diagnostic.
+ */
+function registerTelemetryNudge(doctor: Command, io: CliIo): void {
+  doctor
+    .command('telemetry-nudge')
+    .description(
+      'Replay buffered trace2 events into the git-ai collector (rotate → replay → confirm). Run from an UNSANDBOXED shell.',
+    )
+    .option(
+      '--buffer <path>',
+      'Replay this file instead of the default harness buffer (use it to retry a retained segment)',
+    )
+    .action(async (opts: { buffer?: string }): Promise<void> => {
+      const clock = new SystemClock();
+      const proc = new NodeProcess();
+      const fs = new NodeFs();
+      const cwd = toPosix(proc.cwd());
+      const attribution = new ExecGitAttribution(cwd);
+      const socket = new NodeSocketProbe();
+      const ingress = await readIngress({
+        git: attribution,
+        probe: socket,
+        fs,
+        env: new NodeEnv(),
+      });
+      const outcome = await telemetryNudge({
+        fs,
+        proc,
+        clock,
+        relay: socket,
+        git: attribution,
+        ingress,
+        ...(opts.buffer !== undefined ? { bufferPath: toPosix(opts.buffer) } : {}),
+      });
+      // NEVER fails the run (ac-0006): a nudge that found nothing to do, or that
+      // could not reach the ingress, is a report — not an error.
+      const evidence = [
+        outcome.segment === null
+          ? { label: 'trace2 segment', none: true }
+          : { label: `trace2 segment ${outcome.segment}` },
+      ];
+      const envelope =
+        outcome.status === 'replayed'
+          ? formatOk('doctor telemetry-nudge', outcome, clock, { evidence })
+          : formatDegraded(
+              'doctor telemetry-nudge',
+              outcome,
+              outcome.next_action ??
+                'Nothing to recover here; re-run after a commit made through a blocked ingress.',
+              clock,
+              { evidence },
+            );
       const port: OutputPort =
         io.mode === 'json'
           ? createOutputPort('json', io.writers)
           : {
               emit: (e) => {
-                io.writers.err(renderDoctorText(report));
-                io.writers.out(`doctor: ${e.status}\n`);
+                io.writers.err(`${outcome.detail}\n`);
+                if (outcome.next_action !== undefined) {
+                  io.writers.err(`→ ${outcome.next_action}\n`);
+                }
+                io.writers.out(`telemetry-nudge: ${e.status}\n`);
               },
             };
       exitWithEnvelope(envelope, port);

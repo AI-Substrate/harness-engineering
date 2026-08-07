@@ -79,7 +79,7 @@ describe('registerInstructionsAct', () => {
     expect(env.command).toBe('instructions');
     expect(env.status).toBe('ok');
     expect(env.data.instructions).toBe(CORE_INSTRUCTIONS);
-    expect(env.data.verbs_with_instructions).toEqual(['flow']);
+    expect(env.data.verbs_with_instructions).toEqual(['commit', 'flow']);
     expect(env.next_action).toContain('harness instructions');
     expect(code).toBe(0);
   });
