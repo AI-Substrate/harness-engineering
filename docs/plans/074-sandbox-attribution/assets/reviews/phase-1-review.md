@@ -301,6 +301,56 @@ regression above.
 
 ---
 
+## Round 5 — fix commit `6c9c8286`
+
+**Verdict: FIX_REQUIRED**
+
+| Item | Status | Evidence |
+|---|---|---|
+| F009 and the location-heuristic category | CLOSED | `partitionByRepo(entries, ownRepo)` takes no path argument. A source sweep found path use only in buffer authorization, not ownership. The structural three-location regression proves the same untagged sidecar stays `unknown` everywhere; no fourth provenance-by-location counterexample remains. |
+| Three ownership arms and deletion gates | CLOSED | Tagged own entries confirm; tagged foreign entries hand off; absent/unreadable identity is `unknown`. Both delete branches require `unknown.length === 0`, so only provably foreign or fully confirmed-and-known segments can be deleted. |
+| F001-F008 and tagged cross-repository regression sweep | CLOSED | Restored focused suites passed: 109 tests across nudge, commit service, ingress, and doctor act. |
+| Retained legacy segment visible on every run | **NOT CLOSED** | The first replay is explicit, but a later enumeration-only run exposes `unknown` only inside JSON data. The default text surface omits both its unknown-provenance reason and SHA. |
+
+### New finding — F010: later text-mode runs hide legacy provenance and SHA
+
+For a retained legacy segment with no live buffer, `runNudge()` produces the normal
+`no-buffer` detail and `withRemainingSegments()` appends only the segment path. The resulting
+text still calls that shape healthy before noting an earlier segment. Although
+`retained[0].unknown` is present in the JSON envelope, `registerTelemetryNudge()` prints only
+`outcome.detail` and `outcome.next_action` in the default human mode. Neither contains
+`UNKNOWN provenance` or the affected SHA.
+
+A temporary regression probe failed RED: a later run with an untagged `SHA_A` retained segment
+expected its text detail to include `UNKNOWN provenance` and `SHA_A`; it received only the
+no-buffer/earlier-segment prose. This is a **legacy-only recovery path**, but it blocks
+approval: the shipped rationale for retaining forever is that every run visibly states the
+reason, SHA, and concrete operator action. A nested JSON field is not sufficient when the
+default command output hides it.
+
+Make `withRemainingSegments()` render each unknown segment's provenance and SHA into the text
+detail (and use its legacy-specific operator instruction), with a regression for the later
+no-buffer invocation. It should not call a run healthy while known retained recovery work
+exists.
+
+### Independent Dim-0 evidence
+
+- Inverted the tagged own-vs-foreign common-dir equality; the targeted nudge set went
+  **RED** with 5 failures across full confirmation, both cross-repository directions,
+  tagged deletion, and mixed ownership.
+- Disabled the live no-sidecar guard; its targeted set went **RED** with 2 failures,
+  demonstrating deletion on an empty identity set is caught.
+- Both mutations and the temporary F010 probe were removed before the restored suite.
+
+### Gates
+
+- `node harness/cli/bin/harness.js plan validate docs/plans/074-sandbox-attribution --complete`:
+  0 errors, 0 warnings, 0 open items.
+- `just checks`: completed at the recorded non-blocking baseline -- arch 2,
+  markdown 196, Windows 6.
+
+---
+
 ## Round 4 — fix commit `e817f431`
 
 **Verdict: FIX_REQUIRED**

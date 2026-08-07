@@ -351,3 +351,70 @@ just checks → tests:ok biome:ok typecheck:ok check:docs:ok check:flows:ok
 Tests: **4979 → 4981 passing**, 339 files, no skips. `plan validate --complete`: 0 errors,
 0 warnings, 0 open, 130 items. `docs/how/gitai-collector.md` step 4 rewritten — it stated the
 disproved rule.
+
+## Fix round 5 — F010: the text renderer hid what the JSON knew
+
+Review round 5 closed the provenance category outright: `partitionByRepo(entries, ownRepo)` takes
+no path argument, a source sweep found path use only in buffer *authorization*, and the structural
+three-location guard held — no fourth counterexample exists to find. The three ownership arms,
+both delete gates, and F001–F008 all came back CLOSED across 109 restored tests.
+
+One finding remained, and it is **a different class of defect**: not a logic gap, a
+**renderer/JSON parity gap**.
+
+**The defect.** `retained[].unknown` carried the reason and the shas in the JSON envelope, and
+round 4's own prose reached `detail` — but only on the run that *did the replay*. A **later**
+enumeration-only run (no live buffer) produced the ordinary `no-buffer` detail plus a bare segment
+path, and `registerTelemetryNudge` prints `detail` and `next_action` and nothing else in default
+text mode. So the default surface said *"this is the healthy shape when every commit reached the
+collector directly"* while an unconfirmable segment sat two files away. The reviewer's probe failed
+RED on exactly that.
+
+That is ac-0004's cardinal sin — green while something is owed — reappearing **in the renderer
+instead of the check**. It also invalidated round 4's own rationale: retention is acceptable
+*because it is visible*, and it was visible only in JSON.
+
+**The fix (three parts, all in `withRemainingSegments`).**
+
+1. **The healthy claim moved to the one site that knows the retained set.** It used to live inside
+   the `no-buffer` skip's detail, which is written before anything has read the directory —
+   structurally unable to be true. It is now a single `HEALTHY_NO_BUFFER` constant emitted only
+   when the merged segment set is empty. *No-buffer **and** nothing-retained* is the only shape
+   that may read healthy, and there is now exactly one place that can say it.
+2. **Every unknown segment states its reason and its shas in TEXT.** `withRemainingSegments`
+   renders `describeUnknown` for each unknown segment other than this run's own (which `runNudge`
+   already describes), and appends `unknownNextAction` — the legacy-specific operator instruction —
+   to `next_action`.
+3. **The retry pointer no longer names a segment it cannot help.** It was `owed[0]`; re-nudging a
+   purely-unknown segment replays it and retains it again, forever. It is now the first owed
+   segment with `stillMissing` shas, and a purely-legacy set gets only the delete-by-hand
+   instruction. Same false comfort as F010, one layer down.
+
+`unknownNextAction` now takes `readonly string[]` so one instruction can name several segments.
+The JSON shape is **unchanged** — it was already correct.
+
+**Guards (5 new, 49 tests in the file).** The reviewer's probe as a permanent regression; a
+`expectTextParity()` helper asserting that for the final outcome, every retained segment's path —
+and every `unknown` sha plus the reason phrase — is legible from `detail` + `next_action` alone,
+and that nothing retained is called healthy; the parity guard applied to *both* entry points (the
+enumeration-only run and the run that did the replay, so it bites whichever site drops the prose);
+the retry-pointer guard; and the negative control that a genuinely clean run still reads healthy.
+
+Mutation checks (all restored afterwards):
+
+- Dropping `unknownNote` from the detail composition → **3 RED**.
+- Restoring the healthy sentence into the `no-buffer` skip detail → **2 RED**.
+- Reverting the retry pointer to `owed[0]?.path` → **3 RED**.
+
+### Gate after the fix round
+
+```
+just checks → tests:ok biome:ok typecheck:ok check:docs:ok check:flows:ok
+              check:telemetry-fixtures:ok check:doctrine-parity:ok check:dd-docs:ok
+              root-invocation-smoke:ok dd doctor:ok skills-check:ok
+              arch-check:2  markdown-lint:196  windows-check:6      ← baseline, unchanged
+```
+
+Tests: **4981 → 4986 passing**, 339 files, no skips. `plan validate --complete`: 0 errors,
+0 warnings, 0 open, 130 items. `docs/how/gitai-collector.md` step 5 rewritten — it described
+enumeration without saying the report has to reach the *default* surface.

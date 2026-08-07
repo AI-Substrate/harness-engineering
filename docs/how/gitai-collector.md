@@ -458,11 +458,18 @@ live traffic. Its lifecycle is deliberate:
    is delete-eligible, unknown is retained. Visible-and-stuck beats
    silently-wrong, and the case ages out on its own: every sidecar written since
    this release carries repo identity.
-5. **Enumerate every run** — nothing carries state between invocations, so each
-   run lists `segment-*.jsonl` beside the buffer and reports **every** one still
-   on disk with a retry pointer. A run that leaves any segment *this repository
-   still owes* is `retained`, never a healthy "no buffer, nothing to do". A
-   segment whose commits are all another repository's is named, not owned.
+5. **Enumerate every run, and *say* it in text** — nothing carries state between
+   invocations, so each run lists `segment-*.jsonl` beside the buffer and reports
+   **every** one still on disk with a retry pointer. A run that leaves any
+   segment *this repository still owes* is `retained`, never a healthy "no
+   buffer, nothing to do". A segment whose commits are all another repository's
+   is named, not owned. The report must reach the **default** surface: the verb
+   prints only its `detail` and `next_action` in text mode, so anything the JSON
+   envelope knows about a retained segment — including an unknown-provenance
+   reason and its shas — is rendered into those two strings. A field carried only
+   in JSON is invisible to the operator who has to act on it, which is the same
+   "green while something is owed" failure one layer out, in the renderer instead
+   of the check. Only *no buffer **and** nothing retained* may read as healthy.
 
 v1 **never automatically re-replays** a retained segment. A live-daemon spike did
 find duplicate replay to be idempotent — notes came back byte-identical and the

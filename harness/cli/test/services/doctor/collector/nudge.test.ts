@@ -1134,3 +1134,140 @@ describe('plan 074 · ac-0005/ac-0006 — R4: location cannot prove provenance (
     expect(out.next_action).toContain(HARNESS_SEGMENT);
   });
 });
+
+describe('plan 074 · ac-0004/ac-0006 — R5: the TEXT surface reports what the JSON knows (F010)', () => {
+  const OLD_NAME = 'segment-2026-08-06T00-00-00-000Z-a.jsonl';
+  const OLD = `${REPO}/.harness/temp/trace2/${OLD_NAME}`;
+  const UNKNOWN_REASON = 'UNKNOWN provenance';
+
+  /** A trace2 dir whose LISTING already contains an earlier run's segment. */
+  function fsWithOldSegment(): FakeFs {
+    const fs = new FakeFs({}, { [`${REPO}/.harness/temp/trace2`]: [OLD_NAME] });
+    fs.mkdirp(`${REPO}/.harness/temp/trace2`);
+    return fs;
+  }
+
+  /**
+   * The parity contract, as an assertion. `harness doctor telemetry-nudge`
+   * prints `detail` and `next_action` and NOTHING else in its default text mode,
+   * so every retained segment the JSON envelope describes must be legible from
+   * those two strings alone. A field added to `retained[]` and nowhere else is
+   * invisible to the operator who has to act on it.
+   */
+  function expectTextParity(out: Awaited<ReturnType<typeof telemetryNudge>>): void {
+    const text = `${out.detail} ${out.next_action ?? ''}`;
+    for (const segment of out.retained) {
+      expect(text).toContain(segment.path);
+      if (segment.unknown.length === 0) continue;
+      expect(text).toContain(UNKNOWN_REASON);
+      for (const sha of segment.unknown) expect(text).toContain(sha);
+    }
+    // Nothing retained may be described as the healthy shape.
+    if (out.retained.length > 0) expect(text).not.toContain('healthy shape');
+  }
+
+  it('F010 — a LATER run with no live buffer states the legacy reason, the sha, and the action', async () => {
+    // The reviewer's probe. The first replay was always explicit; the run AFTER
+    // it enumerated the same segment, put `unknown` in the JSON envelope, and
+    // printed the ordinary no-buffer prose — so the default surface read healthy
+    // while a segment sat stuck. That is ac-0004's cardinal sin ("green while
+    // something is owed") reappearing in the RENDERER instead of the check.
+    const fs = fsWithOldSegment();
+    fs.writeText(OLD, payload());
+    fs.writeText(`${OLD}.shas`, sidecarUntagged(SHA_A));
+    const d = deps({ fs, ingress: await ingress('connected') });
+
+    const out = await telemetryNudge(d);
+
+    // Nothing was rotated — this run had no buffer of its own.
+    expect(out.segment).toBeNull();
+    expect(d.relay.sends).toEqual([]);
+    // The JSON was already right, and stays right.
+    expect(out.status).toBe('retained');
+    expect(out.retained[0]?.unknown).toEqual([SHA_A]);
+    // …and now the TEXT says all three things.
+    expect(out.detail).toContain(UNKNOWN_REASON);
+    expect(out.detail).toContain('before sidecars carried repo identity');
+    expect(out.detail).toContain(SHA_A);
+    expect(out.next_action).toContain('attribution-at-risk');
+    expect(out.next_action).toContain(OLD);
+    // And it does NOT read healthy.
+    expect(out.detail).not.toContain('healthy shape');
+    expectTextParity(out);
+  });
+
+  it('a purely-unknown segment is never pointed at a re-run that cannot resolve it', async () => {
+    // Re-nudging a segment whose every sha is unprovable replays it and retains
+    // it again, forever. Sending an operator round that loop is the same false
+    // comfort as F010 itself, one layer down: the only real instruction is the
+    // legacy one.
+    const fs = fsWithOldSegment();
+    fs.writeText(OLD, payload());
+    fs.writeText(`${OLD}.shas`, sidecarUntagged(SHA_A));
+    const d = deps({ fs, ingress: await ingress('connected') });
+
+    const out = await telemetryNudge(d);
+
+    expect(out.next_action).not.toContain('--buffer');
+    expect(out.next_action).toContain(`delete ${OLD}`);
+  });
+
+  it('a segment with own shas STILL gets its retry pointer, alongside the legacy prose', async () => {
+    // The fix must not cost the actionable case. Two segments: one this repo
+    // owns and can retry, one legacy that can only be deleted by hand.
+    const dir = `${REPO}/.harness/temp/trace2`;
+    const OWN_NAME = 'segment-2026-08-06T00-00-01-000Z-a.jsonl';
+    const OWN_SEG = `${dir}/${OWN_NAME}`;
+    const fs = new FakeFs({}, { [dir]: [OLD_NAME, OWN_NAME] });
+    fs.mkdirp(dir);
+    fs.writeText(OLD, payload());
+    fs.writeText(`${OLD}.shas`, sidecarUntagged(SHA_A));
+    fs.writeText(OWN_SEG, payload());
+    fs.writeText(`${OWN_SEG}.shas`, sidecarNaming(SHA_B));
+    const d = deps({ fs, ingress: await ingress('connected') });
+
+    const out = await telemetryNudge(d);
+
+    expect(out.status).toBe('retained');
+    expect(out.next_action).toContain(`--buffer ${OWN_SEG}`);
+    expect(out.next_action).toContain(`delete ${OLD}`);
+    expect(out.detail).toContain(SHA_A);
+    expectTextParity(out);
+  });
+
+  it('parity holds on the run that DID the replay, too', async () => {
+    // The same contract from the other entry point: `runNudge` writes this run's
+    // segment prose, `withRemainingSegments` writes every other segment's. The
+    // guard is over the FINAL outcome, so it bites whichever site drops it.
+    const fs = fsWithOldSegment();
+    fs.writeText(OLD, payload());
+    fs.writeText(`${OLD}.shas`, sidecarUntagged(SHA_A));
+    fs.writeText(BUFFER, payload());
+    fs.writeText(SIDECAR, sidecarUntagged(SHA_B));
+    const d = deps({ fs, ingress: await ingress('connected') });
+
+    const out = await telemetryNudge(d);
+
+    expect(out.status).toBe('retained');
+    expect(out.retained.map((r) => r.path).sort()).toEqual([OLD, SEGMENT].sort());
+    // BOTH legacy shas are legible from the text, not just this run's.
+    expectTextParity(out);
+    expect(out.detail).toContain(SHA_A);
+    expect(out.detail).toContain(SHA_B);
+  });
+
+  it('the negative control — a genuinely clean run still reads healthy', async () => {
+    // The fix must not make everything sound alarming. No buffer AND nothing
+    // retained is the one shape allowed to claim health, and it still does.
+    const fs = new FakeFs();
+    fs.mkdirp(`${REPO}/.harness/temp/trace2`);
+    const d = deps({ fs, ingress: await ingress('connected') });
+
+    const out = await telemetryNudge(d);
+
+    expect(out.status).toBe('skipped');
+    expect(out.reason).toBe('no-buffer');
+    expect(out.retained).toEqual([]);
+    expect(out.detail).toContain('healthy shape');
+  });
+});

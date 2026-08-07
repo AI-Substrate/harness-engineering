@@ -406,14 +406,24 @@ function describeHandedOff(handedOff: readonly HandedOffSha[]): string {
  * Prose for the legacy arm. Retaining a segment forever is only acceptable
  * while every run SAYS SO, in words that name the cause and do not accuse the
  * commits — so this string is load-bearing, not decoration.
+ *
+ * Round 5's F010 sharpened "every run": this prose reached `detail` only on the
+ * run that did the replay. A LATER run enumerated the same segment, put its
+ * `unknown` shas in the JSON envelope, and printed nothing about them — and the
+ * default surface is text. So `withRemainingSegments` now renders this for every
+ * unknown segment it reports, not just for the one this run rotated.
  */
 function describeUnknown(unknown: readonly string[]): string {
   return `${unknown.length} commit(s) in it have UNKNOWN provenance — written before sidecars carried repo identity, so this repository can neither prove nor disprove it owns them. They were REPLAYED (the daemon attributes each in whichever repo made it), never checked against local notes, and are NOT counted as missing attribution: ${unknown.join(', ')}.`;
 }
 
 /** The operator instruction that makes an unprovable retention actionable rather than a dead end. */
-function unknownNextAction(segment: string): string {
-  return `Nothing here can confirm those commits automatically, and v1 adds no way to. Check \`harness doctor\`'s attribution-at-risk row in whichever repository made them, then delete ${segment} (and its \`${TRACE2_SHAS_SUFFIX}\` sidecar) yourself. Commits made through \`harness commit\` since this release record their repository and confirm automatically, so this case ages out.`;
+function unknownNextAction(segments: readonly string[]): string {
+  const sidecar =
+    segments.length === 1
+      ? `its \`${TRACE2_SHAS_SUFFIX}\` sidecar`
+      : `each one's \`${TRACE2_SHAS_SUFFIX}\` sidecar`;
+  return `Nothing here can confirm those commits automatically, and v1 adds no way to. Check \`harness doctor\`'s attribution-at-risk row in whichever repository made them, then delete ${segments.join(', ')} (and ${sidecar}) yourself. Commits made through \`harness commit\` since this release record their repository and confirm automatically, so this case ages out.`;
 }
 
 /** What a segment on disk still owes, read from its sidecar. Pure reads — never mutates. */
@@ -471,6 +481,20 @@ function enumerateSegments(
 }
 
 /**
+ * The ONE sentence in this verb that calls a run healthy.
+ *
+ * Round 5's F010: it used to live inside the `no-buffer` skip's own detail, which
+ * is written before anything has looked at the directory. A later enumeration-only
+ * run therefore printed "this is the healthy shape" while an unconfirmable segment
+ * sat two files away — the JSON knew, the text did not, and text is the default
+ * surface. The claim now lives HERE, at the single site that has read the retained
+ * set, and is emitted only when that set is empty. No-buffer-and-nothing-retained
+ * is the only shape allowed to read healthy.
+ */
+const HEALTHY_NO_BUFFER =
+  ' This is the healthy shape when every commit reached the collector directly.';
+
+/**
  * Fold every remaining segment into the outcome. A run that leaves any segment
  * THIS REPOSITORY STILL OWES is `retained`, never `replayed` and never a healthy
  * `skipped` — the status is a claim about the machine's state, not about this
@@ -480,21 +504,38 @@ function enumerateSegments(
  * another repository, this one structurally cannot confirm or clear it, and
  * reporting it as unrecovered here would be exactly the false alarm round 2
  * found. Naming it is honest; owning it is not.
+ *
+ * This is also the RENDERING-PARITY boundary (round 5's F010). Everything the
+ * JSON envelope reports about a retained segment must reach `detail`/`next_action`
+ * too, because `harness doctor telemetry-nudge` prints only those two fields in
+ * its default text mode. A field that exists only in `retained[]` is invisible to
+ * the operator who actually has to act on it.
  */
 function withRemainingSegments(outcome: NudgeOutcome, remaining: RetainedSegment[]): NudgeOutcome {
-  if (remaining.length === 0) return outcome;
   const known = new Map(remaining.map((r) => [r.path, r]));
   // This run's own findings are richer (they know the replay happened), so they win.
   for (const own of outcome.retained) known.set(own.path, own);
   const merged = [...known.values()].sort((a, b) => a.path.localeCompare(b.path));
+  if (merged.length === 0) {
+    return outcome.reason === 'no-buffer'
+      ? { ...outcome, detail: `${outcome.detail}${HEALTHY_NO_BUFFER}` }
+      : outcome;
+  }
   const owed = merged.filter((r) => r.reason !== 'handed-off');
   const foreign = merged.filter((r) => r.reason === 'handed-off');
   const others = owed.filter((r) => r.path !== outcome.segment);
-  const retry = owed[0]?.path;
   const foreignNote =
     foreign.length === 0
       ? ''
       : ` ${foreign.length} further segment(s) on disk belong to other repositories (${foreign.map((r) => r.path).join(', ')}); they were not touched and are not this repository's to confirm.`;
+  // Every unknown segment states its reason and its shas in TEXT. This run's own
+  // segment already said so in `runNudge`'s detail, so it is not repeated here —
+  // between the two sites, no unknown sha reaches `retained[]` unprinted.
+  const unknownSegments = merged.filter((r) => r.unknown.length > 0);
+  const unknownNote = unknownSegments
+    .filter((r) => r.path !== outcome.segment)
+    .map((r) => ` ${r.path} is RETAINED and cannot be resolved here: ${describeUnknown(r.unknown)}`)
+    .join('');
   if (owed.length === 0) {
     return {
       ...outcome,
@@ -502,17 +543,35 @@ function withRemainingSegments(outcome: NudgeOutcome, remaining: RetainedSegment
       detail: `${outcome.detail}${foreignNote}`,
     };
   }
+  // Only a segment with shas THIS repository owns and cannot yet confirm is worth
+  // re-running: re-nudging a purely-unknown segment replays it and retains it
+  // again, forever. Pointing an operator at that loop is the same false comfort
+  // F010 was about, one layer down.
+  const retry = owed.find((r) => r.stillMissing.length > 0)?.path;
+  const nextParts = [
+    ...(retry === undefined
+      ? []
+      : [
+          `Re-run \`harness doctor telemetry-nudge --buffer ${retry}\` (repeat for each remaining segment) from a shell that can reach the collector socket. Commits made before git-ai was installed will never gain a note and will stay listed here.`,
+        ]),
+    ...(unknownSegments.length === 0
+      ? []
+      : [unknownNextAction(unknownSegments.map((r) => r.path))]),
+    ...(retry === undefined && unknownSegments.length === 0
+      ? [
+          `Segments with no \`harness commit\` sidecar can never be confirmed automatically; delete them yourself once \`harness doctor\`'s attribution-at-risk row is clean.`,
+        ]
+      : []),
+  ];
   return {
     ...outcome,
     status: 'retained',
     retained: merged,
     detail:
       others.length === 0
-        ? `${outcome.detail}${foreignNote}`
-        : `${outcome.detail} ${others.length} earlier segment(s) are ALSO still on disk and unrecovered: ${others.map((r) => r.path).join(', ')}.${foreignNote}`,
-    ...(retry !== undefined && {
-      next_action: `Re-run \`harness doctor telemetry-nudge --buffer ${retry}\` (repeat for each remaining segment) from a shell that can reach the collector socket. Segments with no \`harness commit\` sidecar — and legacy ones whose sidecar predates repo identity — can never be confirmed automatically; delete those yourself once \`harness doctor\`'s attribution-at-risk row is clean.`,
-    }),
+        ? `${outcome.detail}${foreignNote}${unknownNote}`
+        : `${outcome.detail} ${others.length} earlier segment(s) are ALSO still on disk and unrecovered: ${others.map((r) => r.path).join(', ')}.${foreignNote}${unknownNote}`,
+    next_action: nextParts.join(' '),
   };
 }
 
@@ -601,10 +660,7 @@ async function runNudge(
   }
 
   if (!deps.fs.exists(buffer)) {
-    return skip(
-      'no-buffer',
-      `no buffered trace2 events at ${buffer} — nothing to replay. This is the healthy shape when every commit reached the collector directly.`,
-    );
+    return skip('no-buffer', `no buffered trace2 events at ${buffer} — nothing to replay.`);
   }
   const payload = deps.fs.readText(buffer);
   if (payload === null || payload.trim() === '') {
@@ -785,7 +841,7 @@ async function runNudge(
         { path: segment, stillMissing: [], recovered, handedOff, unknown, reason: 'unconfirmable' },
       ],
       detail: `replayed ${sent.bytes} bytes into ${socket}. The segment is RETAINED INTACT at ${segment}: ${describeUnknown(unknown)}${describeHandedOff(handedOff)}`,
-      next_action: unknownNextAction(segment),
+      next_action: unknownNextAction([segment]),
     };
   }
 
@@ -800,6 +856,6 @@ async function runNudge(
     handedOff,
     retained: [{ path: segment, stillMissing, recovered, handedOff, unknown, reason: 'partial' }],
     detail: `replayed ${sent.bytes} bytes into ${socket}: ${recovered.length} commit(s) recovered, ${stillMissing.length} still missing a note. The segment is RETAINED INTACT at ${segment} (it is never partially rewritten), and v1 does NOT automatically re-replay it.${describeHandedOff(handedOff)}${unknown.length === 0 ? '' : ` ${describeUnknown(unknown)}`}`,
-    next_action: `Re-run \`harness doctor telemetry-nudge --buffer ${segment}\` to retry this segment explicitly. Commits made before git-ai was installed will never gain a note and will stay listed here.${unknown.length === 0 ? '' : ` ${unknownNextAction(segment)}`}`,
+    next_action: `Re-run \`harness doctor telemetry-nudge --buffer ${segment}\` to retry this segment explicitly. Commits made before git-ai was installed will never gain a note and will stay listed here.${unknown.length === 0 ? '' : ` ${unknownNextAction([segment])}`}`,
   };
 }
