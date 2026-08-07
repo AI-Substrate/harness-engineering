@@ -417,6 +417,40 @@ describe('artifactSemanticsEvents (the capture pass)', () => {
     expect(ev.t).toBe('2026-07-04T00:00:00Z');
   });
 
+  // The archive move (PR #106) relocates a plan without renaming it. The event
+  // must be indistinguishable from the live one apart from `path` — same
+  // artifact_type, same plan_id — or a plan's telemetry history splits in two on
+  // the day it is archived and every archived plan reports as `archive`.
+  it('an ARCHIVED plan still classifies, and keeps its own plan_id', () => {
+    const rel = 'docs/plans/archive/050-x/reviews/r.md';
+    const events = artifactSemanticsEvents(
+      reader({ '/repo/docs/plans/archive/050-x/reviews/r.md': REVIEW }),
+      REPO,
+      { edited: [rel] },
+      '2026-07-04T00:00:00Z',
+    );
+    expect(events).toHaveLength(1);
+    const ev = events[0] as ArtifactEvent;
+    expect(ev.artifact_type).toBe('review');
+    expect(ev.path).toBe(rel);
+    expect(ev.plan_id).toBe('050-x');
+  });
+
+  it('an ARCHIVED plan document is still matched by the plan extractor', () => {
+    const rel = 'docs/plans/archive/050-x/x-plan.md';
+    const events = artifactSemanticsEvents(
+      reader({ '/repo/docs/plans/archive/050-x/x-plan.md': '#### Phase 1\n' }),
+      REPO,
+      { edited: [rel] },
+      '2026-07-04T00:00:00Z',
+    );
+    expect(events).toHaveLength(1);
+    const ev = events[0] as ArtifactEvent;
+    expect(ev.artifact_type).toBe('plan');
+    expect(ev.plan_id).toBe('050-x');
+    expect(ev.counts.phases).toBe(1);
+  });
+
   it('a missing file in the changed set emits no event and never throws (AC-04)', () => {
     const events = artifactSemanticsEvents(
       reader({}), // nothing on disk

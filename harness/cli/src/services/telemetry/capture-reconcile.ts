@@ -27,6 +27,7 @@ import {
   writeCursor,
 } from './cursor.js';
 import type { Event } from './events.js';
+import { planIdFromPath } from './plan-paths.js';
 import { type Segment, serializeSegment } from './segment.js';
 
 /**
@@ -406,8 +407,8 @@ function plansFromFiles(files: { written: string[]; edited: string[] }): string[
   const out: string[] = [];
   const seen = new Set<string>();
   for (const p of [...files.written, ...files.edited]) {
-    const id = /(?:^|\/)docs\/plans\/([^/]+)/.exec(toPosix(p))?.[1];
-    if (id !== undefined && id.length > 0 && !seen.has(id)) {
+    const id = planIdFromPath(p);
+    if (id !== null && !seen.has(id)) {
       seen.add(id);
       out.push(id);
     }

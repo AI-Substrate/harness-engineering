@@ -91,7 +91,7 @@ describe("dw-0005 — this plan's commands are covered by a chapter and a recipe
 describe('dw-0006 — the builder proof graph is promoted, indexed, and signposted', () => {
   const CHAPTER = 'docs/how/dd/11-the-builder-proof-graph.md';
   const ROUGH_OUT =
-    'docs/plans/065-deterministic-documents/builder-tuning/structural-proof-graph.md';
+    'docs/plans/archive/065-deterministic-documents/builder-tuning/structural-proof-graph.md';
 
   it('lands as a chapter that states the shipped surface, not the pending one', () => {
     const chapter = readFileSync(`${ROOT}${CHAPTER}`, 'utf8');

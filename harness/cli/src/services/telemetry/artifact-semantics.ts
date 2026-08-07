@@ -12,6 +12,7 @@ import type {
   ArtifactType,
   Event,
 } from './events.js';
+import { isPlanDocPath, planIdFromPath } from './plan-paths.js';
 
 /** The closed count/enum maps an extractor authors (compile-time key discipline, F2). */
 type Counts = Partial<Record<ArtifactCountKey, number>>;
@@ -186,7 +187,7 @@ const reviewExtractor: ArtifactExtractor = {
 /** Rows 5–10: plans — phases, CS, gate matrix, gaps, workshop opps; mode + status enums. */
 const planExtractor: ArtifactExtractor = {
   type: 'plan',
-  match: (p) => /(?:^|\/)docs\/plans\/[^/]+\/[^/]*-plan\.md$/.test(p),
+  match: isPlanDocPath,
   extract: (content) => {
     const counts: Counts = {};
     const phases = countOf(content, /^#### Phase \d+/gm);
@@ -505,12 +506,6 @@ export function resolveArtifactPath(
   return { rel: rel === '' ? '.' : rel, read: abs };
 }
 
-/** Lift the `docs/plans/<id>` id from a repo-relative path (P12-safe; path prefix only). */
-function planIdFromRel(rel: string): string | null {
-  const m = /(?:^|\/)docs\/plans\/([^/]+)/.exec(rel);
-  return m ? (m[1] ?? null) : null;
-}
-
 function lineCount(content: string): number {
   if (content.length === 0) return 0;
   let n = 1;
@@ -565,7 +560,7 @@ export function artifactSemanticsEvents(
         enums,
         size: { lines: lineCount(content), bytes: new TextEncoder().encode(content).length },
       };
-      const planId = planIdFromRel(rel);
+      const planId = planIdFromPath(rel);
       if (planId !== null) ev.plan_id = planId;
       out.push(ev);
     }

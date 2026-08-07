@@ -51,6 +51,7 @@ Begin at the lowest rung; climb only when evidence requires it. Workers are *add
 
 - Parse the query and `--plan` / `--console`.
 - **Reuse an existing plan folder before minting one**: explicit `--plan` (path, `NNN-slug`, or bare slug → match existing `docs/plans/*-<slug>/` first) → ordinal git branch (`NNN-…`) → cwd inside `docs/plans/NNN-*/` → a plan named recently in conversation → else create one.
+- If a referenced plan is not at `docs/plans/<id>-<slug>/`, look in `docs/plans/archive/<id>-<slug>/` — completed plans are archived there.
 - New folder: next ordinal via `plan-ordinal` (alias `jk-po`); fall back honestly to a local `docs/plans/` scan, noting the collision risk.
 - `--console`: create nothing — no folder, no file.
 - Fail clearly on: missing query; an explicit `--plan` that names a non-existent `NNN-` folder; an irreducibly ambiguous target.
