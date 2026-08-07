@@ -1,0 +1,39 @@
+harness/cli/src/services/telemetry/artifact-semantics.ts
+  s_a76964380084ef::t_84724f6b0b4210 15,190,563
+harness/cli/src/services/telemetry/capture-reconcile.ts
+  s_a76964380084ef::t_687e213dd4dfbf 30,410-411
+harness/cli/src/services/telemetry/capture-service.ts
+  s_a76964380084ef::t_69cc808323042e 46,320-323,326,351-352,415-420,426,430,441-448,450
+harness/cli/src/services/telemetry/plan-paths.ts
+  s_a76964380084ef::t_97aaf9aed31a3a 1-63
+harness/cli/test/acts/dd-command-coverage.test.ts
+  s_a76964380084ef::t_d71ece060f5c21 94
+harness/cli/test/acts/dd-graph-map-live.test.ts
+  s_a76964380084ef::t_9ff3b580227c6d 470
+harness/cli/test/acts/dd-surface.test.ts
+  s_a76964380084ef::t_90b9dff5a9b17b 9
+harness/cli/test/services/dd/links/map.test.ts
+  s_a76964380084ef::t_e0ce3632e309c1 1008
+harness/cli/test/services/telemetry/artifact-semantics.test.ts
+  s_a76964380084ef::t_99d0f05abc0a8c 420-453
+harness/cli/test/services/telemetry/fleet-semantics-golden-051.test.ts
+  s_a76964380084ef::t_a2e8818dfe3986 60-63,83,87-88,92,96,98,101
+harness/cli/test/services/telemetry/plan-paths.test.ts
+  s_a76964380084ef::t_0e8dc33020a075 1-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "46ee99085faa753e1888533340ac1ba8fb5a3667",
+  "prompts": {},
+  "sessions": {
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
