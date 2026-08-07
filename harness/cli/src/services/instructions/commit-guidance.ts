@@ -70,7 +70,13 @@ export interface CommitOutcome {
   readonly recovery: CommitRecovery;
 }
 
-/** The recovery verb. Named ONCE so the renderer is its only source. */
+/**
+ * The recovery verb. Named ONCE, here, so every mention in the guidance —
+ * the outcome list, the standalone recovery block, both surfaces — is
+ * interpolated from this constant rather than typed out again. Review R2-F001
+ * caught the one place that had not been: a hand-written paragraph is exactly
+ * how a "sole writer" claim becomes aspirational.
+ */
 const NUDGE_VERB = 'harness doctor telemetry-nudge';
 
 /**
@@ -88,7 +94,13 @@ const NUDGE_VERB = 'harness doctor telemetry-nudge';
  */
 export const NUDGE_PREREQUISITE = `Recovery is POSIX-ONLY: the drain replays into an af_unix socket, so on a Windows host \`${NUDGE_VERB}\` refuses on platform grounds and drains nothing — the buffered events stay on disk, untouched, until they are drained from a host whose collector ingress is an af_unix socket.`;
 
-/** Turn a disposition into the reader's instruction. The ONLY writer of {@link NUDGE_VERB}. */
+/**
+ * Turn a disposition into the reader's instruction — the only writer of the
+ * outcome list's recovery text. (The standalone {@link RECOVERY_SECTION} is the
+ * other place the verb appears; it interpolates {@link NUDGE_VERB} and carries
+ * {@link NUDGE_PREREQUISITE} too, so neither can state the verb's behaviour
+ * without its precondition.)
+ */
 export function renderRecovery(recovery: CommitRecovery): string {
   switch (recovery.nudge) {
     case 'drains-this':
@@ -221,7 +233,24 @@ export function commitOutcomeLines(): string {
     .join('\n');
 }
 
-/** The instructions page `harness instructions commit` resolves (ac-0008 seam 1). */
+/**
+ * The STANDALONE recovery instruction — derived, never re-typed (review R2-F001).
+ *
+ * Round 2 made `renderRecovery()` the sole writer of the verb's instruction *in
+ * the outcome list*, and this paragraph quietly falsified that claim: it named
+ * the verb by hand and asserted that it "rotates the buffer" and "replays that
+ * segment", both of which a win32 host returns before ever doing. Proximity to a
+ * correct outcome list does not make an independent command recipe truthful — a
+ * reader can act on this block alone, so the prerequisite has to travel WITH it.
+ */
+const RECOVERY_SECTION = `    ${NUDGE_VERB}
+
+RECOVERY, on a POSIX host. Run it from an UNSANDBOXED shell: it rotates the
+buffer to a segment, replays that segment into the collector, and deletes the
+segment only when every commit it named carries a note. A partly-confirmed
+segment is kept intact and listed for an explicit retry.
+
+${NUDGE_PREREQUISITE}`;
 export const COMMIT_INSTRUCTIONS = `# harness commit — the safe commit path
 
 You are an agent committing work in a repository where git-ai collects AI
@@ -251,12 +280,7 @@ ${commitOutcomeLines()}
 It never rolls back, never blocks your commit, and never swallows git's exit
 code. Staging is EXPLICIT pathspecs only — nothing is swept in for you.
 
-    harness doctor telemetry-nudge
-
-  RECOVERY. Run it from an UNSANDBOXED shell. It rotates the buffer to a
-  segment, replays that segment into the collector, and deletes the segment only
-  when every commit it named carries a note. A partly-confirmed segment is kept
-  intact and listed for an explicit retry.
+${RECOVERY_SECTION}
 
 ## The shape to avoid
 

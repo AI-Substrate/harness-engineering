@@ -299,3 +299,89 @@ edit: **0** markdown findings for `AGENTS.md`, **0** for `docs/how/gitai-collect
 | # | tag | what |
 | --- | --- | --- |
 | D4 | Noteworthy | The naive form of the F002 fix would have introduced a fresh contradiction with `commit-service.ts`'s verify-miss `next_action`. Found by reading the branch, not by any check. There is no guard that compares guidance prose against the `next_action` strings the commands actually emit — that is a real gap and a candidate for a future plan, not something this one should widen to cover. |
+
+---
+
+# Round 3 — review CHANGES on `8d54ede2` (two MEDIUMs, no HIGH)
+
+The three-arm recovery union and the Windows prerequisite were both **confirmed correct**;
+no fourth arm is needed. Two findings remained.
+
+## R2-F001 — the standalone RECOVERY block was worse than "missing a caveat"
+
+The page's generic recovery paragraph did not merely omit the prerequisite: it **asserted
+behaviour that is false on win32**, saying the verb "rotates the buffer to a segment" and
+"replays that segment into the collector". On a Windows host `runNudge()` returns before
+either happens. And because that paragraph named the verb **by hand**, it falsified the
+source comment round 2 had just added — that `renderRecovery()` / `NUDGE_VERB` were the
+sole writer of the verb's instruction. A sole-writer claim with one hand-written exception
+is aspirational, which is the same shape of overclaim this plan exists to remove.
+
+**Fix — derive it.** `RECOVERY_SECTION` is a module constant interpolating `NUDGE_VERB`
+and ending with `NUDGE_PREREQUISITE`, and the page embeds it:
+
+```text
+    harness doctor telemetry-nudge
+
+RECOVERY, on a POSIX host. Run it from an UNSANDBOXED shell: it rotates the
+buffer to a segment, replays that segment into the collector, …
+
+Recovery is POSIX-ONLY: … on a Windows host `harness doctor telemetry-nudge`
+refuses on platform grounds and drains nothing …
+```
+
+The replay assertion is now scoped ("RECOVERY, **on a POSIX host**") *and* the
+prerequisite travels with it. The general rule the reviewer named — **the prerequisite
+travels with every standalone recovery instruction, not just the outcome list** — is
+pinned by a test that counts prerequisite occurrences in the page (≥ 2) and asserts the
+text following the rotate/replay sentence still carries it.
+
+The source comments were corrected to say what is true rather than what was aspirational:
+`NUDGE_VERB` is the single **source of the verb's name**, interpolated everywhere; and
+`renderRecovery()` owns the **outcome list's** recovery text, with `RECOVERY_SECTION`
+named as the other, deliberately-qualified site.
+
+## R2-F002 — the plan's own claim was the overclaim (PM-owned, fixed here)
+
+`COMMIT_OUTCOME_GUIDANCE` is total over `CommitMode` but stores only `outcome` + `when`;
+`label`, `promise` and `recovery` live in the companion `COMMIT_OUTCOMES`. So ac-0002's
+"a single exported table … is the ONLY declaration of what each commit outcome promises"
+was false as written. The round-2 receipt already said so; the claim did not.
+
+**Raised the claim to the receipt's honesty, rather than lowering the receipt.** ac-0002
+now reads: one table is the EXHAUSTIVE declaration of *which outcome each mode yields*,
+over a companion map declaring each outcome's promise and recovery *exactly once* — with
+the scope stated in the claim itself: compilation guarantees **declaration totality**, not
+that a mode was pointed at the *right* outcome. Goal 2 was narrowed the same way (and now
+also records that the how-doc points rather than restates); goal 3 gained the same explicit
+bound.
+
+### On collapsing the two maps instead — argued, and declined
+
+The PM offered the alternative: collapse into one `Record<CommitMode, …>` carrying
+label/promise/recovery per mode, making the original claim literally true. **Recommend
+against, and did not do it.** `file-buffered` and `harness-buffered` would then each carry
+their own copy of the same promise and the same recovery prose — two hand-maintained
+copies of one contract, *inside the very table whose purpose is to prevent hand-maintained
+copies*. Worse, nothing would keep them equal: an editor could change one and not the
+other and silently split a collapsed outcome, with every test still green. The only way to
+keep them provably identical is to have both reference one shared object — which is the
+two-level design, with the outer level inlined and the named outcome ids (which the tests
+pin) thrown away. So collapsing buys a truer sentence by reintroducing the defect. Fixing
+the sentence is strictly better than fixing the design to match a sentence.
+
+## Round-3 evidence
+
+- Tests: **34 passed (34)** across the two files.
+- `just checks`: green on every hard gate; the three warn-launch degradeds unchanged and
+  pre-existing.
+- `commit-service.ts`: `git diff --quiet 5dae6e9c` still passes — **zero-line diff**.
+- `AGENTS.md`: unchanged by round 3 (the managed block never contained the standalone
+  recovery section), still `6	3` against base, still fence-confined; doctor reports
+  `commit-guidance: ok`.
+
+## Round-3 discoveries
+
+| # | tag | what |
+| --- | --- | --- |
+| D5 | Noteworthy | Both round-3 findings are the same failure at different layers: a *claim of single ownership* that one hand-written exception quietly falsified — once in a source comment (R2-F001), once in an acceptance criterion (R2-F002). Worth naming, because the defect this plan set out to fix is itself "a surface claiming more than the code delivers", and it kept reappearing one layer up each round. The lesson generalises: when you assert "X is the only writer of Y", grep for Y before writing the sentence. |

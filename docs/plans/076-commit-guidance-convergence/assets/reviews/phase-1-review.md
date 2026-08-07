@@ -1,10 +1,10 @@
 # Code Review: Phase 1 - Converge the managed block on the mode union
 
-**Plan**: `/Users/jordanknight/substrate/harness-engineering-worktrees/s076-commit-guidance-block/docs/plans/076-commit-guidance-convergence/plan.dd.md`  
-**Spec**: `/Users/jordanknight/substrate/harness-engineering-worktrees/s076-commit-guidance-block/docs/plans/076-commit-guidance-convergence/plan.dd.md`  
-**Phase**: Phase 1: Converge the managed block on the mode union  
-**Date**: 2026-08-07  
-**Reviewer**: Cross-model reviewer  
+**Plan**: `/Users/jordanknight/substrate/harness-engineering-worktrees/s076-commit-guidance-block/docs/plans/076-commit-guidance-convergence/plan.dd.md`
+**Spec**: `/Users/jordanknight/substrate/harness-engineering-worktrees/s076-commit-guidance-block/docs/plans/076-commit-guidance-convergence/plan.dd.md`
+**Phase**: Phase 1: Converge the managed block on the mode union
+**Date**: 2026-08-07
+**Reviewer**: Cross-model reviewer
 **Testing Approach**: TDD / targeted regression evidence
 
 ## A) Verdict
@@ -157,11 +157,11 @@ node harness/cli/bin/harness.js doctor
 
 **Review result**: CHANGES
 
-**Plan**: `/Users/jordanknight/substrate/harness-engineering-worktrees/s076-commit-guidance-block/docs/plans/076-commit-guidance-convergence/plan.dd.md`  
-**Spec**: `/Users/jordanknight/substrate/harness-engineering-worktrees/s076-commit-guidance-block/docs/plans/076-commit-guidance-convergence/plan.dd.md`  
-**Phase**: Phase 1: Converge the managed block on the mode union  
-**Tasks dossier**: `/Users/jordanknight/substrate/harness-engineering-worktrees/s076-commit-guidance-block/docs/plans/076-commit-guidance-convergence/assets/tasks/phase-1/tasks.dd.md`  
-**Execution log**: `/Users/jordanknight/substrate/harness-engineering-worktrees/s076-commit-guidance-block/docs/plans/076-commit-guidance-convergence/assets/tasks/phase-1/execution.log.md`  
+**Plan**: `/Users/jordanknight/substrate/harness-engineering-worktrees/s076-commit-guidance-block/docs/plans/076-commit-guidance-convergence/plan.dd.md`
+**Spec**: `/Users/jordanknight/substrate/harness-engineering-worktrees/s076-commit-guidance-block/docs/plans/076-commit-guidance-convergence/plan.dd.md`
+**Phase**: Phase 1: Converge the managed block on the mode union
+**Tasks dossier**: `/Users/jordanknight/substrate/harness-engineering-worktrees/s076-commit-guidance-block/docs/plans/076-commit-guidance-convergence/assets/tasks/phase-1/tasks.dd.md`
+**Execution log**: `/Users/jordanknight/substrate/harness-engineering-worktrees/s076-commit-guidance-block/docs/plans/076-commit-guidance-convergence/assets/tasks/phase-1/execution.log.md`
 **Review file**: `/Users/jordanknight/substrate/harness-engineering-worktrees/s076-commit-guidance-block/docs/plans/076-commit-guidance-convergence/assets/reviews/phase-1-review.md`
 
 ### Files Reviewed
@@ -188,3 +188,44 @@ node harness/cli/bin/harness.js doctor
 ### Handback
 
 Fixes go back through the implement verb, then re-run this review.
+
+---
+
+## Round 2 Review - Commit 8d54ede2
+
+**Verdict: CHANGES**
+
+Round 2 correctly makes the buffered prerequisite static and platform-honest:
+both buffered modes now render the POSIX-only condition, so F001 is resolved.
+The three recovery dispositions are also correct. `drains-this` is for a
+buffer that can be replayed subject to its prerequisite; `not-the-remedy` is
+for named pipes where a nudge must be rejected; and `not-applicable` is the
+right silent case for `direct-verified`, whose verify-miss subcase has a
+command-specific `next_action` that may name the nudge. A fourth outcome-level
+arm is not needed.
+
+### Round 2 Findings
+
+| ID | Severity | File:Lines | Summary | Recommendation |
+| --- | --- | --- | --- | --- |
+| R2-F001 | MEDIUM | `/Users/jordanknight/substrate/harness-engineering-worktrees/s076-commit-guidance-block/harness/cli/src/services/instructions/commit-guidance.ts:64-77,254-260` | The standalone recovery block bypasses `renderRecovery()`, names the nudge outside the claimed sole writer, and asserts replay behavior without the POSIX prerequisite. | Derive or explicitly qualify the standalone recovery paragraph with `NUDGE_PREREQUISITE`. |
+| R2-F002 | MEDIUM | `/Users/jordanknight/substrate/harness-engineering-worktrees/s076-commit-guidance-block/docs/plans/076-commit-guidance-convergence/plan.dd.md:Goals,ac-0002` | The receipt now states totality honestly, but the goal and AC still say a single `Record<CommitMode, ...>` is the only declaration of promises. Promises live in the separate exported `COMMIT_OUTCOMES` map. | Narrow the goal and AC to the delivered exhaustive mode-to-outcome declaration, or revise the implementation claim. |
+
+#### R2-F001 - proximity does not make the generic recovery block truthful
+
+The rendered outcome list immediately precedes the generic `RECOVERY` block,
+but the latter can be read as an independent command recipe. It says the nudge
+"rotates the buffer" and "replays that segment into the collector"; on win32
+the command returns before either action. It also falsifies the new source
+comment that `NUDGE_VERB` and `renderRecovery()` are the sole writer of the
+verb's instruction. The POSIX prerequisite must travel with every standalone
+recovery instruction, not only the outcome list above it.
+
+#### R2-F002 - the plan claim remains stronger than its corrected receipt
+
+`COMMIT_OUTCOME_GUIDANCE` is total over `CommitMode`, but it stores only
+`outcome` and `when`. The reader-facing `label`, `promise`, and `recovery`
+values are declared by the distinct exported `COMMIT_OUTCOMES` map. The
+receipt now correctly says that compilation proves declaration totality, not
+semantic correctness; the goal and acceptance-criterion claim must say the
+same.

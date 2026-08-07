@@ -287,6 +287,35 @@ describe('plan 076 — the outcome contract is ONE table, and both surfaces rend
     }
   });
 
+  it('review R2-F001 — EVERY standalone recovery instruction carries the prerequisite, not just the outcome list', () => {
+    /*
+    Test Doc:
+    - Why: round 2 fixed the outcome list and left the page's standalone RECOVERY
+      block asserting that the verb "rotates the buffer" and "replays that segment"
+      — both of which a win32 host returns before ever doing. Proximity to a correct
+      list does not make an independent command recipe truthful: a reader can act on
+      that block alone.
+    - Contract: the page states the POSIX prerequisite at least twice (once with the
+      buffered outcome, once with the standalone block), and every paragraph that
+      asserts replay behaviour is qualified.
+    - Quality Contribution: pins the invariant "the prerequisite travels with every
+      recovery instruction", which is the general rule R2-F001 is one instance of.
+    */
+    const page = CORE_INSTRUCTION_PAGES.commit ?? '';
+
+    const prerequisites = page.split(NUDGE_PREREQUISITE).length - 1;
+    expect(prerequisites).toBeGreaterThanOrEqual(2);
+
+    // The standalone block no longer promises unconditional replay.
+    expect(page).toContain('RECOVERY, on a POSIX host.');
+    expect(page).not.toContain('RECOVERY. Run it from an UNSANDBOXED shell.');
+
+    // The replay assertion and the prerequisite are in the same section: the text
+    // after the rotate/replay sentence still names the POSIX-only condition.
+    const afterReplay = page.slice(page.indexOf('rotates the\nbuffer to a segment'));
+    expect(afterReplay).toContain(NUDGE_PREREQUISITE);
+  });
+
   it('ac-0001 — the block names the unverified outcome and does NOT offer the nudge as its remedy', () => {
     const block = commitGuidanceBlock();
     const unverified = COMMIT_OUTCOMES.unverified;

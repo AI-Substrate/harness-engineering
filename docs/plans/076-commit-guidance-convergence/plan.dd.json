@@ -20,8 +20,8 @@
       "name": "goals",
       "value": [
         "The managed block names every outcome an agent can actually receive from `harness commit`, including the named-pipe path where attribution is unverified and the nudge must NOT be run.",
-        "The outcome contract lives in ONE exported table keyed by `CommitMode`, and both guidance surfaces render from it — no second hand-maintained prose copy of the outcome list.",
-        "Adding a fifth `CommitMode` is a COMPILE ERROR at the guidance surface, not a review catch. A guarantee about future code needs the type system, not a test (DL-007).",
+        "The outcome contract lives in ONE place: a table keyed by `CommitMode` declaring which outcome each mode yields, over a companion map declaring each outcome's promise and recovery exactly once. Both guidance surfaces render from it, and the how-doc points at it rather than restating it — no second hand-maintained prose copy of the outcome list anywhere.",
+        "Adding a fifth `CommitMode` is a COMPILE ERROR at the guidance table, not a review catch. A guarantee about future code needs the type system, not a test (DL-007) — and the guarantee is bounded: the compiler forces a new mode to be DESCRIBED, while whether it was described CORRECTLY is carried by the renderer owning every mention of the recovery verb, the shared-outcome-object design, and tests.",
         "Repos carrying the old block migrate gracefully: it reads as `stale`, doctor warns, and `harness instructions commit --inject` refreshes it in place."
       ]
     },
@@ -47,7 +47,7 @@
         {
           "state": "checked",
           "id": "ac-0002",
-          "claim": "A single exported table typed `Record<CommitMode, …>` is the ONLY declaration of what each commit outcome promises. It lives in `src` (typecheck `include` is `[\"src\"]`, so a contract in a test file compiles nowhere CI looks — the F011 lesson).",
+          "claim": "One exported table typed `Record<CommitMode, …>` is the EXHAUSTIVE declaration of which reader-facing outcome each commit mode yields, over a companion map that declares each outcome's promise and recovery exactly once — so no promise is written twice, and adding a mode without describing it cannot compile. It lives in `src` (typecheck `include` is [\"src\"], so a contract in a test file compiles nowhere CI looks — the F011 lesson). Scope, stated honestly: compilation guarantees DECLARATION TOTALITY, not that a mode was pointed at the right outcome.",
           "receipt": "COMMIT_OUTCOME_GUIDANCE ('as const satisfies Record<CommitMode, CommitOutcomeGuidance>') in src/services/instructions/commit-guidance.ts (typecheck include is ['src']). Dim-0 mutation, re-run after the round-2 restructure: a fifth CommitMode member yields exactly 2 tsc errors, BOTH in commit-guidance.ts — TS1360 at the table (:192) and TS7053 at the renderer (:207); commit-service.ts compiled clean. Reverted; zero-line diff vs 5dae6e9c. SCOPE, stated honestly (review F002): the compile error proves DECLARATION TOTALITY — a new mode cannot exist without an entry. It does NOT prove the entry is semantically right; a fifth mode pointed at 'buffered' still compiles. Semantic correctness is carried by renderRecovery() owning every mention of the nudge verb, the shared-outcome-object design, and tests — not by the type system."
         },
         {
