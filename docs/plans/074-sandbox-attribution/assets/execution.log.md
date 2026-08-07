@@ -249,3 +249,42 @@ just checks → tests:ok biome:ok typecheck:ok check:docs:ok check:flows:ok
 ```
 
 Tests: **4967 → 4976 passing**, 339 files, no skips.
+
+## Fix round 3 — F008: a machine-global target can live INSIDE the repository
+
+Round 3 closed everything except one edge in round 2's own repair. The untagged
+(pre-identity) fallback was "a sidecar inside the repository is ours". That is true of the
+harness's own directory and **false** of a global target that merely happens to sit there:
+`trace2.eventTarget` is read from SYSTEM and GLOBAL config only, but nothing stops the path
+it names from being `<repo>/trace2/agent.jsonl`. An untagged **foreign** entry there was
+claimed as own, queried against a note that cannot exist in this object store, reported as
+missing, and the segment retained forever — the permanent retention this plan exists to
+kill, reappearing through the migration format. The reviewer's probe went RED on it.
+
+| # | what was wrong | what changed | the guarding test |
+|---|---|---|---|
+| F008 | `partitionByRepo`'s `sidecarIsRepoLocal` came from `isWithin(cwd, path)` — a whole-worktree containment test. A machine-global file target inside the worktree passed it, so its untagged history was claimed rather than handed off. | **Narrowed to ours BY CONSTRUCTION.** New `isHarnessOwned()` tests containment against the harness's **default buffer directory** (`<repo>/.harness/temp/trace2/`) and nothing else — the directory `harness commit` creates, writes, and gitignores, which no configured `eventTarget` can land in. Both call sites (`inspectSegment`, `runNudge`) use it. Untagged entries at a *configured* or *recorded* target are ambiguous by definition and are handed off. | `nudge.test.ts` — "F008 — an untagged entry at a global target inside the repo is handed off, not claimed" (the reviewer's scenario: replayed whole, `handedOff=[{sha, repo: null}]`, never queried locally, segment **and** sidecar deleted so the lifecycle terminates); "…the same rule holds on the enumeration path" (leftover segment named, not owned, nothing touched); and the negative control "an untagged entry in the HARNESS default dir is still ours" (`partial`, `stillMissing=[sha]`, `hasAiNote` *was* called). |
+
+The four-way partition the fix preserves, stated once:
+
+| identity | outcome |
+|---|---|
+| known and ours | confirmed against `refs/notes/ai`; gates deletion |
+| known and not ours | replayed, handed off, delete-eligible, never accused |
+| **unknown, in a shared/configured location** | replayed, handed off — **never claimed, never accused** |
+| no sidecar at all | `unconfirmable`, retained (unchanged) |
+
+Mutation check: reverting `isHarnessOwned()` to the old whole-worktree test turns both new
+guards RED and leaves the negative control and all 40 prior nudge tests green — so the
+guards bite on exactly this rule and nothing else.
+
+### Gate after the fix round
+
+```
+just checks → tests:ok biome:ok typecheck:ok check:docs:ok check:flows:ok
+              check:telemetry-fixtures:ok check:doctrine-parity:ok check:dd-docs:ok
+              root-invocation-smoke:ok dd doctor:ok skills-check:ok
+              arch-check:2  markdown-lint:196  windows-check:6      ← baseline, unchanged
+```
+
+Tests: **4976 → 4979 passing**, 339 files, no skips.

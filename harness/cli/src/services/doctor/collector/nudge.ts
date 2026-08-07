@@ -57,6 +57,10 @@ import type { IngressReading } from './ingress.js';
  *    commit, so "still missing a note" would be a structural impossibility
  *    reported as a finding. They are reported as replayed-and-handed-off, they
  *    never appear as unattributed commits here, and they never block deletion.
+ *    An entry whose origin was never recorded is claimed only when it sits in
+ *    the harness's OWN default buffer directory — ours by construction. In any
+ *    configured or recorded target, even one located inside this worktree, an
+ *    untagged entry has no provable owner and is handed off too.
  * 5. **NO AUTOMATIC RE-REPLAY IN v1.** A retained segment is LISTED with an
  *    explicit retry instruction and left alone. The tk-000b spike did establish
  *    that duplicate replay is idempotent against a live daemon (notes came back
@@ -250,6 +254,28 @@ function defaultBuffer(deps: NudgeDeps): string {
   return posixJoin(cwd, HARNESS_DIR, TEMP_DIR, TRACE2_BUFFER_DIR, TRACE2_BUFFER_FILE);
 }
 
+/**
+ * Is this buffer/segment one THE HARNESS ITSELF created — ours BY CONSTRUCTION?
+ *
+ * The only path that qualifies is this repository's DEFAULT buffer directory,
+ * `<repo>/.harness/temp/trace2/`: `harness commit` creates it, writes into it,
+ * and gitignores it, and no `trace2.eventTarget` any operator configures ever
+ * lands there. Every OTHER location — a configured target, a recorded target,
+ * or any other path that merely happens to sit under the worktree — is
+ * machine-global by nature, because `trace2.eventTarget` is read from SYSTEM
+ * and GLOBAL config only and may legally name `<repo>/trace2/agent.jsonl`.
+ *
+ * This is round 3's F008. The earlier rule was "anywhere under the repo is
+ * ours", which is true of the harness's own directory and false of a global
+ * target that happens to live there: an untagged FOREIGN sha in
+ * `<repo>/trace2/agent.jsonl.shas` was claimed as own, queried against notes
+ * that cannot exist here, and retained forever — the exact permanent-retention
+ * failure this plan exists to kill, reappearing through the migration format.
+ */
+function isHarnessOwned(deps: NudgeDeps, path: string): boolean {
+  return isWithin(posixDirname(defaultBuffer(deps)), path);
+}
+
 /** A rotated segment: `segment-<iso>-<salt>.jsonl`, beside the buffer it came from. */
 export const SEGMENT_PREFIX = 'segment-';
 export const SEGMENT_SUFFIX = '.jsonl';
@@ -324,15 +350,21 @@ function resolveBuffer(deps: NudgeDeps): BufferResolution {
  * impossibility as a finding, retains the segment forever, and accuses unrelated
  * commits. That is round 2's cross-repo regression.
  *
- * An entry with no recorded origin falls back to LOCATION rather than a guess: a
- * sidecar INSIDE this repository was written by this repository (that is the
- * pre-identity `.harness/temp/trace2/` case, and it is correct); a machine-global
- * one could belong to anybody, so it is handed off rather than claimed.
+ * An entry with no recorded origin falls back to LOCATION rather than a guess —
+ * but only to a location that is ours BY CONSTRUCTION. A sidecar in the
+ * harness's own default buffer directory was written by this repository (that
+ * is the pre-identity `.harness/temp/trace2/` migration case, and it is
+ * correct). A sidecar ANYWHERE ELSE — including a configured or recorded file
+ * target that happens to sit inside this worktree — is machine-global, its
+ * untagged history has no provable owner, so it is handed off rather than
+ * claimed. Claiming it would query a note that cannot exist here and retain the
+ * segment forever (round 3's F008); accusing it would be the very
+ * mis-attribution step 4 exists to prevent.
  */
 function partitionByRepo(
   entries: readonly SidecarEntry[],
   ownRepo: string | null,
-  sidecarIsRepoLocal: boolean,
+  sidecarIsHarnessOwned: boolean,
 ): { own: string[]; handedOff: HandedOffSha[] } {
   const own: string[] = [];
   const handedOff: HandedOffSha[] = [];
@@ -340,7 +372,7 @@ function partitionByRepo(
     const mine =
       ownRepo !== null && entry.repo !== null
         ? posixNormalize(toPosix(entry.repo)) === ownRepo
-        : sidecarIsRepoLocal;
+        : sidecarIsHarnessOwned;
     if (mine) own.push(entry.sha);
     else handedOff.push({ sha: entry.sha, repo: entry.repo });
   }
@@ -367,11 +399,7 @@ function describeHandedOff(handedOff: readonly HandedOffSha[]): string {
 /** What a segment on disk still owes, read from its sidecar. Pure reads — never mutates. */
 function inspectSegment(deps: NudgeDeps, path: string, ownRepo: string | null): RetainedSegment {
   const entries = sidecarEntries(deps.fs.readText(`${path}${TRACE2_SHAS_SUFFIX}`));
-  const { own, handedOff } = partitionByRepo(
-    entries,
-    ownRepo,
-    isWithin(toPosix(deps.proc.cwd()), path),
-  );
+  const { own, handedOff } = partitionByRepo(entries, ownRepo, isHarnessOwned(deps, path));
   if (entries.length === 0) {
     return { path, stillMissing: [], recovered: [], handedOff: [], reason: 'unconfirmable' };
   }
@@ -585,11 +613,7 @@ async function runNudge(
   }
 
   const entries = sidecarEntries(sidecarText);
-  const { own, handedOff } = partitionByRepo(
-    entries,
-    ownRepo,
-    isWithin(toPosix(deps.proc.cwd()), buffer),
-  );
+  const { own, handedOff } = partitionByRepo(entries, ownRepo, isHarnessOwned(deps, buffer));
   // Only shas that were MISSING before the replay can be "recovered" by it.
   const before = own.filter((sha) => !deps.git.hasAiNote(sha));
 

@@ -439,7 +439,14 @@ live traffic. Its lifecycle is deliberate:
    `git notes` cannot resolve another repo's commit, so "still missing a note"
    would be a structural impossibility reported as a finding. They are reported
    as *replayed and handed off*, they never appear as unattributed commits in
-   this repo, and they never block deletion.
+   this repo, and they never block deletion. An entry written **before** identity
+   was recorded carries no repo, and location decides — narrowly: only a sidecar
+   in the harness's **own** default buffer directory (`.harness/temp/trace2/`,
+   which `harness commit` creates and gitignores) is ours *by construction*. A
+   configured or recorded file target is machine-global by definition and may
+   legally sit *inside* a worktree, so its untagged history has no provable owner
+   and is handed off too — claimed instead, it would be queried against a note
+   that cannot exist here and retained forever.
 5. **Enumerate every run** — nothing carries state between invocations, so each
    run lists `segment-*.jsonl` beside the buffer and reports **every** one still
    on disk with a retry pointer. A run that leaves any segment *this repository

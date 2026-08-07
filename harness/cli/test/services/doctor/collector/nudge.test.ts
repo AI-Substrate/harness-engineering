@@ -876,10 +876,11 @@ describe('plan 074 · ac-0005/ac-0006 — R2: the buffer is machine-global, not 
     expect(fs.deletes).toEqual([]);
   });
 
-  it('R2 — a pre-identity sidecar is read by LOCATION: repo-local is ours, global is not', async () => {
+  it('R2 — a pre-identity sidecar is read by LOCATION: the harness dir is ours, global is not', async () => {
     // Entries written before identity was recorded carry no repo. Guessing
-    // either way is wrong, so location decides: a sidecar inside this repository
-    // was written by it; a machine-global one could belong to anybody.
+    // either way is wrong, so location decides — and only the harness's own
+    // default buffer directory counts as ours (R3/F008): a machine-global
+    // target could belong to anybody, wherever it happens to sit.
     const fs = new FakeFs({}, { [TARGET_DIR]: [SEGMENT_NAME] });
     fs.mkdirp(TARGET_DIR);
     fs.writeText(TARGET_SEGMENT, payload());
@@ -896,9 +897,10 @@ describe('plan 074 · ac-0005/ac-0006 — R2: the buffer is machine-global, not 
     expect(out.detail).toContain('belong to other repositories');
     expect(out.detail).not.toContain(SHA_B);
 
-    // The other half of the same rule: an untagged sidecar INSIDE the repo is
-    // this repository's own — that is the pre-identity `.harness/temp/trace2/`
-    // case, and reading it as foreign would stop confirming commits we made.
+    // The other half of the same rule: an untagged sidecar in the harness's OWN
+    // buffer directory is this repository's — that is the pre-identity
+    // `.harness/temp/trace2/` case, and reading it as foreign would stop
+    // confirming commits we made.
     const localFs = new FakeFs();
     localFs.mkdirp(`${REPO}/.harness/temp/trace2`);
     localFs.writeText(BUFFER, payload());
@@ -911,5 +913,113 @@ describe('plan 074 · ac-0005/ac-0006 — R2: the buffer is machine-global, not 
     expect(local.status).toBe('replayed');
     expect(local.recovered).toEqual([SHA_A]);
     expect(local.handedOff).toEqual([]);
+  });
+});
+
+describe('plan 074 · ac-0005/ac-0006 — R3: a global target can live INSIDE the repo (F008)', () => {
+  const REPO_A = '/repoA';
+  const ID_A = `${REPO_A}/.git`;
+  // `trace2.eventTarget` is read from SYSTEM and GLOBAL config only, but nothing
+  // stops the path it names from sitting inside a worktree. This one does.
+  const GLOBAL_DIR = `${REPO_A}/trace2`;
+  const GLOBAL_TARGET = `${GLOBAL_DIR}/agent.jsonl`;
+  const GLOBAL_SEGMENT = `${GLOBAL_DIR}/${SEGMENT_NAME}`;
+  const HARNESS_DIR_A = `${REPO_A}/.harness/temp/trace2`;
+
+  function nudgeDeps(
+    cwd: string,
+    git: FakeGitAttribution,
+    fs: FakeFs,
+    ing: Awaited<ReturnType<typeof ingress>>,
+    bufferPath?: string,
+  ): NudgeDeps & { relay: FakeSocketRelay } {
+    const relay = new FakeSocketRelay();
+    return {
+      fs,
+      relay,
+      git,
+      proc: new FakeProcess({ node: '/usr/bin/node' }, cwd),
+      clock: new FakeClock(NOW),
+      ingress: ing,
+      bufferPath,
+      sleep: () => Promise.resolve(),
+      confirmTimeoutMs: 500,
+    };
+  }
+
+  it('F008 — an untagged entry at a global target inside the repo is handed off, not claimed', async () => {
+    // The review's probe. "Anywhere under the repo is ours" is true of the
+    // harness's own directory and FALSE of a machine-global target that happens
+    // to live there: the untagged sha below belongs to another repository, so
+    // claiming it means querying a note that cannot exist in this object store,
+    // reporting a structural impossibility as a finding, and retaining the
+    // segment forever — the permanent retention this plan exists to kill.
+    const fs = new FakeFs();
+    fs.mkdirp(GLOBAL_DIR);
+    fs.writeText(GLOBAL_TARGET, payload());
+    fs.writeText(`${GLOBAL_TARGET}.shas`, sidecarNaming(SHA_B));
+    fs.mkdirp(HARNESS_DIR_A);
+    fs.writeText(`${HARNESS_DIR_A}/known-targets`, `${GLOBAL_TARGET}\n`);
+    const git = new FakeGitAttribution({ commonDir: ID_A });
+    const d = nudgeDeps(REPO_A, git, fs, await ingress('connected'), GLOBAL_TARGET);
+
+    const out = await telemetryNudge(d);
+
+    // Replayed whole — the daemon still attributes it in whatever repo owns it.
+    expect(d.relay.sends.map((s) => s.payload)).toEqual([payload()]);
+    expect(out.handedOff).toEqual([{ sha: SHA_B, repo: null }]);
+    // NEVER queried against this repository's notes.
+    expect(git.calls).not.toContain(`hasAiNote:${SHA_B}`);
+    expect(out.stillMissing).toEqual([]);
+    // The lifecycle TERMINATES: nothing is retained on a sha this repo can
+    // neither confirm nor disprove.
+    expect(out.status).toBe('replayed');
+    expect(out.retained).toEqual([]);
+    expect(fs.exists(GLOBAL_SEGMENT)).toBe(false);
+    expect(fs.exists(`${GLOBAL_SEGMENT}.shas`)).toBe(false);
+  });
+
+  it('F008 — the same rule holds on the enumeration path, not just the run path', async () => {
+    // A leftover segment at the in-repo global target, seen by a later run with
+    // no live buffer. It must be NAMED without being owned.
+    const fs = new FakeFs({}, { [GLOBAL_DIR]: [SEGMENT_NAME] });
+    fs.mkdirp(GLOBAL_DIR);
+    fs.writeText(GLOBAL_SEGMENT, payload());
+    fs.writeText(`${GLOBAL_SEGMENT}.shas`, sidecarNaming(SHA_B));
+    const git = new FakeGitAttribution({ commonDir: ID_A });
+    const d = nudgeDeps(REPO_A, git, fs, await ingress('connected'), GLOBAL_TARGET);
+
+    const out = await telemetryNudge(d);
+
+    expect(out.retained[0]?.reason).toBe('handed-off');
+    expect(out.retained[0]?.handedOff).toEqual([{ sha: SHA_B, repo: null }]);
+    expect(out.retained[0]?.stillMissing).toEqual([]);
+    expect(git.calls).not.toContain(`hasAiNote:${SHA_B}`);
+    // Naming a foreign segment is honest; owning it is not.
+    expect(out.status).toBe('skipped');
+    expect(fs.renames).toEqual([]);
+    expect(fs.deletes).toEqual([]);
+  });
+
+  it('F008 negative control — an untagged entry in the HARNESS default dir is still ours', async () => {
+    // The migration case the narrowing must not break: `harness commit` created
+    // this directory, wrote this buffer, and gitignored it. No configured
+    // eventTarget can land here, so an untagged entry is ours BY CONSTRUCTION —
+    // reading it as foreign would stop confirming commits we really made.
+    const fs = new FakeFs({}, { [HARNESS_DIR_A]: [SEGMENT_NAME] });
+    fs.mkdirp(HARNESS_DIR_A);
+    fs.writeText(`${HARNESS_DIR_A}/${SEGMENT_NAME}`, payload());
+    fs.writeText(`${HARNESS_DIR_A}/${SEGMENT_NAME}.shas`, sidecarNaming(SHA_A));
+    const git = new FakeGitAttribution({ commonDir: ID_A });
+    const d = nudgeDeps(REPO_A, git, fs, await ingress('connected'));
+
+    const out = await telemetryNudge(d);
+
+    expect(out.retained[0]?.reason).toBe('partial');
+    expect(out.retained[0]?.stillMissing).toEqual([SHA_A]);
+    expect(out.retained[0]?.handedOff).toEqual([]);
+    expect(git.calls).toContain(`hasAiNote:${SHA_A}`);
+    // Still owed here, so the run says so.
+    expect(out.status).toBe('retained');
   });
 });

@@ -238,3 +238,63 @@ repositories using one target.
 - Complete plan validation: 0 errors, 0 warnings, 0 open items.
 - `just checks`: completed at the recorded non-blocking baseline: arch 2,
   markdown 196, Windows 6.
+
+---
+
+## Round 3 — fix commit `dbc14a07`
+
+**Verdict: FIX_REQUIRED**
+
+| Item | Status | Evidence |
+|---|---|---|
+| F003 + coupled F005 | CLOSED | The file branch records its absolute target in the repo-local `known-targets` ledger. After reconfiguration to `af_unix`, the composed test drains that target, confirms its sidecar SHA, and deletes both segment and sidecar. An unrelated `/etc/passwd` remains refused with zero renames, deletes, or relay sends even when a valid recorded target exists. `.harness/temp/` is ignored by the repository rule and by the trace2 directory's self-ignore. |
+| Cross-repository tagged sidecars | CLOSED | Sidecar records are `<sha> <git-common-dir>`. The two-repository test runs both A-drains and B-drains directions: each confirms only its own SHA, never queries the foreign SHA, reports the foreign owner in `handedOff`, and deletes the completed segment. |
+| F001, F002, F004, F006, F007 regression sweep | CLOSED | Restored focused suites passed: 104 tests across nudge, commit service, ingress, and doctor act. |
+
+### Decision attacks
+
+| Decision | Result | Review |
+|---|---|---|
+| Identity is git common dir | PASS | `refs/notes/ai` is shared by linked worktrees, so common-dir identity avoids falsely separating sibling worktrees. The adapter uses `--path-format=absolute`; its older-Git fallback resolves a relative result from the adapter cwd, preserving an absolute identity. |
+| Delete an all-foreign segment after successful replay | PASS | This is distinct from a sidecar-less segment: every entry is explicitly tagged, known not to belong to the current repository, and relay success is required before deletion. A no-sidecar segment remains `unconfirmable` and retained. |
+| Untagged entries use location | **NOT CLOSED** | `isWithin(cwd, path)` treats every sidecar physically under the repo as local. A machine-global file target may itself be located under that repo, so an untagged foreign entry in `<repo>/trace2/agent.jsonl.shas` is wrongly claimed as own, queried locally, and retained as missing. |
+
+### New finding — F008: untagged sidecars at a global target inside a repository are misclassified
+
+`partitionByRepo()` receives `sidecarIsRepoLocal` from a broad containment test in
+`nudge.ts`. That is sound for the harness-controlled
+`.harness/temp/trace2/buffer.jsonl`, but not for every path beneath the worktree:
+`trace2.eventTarget` is machine-global and can legally name
+`<repo>/trace2/agent.jsonl`. An older/unidentified sidecar at that target can contain
+another repository's untagged SHA. The current location rule calls it ours, queries a
+note that cannot exist in this repository, and retains the segment indefinitely -- the
+cross-repository poisoning fixed for tagged entries reappears for the migration/fallback
+format.
+
+A temporary regression probe with an untagged foreign `SHA_B` at
+`/repoA/trace2/agent.jsonl` and repo A's recorded target failed RED: expected
+`replayed` plus `handedOff=[{ sha: SHA_B, repo: null }]`, received `retained`.
+The temporary test was removed before the restored suite.
+
+Restrict the local-location fallback to the harness-owned default buffer/its segment
+directory, not arbitrary paths within the repository. Treat untagged entries at a
+configured or recorded file target as ambiguous/global and hand them off. Add the
+regression above.
+
+### Dim-0 evidence
+
+- Disabled the recorded-target authorization predicate; the targeted nudge set went
+  **RED** with 3 failures: the composed F003 drain and both two-repository directions
+  were refused.
+- Replaced own-vs-foreign partitioning with `mine = false`; the targeted set went
+  **RED** with 3 failures: both ownership directions lost their recovery and the
+  local pre-identity control no longer confirmed.
+- Both mutations were restored. No production or test modification remains from this
+  review; only this review artifact is changed.
+
+### Gates
+
+- `node harness/cli/bin/harness.js plan validate docs/plans/074-sandbox-attribution --complete`:
+  0 errors, 0 warnings, 0 open items.
+- `just checks`: completed at the recorded non-blocking baseline -- arch 2,
+  markdown 196, Windows 6.
