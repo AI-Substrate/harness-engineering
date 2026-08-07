@@ -1,4 +1,5 @@
 import type { FsPort } from '../../adapters/fs/fs-port.js';
+import type { CommitMode } from '../commit/commit-service.js';
 import { posixJoin, toPosix } from '../shared/posix-path.js';
 
 /**
@@ -9,7 +10,8 @@ import { posixJoin, toPosix } from '../shared/posix-path.js';
  * The guidance is careful about what it promises, because overclaiming here
  * would recreate the exact failure the plan exists to kill. A `harness commit`
  * is **verified or named**: either a note landed and it says so, or the events
- * were buffered and it names both the buffer and the command that drains it. It
+ * were buffered and it names both the buffer and the command that drains it, or
+ * it states plainly that attribution could not be verified on this platform. It
  * is NOT a guarantee of delivery — nothing can promise that, since a blocked
  * ingress is blocked. What it guarantees is that the outcome is never SILENT.
  *
@@ -19,7 +21,254 @@ import { posixJoin, toPosix } from '../shared/posix-path.js';
  * attest those lines as known-human (F-03).
  */
 
-/** The instructions page `harness instructions commit` resolves (ac-0008 seam 1). */
+/**
+ * What a reader does about an outcome — a DISCRIMINATED disposition, not prose.
+ *
+ * The nudge disposition is data because getting it wrong *is* the plan-076
+ * defect: the pre-075 block sent every reader to the recovery verb, and that
+ * verb refuses on a Windows named pipe. Review F002 then found the
+ * disposition was declared but never rendered — a guard-shaped datum free to
+ * disagree with the prose beside it, which is the same false comfort one layer
+ * up. So the instruction is DERIVED from this union rather than written beside
+ * it: {@link renderRecovery} is the only writer of the outcome list's recovery
+ * text, and no authored string in {@link COMMIT_OUTCOMES} may name the verb.
+ * More broadly, every mention of the verb anywhere in this module's OUTPUT is
+ * interpolated from {@link NUDGE_VERB} — pinned by a test that reads this source
+ * file and requires the literal to appear exactly once, at that declaration.
+ */
+export type CommitRecovery =
+  | {
+      readonly nudge: 'drains-this';
+      /** What the reader must know before draining. Never names the verb. */
+      readonly before: string;
+    }
+  | {
+      readonly nudge: 'not-the-remedy';
+      /** What to do instead. */
+      readonly instead: string;
+      /** Why the nudge is not it — rendered after "Do NOT run … —". */
+      readonly because: string;
+    }
+  | {
+      /**
+       * The nudge is neither the remedy nor a hazard worth warning against.
+       *
+       * A real distinction, not a hedge: `direct-verified` buffers nothing, so
+       * there is nothing to drain — but on a verify MISS `harness commit`'s own
+       * `next_action` names the nudge (commit-service.ts). Rendering a blanket
+       * "Do NOT run" here would contradict the shipped command, which is the
+       * exact defect class this plan exists to remove. So this arm says what to
+       * do and stays silent about the verb.
+       */
+      readonly nudge: 'not-applicable';
+      readonly instead: string;
+    };
+
+/** What one reader-facing commit outcome promises, and what to do about it. */
+export interface CommitOutcome {
+  /** The outcome's name in the guidance's own vocabulary. */
+  readonly label: string;
+  /** What `harness commit` actually did and actually claims. Never more. */
+  readonly promise: string;
+  /** How the reader recovers — rendered by {@link renderRecovery}, never by hand. */
+  readonly recovery: CommitRecovery;
+}
+
+/**
+ * The recovery verb. Named ONCE, here, so every mention in the guidance —
+ * the outcome list, the standalone recovery block, both surfaces — is
+ * interpolated from this constant rather than typed out again. Review R2-F001
+ * caught the one place that had not been: a hand-written paragraph is exactly
+ * how a "sole writer" claim becomes aspirational.
+ */
+const NUDGE_VERB = 'harness doctor telemetry-nudge';
+
+/**
+ * The prerequisite every drainable outcome carries — stated UNCONDITIONALLY,
+ * on every platform, for a reason that is easy to get wrong (review F001).
+ *
+ * `runNudge()` refuses on any win32 host (`nudge.ts`, the `isWin32` guard) before
+ * it reaches a single replay path, so a Windows reader of a `file-buffered` or
+ * `harness-buffered` commit was being handed a recovery command that drains
+ * nothing. The fix is NOT platform detection: this text is committed into an
+ * `AGENTS.md` that any OS may check out, so the machine that RENDERS it is not
+ * the machine that READS it. A renderer that branched on `process.platform`
+ * would bake one host's answer into a file read on another. Stating the
+ * prerequisite is correct on every host, including the one it was written on.
+ */
+export const NUDGE_PREREQUISITE = `Recovery is POSIX-ONLY: the drain replays into an af_unix socket, so on a Windows host \`${NUDGE_VERB}\` refuses on platform grounds and drains nothing — the buffered events stay on disk, untouched, until they are drained from a host whose collector ingress is an af_unix socket.`;
+
+/**
+ * Turn a disposition into the reader's instruction — the only writer of the
+ * outcome list's recovery text. (The standalone {@link RECOVERY_SECTION} is the
+ * other place the verb appears; it interpolates {@link NUDGE_VERB} and carries
+ * {@link NUDGE_PREREQUISITE} too, so neither can state the verb's behaviour
+ * without its precondition.)
+ */
+export function renderRecovery(recovery: CommitRecovery): string {
+  switch (recovery.nudge) {
+    case 'drains-this':
+      return `${recovery.before} Drain it with \`${NUDGE_VERB}\` from an UNSANDBOXED shell. ${NUDGE_PREREQUISITE}`;
+    case 'not-the-remedy':
+      return `${recovery.instead} Do NOT run \`${NUDGE_VERB}\` — ${recovery.because}.`;
+    case 'not-applicable':
+      return recovery.instead;
+  }
+}
+
+/**
+ * The outcomes an agent can actually receive, in the order the guidance tells
+ * them. Modes collapse ONTO these — see {@link COMMIT_OUTCOME_GUIDANCE}.
+ *
+ * Separating outcome from mode is what makes the collapse honest: two modes that
+ * share a prose outcome share the SAME promise and recovery object, so the
+ * collapse cannot hide a difference in what is promised. A mode whose promise
+ * genuinely differs cannot be folded in — it needs an outcome of its own.
+ */
+export const COMMIT_OUTCOMES = {
+  verified: {
+    label: 'confirmed',
+    promise:
+      'harness commits with no trace2 override, waits (bounded) for the `refs/notes/ai` note, and tells you whether it landed.',
+    recovery: {
+      nudge: 'not-applicable',
+      instead:
+        "A landed note is the healthy shape, and a miss is reported to you rather than hidden — with the next step named in the command's own output. Nothing was buffered on this path, so there is nothing to drain.",
+    },
+  },
+  buffered: {
+    label: 'buffered and named',
+    promise:
+      "the commit is made with its trace2 events going to a buffer file instead of the collector, so attribution is DEFERRED, not lost — and it isn't proven yet either.",
+    recovery: {
+      nudge: 'drains-this',
+      before:
+        '`harness commit` names the buffer it used; when the configured target is a plain FILE it must be pointed back at the socket first, because while it names a file there is no ingress to replay into.',
+    },
+  },
+  unverified: {
+    label: 'NOT VERIFIED on this platform',
+    promise:
+      'the commit is made with no trace2 override (git talks to the pipe as usual), nothing was buffered, nothing was written beside the pipe — and nothing is claimed about attribution, because nothing was measured.',
+    recovery: {
+      nudge: 'not-the-remedy',
+      instead: 'Check for yourself with `git notes --ref=ai show HEAD`.',
+      because:
+        'there is no buffer to drain and no replay path for the named-pipe transport, and it will refuse',
+    },
+  },
+} as const satisfies Record<string, CommitOutcome>;
+
+export type CommitOutcomeId = keyof typeof COMMIT_OUTCOMES;
+
+/** How one `CommitMode` reaches the reader: which outcome, and what selected it. */
+export interface CommitOutcomeGuidance {
+  /**
+   * The outcome this mode produces. Two modes MAY name the same outcome — the
+   * collapse is DECLARED here and never inferred from prose similarity (ac-0004).
+   */
+  readonly outcome: CommitOutcomeId;
+  /** The condition that selects this mode, in the reader's terms. */
+  readonly when: string;
+}
+
+/**
+ * The EXHAUSTIVE mode table (plan 076 · ac-0002) — the declaration of WHICH
+ * outcome each commit mode gives the reader, and the third application of the
+ * house pattern already proven by `TRACE2_TARGET_POLICY` (ingress.ts) and
+ * `RETAINED_FIELD_RENDERING` (nudge.ts).
+ *
+ * What each outcome PROMISES is declared once each in {@link COMMIT_OUTCOMES},
+ * not here — deliberately, so the two buffered modes share one promise object
+ * instead of carrying two copies of it. This comment used to call this table
+ * "the ONLY declaration of what each commit outcome promises", which
+ * `COMMIT_OUTCOMES` plainly contradicts: the same single-ownership overclaim
+ * this plan exists to remove, one layer above the table the plan's honesty rests
+ * on (review R3-F001). The claim now states the width the design delivers.
+ *
+ * `satisfies Record<CommitMode, …>` is the guard. Add an arm to {@link CommitMode}
+ * and `tsc` refuses this object until the new mode declares which outcome it
+ * gives the reader and what selects it — which is exactly the question that went
+ * unanswered when plan 075 added `ingress-unverified` and the managed block kept
+ * promising two outcomes. This is DL-007: a guarantee about FUTURE code needs the
+ * type system, not a test. It lives in `src` because the typecheck `include` is
+ * `["src"]` — the same contract in a test file compiles nowhere CI looks (F011).
+ *
+ * The BOUND, stated plainly: compilation proves every mode is DECLARED. It does
+ * not prove a mode was pointed at the RIGHT outcome — a fifth mode aimed at
+ * `buffered` still compiles. That is carried by the shared-outcome-object design,
+ * by {@link renderRecovery} owning the outcome list's recovery text, and by tests.
+ *
+ * Both guidance surfaces render their outcome list from here, and
+ * `docs/how/gitai-collector.md` points here rather than restating it, so no
+ * hand-maintained prose copy of the outcome list is left to drift.
+ */
+export const COMMIT_OUTCOME_GUIDANCE = {
+  'direct-verified': {
+    outcome: 'verified',
+    when: 'the collector ingress socket is reachable',
+  },
+  'file-buffered': {
+    outcome: 'buffered',
+    when: "git's configured trace2 target is a plain FILE",
+  },
+  'harness-buffered': {
+    outcome: 'buffered',
+    when: 'the ingress is blocked, absent or unconfigured',
+  },
+  'ingress-unverified': {
+    outcome: 'unverified',
+    when: 'trace2 points at a Windows NAMED PIPE (\\\\.\\pipe\\…)',
+  },
+} as const satisfies Record<CommitMode, CommitOutcomeGuidance>;
+
+/**
+ * Render the outcome list ONCE, for both surfaces.
+ *
+ * Modes are walked in table order and grouped by the outcome they declare, so a
+ * collapsed outcome states every condition that reaches it rather than silently
+ * describing one mode and implying the other. One renderer, one output, used
+ * verbatim in both places — the strongest available anti-drift shape, and the
+ * reason neither surface can be updated without the other.
+ */
+export function commitOutcomeLines(): string {
+  const order: CommitOutcomeId[] = [];
+  const whens = new Map<CommitOutcomeId, string[]>();
+  for (const mode of Object.keys(COMMIT_OUTCOME_GUIDANCE) as CommitMode[]) {
+    const { outcome, when } = COMMIT_OUTCOME_GUIDANCE[mode];
+    if (!whens.has(outcome)) {
+      order.push(outcome);
+      whens.set(outcome, []);
+    }
+    whens.get(outcome)?.push(when);
+  }
+  return order
+    .map((id) => {
+      const { label, promise, recovery } = COMMIT_OUTCOMES[id];
+      const condition = (whens.get(id) ?? []).join(', or when ');
+      return `- **${label}** — when ${condition}: ${promise} ${renderRecovery(recovery)}`;
+    })
+    .join('\n');
+}
+
+/**
+ * The STANDALONE recovery instruction — derived, never re-typed (review R2-F001).
+ *
+ * Round 2 made `renderRecovery()` the sole writer of the verb's instruction *in
+ * the outcome list*, and this paragraph quietly falsified that claim: it named
+ * the verb by hand and asserted that it "rotates the buffer" and "replays that
+ * segment", both of which a win32 host returns before ever doing. Proximity to a
+ * correct outcome list does not make an independent command recipe truthful — a
+ * reader can act on this block alone, so the prerequisite has to travel WITH it.
+ */
+const RECOVERY_SECTION = `    ${NUDGE_VERB}
+
+RECOVERY, on a POSIX host. Run it from an UNSANDBOXED shell: it rotates the
+buffer to a segment, replays that segment into the collector, and deletes the
+segment only when every commit it named carries a note. A partly-confirmed
+segment is kept intact and listed for an explicit retry.
+
+${NUDGE_PREREQUISITE}`;
 export const COMMIT_INSTRUCTIONS = `# harness commit — the safe commit path
 
 You are an agent committing work in a repository where git-ai collects AI
@@ -41,27 +290,15 @@ be the thing that tells the truth.
 
     harness commit "<message>" -- <path> [<path>…]
 
-  VERIFIED OR NAMED. It probes the ingress first, then takes one of three paths:
+VERIFIED OR NAMED. It probes the ingress first, then takes exactly one of these
+paths and TELLS YOU which one it took:
 
-  - ingress reachable -> commits with no trace2 override, then waits (bounded)
-    for the refs/notes/ai note and TELLS YOU whether it landed.
-  - ingress blocked / absent / unconfigured -> commits with trace2 buffered to a
-    file under the gitignored .harness/temp/, and names both that buffer and the
-    command that drains it.
-  - trace2 points at a Windows NAMED PIPE (\\\\.\\pipe\\…) -> commits with no
-    override (git talks to the pipe as usual), buffers NOTHING, writes nothing
-    beside the pipe, and says plainly that attribution was NOT VERIFIED on this
-    platform. It does not send you to the nudge, which would refuse.
+${commitOutcomeLines()}
 
-  It never rolls back, never blocks your commit, and never swallows git's exit
-  code. Staging is EXPLICIT pathspecs only — nothing is swept in for you.
+It never rolls back, never blocks your commit, and never swallows git's exit
+code. Staging is EXPLICIT pathspecs only — nothing is swept in for you.
 
-    harness doctor telemetry-nudge
-
-  RECOVERY. Run it from an UNSANDBOXED shell. It rotates the buffer to a
-  segment, replays that segment into the collector, and deletes the segment only
-  when every commit it named carries a note. A partly-confirmed segment is kept
-  intact and listed for an explicit retry.
+${RECOVERY_SECTION}
 
 ## The shape to avoid
 
@@ -74,15 +311,14 @@ you; the commit looks completely healthy.
 ## What is and is not guaranteed
 
 - **Guaranteed**: a \`harness commit\` is never SILENT about attribution. It
-  verifies the note landed, or names the buffer and the recovery command, or
-  states that attribution could not be verified on this platform. What it never
-  does is claim a delivery it has not measured.
+  reports which of the outcomes above it took, and never claims a delivery it
+  has not measured.
 - **NOT guaranteed**: delivery. A blocked ingress is blocked. Buffered events
   reach the collector only when the nudge is run from somewhere that can reach
   the socket, and commits made before git-ai was installed will never gain a
   note.
 - **NOT supported on Windows**: replay. git's \`af_unix\` trace2 target is
-  Unix-only, so \`telemetry-nudge\` has no ingress to replay into and refuses on
+  Unix-only, so \`${NUDGE_VERB}\` has no ingress to replay into and refuses on
   a win32 host without touching a single file. Attribution there is unproven,
   not recoverable — see docs/how/gitai-collector.md § Windows.
 
@@ -109,7 +345,11 @@ export const CORE_INSTRUCTION_PAGES: Readonly<Record<string, string>> = Object.f
 export const AGENTS_BLOCK_BEGIN = '<!-- BEGIN harness:commit-guidance -->';
 export const AGENTS_BLOCK_END = '<!-- END harness:commit-guidance -->';
 
-/** The managed block's body — the same guarantee the instructions page states. */
+/**
+ * The managed block's body — the same outcome contract the instructions page
+ * states, rendered from the SAME table (plan 076 · ac-0003). There is no second
+ * hand-maintained enumeration here to drift out of step with the code.
+ */
 export function commitGuidanceBlock(): string {
   return `${AGENTS_BLOCK_BEGIN}
 ## Committing in this repo
@@ -118,9 +358,10 @@ Use \`harness commit "<message>" -- <paths>\` rather than a chained
 \`git add … && git commit …\`.
 
 A \`harness commit\` is **verified or named**: it probes the collector ingress,
-commits, and then either confirms a \`refs/notes/ai\` note landed or names the
-buffer holding the events plus the command that drains it
-(\`harness doctor telemetry-nudge\`). It never blocks and never rolls back.
+commits, and then tells you WHICH outcome you got. It never blocks and never
+rolls back. The outcomes are:
+
+${commitOutcomeLines()}
 
 A chained or compound \`git commit\` can **silently lose attribution** — agent
 command sandboxes block git-ai's socket, git quietly disables trace2, and the
