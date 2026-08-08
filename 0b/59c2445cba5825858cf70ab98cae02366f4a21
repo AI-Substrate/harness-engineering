@@ -1,0 +1,37 @@
+harness/cli/test/adapters/collector-adapters.int.test.ts
+  s_e99ea48ba7515e::t_23bc113c2e29aa 1,5,10-21,172-178,185,206-223,228,247-256,260
+harness/cli/test/acts/doctor.test.ts
+  s_e99ea48ba7515e::t_e99925124474dc 11,154-160
+harness/cli/test/adapters/git/exec-remote-telemetry-git.int.test.ts
+  s_2a2451d95e064e::t_ee03e3546fe0e3 93-118,123,441
+harness/cli/test/services/flow/flow-dd-sdk-seam.test.ts
+  s_e99ea48ba7515e::t_ea49b298dc50a6 68-77,94,131-158,171-173,219-237
+harness/cli/test/services/telemetry/pin-knob-src-usage.test.ts
+  s_e99ea48ba7515e::t_d866fcf453af27 169-175
+harness/cli/test/services/dd/render/refresh.test.ts
+  s_2a2451d95e064e::t_9bf4cdc6ce7e60 22,24-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0b59c2445cba5825858cf70ab98cae02366f4a21",
+  "prompts": {},
+  "sessions": {
+    "s_2a2451d95e064e": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "587f8924-3447-4784-b872-2fb1c784af82",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_e99ea48ba7515e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b3b76f1c-1e96-42cc-8a26-37d692f2626c",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
