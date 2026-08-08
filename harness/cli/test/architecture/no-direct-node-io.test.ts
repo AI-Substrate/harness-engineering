@@ -31,13 +31,22 @@ describe('architecture — services keep Node I/O behind ports', () => {
     // data artifact is exempt (a `@generated` header alone is NOT enough — scope the escape hatch
     // so a future hand-or-generated service can't smuggle real node:fs in, companion F001).
     const GENERATED_DATA_ALLOWLIST = [join('src', 'services', 'docs', 'docs-content.ts')];
-    const offenders = tsFiles(join(CLI_ROOT, 'src', 'services'))
+    const examined = tsFiles(join(CLI_ROOT, 'src', 'services'));
+    const offenders = examined
       .filter((file) => !GENERATED_DATA_ALLOWLIST.some((allowed) => file.endsWith(allowed)))
       .filter((file) => {
         const source = readFileSync(file, 'utf8');
         return FORBIDDEN.some((pattern) => pattern.test(source));
       })
       .map((file) => relative(CLI_ROOT, file));
+
+    // Corpus assertion is correct HERE: only the walk narrows, and a one-entry
+    // allowlist cannot zero it. Adjudicated per-guard, not applied uniformly.
+    expect(examined.length).toBeGreaterThan(0);
+    console.error(
+      `no-direct-node-io — examined ${examined.length} service file(s), ${offenders.length} offender(s)`,
+    );
+
     expect(offenders).toEqual([]);
   });
 });
