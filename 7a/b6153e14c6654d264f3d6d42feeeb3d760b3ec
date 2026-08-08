@@ -1,0 +1,65 @@
+docs/plans/077-windows-suite-portability/assets/reviews/phase-3-review.md
+  s_866871d7833f91::t_bc8b2067e07fae 1-66
+docs/plans/077-windows-suite-portability/assets/CODER-BRIEF-round2-fixes.md
+  s_2e71ba852f97eb::t_630f30e839079d 1-65
+docs/plans/077-windows-suite-portability/assets/REVIEWER-BRIEF-round2.md
+  s_9739a1944e1e79::t_a47789572831ab 1-89
+docs/plans/077-windows-suite-portability/assets/tasks/phase-3/execution.log.md
+  s_f99a0b9402b574::t_63da8c382d518d 164,166-169,171-227,255-266
+docs/plans/077-windows-suite-portability/assets/tasks/phase-3/tasks.dd.json
+  s_22e7aeb2d03d3d::t_ae095b6ba4b113 11,25,29,38,43,48
+docs/plans/077-windows-suite-portability/assets/tasks/phase-3/tasks.dd.md
+  s_22e7aeb2d03d3d::t_9afe98d5b8a53f 15,38-40
+docs/plans/077-windows-suite-portability/plan.dd.json
+  s_22e7aeb2d03d3d::t_95e38e236cd400 2-13,15-45,48-51,54-57,60-132,135-140,143-147,149-151
+docs/plans/077-windows-suite-portability/plan.dd.md
+  s_22e7aeb2d03d3d::t_9fff65e9aa7049 72-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "7ab6153e14c6654d264f3d6d42feeeb3d760b3ec",
+  "prompts": {},
+  "sessions": {
+    "s_22e7aeb2d03d3d": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "dfafd604-bfd6-4ebf-8198-80f38e2fea07",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_2e71ba852f97eb": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "c0dbbeab-f85e-4819-9d6d-a10bd3a81eb5",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_866871d7833f91": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "657cf08c-8320-4e07-8c6f-25d4230c12c6",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_9739a1944e1e79": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "49171d85-70d5-4fac-b53c-753db58d28c3",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_f99a0b9402b574": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "08cd3b5c-0389-44be-8a19-d7d6a4a730fa",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
