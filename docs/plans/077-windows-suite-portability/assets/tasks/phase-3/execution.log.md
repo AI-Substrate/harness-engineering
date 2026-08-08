@@ -161,19 +161,70 @@ A vacuity guard was added while restructuring: `fencesUnder()` asserts its prefi
 least one fence. Without it an empty batch satisfies "nothing invalid" — which is how a
 parse proof silently stops proving anything.
 
-### The other five ceiling cases — no work to make cheaper
+### The other five ceiling cases — MEASURED: they spawn 99 real child processes
 
-`app.test.ts` ×4 and `update-banner.test.ts` ×1 were investigated and **deliberately not
-changed**. They drive fully-faked deps (`FakeExec`, `FakeFs`, `FakeEnv`, `FakeGit`,
-`FakeClock`, `FakeProcess`, `FakeModuleLoader`); `src/services/telemetry/**` contains no
-`node:child_process`, no `node:fs`, no `homedir` — it is entirely port-injected. Locally
-every one of these runs at 0ms except a single 180ms case.
+**An earlier version of this log claimed these five were fully faked, contained no
+`child_process` work, and had no mechanism. That was false, and it was corrected by
+review (`assets/reviews/phase-3-review.md`, P1) rather than by me.** The claim is
+retracted in full; what follows replaces it and is measured, not read.
 
-**There is no work inside them to remove.** Something that takes 0ms here and 18–26s there
-is not explained by anything in the test, and the honest report is that no mechanism was
-found — not a guess dressed as one. Raising or lowering a budget for them would be
-optimising against numbers the consumer themselves marked order-of-magnitude, from a
-non-green branch where identical isolated repeats gave 25.7s and 77.8s.
+A read-only `node:child_process` observer (wrapping `spawnSync`/`spawn`/`exec*`/`fork`,
+recording each call and delegating to the original) was run across **both entire files**,
+so the 34 non-ceiling tests act as the control:
+
+| test | spawns | local elapsed |
+|---|---:|---:|
+| `update-banner` — negative control | **27** | 608ms |
+| `app` — THROWING capture (AC-09) | **18** | 422ms |
+| `app` — non-Error throw (catch-all) | **18** | 403ms |
+| `app` — throw while BUILDING CaptureDeps (F1) | **18** | 339ms |
+| `app` — telemetry on vs off, `doctor` | **18** | 333ms |
+| 5 other `doctor`-invoking tests | 9 each | 162–200ms |
+| **29 of 39 tests** | **0** | — |
+
+**144 spawns total; the five ceiling cases account for 99 of them (69%), and they are the
+five heaviest spawners in both files.** The gradient is exactly `9 × (number of `doctor`
+invocations)` — 16 doctor runs × 9 = 144, reconciling to the last call. Each run spawns
+`git rev-parse` ×3, `git config`, `git symbolic-ref`, `git merge-base`, `git rev-list`,
+`git notes`, and `which node` — the last being **`where node` on Windows**
+(`adapters/process/node-process.ts:5-11`).
+
+Local cost tracks spawn count linearly at roughly **20ms per spawn**.
+
+**Why the fakes did not prevent this** — verified at source: `acts/doctor.ts` `runReport()`
+constructs `new NodeFs()`, `new ExecGit()` and `new ExecGitAttribution(cwd)` **itself**;
+only `sockets?.probe` is injectable. A test handing `doctor` fake ports gets real adapters
+anyway. The fakes are accepted and ignored. That is a product smell, it is the most
+interesting thing round two found, and it is **deliberately not fixed here** — it is a new
+item and the consumer ranks the work. Measured and named, not fixed.
+
+**This is an unresolved candidate, not the cause.** A mechanism with a count is not a
+demonstration that it produces their 18–26s. And one check cuts against it: if spawn count
+dominated, the 27-spawn `update-banner` control should run ~1.5× the 18-spawn `app` cases.
+Their medians do not show that (25.0s vs 26.0s and 18.4s). Either a large fixed per-test
+cost dominates on their box, or those medians are timeout-contaminated — they warned the
+numbers came from a non-green branch where identical isolated repeats gave 25.7s and 77.8s.
+
+**Falsifiable prediction for their re-run**: if the spawn path dominates, per-test elapsed
+should scale with the 9/18/27 spawn counts above. If it does not, spawn count is ruled out
+as the primary term and the remaining suspect is per-test fixed cost.
+
+### How the false absence was produced — two independent errors
+
+Recorded because the shape recurs, not for contrition:
+
+1. **The search boundary was the test file.** The fakes are handed to `main()`; the spawn is
+   two layers down, inside an act that constructs its own adapters. Reading the test and the
+   telemetry services proved something true about *those files* and nothing about the run.
+2. **The timing filter could not see the opposite.** Local durations were dismissed as
+   "0ms" on the strength of a shell filter (`grep -vE " 0ms|[1-9]ms$"`) that also silently
+   discarded every duration ending in a non-zero digit — including the 608ms and 422ms
+   above. A malformed probe returned an artefact of itself, and it happened to agree with
+   error 1, which is what made the conclusion feel corroborated.
+
+Two instruments agreeing is not corroboration when one of them cannot report the contrary
+result. The absence was flagged as the softest claim in the round and pointed at a reviewer
+deliberately; that is the only reason it was caught before it reached the consumer.
 
 ---
 
@@ -201,11 +252,18 @@ Round one moved it **134 → 60**. Round two is expected to move it **60 → ~48
 honest reading of that is:
 
 - **10 of the ~12 are `skills`** — one `FakeFs` predicate and one fixture line.
-- **2 are timeouts.** The third `flow-renderer` case still carries the single remaining
-  spawn at ~26s against a 30s ceiling — roughly **1.15x headroom, still flake margin.**
-  It is better than three cases at that margin, but it is not fixed, and it should not be
-  reported as fixed.
-- **The other 6 ceiling cases are untouched** and no mechanism for them was found.
+- **2 are timeouts.** The third `flow-renderer` case still carries the one remaining spawn,
+  and **its Windows elapsed time is unmeasured** — the merged case has never run on
+  Windows. An earlier draft put it at "~26s, ~1.15x headroom"; that number was *derived*
+  (their 25.9s standalone corpus median plus the macOS one-vs-twenty-fence measurement) and
+  is withdrawn. A derived figure reads exactly like a measured one and invites comparison
+  against the 30s ceiling as though we had checked. What is true: **one spawn remains where
+  three were.** Whether that clears the ceiling is theirs to measure, and their own 25.7s
+  vs 77.8s variance on identical repeats is why nobody should predict it from here.
+- **The other 6 ceiling cases are untouched.** Five of them now have a **measured**
+  candidate mechanism — 99 real child-process spawns, 9 per `doctor` run, because `doctor`
+  ignores its injected ports — but a mechanism with a count is not a cause, and their own
+  medians do not scale with spawn count. Unresolved, with a falsifiable prediction attached.
 - **The skills trace came back environmental**, which was the outcome the task warned
   against overselling.
 
