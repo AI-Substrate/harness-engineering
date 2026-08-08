@@ -222,7 +222,22 @@ describe('harness dd schema — an unscannable root is reported, not silently em
   let previousCwd = '';
   let previousHome: string | undefined;
 
+  // SKIPPED ON WINDOWS, and named in the PR body as not covered (plan 108).
+  //
+  // The scenario is a directory CYCLE, and the only way to build one is a
+  // symlink — `symlinkSync` needs Developer Mode or elevation on Windows and
+  // otherwise throws EPERM in `beforeAll`, taking the whole block down before a
+  // single assertion runs.
+  //
+  // Guarded rather than faked: what is being proven is that the REAL scanner
+  // reports an unscannable root instead of silently returning empty (F002), and
+  // a faked cycle would only prove that a fake throws. The honest trade is to
+  // lose the case on Windows and SAY SO, rather than keep a green that tests
+  // something else.
+  const skipOnWin32 = process.platform === 'win32';
+
   beforeAll(() => {
+    if (skipOnWin32) return;
     tmp = mkdtempSync(join(tmpdir(), 'dd-act-loop-'));
     const root = join(tmp, '.dd');
     const pkg = join(root, 'schemas', 'builder', 'plan');
@@ -257,7 +272,7 @@ describe('harness dd schema — an unscannable root is reported, not silently em
     vi.restoreAllMocks();
   });
 
-  it('reports E416 scan-failed, never a confident E410 not-found', async () => {
+  it.skipIf(skipOnWin32)('reports E416 scan-failed, never a confident E410 not-found', async () => {
     const result = await runDd(['dd', 'schema', 'show', 'builder/plan']);
 
     expect(result.code).toBe(1);
