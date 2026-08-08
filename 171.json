@@ -1,0 +1,4961 @@
+{
+  "schema_version": "2.6",
+  "command": "dd",
+  "harness": "claude-code",
+  "harness_version": "0.13.0",
+  "harness_session_id": "71679da4-5249-4e02-9117-68a3abf3ed0e",
+  "timecode": "2026-08-03T23:44:55.779Z",
+  "window": {
+    "since": "last-command",
+    "from": 3801,
+    "to": 5119
+  },
+  "branch": "s065/deterministic-documents",
+  "tokens": {
+    "input": 488,
+    "output": 170836,
+    "cache_create": 294199,
+    "cache_read": 60371977,
+    "total": 60837500,
+    "subagent_tokens": 0,
+    "grand_total": 60837500
+  },
+  "effort": "high",
+  "models": {
+    "claude-opus-5": {
+      "turns": 264,
+      "output_tokens": 170836
+    }
+  },
+  "skills": {
+    "pij": 1,
+    "builder": 1
+  },
+  "tools": {
+    "Bash": 206,
+    "Read": 12,
+    "Edit": 36,
+    "Write": 11,
+    "Skill": 2
+  },
+  "user_prompts": [
+    5,
+    247,
+    16,
+    7,
+    15,
+    10,
+    59,
+    81,
+    4,
+    18,
+    1425,
+    16,
+    16,
+    109,
+    16,
+    3133,
+    35,
+    1053,
+    163,
+    11,
+    708
+  ],
+  "files": {
+    "written": [
+      "docs/plans/065-deterministic-documents/exemplar/custom-render/schemas/release/gate/schema.json",
+      "docs/plans/065-deterministic-documents/exemplar/custom-render/schemas/release/gate/adapters/duration.ts",
+      "docs/plans/065-deterministic-documents/exemplar/custom-render/schemas/release/gate/adapters/sparkline.ts",
+      "docs/plans/065-deterministic-documents/exemplar/custom-render/schemas/release/gate/adapters/bytes.ts",
+      "docs/plans/065-deterministic-documents/exemplar/custom-render/release.dd.json",
+      "docs/plans/065-deterministic-documents/exemplar/custom-render/README.md",
+      ".harness/temp/peer-dd-docs/packet.md",
+      "retitle.py",
+      "docs/plans/065-deterministic-documents/tasks/phase-7-graph-map/tasks.md",
+      ".harness/temp/pair-p7/packet-coder.md",
+      ".harness/temp/pair-p7/packet-reviewer.md"
+    ],
+    "edited": [
+      "harness/cli/src/services/dd/render/renderer.ts",
+      "harness/cli/src/services/dd/render/renderer.ts",
+      "harness/cli/src/services/dd/render/renderer.ts",
+      "harness/cli/src/services/dd/render/renderer.ts",
+      "harness/cli/test/services/dd/render/renderer.test.ts",
+      "harness/cli/test/services/dd/render/renderer.test.ts",
+      "harness/cli/test/services/dd/render/renderer.test.ts",
+      "docs/plans/065-deterministic-documents/follow-ups.md",
+      "docs/plans/065-deterministic-documents/follow-ups.md",
+      "docs/plans/065-deterministic-documents/follow-ups.md",
+      "harness/cli/src/services/dd/core/model.ts",
+      "harness/cli/src/services/dd/core/model.ts",
+      "harness/cli/src/services/dd/core/parse.ts",
+      "harness/cli/src/services/dd/schema/declarations.ts",
+      "harness/cli/src/services/dd/render/renderer.ts",
+      "harness/cli/src/services/dd/render/renderer.ts",
+      "harness/cli/src/services/dd/render/renderer.ts",
+      "harness/cli/src/services/dd/render/renderer.ts",
+      "harness/cli/test/services/dd/render/renderer.test.ts",
+      "harness/cli/test/services/dd/schema/declarations.test.ts",
+      "harness/cli/test/services/dd/render/renderer.test.ts",
+      "harness/cli/test/services/dd/schema/declarations.test.ts",
+      "harness/cli/test/services/dd/core/parse.test.ts",
+      ".dd/schemas/builder/plan/schema.json",
+      "docs/plans/065-deterministic-documents/exemplar/custom-render/schemas/release/gate/schema.json",
+      "docs/plans/065-deterministic-documents/follow-ups.md",
+      "docs/plans/065-deterministic-documents/follow-ups.md",
+      "docs/plans/065-deterministic-documents/follow-ups.md",
+      "docs/plans/065-deterministic-documents/follow-ups.md",
+      "harness/cli/src/services/dd/docs/content/dd-overview.md",
+      "harness/cli/src/services/dd/docs/content/dd-overview.md",
+      "harness/cli/src/services/dd/docs/content/how-to-add-a-schema.md",
+      "docs/plans/065-deterministic-documents/tasks/phase-1-dd-core-foundations/dd-surface.md",
+      "docs/plans/065-deterministic-documents/deterministic-documents-plan.md",
+      "docs/plans/065-deterministic-documents/tasks/phase-7-graph-map/tasks.md",
+      "docs/plans/065-deterministic-documents/tasks/phase-7-graph-map/tasks.md"
+    ]
+  },
+  "plans_touched": [
+    "065-deterministic-documents"
+  ],
+  "thinking": {
+    "blocks": 120
+  },
+  "event_stream": [
+    {
+      "t": "2026-08-03T21:15:02.642Z",
+      "t_precision": "anchored",
+      "kind": "flow",
+      "flow": "the-flow",
+      "stage": "ship",
+      "status": "done"
+    },
+    {
+      "t": "2026-08-03T21:15:02.642Z",
+      "kind": "model",
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:15:02.642Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 1,
+      "out": 214,
+      "cache_read": 93317,
+      "cache_create": 1958,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:15:02.642Z",
+      "kind": "harness",
+      "verb": "observe",
+      "observe_kind": "difficulty"
+    },
+    {
+      "t": "2026-08-03T21:15:02.642Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "tail",
+      "result_tokens": 96
+    },
+    {
+      "t": "2026-08-03T21:15:03.029Z",
+      "kind": "command_exit",
+      "verb": "observe",
+      "exit": 0,
+      "status": "ok"
+    },
+    {
+      "t": "2026-08-03T21:15:07.590Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 516,
+      "cache_read": 95275,
+      "cache_create": 340,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:15:11.337Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 5,
+      "signature": "pij",
+      "result_tokens": 118
+    },
+    {
+      "t": "2026-08-03T21:15:15.971Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 236,
+      "cache_read": 95615,
+      "cache_create": 510,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:15:22.830Z",
+      "kind": "turn",
+      "dur_s": 6,
+      "in": 2,
+      "out": 316,
+      "cache_read": 96125,
+      "cache_create": 405,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:15:55.874Z",
+      "kind": "prompt",
+      "words": 5
+    },
+    {
+      "t": "2026-08-03T21:16:08.339Z",
+      "kind": "turn",
+      "dur_s": 12,
+      "in": 2,
+      "out": 938,
+      "cache_read": 96846,
+      "cache_create": 17,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:16:10.226Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 847
+    },
+    {
+      "t": "2026-08-03T21:16:12.276Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 141,
+      "cache_read": 96863,
+      "cache_create": 2291,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:16:12.914Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "grep",
+      "result_tokens": 147
+    },
+    {
+      "t": "2026-08-03T21:16:19.879Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 956,
+      "cache_read": 99154,
+      "cache_create": 446,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:16:25.926Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 2,
+      "span_s": 7,
+      "result_tokens": 122
+    },
+    {
+      "t": "2026-08-03T21:16:32.461Z",
+      "kind": "turn",
+      "dur_s": 7,
+      "in": 2,
+      "out": 246,
+      "cache_read": 99600,
+      "cache_create": 1070,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:16:35.152Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 1,
+      "out": 191,
+      "cache_read": 100670,
+      "cache_create": 466,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:16:35.910Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "cd",
+      "result_tokens": 293
+    },
+    {
+      "t": "2026-08-03T21:16:40.390Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 309,
+      "cache_read": 101136,
+      "cache_create": 873,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:16:42.261Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "npx vitest",
+      "result_tokens": 270
+    },
+    {
+      "t": "2026-08-03T21:16:52.885Z",
+      "kind": "turn",
+      "dur_s": 10,
+      "in": 2,
+      "out": 564,
+      "cache_read": 102009,
+      "cache_create": 690,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:16:56.121Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "cd",
+      "result_tokens": 154
+    },
+    {
+      "t": "2026-08-03T21:16:59.722Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 396,
+      "cache_read": 102699,
+      "cache_create": 864,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:17:01.655Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "diff",
+      "result_tokens": 51
+    },
+    {
+      "t": "2026-08-03T21:17:09.061Z",
+      "kind": "turn",
+      "dur_s": 12,
+      "in": 2,
+      "out": 647,
+      "cache_read": 103563,
+      "cache_create": 549,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:17:11.600Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 4,
+      "signature": "cd",
+      "result_tokens": 248
+    },
+    {
+      "t": "2026-08-03T21:17:16.010Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 1,
+      "out": 275,
+      "cache_read": 104112,
+      "cache_create": 910,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:17:18.562Z",
+      "kind": "turn",
+      "dur_s": 2,
+      "in": 2,
+      "out": 403,
+      "cache_read": 105022,
+      "cache_create": 603,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:17:21.151Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "sed",
+      "result_tokens": 121
+    },
+    {
+      "t": "2026-08-03T21:17:24.909Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 168,
+      "cache_read": 105625,
+      "cache_create": 597,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:17:24.909Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "cd",
+      "result_tokens": 72
+    },
+    {
+      "t": "2026-08-03T21:17:32.593Z",
+      "kind": "turn",
+      "dur_s": 7,
+      "in": 2,
+      "out": 553,
+      "cache_read": 106222,
+      "cache_create": 311,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:17:34.073Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 1097
+    },
+    {
+      "t": "2026-08-03T21:17:38.009Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 431,
+      "cache_read": 106533,
+      "cache_create": 2398,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:17:40.608Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "cd",
+      "result_tokens": 269
+    },
+    {
+      "t": "2026-08-03T21:17:44.216Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 403,
+      "cache_read": 108931,
+      "cache_create": 809,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:17:44.216Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "python3",
+      "result_tokens": 15
+    },
+    {
+      "t": "2026-08-03T21:17:46.200Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "sed",
+      "result_tokens": 459
+    },
+    {
+      "t": "2026-08-03T21:17:50.623Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 1,
+      "out": 409,
+      "cache_read": 109740,
+      "cache_create": 1276,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:17:52.492Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "grep",
+      "result_tokens": 437
+    },
+    {
+      "t": "2026-08-03T21:18:00.208Z",
+      "kind": "turn",
+      "dur_s": 8,
+      "in": 2,
+      "out": 1516,
+      "cache_read": 111016,
+      "cache_create": 1140,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:18:10.322Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 2,
+      "span_s": 4,
+      "result_tokens": 122
+    },
+    {
+      "t": "2026-08-03T21:18:14.213Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 271,
+      "cache_read": 112156,
+      "cache_create": 1606,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:18:17.101Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 172,
+      "cache_read": 113762,
+      "cache_create": 361,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:18:17.101Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 8,
+      "signature": "cd",
+      "result_tokens": 327
+    },
+    {
+      "t": "2026-08-03T21:18:23.340Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 421,
+      "cache_read": 114123,
+      "cache_create": 315,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:18:28.045Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 158,
+      "cache_read": 114438,
+      "cache_create": 824,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:18:28.045Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "grep",
+      "result_tokens": 255
+    },
+    {
+      "t": "2026-08-03T21:18:37.943Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 692,
+      "cache_read": 115262,
+      "cache_create": 550,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:18:37.943Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 62
+    },
+    {
+      "t": "2026-08-03T21:18:40.862Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 1,
+      "out": 176,
+      "cache_read": 115812,
+      "cache_create": 914,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:18:40.862Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "cd",
+      "result_tokens": 70
+    },
+    {
+      "t": "2026-08-03T21:18:45.421Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 490,
+      "cache_read": 116726,
+      "cache_create": 316,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:18:48.483Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "cp",
+      "result_tokens": 11
+    },
+    {
+      "t": "2026-08-03T21:19:01.818Z",
+      "kind": "turn",
+      "dur_s": 13,
+      "in": 2,
+      "out": 1286,
+      "cache_read": 117042,
+      "cache_create": 469,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:19:06.541Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "cat",
+      "result_tokens": 85
+    },
+    {
+      "t": "2026-08-03T21:19:34.006Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 699,
+      "cache_read": 117511,
+      "cache_create": 1394,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:19:39.317Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 2,
+      "span_s": 4,
+      "result_tokens": 124
+    },
+    {
+      "t": "2026-08-03T21:19:43.429Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 271,
+      "cache_read": 118905,
+      "cache_create": 791,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:19:45.886Z",
+      "kind": "turn",
+      "dur_s": 2,
+      "in": 2,
+      "out": 402,
+      "cache_read": 119696,
+      "cache_create": 363,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:19:48.973Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "npx vitest",
+      "result_tokens": 76
+    },
+    {
+      "t": "2026-08-03T21:19:54.279Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 1,
+      "out": 349,
+      "cache_read": 120059,
+      "cache_create": 656,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:19:54.279Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "echo",
+      "result_tokens": 74
+    },
+    {
+      "t": "2026-08-03T21:20:00.085Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 375,
+      "cache_read": 120715,
+      "cache_create": 513,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:20:02.069Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 7,
+      "signature": "cd",
+      "result_tokens": 155
+    },
+    {
+      "t": "2026-08-03T21:20:09.375Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 178,
+      "cache_read": 121228,
+      "cache_create": 502,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:20:09.375Z",
+      "kind": "harness",
+      "verb": "dd build"
+    },
+    {
+      "t": "2026-08-03T21:20:09.680Z",
+      "kind": "command_exit",
+      "verb": "dd build",
+      "exit": 1,
+      "status": "error"
+    },
+    {
+      "t": "2026-08-03T21:20:14.250Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 304,
+      "cache_read": 121730,
+      "cache_create": 329,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:20:14.250Z",
+      "kind": "harness",
+      "verb": "dd build"
+    },
+    {
+      "t": "2026-08-03T21:20:14.250Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "python3",
+      "result_tokens": 15
+    },
+    {
+      "t": "2026-08-03T21:20:17.545Z",
+      "kind": "turn",
+      "dur_s": 2,
+      "in": 2,
+      "out": 111,
+      "cache_read": 122059,
+      "cache_create": 268,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:20:17.545Z",
+      "kind": "harness",
+      "verb": "dd build"
+    },
+    {
+      "t": "2026-08-03T21:20:17.545Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "tail",
+      "result_tokens": 418
+    },
+    {
+      "t": "2026-08-03T21:20:26.680Z",
+      "kind": "turn",
+      "dur_s": 9,
+      "in": 2,
+      "out": 802,
+      "cache_read": 122327,
+      "cache_create": 831,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:20:29.052Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "cd",
+      "result_tokens": 28
+    },
+    {
+      "t": "2026-08-03T21:20:30.125Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 3,
+      "span_s": 10,
+      "signature": "grep",
+      "result_tokens": 3664
+    },
+    {
+      "t": "2026-08-03T21:20:33.177Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 341,
+      "cache_read": 123158,
+      "cache_create": 944,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:20:39.904Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 1,
+      "out": 321,
+      "cache_read": 124102,
+      "cache_create": 5730,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:20:44.774Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 634,
+      "cache_read": 129832,
+      "cache_create": 1286,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:20:47.659Z",
+      "kind": "harness",
+      "verb": "dd build"
+    },
+    {
+      "t": "2026-08-03T21:20:47.659Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "python3",
+      "result_tokens": 1
+    },
+    {
+      "t": "2026-08-03T21:20:48.645Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "sed",
+      "result_tokens": 222
+    },
+    {
+      "t": "2026-08-03T21:20:53.512Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 404,
+      "cache_read": 131118,
+      "cache_create": 937,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:20:55.169Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 3,
+      "signature": "grep",
+      "result_tokens": 540
+    },
+    {
+      "t": "2026-08-03T21:20:57.861Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 114,
+      "cache_read": 132055,
+      "cache_create": 1092,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:21:12.944Z",
+      "kind": "turn",
+      "dur_s": 15,
+      "in": 2,
+      "out": 1258,
+      "cache_read": 133147,
+      "cache_create": 490,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:21:16.493Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "python3",
+      "result_tokens": 16
+    },
+    {
+      "t": "2026-08-03T21:21:20.627Z",
+      "kind": "turn",
+      "dur_s": 2,
+      "in": 2,
+      "out": 116,
+      "cache_read": 133637,
+      "cache_create": 1296,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:21:20.627Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 4,
+      "signature": "sed",
+      "result_tokens": 972
+    },
+    {
+      "t": "2026-08-03T21:21:23.192Z",
+      "kind": "turn",
+      "dur_s": 2,
+      "in": 1,
+      "out": 184,
+      "cache_read": 134933,
+      "cache_create": 674,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:21:26.449Z",
+      "kind": "turn",
+      "dur_s": 2,
+      "in": 2,
+      "out": 254,
+      "cache_read": 135607,
+      "cache_create": 1413,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:21:28.439Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "grep",
+      "result_tokens": 23
+    },
+    {
+      "t": "2026-08-03T21:21:36.629Z",
+      "kind": "turn",
+      "dur_s": 8,
+      "in": 2,
+      "out": 536,
+      "cache_read": 137020,
+      "cache_create": 311,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:21:36.629Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 62
+    },
+    {
+      "t": "2026-08-03T21:22:08.864Z",
+      "kind": "turn",
+      "dur_s": 32,
+      "in": 2,
+      "out": 2328,
+      "cache_read": 137331,
+      "cache_create": 628,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:22:08.864Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 62
+    },
+    {
+      "t": "2026-08-03T21:22:12.912Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 485,
+      "cache_read": 137959,
+      "cache_create": 2420,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:22:12.912Z",
+      "kind": "harness",
+      "verb": "observe",
+      "observe_kind": "difficulty"
+    },
+    {
+      "t": "2026-08-03T21:22:12.912Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 2,
+      "signature": "python3",
+      "result_tokens": 6
+    },
+    {
+      "t": "2026-08-03T21:22:14.998Z",
+      "kind": "harness",
+      "verb": "observe",
+      "observe_kind": "difficulty"
+    },
+    {
+      "t": "2026-08-03T21:22:17.252Z",
+      "kind": "turn",
+      "dur_s": 2,
+      "in": 2,
+      "out": 180,
+      "cache_read": 140379,
+      "cache_create": 553,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:22:18.359Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 28,
+      "signature": "cd",
+      "result_tokens": 242
+    },
+    {
+      "t": "2026-08-03T21:22:44.776Z",
+      "kind": "turn",
+      "dur_s": 6,
+      "in": 1,
+      "out": 461,
+      "cache_read": 140932,
+      "cache_create": 652,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:22:51.416Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 263,
+      "cache_read": 141584,
+      "cache_create": 501,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:22:51.416Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "git diff",
+      "result_tokens": 254
+    },
+    {
+      "t": "2026-08-03T21:22:55.082Z",
+      "kind": "harness",
+      "verb": "dd doctor"
+    },
+    {
+      "t": "2026-08-03T21:22:55.082Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "python3",
+      "result_tokens": 7
+    },
+    {
+      "t": "2026-08-03T21:23:01.353Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 468,
+      "cache_read": 142085,
+      "cache_create": 837,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:23:03.339Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "grep",
+      "result_tokens": 43
+    },
+    {
+      "t": "2026-08-03T21:23:06.235Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 161,
+      "cache_read": 142922,
+      "cache_create": 546,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:23:06.235Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "sed",
+      "result_tokens": 57
+    },
+    {
+      "t": "2026-08-03T21:23:08.564Z",
+      "kind": "turn",
+      "dur_s": 2,
+      "in": 2,
+      "out": 203,
+      "cache_read": 143468,
+      "cache_create": 250,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:23:10.428Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "git add",
+      "result_tokens": 551
+    },
+    {
+      "t": "2026-08-03T21:23:15.308Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 1671,
+      "cache_read": 143718,
+      "cache_create": 1256,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:23:31.767Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "timeout",
+      "result_tokens": 8
+    },
+    {
+      "t": "2026-08-03T21:24:34.142Z",
+      "kind": "turn",
+      "dur_s": 2,
+      "in": 1,
+      "out": 104,
+      "cache_read": 144974,
+      "cache_create": 1777,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:24:34.142Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "git log",
+      "result_tokens": 49
+    },
+    {
+      "t": "2026-08-03T21:24:44.855Z",
+      "kind": "turn",
+      "dur_s": 11,
+      "in": 2,
+      "out": 746,
+      "cache_read": 146751,
+      "cache_create": 186,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:24:48.086Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 14,
+      "signature": "pij",
+      "result_tokens": 133
+    },
+    {
+      "t": "2026-08-03T21:25:01.643Z",
+      "kind": "turn",
+      "dur_s": 13,
+      "in": 2,
+      "out": 775,
+      "cache_read": 146937,
+      "cache_create": 903,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:25:18.275Z",
+      "kind": "turn",
+      "dur_s": 16,
+      "in": 2,
+      "out": 881,
+      "cache_read": 147840,
+      "cache_create": 851,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:27:51.581Z",
+      "kind": "prompt",
+      "words": 247
+    },
+    {
+      "t": "2026-08-03T21:27:56.238Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 419,
+      "cache_read": 148691,
+      "cache_create": 1460,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:27:58.478Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "timeout",
+      "result_tokens": 101
+    },
+    {
+      "t": "2026-08-03T21:28:04.691Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 171,
+      "cache_read": 150151,
+      "cache_create": 550,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:28:04.691Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "sleep",
+      "result_tokens": 96
+    },
+    {
+      "t": "2026-08-03T21:28:07.259Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 162,
+      "cache_read": 150701,
+      "cache_create": 336,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:28:07.259Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "gh pr",
+      "result_tokens": 119
+    },
+    {
+      "t": "2026-08-03T21:28:13.894Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 1370,
+      "cache_read": 151037,
+      "cache_create": 389,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:28:32.087Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "pij",
+      "result_tokens": 43
+    },
+    {
+      "t": "2026-08-03T21:28:36.157Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 1,
+      "out": 204,
+      "cache_read": 151426,
+      "cache_create": 1576,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:28:36.157Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "echo",
+      "result_tokens": 86
+    },
+    {
+      "t": "2026-08-03T21:28:46.952Z",
+      "kind": "turn",
+      "dur_s": 11,
+      "in": 2,
+      "out": 564,
+      "cache_read": 153002,
+      "cache_create": 347,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:32:53.777Z",
+      "kind": "prompt",
+      "words": 16
+    },
+    {
+      "t": "2026-08-03T21:32:56.707Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 136,
+      "cache_read": 153913,
+      "cache_create": 370,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:32:56.707Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 156
+    },
+    {
+      "t": "2026-08-03T21:33:02.723Z",
+      "kind": "turn",
+      "dur_s": 6,
+      "in": 2,
+      "out": 230,
+      "cache_read": 154283,
+      "cache_create": 434,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:33:03.201Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "gh pr",
+      "result_tokens": 25
+    },
+    {
+      "t": "2026-08-03T21:33:10.055Z",
+      "kind": "turn",
+      "dur_s": 6,
+      "in": 2,
+      "out": 487,
+      "cache_read": 154717,
+      "cache_create": 294,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:33:10.055Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 1,
+      "signature": "pij",
+      "result_tokens": 67
+    },
+    {
+      "t": "2026-08-03T21:33:16.732Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 279,
+      "cache_read": 155011,
+      "cache_create": 650,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:34:58.307Z",
+      "kind": "prompt",
+      "words": 7
+    },
+    {
+      "t": "2026-08-03T21:35:08.741Z",
+      "kind": "turn",
+      "dur_s": 10,
+      "in": 2,
+      "out": 394,
+      "cache_read": 155940,
+      "cache_create": 15,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:35:42.303Z",
+      "kind": "prompt",
+      "words": 15
+    },
+    {
+      "t": "2026-08-03T21:35:49.009Z",
+      "kind": "turn",
+      "dur_s": 7,
+      "in": 2,
+      "out": 480,
+      "cache_read": 156349,
+      "cache_create": 27,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:35:50.021Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "find",
+      "result_tokens": 354
+    },
+    {
+      "t": "2026-08-03T21:35:53.093Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 400,
+      "cache_read": 156376,
+      "cache_create": 1223,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:35:54.872Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 1,
+      "signature": "cd",
+      "result_tokens": 193
+    },
+    {
+      "t": "2026-08-03T21:36:00.401Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 1,
+      "out": 204,
+      "cache_read": 157599,
+      "cache_create": 913,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:36:00.401Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 5,
+      "signature": "python3",
+      "result_tokens": 392
+    },
+    {
+      "t": "2026-08-03T21:36:05.782Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 255,
+      "cache_read": 158512,
+      "cache_create": 427,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:36:06.643Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "grep",
+      "result_tokens": 7
+    },
+    {
+      "t": "2026-08-03T21:36:09.707Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 96,
+      "cache_read": 158939,
+      "cache_create": 787,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:36:09.707Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "sed",
+      "result_tokens": 347
+    },
+    {
+      "t": "2026-08-03T21:36:18.106Z",
+      "kind": "turn",
+      "dur_s": 8,
+      "in": 2,
+      "out": 560,
+      "cache_read": 159726,
+      "cache_create": 795,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:36:19.350Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "cd",
+      "result_tokens": 211
+    },
+    {
+      "t": "2026-08-03T21:36:31.967Z",
+      "kind": "turn",
+      "dur_s": 13,
+      "in": 2,
+      "out": 926,
+      "cache_read": 160521,
+      "cache_create": 844,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:37:01.372Z",
+      "kind": "prompt",
+      "words": 10
+    },
+    {
+      "t": "2026-08-03T21:37:12.810Z",
+      "kind": "turn",
+      "dur_s": 11,
+      "in": 2,
+      "out": 1058,
+      "cache_read": 161365,
+      "cache_create": 940,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:38:27.793Z",
+      "kind": "prompt",
+      "words": 59
+    },
+    {
+      "t": "2026-08-03T21:38:49.274Z",
+      "kind": "prompt",
+      "words": 81
+    },
+    {
+      "t": "2026-08-03T21:39:04.646Z",
+      "kind": "turn",
+      "dur_s": 15,
+      "in": 2,
+      "out": 1339,
+      "cache_read": 163363,
+      "cache_create": 137,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:39:06.540Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "grep",
+      "result_tokens": 163
+    },
+    {
+      "t": "2026-08-03T21:39:06.897Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "sed",
+      "result_tokens": 317
+    },
+    {
+      "t": "2026-08-03T21:39:33.948Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 1,
+      "out": 2830,
+      "cache_read": 163500,
+      "cache_create": 2321,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:39:42.995Z",
+      "kind": "tools",
+      "name": "Write",
+      "count": 5,
+      "span_s": 44,
+      "result_tokens": 353
+    },
+    {
+      "t": "2026-08-03T21:39:50.602Z",
+      "kind": "turn",
+      "dur_s": 8,
+      "in": 2,
+      "out": 616,
+      "cache_read": 165821,
+      "cache_create": 2934,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:39:50.602Z",
+      "kind": "file",
+      "path": "docs/plans/065-deterministic-documents/exemplar/custom-render/schemas/release/gate/adapters/duration.ts",
+      "change": "written",
+      "delta": {
+        "lines_added": 25,
+        "lines_removed": 0,
+        "bytes_added": 1111,
+        "bytes_removed": 0
+      }
+    },
+    {
+      "t": "2026-08-03T21:39:59.185Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 610,
+      "cache_read": 168755,
+      "cache_create": 726,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:39:59.185Z",
+      "kind": "file",
+      "path": "docs/plans/065-deterministic-documents/exemplar/custom-render/schemas/release/gate/adapters/sparkline.ts",
+      "change": "written",
+      "delta": {
+        "lines_added": 30,
+        "lines_removed": 0,
+        "bytes_added": 1138,
+        "bytes_removed": 0
+      }
+    },
+    {
+      "t": "2026-08-03T21:40:07.307Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 554,
+      "cache_read": 169481,
+      "cache_create": 722,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:40:07.307Z",
+      "kind": "file",
+      "path": "docs/plans/065-deterministic-documents/exemplar/custom-render/schemas/release/gate/adapters/bytes.ts",
+      "change": "written",
+      "delta": {
+        "lines_added": 24,
+        "lines_removed": 0,
+        "bytes_added": 894,
+        "bytes_removed": 0
+      }
+    },
+    {
+      "t": "2026-08-03T21:40:09.641Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 1607,
+      "cache_read": 170203,
+      "cache_create": 665,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:40:27.196Z",
+      "kind": "file",
+      "path": "docs/plans/065-deterministic-documents/exemplar/custom-render/release.dd.json",
+      "change": "written",
+      "delta": {
+        "lines_added": 118,
+        "lines_removed": 0,
+        "bytes_added": 3791,
+        "bytes_removed": 0
+      }
+    },
+    {
+      "t": "2026-08-03T21:40:29.378Z",
+      "kind": "turn",
+      "dur_s": 2,
+      "in": 2,
+      "out": 321,
+      "cache_read": 170868,
+      "cache_create": 1705,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:40:32.126Z",
+      "kind": "harness",
+      "verb": "dd validate"
+    },
+    {
+      "t": "2026-08-03T21:40:32.126Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 8,
+      "signature": "cd",
+      "result_tokens": 197
+    },
+    {
+      "t": "2026-08-03T21:40:38.282Z",
+      "kind": "turn",
+      "dur_s": 6,
+      "in": 2,
+      "out": 524,
+      "cache_read": 172573,
+      "cache_create": 611,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:40:40.527Z",
+      "kind": "harness",
+      "verb": "dd validate"
+    },
+    {
+      "t": "2026-08-03T21:40:45.977Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 1,
+      "out": 487,
+      "cache_read": 173184,
+      "cache_create": 687,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:40:48.532Z",
+      "kind": "harness",
+      "verb": "dd build"
+    },
+    {
+      "t": "2026-08-03T21:40:48.532Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "python3",
+      "result_tokens": 6
+    },
+    {
+      "t": "2026-08-03T21:40:51.211Z",
+      "kind": "turn",
+      "dur_s": 2,
+      "in": 2,
+      "out": 116,
+      "cache_read": 173871,
+      "cache_create": 501,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:40:51.211Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 714
+    },
+    {
+      "t": "2026-08-03T21:41:02.408Z",
+      "kind": "turn",
+      "dur_s": 11,
+      "in": 2,
+      "out": 1047,
+      "cache_read": 174372,
+      "cache_create": 1473,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:41:07.931Z",
+      "kind": "harness",
+      "verb": "dd doctor"
+    },
+    {
+      "t": "2026-08-03T21:41:07.931Z",
+      "kind": "harness",
+      "verb": "dd schema"
+    },
+    {
+      "t": "2026-08-03T21:41:07.931Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "python3",
+      "result_tokens": 21
+    },
+    {
+      "t": "2026-08-03T21:41:11.572Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 142,
+      "cache_read": 175845,
+      "cache_create": 1089,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:41:11.572Z",
+      "kind": "harness",
+      "verb": "dd schema"
+    },
+    {
+      "t": "2026-08-03T21:41:11.572Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "cd",
+      "result_tokens": 29
+    },
+    {
+      "t": "2026-08-03T21:41:15.903Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 279,
+      "cache_read": 176934,
+      "cache_create": 201,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:41:15.903Z",
+      "kind": "harness",
+      "verb": "dd schema"
+    },
+    {
+      "t": "2026-08-03T21:41:15.903Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "python3",
+      "result_tokens": 3
+    },
+    {
+      "t": "2026-08-03T21:41:21.852Z",
+      "kind": "turn",
+      "dur_s": 6,
+      "in": 2,
+      "out": 433,
+      "cache_read": 177135,
+      "cache_create": 223,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:41:23.392Z",
+      "kind": "harness",
+      "verb": "dd schema"
+    },
+    {
+      "t": "2026-08-03T21:41:23.392Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "pwd",
+      "result_tokens": 232
+    },
+    {
+      "t": "2026-08-03T21:41:33.096Z",
+      "kind": "turn",
+      "dur_s": 9,
+      "in": 2,
+      "out": 1104,
+      "cache_read": 177358,
+      "cache_create": 782,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:41:38.646Z",
+      "kind": "harness",
+      "verb": "dd validate"
+    },
+    {
+      "t": "2026-08-03T21:41:38.646Z",
+      "kind": "harness",
+      "verb": "dd validate"
+    },
+    {
+      "t": "2026-08-03T21:41:38.646Z",
+      "kind": "harness",
+      "verb": "dd validate"
+    },
+    {
+      "t": "2026-08-03T21:41:38.646Z",
+      "kind": "harness",
+      "verb": "dd build"
+    },
+    {
+      "t": "2026-08-03T21:41:38.646Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "echo",
+      "result_tokens": 57
+    },
+    {
+      "t": "2026-08-03T21:41:42.727Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 1,
+      "out": 375,
+      "cache_read": 178140,
+      "cache_create": 1340,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:41:44.875Z",
+      "kind": "harness",
+      "verb": "dd validate"
+    },
+    {
+      "t": "2026-08-03T21:41:44.875Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "cd",
+      "result_tokens": 52
+    },
+    {
+      "t": "2026-08-03T21:41:54.528Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 2718,
+      "cache_read": 179480,
+      "cache_create": 463,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:42:22.454Z",
+      "kind": "file",
+      "path": "docs/plans/065-deterministic-documents/exemplar/custom-render/README.md",
+      "change": "written",
+      "delta": {
+        "lines_added": 121,
+        "lines_removed": 0,
+        "bytes_added": 5286,
+        "bytes_removed": 0
+      }
+    },
+    {
+      "t": "2026-08-03T21:42:22.454Z",
+      "kind": "tools",
+      "name": "Write",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 64
+    },
+    {
+      "t": "2026-08-03T21:42:39.047Z",
+      "kind": "turn",
+      "dur_s": 17,
+      "in": 2,
+      "out": 1228,
+      "cache_read": 179943,
+      "cache_create": 2813,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:42:39.047Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 62
+    },
+    {
+      "t": "2026-08-03T21:42:41.486Z",
+      "kind": "turn",
+      "dur_s": 2,
+      "in": 2,
+      "out": 205,
+      "cache_read": 182756,
+      "cache_create": 1320,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:42:42.490Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "cd",
+      "result_tokens": 45
+    },
+    {
+      "t": "2026-08-03T21:43:12.668Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 239,
+      "cache_read": 184076,
+      "cache_create": 297,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:43:12.668Z",
+      "kind": "harness",
+      "verb": "dd doctor"
+    },
+    {
+      "t": "2026-08-03T21:43:12.668Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 3,
+      "span_s": 13,
+      "signature": "cd",
+      "result_tokens": 1583
+    },
+    {
+      "t": "2026-08-03T21:43:21.539Z",
+      "kind": "turn",
+      "dur_s": 7,
+      "in": 2,
+      "out": 421,
+      "cache_read": 184373,
+      "cache_create": 298,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:43:25.611Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 192,
+      "cache_read": 184671,
+      "cache_create": 1115,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:44:25.298Z",
+      "kind": "turn",
+      "dur_s": 17,
+      "in": 1,
+      "out": 2071,
+      "cache_read": 185786,
+      "cache_create": 2258,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:45:48.300Z",
+      "kind": "prompt",
+      "words": 4
+    },
+    {
+      "t": "2026-08-03T21:45:57.105Z",
+      "kind": "turn",
+      "dur_s": 9,
+      "in": 2,
+      "out": 539,
+      "cache_read": 190114,
+      "cache_create": 9,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:45:57.933Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 3,
+      "span_s": 20,
+      "signature": "cd",
+      "result_tokens": 232
+    },
+    {
+      "t": "2026-08-03T21:46:01.190Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 234,
+      "cache_read": 190123,
+      "cache_create": 598,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:46:17.973Z",
+      "kind": "turn",
+      "dur_s": 15,
+      "in": 2,
+      "out": 1092,
+      "cache_read": 190721,
+      "cache_create": 552,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:47:24.789Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 177,
+      "cache_read": 191273,
+      "cache_create": 1131,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:47:24.789Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 25,
+      "signature": "cd",
+      "result_tokens": 127
+    },
+    {
+      "t": "2026-08-03T21:47:37.660Z",
+      "kind": "turn",
+      "dur_s": 10,
+      "in": 2,
+      "out": 1773,
+      "cache_read": 192404,
+      "cache_create": 492,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:47:50.738Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "pij",
+      "result_tokens": 274
+    },
+    {
+      "t": "2026-08-03T21:47:54.441Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 104,
+      "cache_read": 192896,
+      "cache_create": 2370,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:47:54.616Z",
+      "kind": "tools",
+      "name": "Skill",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 5
+    },
+    {
+      "t": "2026-08-03T21:47:54.616Z",
+      "kind": "skill",
+      "name": "pij",
+      "status": "superseded"
+    },
+    {
+      "t": "2026-08-03T21:47:54.620Z",
+      "kind": "prompt",
+      "words": 18
+    },
+    {
+      "t": "2026-08-03T21:47:54.620Z",
+      "kind": "prompt",
+      "words": 1425
+    },
+    {
+      "t": "2026-08-03T21:47:57.943Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 1,
+      "out": 76,
+      "cache_read": 195266,
+      "cache_create": 4044,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:47:57.943Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 2572
+    },
+    {
+      "t": "2026-08-03T21:48:09.619Z",
+      "kind": "turn",
+      "dur_s": 12,
+      "in": 2,
+      "out": 860,
+      "cache_read": 199310,
+      "cache_create": 4244,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:48:11.594Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 5,
+      "signature": "cd",
+      "result_tokens": 962
+    },
+    {
+      "t": "2026-08-03T21:48:16.217Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 236,
+      "cache_read": 203554,
+      "cache_create": 1203,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:48:31.905Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 1046,
+      "cache_read": 204757,
+      "cache_create": 1563,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:48:34.001Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 9,
+      "signature": "sed",
+      "result_tokens": 1060
+    },
+    {
+      "t": "2026-08-03T21:48:40.192Z",
+      "kind": "turn",
+      "dur_s": 7,
+      "in": 2,
+      "out": 552,
+      "cache_read": 206320,
+      "cache_create": 1965,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:48:45.102Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 2981,
+      "cache_read": 208285,
+      "cache_create": 1992,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:49:26.944Z",
+      "kind": "file",
+      "path": ".harness/temp/peer-dd-docs/packet.md",
+      "change": "written",
+      "delta": {
+        "lines_added": 168,
+        "lines_removed": 0,
+        "bytes_added": 7817,
+        "bytes_removed": 0
+      }
+    },
+    {
+      "t": "2026-08-03T21:49:26.944Z",
+      "kind": "tools",
+      "name": "Write",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 56
+    },
+    {
+      "t": "2026-08-03T21:49:32.835Z",
+      "kind": "turn",
+      "dur_s": 6,
+      "in": 2,
+      "out": 304,
+      "cache_read": 210277,
+      "cache_create": 3067,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:49:32.835Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 5,
+      "signature": "cd",
+      "result_tokens": 170
+    },
+    {
+      "t": "2026-08-03T21:49:36.974Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 1,
+      "out": 259,
+      "cache_read": 213344,
+      "cache_create": 528,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:50:17.139Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 184,
+      "cache_read": 213872,
+      "cache_create": 468,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:50:17.139Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 3,
+      "span_s": 34,
+      "signature": "cd",
+      "result_tokens": 756
+    },
+    {
+      "t": "2026-08-03T21:50:36.815Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 345,
+      "cache_read": 214340,
+      "cache_create": 444,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:50:48.019Z",
+      "kind": "turn",
+      "dur_s": 8,
+      "in": 2,
+      "out": 751,
+      "cache_read": 214784,
+      "cache_create": 1147,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:55:28.537Z",
+      "kind": "turn",
+      "dur_s": 30,
+      "in": 2,
+      "out": 2803,
+      "cache_read": 215931,
+      "cache_create": 1282,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:55:39.728Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "cd",
+      "result_tokens": 40
+    },
+    {
+      "t": "2026-08-03T21:55:51.003Z",
+      "kind": "turn",
+      "dur_s": 2,
+      "in": 2,
+      "out": 315,
+      "cache_read": 217213,
+      "cache_create": 2876,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:55:52.903Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 120
+    },
+    {
+      "t": "2026-08-03T21:55:53.451Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 3,
+      "span_s": 9,
+      "signature": "cd",
+      "result_tokens": 790
+    },
+    {
+      "t": "2026-08-03T21:55:58.131Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 1,
+      "out": 230,
+      "cache_read": 220089,
+      "cache_create": 924,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:56:02.363Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 166,
+      "cache_read": 221013,
+      "cache_create": 875,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:56:33.875Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 2563,
+      "cache_read": 221888,
+      "cache_create": 600,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:56:38.845Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 59
+    },
+    {
+      "t": "2026-08-03T21:56:42.453Z",
+      "kind": "turn",
+      "dur_s": 24,
+      "in": 2,
+      "out": 307,
+      "cache_read": 222488,
+      "cache_create": 2847,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:56:44.201Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "cd",
+      "result_tokens": 12
+    },
+    {
+      "t": "2026-08-03T21:56:47.423Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 397,
+      "cache_read": 225335,
+      "cache_create": 337,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:56:50.983Z",
+      "kind": "file",
+      "path": "harness/cli/src/services/dd/core/model.ts",
+      "change": "edited",
+      "delta": {
+        "lines_added": 8,
+        "lines_removed": 0,
+        "bytes_added": 410,
+        "bytes_removed": 0
+      }
+    },
+    {
+      "t": "2026-08-03T21:56:50.983Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 59
+    },
+    {
+      "t": "2026-08-03T21:56:53.920Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 148,
+      "cache_read": 225672,
+      "cache_create": 485,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:56:53.920Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "cd",
+      "result_tokens": 285
+    },
+    {
+      "t": "2026-08-03T21:56:59.806Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 467,
+      "cache_read": 226157,
+      "cache_create": 603,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:56:59.806Z",
+      "kind": "file",
+      "path": "harness/cli/src/services/dd/core/parse.ts",
+      "change": "edited",
+      "delta": {
+        "lines_added": 12,
+        "lines_removed": 1,
+        "bytes_added": 600,
+        "bytes_removed": 50
+      }
+    },
+    {
+      "t": "2026-08-03T21:56:59.806Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 59
+    },
+    {
+      "t": "2026-08-03T21:57:03.387Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 1,
+      "out": 171,
+      "cache_read": 226760,
+      "cache_create": 686,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:57:04.287Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "cd",
+      "result_tokens": 270
+    },
+    {
+      "t": "2026-08-03T21:57:13.380Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 714,
+      "cache_read": 227446,
+      "cache_create": 584,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:57:13.380Z",
+      "kind": "file",
+      "path": "harness/cli/src/services/dd/schema/declarations.ts",
+      "change": "edited",
+      "delta": {
+        "lines_added": 13,
+        "lines_removed": 0,
+        "bytes_added": 703,
+        "bytes_removed": 0
+      }
+    },
+    {
+      "t": "2026-08-03T21:57:13.380Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 62
+    },
+    {
+      "t": "2026-08-03T21:57:15.665Z",
+      "kind": "turn",
+      "dur_s": 2,
+      "in": 2,
+      "out": 165,
+      "cache_read": 228030,
+      "cache_create": 805,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:57:16.776Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "cd",
+      "result_tokens": 363
+    },
+    {
+      "t": "2026-08-03T21:57:25.511Z",
+      "kind": "turn",
+      "dur_s": 9,
+      "in": 2,
+      "out": 712,
+      "cache_read": 228835,
+      "cache_create": 789,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:57:25.511Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 96
+    },
+    {
+      "t": "2026-08-03T21:57:30.748Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 445,
+      "cache_read": 229624,
+      "cache_create": 843,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:57:33.340Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 3,
+      "span_s": 16,
+      "signature": "cd",
+      "result_tokens": 722
+    },
+    {
+      "t": "2026-08-03T21:57:37.379Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 212,
+      "cache_read": 230467,
+      "cache_create": 594,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:57:46.967Z",
+      "kind": "turn",
+      "dur_s": 10,
+      "in": 2,
+      "out": 722,
+      "cache_read": 231061,
+      "cache_create": 750,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:57:51.183Z",
+      "kind": "turn",
+      "dur_s": 2,
+      "in": 1,
+      "out": 330,
+      "cache_read": 231811,
+      "cache_create": 1363,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:57:53.765Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 3,
+      "span_s": 27,
+      "result_tokens": 183
+    },
+    {
+      "t": "2026-08-03T21:58:07.934Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 586,
+      "cache_read": 233174,
+      "cache_create": 419,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:58:18.462Z",
+      "kind": "turn",
+      "dur_s": 11,
+      "in": 2,
+      "out": 828,
+      "cache_read": 233593,
+      "cache_create": 676,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:58:20.975Z",
+      "kind": "file",
+      "path": "harness/cli/src/services/dd/render/renderer.ts",
+      "change": "edited",
+      "delta": {
+        "lines_added": 3,
+        "lines_removed": 1,
+        "bytes_added": 127,
+        "bytes_removed": 82
+      }
+    },
+    {
+      "t": "2026-08-03T21:58:25.107Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 195,
+      "cache_read": 234269,
+      "cache_create": 918,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:58:25.107Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "cd",
+      "result_tokens": 267
+    },
+    {
+      "t": "2026-08-03T21:58:36.676Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 1364,
+      "cache_read": 235187,
+      "cache_create": 665,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:58:45.884Z",
+      "kind": "file",
+      "path": "<external>",
+      "change": "written",
+      "delta": {
+        "lines_added": 48,
+        "lines_removed": 0,
+        "bytes_added": 1484,
+        "bytes_removed": 0
+      }
+    },
+    {
+      "t": "2026-08-03T21:58:45.884Z",
+      "kind": "tools",
+      "name": "Write",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 67
+    },
+    {
+      "t": "2026-08-03T21:58:52.122Z",
+      "kind": "turn",
+      "dur_s": 6,
+      "in": 2,
+      "out": 633,
+      "cache_read": 235852,
+      "cache_create": 1720,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:58:54.871Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 3,
+      "span_s": 11,
+      "signature": "cd",
+      "result_tokens": 415
+    },
+    {
+      "t": "2026-08-03T21:58:58.479Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 442,
+      "cache_read": 237572,
+      "cache_create": 988,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:59:03.983Z",
+      "kind": "turn",
+      "dur_s": 2,
+      "in": 1,
+      "out": 234,
+      "cache_read": 238560,
+      "cache_create": 993,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:59:14.145Z",
+      "kind": "turn",
+      "dur_s": 7,
+      "in": 2,
+      "out": 1559,
+      "cache_read": 239553,
+      "cache_create": 264,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:59:27.207Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 62
+    },
+    {
+      "t": "2026-08-03T21:59:31.031Z",
+      "kind": "turn",
+      "dur_s": 2,
+      "in": 2,
+      "out": 208,
+      "cache_read": 239817,
+      "cache_create": 1651,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:59:31.031Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 4,
+      "span_s": 29,
+      "signature": "cd",
+      "result_tokens": 646
+    },
+    {
+      "t": "2026-08-03T21:59:34.772Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 815,
+      "cache_read": 241468,
+      "cache_create": 225,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:59:52.615Z",
+      "kind": "turn",
+      "dur_s": 8,
+      "in": 2,
+      "out": 585,
+      "cache_read": 241693,
+      "cache_create": 967,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T21:59:59.805Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 156,
+      "cache_read": 242660,
+      "cache_create": 909,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:00:09.036Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 1,
+      "out": 649,
+      "cache_read": 243569,
+      "cache_create": 846,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:00:09.036Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 2,
+      "span_s": 10,
+      "result_tokens": 125
+    },
+    {
+      "t": "2026-08-03T22:00:12.871Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 507,
+      "cache_read": 244415,
+      "cache_create": 741,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:00:19.228Z",
+      "kind": "file",
+      "path": "harness/cli/test/services/dd/render/renderer.test.ts",
+      "change": "edited",
+      "delta": {
+        "lines_added": 6,
+        "lines_removed": 3,
+        "bytes_added": 426,
+        "bytes_removed": 214
+      }
+    },
+    {
+      "t": "2026-08-03T22:00:26.901Z",
+      "kind": "turn",
+      "dur_s": 8,
+      "in": 2,
+      "out": 471,
+      "cache_read": 245156,
+      "cache_create": 599,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:00:26.901Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 7,
+      "signature": "cd",
+      "result_tokens": 242
+    },
+    {
+      "t": "2026-08-03T22:00:31.945Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 321,
+      "cache_read": 245755,
+      "cache_create": 599,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:00:40.861Z",
+      "kind": "turn",
+      "dur_s": 7,
+      "in": 2,
+      "out": 1221,
+      "cache_read": 246354,
+      "cache_create": 612,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:00:49.469Z",
+      "kind": "file",
+      "path": "harness/cli/test/services/dd/schema/declarations.test.ts",
+      "change": "edited",
+      "delta": {
+        "lines_added": 12,
+        "lines_removed": 5,
+        "bytes_added": 658,
+        "bytes_removed": 266
+      }
+    },
+    {
+      "t": "2026-08-03T22:00:49.469Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 63
+    },
+    {
+      "t": "2026-08-03T22:00:57.332Z",
+      "kind": "turn",
+      "dur_s": 8,
+      "in": 2,
+      "out": 720,
+      "cache_read": 246966,
+      "cache_create": 1314,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:00:57.332Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 4,
+      "span_s": 17,
+      "signature": "cd",
+      "result_tokens": 749
+    },
+    {
+      "t": "2026-08-03T22:01:03.534Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 337,
+      "cache_read": 248280,
+      "cache_create": 932,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:01:09.612Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 1,
+      "out": 197,
+      "cache_read": 249212,
+      "cache_create": 528,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:01:14.120Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 150,
+      "cache_read": 249740,
+      "cache_create": 678,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:01:23.870Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 803,
+      "cache_read": 250418,
+      "cache_create": 589,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:01:23.870Z",
+      "kind": "file",
+      "path": "harness/cli/test/services/dd/core/parse.test.ts",
+      "change": "edited",
+      "delta": {
+        "lines_added": 39,
+        "lines_removed": 0,
+        "bytes_added": 1376,
+        "bytes_removed": 0
+      }
+    },
+    {
+      "t": "2026-08-03T22:01:23.870Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 61
+    },
+    {
+      "t": "2026-08-03T22:01:29.631Z",
+      "kind": "turn",
+      "dur_s": 6,
+      "in": 2,
+      "out": 399,
+      "cache_read": 251007,
+      "cache_create": 894,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:01:29.631Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 6,
+      "span_s": 39,
+      "signature": "cd",
+      "result_tokens": 820
+    },
+    {
+      "t": "2026-08-03T22:01:35.440Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 315,
+      "cache_read": 251901,
+      "cache_create": 519,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:01:48.919Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 318,
+      "cache_read": 252420,
+      "cache_create": 414,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:01:58.965Z",
+      "kind": "turn",
+      "dur_s": 7,
+      "in": 2,
+      "out": 595,
+      "cache_read": 252834,
+      "cache_create": 1431,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:02:06.604Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 1,
+      "out": 447,
+      "cache_read": 254265,
+      "cache_create": 860,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:02:13.398Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 213,
+      "cache_read": 255125,
+      "cache_create": 521,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:02:13.398Z",
+      "kind": "file",
+      "path": ".dd/schemas/builder/plan/schema.json",
+      "change": "edited",
+      "delta": {
+        "lines_added": 1,
+        "lines_removed": 0,
+        "bytes_added": 27,
+        "bytes_removed": 0
+      }
+    },
+    {
+      "t": "2026-08-03T22:02:13.398Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 2,
+      "span_s": 4,
+      "result_tokens": 131
+    },
+    {
+      "t": "2026-08-03T22:02:17.844Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 237,
+      "cache_read": 255646,
+      "cache_create": 300,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:02:17.844Z",
+      "kind": "file",
+      "path": "docs/plans/065-deterministic-documents/exemplar/custom-render/schemas/release/gate/schema.json",
+      "change": "edited",
+      "delta": {
+        "lines_added": 1,
+        "lines_removed": 0,
+        "bytes_added": 27,
+        "bytes_removed": 0
+      }
+    },
+    {
+      "t": "2026-08-03T22:02:25.133Z",
+      "kind": "turn",
+      "dur_s": 7,
+      "in": 2,
+      "out": 344,
+      "cache_read": 255946,
+      "cache_create": 345,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:02:25.133Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 9,
+      "signature": "cd",
+      "result_tokens": 239
+    },
+    {
+      "t": "2026-08-03T22:02:32.032Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 445,
+      "cache_read": 256291,
+      "cache_create": 431,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:03:11.510Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 514,
+      "cache_read": 256722,
+      "cache_create": 6924,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:03:14.733Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "cd",
+      "result_tokens": 7
+    },
+    {
+      "t": "2026-08-03T22:03:50.492Z",
+      "kind": "turn",
+      "dur_s": 13,
+      "in": 2,
+      "out": 1231,
+      "cache_read": 263646,
+      "cache_create": 531,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:03:58.176Z",
+      "kind": "harness",
+      "verb": "dd validate"
+    },
+    {
+      "t": "2026-08-03T22:03:58.176Z",
+      "kind": "harness",
+      "verb": "dd build"
+    },
+    {
+      "t": "2026-08-03T22:03:58.176Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "mkdir",
+      "result_tokens": 31
+    },
+    {
+      "t": "2026-08-03T22:04:03.805Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 1,
+      "out": 502,
+      "cache_read": 264177,
+      "cache_create": 1434,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:04:06.927Z",
+      "kind": "harness",
+      "verb": "dd validate"
+    },
+    {
+      "t": "2026-08-03T22:04:06.927Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "cd",
+      "result_tokens": 23
+    },
+    {
+      "t": "2026-08-03T22:04:10.943Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 656,
+      "cache_read": 265611,
+      "cache_create": 535,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:04:15.940Z",
+      "kind": "harness",
+      "verb": "dd validate"
+    },
+    {
+      "t": "2026-08-03T22:04:15.940Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "cat",
+      "result_tokens": 9
+    },
+    {
+      "t": "2026-08-03T22:04:25.381Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 1647,
+      "cache_read": 266146,
+      "cache_create": 680,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:04:41.895Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 62
+    },
+    {
+      "t": "2026-08-03T22:04:46.024Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 1458,
+      "cache_read": 266826,
+      "cache_create": 1981,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:05:02.827Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "cd",
+      "result_tokens": 43
+    },
+    {
+      "t": "2026-08-03T22:05:26.450Z",
+      "kind": "turn",
+      "dur_s": 23,
+      "in": 2,
+      "out": 1290,
+      "cache_read": 268807,
+      "cache_create": 1534,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:05:26.450Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 2,
+      "span_s": 12,
+      "result_tokens": 124
+    },
+    {
+      "t": "2026-08-03T22:05:38.400Z",
+      "kind": "turn",
+      "dur_s": 12,
+      "in": 2,
+      "out": 914,
+      "cache_read": 270341,
+      "cache_create": 1382,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:05:40.940Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 1,
+      "out": 331,
+      "cache_read": 271723,
+      "cache_create": 1136,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:05:43.610Z",
+      "kind": "harness",
+      "verb": "dd doctor"
+    },
+    {
+      "t": "2026-08-03T22:05:43.610Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 3,
+      "span_s": 15,
+      "signature": "cd",
+      "result_tokens": 349
+    },
+    {
+      "t": "2026-08-03T22:05:52.074Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 381,
+      "cache_read": 272859,
+      "cache_create": 383,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:05:54.454Z",
+      "kind": "harness",
+      "verb": "dd doctor"
+    },
+    {
+      "t": "2026-08-03T22:05:58.718Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 169,
+      "cache_read": 273242,
+      "cache_create": 396,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:05:58.718Z",
+      "kind": "harness",
+      "verb": "dd doctor"
+    },
+    {
+      "t": "2026-08-03T22:06:09.710Z",
+      "kind": "turn",
+      "dur_s": 10,
+      "in": 2,
+      "out": 1268,
+      "cache_read": 273638,
+      "cache_create": 776,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:06:18.265Z",
+      "kind": "file",
+      "path": "docs/plans/065-deterministic-documents/follow-ups.md",
+      "change": "edited",
+      "delta": {
+        "lines_added": 18,
+        "lines_removed": 0,
+        "bytes_added": 967,
+        "bytes_removed": 0
+      }
+    },
+    {
+      "t": "2026-08-03T22:06:18.265Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 62
+    },
+    {
+      "t": "2026-08-03T22:06:22.513Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 286,
+      "cache_read": 274414,
+      "cache_create": 1360,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:06:22.513Z",
+      "kind": "harness",
+      "verb": "observe",
+      "observe_kind": "difficulty"
+    },
+    {
+      "t": "2026-08-03T22:06:22.513Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 25,
+      "signature": "cd",
+      "result_tokens": 415
+    },
+    {
+      "t": "2026-08-03T22:06:27.095Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 1892,
+      "cache_read": 275774,
+      "cache_create": 1058,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:07:51.325Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 1,
+      "out": 176,
+      "cache_read": 276832,
+      "cache_create": 2054,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:07:51.325Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 3,
+      "span_s": 10,
+      "signature": "cd",
+      "result_tokens": 266
+    },
+    {
+      "t": "2026-08-03T22:07:58.264Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 543,
+      "cache_read": 278886,
+      "cache_create": 243,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:08:16.658Z",
+      "kind": "turn",
+      "dur_s": 15,
+      "in": 2,
+      "out": 936,
+      "cache_read": 279129,
+      "cache_create": 970,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:12:23.090Z",
+      "kind": "prompt",
+      "words": 16
+    },
+    {
+      "t": "2026-08-03T22:12:26.488Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 135,
+      "cache_read": 281035,
+      "cache_create": 372,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:12:26.488Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 173
+    },
+    {
+      "t": "2026-08-03T22:12:29.638Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 1526,
+      "cache_read": 281407,
+      "cache_create": 476,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:12:48.164Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 5,
+      "span_s": 21,
+      "signature": "cd",
+      "result_tokens": 585
+    },
+    {
+      "t": "2026-08-03T22:12:59.891Z",
+      "kind": "turn",
+      "dur_s": 10,
+      "in": 2,
+      "out": 763,
+      "cache_read": 281883,
+      "cache_create": 4169,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:13:06.920Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 1,
+      "out": 339,
+      "cache_read": 286052,
+      "cache_create": 972,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:13:18.205Z",
+      "kind": "turn",
+      "dur_s": 8,
+      "in": 2,
+      "out": 552,
+      "cache_read": 287024,
+      "cache_create": 965,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:13:20.127Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 1182
+    },
+    {
+      "t": "2026-08-03T22:13:25.382Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 803,
+      "cache_read": 287989,
+      "cache_create": 2436,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:13:31.244Z",
+      "kind": "harness",
+      "verb": "dd validate"
+    },
+    {
+      "t": "2026-08-03T22:13:31.244Z",
+      "kind": "harness",
+      "verb": "dd build"
+    },
+    {
+      "t": "2026-08-03T22:13:31.244Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "mkdir",
+      "result_tokens": 77
+    },
+    {
+      "t": "2026-08-03T22:13:36.090Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 405,
+      "cache_read": 290425,
+      "cache_create": 943,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:13:37.976Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "cd",
+      "result_tokens": 337
+    },
+    {
+      "t": "2026-08-03T22:13:38.549Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 73
+    },
+    {
+      "t": "2026-08-03T22:13:44.828Z",
+      "kind": "turn",
+      "dur_s": 6,
+      "in": 1,
+      "out": 595,
+      "cache_read": 291368,
+      "cache_create": 1139,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:13:46.941Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 4,
+      "signature": "cd",
+      "result_tokens": 276
+    },
+    {
+      "t": "2026-08-03T22:13:51.058Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 206,
+      "cache_read": 292507,
+      "cache_create": 765,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:13:57.048Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 377,
+      "cache_read": 293272,
+      "cache_create": 463,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:13:57.048Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 2,
+      "span_s": 5,
+      "result_tokens": 126
+    },
+    {
+      "t": "2026-08-03T22:14:01.786Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 332,
+      "cache_read": 293735,
+      "cache_create": 471,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:14:01.786Z",
+      "kind": "file",
+      "path": "harness/cli/src/services/dd/docs/content/dd-overview.md",
+      "change": "edited",
+      "delta": {
+        "lines_added": 3,
+        "lines_removed": 2,
+        "bytes_added": 254,
+        "bytes_removed": 110
+      }
+    },
+    {
+      "t": "2026-08-03T22:14:04.621Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 159,
+      "cache_read": 294206,
+      "cache_create": 426,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:14:04.621Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "cd",
+      "result_tokens": 133
+    },
+    {
+      "t": "2026-08-03T22:14:10.449Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 431,
+      "cache_read": 294632,
+      "cache_create": 387,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:14:10.449Z",
+      "kind": "file",
+      "path": "harness/cli/src/services/dd/docs/content/how-to-add-a-schema.md",
+      "change": "edited",
+      "delta": {
+        "lines_added": 10,
+        "lines_removed": 2,
+        "bytes_added": 522,
+        "bytes_removed": 187
+      }
+    },
+    {
+      "t": "2026-08-03T22:14:10.449Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 65
+    },
+    {
+      "t": "2026-08-03T22:14:12.843Z",
+      "kind": "turn",
+      "dur_s": 2,
+      "in": 2,
+      "out": 253,
+      "cache_read": 295019,
+      "cache_create": 530,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:14:14.856Z",
+      "kind": "harness",
+      "verb": "dd docs"
+    },
+    {
+      "t": "2026-08-03T22:14:14.856Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 7,
+      "signature": "cd",
+      "result_tokens": 138
+    },
+    {
+      "t": "2026-08-03T22:14:21.954Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 349,
+      "cache_read": 295549,
+      "cache_create": 352,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:14:21.954Z",
+      "kind": "harness",
+      "verb": "dd docs"
+    },
+    {
+      "t": "2026-08-03T22:15:31.784Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 1,
+      "out": 514,
+      "cache_read": 295901,
+      "cache_create": 653,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:15:34.573Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 17,
+      "signature": "cd",
+      "result_tokens": 171
+    },
+    {
+      "t": "2026-08-03T22:15:37.625Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 1164,
+      "cache_read": 296554,
+      "cache_create": 794,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:16:57.374Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 175,
+      "cache_read": 297348,
+      "cache_create": 1213,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:16:57.374Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 4,
+      "span_s": 16,
+      "signature": "cd",
+      "result_tokens": 292
+    },
+    {
+      "t": "2026-08-03T22:17:02.358Z",
+      "kind": "turn",
+      "dur_s": 2,
+      "in": 2,
+      "out": 570,
+      "cache_read": 298561,
+      "cache_create": 245,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:17:07.341Z",
+      "kind": "harness",
+      "verb": "observe",
+      "observe_kind": "difficulty"
+    },
+    {
+      "t": "2026-08-03T22:17:13.546Z",
+      "kind": "turn",
+      "dur_s": 6,
+      "in": 2,
+      "out": 324,
+      "cache_read": 298806,
+      "cache_create": 843,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:17:29.466Z",
+      "kind": "turn",
+      "dur_s": 14,
+      "in": 2,
+      "out": 839,
+      "cache_read": 299649,
+      "cache_create": 528,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:21:47.313Z",
+      "kind": "prompt",
+      "words": 16
+    },
+    {
+      "t": "2026-08-03T22:21:50.395Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 1,
+      "out": 137,
+      "cache_read": 301016,
+      "cache_create": 508,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:21:50.395Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 173
+    },
+    {
+      "t": "2026-08-03T22:22:07.263Z",
+      "kind": "turn",
+      "dur_s": 17,
+      "in": 2,
+      "out": 1054,
+      "cache_read": 301524,
+      "cache_create": 477,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:22:07.263Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "cd",
+      "result_tokens": 91
+    },
+    {
+      "t": "2026-08-03T22:22:19.294Z",
+      "kind": "turn",
+      "dur_s": 11,
+      "in": 2,
+      "out": 645,
+      "cache_read": 302001,
+      "cache_create": 1197,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:23:54.425Z",
+      "kind": "prompt",
+      "words": 109
+    },
+    {
+      "t": "2026-08-03T22:24:09.675Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 1323,
+      "cache_read": 303198,
+      "cache_create": 819,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:24:12.163Z",
+      "kind": "harness",
+      "verb": "dd graph"
+    },
+    {
+      "t": "2026-08-03T22:24:12.163Z",
+      "kind": "harness",
+      "verb": "dd links"
+    },
+    {
+      "t": "2026-08-03T22:24:12.163Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 5,
+      "span_s": 51,
+      "signature": "cd",
+      "result_tokens": 1304
+    },
+    {
+      "t": "2026-08-03T22:24:23.815Z",
+      "kind": "turn",
+      "dur_s": 23,
+      "in": 2,
+      "out": 1051,
+      "cache_read": 304017,
+      "cache_create": 2778,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:24:40.585Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 1332,
+      "cache_read": 306795,
+      "cache_create": 1183,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:25:00.084Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 1,
+      "out": 498,
+      "cache_read": 307978,
+      "cache_create": 1710,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:25:03.327Z",
+      "kind": "harness",
+      "verb": "dd links"
+    },
+    {
+      "t": "2026-08-03T22:25:14.387Z",
+      "kind": "turn",
+      "dur_s": 11,
+      "in": 2,
+      "out": 797,
+      "cache_read": 309688,
+      "cache_create": 2024,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:25:15.954Z",
+      "kind": "tools",
+      "name": "Skill",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 6
+    },
+    {
+      "t": "2026-08-03T22:25:15.954Z",
+      "kind": "skill",
+      "name": "builder",
+      "status": "completed",
+      "arg": "5"
+    },
+    {
+      "t": "2026-08-03T22:25:15.979Z",
+      "kind": "prompt",
+      "words": 16
+    },
+    {
+      "t": "2026-08-03T22:25:15.979Z",
+      "kind": "prompt",
+      "words": 3133
+    },
+    {
+      "t": "2026-08-03T22:25:18.644Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 82,
+      "cache_read": 311712,
+      "cache_create": 8898,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:25:18.644Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 3840
+    },
+    {
+      "t": "2026-08-03T22:25:34.289Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 1260,
+      "cache_read": 320610,
+      "cache_create": 6706,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:25:37.918Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 3,
+      "span_s": 25,
+      "signature": "cd",
+      "result_tokens": 969
+    },
+    {
+      "t": "2026-08-03T22:25:45.149Z",
+      "kind": "turn",
+      "dur_s": 7,
+      "in": 2,
+      "out": 606,
+      "cache_read": 327316,
+      "cache_create": 1864,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:26:00.088Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 999,
+      "cache_read": 329180,
+      "cache_create": 1056,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:26:06.944Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 1,
+      "out": 766,
+      "cache_read": 330236,
+      "cache_create": 2555,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:26:14.633Z",
+      "kind": "file",
+      "path": "docs/plans/065-deterministic-documents/tasks/phase-1-dd-core-foundations/dd-surface.md",
+      "change": "edited",
+      "delta": {
+        "lines_added": 1,
+        "lines_removed": 0,
+        "bytes_added": 755,
+        "bytes_removed": 0
+      }
+    },
+    {
+      "t": "2026-08-03T22:26:14.633Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 71
+    },
+    {
+      "t": "2026-08-03T22:26:17.226Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 4670,
+      "cache_read": 332791,
+      "cache_create": 875,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:27:19.129Z",
+      "kind": "tools",
+      "name": "Write",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 64
+    },
+    {
+      "t": "2026-08-03T22:27:23.089Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 158,
+      "cache_read": 333666,
+      "cache_create": 4771,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:27:23.089Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "cd",
+      "result_tokens": 391
+    },
+    {
+      "t": "2026-08-03T22:27:31.099Z",
+      "kind": "turn",
+      "dur_s": 8,
+      "in": 2,
+      "out": 498,
+      "cache_read": 338437,
+      "cache_create": 866,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:27:31.099Z",
+      "kind": "file",
+      "path": "docs/plans/065-deterministic-documents/deterministic-documents-plan.md",
+      "change": "edited",
+      "delta": {
+        "lines_added": 7,
+        "lines_removed": 0,
+        "bytes_added": 507,
+        "bytes_removed": 0
+      }
+    },
+    {
+      "t": "2026-08-03T22:27:31.099Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 67
+    },
+    {
+      "t": "2026-08-03T22:27:34.473Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 1273,
+      "cache_read": 339303,
+      "cache_create": 595,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:27:53.184Z",
+      "kind": "file",
+      "path": ".harness/temp/pair-p7/packet-coder.md",
+      "change": "written",
+      "delta": {
+        "lines_added": 66,
+        "lines_removed": 0,
+        "bytes_added": 3030,
+        "bytes_removed": 0
+      }
+    },
+    {
+      "t": "2026-08-03T22:27:53.184Z",
+      "kind": "tools",
+      "name": "Write",
+      "count": 2,
+      "span_s": 23,
+      "result_tokens": 113
+    },
+    {
+      "t": "2026-08-03T22:28:15.779Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 1507,
+      "cache_read": 339898,
+      "cache_create": 1359,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:28:15.779Z",
+      "kind": "file",
+      "path": ".harness/temp/pair-p7/packet-reviewer.md",
+      "change": "written",
+      "delta": {
+        "lines_added": 81,
+        "lines_removed": 0,
+        "bytes_added": 3676,
+        "bytes_removed": 0
+      }
+    },
+    {
+      "t": "2026-08-03T22:28:19.921Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 286,
+      "cache_read": 341257,
+      "cache_create": 1595,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:28:19.921Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 3,
+      "span_s": 15,
+      "signature": "cd",
+      "result_tokens": 220
+    },
+    {
+      "t": "2026-08-03T22:28:25.990Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 1,
+      "out": 339,
+      "cache_read": 342852,
+      "cache_create": 510,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:28:32.662Z",
+      "kind": "turn",
+      "dur_s": 3,
+      "in": 2,
+      "out": 316,
+      "cache_read": 343362,
+      "cache_create": 423,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:29:09.811Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 487,
+      "cache_read": 343785,
+      "cache_create": 702,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:29:12.517Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 3,
+      "span_s": 21,
+      "signature": "cd",
+      "result_tokens": 139
+    },
+    {
+      "t": "2026-08-03T22:29:18.425Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 184,
+      "cache_read": 344487,
+      "cache_create": 603,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:29:23.036Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 1107,
+      "cache_read": 345090,
+      "cache_create": 417,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:30:39.735Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 923,
+      "cache_read": 345507,
+      "cache_create": 1349,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:30:52.474Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "cd",
+      "result_tokens": 162
+    },
+    {
+      "t": "2026-08-03T22:31:08.713Z",
+      "kind": "turn",
+      "dur_s": 32,
+      "in": 2,
+      "out": 849,
+      "cache_read": 346856,
+      "cache_create": 1339,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:31:51.075Z",
+      "kind": "prompt",
+      "words": 35
+    },
+    {
+      "t": "2026-08-03T22:31:56.547Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 1,
+      "out": 611,
+      "cache_read": 348195,
+      "cache_create": 1029,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:31:59.844Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 1,
+      "signature": "cd",
+      "result_tokens": 237
+    },
+    {
+      "t": "2026-08-03T22:32:03.423Z",
+      "kind": "turn",
+      "dur_s": 9,
+      "in": 2,
+      "out": 120,
+      "cache_read": 349224,
+      "cache_create": 1280,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:32:03.423Z",
+      "kind": "tools",
+      "name": "Read",
+      "count": 1,
+      "span_s": 0,
+      "result_tokens": 749
+    },
+    {
+      "t": "2026-08-03T22:32:14.123Z",
+      "kind": "turn",
+      "dur_s": 11,
+      "in": 2,
+      "out": 1341,
+      "cache_read": 350504,
+      "cache_create": 1489,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:32:23.411Z",
+      "kind": "tools",
+      "name": "Edit",
+      "count": 2,
+      "span_s": 25,
+      "result_tokens": 134
+    },
+    {
+      "t": "2026-08-03T22:32:48.306Z",
+      "kind": "turn",
+      "dur_s": 0,
+      "in": 2,
+      "out": 1451,
+      "cache_read": 351993,
+      "cache_create": 1445,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:32:48.306Z",
+      "kind": "file",
+      "path": "docs/plans/065-deterministic-documents/tasks/phase-7-graph-map/tasks.md",
+      "change": "edited",
+      "delta": {
+        "lines_added": 70,
+        "lines_removed": 0,
+        "bytes_added": 3340,
+        "bytes_removed": 0
+      }
+    },
+    {
+      "t": "2026-08-03T22:32:55.288Z",
+      "kind": "turn",
+      "dur_s": 7,
+      "in": 2,
+      "out": 1126,
+      "cache_read": 353438,
+      "cache_create": 1555,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:33:10.369Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 3,
+      "span_s": 27,
+      "signature": "cd",
+      "result_tokens": 131
+    },
+    {
+      "t": "2026-08-03T22:33:24.798Z",
+      "kind": "turn",
+      "dur_s": 14,
+      "in": 2,
+      "out": 822,
+      "cache_read": 354993,
+      "cache_create": 1203,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:33:37.763Z",
+      "kind": "turn",
+      "dur_s": 12,
+      "in": 1,
+      "out": 878,
+      "cache_read": 356196,
+      "cache_create": 1055,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T22:34:49.673Z",
+      "kind": "turn",
+      "dur_s": 55,
+      "in": 2,
+      "out": 834,
+      "cache_read": 357251,
+      "cache_create": 1095,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T23:18:20.182Z",
+      "kind": "prompt",
+      "words": 1053
+    },
+    {
+      "t": "2026-08-03T23:18:31.480Z",
+      "kind": "turn",
+      "dur_s": 11,
+      "in": 2,
+      "out": 632,
+      "cache_read": 359180,
+      "cache_create": 6377,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T23:18:33.840Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 8,
+      "span_s": 82,
+      "signature": "cd",
+      "result_tokens": 5027
+    },
+    {
+      "t": "2026-08-03T23:18:39.881Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 249,
+      "cache_read": 365557,
+      "cache_create": 665,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T23:18:44.979Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 440,
+      "cache_read": 366222,
+      "cache_create": 590,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T23:18:47.528Z",
+      "kind": "harness",
+      "verb": "dd graph"
+    },
+    {
+      "t": "2026-08-03T23:19:02.749Z",
+      "kind": "turn",
+      "dur_s": 10,
+      "in": 2,
+      "out": 1014,
+      "cache_read": 366812,
+      "cache_create": 7356,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T23:19:13.434Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 670,
+      "cache_read": 374168,
+      "cache_create": 1086,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T23:19:17.999Z",
+      "kind": "harness",
+      "verb": "dd graph"
+    },
+    {
+      "t": "2026-08-03T23:19:26.508Z",
+      "kind": "turn",
+      "dur_s": 6,
+      "in": 1,
+      "out": 352,
+      "cache_read": 375254,
+      "cache_create": 890,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T23:19:34.786Z",
+      "kind": "turn",
+      "dur_s": 6,
+      "in": 2,
+      "out": 784,
+      "cache_read": 376144,
+      "cache_create": 1996,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T23:19:53.236Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 388,
+      "cache_read": 378140,
+      "cache_create": 849,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T23:20:48.297Z",
+      "kind": "turn",
+      "dur_s": 6,
+      "in": 2,
+      "out": 488,
+      "cache_read": 378989,
+      "cache_create": 610,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T23:20:50.725Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "cd",
+      "result_tokens": 151
+    },
+    {
+      "t": "2026-08-03T23:21:20.951Z",
+      "kind": "turn",
+      "dur_s": 11,
+      "in": 2,
+      "out": 815,
+      "cache_read": 379599,
+      "cache_create": 746,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T23:21:23.776Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "cd",
+      "result_tokens": 32
+    },
+    {
+      "t": "2026-08-03T23:23:01.462Z",
+      "kind": "turn",
+      "dur_s": 9,
+      "in": 1,
+      "out": 902,
+      "cache_read": 380345,
+      "cache_create": 1012,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T23:23:07.095Z",
+      "kind": "harness",
+      "verb": "observe",
+      "observe_kind": "difficulty"
+    },
+    {
+      "t": "2026-08-03T23:23:07.095Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 22,
+      "signature": "cd",
+      "result_tokens": 24
+    },
+    {
+      "t": "2026-08-03T23:23:29.566Z",
+      "kind": "turn",
+      "dur_s": 21,
+      "in": 2,
+      "out": 1632,
+      "cache_read": 381357,
+      "cache_create": 915,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T23:24:50.415Z",
+      "kind": "turn",
+      "dur_s": 20,
+      "in": 2,
+      "out": 1266,
+      "cache_read": 382272,
+      "cache_create": 1671,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T23:24:50.415Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 1,
+      "span_s": 0,
+      "signature": "cd",
+      "result_tokens": 65
+    },
+    {
+      "t": "2026-08-03T23:25:10.241Z",
+      "kind": "turn",
+      "dur_s": 19,
+      "in": 2,
+      "out": 1258,
+      "cache_read": 383943,
+      "cache_create": 1369,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T23:27:09.191Z",
+      "kind": "prompt",
+      "words": 163
+    },
+    {
+      "t": "2026-08-03T23:27:17.244Z",
+      "kind": "turn",
+      "dur_s": 8,
+      "in": 2,
+      "out": 646,
+      "cache_read": 386570,
+      "cache_create": 466,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T23:27:19.820Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 3,
+      "span_s": 33,
+      "signature": "cd",
+      "result_tokens": 446
+    },
+    {
+      "t": "2026-08-03T23:27:29.203Z",
+      "kind": "turn",
+      "dur_s": 8,
+      "in": 2,
+      "out": 1563,
+      "cache_read": 387036,
+      "cache_create": 1133,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T23:27:52.994Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 252,
+      "cache_read": 388169,
+      "cache_create": 1670,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T23:28:07.322Z",
+      "kind": "turn",
+      "dur_s": 12,
+      "in": 1,
+      "out": 661,
+      "cache_read": 389839,
+      "cache_create": 528,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T23:36:50.316Z",
+      "kind": "prompt",
+      "words": 11
+    },
+    {
+      "t": "2026-08-03T23:36:58.818Z",
+      "kind": "turn",
+      "dur_s": 8,
+      "in": 2,
+      "out": 603,
+      "cache_read": 391027,
+      "cache_create": 16,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T23:37:01.489Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 2,
+      "span_s": 7,
+      "signature": "cd",
+      "result_tokens": 187
+    },
+    {
+      "t": "2026-08-03T23:37:06.496Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 395,
+      "cache_read": 391043,
+      "cache_create": 643,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T23:37:08.703Z",
+      "kind": "harness",
+      "verb": "dd graph"
+    },
+    {
+      "t": "2026-08-03T23:37:17.236Z",
+      "kind": "turn",
+      "dur_s": 8,
+      "in": 2,
+      "out": 1168,
+      "cache_read": 391686,
+      "cache_create": 779,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T23:43:54.549Z",
+      "kind": "prompt",
+      "words": 708
+    },
+    {
+      "t": "2026-08-03T23:44:15.958Z",
+      "kind": "turn",
+      "dur_s": 21,
+      "in": 2,
+      "out": 2116,
+      "cache_read": 393633,
+      "cache_create": 1754,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T23:44:31.810Z",
+      "kind": "tools",
+      "name": "Bash",
+      "count": 3,
+      "span_s": 19,
+      "signature": "cd",
+      "result_tokens": 40
+    },
+    {
+      "t": "2026-08-03T23:44:38.643Z",
+      "kind": "turn",
+      "dur_s": 5,
+      "in": 2,
+      "out": 314,
+      "cache_read": 395387,
+      "cache_create": 2149,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T23:44:46.557Z",
+      "kind": "turn",
+      "dur_s": 4,
+      "in": 2,
+      "out": 493,
+      "cache_read": 397536,
+      "cache_create": 356,
+      "model": "claude-opus-5"
+    },
+    {
+      "t": "2026-08-03T23:44:46.557Z",
+      "t_precision": "anchored",
+      "kind": "harness",
+      "verb": "dd"
+    },
+    {
+      "t": "2026-08-03T23:44:55.779Z",
+      "t_precision": "anchored",
+      "kind": "artifact",
+      "path": "docs/plans/065-deterministic-documents/tasks/phase-7-graph-map/tasks.md",
+      "artifact_type": "tasks",
+      "change": "written",
+      "counts": {
+        "done": 7
+      },
+      "enums": {},
+      "size": {
+        "lines": 288,
+        "bytes": 19737
+      },
+      "plan_id": "065-deterministic-documents"
+    },
+    {
+      "t": "2026-08-03T23:44:55.779Z",
+      "t_precision": "anchored",
+      "kind": "artifact",
+      "path": "docs/plans/065-deterministic-documents/deterministic-documents-plan.md",
+      "artifact_type": "plan",
+      "change": "edited",
+      "counts": {
+        "phases": 6,
+        "cs": 5,
+        "gate_pass": 6,
+        "gate_na": 1
+      },
+      "enums": {
+        "mode": "FULL",
+        "status": "READY"
+      },
+      "size": {
+        "lines": 371,
+        "bytes": 45547
+      },
+      "plan_id": "065-deterministic-documents"
+    }
+  ],
+  "rollup": {
+    "activity": {
+      "wall_s": 8984,
+      "agent_working_s": 3915,
+      "human_s": 1538,
+      "idle_s": 3531,
+      "working_ratio": 0.72
+    },
+    "flow_stage_time_s": {
+      "ship": 8984
+    },
+    "skills": {
+      "pij": {
+        "runs": 1,
+        "abandoned": 0,
+        "superseded": 1
+      },
+      "builder": {
+        "runs": 1,
+        "abandoned": 0,
+        "superseded": 0
+      }
+    },
+    "tokens": {
+      "in": 488,
+      "out": 170836,
+      "cache_read": 60371977,
+      "cache_create": 294199
+    },
+    "tools": {
+      "Bash": 206,
+      "Read": 12,
+      "Edit": 36,
+      "Write": 11,
+      "Skill": 2
+    },
+    "outcomes": {
+      "exits": {
+        "observe": 0,
+        "dd build": 1
+      }
+    }
+  },
+  "product_commit": "a7ef72974f1abd67a0e429b7d83225b4df404d93"
+}
