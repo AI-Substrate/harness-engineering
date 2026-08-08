@@ -79,57 +79,156 @@ function validateMermaid(fences: Fence[]): { path?: string; valid: boolean; erro
 // class (`id:::harness:::impOptional`) is a mermaid PARSE ERROR (STYLE_SEPARATOR)
 // that string-only golden comparison never caught — importance borders go via a
 // separate `class <id> <imp>;` statement instead.
+//
+// #108 · ALL THREE parse proofs share ONE mermaid-runner spawn.
+//
+// `validateMermaid` spawns `node` and that child loads mermaid + jsdom, so the
+// cost is process startup and is FLAT in the number of fences: measured on macOS
+// at 508ms for one fence vs 558ms for twenty — 19 extra fences cost 50ms, while
+// each extra spawn costs ~500ms. Three call sites meant three spawns, and on the
+// consumer's Windows box each of those three landed at 22.3s–27.5s against a
+// 30s timeout (1.09x headroom — a flake generator, not a pass).
+//
+// The consumer proposed collapsing to "one representative parse proof". That
+// would work but it would cost coverage: these are three DIFFERENT properties
+// over three DIFFERENT inputs (the whole golden corpus; the importance-border
+// regression that actually shipped once; the full TD-columns shape). Batching
+// instead makes the work cheaper without giving any of that up — the runner
+// already accepts an array of fences and reports per-fence results.
+//
+// Memoised rather than a `beforeAll` so a filtered run (`-t AC-01`) pays for no
+// mermaid spawn at all.
 // ---------------------------------------------------------------------------
 
-describe('flow-renderer · rendered mermaid is parse-valid (plan 040)', () => {
-  const fixtures = readdirSync(FIXTURE_DIR)
-    .filter((f) => f.endsWith('.json'))
-    .map((f) => f.replace(/\.json$/, ''));
+const PARSE_FIXTURES = readdirSync(FIXTURE_DIR)
+  .filter((f) => f.endsWith('.json'))
+  .map((f) => f.replace(/\.json$/, ''));
 
+/** The importance-border regression doc: a chained `:::a:::b` must never appear. */
+const importanceDoc = (): FlowDoc =>
+  doc([
+    // opt + strong are SPINE chore nodes — their importance border rides a separate
+    // `class <id> <imp>;` statement (gutter-folded excursions carry importance as a
+    // marker instead, but a spine chore still gets the border).
+    {
+      id: 'opt',
+      type: 'backpressure',
+      label: 'Opt',
+      status: 'done',
+      next: ['strong'],
+      chore: { kind: 'command', importance: 'optional' },
+    },
+    {
+      id: 'strong',
+      type: 'harness-retro',
+      label: 'Strong',
+      status: 'done',
+      next: ['ship'],
+      chore: { kind: 'command', importance: 'strongly-recommended' },
+    },
+    { id: 'ship', type: 'ship', label: 'Ship', status: 'assumed', next: [] },
+  ]);
+
+/** The full TD-columns shape (plan 043) — spine, collapsed excursions, chores, agents. */
+const td = (): FlowDoc =>
+  doc(
+    [
+      { id: 'research', type: 'research', label: 'Research', status: 'done', next: ['plan'] },
+      { id: 'plan', type: 'plan', label: 'Plan', status: 'done', next: ['p1'] },
+      { id: 'p1', type: 'phase', label: 'Phase 1', status: 'in_progress', next: ['ship'] },
+      { id: 'ship', type: 'merge', label: 'Ship', status: 'assumed', next: [] },
+      // plan's TWO excursions → must collapse into ONE box (AC-02)
+      {
+        id: 'wsA',
+        type: 'workshop',
+        label: 'WS A',
+        status: 'done',
+        branch_of: 'plan',
+        next: ['plan'],
+      },
+      {
+        id: 'wsB',
+        type: 'workshop',
+        label: 'WS B',
+        status: 'done',
+        branch_of: 'plan',
+        next: ['plan'],
+      },
+      // p1's excursions — a done chore + an incomplete strongly-recommended chore
+      {
+        id: 'boot',
+        type: 'harness-boot',
+        label: 'boot',
+        status: 'done',
+        branch_of: 'p1',
+        next: ['p1'],
+        chore: { kind: 'command', importance: 'recommended' },
+      },
+      {
+        id: 'sync',
+        type: 'harness-retro',
+        label: 'sync coverage',
+        status: 'todo',
+        branch_of: 'p1',
+        next: ['p1'],
+        chore: { kind: 'command', importance: 'strongly-recommended' },
+      },
+    ],
+    {
+      nav: { now: 'p1', next: 'ship' },
+      agents: [{ slug: 'reviewer', kind: 'companion', render: 'wrap', covers: ['p1'] }],
+    } as Partial<FlowDoc>,
+  );
+
+let parseBatch: Map<string, { valid: boolean; error?: string }> | undefined;
+
+/** Every fence all three proofs need, validated in ONE spawn, memoised. */
+function parseBatchResults(): Map<string, { valid: boolean; error?: string }> {
+  if (parseBatch) return parseBatch;
+  const fences: Fence[] = [
+    ...PARSE_FIXTURES.map((name) => ({
+      path: `fixture:${name}`,
+      text: mermaidBlock(renderFlow(loadFixture(name))),
+    })).filter((f) => f.text.length > 0),
+    ...mermaidBlocks(renderFlow(importanceDoc())).map((text, i) => ({
+      path: `importance:${i}`,
+      text,
+    })),
+    { path: 'td', text: mermaidBlock(renderFlow(td())) },
+  ];
+  parseBatch = new Map(validateMermaid(fences).map((r) => [r.path ?? '', r]));
+  return parseBatch;
+}
+
+/**
+ * The fences batched under one key prefix. Asserts it matched something: an
+ * empty result set would otherwise satisfy "nothing invalid" vacuously, which is
+ * how a parse proof silently stops proving anything.
+ */
+function fencesUnder(prefix: string): { key: string; valid: boolean; error?: string }[] {
+  const hits = [...parseBatchResults()]
+    .filter(([key]) => key === prefix || key.startsWith(`${prefix}:`))
+    .map(([key, r]) => ({ key, ...r }));
+  expect(hits.length, `no mermaid fences batched under '${prefix}'`).toBeGreaterThan(0);
+  return hits;
+}
+
+describe('flow-renderer · rendered mermaid is parse-valid (plan 040)', () => {
   it('every golden fixture renders syntactically valid mermaid (headless mermaid.parse)', () => {
-    const fences = fixtures
-      .map((name) => ({ path: name, text: mermaidBlock(renderFlow(loadFixture(name))) }))
-      .filter((f) => f.text.length > 0);
-    const results = validateMermaid(fences);
-    const invalid = results.filter((r) => !r.valid);
+    const invalid = fencesUnder('fixture').filter((r) => !r.valid);
     expect(invalid, `invalid mermaid fences: ${JSON.stringify(invalid)}`).toHaveLength(0);
   });
 
   it('importance borders use a separate `class` statement, never a chained `:::a:::b`', () => {
-    const out = renderFlow(
-      doc([
-        // opt + strong are SPINE chore nodes — their importance border rides a separate
-        // `class <id> <imp>;` statement (gutter-folded excursions carry importance as a
-        // marker instead, but a spine chore still gets the border).
-        {
-          id: 'opt',
-          type: 'backpressure',
-          label: 'Opt',
-          status: 'done',
-          next: ['strong'],
-          chore: { kind: 'command', importance: 'optional' },
-        },
-        {
-          id: 'strong',
-          type: 'harness-retro',
-          label: 'Strong',
-          status: 'done',
-          next: ['ship'],
-          chore: { kind: 'command', importance: 'strongly-recommended' },
-        },
-        { id: 'ship', type: 'ship', label: 'Ship', status: 'assumed', next: [] },
-      ]),
-    );
+    const out = renderFlow(importanceDoc());
     // the bug: no chained inline class token anywhere in the diagram
     expect(out).not.toMatch(/:::[A-Za-z][\w-]*:::/);
     // importance applied as separate, valid `class` statements
     expect(out).toContain('class opt impOptional;');
     expect(out).toContain('class strong impStrong;');
     // and every fence actually parses
-    for (const block of mermaidBlocks(out)) {
-      const [res] = validateMermaid([{ path: 'importance', text: block }]);
-      expect(res.valid, `mermaid error: ${res.error}`).toBe(true);
-    }
+    const invalid = fencesUnder('importance').filter((r) => !r.valid);
+    expect(invalid, `mermaid errors: ${JSON.stringify(invalid)}`).toHaveLength(0);
   });
 });
 
@@ -863,56 +962,6 @@ describe('flow-renderer · zoned rail (bands pre ─ [ flight ] ─ post + title
 // the per-node 🗣 user_input bubble is dropped. Golden: reference-td-columns-format.md.
 // ---------------------------------------------------------------------------
 describe('flow-renderer · TD two-column layout (plan 043; AC-01..05)', () => {
-  const td = (): FlowDoc =>
-    doc(
-      [
-        { id: 'research', type: 'research', label: 'Research', status: 'done', next: ['plan'] },
-        { id: 'plan', type: 'plan', label: 'Plan', status: 'done', next: ['p1'] },
-        { id: 'p1', type: 'phase', label: 'Phase 1', status: 'in_progress', next: ['ship'] },
-        { id: 'ship', type: 'merge', label: 'Ship', status: 'assumed', next: [] },
-        // plan's TWO excursions → must collapse into ONE box (AC-02)
-        {
-          id: 'wsA',
-          type: 'workshop',
-          label: 'WS A',
-          status: 'done',
-          branch_of: 'plan',
-          next: ['plan'],
-        },
-        {
-          id: 'wsB',
-          type: 'workshop',
-          label: 'WS B',
-          status: 'done',
-          branch_of: 'plan',
-          next: ['plan'],
-        },
-        // p1's excursions — a done chore + an incomplete strongly-recommended chore
-        {
-          id: 'boot',
-          type: 'harness-boot',
-          label: 'boot',
-          status: 'done',
-          branch_of: 'p1',
-          next: ['p1'],
-          chore: { kind: 'command', importance: 'recommended' },
-        },
-        {
-          id: 'sync',
-          type: 'harness-retro',
-          label: 'sync coverage',
-          status: 'todo',
-          branch_of: 'p1',
-          next: ['p1'],
-          chore: { kind: 'command', importance: 'strongly-recommended' },
-        },
-      ],
-      {
-        nav: { now: 'p1', next: 'ship' },
-        agents: [{ slug: 'reviewer', kind: 'companion', render: 'wrap', covers: ['p1'] }],
-      } as Partial<FlowDoc>,
-    );
-
   it('AC-01 — emits exactly one `flowchart TD` with a single connected spine chain', () => {
     const out = renderFlow(td());
     expect(mermaidBlocks(out)).toHaveLength(1);
@@ -975,7 +1024,7 @@ describe('flow-renderer · TD two-column layout (plan 043; AC-01..05)', () => {
   });
 
   it('emits valid mermaid for the full TD-columns shape (headless mermaid.parse)', () => {
-    const [res] = validateMermaid([{ path: 'td', text: mermaidBlock(renderFlow(td())) }]);
+    const [res] = fencesUnder('td');
     expect(res.valid, `mermaid error: ${res.error}`).toBe(true);
   });
 });
