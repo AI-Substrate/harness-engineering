@@ -1,0 +1,69 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Phase 1: Drop the host pin and prove the happy path",
+        "slug": "phase-1",
+        "status": "draft",
+        "summary": ""
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Drop the unsatisfiable host pin, keep the digest, and prove the POSITIVE direction — the direction the original suite never tested."
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-0001",
+          "title": "Write the FAILING test FIRST: fake a redirect to release-assets.githubusercontent.com and assert the download SUCCEEDS. Run it against the CURRENT code and confirm it FAILS. If it passes before the fix it is not testing the fix, and this whole plan is built on it.",
+          "state": "unchecked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0002"
+          ]
+        },
+        {
+          "id": "tk-0002",
+          "title": "Remove the release_host pin at all three sites — pin.ts:22 (declaration), regenerate.ts:123 (manifest writer), install.ts:467 (only reader, expectHost). Leave no orphan field in the generated manifest. Prime measured the radius at exactly three; every other rg hit is a .git/ai/working_logs blob, so do not let a naive grep talk you into more.",
+          "state": "unchecked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001"
+          ]
+        },
+        {
+          "id": "tk-0003",
+          "title": "Prove integrity is UNCHANGED and not coupled to the host check: a payload whose SHA-256 does not match is still refused with nothing placed on disk, INCLUDING after a redirect to the real CDN host. The digest was always the real control; this plan must not weaken it while removing the one that never worked.",
+          "state": "unchecked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0003"
+          ]
+        },
+        {
+          "id": "tk-0004",
+          "title": "Add a test that FAILS if regenerate stops emitting the remaining pinned fields. release_host had no such test, which is precisely why it could ship in a state that never worked — a security-relevant field with no assertion that it survives regeneration.",
+          "state": "unchecked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0004"
+          ]
+        },
+        {
+          "id": "tk-0005",
+          "title": "Exercise the install end-to-end as far as this environment allows, then state the boundary HONESTLY: what was proven by fake, what by live probe, and what remains unverified because a real network install is not reproducible here. Do not let 'the tests pass' stand in for 'the install works'; that substitution is how this shipped.",
+          "state": "unchecked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0005"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "done_when",
+      "value": {}
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "The collector install path has never worked — drop the host pin, keep the digest (#124)",
+        "slug": "078-collector-install-host-pin",
+        "status": "draft",
+        "summary": "Drop the unsatisfiable release_host pin, keep the digest, and prove the happy path succeeds."
+      }
+    },
+    {
+      "name": "summary",
+      "value": "harness doctor --install-collector cannot succeed on any platform. pin.ts declares release_host: 'github.com' and the downloader refuses any redirect leaving it, but GitHub ALWAYS redirects release-asset downloads to a CDN host. The guard fires on the happy path and the download never starts, so the only install path plan 073 shipped has never worked.\n\nProven universal by control rather than assumed: an unrelated repo (cli/cli v2.62.0) redirects to the same CDN host. The hostname changed recently; the redirect did not. A github.com host pin could never have matched — which is why the fix is to DROP the pin and rely on the SHA-256, not to allowlist the current CDN host that GitHub has just renamed once already.\n\nThe suite is green because the only redirect test fakes a redirect to cdn.example.com — a host that SHOULD be refused. It proves the guard fires when it should; nothing proves it does not fire when it should not. That asymmetry IS the defect, and adding another negative case would deepen it while looking like more coverage."
+    },
+    {
+      "name": "goals",
+      "value": [
+        "harness doctor --install-collector actually installs the pinned collector — the happy path succeeds against GitHub's real redirect behaviour.",
+        "Integrity is preserved by the property that actually provides it: the pinned SHA-256, verified before anything is placed on disk.",
+        "The test suite proves the POSITIVE direction — a redirect to the real CDN host SUCCEEDS — not only that a bad redirect is refused. The missing direction is the whole defect.",
+        "Whatever replaces the pin is asserted by a test, so a security-relevant field cannot silently stop being emitted by regenerate the way release_host could."
+      ]
+    },
+    {
+      "name": "non_goals",
+      "value": [
+        "Allowlisting release-assets.githubusercontent.com. Ruled out by prime: it buys a fix that breaks the next time GitHub renames the host, which it has just done. A host allowlist that cannot be satisfied on the happy path is not defence-in-depth, it is an outage.",
+        "Adding more NEGATIVE redirect cases. The existing asymmetry is the defect; another refusal test makes it worse while reading as more coverage.",
+        "Answering plan 075's named-pipe premise. Still open, now unblocked by an approved one-off side-load rather than by this plan.",
+        "Sweeping the wider half-injected-seam pattern across the suite. Named on #124, not fixed here.",
+        "Touching 077 / PR #118. Separate stream, waiting on the consumer's re-run."
+      ]
+    },
+    {
+      "name": "acceptance_criteria",
+      "value": [
+        {
+          "state": "unchecked",
+          "id": "ac-0001",
+          "claim": "The release_host pin is removed at all three live sites — the declaration (pin.ts), the manifest writer (regenerate.ts), and its only reader (install.ts) — with no orphan field left in the generated manifest.",
+          "receipt": "Blast radius measured by prime at exactly three sites; every other rg hit is a .git/ai/working_logs blob, not source."
+        },
+        {
+          "state": "unchecked",
+          "id": "ac-0002",
+          "claim": "A test fakes a redirect to release-assets.githubusercontent.com and asserts the download SUCCEEDS. This is the load-bearing AC: the existing suite only ever proved the guard fires when it should, and no fake reproduced GitHub's actual redirect.",
+          "receipt": "Must FAIL against the pre-fix code. A positive-direction test that passes before the fix is not testing the fix."
+        },
+        {
+          "state": "unchecked",
+          "id": "ac-0003",
+          "claim": "Integrity is unchanged: a payload whose SHA-256 does not match the pin is still refused, and nothing is placed on disk. Dropping the host pin must not weaken the digest check that was always the real control.",
+          "receipt": "Existing digest tests pass untouched, plus a case proving refusal survives a redirect to the real CDN host — the two must not be coupled."
+        },
+        {
+          "state": "unchecked",
+          "id": "ac-0004",
+          "claim": "Whatever pinned fields remain are ASSERTED by a test that fails if regenerate stops emitting them. release_host had no such test, which is why it could ship unsatisfiable.",
+          "receipt": "Prime's finding: no test anywhere asserted release_host — not its presence, value, or survival through regeneration."
+        },
+        {
+          "state": "unchecked",
+          "id": "ac-0005",
+          "claim": "The end-to-end install is exercised as far as this environment allows, and any step that could NOT be verified here is named rather than implied.",
+          "receipt": "A real network install is not reproducible in CI; state what was proven by fake, what by live probe, and what remains unverified."
+        }
+      ]
+    },
+    {
+      "name": "phases",
+      "value": [
+        {
+          "id": "ph-2e37",
+          "title": "Phase 1: Drop the host pin and prove the happy path",
+          "brief": "",
+          "state": "unchecked",
+          "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
+        }
+      ]
+    }
+  ]
+}
