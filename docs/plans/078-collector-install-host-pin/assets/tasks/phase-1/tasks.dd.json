@@ -1,0 +1,74 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Phase 1: Drop the host pin and prove the happy path",
+        "slug": "phase-1",
+        "status": "draft",
+        "summary": ""
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Drop the unsatisfiable host pin, keep the digest, and prove the POSITIVE direction — the direction the original suite never tested."
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-0001",
+          "title": "Write the FAILING test FIRST: fake a redirect to release-assets.githubusercontent.com and assert the download SUCCEEDS. Run it against the CURRENT code and confirm it FAILS. If it passes before the fix it is not testing the fix, and this whole plan is built on it.",
+          "state": "checked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0002"
+          ],
+          "receipt": "npx vitest run test/services/doctor/collector/download.test.ts against UNFIXED code: 1 failed | 12 passed. The new positive test failed with reason:'redirect' — the guard firing on the happy path, i.e. the defect reproduced."
+        },
+        {
+          "id": "tk-0002",
+          "title": "Remove the release_host pin at all three sites — pin.ts:22 (declaration), regenerate.ts:123 (manifest writer), install.ts:467 (only reader, expectHost). Leave no orphan field in the generated manifest. Prime measured the radius at exactly three; every other rg hit is a .git/ai/working_logs blob, so do not let a naive grep talk you into more.",
+          "state": "checked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001"
+          ],
+          "receipt": "Removed at FOUR sites (ac-0001, PM accepted the 4th): pin.ts release_host declaration, regenerate.ts renderPinSource line + its comment, install.ts expectHost arg, download.ts expectHost field + hostOf() + the guard + the 'redirect' DownloadFailureReason. No optional param retained (dead configuration). Test-side: expectHost dropped from the request helper; the cdn.example.com negative DELETED with a loud in-place comment."
+        },
+        {
+          "id": "tk-0003",
+          "title": "Prove integrity is UNCHANGED and not coupled to the host check: a payload whose SHA-256 does not match is still refused with nothing placed on disk, INCLUDING after a redirect to the real CDN host. The digest was always the real control; this plan must not weaken it while removing the one that never worked.",
+          "state": "checked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0003"
+          ],
+          "receipt": "New test: 'still refuses a bad digest AFTER a redirect to the real CDN host' — same CDN redirect as the happy path, only the bytes differ; asserts digest-mismatch, fs.paths()==[] , no rename, temp dir removed. Existing digest tests untouched and passing. 252 collector tests green."
+        },
+        {
+          "id": "tk-0004",
+          "title": "Add a test that FAILS if regenerate stops emitting the remaining pinned fields. release_host had no such test, which is precisely why it could ship in a state that never worked — a security-relevant field with no assertion that it survives regeneration.",
+          "state": "checked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0004"
+          ],
+          "receipt": "Added 'renderPinSource emits every pinned field — by NAME' with a HARDCODED field list. Mutation-proved in two steps: (1) drop expect_schema_version from the generator only -> named test fails; (2) also drop it from pin.ts (simulating a re-run of the regenerator) -> the byte-for-byte test SELF-HEALS and passes, while the named test still fails. That self-heal is the hole ac-0004 exists to close. Mutation reverted; suite green."
+        },
+        {
+          "id": "tk-0005",
+          "title": "Exercise the install end-to-end as far as this environment allows, then state the boundary HONESTLY: what was proven by fake, what by live probe, and what remains unverified because a real network install is not reproducible here. Do not let 'the tests pass' stand in for 'the install works'; that substitution is how this shipped.",
+          "state": "checked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0005"
+          ],
+          "receipt": "LIVE: real NodeDownload/NodeHash/NodeFs/NodeExecutableBit ran downloadAndVerify against the real pinned asset -> ok:true, digest matches pin, 14578176 bytes, executable:true, redirects:1; placed file is Mach-O arm64 and reports 1.6.21. COUNTER-PROOF: pre-fix guard reinstated into dist and re-run on the same live download -> ok:false reason:redirect, i.e. the E130 from #124 reproduced live then fixed. UNVERIFIED and stated: doctor --install-collector itself never run (state file/config/hooks fake-only), no install to the real ~/.git-ai path (shared machine), 5 of 6 platforms not installed end-to-end. just checks: every hard gate ok; 3 warn-launch degraded, all pre-existing and none in a touched file."
+        }
+      ]
+    },
+    {
+      "name": "done_when",
+      "value": {}
+    }
+  ]
+}

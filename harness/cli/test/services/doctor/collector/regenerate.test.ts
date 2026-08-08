@@ -151,3 +151,45 @@ describe('renderPinSource — a bump is a readable one-file diff (ac-000d)', () 
     expect(renderPinSource(GITAI_PIN, GITAI_PIN.version, digests)).toBe(current);
   });
 });
+
+describe('renderPinSource emits every pinned field — by NAME (078 · ac-0004)', () => {
+  /**
+   * The list is hardcoded ON PURPOSE, and that is the whole test.
+   *
+   * The byte-for-byte test above cannot catch a field being dropped, because it
+   * SELF-HEALS: delete a line from `renderPinSource`, run the regenerator, and
+   * `pin.ts` loses the field too — the comparison goes green with the field
+   * gone. That is precisely how a security-relevant pinned field can leave the
+   * codebase with the suite passing, and `release_host` lived its whole life
+   * with no assertion of any kind on it (plan 078 · #124).
+   *
+   * Asserting against a list written down here, rather than against the pin's
+   * own keys, is what makes this test unable to heal itself: removing a field
+   * now requires deleting it from THIS list, in a diff a reviewer reads.
+   */
+  const REQUIRED_FIELDS = ['release_base_url', 'version', 'expect_schema_version', 'artifacts'];
+
+  const digests = Object.fromEntries(
+    KEYS.map((key) => [key, GITAI_PIN.artifacts[key].sha256]),
+  ) as Record<PlatformKey, string>;
+
+  it.each(REQUIRED_FIELDS)('emits `%s` into the generated manifest', (field) => {
+    expect(renderPinSource(GITAI_PIN, GITAI_PIN.version, digests)).toContain(`${field}:`);
+  });
+
+  it('emits every artifact — file AND digest — for all six platforms', () => {
+    const source = renderPinSource(GITAI_PIN, GITAI_PIN.version, digests);
+    for (const key of KEYS) {
+      expect(source).toContain(`'${key}': {`);
+      expect(source).toContain(`file: '${GITAI_PIN.artifacts[key].file}'`);
+      expect(source).toContain(`sha256: '${digests[key]}'`);
+    }
+  });
+
+  it('leaves NO orphan release_host in the generated manifest (078 · ac-0001)', () => {
+    // Dropped at all four live sites. If it reappears in generated output while
+    // nothing declares or reads it, that is dead configuration free to disagree
+    // with reality — and this time it would disagree by refusing every install.
+    expect(renderPinSource(GITAI_PIN, GITAI_PIN.version, digests)).not.toContain('release_host');
+  });
+});

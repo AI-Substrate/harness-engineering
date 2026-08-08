@@ -18,8 +18,6 @@
  * differently.
  */
 export const GITAI_PIN = {
-  /** Where the artifacts come from — pinned so a redirect off this host is refused. */
-  release_host: 'github.com',
   /** Release download base; the artifact URL is the base, tag and file joined. */
   release_base_url: 'https://github.com/git-ai-project/git-ai/releases/download',
   /** The exact release tag. NEVER 'latest'. */
