@@ -1,0 +1,39 @@
+harness/cli/src/adapters/fs/fake-fs.ts
+  s_2144149b8925d9::t_1ff0b38653d1b9 365-373,375-379
+harness/cli/test/adapters/fs/fake-fs.test.ts
+  s_9739a1944e1e79::t_c4a0a0d0b6e7a8 264-287
+harness/cli/test/skills.test.ts
+  s_5fb02f4c2e672e::t_02557a5874c4a4 1-2,51-61,63-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ab44268de19e552864c6f8f2cf41c8ced8922bc1",
+  "prompts": {},
+  "sessions": {
+    "s_2144149b8925d9": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "a0ceb387-9784-4e93-bc44-6dcaf10f0105",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_5fb02f4c2e672e": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "8d1895b0-4879-43cc-8219-fe5b3101d0ab",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_9739a1944e1e79": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "49171d85-70d5-4fac-b53c-753db58d28c3",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
