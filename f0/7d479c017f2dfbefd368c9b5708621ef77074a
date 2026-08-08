@@ -1,0 +1,27 @@
+docs/plans/077-windows-suite-portability/assets/tasks/phase-1/tasks.dd.json
+  s_a76964380084ef::t_6350f79b1ed14f 1-109
+docs/plans/077-windows-suite-portability/assets/tasks/phase-1/tasks.dd.md
+  s_a76964380084ef::t_3110041ffd2ae5 1-53
+docs/plans/077-windows-suite-portability/original-ask.md
+  s_a76964380084ef::t_f3370a3e98b10c 1-76
+docs/plans/077-windows-suite-portability/plan.dd.json
+  s_a76964380084ef::t_1ddb8800b6745a 1-104
+docs/plans/077-windows-suite-portability/plan.dd.md
+  s_a76964380084ef::t_b8c3dc253c58c7 1-76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f07d479c017f2dfbefd368c9b5708621ef77074a",
+  "prompts": {},
+  "sessions": {
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
