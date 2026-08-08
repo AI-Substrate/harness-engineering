@@ -1,0 +1,33 @@
+harness/cli/src/acts/flow.ts
+  s_c05f2da2173927::t_e6a0bb09ddacac 13
+harness/cli/src/acts/plan/fence.ts
+  s_c05f2da2173927::t_77533d7e41f428 1
+package-lock.json
+  s_866871d7833f91::t_257b8d2069d3fb 11,34-36,40-51,1941,1948,3277,3282,3425,3432,6667-6676,6737,6747
+package.json
+  s_866871d7833f91::t_d95bba910f1c42 55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0e49d3258228a06bb2217d48ab97ad60873966f7",
+  "prompts": {},
+  "sessions": {
+    "s_866871d7833f91": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "657cf08c-8320-4e07-8c6f-25d4230c12c6",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_c05f2da2173927": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "79ade151-0112-43ff-abf8-81bd059263ef",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
