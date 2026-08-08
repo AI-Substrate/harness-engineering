@@ -90,12 +90,37 @@ process.env.TMPDIR = PRIVATE_TMP_NAMESPACE;
 process.env.TMP = PRIVATE_TMP_NAMESPACE;
 process.env.TEMP = PRIVATE_TMP_NAMESPACE;
 
-afterAll(() => {
+/**
+ * `rmSync` for TEARDOWN only, tolerant of a lingering Windows handle (plan 108
+ * B3): `git daemon` can hold a file handle open for a brief window AFTER its
+ * process has already exited (`TestGitDaemonManager.stop()` confirms exit via
+ * `waitForExit` before any teardown ever runs this), and Windows refuses the
+ * delete with EPERM until the OS actually releases it. A teardown failure must
+ * never fail a case whose own assertions already passed, so this retries
+ * briefly — the process is already gone, so the handle release is imminent —
+ * and tolerates EPERM once retries are exhausted rather than failing the run
+ * over it. Any OTHER error code is a real problem and still throws.
+ */
+async function rmTeardown(path: string, retries = 5, delayMs = 100): Promise<void> {
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      rmSync(path, { recursive: true, force: true });
+      return;
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException | undefined)?.code;
+      if (code !== 'EPERM') throw err;
+      if (attempt === retries) return;
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+}
+
+afterAll(async () => {
   for (const [name, value] of Object.entries(AMBIENT_TMP_ENV)) {
     if (value === undefined) delete process.env[name];
     else process.env[name] = value;
   }
-  rmSync(PRIVATE_TMP_NAMESPACE, { recursive: true, force: true });
+  await rmTeardown(PRIVATE_TMP_NAMESPACE);
 });
 
 /**
@@ -413,7 +438,7 @@ class TestGitDaemonManager {
     let stopped = this.lastStopped;
     if (this.active !== undefined) stopped = await this.stop();
     if (stopped === undefined) throw new Error('git daemon has no lifecycle evidence for teardown');
-    rmSync(this.root, { recursive: true, force: true });
+    await rmTeardown(this.root);
     return stopped;
   }
 }

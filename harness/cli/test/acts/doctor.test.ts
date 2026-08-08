@@ -8,6 +8,7 @@ import { FakeSocketProbe } from '../../src/adapters/net/fake-socket-probe.js';
 import type { CliIo, OutputMode, Writers } from '../../src/output/output-port.js';
 import type { HarnessVerb } from '../../src/services/extensions/contract.js';
 import type { VerbRegistry } from '../../src/services/extensions/registry.js';
+import { toPosix } from '../../src/services/shared/posix-path.js';
 
 function ioFor(mode: OutputMode): { io: CliIo; out: () => string; err: () => string } {
   let o = '';
@@ -150,7 +151,13 @@ describe('registerDoctorAct — CI hermeticity (plan 074 · ac-000a, review F006
     // been an actual `net.createConnection` against the filesystem.
     const dir = mkdtempSync(join(tmpdir(), 'p074-doctor-'));
     const gitconfig = join(dir, 'gitconfig');
-    const socket = join(dir, 'never-listening.sock');
+    // toPosix, not join()'s raw output: a backslash is an ESCAPE CHARACTER inside a
+    // git config value, so a native Windows path here turns `\n` into a literal
+    // newline and git rejects the entire file (`fatal: bad config line 2`) — the
+    // probe is then never consulted, and the test fails accusing `registerDoctorAct`
+    // of bypassing its injected seam, which is the wrong component entirely (plan
+    // 108 B1). Git accepts forward slashes on Windows, so this is a no-op on POSIX.
+    const socket = toPosix(join(dir, 'never-listening.sock'));
     writeFileSync(gitconfig, `[trace2]\n\teventTarget = af_unix:stream:${socket}\n`);
     const previous = process.env.GIT_CONFIG_GLOBAL;
     process.env.GIT_CONFIG_GLOBAL = gitconfig;

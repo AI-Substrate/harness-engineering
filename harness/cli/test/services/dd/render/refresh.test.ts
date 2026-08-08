@@ -19,8 +19,15 @@ import {
   watchForRegeneration,
 } from '../../../../src/services/dd/render/refresh.js';
 import { parseSchemaDeclaration } from '../../../../src/services/dd/schema/declarations.js';
+import { toPosix } from '../../../../src/services/shared/posix-path.js';
 
-const FIXTURES = fileURLToPath(new URL('./fixtures/', import.meta.url));
+// toPosix, not fileURLToPath's raw output: `fileURLToPath` returns a NATIVE
+// path (backslashed on Windows), and appending forward-slash literal segments
+// onto it produces one value with BOTH separators mixed
+// (`C:\...\fixtures\chain/repo/`). That value is used as a schema KEY, not
+// only for I/O — mixing separators there is why it fails outright rather than
+// merely looking odd (plan 108 C2).
+const FIXTURES = toPosix(fileURLToPath(new URL('./fixtures/', import.meta.url)));
 const CHAIN = `${FIXTURES}chain/repo/`;
 
 /** Content IS the hash: injective, deterministic, and obviously not a real digest. */

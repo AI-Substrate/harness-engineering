@@ -65,8 +65,16 @@ function requireConfig(): DepcruiseConfig {
   return req(DEPCRUISE_CONFIG) as DepcruiseConfig;
 }
 
-/** The dd service tree — the boundary's subject, matching the depcruise rule's `to.path`. */
-const DD_SERVICE = join(SRC, 'services', 'dd');
+/**
+ * The dd service tree — the boundary's subject, matching the depcruise rule's
+ * `to.path`. Forward-slashed (`dd-core-isolation.test.ts`'s convention, converged
+ * on rather than reinvented): `join()` yields native separators, and
+ * `offendingSpecifiers` compares this against a `resolve()`-computed target with a
+ * hard-coded `/` — on Windows, native vs forward-slash, that comparison is NEVER
+ * true, every candidate is filtered out before the permitted-list check ever runs,
+ * and "every dd import names a barrel" reads PASS having examined nothing (D6).
+ */
+const DD_SERVICE = join(SRC, 'services', 'dd').replaceAll('\\', '/');
 
 /**
  * The ONLY modules inside that tree a flow consumer may import. Adding one is a
@@ -83,7 +91,7 @@ const PERMITTED_DD_MODULES: readonly string[] = [
   join(DD_SERVICE, 'links', 'index.ts'),
   join(DD_SERVICE, 'plan', 'index.ts'),
   join(DD_SERVICE, 'schema', 'index.ts'),
-];
+].map((path) => path.replaceAll('\\', '/'));
 
 /**
  * Every module specifier in a source file — `import`, `import type`, `export …
@@ -120,6 +128,34 @@ function flowConsumerSources(): { file: string; text: string }[] {
   ];
 }
 
+interface DdServiceReference {
+  spec: string;
+  /** Forward-slashed, resolved absolute target — comparable to `DD_SERVICE`/`PERMITTED_DD_MODULES`. */
+  target: string;
+}
+
+/**
+ * Every relative specifier in a chunk of source that resolves INTO the dd service
+ * tree at all — permitted or not. This is the stage between the walk and the
+ * permitted-list check, and it is the one D6 broke: on Windows the native-vs-
+ * forward-slash mismatch made this filter discard every candidate, so nothing ever
+ * reached the permitted-list check and `offendingSpecifiers` returned `[]` having
+ * examined nothing. A `files.length > 0` assertion on the WALK would not have
+ * caught that — the walk was never the broken stage. Asserting non-zero HERE, the
+ * last narrowing stage before the predicate whose emptiness means PASS, is what
+ * would have.
+ */
+function referencesTargetingDdService(source: string, fromDir: string): DdServiceReference[] {
+  const out: DdServiceReference[] = [];
+  for (const spec of specifiersOf(source)) {
+    if (!spec.startsWith('.')) continue; // a package, not a path into this tree
+    const target = resolve(fromDir, spec).replace(/\.js$/, '.ts').replaceAll('\\', '/');
+    if (!target.startsWith(`${DD_SERVICE}/`)) continue; // not the dd service at all
+    out.push({ spec, target });
+  }
+  return out;
+}
+
 /**
  * The offending specifiers in a chunk of source, RESOLVED — the detector under test.
  *
@@ -132,14 +168,9 @@ function flowConsumerSources(): { file: string; text: string }[] {
  * different questions is how a boundary starts disagreeing with itself.
  */
 function offendingSpecifiers(source: string, fromDir: string): string[] {
-  const out: string[] = [];
-  for (const spec of specifiersOf(source)) {
-    if (!spec.startsWith('.')) continue; // a package, not a path into this tree
-    const target = resolve(fromDir, spec).replace(/\.js$/, '.ts');
-    if (!target.startsWith(`${DD_SERVICE}/`)) continue; // not the dd service at all
-    if (!PERMITTED_DD_MODULES.includes(target)) out.push(spec);
-  }
-  return out;
+  return referencesTargetingDdService(source, fromDir)
+    .filter((ref) => !PERMITTED_DD_MODULES.includes(ref.target))
+    .map((ref) => ref.spec);
 }
 
 /** Resolve as if written in `services/flow/` — the common consumer location. */
@@ -183,6 +214,25 @@ describe('flow → dd: published SDK seams only (F001, F008)', () => {
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
+  });
+
+  /**
+   * D6's own guard-on-the-guard (plan 108, PR 2 task 4) — the same principle
+   * `sourcesUnder`'s recursion test above already applies to the WALK, applied
+   * here to the FILTER: "every dd import names a barrel" is a "no offenders"
+   * assertion, so it reads PASS both when the corpus is clean and when the stage
+   * before it silently discarded every candidate. Those are different facts. This
+   * asserts the corpus reaching the permitted-list check is not empty — it is,
+   * because real flow-consumer sources genuinely import the dd barrels — so a
+   * filter that discards everything (D6's actual defect, native-vs-forward-slash)
+   * is caught HERE, not confused with a clean corpus one stage later.
+   */
+  it('D6 guard-on-the-guard: real flow-consumer sources DO reach the dd-service filter', () => {
+    const survived = flowConsumerSources().flatMap(({ file, text }) => {
+      const dir = file === 'acts/flow.ts' ? dirname(ACT_CONSUMER) : join(FLOW_SRC, dirname(file));
+      return referencesTargetingDdService(text, dir);
+    });
+    expect(survived.length).toBeGreaterThan(0);
   });
 
   it('every dd import in a flow consumer names a barrel, never a module path', () => {
