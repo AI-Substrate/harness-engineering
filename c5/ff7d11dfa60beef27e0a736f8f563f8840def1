@@ -1,0 +1,21 @@
+harness/cli/test/services/flow/flow-dd-sdk-seam.test.ts
+  s_2a2451d95e064e::t_b4a5c0c1b9446b 182
+  s_2a2451d95e064e::t_454dc106156e42 137-143,154-168,170,172,174-177
+  s_2a2451d95e064e::t_b2672155fcca9d 198,257,261-263,265-276
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c5ff7d11dfa60beef27e0a736f8f563f8840def1",
+  "prompts": {},
+  "sessions": {
+    "s_2a2451d95e064e": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "587f8924-3447-4784-b872-2fb1c784af82",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
