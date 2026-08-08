@@ -1,0 +1,29 @@
+docs/plans/078-collector-install-host-pin/assets/REVIEWER-BRIEF.md
+  s_c05f2da2173927::t_ea4310355bd351 1-75
+docs/plans/078-collector-install-host-pin/assets/reviews/phase-1-review.md
+  s_fa19509427e641::t_cc54500bfb85e7 1-125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ff0f3f9a8592c527e511a0300c406e7de1a2c94d",
+  "prompts": {},
+  "sessions": {
+    "s_c05f2da2173927": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "79ade151-0112-43ff-abf8-81bd059263ef",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_fa19509427e641": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "26806aaf-52b7-4b65-966f-80ae2eea079e",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
