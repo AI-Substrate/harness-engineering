@@ -106,3 +106,68 @@ of the hook subject, so it preserves the deliberate anti-self-skip boundary.
   the run).
 
 No native-Windows outcome is claimed by this re-review.
+
+## Re-review — CHANGES
+
+**Reviewer**: `pij-brave-flute` (terra)
+**Commit reviewed**: `4297c100`
+**Scope**: complete `s077/suite-portability` branch against current base
+`44308756`
+
+### P1 — The silent-success guard accepts a sourced helper that can add exits
+
+The count guard recognizes only direct `&& exit 0`, `|| exit 0`, and `|| true`
+in `.githooks/post-commit`.  Its command scan treats `source` as a builtin, and
+the "absence" assertions reject only `trap` and `set -e`.  Consequently this
+valid shell change remains green:
+
+```sh
+source ./silent-helper.sh
+```
+
+The count remains five, `source` is not unaccounted, and neither absence
+assertion fires.  A helper can then introduce `return 0`, an `exit 0`, or a
+swallowed failure outside the tracked text.  That contradicts the contract's
+claim to fail on a sixth silent-success path.  The same blind spot applies to
+an invoked subshell or externally defined function.
+
+This is separate from accepted D11: it is not the textual external-command
+scan.  It is the silent-exit enumerator itself accepting a construct that moves
+silent-success behavior out of the file it counts.  Reject source/dot/function
+and subshell forms explicitly, or make the enumeration include their reachable
+content.
+
+### P1 — The flow-eval SessionEvidence lock-step is editor-only
+
+`test/extensions/flow-eval/session-evidence-lockstep.test.ts` says its mutual
+`CliEvidence`/`ExtEvidence` assignments "fail to compile" when either
+declaration loses `duration_s` or `harness_session_id`.  `harness/cli/tsconfig.json`
+includes only `src`, so this test is never typechecked; Vitest transpiles it and
+the runtime property reads still pass.  Thus either declaration can drift while
+the claimed lock-step control stays green.
+
+Add a runtime schema/key-set parity control over the two evidence boundaries, or
+downgrade this file's claim to editor-time assistance.  The extension's payload
+parser is useful validation, but it is not mutual declaration parity.
+
+### P2 — The public verb-conformance example overstates its enforcement
+
+`test/services/extensions/contract.test.ts` says `tsc --noEmit` type-checks its
+example objects and that contract drift therefore breaks the build.  The same
+`include: ["src"]` excludes this test.  Its runtime assertions exercise the
+current example, but a new required structural member unused by the example can
+drift without a type gate.  Add runtime shape validation for the public example
+or describe the example's static conformance as editor-only.
+
+### Confirmed
+
+- L3 and L4 use the correct entity: caller intent across both command and
+  environment shadowing.  The four negative-control rows are non-vacuous, and
+  the clean-shell positive proves both a full contract pass and a real marker.
+- The contractless-probe runtime precondition closes the specific non-optional
+  parameter claim; it is not being re-reported as type-only.
+- The D13 audit found source-backed enforcement for `DD_ISSUE_CODES`,
+  `DD_REMEDIES`, ingress policy, and the core adapter seam; their test-local
+  type annotations are supplemented by runtime checks or `src` typechecking.
+- Targeted shell, hook, lock-step, and verb-contract suites pass **28/28**.
+- No native-Windows outcome is claimed by this review.
