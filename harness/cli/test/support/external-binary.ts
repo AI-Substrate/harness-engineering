@@ -121,6 +121,15 @@ export interface ShellContract {
    * swallow a failure, and so produce a successful run that did nothing. The
    * drift guard pins this count; a new one added to the script fails the build
    * rather than quietly widening the surface this contract has to cover.
+   *
+   * **Counted WITHIN the file, and that scope is itself guarded.** A count over
+   * one file says nothing if the file can delegate — one `source ./helper.sh`
+   * keeps the number at five while moving the behaviour somewhere the count
+   * cannot see. So a separate control rejects every form that moves execution
+   * out of the file (`source`, dot-sourcing, `eval`, `exec`, `trap`, a local
+   * script invocation, an explicit subshell), rather than trying to follow them:
+   * following is a behaviour enumeration over arbitrary content and does not
+   * terminate; the ways of LEAVING a file are finite and do.
    */
   silentSuccessPaths: number;
 }

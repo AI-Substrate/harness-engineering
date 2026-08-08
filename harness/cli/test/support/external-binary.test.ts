@@ -556,9 +556,70 @@ describe('the probe cannot silently fall behind the hook it guards', () => {
 
     expect(silent).toBe(POST_COMMIT_HOOK_CONTRACT.silentSuccessPaths);
 
-    // The shapes this enumeration cannot reason about. If one ever appears, the
-    // count above stops being complete, and this says so rather than under-count.
-    expect(hook).not.toMatch(/\btrap\b/);
+    // Implicit control flow WITHIN the file, which would make the count above
+    // an undercount without adding a visible branch. (Leaving the file
+    // altogether is a different claim — see the scope case below.)
     expect(hook).not.toMatch(/set\s+-\w*e\w*\s/);
+  });
+
+  /**
+   * The enumeration's SCOPE, not its content (terra's P1, round 4).
+   *
+   * The two earlier findings were about WHAT gets counted. This one is about
+   * WHERE counting stops, and it is the same disease at a different joint: a
+   * single `source ./helper.sh` keeps the count at five, is treated as a
+   * builtin so the command scan does not flag it, and trips neither absence
+   * assertion — while the helper is free to introduce a `return 0`, an `exit 0`
+   * or a swallowed failure that the guard never sees, because the guard counts
+   * one file and the behaviour now lives in another.
+   *
+   * ## Why this REJECTS rather than FOLLOWS
+   *
+   * The alternative was to follow the delegation and enumerate transitively.
+   * That is a BEHAVIOUR enumeration over arbitrary sourced content and it does
+   * not terminate — the same trap that cost three rounds on the probe itself.
+   * Rejecting is an ENTITY enumeration: the ways a POSIX shell script can move
+   * execution out of its own text are finite and small, and they are listed
+   * below in full.
+   *
+   * The guard's claim is about A FILE. Anything that leaves the file invalidates
+   * that claim regardless of what it then does — so we do not need to know what
+   * a sourced helper contains, only that the hook did not leave. The tracked
+   * hook uses none of these forms today, so this costs nothing now and fails
+   * loudly the moment someone reaches for one.
+   *
+   * Deliberately conservative: these patterns scan comments too, so prose that
+   * merely NAMES one of these forms fails the test. That is the correct bias for
+   * a guard whose whole job is to refuse to be quietly wrong, and the fix is to
+   * reword the comment.
+   */
+  it('the hook does not DELEGATE execution outside the file this guard counts', () => {
+    const hook = readFileSync(HOOK, 'utf8');
+
+    /** Every way a POSIX shell script can move execution out of its own text. */
+    const SCOPE_EXTENDING: ReadonlyArray<readonly [string, RegExp]> = [
+      [
+        '`source <file>` — sourced text can carry silent exits this guard never sees',
+        /(^|\s)source\s+\S/m,
+      ],
+      ['`. <file>` (dot-sourcing) — the same thing, spelled shorter', /^[ \t]*\.[ \t]+\S/m],
+      ['`eval` — executes constructed text, which cannot be enumerated statically', /\beval\b/],
+      [
+        '`exec` — replaces the process, so the rest of this file never decides anything',
+        /\bexec\b/,
+      ],
+      ['`trap` — moves control to a handler outside the linear flow that was counted', /\btrap\b/],
+      ['a local script invocation (`./…`) — a whole other file of exits', /(^|[;&|][ \t]*)\.\//m],
+      [
+        'an explicit subshell at command position — its exits do not mean what they look like',
+        /^[ \t]*\(/m,
+      ],
+    ];
+
+    const delegations = SCOPE_EXTENDING.filter(([, pattern]) => pattern.test(hook)).map(
+      ([name]) => name,
+    );
+
+    expect(delegations).toEqual([]);
   });
 });

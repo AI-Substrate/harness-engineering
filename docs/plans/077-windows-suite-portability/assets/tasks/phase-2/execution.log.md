@@ -406,6 +406,77 @@ every type-level guarantee living in `test/` is editor-time only here.
 Every mutation was applied to the real tracked hook and reverted; all four guards
 bite and each one *names the cause* rather than merely going red.
 
+### ROUND 4 — the enumeration's SCOPE, not its content (terra's P1)
+
+Rounds 1–3 were all about **what** gets counted. This one is the first finding
+about **where counting stops**, and it is the same disease at a different joint.
+
+**The hole**: a single `source ./silent-helper.sh` in the hook keeps the
+silent-path count at five, is treated as a builtin so the command scan does not
+flag it, and trips neither absence assertion — while the sourced helper is free
+to introduce a `return 0`, an `exit 0`, or a swallowed failure the guard never
+sees. The count was over ONE FILE, and nothing checked that the file stayed put.
+
+**The fix REJECTS rather than FOLLOWS**, on the PM's steer and for the same
+reason the entity cut was right in round 3. Following a delegation means
+enumerating the behaviour of arbitrary sourced content, which does not terminate.
+Rejecting means enumerating the ways a POSIX shell script can move execution out
+of its own text — finite, small, and listed in full:
+
+| form | why it breaks the claim |
+|---|---|
+| `source <file>` | sourced text carries exits the guard never sees |
+| `. <file>` | the same thing, spelled shorter |
+| `eval` | executes constructed text; not statically enumerable |
+| `exec` | replaces the process — the rest of the file decides nothing |
+| `trap` | moves control to a handler outside the counted linear flow |
+| `./…` | a whole other file of exits |
+| `( … )` at command position | its exits do not mean what they look like |
+
+The guard's claim is about **a file**. Anything that leaves the file invalidates
+that claim regardless of what it then does — so the guard does not need to know
+what a helper contains, only that the hook did not leave. The tracked hook uses
+none of these today, so this costs nothing now and fails loudly the moment
+someone reaches for one.
+
+Deliberately conservative: the patterns scan comments too, so prose that merely
+NAMES one of these forms fails. That is the correct bias for a guard whose job is
+to refuse to be quietly wrong, and the fix is to reword the comment.
+
+`trap` moved here from the count case rather than being asserted in both — two
+places asserting one fact is the very defect round 3 fixed, and re-committing it
+inside its own fix would have been ironic.
+
+#### Round-4 evidence (measured — every form mutated into the REAL hook, then reverted)
+
+| mutation | result |
+|---|---|
+| **terra's exact repro** — `source ./silent-helper.sh` | ✅ fails |
+| `. ./helper.sh` | ✅ fails |
+| `eval "exit 0"` | ✅ fails |
+| `exec true` | ✅ fails |
+| `trap "" EXIT` | ✅ fails |
+| `./helper.sh` | ✅ fails |
+| `( exit 0 )` | ✅ fails |
+
+And the failure **names the construct and why it matters** rather than going red:
+
+```
++ [
++   "`source <file>` — sourced text can carry silent exits this guard never sees",
++ ]
+```
+
+### Two findings deliberately NOT fixed here
+
+Terra's D13 sweep found two more instances in code this branch never touched —
+`test/extensions/flow-eval/session-evidence-lockstep.test.ts` (claims "fail to
+compile") and `test/services/extensions/contract.test.ts` (claims `tsc --noEmit`
+gates the example). **Both are real, and both are routed to prime's #123**, whose
+measured blast radius is 172 type errors across 348 test files. Fixing them here
+would be scope creep with a good excuse on a consumer-blocked stream. Recorded so
+that "not fixed" is a decision on the record rather than an omission.
+
 ### A defect I introduced in the round-2 control, and fixed at root
 
 
@@ -486,6 +557,7 @@ stands, and the brief's "skip the file" wording is superseded.
 | D10 | **Noteworthy** | **The tk-0103 fix was itself incomplete, and silently so** — found by review (terra), not by a run. A probe proving only the LAST link of a resolution chain accepts a shell that makes the hook `exit 0` having done nothing. Level 1 failed loudly (127); level 2 failed silently. The general lesson: when a guard's subject bails out with a SUCCESS code, a partial guard converts a skip into a false pass, so the guard must cover every property reached *before the observable*, not merely the property that failed last time. |
 | D11 | **Deferred** | The probe deliberately does **not** run the hook (a probe that executes its subject reports a broken subject as an environment gap and skips itself green), so it can drift from the hook. Mitigated by a control that reads the tracked hook and fails naming any external command the probe does not account for — verified by adding `jq` to the hook and watching it fail. **Mitigated, not eliminated**: the scan is textual, so an obscure invocation shape could still slip past. |
 | D12 | **Noteworthy** | **A comment is a reminder, and reminders do not survive contact with a different file.** The round-2 leak control listed the SHARED `os.tmpdir()` and went red only under full-suite parallelism — the exact "correct leak check over the WRONG namespace" defect that `exec-remote-telemetry-git.int.test.ts` documents in a long, well-written comment I had read an hour earlier, in another file, while working on this very task. The prose did not transfer; nothing was reachable at the point of use. **GENERAL RULE**: knowledge that must be applied at a point of use has to be reachable there **as a tool** — a shared helper, a fixture, a lint rule, a default — not as prose in a neighbouring file. Prose scales with the reader's attention; a helper scales with reuse. This is encode-don't-remind one level over: the earlier author DID encode the lesson, but encoded it as an **explanation** rather than as an **affordance**, so the next person had to re-derive it by failing. The fix that would have carried it: a shared private-temp-namespace helper in `test/support/`, which is now the obvious candidate for a later round. |
+| D14 | **Noteworthy** | **The first finding about an enumeration's SCOPE rather than its content.** A `source ./helper.sh` kept the silent-path count correct while moving the behaviour out of the counted file. GENERAL RULE: a static enumeration over a file is only as good as the guarantee that the file does not DELEGATE — so guard the boundary as well as the contents, and REJECT the delegating forms rather than following them (leaving-a-file is a finite entity set; the contents of what you would follow is not). |
 | D13 | **Deferred** | **The "fails to compile" guarantee is editor-only, and I claimed it before measuring.** The contract parameter is non-optional, which should make a blind probe uncompilable — but `harness/cli/tsconfig.json` sets `include: ["src"]`, so **test files are never typechecked**. Measured, not assumed: a deliberate `const x: number = "s"` added to a test file passed the gate as `typecheck: ok` (biome caught that particular line, but biome has no type information and would not catch a missing argument). Closed with a **runtime** precondition that throws, plus a control that proves it fires. The residual gap is repo-wide and out of scope here: **no test file in this repo is typechecked by the gate**, so every type-level guarantee that lives in `test/` is editor-time only. Two files in `src/` already document this boundary. |
 
 ### Harness note (invariant #14 — pay the difficulty forward)
@@ -525,8 +597,8 @@ measurement indicates. The brief predicted ~40. I am not claiming the number —
 their re-run is the measurement, and the timeout component is the wide part of the
 error bar.
 
-**Suite denominator changes**: +19 cases (`external-binary.test.ts`, including the
-round-2 and round-3 controls), so their 5096 becomes **5115**.
+**Suite denominator changes**: +20 cases (`external-binary.test.ts`, including the
+round-2, round-3 and round-4 controls), so their 5096 becomes **5116**.
 
 ### Local gate (measured, macOS)
 
@@ -537,7 +609,7 @@ Three warn-launch degradeds (`arch-check`, `markdown-lint`, `windows-check`) are
 pre-existing; `windows-check`'s 6 findings are all in `.harness/extensions/html-snap/`,
 none in any file this phase touched.
 
-**Full suite: 5115/5115, three consecutive clean runs** — run repeatedly on
+**Full suite: 5116/5116, three consecutive clean runs** — run repeatedly on
 purpose, because the round-2 control that had to be repaired (D12) failed only
 under full-suite parallelism and passed in isolation. A single green run would
 have been an honest report of an unreliable measurement.
