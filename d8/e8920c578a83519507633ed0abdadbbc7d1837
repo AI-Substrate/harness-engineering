@@ -1,0 +1,19 @@
+docs/how/guard-evasion-catalogue.md
+  s_13e213c1c0636b::t_c3c733ab98fa83 116-230
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d8e8920c578a83519507633ed0abdadbbc7d1837",
+  "prompts": {},
+  "sessions": {
+    "s_13e213c1c0636b": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "e55f0d74-97d7-495c-bb9a-0badfdfb787a",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
