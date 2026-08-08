@@ -134,6 +134,13 @@ interface DdServiceReference {
   target: string;
 }
 
+/** What the scan looked at, so a PASS can say so — see `countPackageSpecifiers` below. */
+interface DdServiceScan {
+  references: DdServiceReference[];
+  /** Specifiers deliberately NOT resolved because they name a package, not a path. */
+  packageSpecifiers: number;
+}
+
 /**
  * Every relative specifier in a chunk of source that resolves INTO the dd service
  * tree at all — permitted or not. This is the stage between the walk and the
@@ -144,16 +151,35 @@ interface DdServiceReference {
  * caught that — the walk was never the broken stage. Asserting non-zero HERE, the
  * last narrowing stage before the predicate whose emptiness means PASS, is what
  * would have.
+ *
+ * `packageSpecifiers` is the OTHER half, and it is the half no assertion here can
+ * usefully bound. The `startsWith('.')` skip is correct while `dd` is in-tree — a
+ * package specifier is not a miss, it is deliberately out of scope. The moment
+ * `dd` is consumed AS A PACKAGE the same line silently retires this entire
+ * boundary, and every assertion below still passes because the remaining in-tree
+ * imports keep the counts healthy. Observed live: a dd-consume trial rewired
+ * `acts/flow.ts` to import dd from an installed package and this guard stayed
+ * 12/12 GREEN with the boundary crossed.
+ *
+ * So the count is of what was EXAMINED AND EXCLUDED, not of what survived. A
+ * survivor count reports health from the members it still has, which is a guard
+ * measuring its own scope. Its PAIR is `test/architecture/dd-core-isolation.test.ts`
+ * (#132), which carries the identical `startsWith('.')` line and the identical
+ * counting — CHANGE BOTH OR NEITHER.
  */
-function referencesTargetingDdService(source: string, fromDir: string): DdServiceReference[] {
+function referencesTargetingDdService(source: string, fromDir: string): DdServiceScan {
   const out: DdServiceReference[] = [];
+  let packageSpecifiers = 0;
   for (const spec of specifiersOf(source)) {
-    if (!spec.startsWith('.')) continue; // a package, not a path into this tree
+    if (!spec.startsWith('.')) {
+      packageSpecifiers += 1; // a package, not a path into this tree — see the doc comment
+      continue;
+    }
     const target = resolve(fromDir, spec).replace(/\.js$/, '.ts').replaceAll('\\', '/');
     if (!target.startsWith(`${DD_SERVICE}/`)) continue; // not the dd service at all
     out.push({ spec, target });
   }
-  return out;
+  return { references: out, packageSpecifiers };
 }
 
 /**
@@ -169,7 +195,7 @@ function referencesTargetingDdService(source: string, fromDir: string): DdServic
  */
 function offendingSpecifiers(source: string, fromDir: string): string[] {
   return referencesTargetingDdService(source, fromDir)
-    .filter((ref) => !PERMITTED_DD_MODULES.includes(ref.target))
+    .references.filter((ref) => !PERMITTED_DD_MODULES.includes(ref.target))
     .map((ref) => ref.spec);
 }
 
@@ -228,11 +254,26 @@ describe('flow → dd: published SDK seams only (F001, F008)', () => {
    * is caught HERE, not confused with a clean corpus one stage later.
    */
   it('D6 guard-on-the-guard: real flow-consumer sources DO reach the dd-service filter', () => {
-    const survived = flowConsumerSources().flatMap(({ file, text }) => {
+    const scans = flowConsumerSources().map(({ file, text }) => {
       const dir = file === 'acts/flow.ts' ? dirname(ACT_CONSUMER) : join(FLOW_SRC, dirname(file));
       return referencesTargetingDdService(text, dir);
     });
+    const survived = scans.flatMap((scan) => scan.references);
+    const packages = scans.reduce((total, scan) => total + scan.packageSpecifiers, 0);
+
     expect(survived.length).toBeGreaterThan(0);
+
+    // PRINTED, never asserted — and `packages` is the number to watch. It is
+    // deliberately unbounded: package specifiers are correctly out of scope while
+    // dd is in-tree, and the day dd is consumed as a package that count carries
+    // the whole boundary while every assertion here still passes. A survivor
+    // count would stay healthy on the remaining in-tree imports and say nothing.
+    // Pair: test/architecture/dd-core-isolation.test.ts (#132).
+    console.error(
+      `flow→dd seam — examined ${scans.length} consumer source(s): ${survived.length} ` +
+        `specifier(s) reached the dd-service filter, ${packages} package specifier(s) ` +
+        'NOT resolved (out of scope while dd is in-tree)',
+    );
   });
 
   it('every dd import in a flow consumer names a barrel, never a module path', () => {
