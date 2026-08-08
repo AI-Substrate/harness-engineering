@@ -362,9 +362,21 @@ export class FakeFs implements FsPort, FileSystemWritePort {
     const source = src.replace(/\\/g, '/').replace(/\/+$/, '');
     const target = dest.replace(/\\/g, '/').replace(/\/+$/, '');
     this.copyDirs.push({ src, dest });
+    // Compare NORMALISED against NORMALISED (#108). `source` is already POSIX, but
+    // the seeded keys are whatever the test wrote — and a test that derives them
+    // from a real path (`resolvePackagedSkillsDir()`) hands us backslashes on
+    // win32. Testing a POSIX needle against raw keys made this the one step in
+    // copyDir that did NOT tolerate separators, so the whole method reported "no
+    // such source" and every caller through the packaged-skills staging path
+    // failed on Windows only. The copy loop below already normalises; this now
+    // matches it.
+    const asPosix = (p: string): string => p.replace(/\\/g, '/');
     const hasSource =
-      source in this.dirs ||
-      Object.keys(this.files).some((p) => p === source || p.startsWith(`${source}/`));
+      Object.keys(this.dirs).some((d) => asPosix(d) === source) ||
+      Object.keys(this.files).some((p) => {
+        const q = asPosix(p);
+        return q === source || q.startsWith(`${source}/`);
+      });
     if (!hasSource) return false;
 
     this.mkdirp(target);

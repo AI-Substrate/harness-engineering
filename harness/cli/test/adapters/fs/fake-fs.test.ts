@@ -261,6 +261,30 @@ describe('FakeFs', () => {
     expect(fs.readdir('/tmp/harness-skills-0')).toContain('references');
   });
 
+  /**
+   * #108 · the known-bad fixture, runnable on every platform.
+   *
+   * `skills.test.ts` seeds this fake from `resolvePackagedSkillsDir()`, which
+   * returns a REAL path — POSIX here, `C:\...\skills` on the consumer's Windows
+   * box. copyDir normalised its `src` argument but matched it against raw keys,
+   * so on win32 alone it answered "no such source" and 9 skills tests failed.
+   * Windows-shaped keys are the input that distinguishes the fix from the defect,
+   * so the assertion is written with them rather than with the platform's own
+   * separator — this case is red before the fix on macOS and Linux too.
+   */
+  it('copyDir finds its source when the seeded keys are WINDOWS-shaped (#108)', () => {
+    const dir = 'C:\\src\\pristine-116\\skills';
+    const fs = new FakeFs(
+      { [`${dir}/eng-harness-flow/SKILL.md`]: 'skill', [`${dir}/README.md`]: 'readme' },
+      { [dir]: ['README.md', 'eng-harness-flow'], [`${dir}/eng-harness-flow`]: ['SKILL.md'] },
+    );
+
+    expect(fs.copyDir(dir, '/tmp/harness-skills-0')).toBe(true);
+
+    expect(fs.readText('/tmp/harness-skills-0/README.md')).toBe('readme');
+    expect(fs.readText('/tmp/harness-skills-0/eng-harness-flow/SKILL.md')).toBe('skill');
+  });
+
   it('deleteFile removes a file, drops it from the parent listing, records, and is idempotent (T007)', () => {
     /*
     Test Doc:
