@@ -199,3 +199,39 @@ another round.
 The `set -e` split was not reviewed: the unguarded eighth delegation construct
 is already a blocking result, so the stated termination condition does not
 permit spending this round on the secondary question.
+
+## Final-pass review — CHANGES
+
+**Reviewer**: `pij-brave-flute` (terra)
+**Commit reviewed**: `1627f298`
+**Scope**: claim-to-capability alignment of the downgraded scope guard
+
+### P1 — The enumerated subshell form is still not position-independent
+
+The downgrade says every enumerated form is position-independent and explicitly
+names a departure in a conditional as covered.  The subshell pattern is still
+anchored to the start of a line or after `;`, `&`, or `|`:
+
+```ts
+/(?:^|[;&|]\s*)\(/
+```
+
+It therefore accepts this valid Bash:
+
+```sh
+if ( : ); then :; fi
+```
+
+The exact current matchers produce **0** scope matches and **0** unaccounted
+commands (`if` is a builtin).  The same omission occurs for a subshell nested
+inside command substitution.  This is not a ninth form or an undocumented
+limitation: it is the already-enumerated **explicit subshell** form in an
+expression context the documentation says the pattern covers.
+
+Confirmed separately: `result="$(./silent-helper.sh)"` now reaches both intended
+controls — the position-independent `./` scope pattern and the widened
+command-substitution scanner.  No pattern was appended for that case.
+
+The secondary `set -e` / `trap` ownership split was not reviewed, because this
+P1 is a claim that still outruns the guard and meets the dispatch threshold for
+another round.
