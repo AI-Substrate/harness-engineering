@@ -13,7 +13,7 @@ import {
 import { createServer } from 'node:net';
 import { devNull, tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { FakeFs } from '../../../src/adapters/fs/fake-fs.js';
 import { ExecRemoteTelemetryGit } from '../../../src/adapters/git/exec-remote-telemetry-git.js';
 import type { RemoteRepository } from '../../../src/adapters/git/remote-telemetry-git-port.js';
@@ -50,8 +50,13 @@ const git = (cwd: string, args: string[]): string =>
  *
  * Set once for the file rather than sprinkled per case: the property is true of
  * the whole file, and a per-case number invites the next author to guess.
+ *
+ * The number itself now lives in `vitest.config.ts` as a 30s GLOBAL floor (plan
+ * 077 · tk-0101): a downstream consumer measured the 5s default manufacturing
+ * ~30% of their Windows failures, so every file gets the allowance this one
+ * asked for. A local `vi.setConfig({ testTimeout: 20_000 })` here would now be a
+ * DOWNGRADE below that floor, so this file states its reason and defers.
  */
-vi.setConfig({ testTimeout: 20_000, hookTimeout: 30_000 });
 
 /**
  * A PRIVATE temp namespace for this file (tk-7173 / DL-008 / COORD-001).
@@ -1680,7 +1685,47 @@ describe('ExecRemoteTelemetryGit — HTTPS credential lease RED cluster B', () =
   });
 });
 
-describe('ExecRemoteTelemetryGit — real network-served Git', () => {
+/**
+ * The real-`git daemon` cluster — SKIPPED on win32, deliberately and by name
+ * (plan 077 · tk-0104 · #108).
+ *
+ * These cases spawn a real `git daemon` on loopback, restart it mid-flight, and
+ * assert on its lifecycle evidence. On Windows the daemon holds its handles past
+ * SIGTERM, so teardown races the next generation and the `TestGitDaemonManager`
+ * assertions fail on process bookkeeping rather than on anything about the
+ * adapter. The downstream consumer of #108 measured ~16 failures here and
+ * deprioritised them AS COVERAGE, not as an oversight: Linux CI runs this
+ * cluster properly on every push, so what Windows adds is noise, not signal.
+ *
+ * ## The skip is scoped to the daemon, NOT to the file
+ *
+ * The brief said "skip `exec-remote-telemetry-git` on win32". Scoping it to the
+ * whole file would have skipped 91 cases to silence ~16 — and the other 73
+ * (credential discovery, lease handling, config shaping) are in-process, pass on
+ * Windows today, and are exactly the kind of thing a Windows product defect would
+ * show up in. Declaring them unproven to buy a rounder number would be the same
+ * error as claiming them proven: both make the gap illegible. The daemon is the
+ * part that cannot run here, so the daemon is the part that gets declared.
+ *
+ * ## What is NOT proven on win32 while this stands
+ *
+ * That `ExecRemoteTelemetryGit` fetches, pushes and re-reads telemetry refs
+ * against a REAL network-served git over the git:// transport; that a mid-flight
+ * daemon restart is survived with exactly one reconnect and no ref corruption;
+ * and that a fetch against a dead daemon fails loudly rather than silently
+ * reporting an empty ref list. Every one of those is asserted on Linux CI, so the
+ * claim is covered — it is just not covered ON WINDOWS, and nobody has measured
+ * whether the transport behaves the same there.
+ */
+const DAEMON_UNSUPPORTED = process.platform === 'win32';
+
+if (DAEMON_UNSUPPORTED) {
+  console.warn(
+    'SKIPPED — the real-`git daemon` cases in exec-remote-telemetry-git.int.test.ts do not run on win32. This is NOT a missing binary: `git daemon` starts here, but it holds its handles past SIGTERM, so the fixture cannot tear a generation down deterministically and the failures are about process lifecycle rather than about the adapter. These cases are NOT reimplementable — a faked transport would assert that our fake agrees with our code, which is the one thing this cluster exists NOT to do. What is now unproven on this host: that ExecRemoteTelemetryGit fetches/pushes telemetry refs over a REAL git:// transport, that a mid-flight daemon restart is survived with exactly one reconnect and no ref corruption, and that a fetch against a dead daemon fails loudly instead of reporting an empty ref list. Linux CI proves all three on every push; only the WINDOWS behaviour of that transport is unmeasured.',
+  );
+}
+
+describe.skipIf(DAEMON_UNSUPPORTED)('ExecRemoteTelemetryGit — real network-served Git', () => {
   let root: string;
   let work: string;
   let remote: string;

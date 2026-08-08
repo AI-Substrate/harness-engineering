@@ -10,6 +10,32 @@ export default defineConfig({
     // shouldn't be gated on coverage. Phase 3 CI surfaces the summary.
     passWithNoTests: true,
     /**
+     * A stopwatch is not an assertion (plan 077 · tk-0101 · #108).
+     *
+     * vitest's 5s default was reporting ~30% of a downstream consumer's Windows
+     * failures — 46 of 151 FAIL lines read `Test timed out in 5000ms` — and it
+     * MANUFACTURED failures: five files that pass on `main` went red on the s077
+     * branch purely because that run was 32% slower on the same box with nothing
+     * else changed. While that stands, no other measurement of this suite is
+     * trustworthy, on any platform.
+     *
+     * GLOBAL, not win32-only, deliberately. The property that blows the budget is
+     * "this suite spawns processes constantly" — real git, loopback daemons, real
+     * hooks — not "this suite is on Windows". The same contention bites a loaded
+     * Linux dev box and a shared CI runner (#109 measures exactly that), so a
+     * win32-only raise would leave the flake in place here while encoding
+     * "Windows is the weird one", which is the wrong diagnosis attached to the
+     * right symptom. It is also a FLOOR: three files previously set their own
+     * 20s via `vi.setConfig`, which would now be a downgrade, so they defer to
+     * this value instead.
+     *
+     * What it costs: a genuinely hung test takes 30s to fail rather than 5s. That
+     * is the correct trade — a hang still fails, whereas a too-tight budget fails
+     * cases whose assertions were never in doubt and hides the ones that were.
+     */
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
+    /**
      * Trace2 is disabled for the WHOLE test run, and that is the point.
      *
      * Once git-ai's hooks are installed on a machine it writes a GLOBAL
