@@ -83,22 +83,84 @@ export function hasBinary(binary: string): boolean {
   return present;
 }
 
+/** How the hook invokes a command — shape matters, not just resolvability. */
+export type InvocationShape = 'substitution' | 'invocation';
+
+/** Where the fixture obtains a command: the ambient host, or a shim it plants. */
+export type CommandProvider = 'ambient' | 'shim';
+
+/** One command a shell script needs, with the shape it is actually used in. */
+export interface RequiredCommand {
+  name: string;
+  shape: InvocationShape;
+  provider: CommandProvider;
+}
+
+/**
+ * Everything about an environment that a shell script's observable depends on.
+ *
+ * This is the SINGLE SOURCE (plan 077 · tk-0103 round 3). The probe drives off
+ * it and the drift guard checks the tracked script against it, so a fact cannot
+ * be declared in one place and forgotten in the other — which is exactly how
+ * `node` came to be "accounted for" by the drift guard while never being
+ * exercised by the probe.
+ */
+export interface ShellContract {
+  /** Commands the script runs, each in the shape it runs them. */
+  commands: readonly RequiredCommand[];
+  /**
+   * Environment variables the script BRANCHES ON. The caller's value for these
+   * must survive into the script — see `probeShell` for why that is a property
+   * in its own right and not a restatement of "the command resolves".
+   */
+  envGuards: readonly string[];
+  /** Does the script file-test a path that GIT produced? */
+  gitPathTest: boolean;
+  /**
+   * How many SILENT-SUCCESS paths the script has — branches that exit 0 or
+   * swallow a failure, and so produce a successful run that did nothing. The
+   * drift guard pins this count; a new one added to the script fails the build
+   * rather than quietly widening the surface this contract has to cover.
+   */
+  silentSuccessPaths: number;
+}
+
+/**
+ * The contract of the TRACKED `.githooks/post-commit`, as measured from it.
+ *
+ * Its five silent-success paths are the reason this type exists at all:
+ *
+ * | # | branch | kind |
+ * |---|---|---|
+ * | 1 | `HARNESS_NO_TELEMETRY=1 && exit 0` | env |
+ * | 2 | `HARNESS_NO_TELEMETRY_AUTOSYNC=1 && exit 0` | env |
+ * | 3 | `git rev-parse … \|\| exit 0` | command |
+ * | 4 | `[ -f "$bin" ] \|\| exit 0` | git-produced path test |
+ * | 5 | `node "$bin" … \|\| true` | command, failure SWALLOWED |
+ *
+ * Levels 1–3 of this defect all lived in rows 3 and 5, which is why enumerating
+ * COMMANDS looked like a complete answer: it explained every level already hit
+ * and none of the ones not yet hit. Rows 1, 2 and 4 are equally able to produce a
+ * successful run that writes no marker, and row 1 was demonstrated doing so.
+ */
+export const POST_COMMIT_HOOK_CONTRACT: ShellContract = {
+  commands: [
+    { name: 'git', shape: 'substitution', provider: 'ambient' },
+    { name: 'node', shape: 'invocation', provider: 'shim' },
+  ],
+  envGuards: ['HARNESS_NO_TELEMETRY', 'HARNESS_NO_TELEMETRY_AUTOSYNC'],
+  gitPathTest: true,
+  silentSuccessPaths: 5,
+};
+
+/** The value the probe passes for every env guard, and expects to survive. */
+const ENV_SENTINEL = 'harness-probe-sentinel';
+
 /** What a shell probe found, and — when it failed — which property failed. */
 export interface ShellCapability {
   capable: boolean;
   /** A human-readable name for the FIRST property that failed. */
   failure?: string;
-}
-
-/** Options for {@link probeShell} / {@link canRunShellScript}. */
-export interface ShellProbeOptions {
-  /**
-   * Ambient commands the caller's fixtures need the SHELL to resolve and run —
-   * not merely commands this process can see. `git` is the one that matters for
-   * the post-commit hook; see {@link probeShell} for why that distinction has now
-   * bitten twice.
-   */
-  requires?: readonly string[];
 }
 
 /** Probe exit codes → the property that failed. Kept beside the script below. */
@@ -108,75 +170,104 @@ const PROBE_FAILURES: Record<number, string> = {
   23: '`git rev-parse --show-toplevel` could not be run from inside the shell',
   24: '`git rev-parse --show-toplevel` produced no path',
   25: 'a path PRODUCED BY GIT did not survive a `[ -f … ]` test in this shell — the exact step at which the tracked hook exits 0 having done nothing',
+  26: "an environment value set BY THE CALLER did not survive into the script — something in this shell's startup (BASH_ENV, an rc file, an exported default) overrode it, so the script branches on a value its caller never chose",
   127: 'a shimmed executable on the prepended PATH could not be resolved',
 };
 
 /**
  * Can `shell` run a script the way this suite's shell-hook fixtures run one?
- * Probed once per process, per (shell, requires) pair (plan 077 · tk-0103).
+ * Probed once per process, per (shell, contract) pair (plan 077 · tk-0103).
  *
- * This executes the mechanism instead of asking after the name, because the two
- * answers diverge on real machines — and it now proves EVERY command-resolution
- * property the fixtures reach before their observable assertion, because proving
- * only some of them is how this same defect shipped twice.
+ * It executes the MECHANISM rather than asking after the name, and it drives off
+ * a {@link ShellContract} rather than a hand-kept list — because three rounds of
+ * this defect proved that a probe and a separate declaration of the same facts
+ * WILL diverge.
  *
- * ## The two levels this has already failed at — both silently
+ * ## Three levels shipped. Each fix predicted the next gap.
  *
- * **Level 1 (presence).** The guard was `hasBinary('bash')`. On Windows `bash` is
- * `C:\Windows\system32\bash.exe` — WSL bash. It answers `--version`, so the guard
- * passed; it then ate the backslashes in the Windows temp path and exited 127.
+ * | level | what the guard proved | what it missed | found by |
+ * |---|---|---|---|
+ * | 1 | `bash` is PRESENT | WSL bash mangles a native path, exits 127 | the consumer |
+ * | 2 | native path + a generic shim | the hook resolves `git` FIRST | review |
+ * | 3 | + `git` resolution | the hook invokes `node`, which a shell FUNCTION can shadow | review |
+ * | 4 | + `node` unshadowed | the hook branches on ENV VARS a startup file can re-export | reproduced before shipping |
  *
- * **Level 2 (partial capability).** The replacement proved native-path execution
- * and shim-on-PATH resolution — and nothing else. But the tracked hook resolves
- * `git` FIRST, and does it like this:
+ * Every level exited 0. That is the whole character of this bug: the hook's
+ * bail-outs are `exit 0` and `|| true`, so an environment gap produces a
+ * SUCCESSFUL run that did nothing, the fixture fails on its marker rather than on
+ * an exit code, and the red reads as a hook defect.
  *
- * ```sh
- * repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
- * bin="$repo_root/harness/cli/bin/harness.js"
- * [ -f "$bin" ] || exit 0
- * node "$bin" telemetry sync …
- * ```
+ * ## Why enumerating COMMANDS terminated the wrong search
  *
- * Both bail-outs are `exit 0`. So a shell that passes a git-blind probe but
- * cannot resolve `git` — or cannot make a git-PRODUCED path survive `[ -f … ]`,
- * which is exactly what a Windows-shaped `C:/…` path does to WSL bash — runs the
- * hook to a **successful exit that did nothing**. The fixture then fails on the
- * marker, not on the exit code, and the failure looks like a hook defect rather
- * than an unusable shell.
+ * Levels 1–3 all landed in the command half of the hook, so "enumerate its
+ * commands" looked complete — it explained every level already hit and none of
+ * the ones not yet hit, which is the signature of a frame fitted to past data.
+ * The entity that actually causes these failures is the hook's SILENT-SUCCESS
+ * PATHS, of which commands are 2 of 5. {@link ShellContract} enumerates all five.
  *
- * That second one is the nastier of the two: level 1 failed loudly with 127,
- * level 2 fails SILENTLY at `exit 0`. A guard that half-answers is the same
- * mistake as a guard that answers the wrong question, and it lives in the fix for
- * the first one.
+ * ## The unification: BASH_ENV does not shadow commands, it shadows INTENT
  *
- * ## What it proves now, in ONE spawn against a real temp git repo
+ * A startup file shadows a command with a function (level 3) and a variable with
+ * an export (level 4) by the identical mechanism. Chasing those as separate
+ * defects costs one round each, forever. The property worth proving is the one
+ * underneath: **does what the CALLER passed — PATH entries and env values —
+ * actually survive into the script?** Both projections close at once.
+ *
+ * ## What it proves, in ONE spawn against a real temp git repo
  *
  * 1. **A script at a NATIVE path runs** — WSL bash mangles a Windows path.
- * 2. **Every `requires` command resolves, runs, and its output can be CAPTURED**
- *    through command substitution, from inside the shell.
- * 3. **A path produced BY GIT survives a `[ -f … ]` test** — the hook's own
- *    chain, and the step whose failure is silent.
- * 4. **A shimmed executable on the prepended PATH resolves**, and is the single
- *    observable: nothing prints `CAPABLE` unless every step above succeeded.
+ * 2. **Caller-passed env values SURVIVE** — nothing in the shell's startup
+ *    re-exported them (level 4).
+ * 3. **Every ambient command resolves, runs, and its output is CAPTURABLE**
+ *    through command substitution (level 2).
+ * 4. **A path produced BY GIT survives a `[ -f … ]` test** — the hook's own
+ *    chain, and a step whose failure is silent.
+ * 5. **Every shimmed command runs the executable ON PATH** — proven by a shim
+ *    NAMED for that command, because shadowing is name-specific and a generic
+ *    probe shim proves nothing about `node` (level 3).
+ *
+ * Exit 0 is deliberately NOT the pass condition — every level of this defect
+ * exited 0. The per-command observables are.
  *
  * ## What it deliberately does NOT do: run the hook
  *
  * Running `.githooks/post-commit` itself would make the probe drift-proof, and
  * was rejected: a probe that executes the SUBJECT cannot tell "this environment
  * cannot run it" from "this hook is broken", so a genuine hook defect would be
- * reported as an environment gap and the whole suite would skip itself green.
- * The probe therefore mirrors the hook's MECHANISMS and never its LOGIC — if the
- * hook is broken, the probe passes and the tests correctly fail. The cost of that
- * choice is drift: a new dependency in the hook needs a matching `requires` here.
- * That is a real, accepted liability, recorded rather than papered over.
+ * reported as an environment gap and the whole suite would skip itself green —
+ * converting a loud failure into a silent absence of coverage, which is strictly
+ * worse than the bug being fixed. The probe mirrors the hook's MECHANISMS and
+ * never its LOGIC. The residual cost is drift, and the drift guard in
+ * `external-binary.test.ts` checks the tracked hook against this same contract so
+ * the two cannot disagree.
  *
- * It never throws: any failure is reported as not-capable with the failed step
- * named, which is the honest reading — the probe cannot tell "shell is broken"
- * from "host is unusual", and for skip purposes it need not.
+ * It never throws: any failure is reported as not-capable with the failed
+ * property named, which is the honest reading — the probe cannot tell "shell is
+ * broken" from "host is unusual", and for skip purposes it need not.
  */
-export function probeShell(shell: string, options: ShellProbeOptions = {}): ShellCapability {
-  const requires = options.requires ?? [];
-  const key = `capability:script:${shell}:${requires.join(',')}`;
+export function probeShell(shell: string, contract: ShellContract): ShellCapability {
+  /**
+   * The contract is enforced at RUNTIME, not only by the type (plan 077 · tk-0103).
+   *
+   * The non-optional parameter was supposed to make a blind probe fail to
+   * compile. It does — in an editor. It does NOT in this repo's gate, because
+   * `harness/cli/tsconfig.json` has `include: ["src"]`, so **test files are never
+   * typechecked**; a deliberate type error in this very file was measured passing
+   * `typecheck: ok`. Two other places in `src` already document that boundary.
+   *
+   * So the type alone would have been a guarantee that reads as enforced and is
+   * not — the exact shape of defect this whole task is about. This throws
+   * instead: LOUDLY, and before any probing, so a caller that omits the contract
+   * gets an error naming the fix rather than a confident `capable: false`
+   * (which would silently skip the suite) or a confident `capable: true`.
+   */
+  if (contract === undefined || !Array.isArray(contract.commands)) {
+    throw new TypeError(
+      'probeShell requires an explicit ShellContract. There is deliberately no default: a probe with no contract is levels 1–4 of this defect, which is how three rounds of "capable" verdicts were wrong. Pass POST_COMMIT_HOOK_CONTRACT, or state a partial contract explicitly and say why in a comment.',
+    );
+  }
+
+  const key = `capability:${shell}:${JSON.stringify(contract)}`;
   const cached = capabilityCache.get(key);
   if (cached !== undefined) return cached;
 
@@ -187,50 +278,76 @@ export function probeShell(shell: string, options: ShellProbeOptions = {}): Shel
     const binDir = join(root, 'bin');
     mkdirSync(binDir, { recursive: true });
 
-    // The shim, mirroring what the fixtures place on PATH.
-    const shim = join(binDir, 'harness-probe-shim');
-    writeFileSync(shim, '#!/usr/bin/env bash\nprintf "%s" "CAPABLE"\n');
-    chmodSync(shim, 0o755);
+    /** Plant an executable named `name` that announces itself when it RUNS. */
+    const plantShim = (name: string, token: string): void => {
+      const path = join(binDir, name);
+      writeFileSync(path, `#!/usr/bin/env bash\nprintf "%s\\n" "${token}"\n`);
+      chmodSync(path, 0o755);
+    };
+
+    // The generic observable: proves the script reached its end at all.
+    plantShim('harness-probe-shim', 'CAPABLE');
+
+    const shimmed = contract.commands.filter((c) => c.provider === 'shim');
+    for (const command of shimmed) plantShim(command.name, `OK:${command.name}`);
 
     // The target the git-derived path must find — the stand-in for the hook's
     // `[ -f "$repo_root/harness/cli/bin/harness.js" ]`.
     writeFileSync(join(root, 'probe-target'), '');
 
-    const needsGit = requires.includes('git');
-    // A real repository, so `rev-parse --show-toplevel` answers about THIS dir
-    // and the path it returns is one git itself produced on this platform.
-    if (needsGit) spawnSync('git', ['init', '-q'], { cwd: root, stdio: 'ignore' });
+    if (contract.gitPathTest) spawnSync('git', ['init', '-q'], { cwd: root, stdio: 'ignore' });
 
     const lines = ['set -uo pipefail'];
-    for (const command of requires) {
-      lines.push(`probe_out="$('${command}' --version 2>/dev/null)" || exit 21`);
+
+    // (1) Does what the CALLER passed survive into the script? A startup file can
+    //     shadow a variable with an export exactly as it shadows a command with a
+    //     function — same mechanism, and the hook branches on both.
+    for (const guard of contract.envGuards) {
+      lines.push(`[ "\${${guard}-}" = "${ENV_SENTINEL}" ] || exit 26`);
+    }
+
+    // (2) Ambient commands: resolvable, runnable, and their output capturable.
+    for (const command of contract.commands) {
+      if (command.provider !== 'ambient') continue;
+      lines.push(`probe_out="$('${command.name}' --version 2>/dev/null)" || exit 21`);
       lines.push('[ -n "$probe_out" ] || exit 22');
     }
-    if (needsGit) {
+
+    // (3) A path GIT produced, through the file test the hook performs on it.
+    if (contract.gitPathTest) {
       lines.push('probe_root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 23');
       lines.push('[ -n "$probe_root" ] || exit 24');
       lines.push('[ -f "$probe_root/probe-target" ] || exit 25');
     }
+
+    // (4) Shimmed commands, invoked BY NAME and in the hook's argument shape.
+    //     Shadowing is NAME-SPECIFIC, so only a shim named `node` can prove that
+    //     `node` is unshadowed — a generic probe shim proves nothing about it.
+    for (const command of shimmed) {
+      // `"$0"` — a real path argument, always defined, mirroring the hook's
+      // `node "$bin" telemetry sync` without depending on the git block above.
+      lines.push(`${command.name} "$0" probe args`);
+    }
+
     lines.push('harness-probe-shim');
 
-    // The script, invoked by NATIVE path exactly as the fixtures invoke theirs.
     const script = join(root, 'probe.sh');
     writeFileSync(script, `${lines.join('\n')}\n`);
 
-    const probe = spawnSync(shell, [script], {
-      cwd: root,
-      encoding: 'utf8',
-      env: { ...process.env, PATH: `${binDir}${delimiter}${process.env.PATH ?? ''}` },
-    });
+    const env: NodeJS.ProcessEnv = {
+      ...process.env,
+      PATH: `${binDir}${delimiter}${process.env.PATH ?? ''}`,
+    };
+    for (const guard of contract.envGuards) env[guard] = ENV_SENTINEL;
+
+    const probe = spawnSync(shell, [script], { cwd: root, encoding: 'utf8', env });
 
     if (probe.error !== undefined) {
       result = {
         capable: false,
         failure: `the shell itself could not be executed (${probe.error.message})`,
       };
-    } else if (probe.status === 0 && probe.stdout.includes('CAPABLE')) {
-      result = { capable: true };
-    } else {
+    } else if (probe.status !== 0) {
       const named = probe.status === null ? undefined : PROBE_FAILURES[probe.status];
       result = {
         capable: false,
@@ -238,6 +355,21 @@ export function probeShell(shell: string, options: ShellProbeOptions = {}): Shel
           named ??
           `the probe script exited ${String(probe.status)} without reaching its observable`,
       };
+    } else {
+      // Exit 0 is NOT the answer — every level of this defect exited 0. The
+      // observables are: a shadowed command returns success while running
+      // nothing, so its token is the only thing separating the two outcomes.
+      const shadowed = shimmed.find((c) => !probe.stdout.includes(`OK:${c.name}`));
+      if (shadowed !== undefined) {
+        result = {
+          capable: false,
+          failure: `\`${shadowed.name}\` returned SUCCESS without running the executable on PATH — something in this shell shadowed it (a function, alias or builtin from BASH_ENV or an rc file), so a script can invoke it, get exit 0, and observe nothing`,
+        };
+      } else if (!probe.stdout.includes('CAPABLE')) {
+        result = { capable: false, failure: 'the probe script exited 0 without reaching its end' };
+      } else {
+        result = { capable: true };
+      }
     }
   } catch (error) {
     result = { capable: false, failure: `the probe could not be set up (${String(error)})` };
@@ -250,8 +382,8 @@ export function probeShell(shell: string, options: ShellProbeOptions = {}): Shel
 }
 
 /** {@link probeShell}, reduced to the boolean a `skipIf` needs. */
-export function canRunShellScript(shell: string, options: ShellProbeOptions = {}): boolean {
-  return probeShell(shell, options).capable;
+export function canRunShellScript(shell: string, contract: ShellContract): boolean {
+  return probeShell(shell, contract).capable;
 }
 
 /**

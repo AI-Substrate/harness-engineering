@@ -297,7 +297,117 @@ The first two rows are what make the third non-vacuous. Without them this would 
 a test that a stricter probe is stricter — which is exactly the reassurance that
 let level 2 ship.
 
+### ROUND 3 — stop fixing levels, change the entity being enumerated
+
+Terra found **L3**; I reproduced **L4** before shipping. At that point the pattern
+mattered more than either instance:
+
+| level | the guard proved | what it missed | found by |
+|---|---|---|---|
+| L1 | `bash` is PRESENT | WSL bash mangles a native path → exit 127 | the consumer |
+| L2 | native path + a generic shim | the hook resolves `git` FIRST | review (terra) |
+| L3 | + `git` resolution | the hook invokes `node`, which a shell FUNCTION can shadow | review (terra) |
+| L4 | + `node` unshadowed | the hook branches on ENV VARS a startup file can re-export | **reproduced before shipping** |
+
+**The PM proposed enumerating the hook's COMMANDS as the terminating entity. That
+was right in form and wrong in content, and I said so before building** — with a
+reproduction rather than an argument:
+
+```
+startup.sh:  export HARNESS_NO_TELEMETRY=1
+run the REAL hook with HARNESS_NO_TELEMETRY='' passed by the caller
+→ exit=0, marker ABSENT
+```
+
+The caller explicitly set the variable; the startup file re-exported it; the hook
+took its first silent exit. **Nothing there is a command.** L1–L3 all happened to
+land in the command half of the hook, so "enumerate commands" explained every
+level already hit and none of the ones not yet hit — the signature of a frame
+fitted to past data.
+
+**The right entity is the hook's SILENT-SUCCESS PATHS**, of which commands are 2
+of 5. Still finite, still an entity enumeration, still terminates.
+
+**And the unification underneath both L3 and L4**: `BASH_ENV` does not shadow
+*commands*, it shadows **the caller's intent** — a function shadows a command, an
+export shadows a variable, one mechanism with two faces. Chasing the faces costs
+one round each, forever; proving that *what the caller passed survives into the
+script* closes both at once.
+
+#### The count is COUNTED, not read
+
+The enumeration is load-bearing, so it is mechanical and re-runnable:
+
+```sh
+grep -nE '\b(exit|return|trap|exec)\b|\|\||&&|set[[:space:]]+-' .githooks/post-commit
+```
+
+```
+21:set -uo pipefail
+28:[ "${HARNESS_NO_TELEMETRY:-}" = "1" ] && exit 0
+29:[ "${HARNESS_NO_TELEMETRY_AUTOSYNC:-}" = "1" ] && exit 0
+31:repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+33:[ -f "$bin" ] || exit 0   # dist not built / not the harness repo → nothing to do
+36:node "$bin" telemetry sync >/dev/null 2>&1 || true
+37:exit 0
+```
+
+**Five** silent-success paths (28, 29, 31, 33, 36). Line 37 is the normal
+terminus, reached only after the work is done, and is excluded. What the output
+also shows is what is **absent**: no `trap`, no `return`, no `exec`, and
+`set -uo pipefail` carries **no `-e`** — so there is no implicit exit-on-error
+path, and `set -u` aborts *loudly* (non-zero), which is not this class. A test
+pins the number and fails if a sixth appears.
+
+#### What shipped
+
+- **One `ShellContract`**, `POST_COMMIT_HOOK_CONTRACT`, declaring commands *with
+  their invocation shape and provider*, the env guards, the git path test, and
+  the silent-path count. **The probe drives off it and the drift guard checks the
+  tracked hook against it** — so the two cannot disagree. They did disagree
+  before: `node` was in the drift guard's accounted-for set while the probe never
+  exercised it, which is precisely how L3 shipped.
+- **Shims are named for the command** (`node`, not a generic probe shim), because
+  shadowing is name-specific — a generic shim proves nothing about `node`.
+- **Exit 0 is not the pass condition.** Every level of this defect exited 0. The
+  per-command observables are; a shadowed command returns success having run
+  nothing, and its token is the only thing separating the two outcomes.
+- The contract parameter is **non-optional**, so a blind probe is not writable.
+
+#### The claim I had to withdraw — measured, not assumed
+
+I told the PM the non-optional parameter would make a contractless probe **fail to
+compile**. **That was wrong, and I found it by testing it rather than asserting
+it.** `harness/cli/tsconfig.json` has `include: ["src"]`, so **test files are
+never typechecked**: a deliberate `const x: number = "s"` added to a test file
+passed the gate as `typecheck: ok`. The guarantee was editor-time only — a
+guarantee that *reads as enforced and is not*, which is the exact defect class
+this task exists to close. Closed with a **runtime precondition that throws**,
+plus a control proving it fires. Logged as D13, including the repo-wide residue:
+every type-level guarantee living in `test/` is editor-time only here.
+
+#### Round-3 evidence (measured)
+
+| control | measured |
+|---|---|
+| **L3 false positive** — a `node`-shadowing shell is ACCEPTED by the git-only contract | ✅ `true` |
+| **L3 consequence** — the REAL hook under it exits **0** with **no marker** | ✅ |
+| **L3 rejected**, naming `node` as shadowed | ✅ |
+| **L4 false positive** — an env-re-exporting shell is ACCEPTED by the git-only contract | ✅ `true` |
+| **L4 consequence** — the REAL hook under it exits **0** with **no marker** | ✅ |
+| **L4 rejected**, naming the caller's value as overridden | ✅ |
+| **Not merely stricter** — an unshadowed shell passes the FULL contract *and* the real hook writes its marker | ✅ |
+| **Contractless probe throws** rather than guessing | ✅ |
+| Drift guard: **new command** added to the hook | ✅ fails naming `jq` |
+| Drift guard: **new env branch** added | ✅ fails naming `HARNESS_NEW_OPTOUT` |
+| Drift guard: **new silent exit** added | ✅ fails `expected 6 to be 5` |
+| Drift guard: **`trap` introduced** | ✅ fails |
+
+Every mutation was applied to the real tracked hook and reverted; all four guards
+bite and each one *names the cause* rather than merely going red.
+
 ### A defect I introduced in the round-2 control, and fixed at root
+
 
 The first version of the "probe leaves nothing behind" case listed the **shared**
 `os.tmpdir()` for `harness-shell-probe-*`. It passed alone and went **red in the
@@ -375,9 +485,17 @@ stands, and the brief's "skip the file" wording is superseded.
 | D9 | **Deferred** | **D4's class is fixed but UNGUARDED.** `windows-check` scans `.harness/extensions/**` only — `harness/cli/test/**` and `src/**` are explicitly out of its scope — and it has **no PATH-delimiter rule** in WIN001–WIN008 at all. So a reintroduced `':'` PATH join is silently green in both directions: wrong layer, and no rule even if the layer were right. Its own briefing names this failure mode ("a missing rule stays silently green"). A WIN009 rule plus a scope extension would close it; not this round. |
 | D10 | **Noteworthy** | **The tk-0103 fix was itself incomplete, and silently so** — found by review (terra), not by a run. A probe proving only the LAST link of a resolution chain accepts a shell that makes the hook `exit 0` having done nothing. Level 1 failed loudly (127); level 2 failed silently. The general lesson: when a guard's subject bails out with a SUCCESS code, a partial guard converts a skip into a false pass, so the guard must cover every property reached *before the observable*, not merely the property that failed last time. |
 | D11 | **Deferred** | The probe deliberately does **not** run the hook (a probe that executes its subject reports a broken subject as an environment gap and skips itself green), so it can drift from the hook. Mitigated by a control that reads the tracked hook and fails naming any external command the probe does not account for — verified by adding `jq` to the hook and watching it fail. **Mitigated, not eliminated**: the scan is textual, so an obscure invocation shape could still slip past. |
-| D12 | **Noteworthy** | I reproduced a documented defect while fixing another: the round-2 leak control listed the SHARED `os.tmpdir()` and went red under full-suite parallelism — the exact "correct leak check over the wrong namespace" that `exec-remote-telemetry-git.int.test.ts` documents in a long comment I had read an hour earlier. **A comment in one file did not stop the same mistake in another.** A shared private-namespace helper would have; the knowledge existed but was not reachable at the point of use. |
+| D12 | **Noteworthy** | **A comment is a reminder, and reminders do not survive contact with a different file.** The round-2 leak control listed the SHARED `os.tmpdir()` and went red only under full-suite parallelism — the exact "correct leak check over the WRONG namespace" defect that `exec-remote-telemetry-git.int.test.ts` documents in a long, well-written comment I had read an hour earlier, in another file, while working on this very task. The prose did not transfer; nothing was reachable at the point of use. **GENERAL RULE**: knowledge that must be applied at a point of use has to be reachable there **as a tool** — a shared helper, a fixture, a lint rule, a default — not as prose in a neighbouring file. Prose scales with the reader's attention; a helper scales with reuse. This is encode-don't-remind one level over: the earlier author DID encode the lesson, but encoded it as an **explanation** rather than as an **affordance**, so the next person had to re-derive it by failing. The fix that would have carried it: a shared private-temp-namespace helper in `test/support/`, which is now the obvious candidate for a later round. |
+| D13 | **Deferred** | **The "fails to compile" guarantee is editor-only, and I claimed it before measuring.** The contract parameter is non-optional, which should make a blind probe uncompilable — but `harness/cli/tsconfig.json` sets `include: ["src"]`, so **test files are never typechecked**. Measured, not assumed: a deliberate `const x: number = "s"` added to a test file passed the gate as `typecheck: ok` (biome caught that particular line, but biome has no type information and would not catch a missing argument). Closed with a **runtime** precondition that throws, plus a control that proves it fires. The residual gap is repo-wide and out of scope here: **no test file in this repo is typechecked by the gate**, so every type-level guarantee that lives in `test/` is editor-time only. Two files in `src/` already document this boundary. |
 
 ### Harness note (invariant #14 — pay the difficulty forward)
+
+**Twice this round the durable fix was an AFFORDANCE and what we had was PROSE** —
+D6 (platform injection is a convention; nothing enforces it) and D12 (a
+private-namespace idiom documented in one file, re-broken in another). Both are
+the same shape: **a rule that lives in a comment is a rule the next file does not
+inherit.** Two independent instances in one round is a pattern rather than a
+coincidence, which is why it is stated here and not only in the ledger.
 
 The gap this round kept hitting: **there is no way to run this suite as another
 platform.** I rebuilt a throwaway `process.platform` override three times. A
@@ -407,8 +525,8 @@ measurement indicates. The brief predicted ~40. I am not claiming the number —
 their re-run is the measurement, and the timeout component is the wide part of the
 error bar.
 
-**Suite denominator changes**: +12 cases (`external-binary.test.ts`, including the
-five round-2 controls), so their 5096 becomes **5108**.
+**Suite denominator changes**: +19 cases (`external-binary.test.ts`, including the
+round-2 and round-3 controls), so their 5096 becomes **5115**.
 
 ### Local gate (measured, macOS)
 
@@ -419,9 +537,10 @@ Three warn-launch degradeds (`arch-check`, `markdown-lint`, `windows-check`) are
 pre-existing; `windows-check`'s 6 findings are all in `.harness/extensions/html-snap/`,
 none in any file this phase touched.
 
-**Full suite: 5108/5108, three consecutive clean runs** — run repeatedly on
+**Full suite: 5115/5115, three consecutive clean runs** — run repeatedly on
 purpose, because the round-2 control that had to be repaired (D12) failed only
-under full-suite parallelism and passed in isolation.
+under full-suite parallelism and passed in isolation. A single green run would
+have been an honest report of an unreliable measurement.
 
 ### What a reviewer should look at first
 

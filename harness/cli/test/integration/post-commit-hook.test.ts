@@ -13,7 +13,11 @@ import { tmpdir } from 'node:os';
 import { delimiter, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { incapableBinaryReason, probeShell } from '../support/external-binary.js';
+import {
+  incapableBinaryReason,
+  POST_COMMIT_HOOK_CONTRACT,
+  probeShell,
+} from '../support/external-binary.js';
 
 /**
  * Plan 067 item 4 — the post-commit telemetry flush must honour BOTH opt-outs.
@@ -113,17 +117,25 @@ afterEach(() => {
  * the missing marker while its `expect(runHook({})).toBe(0)` passes. Silent, and
  * indistinguishable from a hook defect. Found by review (terra), not by a run.
  *
- * Hence `requires: ['git']`: the probe proves every command-resolution property
- * these cases reach BEFORE their observable, not merely the last one. It still
- * refuses to run the hook itself — see `probeShell`'s doc for why a probe that
- * executes the subject would report a genuine hook defect as an environment gap.
+ * **And again**: the probe then proved `git` but still verified only a GENERIC
+ * shim, while the hook invokes `node` — which a shell FUNCTION can shadow, so a
+ * script gets exit 0 from a `node` that ran nothing. And the hook branches on two
+ * ENV VARS a startup file can re-export, which is the same shadowing mechanism
+ * pointed at a variable instead of a command.
+ *
+ * Hence `POST_COMMIT_HOOK_CONTRACT`: ONE declaration of every silent-success path
+ * this hook has, which the probe exercises and the drift guard checks the tracked
+ * hook against — so the two cannot disagree, and a git-blind probe is no longer
+ * writable (the contract parameter is not optional). It still refuses to run the
+ * hook itself — see `probeShell`'s doc for why a probe that executes the subject
+ * would report a genuine hook defect as an environment gap.
  *
  * NOTE for whoever arms the windows-latest leg: git-for-Windows bundles bash, so
  * this MAY simply run there — but "shipped with git" and "first on PATH in the
  * runner's shell" are different facts and neither has been measured. This probe
  * answers it truthfully either way rather than assuming.
  */
-const BASH = probeShell('bash', { requires: ['git'] });
+const BASH = probeShell('bash', POST_COMMIT_HOOK_CONTRACT);
 
 if (!BASH.capable) {
   console.warn(
