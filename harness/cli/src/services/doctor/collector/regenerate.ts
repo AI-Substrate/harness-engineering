@@ -119,8 +119,6 @@ export function renderPinSource(
   return [
     PIN_HEADER,
     'export const GITAI_PIN = {',
-    '  /** Where the artifacts come from — pinned so a redirect off this host is refused. */',
-    `  release_host: '${manifest.release_host}',`,
     '  /** Release download base; the artifact URL is the base, tag and file joined. */',
     `  release_base_url: '${manifest.release_base_url}',`,
     "  /** The exact release tag. NEVER 'latest'. */",
