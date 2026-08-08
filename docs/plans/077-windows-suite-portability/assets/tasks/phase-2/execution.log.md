@@ -467,6 +467,67 @@ And the failure **names the construct and why it matters** rather than going red
 + ]
 ```
 
+### ROUND 5 — the last round on this guard, because the CLAIM changed
+
+Terra found `result="$(./silent-helper.sh)"` missed **twice**: the scope patterns
+matched only at command position, and the command scan's `$(` matcher expected a
+leading letter, so a leading dot slipped it. Measured against the real matchers
+before the fix: **0 scope matches, 0 unaccounted commands.**
+
+**This was not an eighth form.** `./script` is one of the seven — the entity is
+right. What failed was the MATCHERS' positional assumption: caught where a
+command is conventionally written, missed inside a substitution. The fix widens
+the matchers to be position-independent; **no pattern was appended.**
+
+#### The part that actually terminates: the claim was downgraded
+
+The guard implied it would fail on a sixth silent-success path. **It cannot
+guarantee that and never could.** The ways of LEAVING a file are finite; the ways
+of WRITING that departure are not — a variable-held command, `eval` of a
+constructed string, a PATH-resolved script name, a here-doc, an expansion
+context. Four rounds of findings came from making a completeness claim the
+instrument cannot support, not from choosing the wrong entity.
+
+So the guard now states its honest claim — *it fails on a departure **expressed in
+one of the enumerated forms***, not that departures are absent — and names the
+known-unreachable expressions in its own doc comment. **After this round,
+remaining incompleteness here is a DOCUMENTED LIMIT, not a defect, and not
+another round.** A ninth expression found later confirms the limit rather than
+refuting the guard.
+
+#### Round-5 evidence (measured — every form mutated into the REAL hook, then reverted)
+
+| mutation | failing assertions |
+|---|---|
+| **terra's exact form** — `result="$(./silent-helper.sh)"` | **2** — scope guard *and* command scan; the double miss is closed on both sides |
+| `x="$(source ./h.sh)"` | 1 |
+| `x="$(. ./h.sh)"` | 2 |
+| `true && ./helper.sh` | 1 |
+| `v=./helper.sh` (not even a command position) | 1 |
+| `true && ( exit 0 )` | 1 |
+| `c=helper; $c` — **the documented blind spot** | **0 — as documented** |
+
+That last row is the point of the round. The blind spot is **demonstrated, not
+merely asserted**: the doc says a variable-held command is unreachable, and the
+measurement confirms it is. It is deliberately NOT pinned by a test — a test that
+enforces a weakness would fail the day someone improves the guard.
+
+#### The `set -e` / `trap` split, stated in code
+
+Terra did not review this split; the reasoning is now in the code so it can be
+attacked rather than reverse-engineered. Two different claims:
+
+- **rule-completeness** — *does my counting rule see every branch in this text?*
+  `set -e` would make any failing command an exit path with no visible token.
+- **domain-completeness** — *is this text the text that runs?* A perfect rule is
+  void if the behaviour lives elsewhere.
+
+`trap` stays with delegation, and it is the arguable one: its handler is usually
+in-file, which by the letter puts it near `set -e`. It is grouped with departure
+because the counter's model is a linear walk, and a trap delivers control to a
+point that walk never visits — which is what a departure does, whoever owns the
+text. **Asserted in one place only.**
+
 ### Two findings deliberately NOT fixed here
 
 Terra's D13 sweep found two more instances in code this branch never touched —
@@ -557,7 +618,8 @@ stands, and the brief's "skip the file" wording is superseded.
 | D10 | **Noteworthy** | **The tk-0103 fix was itself incomplete, and silently so** — found by review (terra), not by a run. A probe proving only the LAST link of a resolution chain accepts a shell that makes the hook `exit 0` having done nothing. Level 1 failed loudly (127); level 2 failed silently. The general lesson: when a guard's subject bails out with a SUCCESS code, a partial guard converts a skip into a false pass, so the guard must cover every property reached *before the observable*, not merely the property that failed last time. |
 | D11 | **Deferred** | The probe deliberately does **not** run the hook (a probe that executes its subject reports a broken subject as an environment gap and skips itself green), so it can drift from the hook. Mitigated by a control that reads the tracked hook and fails naming any external command the probe does not account for — verified by adding `jq` to the hook and watching it fail. **Mitigated, not eliminated**: the scan is textual, so an obscure invocation shape could still slip past. |
 | D12 | **Noteworthy** | **A comment is a reminder, and reminders do not survive contact with a different file.** The round-2 leak control listed the SHARED `os.tmpdir()` and went red only under full-suite parallelism — the exact "correct leak check over the WRONG namespace" defect that `exec-remote-telemetry-git.int.test.ts` documents in a long, well-written comment I had read an hour earlier, in another file, while working on this very task. The prose did not transfer; nothing was reachable at the point of use. **GENERAL RULE**: knowledge that must be applied at a point of use has to be reachable there **as a tool** — a shared helper, a fixture, a lint rule, a default — not as prose in a neighbouring file. Prose scales with the reader's attention; a helper scales with reuse. This is encode-don't-remind one level over: the earlier author DID encode the lesson, but encoded it as an **explanation** rather than as an **affordance**, so the next person had to re-derive it by failing. The fix that would have carried it: a shared private-temp-namespace helper in `test/support/`, which is now the obvious candidate for a later round. |
-| D14 | **Noteworthy** | **The first finding about an enumeration's SCOPE rather than its content.** A `source ./helper.sh` kept the silent-path count correct while moving the behaviour out of the counted file. GENERAL RULE: a static enumeration over a file is only as good as the guarantee that the file does not DELEGATE — so guard the boundary as well as the contents, and REJECT the delegating forms rather than following them (leaving-a-file is a finite entity set; the contents of what you would follow is not). |
+| D14 | **Noteworthy** | **The first finding about an enumeration's SCOPE rather than its content.** A `source ./helper.sh` kept the silent-path count correct while moving the behaviour out of the counted file. GENERAL RULE: a static enumeration over a file is only as good as the guarantee that the file does not DELEGATE — guard the boundary as well as the contents, and REJECT the delegating forms rather than following them (leaving-a-file is a finite entity set; the contents of what you would follow is not). |
+| D15 | **Noteworthy** | **A TEXTUAL SCAN CANNOT BE COMPLETE OVER SHELL, and four rounds of findings came from claiming otherwise — not from picking the wrong entity.** The entity (ways of leaving a file) is finite and correct; the ways of WRITING a departure are unbounded. So the guard's claim was downgraded to what the instrument supports: *it fails on a departure EXPRESSED IN ONE OF THE ENUMERATED FORMS*, and it names variable-held commands, `eval` of constructed strings, PATH-resolved script names, here-docs and expansion contexts as KNOWN-unreachable. **GENERAL RULE: a rule with a documented blind spot is worth having; a rule with an undocumented blind spot is the defect.** When completeness is not available, stop buying rounds trying to reach it and spend one documenting its absence — after which a further instance CONFIRMS the limit instead of reopening the work. |
 | D13 | **Deferred** | **The "fails to compile" guarantee is editor-only, and I claimed it before measuring.** The contract parameter is non-optional, which should make a blind probe uncompilable — but `harness/cli/tsconfig.json` sets `include: ["src"]`, so **test files are never typechecked**. Measured, not assumed: a deliberate `const x: number = "s"` added to a test file passed the gate as `typecheck: ok` (biome caught that particular line, but biome has no type information and would not catch a missing argument). Closed with a **runtime** precondition that throws, plus a control that proves it fires. The residual gap is repo-wide and out of scope here: **no test file in this repo is typechecked by the gate**, so every type-level guarantee that lives in `test/` is editor-time only. Two files in `src/` already document this boundary. |
 
 ### Harness note (invariant #14 — pay the difficulty forward)

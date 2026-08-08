@@ -501,7 +501,12 @@ describe('the probe cannot silently fall behind the hook it guards', () => {
     const found = new Set<string>();
 
     // Command substitutions: `$(git rev-parse …)` — the shape that bit us.
-    for (const [, name] of hook.matchAll(/\$\(\s*([a-z][\w.-]*)/g)) {
+    // Round 5: the token pattern was `[a-z][\w.-]*`, which assumed a leading
+    // LETTER and so slipped `$(./silent-helper.sh)` — a script invocation the
+    // scope guard also missed, making it a DOUBLE miss. Any non-space token now
+    // counts, so a leading dot, a slash, or a `$var`-held command is reported
+    // rather than skipped.
+    for (const [, name] of hook.matchAll(/\$\(\s*([^\s()]+)/g)) {
       if (name !== undefined) found.add(name);
     }
     // Bare invocations at the head of a line: `node "$bin" …`.
@@ -556,64 +561,123 @@ describe('the probe cannot silently fall behind the hook it guards', () => {
 
     expect(silent).toBe(POST_COMMIT_HOOK_CONTRACT.silentSuccessPaths);
 
-    // Implicit control flow WITHIN the file, which would make the count above
-    // an undercount without adding a visible branch. (Leaving the file
-    // altogether is a different claim — see the scope case below.)
+    // Implicit control flow WITHIN the file, which would make the count above an
+    // undercount without adding a visible branch token.
+    //
+    // This case and the delegation case below are two DIFFERENT claims, and the
+    // split is deliberate:
+    //   - here: RULE-completeness — does my counting rule see every branch in
+    //     this text? `set -e` would turn any failing command into an exit path
+    //     carrying no `|| exit 0` token, so the rule would under-count while
+    //     execution never left the file.
+    //   - below: DOMAIN-completeness — is this text the text that runs? A perfect
+    //     counting rule is void if the behaviour lives in another file.
+    // Both make the number wrong, for different reasons and with different fixes.
+    //
+    // `trap` is the arguable one, and it sits BELOW rather than here. Its handler
+    // is usually defined in-file, which by the letter puts it closer to `set -e`.
+    // It is grouped with delegation because the counter's model is "walk the
+    // linear text and count the branch tokens", and a trap delivers control to a
+    // point that walk never visits — which is what a departure does, whoever owns
+    // the text. Asserted in ONE place only: two structures describing one fact is
+    // the defect the contract above exists to remove.
     expect(hook).not.toMatch(/set\s+-\w*e\w*\s/);
   });
 
   /**
-   * The enumeration's SCOPE, not its content (terra's P1, round 4).
+   * The enumeration's SCOPE, not its content (terra's P1, rounds 4–5).
    *
-   * The two earlier findings were about WHAT gets counted. This one is about
-   * WHERE counting stops, and it is the same disease at a different joint: a
-   * single `source ./helper.sh` keeps the count at five, is treated as a
-   * builtin so the command scan does not flag it, and trips neither absence
-   * assertion — while the helper is free to introduce a `return 0`, an `exit 0`
-   * or a swallowed failure that the guard never sees, because the guard counts
-   * one file and the behaviour now lives in another.
+   * Rounds 1–3 were about WHAT gets counted. This is about WHERE counting stops:
+   * a single `source ./silent-helper.sh` keeps the silent-path count at five, is
+   * treated as a builtin so the command scan does not flag it, and trips neither
+   * absence assertion — while the sourced helper is free to introduce a
+   * `return 0`, an `exit 0` or a swallowed failure the guard never sees. The
+   * count was over ONE FILE, and nothing checked that the file stayed put.
    *
-   * ## Why this REJECTS rather than FOLLOWS
+   * ## This REJECTS rather than FOLLOWS
    *
-   * The alternative was to follow the delegation and enumerate transitively.
-   * That is a BEHAVIOUR enumeration over arbitrary sourced content and it does
-   * not terminate — the same trap that cost three rounds on the probe itself.
-   * Rejecting is an ENTITY enumeration: the ways a POSIX shell script can move
-   * execution out of its own text are finite and small, and they are listed
-   * below in full.
+   * Following a delegation means enumerating the behaviour of arbitrary sourced
+   * content, which does not terminate. Rejecting means enumerating the ways a
+   * POSIX shell script can move execution out of its own text — finite, small,
+   * and listed in full below. The guard's claim is about A FILE, so anything
+   * that leaves the file invalidates that claim regardless of what it then does:
+   * the guard never needs to know what a helper contains, only that the hook did
+   * not leave.
    *
-   * The guard's claim is about A FILE. Anything that leaves the file invalidates
-   * that claim regardless of what it then does — so we do not need to know what
-   * a sourced helper contains, only that the hook did not leave. The tracked
-   * hook uses none of these forms today, so this costs nothing now and fails
-   * loudly the moment someone reaches for one.
+   * ## WHAT THIS GUARD CANNOT DO — read this before trusting it
+   *
+   * **A textual scan cannot be complete over shell, and this one does not claim
+   * to be.** The ways of LEAVING a file are finite; the ways of WRITING that
+   * departure are not. Delegation expressed in any of these is KNOWN to be
+   * unreachable here:
+   *
+   * - a **variable-held** command — `cmd=./helper; $cmd`
+   * - **`eval` of a constructed string** assembled at runtime
+   * - a **PATH-resolved** name that happens to be a script
+   * - a **here-doc** piped to another interpreter
+   * - an **arithmetic or parameter-expansion** context that yields a command
+   *
+   * So the honest claim is narrow, and worth stating exactly: *this guard fails
+   * on a sixth silent-success path, or on a departure from the file, WHEN
+   * EXPRESSED IN ONE OF THE ENUMERATED FORMS BELOW.* It does not certify their
+   * absence.
+   *
+   * That distinction is the point of this round. The findings did not come from
+   * repeatedly picking the wrong entity — the entity is right — but from making a
+   * COMPLETENESS claim the instrument cannot support. A rule with a DOCUMENTED
+   * blind spot is worth having; a rule with an UNDOCUMENTED blind spot is the
+   * defect this plan exists to remove. A further expression of delegation found
+   * later CONFIRMS this limit rather than refuting the guard.
+   *
+   * ## Position-independent by construction (round 5)
+   *
+   * `result="$(./silent-helper.sh)"` was missed TWICE — these patterns matched
+   * only at command position, and the command scan's `$(` matcher expected a
+   * leading letter, so a leading dot slipped it. That was not an eighth form; it
+   * was one of the seven, matched too narrowly. So the patterns match ANYWHERE in
+   * the text rather than only where a command is conventionally written, and the
+   * fix was to widen the matchers, never to append a pattern.
    *
    * Deliberately conservative: these patterns scan comments too, so prose that
    * merely NAMES one of these forms fails the test. That is the correct bias for
-   * a guard whose whole job is to refuse to be quietly wrong, and the fix is to
-   * reword the comment.
+   * a guard whose job is to refuse to be quietly wrong, and the fix is to reword
+   * the comment.
    */
   it('the hook does not DELEGATE execution outside the file this guard counts', () => {
     const hook = readFileSync(HOOK, 'utf8');
 
-    /** Every way a POSIX shell script can move execution out of its own text. */
+    /**
+     * Every way a POSIX shell script can move execution out of its own text.
+     *
+     * Each pattern is POSITION-INDEPENDENT: a departure inside a command
+     * substitution, an assignment or a conditional counts exactly as much as one
+     * at the head of a line, because the shell does not care where it was written
+     * and neither does the consequence.
+     */
     const SCOPE_EXTENDING: ReadonlyArray<readonly [string, RegExp]> = [
       [
         '`source <file>` — sourced text can carry silent exits this guard never sees',
-        /(^|\s)source\s+\S/m,
+        /\bsource\s+\S/,
       ],
-      ['`. <file>` (dot-sourcing) — the same thing, spelled shorter', /^[ \t]*\.[ \t]+\S/m],
+      [
+        '`. <file>` (dot-sourcing) — the same thing, spelled shorter',
+        // Anchored to a command position (line start, `;`, `&`, `|`, `(`, backtick)
+        // so ordinary prose ending a sentence does not read as a dot-source.
+        /(?:^|[;&|(`])[ \t]*\.[ \t]+\S/m,
+      ],
       ['`eval` — executes constructed text, which cannot be enumerated statically', /\beval\b/],
       [
         '`exec` — replaces the process, so the rest of this file never decides anything',
         /\bexec\b/,
       ],
       ['`trap` — moves control to a handler outside the linear flow that was counted', /\btrap\b/],
-      ['a local script invocation (`./…`) — a whole other file of exits', /(^|[;&|][ \t]*)\.\//m],
       [
-        'an explicit subshell at command position — its exits do not mean what they look like',
-        /^[ \t]*\(/m,
+        'a local script invocation (`./…`) — a whole other file of exits, WHEREVER it appears',
+        // Round 5: was anchored to command position, which missed
+        // `result="$(./silent-helper.sh)"`. Any occurrence now counts.
+        /\.\//,
       ],
+      ['an explicit subshell — its exits do not mean what they look like', /(?:^|[;&|]\s*)\(/m],
     ];
 
     const delegations = SCOPE_EXTENDING.filter(([, pattern]) => pattern.test(hook)).map(
