@@ -1,0 +1,21 @@
+package-lock.json
+  s_c05f2da2173927::t_3cbc17ae0ef47b 11,44
+package.json
+  s_c05f2da2173927::t_611ac0783ac390 55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "358c4f85d110408ce3c10a4fb94f336911214747",
+  "prompts": {},
+  "sessions": {
+    "s_c05f2da2173927": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "79ade151-0112-43ff-abf8-81bd059263ef",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
