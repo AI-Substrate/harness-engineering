@@ -1,0 +1,23 @@
+harness/cli/test/support/external-binary.test.ts
+  s_96ea85fc19fb5c::t_a4cfcc5a5cd74a 100-103,111-115
+  s_96ea85fc19fb5c::t_f6daf0f27c7a4f 2,4-99,104-110,116-122
+  s_96ea85fc19fb5c::t_34c6a918a6d990 1,3
+docs/plans/077-windows-suite-portability/assets/tasks/phase-2/execution.log.md
+  s_96ea85fc19fb5c::t_6cf8d7c12f9f97 1-313
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "bfa12a65495ebe34cbd823c55e06a9847b367c04",
+  "prompts": {},
+  "sessions": {
+    "s_96ea85fc19fb5c": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "06f5348e-6d18-496b-ad51-45708f9233df",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
