@@ -1,0 +1,27 @@
+docs/plans/078-collector-install-host-pin/original-ask.md
+  s_a76964380084ef::t_86f37870ada818 1-101
+docs/plans/078-collector-install-host-pin/assets/tasks/phase-1/tasks.dd.json
+  s_a76964380084ef::t_ee822c64b41d4c 1-69
+docs/plans/078-collector-install-host-pin/assets/tasks/phase-1/tasks.dd.md
+  s_a76964380084ef::t_60b57c1d38fa3f 1-48
+docs/plans/078-collector-install-host-pin/plan.dd.json
+  s_a76964380084ef::t_38957e36ed8122 1-86
+docs/plans/078-collector-install-host-pin/plan.dd.md
+  s_a76964380084ef::t_96de48fa699d43 1-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "5f7f8da095dd7f0f3d34b00a83fece2f5f42ba6f",
+  "prompts": {},
+  "sessions": {
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
