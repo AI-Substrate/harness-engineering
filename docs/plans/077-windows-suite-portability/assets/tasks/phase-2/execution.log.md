@@ -128,8 +128,17 @@ asserting. It proves the fallback on Windows instead of failing over it.
 | Simulated win32, **with** the shared helper only | ❌ **8 failed / 54 passed** |
 | Simulated win32, **with all three helpers** | ✅ **62 / 62** |
 
-39 measured against the 40 they counted. I have not tried to reconcile the last
-one and will not guess at it — their re-run resolves it exactly.
+39 measured against the 40 they counted. **Left deliberately unreconciled** — but
+the likely shape is worth naming, because it changes who should chase it: this is
+almost certainly a **counting question, not a coverage question**. A predicate or
+denominator mismatch between their grouping and mine (their FAIL-line grouping vs
+my per-case count; a case counted under a neighbouring signature; a hook-level
+failure counted as a case) explains a one-off far more economically than a 40th
+case that three helper fixes and a simulated-win32 run all failed to touch. This
+repo has been bitten by exactly that shape before. The next reader should treat
+the gap as arithmetic to be reconciled against their re-run, **not** as a missing
+case to hunt — and if their re-run still shows one red case in `nudge`, that
+assumption is wrong and it becomes a real finding.
 
 ---
 
@@ -162,12 +171,29 @@ starts is a `jq` that filters), and the wrong question for anything that
 interprets its arguments. `post-commit-hook.test.ts` switched to the capability
 probe; `plan-review.test.ts` (jq) correctly stays on presence.
 
-### A second, independent defect in the same file — fixed
+### A second, independent defect in the same file — **FIXED in this round**, and swept
 
 `runHook()` built `PATH` with a **hardcoded `':'`**. On Windows that produces one
 unparseable PATH string, so the `node` shim would not have resolved **even under a
 fully capable git-bash**. Now `path.delimiter`. Nobody reported this one; it was
 sitting behind the 127 and would have surfaced as the next "why is it still red".
+
+**Status, stated explicitly because "found" and "fixed" are the exact pair this
+thread keeps getting caught by** (it is the same shape as the `bash` declaration
+that looked handled and was not):
+
+- **FIXED**, not merely found. The change is in commit `e825bf99`, in the diff of
+  `post-commit-hook.test.ts` — `-  PATH: \`…}:\${process.env.PATH…\`` /
+  `+  PATH: \`…}\${delimiter}\${process.env.PATH…\``.
+- **Swept as a CLASS, not as an instance.** Grepped `harness/cli/src`,
+  `harness/cli/test` and `.harness/extensions` for a `PATH` assembled around
+  `process.env.PATH`: **four** sites, of which this was the **only** one that
+  joined with a literal `':'`. The other three are the new probe (already uses
+  `delimiter`) and two straight pass-throughs in
+  `exec-remote-telemetry-git.int.test.ts` (`PATH: process.env.PATH`) that
+  concatenate nothing and are correct as they stand.
+- **NOT guarded — see D9.** The sweep was a one-off grep by a human, and nothing
+  deterministic stops the pattern coming back.
 
 ### The wording distinguishes absent from incapable
 
@@ -211,9 +237,14 @@ that is the lever.
 
 ## tk-0104 — declare the real-`git daemon` cluster on win32 · `[x]` · **SCOPE NARROWED**
 
-**Deviation from the brief, flagged rather than worked around.** The task said
-*"skip `exec-remote-telemetry-git` on win32"*. I scoped the skip to the
-**daemon-driving describe** (18 cases) instead of the **file** (91 cases).
+**Deviation from the brief, flagged rather than worked around** — and
+subsequently **RULED ON by the PM (`pij-respectable-clam`): keep the narrow
+scope.** The task said *"skip `exec-remote-telemetry-git` on win32"*. I scoped the
+skip to the **daemon-driving describe** (18 cases) instead of the **file** (91
+cases). The PM's ruling, recorded here because it changes this from an open
+deviation into a decision: *"Skipping 91 to quiet 16 makes the instrument
+blinder, not the signal cleaner… my brief said 'skip the file' because I was
+reading their 16 as a target rather than as a symptom."*
 
 The daemon appears in exactly one describe — *"real network-served Git"*. The
 other 73 cases are in-process credential discovery, lease handling and config
@@ -242,6 +273,10 @@ covered and only its *Windows behaviour* is unmeasured.
 **Note on the count**: 18 cases are declared; they measured 16 failing. The extra
 two were presumably passing on their box. That is 2 cases of coverage genuinely
 given up, and it is stated rather than absorbed into a fixed-failures number.
+Stating that cost is what makes the narrowing a decision rather than a preference.
+
+**Status: SETTLED.** PM ruling received and recorded above — the narrow scope
+stands, and the brief's "skip the file" wording is superseded.
 
 ---
 
@@ -256,11 +291,12 @@ given up, and it is stated rather than absorbed into a fixed-failures number.
 | D1 | **Noteworthy** | tk-0102's "one line, ~40 failures" was **80% of the class**. Two further helpers in the same file had the identical defect and were invisible to the consumer's grouped signatures. Found by running a negative control, not by reading. |
 | D2 | **Noteworthy** | tk-0102's fix **breaks a legitimate control** at `nudge.test.ts:~1605` — one that was itself host-dependent, asserting the POSIX outcome while depending on the host being POSIX. Repaired to assert per-host rather than deleted. |
 | D3 | **Noteworthy** | tk-0104 **narrowed** from "skip the file" (91) to "skip the daemon cluster" (18). Over-declaring is as dishonest as over-claiming. PM's call to widen. |
-| D4 | **Noteworthy** | A second, unreported Windows defect in `post-commit-hook.test.ts`: `PATH` built with a hardcoded `':'`. It would have kept the file red even under a fully capable git-bash, and was hidden behind the exit-127. |
+| D4 | **Noteworthy** | A second, unreported Windows defect in `post-commit-hook.test.ts`: `PATH` built with a hardcoded `':'`. It would have kept the file red even under a fully capable git-bash, and was hidden behind the exit-127. **FIXED this round** (`e825bf99`) and swept as a class: 4 PATH-assembly sites repo-wide, this was the only literal-`':'` join. |
 | D5 | **Noteworthy** | Three files' `vi.setConfig({ testTimeout: 20_000 })` became **downgrades** under the new 30s global floor — silently re-creating the bug in the three slowest files. Removed; their measurements kept as docs. |
 | D6 | **Deferred** | The `platform` fallback in `nudge.ts` is only *reachable* via the composition root now, so a future helper that forgets `platform` will again read the host. Nothing enforces injection. A lint/arch rule would; not in this round's scope. |
 | D7 | **Deferred** | 2 cases of real coverage given up on win32: 18 daemon cases declared vs 16 they measured failing. |
 | D8 | **Noteworthy** | The platform simulation (`process.platform` redefined at setup) is a cheap and genuinely useful instrument for platform-BRANCH defects, and it is **not in the repo**. Worth encoding as a harness affordance so the next person does not rebuild it — see the harness note below. |
+| D9 | **Deferred** | **D4's class is fixed but UNGUARDED.** `windows-check` scans `.harness/extensions/**` only — `harness/cli/test/**` and `src/**` are explicitly out of its scope — and it has **no PATH-delimiter rule** in WIN001–WIN008 at all. So a reintroduced `':'` PATH join is silently green in both directions: wrong layer, and no rule even if the layer were right. Its own briefing names this failure mode ("a missing rule stays silently green"). A WIN009 rule plus a scope extension would close it; not this round. |
 
 ### Harness note (invariant #14 — pay the difficulty forward)
 
@@ -306,8 +342,12 @@ none in any file this phase touched.
 
 ### What a reviewer should look at first
 
-1. **tk-0104's narrowing** (D3) — a deliberate deviation from the written task.
+1. **tk-0104's narrowing** (D3) — a deliberate deviation from the written task,
+   since **ruled on and upheld** by the PM. Reviewable as a decision with its
+   cost stated (2 cases given up), not as an open question.
 2. **The repaired control** in `nudge.test.ts` (D2) — the only place a test's
    assertion semantics changed rather than its inputs.
 3. **The global-vs-win32 timeout choice** (tk-0101) — it affects every test on
    every platform, and it is the one change here that is not test-local.
+4. **D9** — the PATH-delimiter class is fixed but has no deterministic guard, in
+   a repo whose whole thesis is that back-pressure beats vigilance.
