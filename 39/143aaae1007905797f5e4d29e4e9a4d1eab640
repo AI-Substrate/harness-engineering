@@ -1,0 +1,25 @@
+docs/plans/077-windows-suite-portability/assets/tasks/phase-3/tasks.dd.json
+  s_e07961bf594bfb::t_fbe9007e258103 1-54
+docs/plans/077-windows-suite-portability/assets/tasks/phase-3/tasks.dd.md
+  s_e07961bf594bfb::t_eb4d8760e166e7 1-46
+docs/plans/077-windows-suite-portability/plan.dd.json
+  s_e07961bf594bfb::t_8f087cf3487ba1 109-120,141-147
+docs/plans/077-windows-suite-portability/plan.dd.md
+  s_e07961bf594bfb::t_456bbb44414f66 72-73,83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "39143aaae1007905797f5e4d29e4e9a4d1eab640",
+  "prompts": {},
+  "sessions": {
+    "s_e07961bf594bfb": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "e634e6d2-d68c-4f03-86bd-997bdcd3389e",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
