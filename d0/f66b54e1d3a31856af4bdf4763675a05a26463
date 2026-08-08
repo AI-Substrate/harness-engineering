@@ -1,0 +1,19 @@
+harness/cli/test/services/flow/flow-renderer.test.ts
+  s_cc09a4a61884e8::t_d0471384aaeb26 65-92,94-102,107-145,252-253,255-272,285-290
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d0f66b54e1d3a31856af4bdf4763675a05a26463",
+  "prompts": {},
+  "sessions": {
+    "s_cc09a4a61884e8": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "905164b2-3262-4ef0-9fba-e55964e69c7c",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
