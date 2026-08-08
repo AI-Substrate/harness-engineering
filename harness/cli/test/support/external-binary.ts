@@ -54,6 +54,9 @@ import { delimiter, join } from 'node:path';
  */
 const cache = new Map<string, boolean>();
 
+/** Capability results, cached on the same terms and for the same reason. */
+const capabilityCache = new Map<string, ShellCapability>();
+
 /**
  * Is `binary` present and executable on this host? Probed once per process.
  *
@@ -80,39 +83,105 @@ export function hasBinary(binary: string): boolean {
   return present;
 }
 
+/** What a shell probe found, and — when it failed — which property failed. */
+export interface ShellCapability {
+  capable: boolean;
+  /** A human-readable name for the FIRST property that failed. */
+  failure?: string;
+}
+
+/** Options for {@link probeShell} / {@link canRunShellScript}. */
+export interface ShellProbeOptions {
+  /**
+   * Ambient commands the caller's fixtures need the SHELL to resolve and run —
+   * not merely commands this process can see. `git` is the one that matters for
+   * the post-commit hook; see {@link probeShell} for why that distinction has now
+   * bitten twice.
+   */
+  requires?: readonly string[];
+}
+
+/** Probe exit codes → the property that failed. Kept beside the script below. */
+const PROBE_FAILURES: Record<number, string> = {
+  21: 'a required command could not be run from inside the shell, or its output could not be captured by command substitution',
+  22: 'a required command ran but produced no output, so the shell cannot use its result',
+  23: '`git rev-parse --show-toplevel` could not be run from inside the shell',
+  24: '`git rev-parse --show-toplevel` produced no path',
+  25: 'a path PRODUCED BY GIT did not survive a `[ -f … ]` test in this shell — the exact step at which the tracked hook exits 0 having done nothing',
+  127: 'a shimmed executable on the prepended PATH could not be resolved',
+};
+
 /**
- * Can `shell` actually run a script the way this suite runs one? Probed once per
- * process (plan 077 · tk-0103).
+ * Can `shell` run a script the way this suite's shell-hook fixtures run one?
+ * Probed once per process, per (shell, requires) pair (plan 077 · tk-0103).
  *
  * This executes the mechanism instead of asking after the name, because the two
- * answers diverge on real machines. It asserts BOTH properties the shell-script
- * fixtures in this suite depend on, and a shell that fails either is unusable
- * here however confidently `which` reports it:
+ * answers diverge on real machines — and it now proves EVERY command-resolution
+ * property the fixtures reach before their observable assertion, because proving
+ * only some of them is how this same defect shipped twice.
  *
- * 1. **A script at a NATIVE path runs.** The fixtures build paths with
- *    `path.join()` under `os.tmpdir()`. WSL `bash` — which is what `bash`
- *    resolves to on a stock Windows box — is a LINUX binary handed a Windows
- *    path; it eats the backslashes as escapes and exits 127.
- * 2. **A shimmed executable on PATH resolves.** The fixtures put a fake `node`
- *    on PATH so "did it run?" is an observable file rather than an inference.
- *    That needs the platform's `path.delimiter` to mean something to the shell,
- *    and an interpreter that honours a shebang on the shimmed file — neither of
- *    which follows from the shell merely existing (`which node` inside that same
- *    WSL bash also fails).
+ * ## The two levels this has already failed at — both silently
  *
- * Both are proven in ONE spawn against a real temp tree, so the probe cannot
- * drift from the thing it certifies. It never throws: any failure at all is
- * reported as "not capable", which is the honest reading — the probe cannot tell
- * "shell is broken" from "host is unusual", and for skip purposes it does not
- * need to.
+ * **Level 1 (presence).** The guard was `hasBinary('bash')`. On Windows `bash` is
+ * `C:\Windows\system32\bash.exe` — WSL bash. It answers `--version`, so the guard
+ * passed; it then ate the backslashes in the Windows temp path and exited 127.
+ *
+ * **Level 2 (partial capability).** The replacement proved native-path execution
+ * and shim-on-PATH resolution — and nothing else. But the tracked hook resolves
+ * `git` FIRST, and does it like this:
+ *
+ * ```sh
+ * repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+ * bin="$repo_root/harness/cli/bin/harness.js"
+ * [ -f "$bin" ] || exit 0
+ * node "$bin" telemetry sync …
+ * ```
+ *
+ * Both bail-outs are `exit 0`. So a shell that passes a git-blind probe but
+ * cannot resolve `git` — or cannot make a git-PRODUCED path survive `[ -f … ]`,
+ * which is exactly what a Windows-shaped `C:/…` path does to WSL bash — runs the
+ * hook to a **successful exit that did nothing**. The fixture then fails on the
+ * marker, not on the exit code, and the failure looks like a hook defect rather
+ * than an unusable shell.
+ *
+ * That second one is the nastier of the two: level 1 failed loudly with 127,
+ * level 2 fails SILENTLY at `exit 0`. A guard that half-answers is the same
+ * mistake as a guard that answers the wrong question, and it lives in the fix for
+ * the first one.
+ *
+ * ## What it proves now, in ONE spawn against a real temp git repo
+ *
+ * 1. **A script at a NATIVE path runs** — WSL bash mangles a Windows path.
+ * 2. **Every `requires` command resolves, runs, and its output can be CAPTURED**
+ *    through command substitution, from inside the shell.
+ * 3. **A path produced BY GIT survives a `[ -f … ]` test** — the hook's own
+ *    chain, and the step whose failure is silent.
+ * 4. **A shimmed executable on the prepended PATH resolves**, and is the single
+ *    observable: nothing prints `CAPABLE` unless every step above succeeded.
+ *
+ * ## What it deliberately does NOT do: run the hook
+ *
+ * Running `.githooks/post-commit` itself would make the probe drift-proof, and
+ * was rejected: a probe that executes the SUBJECT cannot tell "this environment
+ * cannot run it" from "this hook is broken", so a genuine hook defect would be
+ * reported as an environment gap and the whole suite would skip itself green.
+ * The probe therefore mirrors the hook's MECHANISMS and never its LOGIC — if the
+ * hook is broken, the probe passes and the tests correctly fail. The cost of that
+ * choice is drift: a new dependency in the hook needs a matching `requires` here.
+ * That is a real, accepted liability, recorded rather than papered over.
+ *
+ * It never throws: any failure is reported as not-capable with the failed step
+ * named, which is the honest reading — the probe cannot tell "shell is broken"
+ * from "host is unusual", and for skip purposes it need not.
  */
-export function canRunShellScript(shell: string): boolean {
-  const key = `capability:script:${shell}`;
-  const cached = cache.get(key);
+export function probeShell(shell: string, options: ShellProbeOptions = {}): ShellCapability {
+  const requires = options.requires ?? [];
+  const key = `capability:script:${shell}:${requires.join(',')}`;
+  const cached = capabilityCache.get(key);
   if (cached !== undefined) return cached;
 
   let root: string | undefined;
-  let capable = false;
+  let result: ShellCapability = { capable: false, failure: 'the probe could not be run at all' };
   try {
     root = mkdtempSync(join(tmpdir(), 'harness-shell-probe-'));
     const binDir = join(root, 'bin');
@@ -123,23 +192,66 @@ export function canRunShellScript(shell: string): boolean {
     writeFileSync(shim, '#!/usr/bin/env bash\nprintf "%s" "CAPABLE"\n');
     chmodSync(shim, 0o755);
 
+    // The target the git-derived path must find — the stand-in for the hook's
+    // `[ -f "$repo_root/harness/cli/bin/harness.js" ]`.
+    writeFileSync(join(root, 'probe-target'), '');
+
+    const needsGit = requires.includes('git');
+    // A real repository, so `rev-parse --show-toplevel` answers about THIS dir
+    // and the path it returns is one git itself produced on this platform.
+    if (needsGit) spawnSync('git', ['init', '-q'], { cwd: root, stdio: 'ignore' });
+
+    const lines = ['set -uo pipefail'];
+    for (const command of requires) {
+      lines.push(`probe_out="$('${command}' --version 2>/dev/null)" || exit 21`);
+      lines.push('[ -n "$probe_out" ] || exit 22');
+    }
+    if (needsGit) {
+      lines.push('probe_root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 23');
+      lines.push('[ -n "$probe_root" ] || exit 24');
+      lines.push('[ -f "$probe_root/probe-target" ] || exit 25');
+    }
+    lines.push('harness-probe-shim');
+
     // The script, invoked by NATIVE path exactly as the fixtures invoke theirs.
     const script = join(root, 'probe.sh');
-    writeFileSync(script, 'harness-probe-shim\n');
+    writeFileSync(script, `${lines.join('\n')}\n`);
 
     const probe = spawnSync(shell, [script], {
+      cwd: root,
       encoding: 'utf8',
       env: { ...process.env, PATH: `${binDir}${delimiter}${process.env.PATH ?? ''}` },
     });
-    capable = probe.error === undefined && probe.status === 0 && probe.stdout.includes('CAPABLE');
-  } catch {
-    capable = false;
+
+    if (probe.error !== undefined) {
+      result = {
+        capable: false,
+        failure: `the shell itself could not be executed (${probe.error.message})`,
+      };
+    } else if (probe.status === 0 && probe.stdout.includes('CAPABLE')) {
+      result = { capable: true };
+    } else {
+      const named = probe.status === null ? undefined : PROBE_FAILURES[probe.status];
+      result = {
+        capable: false,
+        failure:
+          named ??
+          `the probe script exited ${String(probe.status)} without reaching its observable`,
+      };
+    }
+  } catch (error) {
+    result = { capable: false, failure: `the probe could not be set up (${String(error)})` };
   } finally {
     if (root !== undefined) rmSync(root, { recursive: true, force: true });
   }
 
-  cache.set(key, capable);
-  return capable;
+  capabilityCache.set(key, result);
+  return result;
+}
+
+/** {@link probeShell}, reduced to the boolean a `skipIf` needs. */
+export function canRunShellScript(shell: string, options: ShellProbeOptions = {}): boolean {
+  return probeShell(shell, options).capable;
 }
 
 /**

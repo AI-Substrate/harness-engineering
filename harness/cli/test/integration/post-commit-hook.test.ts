@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os';
 import { delimiter, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { canRunShellScript, incapableBinaryReason } from '../support/external-binary.js';
+import { incapableBinaryReason, probeShell } from '../support/external-binary.js';
 
 /**
  * Plan 067 item 4 — the post-commit telemetry flush must honour BOTH opt-outs.
@@ -89,40 +89,53 @@ afterEach(() => {
  * rather than the hook we ship, which is the one thing this suite exists to
  * check. On a host that cannot run it, the honest move is to skip loudly.
  *
- * ## The guard probes CAPABILITY, and the first version did not (tk-0103)
+ * ## The guard probes CAPABILITY, and has now been wrong TWICE (tk-0103)
  *
- * This file originally guarded on `hasBinary('bash')` — presence. The downstream
- * consumer of #108 then showed, on a real Windows box, why that is worse than no
- * guard at all: `bash` there resolves to `C:\Windows\system32\bash.exe`, which is
- * WSL bash, a LINUX binary. It answers `--version` perfectly, so the guard passed
- * — and then ate the backslashes in the Windows temp path we hand it and exited
- * 127, leaving four assertion failures the declaration had made look handled.
- * `which node` inside that same shell also fails, so the PATH shim below could
- * not have worked either.
+ * **First**, this file guarded on `hasBinary('bash')` — presence. The downstream
+ * consumer of #108 showed, on a real Windows box, why that is worse than no guard
+ * at all: `bash` there resolves to `C:\Windows\system32\bash.exe`, which is WSL
+ * bash, a LINUX binary. It answers `--version` perfectly, so the guard passed —
+ * and then ate the backslashes in the Windows temp path and exited 127, leaving
+ * four assertion failures the declaration had made look handled.
  *
- * `canRunShellScript` runs the mechanism instead: a script at a native path, a
- * shim resolved off PATH. That answers the question this file actually asks —
- * "can this shell run our hook?" — for git-bash, WSL bash, MSYS and a stock
- * POSIX box alike, without any of them being special-cased by name.
+ * **Then** the replacement proved native-path execution and shim-on-PATH
+ * resolution — and stopped there. But `runHook` runs the REAL hook, and the hook
+ * reaches `git` BEFORE it ever reaches the shim:
+ *
+ * ```sh
+ * repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+ * [ -f "$bin" ] || exit 0
+ * ```
+ *
+ * Both bail-outs are `exit 0`. A shell that passes a git-blind probe but cannot
+ * resolve `git`, or cannot make a git-produced path survive `[ -f … ]`, runs the
+ * hook to a SUCCESSFUL exit that did nothing — so the first case below fails on
+ * the missing marker while its `expect(runHook({})).toBe(0)` passes. Silent, and
+ * indistinguishable from a hook defect. Found by review (terra), not by a run.
+ *
+ * Hence `requires: ['git']`: the probe proves every command-resolution property
+ * these cases reach BEFORE their observable, not merely the last one. It still
+ * refuses to run the hook itself — see `probeShell`'s doc for why a probe that
+ * executes the subject would report a genuine hook defect as an environment gap.
  *
  * NOTE for whoever arms the windows-latest leg: git-for-Windows bundles bash, so
  * this MAY simply run there — but "shipped with git" and "first on PATH in the
  * runner's shell" are different facts and neither has been measured. This probe
  * answers it truthfully either way rather than assuming.
  */
-const BASH_CAPABLE = canRunShellScript('bash');
+const BASH = probeShell('bash', { requires: ['git'] });
 
-if (!BASH_CAPABLE) {
+if (!BASH.capable) {
   console.warn(
     incapableBinaryReason(
       'bash',
-      "run a script at this platform's NATIVE path with a shimmed executable resolved off PATH — the shape every case below uses. The known cause is a `bash` on PATH that is WSL bash (a Linux binary given a Windows path: it eats the backslashes and exits 127); putting git-for-Windows' bash earlier on PATH is what fixes it, NOT installing anything",
+      `run the resolution chain the tracked hook needs — a script at this platform's NATIVE path, \`git\` resolvable and capturable from inside the shell, a git-PRODUCED path surviving a \`[ -f … ]\` test, and a shimmed executable resolved off PATH. The step that failed on this host: ${BASH.failure ?? 'unknown'}. The known cause is a \`bash\` on PATH that is WSL bash (a Linux binary given a Windows path: it eats the backslashes and exits 127, and a \`C:/…\` path from git fails its file test); putting git-for-Windows' bash earlier on PATH is what fixes it, NOT installing anything`,
       'that the SHIPPED .githooks/post-commit honours HARNESS_NO_TELEMETRY, exits 0 on an injected fault, and fires the flush exactly once per commit (plan 067).',
     ),
   );
 }
 
-describe.skipIf(!BASH_CAPABLE)(
+describe.skipIf(!BASH.capable)(
   '.githooks/post-commit — telemetry flush opt-outs (plan 067)',
   () => {
     it('flushes by default (the guard assertions below are non-vacuous)', () => {

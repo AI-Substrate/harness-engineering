@@ -233,6 +233,82 @@ ahead of `C:\Windows\system32` on PATH, the probe should pass and all 4 cases
 should RUN — which is the outcome worth having, and the message now tells them
 that is the lever.
 
+### ROUND 2 — the same defect, one level deeper, found by review (terra)
+
+**The fix above was itself incomplete, and its incompleteness was silent.** Terra
+found it before the consumer did. Recorded in full because two levels of one
+defect have now shipped and the pattern is the finding:
+
+The probe proved native-path execution and shim-on-PATH resolution. But
+`runHook()` runs the **real** hook, and the hook reaches `git` **first**:
+
+```sh
+repo_root="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+bin="$repo_root/harness/cli/bin/harness.js"
+[ -f "$bin" ] || exit 0
+node "$bin" telemetry sync …
+```
+
+Both bail-outs are **`exit 0`**. So a shell that passes a git-blind probe but
+cannot resolve `git` — or cannot make a **git-produced** path survive `[ -f … ]`,
+which is exactly what a `C:/…` path does to WSL bash — runs the hook to a
+**successful exit that did nothing**. The describe runs, `expect(runHook({}))
+.toBe(0)` **passes**, and the case fails on the missing marker.
+
+**Level 1 failed loudly with 127. Level 2 fails silently at `exit 0`** — and the
+red then looks like a hook defect rather than an unusable shell. A guard that
+half-answers is the same mistake as a guard that answers the wrong question, and
+it was living inside the fix for the first one.
+
+**The fix.** `probeShell(shell, { requires })` now proves, in one spawn against a
+real temp git repo, **every** resolution property the fixture reaches before its
+observable: a script at a native path; each required command resolving, running,
+and its output **capturable through command substitution**; a **git-produced path
+surviving `[ -f … ]`**; and the shim resolving off the prepended PATH — with a
+single observable that only appears if all of them succeeded. It also returns
+**which step failed**, so the skip message names it instead of saying "incapable".
+
+**Why the probe still refuses to run the hook.** Executing `.githooks/post-commit`
+itself would be drift-proof, and was rejected on purpose: a probe that runs the
+**subject** cannot tell "this environment cannot run it" from "this hook is
+broken", so a genuine hook defect would be reported as an environment gap and the
+suite would **skip itself green**. The probe therefore mirrors the hook's
+*mechanisms*, never its *logic*. That choice was the PM's stated fork ("either the
+probe exercises every property, or the describe guards them separately") — the
+probe was chosen over separate per-dependency guards because separate guards
+multiply the skip surface while still requiring the same enumeration, and one
+place deciding is one place to correct.
+
+**The cost of that choice is drift**, and it is now guarded rather than hoped
+about — see the drift control below.
+
+### Round-2 evidence (measured)
+
+| control | measured |
+|---|---|
+| **The false positive, reproduced** — a `git-blind` shell (runs scripts, resolves the shim, cannot see `git`) is **ACCEPTED** by the old git-blind probe | ✅ `true` |
+| **The consequence, demonstrated** — the REAL tracked hook under that shell exits **0** and writes **no marker** | ✅ exit `0`, marker absent |
+| **The new probe REJECTS it**, and names the failing step | ✅ `capable: false`, failure names the command |
+| **Not merely stricter** — a shell that CAN see git still passes `requires: ['git']` | ✅ `true` |
+| **Drift guard** — every external command in the tracked hook is one the probe accounts for | ✅ passes; **and fails naming `jq`** when a `jq` line is added to the hook |
+| post-commit-hook on a real bash (positive control) | ✅ `4 / 4` |
+
+The first two rows are what make the third non-vacuous. Without them this would be
+a test that a stricter probe is stricter — which is exactly the reassurance that
+let level 2 ship.
+
+### A defect I introduced in the round-2 control, and fixed at root
+
+The first version of the "probe leaves nothing behind" case listed the **shared**
+`os.tmpdir()` for `harness-shell-probe-*`. It passed alone and went **red in the
+full suite**, because a second vitest worker's concurrent probe appeared in the
+listing — a correct leak check over the **wrong namespace**. That is the identical
+defect `exec-remote-telemetry-git.int.test.ts` documents at length, reproduced by
+someone who had read that comment an hour earlier. Fixed at root, not retried: the
+case now redirects `TMPDIR`/`TMP`/`TEMP` to a private dir for the duration of the
+probe, so the listing contains this probe's output and nothing else. Verified
+still non-vacuous by disabling the probe's cleanup and watching it fail.
+
 ---
 
 ## tk-0104 — declare the real-`git daemon` cluster on win32 · `[x]` · **SCOPE NARROWED**
@@ -297,6 +373,9 @@ stands, and the brief's "skip the file" wording is superseded.
 | D7 | **Deferred** | 2 cases of real coverage given up on win32: 18 daemon cases declared vs 16 they measured failing. |
 | D8 | **Noteworthy** | The platform simulation (`process.platform` redefined at setup) is a cheap and genuinely useful instrument for platform-BRANCH defects, and it is **not in the repo**. Worth encoding as a harness affordance so the next person does not rebuild it — see the harness note below. |
 | D9 | **Deferred** | **D4's class is fixed but UNGUARDED.** `windows-check` scans `.harness/extensions/**` only — `harness/cli/test/**` and `src/**` are explicitly out of its scope — and it has **no PATH-delimiter rule** in WIN001–WIN008 at all. So a reintroduced `':'` PATH join is silently green in both directions: wrong layer, and no rule even if the layer were right. Its own briefing names this failure mode ("a missing rule stays silently green"). A WIN009 rule plus a scope extension would close it; not this round. |
+| D10 | **Noteworthy** | **The tk-0103 fix was itself incomplete, and silently so** — found by review (terra), not by a run. A probe proving only the LAST link of a resolution chain accepts a shell that makes the hook `exit 0` having done nothing. Level 1 failed loudly (127); level 2 failed silently. The general lesson: when a guard's subject bails out with a SUCCESS code, a partial guard converts a skip into a false pass, so the guard must cover every property reached *before the observable*, not merely the property that failed last time. |
+| D11 | **Deferred** | The probe deliberately does **not** run the hook (a probe that executes its subject reports a broken subject as an environment gap and skips itself green), so it can drift from the hook. Mitigated by a control that reads the tracked hook and fails naming any external command the probe does not account for — verified by adding `jq` to the hook and watching it fail. **Mitigated, not eliminated**: the scan is textual, so an obscure invocation shape could still slip past. |
+| D12 | **Noteworthy** | I reproduced a documented defect while fixing another: the round-2 leak control listed the SHARED `os.tmpdir()` and went red under full-suite parallelism — the exact "correct leak check over the wrong namespace" that `exec-remote-telemetry-git.int.test.ts` documents in a long comment I had read an hour earlier. **A comment in one file did not stop the same mistake in another.** A shared private-namespace helper would have; the knowledge existed but was not reachable at the point of use. |
 
 ### Harness note (invariant #14 — pay the difficulty forward)
 
@@ -328,8 +407,8 @@ measurement indicates. The brief predicted ~40. I am not claiming the number —
 their re-run is the measurement, and the timeout component is the wide part of the
 error bar.
 
-**Suite denominator changes**: +7 cases (`external-binary.test.ts`), so their 5096
-becomes 5103.
+**Suite denominator changes**: +12 cases (`external-binary.test.ts`, including the
+five round-2 controls), so their 5096 becomes **5108**.
 
 ### Local gate (measured, macOS)
 
@@ -339,6 +418,10 @@ check:dd-docs:ok root-invocation-smoke:ok dd doctor:ok skills-check:ok`.
 Three warn-launch degradeds (`arch-check`, `markdown-lint`, `windows-check`) are
 pre-existing; `windows-check`'s 6 findings are all in `.harness/extensions/html-snap/`,
 none in any file this phase touched.
+
+**Full suite: 5108/5108, three consecutive clean runs** — run repeatedly on
+purpose, because the round-2 control that had to be repaired (D12) failed only
+under full-suite parallelism and passed in isolation.
 
 ### What a reviewer should look at first
 
