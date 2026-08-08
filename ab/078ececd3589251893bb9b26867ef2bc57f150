@@ -1,0 +1,42 @@
+docs/plans/078-collector-install-host-pin/plan.dd.json
+  s_682a8e25d53827::t_c54fa0a8b1bd52 80
+  s_682a8e25d53827::t_25d583f1dd5d04 42,45,48,51,54,57,60,63,66,69
+harness/cli/test/services/doctor/collector/download.test.ts
+  s_682a8e25d53827::t_5106f93befb85f 105,126-146
+  s_682a8e25d53827::t_6c61cd23a026e6 23-24,84-104
+  s_682a8e25d53827::t_668bf1ac8e4ffa 160-169
+  s_682a8e25d53827::t_30a3df0a5d13ee 106-107
+harness/cli/src/services/doctor/collector/download.ts
+  s_682a8e25d53827::t_7cb3825bba5afc 19-31
+harness/cli/test/services/doctor/collector/regenerate.test.ts
+  s_682a8e25d53827::t_3577427bf2f14e 154-195
+docs/plans/078-collector-install-host-pin/assets/tasks/phase-1/tasks.dd.json
+  s_682a8e25d53827::t_859eac4fd71522 25,28-29
+  s_682a8e25d53827::t_6990e5ba8cd53d 34,37-38,43,46-47,52,55-56
+  s_682a8e25d53827::t_fd83342a5b7f31 61,64-65
+docs/plans/078-collector-install-host-pin/assets/tasks/phase-1/tasks.dd.md
+  s_682a8e25d53827::t_fd83342a5b7f31 42
+  s_682a8e25d53827::t_6990e5ba8cd53d 39-41
+  s_682a8e25d53827::t_859eac4fd71522 38
+docs/plans/078-collector-install-host-pin/assets/tasks/phase-1/execution.log.md
+  s_682a8e25d53827::t_6774787606302c 1-172
+docs/plans/078-collector-install-host-pin/plan.dd.md
+  s_682a8e25d53827::t_25d583f1dd5d04 61-65
+  s_682a8e25d53827::t_c54fa0a8b1bd52 73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ab078ececd3589251893bb9b26867ef2bc57f150",
+  "prompts": {},
+  "sessions": {
+    "s_682a8e25d53827": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "9bc035b2-1622-49c6-b923-5766f6ea2b0a",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
