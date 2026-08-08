@@ -25,6 +25,8 @@ Agents optimise for the requested task — fix the bug, add the feature, reach "
 
 Code review checks the **product**. The harness loop reviews the **process that produced** the code.
 
+**Required reading — the concept, once.** Before the first beat, read the complete engineering-harness reference: `harness docs the-harness-distilled` (bundled offline in any repo with the CLI; source `harness-foundations/the-harness-distilled.md`). It is the single-hit orientation — what a harness is, the four-layer stack, backpressure, encode-don't-document, and the operating loop this router drives. Everything below assumes it.
+
 **Token and model posture.** Spend tokens where they can change the outcome; delegate bounded chores to cheaper tiers, analysis/review to capable tiers, and keep judgement with the lead unless context overrides. See builder `references/00-routing.md` § Model-to-task fit & delegation and `harness-foundations/rules-of-why.md` Rules 5–6.
 
 **The loop — four beats:**
@@ -150,6 +152,7 @@ post-spec, task-pause, phase-end, plan-complete (see "Lifecycle hooks").
 
 ## References
 
+- **Required reading** — `harness docs the-harness-distilled` (source: `harness-foundations/the-harness-distilled.md`) — the complete engineering-harness reference: definition, the four-layer stack, backpressure, encode-don't-document, the CLI front door, extensions, sensors, the operating loop, and the minimal nucleus. Read it once before running the loop.
 - [`references/00-routing.md`](./references/00-routing.md) — the routing engine: signals A–J, the adoption gate (the Graph), the engineering dispatch, the precondition/conflict matrix, verb/slug resolution, the `--json` envelope + `--hooks` manifest (the byte-stable contract), and § Shared conventions.
 - [`references/coach.md`](./references/coach.md) — the human-mode voice: the rail (both flows), the Orient→Flag→Insight→Suggest→Invite contract, the why-table, the Flag beat, tone.
 - [`references/flight-plan-ops.md`](./references/flight-plan-ops.md) — **the dogfood**: how the router drives its two flows as CLI flight plans (nav model, spine-vs-excursion, the `harness flow` verb flags + gotchas, build-order, the AC-07 chore shape + dedup key, standalone loop). Load once, before the first flight-plan mutation of a session.

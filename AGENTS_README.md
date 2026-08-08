@@ -77,7 +77,10 @@ harness --help
 harness instructions   # the agent briefing — envelope contract, self-briefing loop
 harness help --json    # the verb map + safe first actions
 harness docs           # bundled offline docs (then `harness docs <id>`)
+harness docs the-harness-distilled   # REQUIRED READING — the complete harness reference
 ```
+
+**Read `the-harness-distilled` before Stage 3.** It is the single-hit orientation for the concept you are about to install: what an engineering harness is, the four-layer stack, backpressure, encode-don't-document, the CLI front door, extensions, sensors, the operating loop, and the minimal nucleus. Everything the rest of this guide asks you to do assumes it.
 
 The contract in one breath: every command emits one envelope `{command, status, data, error?, next_action?, timestamp}`; `status` is `ok | degraded | unconfigured | error`; exit codes are `0` (ok/degraded), `2` (unconfigured), `1` (error); `next_action` is required on any non-ok status — **follow it before improvising**. Pass `--json` for machine-readable output (piped output auto-selects JSON).
 
@@ -293,5 +296,5 @@ And once the skills are loaded: `/eng-harness-flow` (a skill, not a CLI verb) ro
 
 ## Further reading
 
-- In-CLI, offline: `harness docs` → `cli-readme`, `extend-the-harness`, `authoring-verbs`, `record-and-record-types`
+- In-CLI, offline: `harness docs` → **`the-harness-distilled`** (the complete reference — read this first), then `cli-readme`, `extend-the-harness`, `authoring-verbs`, `record-and-record-types`
 - Repo docs (if you have web access): [`README.md`](./README.md) (the thesis), [`INSTALL.md`](./INSTALL.md) (per-CLI skills install matrix), [`skills/README.md`](./skills/README.md) (when to run which skill)

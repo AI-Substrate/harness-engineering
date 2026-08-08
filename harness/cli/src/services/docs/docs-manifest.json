@@ -2,6 +2,13 @@
   "$comment": "Curated allow-list of docs surfaced by `harness docs` (plan 007, workshop 001). THE P12 curation point: only publication-safe, human/agent-facing guides belong here. NEVER add AGENTS.md, docs/plans/**, docs/project-rules/** governance, or scratch/**. `sourcePath` is relative to the repo root (npm scripts run from there). `scripts/gen-docs.mjs` reads this to inline each .md into the generated docs-content.ts.",
   "docs": [
     {
+      "id": "the-harness-distilled",
+      "title": "The engineering harness \u2014 complete reference",
+      "summary": "Read once and you can operate the concept: the four-layer stack, backpressure, encode-don't-document, the CLI front door, extensions, sensors, the improvement loop, and the minimal nucleus to start one anywhere.",
+      "audience": "both",
+      "sourcePath": "harness-foundations/the-harness-distilled.md"
+    },
+    {
       "id": "extend-the-harness",
       "title": "Extend the harness",
       "summary": "Add a new `harness <verb>` command \u2014 the fast path (`harness new`) and the guided `add-extension` verb (via `/eng-harness-flow`).",
