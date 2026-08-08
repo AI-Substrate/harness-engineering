@@ -16,16 +16,23 @@ import {
  * digest that matches the pin is renamed into place.
  *
  * Every failure mode is named rather than collapsed into "download failed":
- * a non-2xx status, a redirect that left the pinned host, a connect/read
- * timeout, a short or interrupted write, and a digest mismatch each abort,
- * remove the temp file, and say which one happened. A caller that cannot tell
- * "GitHub was down" from "the bytes were not the bytes we pinned" cannot make a
- * safe decision, and the second one is a supply-chain event.
+ * a non-2xx status, a connect/read timeout, a short or interrupted write, and a
+ * digest mismatch each abort, remove the temp file, and say which one happened.
+ * A caller that cannot tell "GitHub was down" from "the bytes were not the bytes
+ * we pinned" cannot make a safe decision, and the second one is a supply-chain
+ * event.
+ *
+ * There is deliberately NO host check on the final URL (plan 078 · #124). One
+ * used to exist, pinned to `github.com`, and it made this path unusable on every
+ * platform: GitHub always 302s a release-asset download to a CDN host, so the
+ * guard fired on the happy path and no install ever started. Integrity here is
+ * and always was the pinned SHA-256, verified below against bytes read back off
+ * disk before anything is placed. Where the bytes came from does not change
+ * whether they are the right bytes.
  */
 
 export type DownloadFailureReason =
   | 'http-status'
-  | 'redirect'
   | 'timeout'
   | 'network'
   | 'short-write'
@@ -38,8 +45,6 @@ export interface VerifiedDownloadRequest {
   sha256: string;
   /** Absolute destination path; replaced atomically after verification. */
   destPath: string;
-  /** Host the URL must still be on after redirects. */
-  expectHost: string;
   /** `process.platform` — decides whether the executable bit is meaningful. */
   platform: string;
   timeoutMs?: number;
@@ -69,12 +74,6 @@ export interface VerifiedDownloadDeps {
   hash: HashPort;
   http: DownloadPort;
   exe: ExecutableBitPort;
-}
-
-/** The host of an absolute http(s) URL, or null when it cannot be read as one. */
-function hostOf(url: string): string | null {
-  const match = /^https?:\/\/([^/?#]+)/i.exec(url);
-  return match?.[1]?.toLowerCase() ?? null;
 }
 
 /** Best-effort cleanup — a failed install must leave NOTHING behind (ac-0005). */
@@ -108,17 +107,6 @@ export async function downloadAndVerify(
         ok: false,
         reason: 'http-status',
         detail: `${request.url}: HTTP ${response.status}`,
-      };
-    }
-    // A redirect is fine; a redirect OFF the pinned host is not. The digest would
-    // catch substituted bytes anyway — this catches the case earlier and names
-    // it, so an operator sees "we were sent elsewhere", not "hash mismatch".
-    const finalHost = hostOf(response.url);
-    if (finalHost !== null && finalHost !== request.expectHost.toLowerCase()) {
-      return {
-        ok: false,
-        reason: 'redirect',
-        detail: `${request.url} redirected to ${response.url} (host ${finalHost}), off the pinned host ${request.expectHost}`,
       };
     }
     if (

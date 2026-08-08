@@ -464,7 +464,6 @@ export async function installCollector(deps: CollectorDeps): Promise<CollectorIn
         url: artifact.url,
         sha256: artifact.sha256,
         destPath: binaryPath,
-        expectHost: manifest.release_host,
         platform: deps.host.platform,
       },
     );

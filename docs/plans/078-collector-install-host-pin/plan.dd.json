@@ -39,34 +39,34 @@
       "name": "acceptance_criteria",
       "value": [
         {
-          "state": "unchecked",
+          "state": "checked",
           "id": "ac-0001",
           "claim": "The release_host pin is removed at all three live sites — the declaration (pin.ts), the manifest writer (regenerate.ts), and its only reader (install.ts) — with no orphan field left in the generated manifest.",
-          "receipt": "Blast radius measured by prime at exactly three sites; every other rg hit is a .git/ai/working_logs blob, not source."
+          "receipt": "Removed at FOUR sites, not three: pin.ts declaration, regenerate.ts renderPinSource, install.ts expectHost arg, and download.ts's expectHost field + hostOf() + guard + dead 'redirect' reason. The 4th was accepted into this AC by the plan author rather than becoming a new AC. Orphan check is asserted, not assumed: a test proves renderPinSource output does NOT contain release_host."
         },
         {
-          "state": "unchecked",
+          "state": "checked",
           "id": "ac-0002",
           "claim": "A test fakes a redirect to release-assets.githubusercontent.com and asserts the download SUCCEEDS. This is the load-bearing AC: the existing suite only ever proved the guard fires when it should, and no fake reproduced GitHub's actual redirect.",
-          "receipt": "Must FAIL against the pre-fix code. A positive-direction test that passes before the fix is not testing the fix."
+          "receipt": "Test added FIRST and RED against unfixed code: expected { ok:false, reason:'redirect' } to match { ok:true, ... } — the guard firing on the happy path. Green after the fix. Additionally proven LIVE: the same download via real adapters returns ok:true (digest matches pin, redirects:1), and returns reason:'redirect' when the pre-fix guard is reinstated."
         },
         {
-          "state": "unchecked",
+          "state": "checked",
           "id": "ac-0003",
           "claim": "Integrity is unchanged: a payload whose SHA-256 does not match the pin is still refused, and nothing is placed on disk. Dropping the host pin must not weaken the digest check that was always the real control.",
-          "receipt": "Existing digest tests pass untouched, plus a case proving refusal survives a redirect to the real CDN host — the two must not be coupled."
+          "receipt": "Existing digest tests untouched and passing, PLUS a new case proving a bad SHA-256 is still refused after a redirect to release-assets.githubusercontent.com — nothing on disk, no rename, temp dir removed. The host check and the digest check are demonstrably not coupled."
         },
         {
-          "state": "unchecked",
+          "state": "checked",
           "id": "ac-0004",
           "claim": "Whatever pinned fields remain are ASSERTED by a test that fails if regenerate stops emitting them. release_host had no such test, which is why it could ship unsatisfiable.",
-          "receipt": "Prime's finding: no test anywhere asserted release_host — not its presence, value, or survival through regeneration."
+          "receipt": "New test asserts each remaining pinned field BY NAME from a hardcoded list. Two-step mutation proof: dropping a field from the generator alone reddens both it and the byte-for-byte test; ALSO dropping it from pin.ts (i.e. re-running the regenerator) turns the byte-for-byte test GREEN while the named test stays red. The pre-existing guard self-heals; that is the hole. List is hardcoded deliberately — deriving it from the pin's keys would inherit the same self-heal."
         },
         {
-          "state": "unchecked",
+          "state": "checked",
           "id": "ac-0005",
           "claim": "The end-to-end install is exercised as far as this environment allows, and any step that could NOT be verified here is named rather than implied.",
-          "receipt": "A real network install is not reproducible in CI; state what was proven by fake, what by live probe, and what remains unverified."
+          "receipt": "Boundary stated in three parts in execution.log.md. LIVE: real adapters downloaded the pinned asset, digest matched, Mach-O arm64 binary reports 1.6.21; pre-fix code fails the same download. FAKE: disk/atomicity/cleanup/short-write/executable-bit ordering. UNVERIFIED and named, non-empty: doctor --install-collector orchestration (state file, config, hooks) never run; no install to the real ~/.git-ai path (shared machine); 5 of 6 platforms not installed end-to-end."
         }
       ]
     },
@@ -77,7 +77,7 @@
           "id": "ph-2e37",
           "title": "Phase 1: Drop the host pin and prove the happy path",
           "brief": "",
-          "state": "unchecked",
+          "state": "checked",
           "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
         }
       ]

@@ -20,6 +20,8 @@ import {
 const URL = 'https://github.com/git-ai-project/git-ai/releases/download/v1.6.21/git-ai-macos-arm64';
 const DEST = '/home/u/.git-ai/bin/git-ai';
 const PAYLOAD = new TextEncoder().encode('#!/bin/sh\necho git-ai\n');
+/** The host GitHub redirects every release-asset download to (078 · #124). */
+const GITHUB_CDN_HOST = 'release-assets.githubusercontent.com';
 /** The real SHA-256 of PAYLOAD — computed once here, never copied from the code. */
 const DIGEST = new NodeHash().sha256Hex(PAYLOAD);
 
@@ -39,7 +41,6 @@ function request(over: Record<string, unknown> = {}) {
     url: URL,
     sha256: DIGEST,
     destPath: DEST,
-    expectHost: 'github.com',
     platform: 'darwin',
     ...over,
   } as Parameters<typeof downloadAndVerify>[1];
@@ -80,6 +81,30 @@ describe('downloadAndVerify — the happy path places a verified, executable bin
   });
 });
 
+describe('downloadAndVerify — GitHub’s real redirect SUCCEEDS (078 · ac-0002)', () => {
+  it('installs after a redirect to release-assets.githubusercontent.com — the CDN hop GitHub ALWAYS makes', async () => {
+    // The fake that was missing. Every release-asset download 302s off github.com
+    // to this host — universal GitHub behaviour, confirmed against an unrelated
+    // repo (cli/cli v2.62.0), not specific to git-ai. The suite only ever faked a
+    // redirect that SHOULD be refused (cdn.example.com, below), so nothing proved
+    // the guard stays quiet on the one redirect that actually happens. It did not:
+    // `harness doctor --install-collector` could not succeed on any platform.
+    const { fs, deps: d } = deps({
+      [URL]: {
+        ...ok200(PAYLOAD),
+        url: `https://${GITHUB_CDN_HOST}/git-ai-project/git-ai/releases/assets/1?token=x`,
+        redirects: 1,
+      },
+    });
+
+    const result = await downloadAndVerify(d, request());
+
+    expect(result).toMatchObject({ ok: true, path: DEST, digest: DIGEST, redirects: 1 });
+    expect(fs.renames).toEqual([`/tmp/harness-gitai-0/download.bin->${DEST}`]);
+    expect(fs.paths()).toEqual([DEST]);
+  });
+});
+
 describe('downloadAndVerify — a digest mismatch fails closed (ac-0005)', () => {
   it('installs nothing, leaves no partial file, and names BOTH digests', async () => {
     const { fs, deps: d } = deps({ [URL]: ok200(new TextEncoder().encode('malicious')) });
@@ -98,6 +123,27 @@ describe('downloadAndVerify — a digest mismatch fails closed (ac-0005)', () =>
     expect(fs.renames).toEqual([]);
     expect(fs.removedDirs).toEqual(['/tmp/harness-gitai-0']);
   });
+
+  it('still refuses a bad digest AFTER a redirect to the real CDN host (078 · ac-0003)', async () => {
+    // Removing the host pin must not have removed the control that actually
+    // provides integrity. Same CDN redirect as the happy path above; only the
+    // bytes differ. If dropping the host check had coupled the two, this is
+    // where it would show — the redirect accepted, and the payload with it.
+    const { fs, deps: d } = deps({
+      [URL]: {
+        ...ok200(new TextEncoder().encode('malicious')),
+        url: `https://${GITHUB_CDN_HOST}/git-ai-project/git-ai/releases/assets/1?token=x`,
+        redirects: 1,
+      },
+    });
+
+    const result = await downloadAndVerify(d, request());
+
+    expect(result).toMatchObject({ ok: false, reason: 'digest-mismatch' });
+    expect(fs.paths()).toEqual([]);
+    expect(fs.renames).toEqual([]);
+    expect(fs.removedDirs).toEqual(['/tmp/harness-gitai-0']);
+  });
 });
 
 describe('downloadAndVerify — every transport failure is named, not collapsed (ac-0015)', () => {
@@ -111,18 +157,16 @@ describe('downloadAndVerify — every transport failure is named, not collapsed 
     expect(fs.mkdtemps).toEqual([]); // aborted before any disk was touched
   });
 
-  it('a redirect off the pinned host is refused BEFORE the digest is consulted', async () => {
-    const { fs, deps: d } = deps({
-      [URL]: { ...ok200(PAYLOAD), url: 'https://cdn.example.com/git-ai', redirects: 1 },
-    });
-
-    const result = await downloadAndVerify(d, request());
-
-    expect(result).toMatchObject({ ok: false, reason: 'redirect' });
-    if (result.ok) return;
-    expect(result.detail).toContain('cdn.example.com');
-    expect(fs.paths()).toEqual([]);
-  });
+  // DELETED HERE (078 · #124): "a redirect off the pinned host is refused BEFORE
+  // the digest is consulted", which faked a redirect to cdn.example.com. It
+  // asserted a guard that no longer exists, because the guard could never be
+  // satisfied on the happy path — GitHub always redirects release assets to a
+  // CDN host, so it refused every real install on every platform. What is no
+  // longer checked: a redirect to an unexpected host is not refused. What checks
+  // integrity in its place, as it always did: the pinned SHA-256, verified
+  // against bytes read back off disk before anything is placed. The digest
+  // refusal is proven to still fire AFTER a real CDN redirect — see the
+  // digest-mismatch block above; the two were never coupled.
 
   it('a timeout aborts with the timeout named', async () => {
     const { deps: d } = deps({
