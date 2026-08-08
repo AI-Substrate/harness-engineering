@@ -597,25 +597,34 @@ describe('the probe cannot silently fall behind the hook it guards', () => {
    * ## This REJECTS rather than FOLLOWS
    *
    * Following a delegation means enumerating the behaviour of arbitrary sourced
-   * content, which does not terminate. Rejecting means enumerating the ways a
-   * POSIX shell script can move execution out of its own text — finite, small,
-   * and listed in full below. The guard's claim is about A FILE, so anything
-   * that leaves the file invalidates that claim regardless of what it then does:
-   * the guard never needs to know what a helper contains, only that the hook did
-   * not leave.
+   * content, which does not terminate. Rejecting means checking for the ways a
+   * departure is conventionally WRITTEN — the set enumerated below. The guard's
+   * claim is about A FILE, so anything that leaves the file invalidates that
+   * claim regardless of what it then does: the guard never needs to know what a
+   * helper contains, only that the hook did not leave.
+   *
+   * **What makes this terminate is NOT that the list is exhaustive.** It is that
+   * the list is FIXED — it does not grow as the hook changes — and that the guard
+   * REJECTS rather than FOLLOWS. Round 6 removed three claims of exhaustiveness
+   * ("every way", "listed in full", "the ways of leaving a file are finite")
+   * which were imported into the argument's strongest part and were never needed
+   * by it. See the log's D16.
    *
    * ## WHAT THIS GUARD CANNOT DO — read this before trusting it
    *
    * **A textual scan cannot be complete over shell, and this one does not claim
-   * to be.** The ways of LEAVING a file are finite; the ways of WRITING that
-   * departure are not. Delegation expressed in any of these is KNOWN to be
-   * unreachable here:
+   * to be.** Delegation expressed in any of these is KNOWN to be unreachable
+   * here — measured, not supposed:
    *
    * - a **variable-held** command — `cmd=./helper; $cmd`
    * - **`eval` of a constructed string** assembled at runtime
    * - a **PATH-resolved** name that happens to be a script
    * - a **here-doc** piped to another interpreter
    * - an **arithmetic or parameter-expansion** context that yields a command
+   * - an **explicit subshell nested inside a command substitution or backticks**
+   *   — `v="$( ( exit 0 ) )"`. The subshell pattern must be anchored (an
+   *   unanchored `(` matches this file's own comments), and that anchor does not
+   *   reach inside a substitution.
    *
    * So the honest claim is narrow, and worth stating exactly: *this guard fails
    * on a sixth silent-success path, or on a departure from the file, WHEN
@@ -629,14 +638,27 @@ describe('the probe cannot silently fall behind the hook it guards', () => {
    * defect this plan exists to remove. A further expression of delegation found
    * later CONFIRMS this limit rather than refuting the guard.
    *
-   * ## Position-independent by construction (round 5)
+   * ## How much context each pattern actually covers (rounds 5–6)
    *
-   * `result="$(./silent-helper.sh)"` was missed TWICE — these patterns matched
-   * only at command position, and the command scan's `$(` matcher expected a
-   * leading letter, so a leading dot slipped it. That was not an eighth form; it
-   * was one of the seven, matched too narrowly. So the patterns match ANYWHERE in
-   * the text rather than only where a command is conventionally written, and the
-   * fix was to widen the matchers, never to append a pattern.
+   * `result="$(./silent-helper.sh)"` was missed TWICE — the patterns matched only
+   * at command position, and the command scan's `$(` matcher expected a leading
+   * letter, so a leading dot slipped it. That was not an eighth form; it was one
+   * of the seven, matched too narrowly. Both were widened, and **no pattern was
+   * appended**.
+   *
+   * The forms divide, and the difference is worth stating exactly rather than
+   * summarising as "position-independent" — which was false for two of them:
+   *
+   * - **Unanchored** (`source`, `eval`, `exec`, `trap`, `./`): the pattern
+   *   carries no positional anchor at all, so context cannot hide them.
+   * - **Anchored** (`. <file>`, `( … )`): an unanchored `.` or `(` would match
+   *   ordinary prose and this file's own comments, so these must be anchored to a
+   *   command position. The anchor set covers operators, grouping and shell
+   *   KEYWORDS — round 6 added the keyword branch after terra found
+   *   `if ( : ); then :; fi` escaping, and an audit found the same gap in
+   *   dot-sourcing. Measured over ten contexts: dot-sourcing is caught in all
+   *   ten; the subshell in eight, missing only when nested inside `$( )` or
+   *   backticks, which is listed above as a known limit.
    *
    * Deliberately conservative: these patterns scan comments too, so prose that
    * merely NAMES one of these forms fails the test. That is the correct bias for
@@ -647,12 +669,13 @@ describe('the probe cannot silently fall behind the hook it guards', () => {
     const hook = readFileSync(HOOK, 'utf8');
 
     /**
-     * Every way a POSIX shell script can move execution out of its own text.
+     * The ways a departure is conventionally WRITTEN — not every way one could
+     * be. The set is FIXED, which is what the termination argument needs; it is
+     * not claimed to be exhaustive, which the argument never needed.
      *
-     * Each pattern is POSITION-INDEPENDENT: a departure inside a command
-     * substitution, an assignment or a conditional counts exactly as much as one
-     * at the head of a line, because the shell does not care where it was written
-     * and neither does the consequence.
+     * Context coverage differs per pattern and is stated in the doc above:
+     * unanchored patterns cannot be hidden by context, anchored ones (`.` and
+     * `(`) reach the contexts in their anchor set and no further.
      */
     const SCOPE_EXTENDING: ReadonlyArray<readonly [string, RegExp]> = [
       [
@@ -661,9 +684,11 @@ describe('the probe cannot silently fall behind the hook it guards', () => {
       ],
       [
         '`. <file>` (dot-sourcing) — the same thing, spelled shorter',
-        // Anchored to a command position (line start, `;`, `&`, `|`, `(`, backtick)
-        // so ordinary prose ending a sentence does not read as a dot-source.
-        /(?:^|[;&|(`])[ \t]*\.[ \t]+\S/m,
+        // Anchored, because an unanchored `.` matches ordinary prose punctuation.
+        // The anchor set covers operators, grouping AND shell keywords: round 6's
+        // audit found `if true; then . helper.sh; fi` escaping the operator-only
+        // version. Caught in all ten audited contexts.
+        /(?:^|[;&|(`{]|\b(?:then|else|elif|do|done|until|while|if|fi|in)\b)[ \t]*\.[ \t]+\S/m,
       ],
       ['`eval` — executes constructed text, which cannot be enumerated statically', /\beval\b/],
       [
@@ -677,7 +702,15 @@ describe('the probe cannot silently fall behind the hook it guards', () => {
         // `result="$(./silent-helper.sh)"`. Any occurrence now counts.
         /\.\//,
       ],
-      ['an explicit subshell — its exits do not mean what they look like', /(?:^|[;&|]\s*)\(/m],
+      [
+        'an explicit subshell — its exits do not mean what they look like',
+        // Anchored, because an unanchored `(` matches the parentheses in this
+        // file's own comments. Round 6 added the keyword branch after terra found
+        // `if ( : ); then :; fi` escaping. Still NOT caught when nested inside a
+        // command substitution or backticks — stated in the doc above, measured,
+        // and left as a documented limit rather than chased.
+        /(?:^|[;&|{]\s*|\b(?:then|else|elif|do|done|until|while|if|fi|in)\b\s*)\(/m,
+      ],
     ];
 
     const delegations = SCOPE_EXTENDING.filter(([, pattern]) => pattern.test(hook)).map(

@@ -528,6 +528,86 @@ because the counter's model is a linear walk, and a trap delivers control to a
 point that walk never visits — which is what a departure does, whoever owns the
 text. **Asserted in one place only.**
 
+### ROUND 6 — the documentation was false, which is the original defect one layer in
+
+Terra was asked a different question this round: not *is there a ninth form* but
+*does the claim match the capability* — including whether the downgrade itself
+overclaims. It does. **An overclaim inside a humility statement is the last place
+either of us would have looked.**
+
+**Terra's finding**: the doc said the explicit-subshell form was matched
+POSITION-INDEPENDENTLY. It was not — `if ( : ); then :; fi` is valid Bash and got
+0 scope matches and 0 unaccounted commands.
+
+**This is not D15 reopening.** D15 says stop chasing completeness and document the
+absence, and that still holds. This is not an undocumented incompleteness; it is a
+**false sentence in the documentation** — we said a form was caught a certain way
+and it was not. Documenting a limit is honest; describing a limit inaccurately is
+the same defect we started with, one layer in. The claim has to be true whatever
+its size.
+
+#### I audited the rest of the doc the same way, and found a fourth
+
+Empirically, not by reading — every form rendered into ten contexts and run
+against the real patterns. Before the fix:
+
+| form | line start | && | ; | \| | `$( )` | backticks | `if ( )` cond | after `then` | for body |
+|---|---|---|---|---|---|---|---|---|---|
+| source, eval, exec, trap, `./` | caught | caught | caught | caught | caught | caught | caught | caught | caught |
+| **dot-source** | caught | caught | caught | caught | caught | caught | **MISS** | **MISS** | **MISS** |
+| **subshell** | caught | caught | caught | caught | **MISS** | **MISS** | **MISS** | **MISS** | **MISS** |
+
+So dot-sourcing had the identical gap terra found in the subshell —
+`if true; then . helper.sh; fi` escaped. **Fixed in the same commit rather than
+reported and queued**, per the PM's instruction.
+
+#### The fix: widen where cheap, describe accurately for the rest
+
+Both anchored patterns gained a shell-KEYWORD branch. Measured after: dot-sourcing
+is caught in **all ten** contexts; the subshell in **eight of ten**, still missing
+when nested inside `$( )` or backticks. **No pattern was appended**, and there are
+no false positives on the real hook.
+
+The doc no longer summarises this as "position-independent", because that was
+false for two of seven. It now states the real division:
+
+- **Unanchored** (`source`, `eval`, `exec`, `trap`, `./`) — the pattern carries no
+  positional anchor at all, so context cannot hide them.
+- **Anchored** (`. <file>`, `( … )`) — an unanchored `.` or `(` would match
+  ordinary prose and this file's own comments, so these must be anchored; they
+  reach the contexts in their anchor set and no further.
+
+The subshell-inside-a-substitution gap joins the known-unreachable list.
+
+#### The three overclaims removed — and why they were there
+
+| removed | where |
+|---|---|
+| "**Every way** a POSIX shell script can move execution out of its own text" | scope pattern list |
+| "finite, small, and **listed in full**" | scope doc |
+| "the ways of LEAVING a file **are finite**" | scope doc + contract doc |
+
+I found these myself, before terra reported them, by reading my own prose with the
+PM's question instead of my own. The replacement is the claim that actually does
+the work: **the enumerated set is FIXED and does not grow as the hook changes.**
+Termination never depended on the taxonomy being exhaustive — only on the set
+being fixed and the guard rejecting rather than following. **I imported a claim I
+did not need and could not support, into the argument's strongest part** (D16).
+
+#### Round-6 evidence (measured — mutations into the REAL hook, then reverted)
+
+| mutation | failing assertions |
+|---|---|
+| **terra's form** — `if ( : ); then :; fi` | ✅ 1 |
+| **my own fourth find** — `if true; then . helper.sh; fi` | ✅ 1 |
+| `for i in 1; do ( exit 0 ); done` | ✅ 1 |
+| terra's round-5 form — `result="$(./silent-helper.sh)"` *(must not regress)* | ✅ 2 |
+| **documented limit** — `v="$( ( exit 0 ) )"` | **0 — as documented** |
+| **documented limit** — `c=helper; $c` | **0 — as documented** |
+
+Both documented limits fail zero assertions. That is the shape a documented limit
+should have: the doc says unreachable, and the measurement agrees.
+
 ### Two findings deliberately NOT fixed here
 
 Terra's D13 sweep found two more instances in code this branch never touched —
@@ -619,7 +699,8 @@ stands, and the brief's "skip the file" wording is superseded.
 | D11 | **Deferred** | The probe deliberately does **not** run the hook (a probe that executes its subject reports a broken subject as an environment gap and skips itself green), so it can drift from the hook. Mitigated by a control that reads the tracked hook and fails naming any external command the probe does not account for — verified by adding `jq` to the hook and watching it fail. **Mitigated, not eliminated**: the scan is textual, so an obscure invocation shape could still slip past. |
 | D12 | **Noteworthy** | **A comment is a reminder, and reminders do not survive contact with a different file.** The round-2 leak control listed the SHARED `os.tmpdir()` and went red only under full-suite parallelism — the exact "correct leak check over the WRONG namespace" defect that `exec-remote-telemetry-git.int.test.ts` documents in a long, well-written comment I had read an hour earlier, in another file, while working on this very task. The prose did not transfer; nothing was reachable at the point of use. **GENERAL RULE**: knowledge that must be applied at a point of use has to be reachable there **as a tool** — a shared helper, a fixture, a lint rule, a default — not as prose in a neighbouring file. Prose scales with the reader's attention; a helper scales with reuse. This is encode-don't-remind one level over: the earlier author DID encode the lesson, but encoded it as an **explanation** rather than as an **affordance**, so the next person had to re-derive it by failing. The fix that would have carried it: a shared private-temp-namespace helper in `test/support/`, which is now the obvious candidate for a later round. |
 | D14 | **Noteworthy** | **The first finding about an enumeration's SCOPE rather than its content.** A `source ./helper.sh` kept the silent-path count correct while moving the behaviour out of the counted file. GENERAL RULE: a static enumeration over a file is only as good as the guarantee that the file does not DELEGATE — guard the boundary as well as the contents, and REJECT the delegating forms rather than following them (leaving-a-file is a finite entity set; the contents of what you would follow is not). |
-| D15 | **Noteworthy** | **A TEXTUAL SCAN CANNOT BE COMPLETE OVER SHELL, and four rounds of findings came from claiming otherwise — not from picking the wrong entity.** The entity (ways of leaving a file) is finite and correct; the ways of WRITING a departure are unbounded. So the guard's claim was downgraded to what the instrument supports: *it fails on a departure EXPRESSED IN ONE OF THE ENUMERATED FORMS*, and it names variable-held commands, `eval` of constructed strings, PATH-resolved script names, here-docs and expansion contexts as KNOWN-unreachable. **GENERAL RULE: a rule with a documented blind spot is worth having; a rule with an undocumented blind spot is the defect.** When completeness is not available, stop buying rounds trying to reach it and spend one documenting its absence — after which a further instance CONFIRMS the limit instead of reopening the work. |
+| D15 | **Noteworthy** | **A TEXTUAL SCAN CANNOT BE COMPLETE OVER SHELL, and four rounds of findings came from claiming otherwise — not from picking the wrong entity.** The entity (ways of leaving a file) is finite and correct; the ways of WRITING a departure are unbounded. So the guard's claim was downgraded to what the instrument supports: *it fails on a departure EXPRESSED IN ONE OF THE ENUMERATED FORMS*, and it names variable-held commands, `eval` of constructed strings, PATH-resolved script names, here-docs and expansion contexts as KNOWN-unreachable. **GENERAL RULE: a rule with a documented blind spot is worth having; a rule with an undocumented blind spot is the defect.** When completeness is not available, stop buying rounds trying to reach it and spend one documenting its absence — after which a further instance CONFIRMS the limit instead of reopening the work. **SECOND INSTANCE (round 6): the humility statement itself overclaimed** — three completeness claims sat eight lines above the paragraph renouncing completeness. **A humility statement is not self-enforcing**; it has to meet the same standard as everything else. The falsifiability test that catches this at writing time, without a reviewer: ***if I have to reclassify a counterexample to keep the word, the word is wrong.*** |
+| D16 | **Noteworthy** | **OVER-ARGUING A CASE THAT WAS ALREADY WON — a distinct failure mode, and the one that produced round 6.** The termination argument never depended on the taxonomy being exhaustive; it depended on the set being FIXED and on the guard REJECTING rather than FOLLOWING. I imported "every way", "listed in full" and "finite" into the argument's strongest part, where they added nothing and could not be supported. **An unnecessary claim inherits none of the scrutiny the necessary ones get, because nobody is defending against it** — reviewers attack the load-bearing sentences, and decoration rides in behind them. GENERAL RULE: when an argument is already sufficient, additional support is not free; it is unguarded surface. |
 | D13 | **Deferred** | **The "fails to compile" guarantee is editor-only, and I claimed it before measuring.** The contract parameter is non-optional, which should make a blind probe uncompilable — but `harness/cli/tsconfig.json` sets `include: ["src"]`, so **test files are never typechecked**. Measured, not assumed: a deliberate `const x: number = "s"` added to a test file passed the gate as `typecheck: ok` (biome caught that particular line, but biome has no type information and would not catch a missing argument). Closed with a **runtime** precondition that throws, plus a control that proves it fires. The residual gap is repo-wide and out of scope here: **no test file in this repo is typechecked by the gate**, so every type-level guarantee that lives in `test/` is editor-time only. Two files in `src/` already document this boundary. |
 
 ### Harness note (invariant #14 — pay the difficulty forward)

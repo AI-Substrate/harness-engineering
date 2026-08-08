@@ -127,9 +127,12 @@ export interface ShellContract {
    * keeps the number at five while moving the behaviour somewhere the count
    * cannot see. So a separate control rejects every form that moves execution
    * out of the file (`source`, dot-sourcing, `eval`, `exec`, `trap`, a local
-   * script invocation, an explicit subshell), rather than trying to follow them:
-   * following is a behaviour enumeration over arbitrary content and does not
-   * terminate; the ways of LEAVING a file are finite and do.
+   * script invocation, an explicit subshell), rather than trying to follow them.
+   * Following is a behaviour enumeration over arbitrary content and does not
+   * terminate; the rejected set is FIXED — it does not grow as the script
+   * changes — and that, not exhaustiveness, is what makes the guard terminate.
+   * It is NOT claimed to catch every way a departure could be written; see the
+   * guard's own doc for the measured limits.
    */
   silentSuccessPaths: number;
 }
