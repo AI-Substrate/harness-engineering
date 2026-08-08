@@ -2,6 +2,10 @@
 
 This repository is a public-facing engineering-harness first-principles and tutorial project.
 
+## Required reading (start here)
+
+Read [`harness-foundations/the-harness-distilled.md`](harness-foundations/the-harness-distilled.md) before doing work in this repo — or `node harness/cli/bin/harness.js docs the-harness-distilled` for the same text through the docs surface. It is the single-hit orientation for the product this repo builds: definition, the four-layer stack, backpressure, encode-don't-document, the CLI front door, extensions, sensors, the operating loop, and the minimal nucleus. The rest of this file assumes it. The other foundation docs (`first-principles.md`, `patterns-that-work.md`, `directives.md`, `rules-of-why.md`) go deeper per area.
+
 ## This repo's dual role
 
 This repository is **two things at once** — keep them distinct (the full version is in `docs/project-rules/constitution.md` §1):
