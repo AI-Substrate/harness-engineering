@@ -1,0 +1,29 @@
+harness/cli/src/services/docs/docs-manifest.json
+  s_b1f02f3d334be0::t_6d850ece2e80b1 5-10
+  s_b1f02f3d334be0::t_f00b504636cf3d 4
+harness/cli/src/services/docs/docs-content.ts
+  s_b1f02f3d334be0::t_1a67c87f5cb5b8 7-14,67
+  s_b1f02f3d334be0::t_51dcaa016170d0 6
+AGENTS_README.md
+  s_b1f02f3d334be0::t_77ddb873d6715a 80,83-84,299
+skills/eng-harness-flow/SKILL.md
+  s_b1f02f3d334be0::t_91fdca1b7627b3 28-29,155
+AGENTS.md
+  s_b1f02f3d334be0::t_22cdb55258673e 5-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "950aa33c7377f7f801eabf47fa6c982c30517ffb",
+  "prompts": {},
+  "sessions": {
+    "s_b1f02f3d334be0": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "c33873f2-0301-48d1-baac-a71267e318c1",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
