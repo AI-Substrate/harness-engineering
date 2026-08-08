@@ -50,13 +50,23 @@ describe('real-git fixtures are hermetic by inheritance, not by memory', () => {
   it('keeps the shared helper as the only OTHER place those keys are set', () => {
     // A copy-pasted disable is how this bug class survived: each fixture that
     // opted in looked fixed, and the next one written was not.
-    const offenders = walk(TEST_ROOT)
+    const examined = walk(TEST_ROOT);
+    const offenders = examined
       .filter((path) => path !== SHARED_HELPER)
       .filter((path) => {
         const source = readFileSync(path, 'utf8');
         return TRACE2_KEYS.some((key) => new RegExp(`${key}\\s*[:=]`).test(source));
       })
       .map((path) => relative(CLI_ROOT, path));
+
+    // Corpus assertion is correct for THIS test — the walk is the only stage that
+    // narrows, and excluding one known helper cannot empty it. Tests 1 and 3 in
+    // this file read a single named file with positive assertions and have no
+    // funnel at all, so nothing is added to them.
+    expect(examined.length).toBeGreaterThan(0);
+    console.error(
+      `hermetic-git-fixtures — examined ${examined.length} test file(s), ${offenders.length} offender(s)`,
+    );
 
     expect(offenders).toEqual([]);
   });
