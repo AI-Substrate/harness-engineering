@@ -10,7 +10,16 @@ import { traverseCorpus } from '../../../../src/services/dd/links/traverse.js';
 import type { SchemaFs } from '../../../../src/services/dd/schema/model.js';
 import { ConventionSchemaResolver } from '../../../../src/services/dd/schema/resolve.js';
 
-const REPO_ROOT = fileURLToPath(new URL('../../../../../../', import.meta.url)).replace(/\/$/, '');
+// `fileURLToPath` yields NATIVE separators, and everything below concatenates
+// forward-slash literals onto it — on Windows that produces a mixed-separator
+// path like `C:\\repo/docs/how/dd/exemplar`. This value is not merely passed to
+// `readFileSync` (which tolerates mixing); it is handed to `scanCorpus` and
+// `traverseCorpus` as `repoRoot`, where containment checks and address
+// resolution compare it against POSIX-shaped paths. Normalise once, here, at the
+// boundary where the native form enters (plan 108 · C2).
+const REPO_ROOT = fileURLToPath(new URL('../../../../../../', import.meta.url))
+  .replaceAll('\\', '/')
+  .replace(/\/$/, '');
 const EXEMPLAR = `${REPO_ROOT}/docs/how/dd/exemplar`;
 const AC_0201 = `${EXEMPLAR}/plan.dd.json#acceptance_criteria/ac-0201`;
 

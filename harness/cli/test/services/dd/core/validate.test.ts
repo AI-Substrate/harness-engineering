@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { DdDoc } from '../../../../src/services/dd/core/model.js';
-import { type DdIssue, validateDocument } from '../../../../src/services/dd/core/validate.js';
+import {
+  type DdIssue,
+  resolveAddressFile,
+  validateDocument,
+} from '../../../../src/services/dd/core/validate.js';
 import { FixtureSchemaResolver, fixtureDoc } from '../helpers.js';
 
 const resolver = new FixtureSchemaResolver();
@@ -127,5 +131,60 @@ describe('dd-core depth-zero validation', () => {
         }),
       ]),
     );
+  });
+});
+
+/**
+ * D7 (plan 108) — `resolveAddressFile` used `startsWith('/')` as its absoluteness
+ * test, so a drive-rooted address file part was read as RELATIVE and appended to
+ * the citing document's directory.
+ *
+ * NOT a separator bug: it fires on a forward-slashed drive path too, which is why
+ * every case below is asserted on the VALUE. Nothing here throws — the mangled
+ * path then passes `isPathWithinRepo` benignly (it IS inside the repo) and
+ * surfaces as a confusing "target is missing" pointing at a doubled path. The
+ * WARN at `address-path-absolute` still fires, so this is a misleading SECONDARY
+ * diagnostic rather than a silent wrong answer.
+ *
+ * Every case is a plain string, so all of it fails on Linux without the fix — no
+ * Windows host required.
+ */
+describe('resolveAddressFile — root-anchored targets are not re-anchored (plan 108 · D7)', () => {
+  const from = 'C:/repo/docs/plan.dd.json';
+
+  it('a forward-slashed DRIVE-rooted target is absolute, not relative', () => {
+    // The case that proves this is absoluteness and not separators: no backslash
+    // appears anywhere, and the unfixed code still produced
+    // `C:/repo/docs/C:/repo/docs/other.dd.json`.
+    expect(resolveAddressFile(from, 'C:/repo/docs/other.dd.json')).toBe(
+      'C:/repo/docs/other.dd.json',
+    );
+  });
+
+  it('a backslashed drive-rooted target resolves to the same place', () => {
+    expect(resolveAddressFile(from, 'C:\\repo\\docs\\other.dd.json')).toBe(
+      'C:/repo/docs/other.dd.json',
+    );
+  });
+
+  it('a lower-case drive letter is still root-anchored', () => {
+    // `normalizeFilePath` does not case-fold a drive letter, so the spelling is
+    // preserved — what matters is that it was not APPENDED to `from`.
+    expect(resolveAddressFile(from, 'c:/repo/docs/other.dd.json')).toBe(
+      'c:/repo/docs/other.dd.json',
+    );
+  });
+
+  it('POSIX control: a `/`-rooted target was always handled correctly', () => {
+    expect(resolveAddressFile('/repo/docs/plan.dd.json', '/repo/docs/other.dd.json')).toBe(
+      '/repo/docs/other.dd.json',
+    );
+  });
+
+  it('regression control: a genuinely RELATIVE target is still anchored to the citer', () => {
+    // The half that must not change. A fix that made everything absolute would
+    // pass the four cases above and break every real dd address in the repo.
+    expect(resolveAddressFile(from, 'other.dd.json')).toBe('C:/repo/docs/other.dd.json');
+    expect(resolveAddressFile(from, '../shared.dd.json')).toBe('C:/repo/shared.dd.json');
   });
 });
