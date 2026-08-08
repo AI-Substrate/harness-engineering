@@ -1,0 +1,70 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Phase 2: Round one — the consumer-ranked noise removal",
+        "slug": "phase-2",
+        "status": "draft",
+        "summary": ""
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Round one as ranked by the consumer. Timeout first — it is the instrument everything else is measured with."
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-0101",
+          "title": "Raise the test timeout so a stopwatch is not reported as an assertion. THE CONSUMER'S #1 and the highest-leverage change available: ~46 phantom failures, and it is a config line. Do this FIRST — while it stands no other Windows measurement is trustworthy, and it invented three whole files of 'new' failures on the s077 branch. Prefer a global raise over a win32-only one unless there is a reason not to; state which and why.",
+          "state": "unchecked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0009"
+          ]
+        },
+        {
+          "id": "tk-0102",
+          "title": "Add platform: 'linux' to the shared deps() helper in nudge.test.ts (~line 92). ~40 failures, one line. Do NOT change nudge.ts — the guard is correct and the composition root passes platform explicitly. Verify the count actually drops rather than assuming; the consumer's grouped signatures are the oracle.",
+          "state": "unchecked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-000a"
+          ]
+        },
+        {
+          "id": "tk-0103",
+          "title": "Fix the bash CAPABILITY defect in test/support/external-binary.ts, shipped in #118. hasBinary() probes PRESENCE; on Windows 'bash' resolves to WSL bash which cannot run a Windows-path script (exit 127), and 'which node' inside it also fails. Either probe capability or skip post-commit-hook on win32 with a named reason. A presence-only guard that lets a test proceed to fail is worse than none — the declaration makes the gap look handled.",
+          "state": "unchecked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-000b"
+          ]
+        },
+        {
+          "id": "tk-0104",
+          "title": "Skip exec-remote-telemetry-git on win32 with a NAMED reason — 16 failures. The consumer explicitly deprioritised this AS COVERAGE: a real-git-daemon suite that Linux CI covers properly, and on Windows the daemon holds handles past SIGTERM. Name what is unproven on win32 in the skip text, in the shape the consumer praised.",
+          "state": "unchecked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0009"
+          ]
+        },
+        {
+          "id": "tk-0105",
+          "title": "Re-measure and hand the consumer a branch to re-run. Report the three columns (fixed / declared / recovered); never a total that mixes them. Expected ~140 -> ~40.",
+          "state": "unchecked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0009",
+            "../../../plan.dd.json#acceptance_criteria/ac-000a"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "done_when",
+      "value": {}
+    }
+  ]
+}
