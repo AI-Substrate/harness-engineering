@@ -173,6 +173,13 @@ const PARSE_FIXTURES = readdirSync(FIXTURE_DIR)
   .filter((f) => f.endsWith('.json'))
   .map((f) => f.replace(/\.json$/, ''));
 
+/**
+ * A diagram mermaid genuinely rejects — the chained inline class (`:::a:::b`)
+ * that plan 040 exists to catch. Used as a live control on the runner's
+ * reporting contract, not as a renderer fixture.
+ */
+const INVALID_MERMAID = 'flowchart TD\n  a[A]:::done:::impOptional\n';
+
 /** The importance-border regression doc: a chained `:::a:::b` must never appear. */
 const importanceDoc = (): FlowDoc =>
   doc([
@@ -281,6 +288,12 @@ function parseBatchResults(): Map<string, FenceResult> {
       text,
     })),
     { path: 'td', text: mermaidBlock(renderFlow(td())) },
+    // The retry's precondition, carried IN the batch — see the assertion below.
+    // Costs no extra spawn (fence cost is flat) and cannot affect the three real
+    // proofs: the runner try/catches per fence, so an invalid one returns
+    // `valid:false` beside its siblings' `valid:true` (verified against the
+    // runner directly), and it sits under its own `contract:` key prefix.
+    { path: 'contract:invalid', text: INVALID_MERMAID },
   ];
   try {
     parseBatch = new Map(validateMermaid(fences).map((r) => [r.path ?? '', r]));
@@ -305,6 +318,30 @@ function fencesUnder(prefix: string): { key: string; valid: boolean; error?: str
 }
 
 describe('flow-renderer · rendered mermaid is parse-valid (plan 040)', () => {
+  /**
+   * ENCODES THE RETRY'S PRECONDITION (#108) — do not delete without reading
+   * `validateMermaid`.
+   *
+   * `validateMermaid` retries the runner once, and that is only safe because a
+   * mermaid parse failure is reported as DATA (`valid:false` in the results)
+   * rather than as a non-zero exit. If it ever became an exit code,
+   * `execFileSync` would throw, the retry would fire on a genuine regression,
+   * and it would silently become a mask for the exact defect these proofs exist
+   * to catch.
+   *
+   * That property lived only in a comment, which is a control with no failure
+   * mode. Here it is an assertion instead: the day someone adds a non-zero exit
+   * to `mermaid-runner.mjs`, the whole batch throws and this goes red at the
+   * moment the mask is introduced, rather than after it has hidden something.
+   * It rides the existing batch, so it costs no additional spawn.
+   */
+  it('a parse failure comes back as DATA, never as a throw (the retry rests on this)', () => {
+    const [res] = fencesUnder('contract');
+    expect(res?.valid, 'an invalid diagram must arrive as a result row, not an exit code').toBe(
+      false,
+    );
+  });
+
   it('every golden fixture renders syntactically valid mermaid (headless mermaid.parse)', () => {
     const invalid = fencesUnder('fixture').filter((r) => !r.valid);
     expect(invalid, `invalid mermaid fences: ${JSON.stringify(invalid)}`).toHaveLength(0);
