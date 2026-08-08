@@ -1,0 +1,43 @@
+docs/how/guard-evasion-catalogue.md
+  s_2a2451d95e064e::t_621ec19886243a 1-115
+harness/cli/test/architecture/no-direct-exit.test.ts
+  s_2a2451d95e064e::t_10e9e434930b2b 27-28,32-38,42
+  s_2a2451d95e064e::t_171153cb1c650c 39-41
+harness/cli/test/architecture/hermetic-git-fixtures.test.ts
+  s_2a2451d95e064e::t_93e37e16580539 53-54,62-69
+  s_fe8db86261f601::t_dc23323438d00e 70
+harness/cli/test/architecture/no-direct-node-io.test.ts
+  s_2a2451d95e064e::t_0d547358501874 34-35,42-49
+harness/cli/test/architecture/dd-core-isolation.test.ts
+  s_2a2451d95e064e::t_47bb94f1ab765c 107-113
+  s_2a2451d95e064e::t_2b4ce9a5c781e3 133
+  s_2a2451d95e064e::t_2db63148af80be 157-187
+  s_2a2451d95e064e::t_1887a0f18a03da 38-65,69,72-74,83,89-93
+harness/cli/test/architecture/history-md-guard.test.ts
+  s_2a2451d95e064e::t_94044bcb65d47a 21-36
+  s_2a2451d95e064e::t_7f1fa10b1e0f60 56-70,73-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "1e1f6f2f032e0917589740c9ee3b329bb9a6c578",
+  "prompts": {},
+  "sessions": {
+    "s_2a2451d95e064e": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "587f8924-3447-4784-b872-2fb1c784af82",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_fe8db86261f601": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "e733a994-fd9c-4ce7-8716-d59f4a4a884a",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
