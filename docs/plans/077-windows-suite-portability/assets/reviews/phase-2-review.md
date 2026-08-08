@@ -171,3 +171,31 @@ or describe the example's static conformance as editor-only.
   type annotations are supplemented by runtime checks or `src` typechecking.
 - Targeted shell, hook, lock-step, and verb-contract suites pass **28/28**.
 - No native-Windows outcome is claimed by this review.
+
+## Final re-review — CHANGES
+
+**Reviewer**: `pij-brave-flute` (terra)
+**Commit reviewed**: `fffa5048`
+**Scope**: the seven-way no-delegation guard only
+
+### P1 — Command substitution delegates to a local file without matching scope
+
+The scope guard rejects `./script` only at a line head or after `;`, `&`, or
+`|`, and recognizes an explicit subshell only at command position.  It accepts:
+
+```sh
+result="$(./silent-helper.sh)"
+```
+
+That executes another file, but it matches none of the seven scope patterns.
+The external-command scan also stays green: its command-substitution matcher
+expects a letter immediately after `$(`, while this form begins with `.`.
+
+The exact current matchers were run against that mutation: **0** scope matches,
+**0** unaccounted commands.  Thus this is a control that does not fail when its
+file-scope claim is violated, and it meets the dispatch's explicit criterion for
+another round.
+
+The `set -e` split was not reviewed: the unguarded eighth delegation construct
+is already a blocking result, so the stated termination condition does not
+permit spending this round on the secondary question.
