@@ -62,16 +62,85 @@ const MERMAID_RUNNER = fileURLToPath(
 );
 
 type Fence = { path: string; text: string };
-function validateMermaid(fences: Fence[]): { path?: string; valid: boolean; error?: string }[] {
-  const out = execFileSync('node', [MERMAID_RUNNER, JSON.stringify(fences)], { encoding: 'utf8' });
+type FenceResult = { path?: string; valid: boolean; error?: string };
+
+const why = (e: unknown): string => (e as Error)?.message ?? String(e);
+
+/**
+ * ONE run of the mermaid-runner subprocess. Every failure path throws with the
+ * context a reader needs — what was run, how many fences, how the child died,
+ * and what it said. Previously a spawn failure surfaced as a bare vitest
+ * `STACK_TRACE_ERROR` sentinel against a line number, which names neither the
+ * cause nor the component (#108).
+ */
+function runMermaidOnce(fences: Fence[]): FenceResult[] {
+  let out: string;
+  try {
+    out = execFileSync('node', [MERMAID_RUNNER, JSON.stringify(fences)], { encoding: 'utf8' });
+  } catch (e) {
+    const err = e as { status?: number | null; signal?: string | null; stderr?: string };
+    throw new Error(
+      `mermaid-runner did not run (${fences.length} fence(s), status=${err.status ?? 'none'}, ` +
+        `signal=${err.signal ?? 'none'}): ${why(e)}\n` +
+        `  runner: ${MERMAID_RUNNER}\n` +
+        `  stderr: ${
+          String(err.stderr ?? '')
+            .trim()
+            .slice(0, 400) || '(empty)'
+        }`,
+    );
+  }
   const last = out.trim().split('\n').filter(Boolean).pop() ?? '{}';
-  const parsed = JSON.parse(last) as {
-    ok: boolean;
-    loadError?: string;
-    results?: { path?: string; valid: boolean; error?: string }[];
-  };
+  let parsed: { ok: boolean; loadError?: string; results?: FenceResult[] };
+  try {
+    parsed = JSON.parse(last);
+  } catch {
+    throw new Error(
+      `mermaid-runner emitted output that is not JSON (${fences.length} fence(s)). ` +
+        `Last line was: ${last.slice(0, 300)}`,
+    );
+  }
   if (!parsed.ok) throw new Error(`mermaid-runner setup failed: ${parsed.loadError}`);
   return parsed.results ?? [];
+}
+
+/**
+ * Validate fences, retrying the subprocess ONCE.
+ *
+ * The retry is safe by construction, not by hope: the runner ALWAYS exits 0 and
+ * reports diagram validity inside its JSON (`valid:false` per fence), and it
+ * contains no `process.exit(1)` and no `exitCode` assignment. So a THROW out of
+ * here is *always* infrastructure — a spawn failure, a `node` crash, non-JSON
+ * output, or the runner's own setup branch — and can NEVER be a mermaid syntax
+ * regression. A real regression arrives as a result row and is caught by the
+ * assertions below; it never reaches this catch, so the retry structurally
+ * cannot mask the property under test.
+ *
+ * Why it exists: on the consumer's Windows box a child process costs ~1s
+ * (measured), and one transient spawn failure turned a green suite red with an
+ * error that explained nothing.
+ */
+function validateMermaid(fences: Fence[]): FenceResult[] {
+  try {
+    return runMermaidOnce(fences);
+  } catch (first) {
+    // A retry that heals silently hides a degrading machine, which is the
+    // opposite of what a suite is for. Say it happened, then carry on green.
+    process.stderr.write(
+      `\n[flow-renderer] mermaid-runner failed and is being retried ONCE — ${why(first)}\n` +
+        '[flow-renderer] if this line appears often, the machine is dropping child ' +
+        'processes; that is an environment signal, not a mermaid one.\n',
+    );
+    try {
+      return runMermaidOnce(fences);
+    } catch (second) {
+      throw new Error(
+        'mermaid-runner failed on BOTH attempts. This is an infrastructure failure, not a ' +
+          'mermaid syntax error — the runner reports invalid diagrams as results, never as a ' +
+          `throw.\n  attempt 1: ${why(first)}\n  attempt 2: ${why(second)}`,
+      );
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -180,10 +249,27 @@ const td = (): FlowDoc =>
     } as Partial<FlowDoc>,
   );
 
-let parseBatch: Map<string, { valid: boolean; error?: string }> | undefined;
+let parseBatch: Map<string, FenceResult> | undefined;
+let parseBatchFailure: string | undefined;
 
-/** Every fence all three proofs need, validated in ONE spawn, memoised. */
-function parseBatchResults(): Map<string, { valid: boolean; error?: string }> {
+/**
+ * Every fence all three proofs need, validated in ONE spawn, memoised.
+ *
+ * The FAILURE is memoised too, deliberately (#108). Caching only success meant a
+ * throw left the memo unset, so the next test silently re-spawned and passed —
+ * which made one transient spawn failure surface as a single red test whose
+ * identity depended on execution order, with the other two quietly retrying.
+ * Now the outcome is shared either way: if the batch cannot be validated, all
+ * three proofs say so with the same message, because none of the three
+ * properties is proven when the runner never ran.
+ */
+function parseBatchResults(): Map<string, FenceResult> {
+  if (parseBatchFailure !== undefined) {
+    throw new Error(
+      `${parseBatchFailure}\n  (this file's three parse proofs share one runner batch — ` +
+        'this is that same failure, not an additional one)',
+    );
+  }
   if (parseBatch) return parseBatch;
   const fences: Fence[] = [
     ...PARSE_FIXTURES.map((name) => ({
@@ -196,7 +282,12 @@ function parseBatchResults(): Map<string, { valid: boolean; error?: string }> {
     })),
     { path: 'td', text: mermaidBlock(renderFlow(td())) },
   ];
-  parseBatch = new Map(validateMermaid(fences).map((r) => [r.path ?? '', r]));
+  try {
+    parseBatch = new Map(validateMermaid(fences).map((r) => [r.path ?? '', r]));
+  } catch (e) {
+    parseBatchFailure = why(e);
+    throw e;
+  }
   return parseBatch;
 }
 
