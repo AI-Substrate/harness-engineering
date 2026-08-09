@@ -72,14 +72,29 @@ function machine(): CollectorDeps & { fs: FakeCollectorFs; exec: FakeSequencedEx
   const fs = new FakeCollectorFs();
   fs.mkdirp(`${HOME}/.claude`);
   fs.mkdirp(`${HOME}/.codex`);
-  const exec = new FakeSequencedExec({
-    [TRACE2_GET]: [
-      { code: 1, stdout: '' },
-      { code: 0, stdout: `${GITAI_TRACE2}\n` },
-    ],
-    [`${BINARY} install-hooks`]: { code: 0, stdout: 'claude: installed\ncodex: installed\n' },
-    [`${BINARY} status --json`]: { code: 0, stdout: '{"schema_version":"authorship/3.0.0"}' },
-  });
+  const exec = new FakeSequencedExec(
+    {
+      [TRACE2_GET]: [
+        { code: 1, stdout: '' },
+        { code: 0, stdout: `${GITAI_TRACE2}\n` },
+      ],
+      // The pinned binary's real stdout shape, and it WRITES the files it hooks —
+      // an install-hooks that leaves the disk untouched models a run that did
+      // nothing, which no evidence check could ever confirm.
+      [`${BINARY} install-hooks`]: {
+        code: 0,
+        stdout: 'Claude Code: Hooks updated\nCodex: Hooks updated\n',
+      },
+      [`${BINARY} status --json`]: { code: 0, stdout: '{"schema_version":"authorship/3.0.0"}' },
+    },
+    {
+      [`${BINARY} install-hooks`]: {
+        [`${HOME}/.claude/settings.json`]: '{"hooks":{"git-ai":true}}',
+        [`${HOME}/.codex/config.toml`]: 'hooks = ["git-ai"]\n',
+      },
+    },
+    fs,
+  );
   return {
     fs,
     exec,

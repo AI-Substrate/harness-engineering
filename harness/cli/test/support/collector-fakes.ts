@@ -199,7 +199,25 @@ export class FakeSequencedExec implements ExecPort {
   readonly calls: Array<{ command: string; args: string[]; cwd: string; timeoutMs?: number }> = [];
   private readonly queues = new Map<string, ExecScript[]>();
 
-  constructor(private readonly scripts: Record<string, ExecScript | ExecScript[]> = {}) {}
+  constructor(
+    private readonly scripts: Record<string, ExecScript | ExecScript[]> = {},
+    /**
+     * SIDE EFFECTS THE SCRIPTED COMMAND PERFORMS ON DISK — absolute path → new
+     * contents, applied when that command runs.
+     *
+     * WITHOUT THIS THE FAKE IS INERT WHERE THE REAL BINARY WRITES, which is the
+     * same defect class as a `rename` that moved bytes across devices the kernel
+     * would refuse: a fake permissive (here, silent) exactly where the real thing
+     * acts, so no test could go red. `install-hooks` exists to write agent config
+     * files; a fixture that runs it and leaves the filesystem untouched models a
+     * machine where it did nothing, and any check that reads those files for
+     * evidence would be asserting against a world that cannot produce it.
+     *
+     * Pass `fs` so the writes land in the same fake the code under test reads.
+     */
+    private readonly effects: Record<string, Record<string, string>> = {},
+    private readonly fs?: { writeText(path: string, contents: string): void },
+  ) {}
 
   async run(command: string, args: string[], opts: ExecOptions): Promise<ExecResult> {
     this.calls.push({
@@ -220,6 +238,11 @@ export class FakeSequencedExec implements ExecPort {
       script = (queue.length > 1 ? queue.shift() : queue[0]) ?? { code: 0 };
     } else if (scripted !== undefined) {
       script = scripted;
+    }
+    // Applied only on success, because that is when the real command writes.
+    const effect = this.effects[key];
+    if (effect !== undefined && this.fs !== undefined && script.code === 0) {
+      for (const [path, contents] of Object.entries(effect)) this.fs.writeText(path, contents);
     }
     return {
       code: script.code,

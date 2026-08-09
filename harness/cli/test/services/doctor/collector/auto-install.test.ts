@@ -636,6 +636,11 @@ describe('P1-C — a backup we could not take blocks the step it protects', () =
     fs.seedBytes(BINARY, PAYLOAD);
     fs.mkdirp(`${HOME}/.claude`);
     fs.mkdirp(`${HOME}/.codeium`);
+    // NOTE: `.codeium` (Windsurf) NO LONGER produces an `undeclared` entry — it
+    // used to declare no config path at all, and now declares the two files
+    // git-ai actually writes. See the invariant test below, which pins that
+    // NOTHING is undeclared any more; this fixture stays as the regression guard
+    // for the day a new agent is added without measuring its paths.
     fs.writeText(collectorStatePath(REPO), JSON.stringify(skippedByTrace2()));
     const exec = new FakeSequencedExec({
       [TRACE2_READ]: [
@@ -649,8 +654,20 @@ describe('P1-C — a backup we could not take blocks the step it protects', () =
     const outcome = await autoInstallCollector(deps({ fs, exec }));
 
     expect(outcome.detail).toContain('hooks: installed');
-    // The gap is REPORTED, not silently swallowed — that is what makes it a
-    // declared denominator rather than an omission.
-    expect(outcome.warnings.join(' ')).toContain('windsurf');
+  });
+
+  it('EVERY declared agent now has a measured config path — nothing is undeclared', async () => {
+    // The invariant that replaced the windsurf assertion above, and it is a
+    // stronger statement than the one it replaced.
+    //
+    // `undeclared` means "we detected this agent and do not know where git-ai
+    // writes for it", which is an evidence hole in both directions: nothing is
+    // backed up, and nothing can be evidenced. It used to fire for Windsurf. Now
+    // that every path has been read from git-ai's own source, it fires for
+    // nobody — and this test is what makes adding a twelfth agent without doing
+    // that reading go red instead of quietly reopening the hole.
+    const undeclared = AGENT_MARKERS.filter((agent) => agent.configs.length === 0);
+
+    expect(undeclared.map((agent) => agent.id)).toEqual([]);
   });
 });

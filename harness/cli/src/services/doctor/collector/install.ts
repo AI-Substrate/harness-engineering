@@ -1,12 +1,14 @@
-import { agentsMissingHooks, detectAgents } from './agents.js';
+import { AGENT_MARKERS, agentsMissingHooks, detectAgents } from './agents.js';
 import { clearAutoInstallBlock } from './auto-install-block.js';
 import { backupAgentConfigs } from './backup.js';
 import { downloadAndVerify } from './download.js';
+import { agentEvidence, snapshotAgentConfigs } from './evidence.js';
 import { GITAI_PIN } from './pin.js';
 import { binaryPathFor, configPathFor, resolveArtifact } from './platform.js';
 import { manualSkillsInstructions, readSkillsGuard } from './skills-guard.js';
 import {
   type CollectorState,
+  claimedHookAgents,
   emptyCollectorState,
   type HooksInstallStatus,
   readCollectorState,
@@ -155,12 +157,58 @@ function writePinnedConfig(deps: CollectorDeps): { ok: boolean; detail: string }
   }
 }
 
-/** Agent ids named in git-ai's install-hooks output (best-effort, never fatal). */
+/**
+ * Agent ids named in git-ai's `install-hooks` output.
+ *
+ * IT MATCHES NOTHING THE PINNED BINARY PRINTS, and that is measured, not
+ * suspected. At the pinned tag (see `MEASURED_AGAINST_PIN` in `agents.ts`) `install-hooks` emits, via its spinner
+ * (`src/commands/install_hooks.rs:575`, `:599`):
+ *
+ *     <Human Name>: Hooks updated
+ *     <Human Name>: Hooks already up to date
+ *
+ * The words `installed` / `already_installed` are the values of an INTERNAL enum
+ * (`install_hooks.rs:44-50`) handed to `log_message`, which writes to the daemon
+ * SOCKET and never to stdout. A `git grep` for a `println!` of either word across
+ * the whole pinned tree finds one unrelated line in `upgrade.rs`.
+ *
+ * So this returned `[]` on every real run, and the caller's
+ * `reported.length > 0 ? reported : detectAgents(...)` ALWAYS took the fallback.
+ * The consequence is the reason the whole shape had to change: the agent list we
+ * printed was never git-ai's answer — it was OUR OWN marker scan, carried by a
+ * sentence that said "verified by re-reading the global trace2 config".
+ *
+ * KEPT, rather than deleted, and kept DEFENSIVELY: it is now one input to
+ * {@link agentEvidence} instead of the source of truth, so if a future git-ai
+ * does print a parseable line we read it, and if it does not, nothing silently
+ * substitutes a different data source. A dead branch that degrades to another
+ * source without saying so is exactly how this stayed invisible.
+ *
+ * The human labels are matched too, since those are what the pinned binary
+ * actually prints — but a name in stdout is still only a CLAIM, and never
+ * evidence on its own.
+ */
+const ANSI_SGR = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g');
+
 function parseInstalledAgents(stdout: string): string[] {
   const ids = new Set<string>();
+  const labelToId = new Map(AGENT_MARKERS.map((a) => [a.label.toLowerCase(), a.id]));
   for (const line of stdout.split('\n')) {
-    const match = /^\s*([a-z0-9_-]+)\s*[:=]\s*(installed|already_installed)\b/i.exec(line);
-    if (match?.[1]) ids.add(match[1].toLowerCase());
+    // Strip the ANSI colour the spinner wraps its line in, and its glyph. ESC is
+    // built from its code point rather than written into the pattern: a literal
+    // control character in a regex is unreadable in a diff and indistinguishable
+    // from a stray paste, which is what `noControlCharactersInRegex` is for.
+    const clean = line.replace(ANSI_SGR, '').replace(/^\s*[✓✗⚠]\s*/u, '');
+    const structured = /^\s*([a-z0-9_-]+)\s*[:=]\s*(installed|already_installed)\b/i.exec(clean);
+    if (structured?.[1]) {
+      ids.add(structured[1].toLowerCase());
+      continue;
+    }
+    // The pinned binary's real shape: "<Name>: Hooks updated|Hooks already up to date".
+    const spun = /^(.+?):\s*Hooks (updated|already up to date)\s*$/i.exec(clean);
+    const mapped =
+      spun?.[1] === undefined ? undefined : labelToId.get(spun[1].trim().toLowerCase());
+    if (mapped !== undefined) ids.add(mapped);
   }
   return [...ids].sort();
 }
@@ -210,7 +258,7 @@ function recordAttempt(
 
 /** Agents on this machine the RECORDED install does not cover — a pure fs read. */
 function uncoveredAgentIds(deps: CollectorDeps, state: CollectorState): string[] {
-  const covered = state.hooks.status === 'installed' ? state.hooks.agents : [];
+  const covered = state.hooks.status === 'installed' ? claimedHookAgents(state) : [];
   return agentsMissingHooks(detectAgents(deps.fs, deps.host.home), covered).map(
     (agent) => agent.id,
   );
@@ -305,6 +353,11 @@ export async function installHooks(
   // a refused install changes nothing, so backing up ahead of the guards would
   // litter the disk on exactly the runs that touched nothing.
   const backup = backupAgentConfigs(deps);
+  // The evidence snapshot is taken HERE, beside the backup and for a neighbouring
+  // reason: this is the last instant before git-ai writes. The backup records what
+  // was AT RISK; this records what was THERE, absences included, so a file git-ai
+  // CREATES is detectable — which the backup structurally cannot see.
+  const before = snapshotAgentConfigs(deps);
   if (backup.failed.length > 0) {
     // P1-C (cross-model review 2026-08-09). A BACKUP WE COULD NOT TAKE MUST STOP
     // THE STEP IT EXISTS TO PROTECT.
@@ -366,9 +419,21 @@ export async function installHooks(
     return { hooks: 'failed', state: next, warnings: [next.hooks.detail], manual: [] };
   }
 
+  // WHAT GIT-AI SAID, AND WHAT THE MACHINE SHOWS — two different facts, and the
+  // defect being fixed here was presenting them as one.
+  //
+  // `claimed` is a CLAIM: git-ai's own stdout, plus (when stdout yields nothing
+  // parseable, which is what the pinned binary does) our marker scan. Neither is
+  // per-agent evidence.
+  //
+  // `evidence` is a MEASUREMENT: config files we watched get created or change
+  // across this exact invocation. That is what `hooks.agents` now records, so the
+  // number in the report is the number we can stand behind.
   const reported = parseInstalledAgents(result.stdout);
-  const agents =
+  const claimed =
     reported.length > 0 ? reported : detectAgents(deps.fs, deps.host.home).map((a) => a.id);
+  const evidence = agentEvidence(deps, before, claimed);
+  const agents = evidence.evidenced;
 
   // VERIFY BY RE-READING, never by trusting the exit code (live dogfood): their
   // safety flag fails open, so the only trustworthy statement about what
@@ -412,14 +477,24 @@ export async function installHooks(
     last_attempt: {
       status: 'installed',
       at: now,
-      detail: 'install-hooks ran and was verified by re-reading the global trace2 config',
+      detail:
+        'install-hooks ran; the global trace2 re-read confirms git-ai installed SOMETHING, and the per-agent list is carried separately by config-file evidence',
       uncovered: [],
     },
     hooks: {
       status: 'installed',
       at: now,
       agents,
-      detail: `hooks installed for ${agents.length} agent(s): ${agents.join(', ') || '(none detected)'} — verified by re-reading the global trace2 config; agents already RUNNING stay uninstrumented until they restart`,
+      // The claim is recorded ALONGSIDE the evidence, never instead of it: the
+      // gap computation reads this, so an agent we could not evidence is never
+      // turned into a reported "not instrumented".
+      claimed: [...new Set([...claimed.map((id) => id.toLowerCase()), ...agents])].sort(),
+      // THE SENTENCE THAT WAS THE DEFECT. It used to read "hooks installed for N
+      // agent(s): <list> — verified by re-reading the global trace2 config",
+      // which attaches a per-agent list to a check with no per-agent resolving
+      // power. The trace2 re-read is real and is still here; it is now scoped to
+      // the one thing it can actually establish.
+      detail: `${evidence.detail}. The global trace2 re-read confirms git-ai installed something — that is a single machine-wide fact and does NOT discriminate between agents. Agents already RUNNING stay uninstrumented until they restart`,
     },
   };
   writeCollectorState(deps.fs, deps.cwd, next);
@@ -668,7 +743,9 @@ export async function recheckCollector(deps: CollectorDeps): Promise<CollectorRe
   const now = deps.clock.nowIso();
   const state = readCollectorState(deps.fs, deps.cwd) ?? emptyCollectorState(now, manifest);
   const detected = detectAgents(deps.fs, deps.host.home);
-  const covered = new Set(state.hooks.agents.map((id) => id.toLowerCase()));
+  // The GAP is computed against the CLAIM: an agent we could not evidence is
+  // not a new agent, and treating it as one would re-run install-hooks forever.
+  const covered = new Set(claimedHookAgents(state).map((id) => id.toLowerCase()));
   const newAgents = detected.filter((agent) => !covered.has(agent.id.toLowerCase()));
 
   const coverageOf = (s: CollectorState) => ({ status: s.hooks.status, agents: s.hooks.agents });

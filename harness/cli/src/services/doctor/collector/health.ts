@@ -3,7 +3,7 @@ import { type AgentMarker, agentsMissingHooks, detectAgents } from './agents.js'
 import { type IngressReading, ingressBlocked, markerExplanation } from './ingress.js';
 import { GITAI_PIN } from './pin.js';
 import { binaryPathFor, daemonPidPathFor, resolveArtifact } from './platform.js';
-import { type CollectorState, readCollectorState } from './state.js';
+import { type CollectorState, claimedHookAgents, readCollectorState } from './state.js';
 import type { CollectorFsPort, CollectorPin, HostTarget } from './types.js';
 
 /**
@@ -295,7 +295,9 @@ export function readCollectorHealth(deps: CollectorHealthDeps): CollectorHealth 
 
   const detected = detectAgents(deps.fs, deps.host.home);
   const missing: AgentMarker[] =
-    state.hooks.status === 'installed' ? agentsMissingHooks(detected, state.hooks.agents) : [];
+    state.hooks.status === 'installed'
+      ? agentsMissingHooks(detected, claimedHookAgents(state))
+      : [];
   const daemon: CollectorHealth['daemon'] = deps.fs.exists(daemonPidPathFor(deps.host.home))
     ? 'pidfile-present'
     : 'pidfile-absent';
@@ -381,9 +383,9 @@ export function readCollectorHealth(deps: CollectorHealthDeps): CollectorHealth 
     // re-run a plain doctor (which now re-reads the live config), or run the
     // vendor command by hand.
     const labels = missing.map((agent) => agent.label).join(', ');
-    const covered = `hooks remain installed and collecting for ${state.hooks.agents.length} agent(s)${
+    const covered = `hooks remain installed and collecting for ${state.hooks.agents.length} EVIDENCED agent(s)${
       state.hooks.agents.length === 0 ? '' : ` (${state.hooks.agents.join(', ')})`
-    }`;
+    }${unevidencedSuffix(state)}`;
     if (attempt?.status === 'skipped-trace2') {
       return {
         ...base,
@@ -451,7 +453,13 @@ export function readCollectorHealth(deps: CollectorHealthDeps): CollectorHealth 
   return {
     ...base,
     verdict: 'healthy',
-    detail: `git-ai ${manifest.version} installed and hash-matching, hooks installed for ${state.hooks.agents.length} agent(s), daemon pid file ${
+    // EVIDENCED vs CLAIMED, said out loud rather than collapsed into one number.
+    // This line used to read "hooks installed for N agent(s)" where N was
+    // whatever the install recorded — which, on the Windows run of 2026-08-09,
+    // was six on a machine where three were verifiable.
+    detail: `git-ai ${manifest.version} installed and hash-matching, hooks EVIDENCED for ${
+      state.hooks.agents.length
+    } agent(s)${unevidencedSuffix(state)}, daemon pid file ${
       daemon === 'pidfile-present' ? 'present' : 'absent'
     } — collection is CONFIGURED (v1 cannot prove it is occurring; see docs/how/gitai-collector.md)`,
   };
@@ -466,4 +474,19 @@ export function readCollectorHealth(deps: CollectorHealthDeps): CollectorHealth 
 function latestTrace2(state: CollectorState): CollectorHealth['trace2'] {
   const latest = state.trace2.find((entry) => entry.phase !== 'post-install');
   return latest === undefined ? null : { observed: latest.observed, at: latest.at };
+}
+
+/**
+ * The gap between what git-ai claimed and what we could evidence, as a clause —
+ * or nothing at all when there is no gap.
+ *
+ * Reported EVERY time it is non-empty, including on the `healthy` verdict, and
+ * that is the point. A row that says "healthy" while silently holding names it
+ * could not confirm is the same defect in a friendlier tone.
+ */
+function unevidencedSuffix(state: CollectorState): string {
+  const evidenced = new Set(state.hooks.agents.map((id) => id.toLowerCase()));
+  const extra = claimedHookAgents(state).filter((id) => !evidenced.has(id.toLowerCase()));
+  if (extra.length === 0) return '';
+  return ` (git-ai also named ${extra.join(', ')}, unconfirmed here — not a claim they are unhooked)`;
 }

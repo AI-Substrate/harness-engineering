@@ -42,39 +42,109 @@ export interface AgentMarker {
   /** Home-relative path whose existence means "this agent is on the machine". */
   marker: string;
   /**
-   * Home-relative config files `install-hooks` REWRITES IN PLACE, reformatting
-   * them and discarding JSONC comments, keeping no backups of its own
-   * (`INSTALL_HOOKS_DISCLOSURES`). These are the only genuinely unrecoverable
-   * content in the whole install, so they are the only thing we copy first.
+   * Home-relative config files `install-hooks` WRITES — rewriting them in place,
+   * reformatting them and discarding JSONC comments, keeping no backups of its
+   * own (`INSTALL_HOOKS_DISCLOSURES`). These are the only genuinely
+   * unrecoverable content in the whole install, so they are the only thing we
+   * copy first — and since plan 077 they are also the EVIDENCE that a hook
+   * install actually happened for an agent (see `evidence.ts`).
    *
-   * Enumerated by us, which means this list is exactly as complete as we are —
-   * see {@link AGENT_MARKERS} on why that is stated rather than assumed.
+   * MEASURED against the source of the pinned tag (see {@link MEASURED_AGAINST_PIN}),
+   * one installer at a time — not against the checkout's HEAD, which is one patch
+   * ahead and would have been a different tree. Each entry cites the line that
+   * builds the path.
+   *
+   * The list was previously ASSERTED, and six of eleven rows were wrong: they
+   * named plausible-looking dotfiles (`.copilot/config.json`, `.pi/config.json`,
+   * `.amp/settings.json`) that git-ai never touches, while missing every file it
+   * does write. One row invented a file that appears nowhere in git-ai at all
+   * (`.cursor/cli-config.json`), and one declared nothing for an agent that gets
+   * TWO files written. The Windows run of 2026-08-09 is what exposed it:
+   * copilot's `.copilot/config.json` came back byte-identical after a successful
+   * install, because the real target is two directories down.
+   *
+   * KNOWN INCOMPLETENESS, declared rather than discovered later: three of these
+   * roots move under an environment variable — `CLAUDE_CONFIG_DIR`
+   * (`src/mdm/utils.rs:428`), `CODEX_HOME` (:439) and `GEMINI_CLI_HOME` (:450).
+   * We do not read those, so on a machine that sets one our path is wrong and the
+   * agent reads as UNEVIDENCED rather than as wrongly-confirmed. That is the safe
+   * direction to be wrong in, and it is why the evidence check reports "could not
+   * evidence" instead of "not installed".
    */
   configs: readonly string[];
 }
 
+/**
+ * The collector version the `configs` paths below were MEASURED against.
+ *
+ * NOT the pin, and deliberately not imported from it — this records what a human
+ * actually read, and it must be able to DISAGREE with the pin. When they differ,
+ * the table below is evidence about a build we no longer ship, and the row says
+ * so out loud at runtime (`evidence.ts`) rather than leaving a stale comment to
+ * be believed.
+ *
+ * `install-hooks` can move a config path in a patch release. If it does, our
+ * backup copies the wrong bytes and the evidence check silently proves nothing —
+ * so bumping the pin means re-reading `src/mdm/agents/*.rs` and updating this
+ * constant with it.
+ *
+ * A separate literal precisely so `pin.test.ts`'s "the pin is data" control keeps
+ * passing: bumping the version stays a one-file diff to `pin.ts`, and this
+ * constant makes the resulting evidence gap VISIBLE instead of making the bump
+ * fail. Different jobs.
+ */
+export const MEASURED_AGAINST_PIN = '1.6.21';
+
 export const AGENT_MARKERS: readonly AgentMarker[] = [
+  // claude_code.rs:21 — claude_config_dir().join("settings.json").
   { id: 'claude', label: 'Claude Code', marker: '.claude', configs: ['.claude/settings.json'] },
-  { id: 'codex', label: 'Codex', marker: '.codex', configs: ['.codex/config.toml'] },
+  // codex.rs:21 and :25 — BOTH files, and the second was missing here.
   {
-    id: 'cursor',
-    label: 'Cursor',
-    marker: '.cursor',
-    configs: ['.cursor/hooks.json', '.cursor/cli-config.json'],
+    id: 'codex',
+    label: 'Codex',
+    marker: '.codex',
+    configs: ['.codex/config.toml', '.codex/hooks.json'],
   },
-  { id: 'copilot', label: 'Copilot CLI', marker: '.copilot', configs: ['.copilot/config.json'] },
+  // cursor.rs:23 — hooks.json only. `.cursor/cli-config.json` used to be listed
+  // and appears nowhere in git-ai; it was invented, not observed.
+  { id: 'cursor', label: 'Cursor', marker: '.cursor', configs: ['.cursor/hooks.json'] },
+  // github_copilot.rs:19-23, plus the legacy location at :26-28 which git-ai
+  // MIGRATES FROM and deletes — content at risk, so it is copied too.
+  {
+    id: 'copilot',
+    label: 'Copilot CLI',
+    marker: '.copilot',
+    configs: ['.copilot/hooks/git-ai.json', '.github/hooks/git-ai.json'],
+  },
+  // gemini.rs:19 — gemini_config_dir().join("settings.json").
   { id: 'gemini', label: 'Gemini CLI', marker: '.gemini', configs: ['.gemini/settings.json'] },
+  // droid.rs:53 — .factory/settings.json.
   { id: 'droid', label: 'Droid', marker: '.factory', configs: ['.factory/settings.json'] },
-  { id: 'windsurf', label: 'Windsurf', marker: '.codeium', configs: [] },
+  // windsurf.rs:31-38 — TWO files, always both. Previously declared as none.
+  {
+    id: 'windsurf',
+    label: 'Windsurf',
+    marker: '.codeium',
+    configs: ['.codeium/hooks.json', '.codeium/windsurf/hooks.json'],
+  },
+  // firebender.rs:16 — hooks.json, not the `firebender.json` we had.
   {
     id: 'firebender',
     label: 'Firebender',
     marker: '.firebender',
-    configs: ['.firebender/firebender.json'],
+    configs: ['.firebender/hooks.json'],
   },
-  { id: 'amp', label: 'Amp', marker: '.amp', configs: ['.amp/settings.json'] },
-  { id: 'opencode', label: 'OpenCode', marker: '.opencode', configs: ['.opencode/opencode.json'] },
-  { id: 'pi', label: 'Pi', marker: '.pi', configs: ['.pi/config.json'] },
+  // amp.rs:14-21 — a PLUGIN under .config, not a dotfile settings.json.
+  { id: 'amp', label: 'Amp', marker: '.amp', configs: ['.config/amp/plugins/git-ai.ts'] },
+  // opencode.rs:14-21 — same shape as amp.
+  {
+    id: 'opencode',
+    label: 'OpenCode',
+    marker: '.opencode',
+    configs: ['.config/opencode/plugins/git-ai.ts'],
+  },
+  // pi.rs:16-20 — an extension three directories down, not `.pi/config.json`.
+  { id: 'pi', label: 'Pi', marker: '.pi', configs: ['.pi/agent/extensions/git-ai.ts'] },
 ];
 
 /**

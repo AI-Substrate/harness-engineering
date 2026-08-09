@@ -80,15 +80,45 @@ function deps(
   } = {},
 ): CollectorDeps & { fs: FakeCollectorFs; exec: FakeExec | FakeSequencedExec } {
   const fs = over.fs ?? new FakeCollectorFs();
+  // The two agents this fixture's `install-hooks` hooks are PRESENT on the
+  // machine, because that is why git-ai hooks them. Seeded here rather than per
+  // test: an install fixture whose agents do not exist models a run that had
+  // nothing to do, and the evidence check would then be asserting against a
+  // world that cannot produce evidence.
+  if (over.fs === undefined) {
+    fs.mkdirp(`${HOME}/.claude`);
+    fs.mkdirp(`${HOME}/.codex`);
+  }
   const exec =
     over.exec ??
-    new FakeSequencedExec({
-      // The guard read is EMPTY; the verification read afterwards shows git-ai's
-      // own keys — which is what a successful `install-hooks` actually does.
-      [TRACE2_GET]: TRACE2_EMPTY_THEN_INSTALLED,
-      [`${BINARY} install-hooks`]: { code: 0, stdout: 'claude: installed\ncodex: installed\n' },
-      [`${BINARY} status --json`]: { code: 0, stdout: '{"schema_version":"authorship/3.0.0"}' },
-    });
+    new FakeSequencedExec(
+      {
+        // The guard read is EMPTY; the verification read afterwards shows git-ai's
+        // own keys — which is what a successful `install-hooks` actually does.
+        [TRACE2_GET]: TRACE2_EMPTY_THEN_INSTALLED,
+        // THE REAL OUTPUT FORMAT, and it did not used to be. This fixture said
+        // `claude: installed\ncodex: installed` — a shape the pinned binary never
+        // prints. It was written to match our PARSER rather than the binary, so
+        // fixture and parser corroborated each other while both were wrong, and
+        // the parser's total failure against a real machine stayed invisible for
+        // the life of the feature. Measured from git-ai's own spinner output.
+        [`${BINARY} install-hooks`]: {
+          code: 0,
+          stdout: 'Claude Code: Hooks updated\nCodex: Hooks updated\n',
+        },
+        [`${BINARY} status --json`]: { code: 0, stdout: '{"schema_version":"authorship/3.0.0"}' },
+      },
+      {
+        // …and it WRITES. An install-hooks that leaves the filesystem untouched
+        // models a machine where nothing happened; every evidence check would
+        // then be asserting against a world that cannot produce evidence.
+        [`${BINARY} install-hooks`]: {
+          [`${HOME}/.claude/settings.json`]: '{"hooks":{"git-ai":true}}',
+          [`${HOME}/.codex/config.toml`]: 'hooks = ["git-ai"]\n',
+        },
+      },
+      fs,
+    );
   return {
     fs,
     exec,
@@ -377,11 +407,15 @@ describe('recheckCollector — a new coding harness is detected and reported (ac
   it('a re-check on a machine whose trace2 is someone ELSE’s refuses too', async () => {
     const fs = new FakeCollectorFs();
     fs.mkdirp(`${HOME}/.claude`);
-    const exec = new FakeSequencedExec({
-      [TRACE2_GET]: TRACE2_EMPTY_THEN_INSTALLED,
-      [`${BINARY} install-hooks`]: { code: 0, stdout: 'claude: installed\n' },
-      [`${BINARY} status --json`]: { code: 0, stdout: '{"schema_version":"authorship/3.0.0"}' },
-    });
+    const exec = new FakeSequencedExec(
+      {
+        [TRACE2_GET]: TRACE2_EMPTY_THEN_INSTALLED,
+        [`${BINARY} install-hooks`]: { code: 0, stdout: 'Claude Code: Hooks updated\n' },
+        [`${BINARY} status --json`]: { code: 0, stdout: '{"schema_version":"authorship/3.0.0"}' },
+      },
+      { [`${BINARY} install-hooks`]: { [`${HOME}/.claude/settings.json`]: '{"hooks":{}}' } },
+      fs,
+    );
     const d = deps({ fs, exec });
     await installCollector(d);
 
@@ -556,7 +590,15 @@ describe('a zero exit is NOT proof that hooks were installed', () => {
     const result = await installCollector(deps());
 
     expect(result.hooks).toBe('installed');
-    expect(result.state.hooks.detail).toContain('verified by re-reading');
+    // The trace2 re-read still decides `installed` — but it is now recorded where
+    // it is TRUE, on the attempt, and scoped to the one thing it establishes. It
+    // used to sit on `hooks.detail` carrying a per-agent list, which is a check
+    // with no per-agent resolving power vouching for a per-agent claim.
+    expect(result.state.last_attempt?.detail).toContain('global trace2 re-read');
+    expect(result.state.hooks.detail).toContain('does NOT discriminate between agents');
+    // And the per-agent half is carried by evidence we can point at.
+    expect(result.state.hooks.detail).toContain('EVIDENCED');
+    expect(result.state.hooks.agents).toEqual(['claude', 'codex']);
   });
 });
 
