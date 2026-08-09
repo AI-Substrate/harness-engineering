@@ -1,0 +1,25 @@
+docs/plans/080-dd-consume-upgrade/assets/dogfood-ledger.md
+  s_c88674e85f3aea::t_40ee58a3bfc4c8 38
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-3/context.md
+  s_c88674e85f3aea::t_4d806fc5fcc166 49-50,70-86
+docs/plans/080-dd-consume-upgrade/the-flow.json
+  s_c88674e85f3aea::t_b8cde268d3e0d5 769-780,1290,1310-1315
+docs/plans/080-dd-consume-upgrade/the-flow.md
+  s_c88674e85f3aea::t_905a235320090d 4,82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3cae658bbf8b0b72e809b2e2d194088dc47032fb",
+  "prompts": {},
+  "sessions": {
+    "s_c88674e85f3aea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71679da4-5249-4e02-9117-68a3abf3ed0e",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
