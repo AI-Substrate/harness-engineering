@@ -233,6 +233,32 @@ checkpoint at all**.
 | `recover_commit_metadata` | `Co-authored-by:` trailers or agent-looking author | Weak. Cascade ends in a **random session id with `model: "unknown"`** claiming every unknown line in every file. No time bound; accepts `UnknownRepoUrl` |
 | `recover_remaining_as_known_human` | **none** | See below |
 
+### FIELD OBSERVATION 2026-08-10 — how you STAGE changes which stages fire
+
+**MEASURED, five runs, one machine, one agent.** The recovery ladder above is reached only for
+lines *no checkpoint covers*. How the agent stages its commit decides how many such lines exist —
+and that turns out to matter more than anything downstream of it.
+
+| how the agent committed | files written OUTSIDE the agent, in the same commit | attributed |
+|---|---|---|
+| `git add -A && git commit` (runs 8, 9, 10) | prompt/scoring files authored in another session | **to the AGENT** — `recover_bash_mtime`, `TimeOnly` |
+| `harness commit "<msg>" <paths…>` (run 12) | same class of file, four of them | **to the human** — correct |
+
+Run 12 is the sharpest case: one commit, eight files, three provenances — agent, human-by-hand,
+and files written by a *different* agent outside Cursor entirely. **All eight attributed
+correctly**, including the four the `git add -A` runs had claimed for the agent.
+
+**The mechanism is INFERRED, not established.** The plausible account is that `harness commit`
+stages an explicit pathspec list rather than sweeping the tree, so the collector receives an
+unambiguous account of what was offered and the mtime-coincidence tier never has to guess. That
+has not been confirmed against git-ai's source, and it is one run. Treat it as a strong signal
+about *staging discipline*, not as a proven property of the verb.
+
+**What it does justify saying:** a validation run that stages with `git add -A` is exercising the
+recovery ladder as well as the checkpoint path, and cannot cleanly separate a genuine
+misattribution from a timestamp coincidence. If you want to test attribution rather than the
+fallback, stage explicitly.
+
 **The terminal stage is the worst.** It mints `h_<hash(committer)>` for *all*
 remaining unknown lines:
 

@@ -109,6 +109,26 @@ note on an agent commit and an unexpected note on a script commit are equally fi
 **The discriminator is not whether a note exists. It is whether the note splits a commit's lines
 between authors correctly.**
 
+> **HOW YOU HAVE THE AGENT COMMIT IS PART OF THE EXPERIMENT — decide it deliberately.**
+> Measured 2026-08-10 across five runs:
+>
+> | instruction to the agent | what it tests |
+> |---|---|
+> | `harness commit "<msg>" <paths…>` | the **checkpoint path** — explicit staging, unambiguous offer |
+> | `git add -A && git commit` | the checkpoint path **and the recovery ladder**, mixed together |
+>
+> `git add -A` sweeps in files the agent never touched, so lines no checkpoint covers reach
+> `recover_bash_mtime` and can be claimed for the agent on a timestamp coincidence
+> ([the ladder](./gitai-05-attribution-algorithm.md) § *Field observation 2026-08-10*). That is
+> real git-ai behaviour and worth measuring — but if it fires, **you can no longer tell a genuine
+> misattribution from the fallback doing its job**, which is usually not the experiment you meant
+> to run.
+>
+> **Recommendation: use `harness commit` with explicit paths, and make a mixed commit by listing
+> the human files deliberately.** Run 12 did exactly that — eight files, three provenances (agent,
+> human-by-hand, and files written by a different agent outside the harness), **all eight correct**.
+> That is the product claim tested cleanly, with the fallback held out of it.
+
 git-ai attributes at line level, and can separate human from AI **within the same commit**. This
 is measured from real notes, not inferred: at the time of writing, 186 notes in the
 `harness-engineering` repo, of which **62 carried more than one session, and one carried six**.

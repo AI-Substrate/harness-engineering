@@ -121,6 +121,18 @@ finishes its work**.
 | 5 | **script** | `python3 human_edit.py` — 15-line `clamp()`, uncommitted | [`human_edit.py`](./human_edit.py) |
 | 6 | **Cursor** | appends `halve`, stages whole file, commits | [`CURSOR-PROMPT-3.md`](./CURSOR-PROMPT-3.md) |
 
+> **The prompts below tell the agent to stage the whole file. That is deliberate for THIS
+> sequence, and it is not the best way to test attribution.** Measured 2026-08-10: sweeping stages
+> pull in lines no checkpoint covers, which reach git-ai's recovery ladder and can be claimed for
+> the agent on an mtime coincidence. A cleaner mixed-commit run has the agent use
+> **`harness commit "<msg>" <explicit paths…>`**, listing the human files deliberately — one such
+> run produced eight files across three provenances (agent, human-by-hand, and files written by a
+> different agent outside the harness) with **all eight attributed correctly**.
+>
+> Use the sequence below to reproduce the recorded 2026-08-09 results; use `harness commit` when
+> the question is "does the split work", not "what does the fallback do".
+> See [the ladder](../gitai-05-attribution-algorithm.md) § *Field observation 2026-08-10*.
+
 Steps 4 and 6 are the **mixed commits** — the only steps that test the product claim. Steps 5-6
 repeat 3-4 with a different edit mechanism (python file IO vs shell heredoc) to rule the
 mechanism in or out.
