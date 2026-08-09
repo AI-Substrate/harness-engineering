@@ -1291,3 +1291,139 @@ Whether gemini **requires** `tools.enableHooks` true for hooks to fire at all is
 unverified**. Writing a flag into a user's settings to satisfy a requirement we have not observed is
 exactly how a config gets silently changed — the same discipline as refusing to guess copilot's
 `powershell` field. Both go to tk-0010 as **specific named questions**.
+
+---
+
+## tk-000e and tk-000f — CUT, and the cut is stated (dw-0034, dw-0037)
+
+Strategies **C** (plugin file — amp, opencode, pi) and **D** (script file — cline) are **not built**.
+The plan named them the acceptable casualties, and nothing in Strategy A depends on them: no shared
+file, no shared path, no shared config.
+
+**The breadth loss, plainly**: four agents that could be hooked are not. `amp`, `opencode` and `pi`
+need a TypeScript plugin file; `cline` needs two `/bin/sh` scripts under `~/Documents/Cline/Hooks/`.
+
+**What makes this a cut rather than a silent omission** — verified through the REAL verb, not the
+service layer:
+
+```
+$ harness hooks list --json      (with .amp/.opencode/.pi present)
+  amp       detected=True  supported=False  reason=strategy C is not implemented
+  opencode  detected=True  supported=False  reason=strategy C is not implemented
+  pi        detected=True  supported=False  reason=strategy C is not implemented
+  cline     detected=False supported=False  reason=strategy D is not implemented  undetectable=True
+
+$ harness hooks install --json
+  refused: [{"agent":"amp",...},{"agent":"opencode",...},{"agent":"pi",...}]
+```
+
+`list` never advertises them as installable, `install` refuses each **by name**, and `status` reports
+them distinctly from not-installed. `cline` additionally carries `undetectable: true`, because it is
+editor-level and marker detection cannot reach it — *not detected* and *not installed* stay different
+facts.
+
+**Two safety properties that would NOT have been met had D been built**, recorded because they are the
+reason the cut is cheap rather than costly (dw-0037): `agents.ts` lists cline under
+`UNDETECTED_INSTALLERS`, so marker detection cannot reach it; and `~/Documents/Cline/Hooks/` is outside
+`backupAgentConfigs` entirely — so detection *and* backup-before-first-write are both unmet there.
+Building D would have meant shipping a writer with neither.
+
+**Strategy B (codex TOML) stays DEFERRED**, as decided: its sha256 trust state embeds positional
+indices that go stale, and it is unresolved from the source whether its trust hash matches what Codex
+computes. A decision on the record, not an oversight.
+
+---
+
+# WHAT PHASE 2 DOES NOT DELIVER
+
+One place, deliberately. Gaps scattered across sixteen commits are easy to over-read; a phase that
+lists its own limits in a single section is an honest handover to whoever picks up phase 3 — which may
+not be the person who wrote it.
+
+## 1. Four agents are UNSUPPORTED, by name
+
+Strategies **C** (plugin file) and **D** (script file) are **cut** — the declared cut line from the day
+the task list was written, not a retreat. So `amp`, `opencode`, `pi` and `cline` cannot be hooked.
+
+They are unsupported **by name**, not absent: `list` reports `supported: false` with the strategy named,
+`install` puts each detected one in `refused`, and `status` reports them distinctly from not-installed.
+Demonstrated on `pi`, which is **genuinely detected on this machine** and still refuses correctly — a
+real detected agent, not a fixture.
+
+**Strategy B (codex TOML) remains DEFERRED**: its sha256 trust state embeds positional indices that go
+stale, and it is unresolved whether its trust hash matches what Codex computes.
+
+## 2. Windows is EXPECTED-UNVERIFIED — three independent reasons
+
+No Windows claim in this phase is stated as measured.
+
+1. the tickler is **inert** on a named-pipe host (it refuses to emit and journals why);
+2. copilot's hook entry schema is parsed in **native code** and is unreadable from its JS bundle;
+3. path normalisation is asserted against **simulated** win32 inputs on macOS.
+
+**Three named questions** go to the remote agent, in `platform-findings.md` — a general "check Windows"
+gets a shrug:
+
+- does copilot require `type`, and is `powershell` needed for the hook to fire?
+- does gemini require `tools.enableHooks` true? **This one is not only a Windows question** — if it is
+  required, Strategy A produces an installed-but-inert hook on *every* platform, which would be a
+  correctness bug rather than a platform one.
+- does an installed forward-slashed quoted path read back as `resolves`?
+
+## 3. `backupAgentConfigs` is WRITE-ONLY
+
+It flattens each home-relative path into one directory (`rel.replace(/\//g,'__')`) and **nothing
+reverses that mapping**. The backup directory is a set of files a **human** could restore by hand, and
+nothing more. Phase 2 deliberately does not build the reverse.
+
+Uninstall does **not** depend on it — its symmetry is surgical removal through the writer — but
+*"we take a backup first"* is exactly the reassurance that would be doing no work in phase 3's live
+install. It belongs in phase 3's task text as a real precondition.
+
+It also had **zero regression coverage** before this plan touched it.
+
+## 4. Byte-equality on uninstall is NOT claimed
+
+`jsonc-parser` normalises the internal whitespace of any container it edits, so a container that
+arrived compact comes back expanded. What **is** asserted, per property and each proven to refuse
+independently: every **value**, every **comment**, the **key order**, and **no marker anywhere**.
+
+Restoring original formatting would need a writer that remembers pre-install bytes — persisted state or
+restore-from-backup, both out of scope here.
+
+A related accepted over-reach: a user with a **pre-existing empty** events array loses that key on
+uninstall. Semantically identical to absent for hook loading, and the narrower error than leaving
+behind a key we created.
+
+## 5. Two proofs live outside the default test scope
+
+`provocation.int` and `live-daemon-note.int` are in `SLOW_TESTS`, so a green `just test` says nothing
+about the commit guard or the emit. CI on `test-all` is the only place they run. `journal-race.int` is
+deliberately in the fast scope and is the one proof a default run does see.
+
+## 6. Not measured
+
+- The **live install has never been run on this machine** — that is phase 3, after a backup.
+- The doubled-rotation defect is **unreachable through real concurrency** (measured four ways); the
+  probe that refuses is a modelled interleaving.
+- Whether an over-emit produces a wrong note remains as phase 1 left it: the daemon attributes to
+  **human** when no agent checkpoints cover the lines, and a repo where the agent *has* recent
+  checkpoints is still unmeasured.
+
+---
+
+# WHAT PHASE 2 DOES DELIVER — measured on two platforms
+
+```
+macOS   just test-all   382 files passed
+        just checks     degraded exit 0 — arch 2 / markdown 211 / windows 7,
+                        byte-identical across all 16 phase-2 commits
+Linux   26 files / 469 tests passed, natively on arm64 Ubuntu (OrbStack),
+        invocation recorded in platform-findings.md
+```
+
+Linux being **measured rather than assumed** is what stops the whole guard being a macOS artefact.
+
+Strategy A for seven agents, a marker with three ownership states, a comment- and order-preserving
+writer, idempotent install, uninstall by surgical removal, backup widened to share the matrix, and the
+verb family reaching the CLI — with `install`/`list`/`status` driven end-to-end through the real bin.

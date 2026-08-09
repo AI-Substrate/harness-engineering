@@ -162,3 +162,83 @@ cd harness/cli && $env:HARNESS_TEST_SCOPE='all'; npx vitest run test/services/ho
 
 **Until that report lands, Windows stays UNVERIFIED and the emit path there is believed inert.**
 Do not describe this feature as cross-platform.
+
+---
+
+## Phase 2 — the installer (2026-08-10)
+
+### macOS — MEASURED, with the invocations recorded
+
+```
+just test-all      ->  382 files passed
+just checks        ->  degraded exit 0, arch 2 / markdown 211 / windows 7
+                       (byte-identical across all 15 phase-2 commits)
+harness hooks list --json      ->  7 supported agents + 4 NOT SUPPORTED by name
+harness hooks install --json   ->  installs, refuses cut strategies by name
+harness hooks status --json    ->  binaryState + journal summary
+live-config corroboration      ->  detected 8, config FOUND 7, ABSENT 0
+```
+
+### Linux — MEASURED, with the invocation recorded (dw-0039)
+
+Measured natively rather than assumed from phase 1, because the installer touches path composition and
+process spawning that phase 1 did not.
+
+```
+host    Linux 7.0.14-orbstack aarch64 (Ubuntu plucky, OrbStack VM)
+node    v22.23.2
+
+# a macOS node_modules cannot run here (rolldown ships a native binding), so the
+# tree is copied into the VM's own disk and dependencies installed natively:
+orb -m ubuntu bash -lc 'mkdir -p ~/p2linux && cp -r <worktree>/{package.json,package-lock.json,
+    harness,scripts,justfile,biome.json,tsconfig.json,.dependency-cruiser.cjs,
+    harness-foundations,docs,.harness} ~/p2linux/ && cd ~/p2linux && npm ci'
+
+orb -m ubuntu bash -lc 'cd ~/p2linux/harness/cli &&
+    HARNESS_TEST_SCOPE=all ../../node_modules/.bin/vitest run       test/services/hooks/ test/adapters/fs test/app.test.ts'
+
+  ->  Test Files  26 passed (26)
+      Tests      469 passed (469)
+```
+
+That covers every hooks suite, the fs adapters (including the `appendText` parity table and the real
+`O_APPEND` interprocess race), and the command-registration guard.
+
+**One friction worth recording**: `npm ci` runs a `prepare` script that regenerates docs from
+`harness-foundations/` and `AGENTS_README.md`, so a partial tree copy fails with
+`gen-docs: sourcePath … not found` rather than an obviously-missing-file error. Copying source
+subtrees alone is not enough; the docs sources are build inputs.
+
+### Windows — EXPECTED-UNVERIFIED, and now for THREE independent reasons
+
+Every Windows claim in this phase is labelled EXPECTED-UNVERIFIED. None is stated as measured.
+
+1. **The tickler is INERT.** It reads git's global `trace2.eventTarget` and returns `null` for anything
+   that is not `af_unix:`, so on a named-pipe host it refuses to emit and journals the reason. Honest —
+   it never claims a delivery it did not make — but the feature does nothing there. *(Phase 1.)*
+2. **Copilot's hook entry schema is unreadable.** git-ai's working entry carries
+   `{ command, powershell, type }`. Copilot parses hook files in **native code**, so the schema is not
+   readable from its JS bundle. We ship `type: "command"` — matching the only working example on this
+   machine — and deliberately do **not** invent the `powershell` variant.
+3. **Path normalisation is simulated, not run.** The `\\?\` prefix strip and the `C:\x\y.exe` →
+   `C:/x/y.exe` conversion are asserted against synthesised win32 inputs on macOS. They prove the
+   transformation; they do not prove the platform.
+
+### TWO SPECIFIC QUESTIONS FOR THE REMOTE WINDOWS AGENT
+
+Named questions, because a general *"check Windows"* gets a shrug and a named one gets an answer.
+
+**Q1 — Copilot's hook entry shape.** Install via `harness hooks install`, then inspect
+`%USERPROFILE%\.copilot\hooks\harness.json` and run a tool call.
+   - Does the hook fire with only `{ command, type }`, or is a `powershell` variant **required**?
+   - Is `type: "command"` required at all, or is `command` alone sufficient?
+   - Compare against git-ai's own `git-ai.json` in the same directory, which is known to work.
+
+**Q2 — Gemini's `tools.enableHooks`.** Our installer flips **no flags**.
+   - Does gemini fire hooks with `tools.enableHooks` absent or `false`?
+   - If it requires `true`, Strategy A currently produces an **installed-but-inert** hook on every
+     platform, not only Windows — which would make this a correctness bug rather than a Windows one.
+
+**Q3 (cheap, while there)** — does `harness hooks install` write a **forward-slashed, quoted** binary
+path that `harness hooks status` then reports as `resolves`? That exercises the normalisation and the
+read-back together, which is the pair most likely to disagree on a real Windows host.

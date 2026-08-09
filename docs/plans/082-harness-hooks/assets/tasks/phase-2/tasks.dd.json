@@ -161,27 +161,29 @@
         {
           "id": "tk-000e",
           "title": "Strategy C — the plugin file — for amp, opencode and pi",
-          "state": "unchecked",
+          "state": "na",
           "phase": "phase-2",
           "success": "A whole TypeScript file with our binary path substituted. Same marker-ownership and refuse-to-clobber posture as Strategy D. CUT LINE: this and the next task are the acceptable casualties if time runs short — Strategy A covers Cursor, which is what the end-to-end validation runs against, and nothing in A depends on C or D (no shared file, no shared path, no shared config). Cutting these is a breadth loss to state plainly in the execution log, never a silent omission — and the unimplemented-strategy refusal in the verb task is what makes a cut safe rather than silent.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0005"
-          ]
+          ],
+          "note": "CUT — Strategy C/D not built. Breadth loss stated in the execution log; all affected agents report NOT SUPPORTED by name through the real verb, and install refuses them explicitly."
         },
         {
           "id": "tk-000f",
           "title": "Strategy D — the script file — for cline, carrying the one guard git-ai got right",
-          "state": "unchecked",
+          "state": "na",
           "phase": "phase-2",
           "success": "Two /bin/sh scripts named for the events, mode 0755, under ~/Documents/Cline/Hooks/. ensure_hook_script_is_writable REFUSES to overwrite a file lacking the marker — that guard is ours everywhere, and this is where git-ai actually implemented it. No-op on Windows, stated rather than silently skipped. TWO SAFETY PROPERTIES DO NOT REACH CLINE and that must be said out loud if it is built: agents.ts lists Cline under UNDETECTED_INSTALLERS (it is editor-level, so marker detection cannot reach it), and ~/Documents/Cline/Hooks/ is outside backupAgentConfigs entirely — so detection and backup-before-first-write are both unmet here. Strategy B (codex TOML) stays DEFERRED: its sha256 trust state embeds positional indices that go stale and it is unresolved from the source whether its trust hash matches what Codex computes. A decision on the record, not an oversight.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0005"
-          ]
+          ],
+          "note": "CUT — Strategy C/D not built. Breadth loss stated in the execution log; all affected agents report NOT SUPPORTED by name through the real verb, and install refuses them explicitly."
         },
         {
           "id": "tk-0010",
           "title": "Hand Windows to the remote agent IN THE SAME ACTION, and mark it UNVERIFIED until they report",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-2",
           "success": "The workshop requires it and Phase 1 made it a task for a reason: a promise to escalate needs an artifact, or it is not an escalation. Phase 2 needs it MORE than Phase 1 did, because Phase 2 is where the Windows path shape is actually implemented — the \\\\?\\ prefix strip and the C:\\x\\y.exe to C:/x/y.exe normalisation — and where the cline no-op lives. mac and Linux are both proven locally or in CI before Phase 2 closes; Windows is written into the findings doc for the remote agent in the same action that closes this phase, and every Windows claim is labelled EXPECTED-UNVERIFIED rather than measured.",
           "satisfies": [
@@ -545,13 +547,14 @@
           {
             "id": "dw-0033",
             "assertion": "Each plugin file carries the owned marker and is refused rather than clobbered when the marker is absent.",
-            "state": "unchecked",
-            "pressure": "not-applicable"
+            "state": "na",
+            "pressure": "not-applicable",
+            "note": "Strategy C is CUT — no plugin file is written, so there is nothing to carry a marker. The cut is stated in the execution log and all three agents report NOT SUPPORTED by name through the real verb."
           },
           {
             "id": "dw-0034",
             "assertion": "If this task is CUT, the cut is stated in the execution log and the three agents report NOT SUPPORTED through the verb — never absent, never silently skipped.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],
@@ -559,19 +562,21 @@
           {
             "id": "dw-0035",
             "assertion": "The scripts are mode 0755 and refuse to overwrite a file lacking the marker.",
-            "state": "unchecked",
-            "pressure": "not-applicable"
+            "state": "na",
+            "pressure": "not-applicable",
+            "note": "Strategy D is CUT — no scripts are written, so mode and marker-refusal do not apply. Stated in the execution log."
           },
           {
             "id": "dw-0036",
             "assertion": "Cline is a no-op on Windows, stated in the output rather than silently skipped.",
-            "state": "unchecked",
-            "pressure": "not-applicable"
+            "state": "na",
+            "pressure": "not-applicable",
+            "note": "Strategy D is CUT — there is no cline writer to be a no-op on Windows. cline reports NOT SUPPORTED and undetectable=true through the real verb."
           },
           {
             "id": "dw-0037",
             "assertion": "The two unmet safety properties — no marker detection, outside the backup path — are stated in the execution log if this task is built at all.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],
@@ -579,19 +584,19 @@
           {
             "id": "dw-0038",
             "assertion": "The Windows handoff is written into assets/platform-findings.md in the SAME action that closes the phase, not promised for later.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0039",
             "assertion": "mac and Linux are both measured before the phase closes, with the invocation recorded, not just the result.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-003a",
             "assertion": "Every Windows claim in the phase is labelled EXPECTED-UNVERIFIED; none is stated as measured.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],
