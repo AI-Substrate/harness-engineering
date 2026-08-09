@@ -32,7 +32,7 @@
           "id": "tk-0002",
           "title": "Promote the POC probe trio into a vitest integration spec against the INSTALLED package: pack shape (no src/), injection with fixture-owned foreign ports (typed: const fs: SchemaFs = ...), tracked===null on null tracking set, D7 drive-rooted address resolution",
           "phase": "ph-1d68",
-          "state": "unchecked",
+          "state": "checked",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0003"
           ]
@@ -90,13 +90,13 @@
           {
             "id": "dw-0003",
             "assertion": "the new integration spec fails when pointed at a package missing a public export (negative control) and passes at the pinned sha: pack shape, typed foreign-port injection, tracked===null, D7 drive-rooted resolution",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-000e"
           },
           {
             "id": "dw-0004",
             "assertion": "just build && just test green with the new spec in the suite",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0003"
           }
         ],

@@ -121,3 +121,117 @@ The barrel (`dist/lib.d.ts`) exports: `isAddressFailure`, `parseAddress`, `DdDoc
 paths that bp-000f's grep counts as fork matches. All five have a verified public
 home at `@ai-substrate/dd/node`, so no symbol needed a shim and no act-layer module
 had to be relocated (hard rule 4 never fired).
+
+---
+
+## tk-0002 — Promote the POC probe trio into a vitest integration spec
+
+**New file:** `harness/cli/test/integration/dd-package-boundary.int.test.ts` (12 tests).
+
+The POC that proved this route green lived in a session scratchpad
+(`scratchpad/poc-d941ece/probe.{mjs,ts}`) which no longer exists on disk — searched
+`scratch/`, the s065 worktree, and the worktree tree; only the durable prose record in
+`s065 scratch/dd-080-resume.md` survives. So the spec was rebuilt from the SHIPPED
+`.d.ts` contracts at the pinned sha (hard rule 3: read the contract, never guess), not
+from a copy of the probe.
+
+Contracts read before writing a line: `dist/lib.d.ts`, `dist/node/index.d.ts`,
+`dist/schema/model.d.ts` (`SchemaFs` = `readdir`+`exists`+`readText` — the POC's second
+trap, confirmed still true), `dist/links/loader.d.ts` (`FsDocLoader(fs, hash, tracked)`,
+hash port = `sha256Hex`), `dist/core/walk.d.ts` (`DocLoadResult.tracked: boolean | null`),
+`dist/schema/resolve.d.ts`.
+
+**The scan convention was measured, not assumed.** A throwaway probe with a counting
+fake port showed the four discovery roots and the exact paths the deep scan touches:
+
+```
+roots: doc-folder /repo/docs · gitroot /repo/.dd · harness /repo/.harness/.dd · home /home/u/.dd
+probed: readdir /repo/docs, readdir /repo/.dd, readdir /repo/.harness/.dd, readdir /home/u/.dd
+```
+
+That is why the fixture serves `/repo/.dd/schemas/probe/plan/schema.json` — the layout
+dd actually scans for. (Probe scripts deleted afterwards; `scratch/` is gitignored.)
+
+### What the spec asserts
+
+| group | assertion |
+|---|---|
+| pin | root manifest spec matches `^github:AI-Substrate/dd#[0-9a-f]{40}$` (no float, no `file:`) |
+| pack shape | `dist/` + `dist/lib.js` present; `src`, `test`, `scripts`, `.github` absent |
+| negative control | a non-exported deep path fails `ERR_PACKAGE_PATH_NOT_EXPORTED`; an exported one resolves |
+| public homes | every symbol the 4 consumers import is present at its named home (barrel, `./links`, `./render/renderer`, `./node`) |
+| injection | fixture-owned `SchemaFs` + hash port → `ConventionSchemaResolver` resolves `probe/plan` (root `gitroot`, zero ERROR issues) and `validateWalk` runs clean through `MemoizingDocLoader(new FsDocLoader(...))` |
+| memoisation | 2 loads of one path = 1 read of the underlying port |
+| A-2 | `tracked === null` (and explicitly `not.toBe(false)`) on a null snapshot; positive control with a real snapshot returns `true` |
+| D7 | `resolveAddressFile('/repo/docs/plan.dd.json','C:/other/e.dd.json') === 'C:/other/e.dd.json'`, plus posix-absolute and relative controls |
+| host tier | `NodeSchemaFs` typed as `SchemaFs` answers `[]`/`null` for absent paths |
+| pin agreement | lockfile `resolved` ends with the same sha the manifest names |
+
+Ports are annotated **at the declaration** (`const fs: SchemaFs = {…}`), per hard rule 3,
+so a widened contract lands as a type error on the object rather than a runtime
+`undefined is not a function` inside dd's scan.
+
+### dw-0003 — negative control: the spec FAILS when a public export goes missing
+
+Run twice against a deliberately damaged copy of the installed package, then restored.
+
+**(a) subpath removed** — deleted `"./links"` from `node_modules/@ai-substrate/dd/package.json` `exports`:
+
+```
+ FAIL  test/integration/dd-package-boundary.int.test.ts [ … ]
+Error: "./links" is not exported under the conditions ["node", "development", "import"]
+from package …/node_modules/@ai-substrate/dd (see exports field in …/package.json)
+
+ Test Files  1 failed (1)
+      Tests  no tests
+```
+
+**(b) one symbol removed** — dropped the `trackedPaths` re-export from
+`dist/node/index.js`, leaving the exports map intact (the subtler regression):
+
+```
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  … > exports every symbol the rewired consumers import, at its named home
+AssertionError: ./node export trackedPaths: expected { DD_ISSUE_CODES: { …(19) }, …(2), …(1) } to have property "trackedPaths"
+ ❯ test/integration/dd-package-boundary.int.test.ts:154:47
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 11 passed (12)
+```
+
+Both mutations reverted from backups; the spec is green again at the pinned sha:
+
+```
+ ✓ test/integration/dd-package-boundary.int.test.ts (12 tests) 80ms
+ Test Files  1 passed (1)
+      Tests  12 passed (12)
+```
+
+**Discovery worth keeping (cost ~10 minutes):** the negative control could NOT be written
+as `await expect(import('@ai-substrate/dd/dist/core/parse.js')).rejects…`. Vitest's Vite
+transform resolves a literal specifier before any test runs, so the intended-to-fail
+import failed the whole FILE to load — a control indistinguishable from a broken suite.
+Asking Node's own resolver (`createRequire().resolve`) consults the same `exports` map
+with no bundler in the way. Noted in the file's comment so the next author does not
+re-discover it.
+
+### dw-0004 — just build && just test green with the new spec in the suite
+
+```
+$ just build
+> tsc -p harness/cli/tsconfig.json          # exit 0, no diagnostics
+
+$ just test
+ Test Files  348 passed (348)
+      Tests  5148 passed (5148)
+   Duration  21.25s
+
+ % Coverage report from v8
+Statements   : 89.85% ( 18676/20785 )
+Branches     : 81.16% ( 14137/17418 )
+Functions    : 92.14% ( 3145/3413 )
+Lines        : 92.22% ( 16608/18008 )
+```
+
+(The "423-test flow/plan suite" bar in the brief names the dd/flow/plan slice; the whole
+repo suite is 5148 and it is green in full.)
