@@ -1,9 +1,11 @@
-import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { NodeFs } from '../../../src/adapters/fs/node-fs.js';
+import { backupAgentConfigs } from '../../../src/services/doctor/collector/backup.js';
 import { HOOK_MARKER } from '../../../src/services/hooks/hook-marker.js';
 import { hermeticGitEnv } from '../../support/hermetic-git.js';
 
@@ -133,5 +135,107 @@ describe('`harness hooks status` — the delivered surface', () => {
       agents: { agent: string; binaryState: string }[];
     };
     expect(out.agents.find((a) => a.agent === 'cursor')?.binaryState).toBe('absent');
+  });
+});
+
+describe('`harness hooks restore` — the recovery verb, through the real bin', () => {
+  /*
+   * WHY THESE ROWS EXIST. `restoreAgentConfigs` landed with six rows and six red
+   * mutations and was STILL not delivered: nobody at a terminal could run it. That
+   * is the phase-2 unwired-verb finding wearing different clothes — the finding that
+   * produced the registration guard in `app.test.ts`, which this verb is also in.
+   *
+   * The audience decides the contract. Everyone who reaches for a restore already
+   * has a problem, so a refusal must be LOUD: non-zero exit and a named reason,
+   * never a clean restore of zero files.
+   */
+
+  /** Restore may exit non-zero, so the shared `run` helper (which throws) will not do. */
+  const runRestore = (args: string[]): { code: number; stdout: string } => {
+    const result = spawnSync(process.execPath, [CLI, 'hooks', 'restore', ...args], {
+      encoding: 'utf8',
+      env: { ...hermeticGitEnv(), HOME: home, USERPROFILE: home },
+    });
+    return { code: result.status ?? -1, stdout: result.stdout };
+  };
+
+  /** A real backup, written by the real backup code — never a hand-built fixture. */
+  const takeBackup = (): string => {
+    const backup = backupAgentConfigs({
+      fs: new NodeFs(),
+      clock: { nowIso: () => '2026-08-10T01:02:03.000Z', now: () => 0 },
+      host: { platform: 'darwin', arch: 'arm64', home, envOverrides: {} },
+    } as never);
+    return backup.dir ?? `${home}/.git-ai/harness-backups/2026-08-10T01-02-03-000Z`;
+  };
+
+  it('restores a real backup end to end, chosen as the NEWEST with no --from', () => {
+    /*
+    Test Doc:
+    - Why: the delivered capability. The library round trip was already proven; this
+      asserts a person can invoke it, and that the default (newest backup) resolves
+      without the operator knowing the directory naming scheme — which is exactly
+      what they will not know at three in the morning.
+    - Contract: the file on disk is byte-identical to what it was before the damage,
+      asserted on the filesystem rather than on the report.
+    */
+    mkdirSync(join(home, '.cursor'), { recursive: true });
+    const config = join(home, '.cursor', 'hooks.json');
+    const original = Buffer.from('// keep me\r\n{ "hooks": { "afterFileEdit": [] } }  ', 'utf8');
+    writeFileSync(config, original);
+
+    takeBackup();
+    writeFileSync(config, '{"clobbered":true}');
+
+    const { code, stdout } = runRestore(['--json']);
+    const report = JSON.parse(stdout) as { ok: boolean; restored: string[]; from: string };
+
+    expect(code).toBe(0);
+    expect(report.ok).toBe(true);
+    expect(report.restored).toContain(config);
+    expect(readFileSync(config).equals(original)).toBe(true);
+  });
+
+  it('REFUSES a directory with no manifest — non-zero, with the reason named', () => {
+    /*
+    Test Doc:
+    - Why: the assertion the PM added to tk-0001 when the verb was ruled in. The
+      library already refuses this (mutation M5 was red), but a refusal the CLI
+      swallows is not a refusal — the operator sees a report and walks away. The
+      exit-0-and-silent contract binds `fire` ALONE, and this is the verb where
+      breaking it would do the most harm.
+    - Contract: exit 1 AND the reason in the payload. Both, because either alone is
+      survivable by the wrong implementation — a non-zero exit with no reason leaves
+      the operator guessing, and a reason with exit 0 is invisible to a script.
+    */
+    const empty = join(home, 'not-a-backup');
+    mkdirSync(empty, { recursive: true });
+
+    const { code, stdout } = runRestore(['--from', empty, '--json']);
+    const report = JSON.parse(stdout) as { ok: boolean; failed: string[]; detail: string };
+
+    expect(code).toBe(1);
+    expect(report.ok).toBe(false);
+    expect(report.failed.join(' ')).toContain('manifest.json');
+    expect(report.detail).toContain('refused');
+  });
+
+  it('REFUSES when there is no backup at all rather than reporting a clean restore', () => {
+    /*
+    Test Doc:
+    - Why: the empty-success shape this module's own doc names as the harm — an
+      operator told their configs are back stops looking for them. A machine that
+      has never run an install has no backups, and "restored 0 files, ok" is the
+      most dangerous thing this verb could say.
+    - Contract: exit 1, and the message names the directory that was searched so the
+      operator can check for themselves.
+    */
+    const { code, stdout } = runRestore(['--json']);
+    const report = JSON.parse(stdout) as { ok: boolean; from: string | null; detail: string };
+
+    expect(code).toBe(1);
+    expect(report.ok).toBe(false);
+    expect(report.from).toBeNull();
+    expect(report.detail).toContain('harness-backups');
   });
 });

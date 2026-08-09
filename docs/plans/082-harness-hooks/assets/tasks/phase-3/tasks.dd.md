@@ -54,6 +54,7 @@ Doctor integration, the LIVE install on this machine, and the artifact Jordan ac
 | dw-0002 | The demonstration runs against the REAL filesystem, not a fake — this is the path whose whole purpose is to work when something has gone wrong. | [x] checked | not-applicable |
 | dw-0003 | If the reverse mapping is implemented, a path containing the __ sequence in its own name is asserted, since that is where a flatten/unflatten round-trip breaks. | [x] checked | not-applicable |
 | dw-0004 | The restore path is exercised for a file that did NOT exist before install, where restoring means deleting rather than rewriting. | [x] checked | not-applicable |
+| dw-001b | `harness hooks restore` exists as a VERB and restores from a real backup directory THROUGH THE REAL BIN — a capability that cannot be invoked has not been delivered (the phase 2 unwired-verb finding). A missing or unreadable manifest is reported as a REFUSAL, non-zero and with the reason named, never as a clean restore of zero files. | [x] checked | not-applicable |
 
 ### tk-0002
 

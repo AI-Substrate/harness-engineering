@@ -144,11 +144,6 @@ there would have been a row that quietly stopped testing while staying green.
 
 ### What this does NOT deliver — stated now, not discovered in tk-0003
 
-- **There is no `harness` verb that runs a restore.** `restoreAgentConfigs` is a library function
-  with a proven round trip; an operator in trouble cannot yet invoke it from a terminal. No
-  assertion in tk-0001 asks for one, and unrequested user-facing surface is not mine to add
-  silently — but a restore path only a test can reach is thin insurance for a live install, so this
-  is a **question for the PM before tk-0003**, not a decision I have taken.
 - **Only the agents we enumerate are covered.** Unchanged, and still declared in the backup's own
   detail line: git-ai also installs for agents we do not detect, and those are not backed up.
 - **Windows paths are not addressed.** The namespace split tests `startsWith('/')`, which is the
@@ -156,10 +151,82 @@ there would have been a row that quietly stopped testing while staying green.
   that same test as before. This is not a regression — the classification is the one the module
   already used — but it is not a Windows claim either.
 
+---
+
+## tk-0001 (continued) — `harness hooks restore`, because a library function is not a delivery
+
+### The ruling, and why it is the same defect as phase 2's
+
+I finished the library, raised the missing verb as a question rather than adding surface nobody
+asked for, and the PM ruled: **add it** — using an argument I had made myself earlier in the plan.
+
+Phase 2's most important finding was that `install`, `status` and `list` had been built, asserted
+against directly, and checked off while **none of them was registered on the CLI**. A capability that
+cannot be invoked has not been delivered. `restoreAgentConfigs` was that same defect wearing
+different clothes: six rows, six red mutations, and no way for a person at a terminal to run it.
+
+The asymmetry is what settles it. Everyone who needs this verb is, by definition, someone for whom
+something has **already** gone wrong — possibly at three in the morning, possibly with a broken
+editor config, possibly not the person who wrote it. Every other verb in this family exists for
+convenience; this one exists for recovery, which is exactly when *"write a script against the
+library"* stops being an answer.
+
+Recorded as the PM's correction of their own task text, not as scope I took.
+
+### What was built
+
+`harness hooks restore [--from <dir>] [--json]`.
+
+- **Newest by default.** Backup directories are named from an ISO timestamp with `:` and `.`
+  replaced, which sorts lexicographically in the same order as chronologically — so "newest" is the
+  last name, not a `stat`. Only directories carrying a `manifest.json` are candidates.
+- **Operator-facing, so it fails loudly.** It is the **only** verb in this family that sets an exit
+  code. `fire`'s exit-0-and-silent contract binds `fire` alone, because `fire` runs inside an agent's
+  tool loop; this runs at a terminal, and a restore that fails silently is the worst verb in the
+  family — the operator walks away believing their configs are back.
+- **It is inside the registration guard**, which now asserts `['fire','list','status','install','restore']`.
+  Being registered is no longer something this verb could quietly lose.
+
+### PROVEN BY REFUSAL at the VERB level — four mutations, four RED
+
+The library mutations do not transfer: they prove the mechanism, not the delivery, which is the
+distinction that produced this whole exchange. Each of these rebuilds `dist`, because the real bin
+runs the build, not the sources.
+
+| # | mutation | result |
+| --- | --- | --- |
+| V1 | the verb swallows the refusal (no exit code set) | RED — 2 failed \| 7 passed |
+| V2 | **the verb is BUILT but never REGISTERED — phase 2's defect, replayed** | RED — 4 failed \| 41 passed |
+| V3 | no backup at all reported as a clean restore of zero files | RED — 1 failed \| 8 passed |
+| V4 | `ok` not derived from failures — always true | RED — 1 failed \| 8 passed |
+
+**V2 is the one that matters.** The defect that shipped undetected in phase 2, replayed deliberately,
+is now caught by four tests across two files — the registration guard in `app.test.ts` plus the three
+end-to-end rows. The guard I wrote after finding that gap by accident has now been demonstrated
+refusing the thing it was written for, rather than merely existing.
+
+The refusal rows assert **exit code AND reason together**, because either alone is survivable by the
+wrong implementation: a non-zero exit with no reason leaves the operator guessing, and a reason with
+exit 0 is invisible to a script.
+
+The end-to-end rows take their backup from the **real `backupAgentConfigs`**, never a hand-built
+fixture directory — a fixture would prove the restore against a layout only the test believes in.
+
+### Still not delivered
+
+- **No human-readable renderer.** `--json` is the only shaped output; the flag is accepted and
+  ignored, exactly as `list`/`status`/`install` do today. Consistent, and stated rather than implied.
+- **Restore does not consult the installer.** It puts back what the backup recorded; it does not
+  reason about what an install did. That is the design — the manifest is the record — but it means a
+  restore after two installs restores to the state before whichever backup is chosen, not "before
+  our hook".
+
 ### Verification
 
 - `HARNESS_TEST_SCOPE=all npx vitest run test/services/doctor/collector/ test/services/hooks/` —
   **36 files, 692 tests, all passing** (the fast scope skips `provocation.int` and
   `live-daemon-note.int`, both of which are in this range, so the scope is named deliberately).
 - `npx tsc --noEmit` clean; biome clean.
-- Full gate below.
+- The verb rows additionally require a `npm run build` first — `verbs-e2e.int` drives `bin/harness.js`,
+  which runs `dist`. The first run of these rows failed for exactly that reason, which is a small
+  reminder that the end-to-end surface and the source can disagree.

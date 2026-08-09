@@ -152,7 +152,13 @@ describe('buildProgram — composition root wiring', () => {
     const program = buildProgram('1.2.3', io, deps(), { verbs: [], records: [] });
     const hooks = program.commands.find((c) => c.name() === 'hooks');
     expect(hooks).toBeDefined();
-    expect(hooks?.commands.map((c) => c.name())).toEqual(['fire', 'list', 'status', 'install']);
+    expect(hooks?.commands.map((c) => c.name())).toEqual([
+      'fire',
+      'list',
+      'status',
+      'install',
+      'restore',
+    ]);
   });
 
   it('registers core commands including sensors, registry verbs, and --no-extensions', () => {

@@ -22,6 +22,8 @@ import {
   type HooksDeps,
   installHooks,
   listAgents,
+  type RestoreReport,
+  restoreHooks,
   statusHooks,
 } from '../services/hooks/hooks-verbs.js';
 import { Trace2Tickler } from '../services/hooks/trace2-tickler.js';
@@ -81,7 +83,9 @@ export function registerHooksAct(program: Command, deps: HooksActDeps): void {
     .command('list')
     .description('Every known agent: detected, supported, installed.')
     .option('--json', 'machine-readable output')
-    .action((opts: { json?: boolean }) => emit(deps, opts.json, (d) => listAgents(d)));
+    .action((opts: { json?: boolean }) => {
+      emit(deps, opts.json, (d) => listAgents(d));
+    });
 
   hooks
     .command('status')
@@ -89,15 +93,33 @@ export function registerHooksAct(program: Command, deps: HooksActDeps): void {
       'Per-agent install state, whether the configured binary resolves, and recent fires.',
     )
     .option('--json', 'machine-readable output')
-    .action((opts: { json?: boolean }) =>
-      emit(deps, opts.json, (d) => ({ agents: statusHooks(d), fires: fireSummary(d) })),
-    );
+    .action((opts: { json?: boolean }) => {
+      emit(deps, opts.json, (d) => ({ agents: statusHooks(d), fires: fireSummary(d) }));
+    });
 
   hooks
     .command('install')
     .description('Install the hook into every detected, supported agent.')
     .option('--json', 'machine-readable output')
-    .action((opts: { json?: boolean }) => emit(deps, opts.json, (d) => installHooks(d)));
+    .action((opts: { json?: boolean }) => {
+      emit(deps, opts.json, (d) => installHooks(d));
+    });
+
+  hooks
+    .command('restore')
+    .description('Put agent configs back from a backup taken before an install.')
+    .option('--from <dir>', 'the backup directory to restore from; defaults to the newest')
+    .option('--json', 'machine-readable output')
+    .action((opts: { from?: string; json?: boolean }) => {
+      // The ONE verb here that sets an exit code, and the reason is the audience:
+      // everyone running it already has a problem. A refusal reported as a clean
+      // restore of zero files would send them away believing their configs are
+      // back. `fire`'s exit-0 contract does not reach this — see the note above.
+      const report = emit(deps, opts.json, (d) => restoreHooks(d, opts.from)) as
+        | RestoreReport
+        | undefined;
+      if (report === undefined || !report.ok) process.exitCode = 1;
+    });
 }
 
 /** Build the verb deps from the act deps, or `null` when there is no home. */
@@ -114,16 +136,21 @@ function hooksDeps(deps: HooksActDeps): HooksDeps | null {
 }
 
 /** Run one read/write verb and print it. Never throws out of the action. */
-function emit(deps: HooksActDeps, json: boolean | undefined, run: (d: HooksDeps) => unknown): void {
+function emit(
+  deps: HooksActDeps,
+  json: boolean | undefined,
+  run: (d: HooksDeps) => unknown,
+): unknown {
   const resolved = hooksDeps(deps);
   if (resolved === null) {
     process.stdout.write(`${JSON.stringify({ error: 'no home directory' })}\n`);
-    return;
+    return undefined;
   }
   const result = run(resolved);
   // JSON is the only shaped output for now; a human renderer is Phase 3's problem.
   void json;
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  return result;
 }
 
 async function fire(deps: HooksActDeps, agent: string, opts: FireOpts): Promise<void> {

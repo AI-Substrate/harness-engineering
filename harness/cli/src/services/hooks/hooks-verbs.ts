@@ -1,6 +1,7 @@
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { AgentMarker } from '../doctor/collector/agents.js';
 import { detectAgents, UNDETECTED_INSTALLERS } from '../doctor/collector/agents.js';
+import { BACKUP_MANIFEST_NAME, restoreAgentConfigs } from '../doctor/collector/backup.js';
 import type { AgentSpec } from './agent-matrix.js';
 import { AGENT_MATRIX, resolveConfigFiles } from './agent-matrix.js';
 import { extractBinaryPath } from './binary-path.js';
@@ -278,5 +279,84 @@ export function fireSummary(deps: HooksDeps): FireSummary {
     total: entries.length,
     failed: failures.length,
     failures: failures.slice(-10),
+  };
+}
+
+/** What `harness hooks restore` reports. */
+export interface RestoreReport {
+  /** The backup directory used, or null when none could be chosen. */
+  from: string | null;
+  /** Absolute paths rewritten from their copy. */
+  restored: string[];
+  /** Absolute paths REMOVED — they did not exist when the backup was taken. */
+  deleted: string[];
+  /** Recorded-absent paths that were already absent; a rerun, not a problem. */
+  alreadyAbsent: string[];
+  /** Anything that could not be put back, with the reason. */
+  failed: string[];
+  /** True only when a restore actually ran and nothing failed. */
+  ok: boolean;
+  detail: string;
+}
+
+/** `<home>/.git-ai/harness-backups`. */
+export function backupsRoot(home: string): string {
+  return `${home.replace(/\/+$/, '')}/.git-ai/harness-backups`;
+}
+
+/**
+ * Put the agent configs back from a backup — the recovery verb (plan 082 tk-0001).
+ *
+ * WHY THIS IS A VERB AND NOT ONLY A LIBRARY FUNCTION. Phase 2's most important
+ * finding was that `install`, `status` and `list` had been built, asserted and
+ * checked off while none of them was reachable from the command line: a capability
+ * that cannot be invoked has not been delivered. `restoreAgentConfigs` was the same
+ * defect wearing different clothes — a proven round trip nobody at a terminal could
+ * run.
+ *
+ * And the asymmetry decides it. Everyone who needs this verb is, by definition,
+ * someone for whom something has ALREADY gone wrong, possibly at three in the
+ * morning with a broken editor config, possibly not the person who wrote it. Every
+ * other verb in this family exists for convenience; this one exists for recovery,
+ * which is exactly when "write a script against the library" stops being an answer.
+ *
+ * OPERATOR-FACING, SO IT MAY FAIL LOUDLY. The exit-0-and-silent contract binds
+ * `fire` alone, because `fire` runs inside an agent's tool loop. This runs at a
+ * terminal, and a restore that fails silently would be the worst verb in the family:
+ * the operator would believe their configs were back.
+ *
+ * NEWEST BY DEFAULT. Backup directories are named from an ISO timestamp with `:`
+ * and `.` replaced, which sorts lexicographically in the same order as
+ * chronologically — so "newest" is the last name, not a stat of the directory.
+ */
+export function restoreHooks(deps: HooksDeps, from?: string): RestoreReport {
+  const empty = { restored: [], deleted: [], alreadyAbsent: [] };
+  let dir = from?.trim();
+
+  if (dir === undefined || dir === '') {
+    const root = backupsRoot(deps.home);
+    const names = deps.fs
+      .readdir(root)
+      .filter((name) => deps.fs.exists(`${root}/${name}/${BACKUP_MANIFEST_NAME}`))
+      .sort();
+    const newest = names.at(-1);
+    if (newest === undefined) {
+      // An empty success here is the harm this whole module names: an operator
+      // told their configs are back stops looking for them.
+      const detail = `no restorable backup found under ${root} — nothing there carries a ${BACKUP_MANIFEST_NAME}`;
+      return { from: null, ...empty, failed: [detail], ok: false, detail };
+    }
+    dir = `${root}/${newest}`;
+  }
+
+  const outcome = restoreAgentConfigs(deps.fs, dir);
+  return {
+    from: dir,
+    restored: outcome.restored,
+    deleted: outcome.deleted,
+    alreadyAbsent: outcome.alreadyAbsent,
+    failed: outcome.failed,
+    ok: outcome.failed.length === 0,
+    detail: outcome.detail,
   };
 }

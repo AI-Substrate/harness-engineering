@@ -108,6 +108,12 @@
             "assertion": "The restore path is exercised for a file that did NOT exist before install, where restoring means deleting rather than rewriting.",
             "state": "checked",
             "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-001b",
+            "assertion": "`harness hooks restore` exists as a VERB and restores from a real backup directory THROUGH THE REAL BIN — a capability that cannot be invoked has not been delivered (the phase 2 unwired-verb finding). A missing or unreadable manifest is reported as a REFUSAL, non-zero and with the reason named, never as a clean restore of zero files.",
+            "state": "checked",
+            "pressure": "not-applicable"
           }
         ],
         "tk-0002": [
