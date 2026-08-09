@@ -177,6 +177,7 @@ Three phases. Phase 1 bakes the builder flight-plan schema+template into the CLI
 | Critical | The npm package ships no extensions and extension discovery is cwd-only — a pij-callable verb must be core (dossier F-10/F-11/F-12) | New subverb registered in acts/flow.ts; fence tell-first for harness/cli/src already flagged to prime (spine 54204) |
 | High | flight-plan is not a bundled flow type — the one-liner #140 proposes for stream briefs fails E304 (friction F1) | Phase 1 bakes schema+template into the CLI; Jordan ruled pij can rely on harness |
 | High | E308 legacy flows read as errors distinct from absent flows — a hand-written the-flow.json must not count as a flow that exists | Fixture + test for the legacy shape; envelope reports it distinctly |
+| High | The exemplar seat itself skipped the workteam pattern for phase 1 until human backpressure (F4) — a reachable-but-optional convention lost to a hurried seat, in the very stream studying that failure | Feed into the ermine handoff: workteam mandate needs a mechanical carrier (brief line + deterministic check), and the pair route engine must ship with the pij skill (F3) |
 
 <a id="acceptance-coverage"></a>
 

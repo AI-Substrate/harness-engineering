@@ -59,3 +59,30 @@ sections into plan.dd.json (structure only, no values); every value was then wri
 
 **Fix candidate**: `dd set`/`dd add` should create a schema-DECLARED section on first write
 (the schema already arbitrates legality; refusing only undeclared names keeps safety).
+
+## F3 — the pij pair route's engine is not installed (MEASURED)
+
+`/pij pair` (the coder+reviewer fleet wrapper) shells to `<flow-pair skill root>/lib/cli.ts`
+and reads templates/ledger schemas from that skill root. On this machine `~/.claude/skills/`
+contains no `flow-pair` directory (checked 2026-08-09), so the documented route cannot run:
+the route module exists, the engine it drives does not. Workaround: manual pair via the
+peer route (spawn coder + cross-model reviewer, body-file packets, orchestrator-held
+verdicts). **Relevant to the workteam formalization**: a pij workteam feature must either
+carry its engine with the pij skill install or degrade to the manual shape deterministically.
+
+## F4 — the exemplar seat itself skipped the workteam until human backpressure (OBSERVED, self-report)
+
+This stream's PM (the seat writing this) implemented phase 1 in-seat with subagent critics
+despite the stream being the explicit workteam dogfood. The convention was PRESENT in
+context (Jordan's ask, ermine's stand-up doc, the exemplar framing) and still lost to local
+optimization ("this phase is small"). Jordan caught it in review of process, not any gate.
+Two lessons for the workteam feature, both self-demonstrating:
+1. A convention that is reachable but optional still loses to a hurried/optimizing seat —
+   stronger evidence than pij#227's briefs (those seats were never asked; this one was).
+   The workteam mandate needs a mechanical carrier (a brief line + a deterministic check),
+   not context.
+2. The paved path lost partly because it was BROKEN (F3: flow-pair engine absent) — a
+   documented route whose engine doesn't install is worse than no route: it teaches the
+   detour. Repair: pij skill install must carry or verify its engine.
+Remediation in-stream: phase 2+ runs through a real pair (coder pij-missing-leopard live,
+cross-model reviewer at first REVIEW); PM stays out of the code.
