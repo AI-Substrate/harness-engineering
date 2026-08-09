@@ -1,0 +1,51 @@
+harness/cli/test/services/doctor/collector/auto-install.test.ts
+  s_e2ef1441ad1dbd::t_5521464cde5479 17,21
+  s_e2ef1441ad1dbd::t_3e2b05195a9ac9 216-219
+  s_e2ef1441ad1dbd::t_ba6d1efd83b33d 105-129
+  s_e2ef1441ad1dbd::t_04b7a15fb068c7 497-499,527-529
+  s_e2ef1441ad1dbd::t_c6d26a4a64e645 464-496,500-526,530-544,576-622,635-637,639-651,655-656
+  s_e2ef1441ad1dbd::t_67b179a0e4f787 545-575
+  s_e2ef1441ad1dbd::t_1dc6b31e6a6d38 19
+  s_e2ef1441ad1dbd::t_4947c3bd710512 200-209
+  s_e2ef1441ad1dbd::t_2a084ebfca1a83 623-634,638,652-654
+  s_e2ef1441ad1dbd::t_1e285fe9e0f3a5 155-199,210-215,220-256,260-261,266,268
+  s_e2ef1441ad1dbd::t_04eb34647897ac 130-132
+harness/cli/src/services/doctor/collector/install.ts
+  s_e2ef1441ad1dbd::t_29ce13f0ad0783 308-338
+  s_e2ef1441ad1dbd::t_62bc00cdf6b409 583-593,595-615
+  s_e2ef1441ad1dbd::t_1f1a427e03dc32 430-441,445
+harness/cli/src/services/doctor/collector/auto-install.ts
+  s_e2ef1441ad1dbd::t_0afdce8a7c3311 153,155-176,178-195
+  s_e2ef1441ad1dbd::t_38dbcb396bfffe 177
+  s_e2ef1441ad1dbd::t_04b7a15fb068c7 324,338-344
+  s_e2ef1441ad1dbd::t_cd1aee8977e657 312-323,325-337,345-351
+  s_e2ef1441ad1dbd::t_d1884a37ecf478 274-302
+  s_e2ef1441ad1dbd::t_9f8a7305392d84 5
+  s_e2ef1441ad1dbd::t_0af4bf79844de6 73-91
+  s_e2ef1441ad1dbd::t_e0590228d3ff50 254-259
+harness/cli/src/services/doctor/collector/health.ts
+  s_e2ef1441ad1dbd::t_bfba4cc8e5d28e 391-392
+  s_e2ef1441ad1dbd::t_a42b14b9199551 327-336,338,342,344
+  s_e2ef1441ad1dbd::t_cdc5add168c418 377-382
+harness/cli/src/services/doctor/collector/backup.ts
+  s_e2ef1441ad1dbd::t_f288fc3b9ce356 18-30
+harness/cli/src/acts/doctor.ts
+  s_e2ef1441ad1dbd::t_549dafd582c832 315-328
+  s_e2ef1441ad1dbd::t_8271aba84ed6c5 421-429
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d3e3c7d931d8e857d069ed0d18042a97e2aefa27",
+  "prompts": {},
+  "sessions": {
+    "s_e2ef1441ad1dbd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "265d8845-1914-4476-9977-4a05f12f4b06",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
