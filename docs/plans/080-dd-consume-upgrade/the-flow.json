@@ -3,8 +3,8 @@
   "kind": "flight-plan",
   "slug": "080-dd-consume-upgrade",
   "nav": {
-    "now": "review-1",
-    "next": "review-1",
+    "now": "phase-2",
+    "next": "review-2",
     "intent": "Upgrade harness to consume standalone @ai-substrate/dd (git-sha route) in place of the in-repo dd implementation; round-3 primitive-sufficiency trial decides OQ-2"
   },
   "created_at": "2026-08-09T00:36:07.754Z",
@@ -459,6 +459,52 @@
         "from": "known",
         "to": "in_progress"
       }
+    },
+    {
+      "id": "UPD-011",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-09T03:13:15.365Z",
+      "details": {
+        "node": "review-1",
+        "fields": [
+          "dd_link"
+        ]
+      }
+    },
+    {
+      "id": "UPD-012",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-09T03:13:15.690Z",
+      "details": {
+        "node": "review-1",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "UPD-013",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-09T03:13:16.026Z",
+      "details": {
+        "node": "review-3",
+        "fields": [
+          "dd_link"
+        ]
+      }
+    },
+    {
+      "id": "CUR-004",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-08-09T03:13:16.353Z",
+      "details": {
+        "from": "review-1",
+        "to": "phase-2"
+      }
     }
   ],
   "nodes": [
@@ -547,7 +593,8 @@
       "zone": "flight",
       "dd_link": {
         "address": "docs/plans/080-dd-consume-upgrade/plan.dd.json",
-        "check": "plan-validate"
+        "check": "plan-validate",
+        "gate": false
       },
       "instructions": [
         "Review exactly ONE phase's diff against its acceptance criteria — confirm the tests prove behaviour and nothing risky slipped in.",
@@ -557,9 +604,17 @@
         "Close criteria through the CLI: harness dd set \"<plan dir>/plan.dd.json#acceptance_criteria/ac-XXXX/state\" checked, and re-verify any moved basis with harness dd link verify-basis <address> --sha <sha> --update <doc>.",
         "If the gate refuses and departing anyway is the HUMAN's decision, they pass --force — it records a defended override. An agent may not force a dd gate on its own judgment."
       ],
-      "modified_at": "2026-08-09T03:12:32.922Z",
+      "modified_at": "2026-08-09T03:13:15.690Z",
       "note": "terra (gpt-5.6) APPROVE: 0 critical/high/medium, 1 low (warn-count evidence note, reconciled: 7 correct); dw-0009 reading accepted; review file in assets/tasks/phase-1/reviews/",
-      "ran_at": "2026-08-09T03:12:32.922Z"
+      "ran_at": "2026-08-09T03:12:32.922Z",
+      "comments": [
+        {
+          "at": "2026-08-09T03:13:15.690Z",
+          "text": "plan-validate gate DISARMED here and ARMED on review-3 per flight-plan-ops 3c (expander moves the whole-plan check to the LAST review; --complete cannot be green mid-plan on a 3-phase flight). Not an override: the doctrine-prescribed relocation, recorded.",
+          "source": "agent",
+          "kind": "decision"
+        }
+      ]
     },
     {
       "id": "post-flight",
@@ -887,7 +942,7 @@
         "post-flight"
       ],
       "created_at": "2026-08-09T03:10:52.507Z",
-      "modified_at": "2026-08-09T03:10:52.507Z",
+      "modified_at": "2026-08-09T03:13:16.026Z",
       "instructions": [
         "Review exactly ONE phase's diff against its acceptance criteria — confirm the tests prove behaviour and nothing risky slipped in.",
         "Run /builder 7 review — it inspects the newest assets/reviews/*.md and surfaces a verdict; REQUEST_CHANGES loops back to fix, clean continues to the next phase or post-flight.",
@@ -896,7 +951,11 @@
         "Close criteria through the CLI: harness dd set \"<plan dir>/plan.dd.json#acceptance_criteria/ac-XXXX/state\" checked, and re-verify any moved basis with harness dd link verify-basis <address> --sha <sha> --update <doc>.",
         "If the gate refuses and departing anyway is the HUMAN's decision, they pass --force — it records a defended override. An agent may not force a dd gate on its own judgment."
       ],
-      "zone": "flight"
+      "zone": "flight",
+      "dd_link": {
+        "address": "docs/plans/080-dd-consume-upgrade/plan.dd.json",
+        "check": "plan-validate"
+      }
     },
     {
       "id": "boot-3",
