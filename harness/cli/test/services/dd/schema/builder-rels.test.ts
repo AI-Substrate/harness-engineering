@@ -32,13 +32,24 @@ describe('builder/* schemas — declared relations (dw-0154)', () => {
       'phases[].tasks=derives',
       'tasks[].done=derives',
       'tasks[].satisfies[]=satisfies',
+      // satisfies-toward: OPEN-NAMESPACE convention (plan 080, ledger #4) — ref-behaving
+      // by design (dd ruling: practice not vocabulary). Pinned HERE so the exact spelling
+      // is machine-checked: a near-miss rel silently degrades to ref (dd wl-0019).
+      'tasks[].satisfies_toward[]=satisfies-toward',
       'done_when.*[].proven_by=proven_by',
       'done_when.*[].pressure=pressure',
     ]);
     // Every one of them is a FROZEN relation — an unknown rel is legal in a
     // schema, but a builder schema shipping one would mean dd silently attaches
     // no meaning to an edge the builder depends on.
-    expect(rels.every((entry) => entry.builtin)).toBe(true);
+    // REGISTER of intentional non-builtin relations (dd wl-0019 remedy shape): a
+    // rel here is a RULED convention — ref-behaving by design, meaning carried
+    // elsewhere (satisfies-toward: partial-ness lives in the backpressure rows,
+    // plan 080 ledger #4; dd ruling 2026-08-09: practice, not vocabulary). Any
+    // non-builtin rel NOT in this register is still a red — that is the guard
+    // against both accidental conventions and near-miss builtin misspellings.
+    const INTENTIONAL_NON_BUILTIN = new Set(['satisfies-toward']);
+    expect(rels.every((entry) => entry.builtin || INTENTIONAL_NON_BUILTIN.has(entry.rel))).toBe(true);
   });
 
   it('declares a rel on every link field of builder/backpressure and builder/execution-log', () => {
