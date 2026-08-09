@@ -1,0 +1,19 @@
+docs/plans/080-dd-consume-upgrade/validations/phase-1-tasks.dd-validation.md
+  s_4cbbdb1f2974a4::t_df467b063a54e0 3-4,6-9,15-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "47e9e8cc75617113eb2e94652be9c219564d2577",
+  "prompts": {},
+  "sessions": {
+    "s_4cbbdb1f2974a4": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "a4922177-3bf4-4df1-beb6-94fe8faed147",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
