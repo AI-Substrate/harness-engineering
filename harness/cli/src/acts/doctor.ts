@@ -312,10 +312,20 @@ export function registerDoctorAct(
  * `harness doctor telemetry-nudge` (plan 074 · ac-0006) — the RECOVERY verb.
  *
  * A subcommand of `doctor` and not a flag on it, because the distinction is the
- * whole of ac-0007: a bare `doctor` run is read-only and must stay so, while
- * this MUTATES — it rotates a buffer, writes into a socket, and can delete a
- * segment. Making recovery a separate, explicitly-typed verb is what keeps the
- * diagnostic honest about being a diagnostic.
+ * whole of ac-0007: this MUTATES THE RECORD — it rotates a buffer, writes into a
+ * socket, and can delete a segment — while a bare `doctor` run never touches a
+ * socket, a buffer, or a ref. Making recovery a separate, explicitly-typed verb
+ * is what keeps the diagnostic honest about being a diagnostic.
+ *
+ * THE SCOPE OF THAT SENTENCE NARROWED IN PLAN 077, and saying "a bare doctor is
+ * read-only" flatly is now false (P2 of the cross-model review, 2026-08-09). A
+ * bare doctor MAY place the pinned CLI, rewrite agent configs through
+ * `install-hooks`, and reset an observed-empty global trace2 section. ac-0007
+ * remains satisfied on its own terms — its subject is the socket/buffer/ref
+ * triple, and doctor is still handed the PROBE port and never the relay, so it
+ * structurally cannot replay an event or write a note. But the guarantee is now
+ * "read-only with respect to your git HISTORY", not "read-only", and the two
+ * were being used interchangeably in prose that a reader would take literally.
  */
 function registerTelemetryNudge(doctor: Command, io: CliIo, sockets?: SocketOverrides): void {
   doctor
@@ -408,9 +418,15 @@ function renderLines(title: string, lines: readonly string[]): string {
 }
 
 /**
- * The three lifecycle actions. Each emits its OWN envelope: these invoke things,
- * so folding their outcome into the doctor report would make the report a liar
- * about being read-only.
+ * The three lifecycle actions. Each emits its OWN envelope rather than folding
+ * its outcome into the doctor report — an envelope that says what was INVOKED is
+ * a different kind of statement from one that says what was OBSERVED, and
+ * merging them loses which is which.
+ *
+ * This used to be justified as "the report would be a liar about being
+ * read-only". That reason expired in plan 077: the report is now built AFTER an
+ * automatic install on a bare run, so it already describes a machine harness
+ * just changed. The separation is still right, for the reason above.
  */
 async function runCollectorLifecycle(
   opts: CollectorOptions,

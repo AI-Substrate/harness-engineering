@@ -14,8 +14,11 @@ import {
   autoInstallBlockPath,
   readAutoInstallBlock,
 } from '../../../../src/services/doctor/collector/auto-install-block.js';
+import { backupDirFor } from '../../../../src/services/doctor/collector/backup.js';
 import { readCollectorHealth } from '../../../../src/services/doctor/collector/health.js';
+import { recheckCollector } from '../../../../src/services/doctor/collector/install.js';
 import { GITAI_PIN } from '../../../../src/services/doctor/collector/pin.js';
+import { configPathFor } from '../../../../src/services/doctor/collector/platform.js';
 import {
   type CollectorState,
   collectorStatePath,
@@ -99,6 +102,34 @@ function healthyState(): CollectorState {
   };
 }
 
+/**
+ * The exact `git` invocation `readGlobalTrace2` makes, as the exec fake keys it.
+ *
+ * Spelled out rather than reconstructed so that a change to the read — a
+ * different regexp, a `--list` form — makes these fixtures MISS and the tests go
+ * red, instead of silently falling through to the fake's permissive default
+ * (`{ code: 0 }`, empty stdout), which `readGlobalTrace2` reads as EMPTY. An
+ * unscripted fake would open the guard, which is the wrong direction to fail.
+ */
+const TRACE2_READ = 'git config --global --get-regexp ^trace2\\.';
+const TRACE2_PRESENT = {
+  code: 0,
+  stdout: 'trace2.eventtarget /Users/x/git-trace.log\ntrace2.eventnesting 3\n',
+};
+
+/** CLI installed and verified; the hook install refused by the trace2 guard. */
+function skippedByTrace2(): CollectorState {
+  return {
+    ...healthyState(),
+    hooks: {
+      status: 'skipped-trace2',
+      at: NOW,
+      agents: [],
+      detail: 'a global trace2 config is present',
+    },
+  };
+}
+
 describe('§3a — a healthy collector is left alone', () => {
   it('does nothing, and says nothing, when everything is already in place', async () => {
     const fs = new FakeCollectorFs();
@@ -119,22 +150,12 @@ describe('§3a — a healthy collector is left alone', () => {
 describe('§3b — the ONE warn case: a pre-existing global trace2 config', () => {
   it('REFUSES to install hooks and names what install-hooks would have deleted', async () => {
     // CLI installed and verified, hooks skipped by the guard on a previous run.
-    const state = healthyState();
     const fs = new FakeCollectorFs();
     fs.seedBytes(BINARY, PAYLOAD);
-    fs.writeText(
-      collectorStatePath(REPO),
-      JSON.stringify({
-        ...state,
-        hooks: {
-          status: 'skipped-trace2',
-          at: NOW,
-          agents: [],
-          detail: 'a global trace2 config is present',
-        },
-      }),
-    );
-    const exec = new FakeSequencedExec({});
+    fs.writeText(collectorStatePath(REPO), JSON.stringify(skippedByTrace2()));
+    // The LIVE config still has the operator's keys — the record and the machine
+    // agree, so the refusal stands.
+    const exec = new FakeSequencedExec({ [TRACE2_READ]: TRACE2_PRESENT });
 
     const outcome = await autoInstallCollector(deps({ fs, exec }));
 
@@ -142,6 +163,109 @@ describe('§3b — the ONE warn case: a pre-existing global trace2 config', () =
     expect(outcome.detail).toContain('trace2');
     expect(outcome.detail).toContain('machine-wide');
     // A guard is not verified until it has REFUSED: git-ai was never invoked.
+    // The ONLY thing executed is the read-only config read this branch now takes.
+    expect(exec.calls.map((c) => [c.command, ...c.args].join(' '))).toEqual([TRACE2_READ]);
+  });
+
+  it('names a command that WORKS from where the operator is standing', async () => {
+    const fs = new FakeCollectorFs();
+    fs.seedBytes(BINARY, PAYLOAD);
+    fs.writeText(collectorStatePath(REPO), JSON.stringify(skippedByTrace2()));
+
+    const outcome = await autoInstallCollector(
+      deps({ fs, exec: new FakeSequencedExec({ [TRACE2_READ]: TRACE2_PRESENT }) }),
+    );
+
+    // The latch's operator-facing half: our advice led to a re-run, and the
+    // re-run repeated the refusal without ever naming the way out.
+    expect(outcome.detail).toContain('harness doctor');
+    expect(outcome.detail).toContain('--install-collector');
+    // NOT `--recheck-collector`: it returns early when no new agent is detected
+    // (pinned by the test below), so it is not a remedy for this state.
+    expect(outcome.detail).not.toContain('--recheck-collector');
+  });
+
+  it('UNLATCHES: the recorded refusal does not outlive the config that caused it', async () => {
+    // THE REGRESSION. Recorded status is `skipped-trace2` — the state a previous
+    // doctor run left behind — but the operator has since done exactly what our
+    // next_action told them and removed the section. A guard that cannot stop
+    // refusing is as broken as one that cannot start, and this one could not:
+    // the verdict was read from the record, the record was only rewritten by an
+    // attempt, and no attempt was made while the record said `skipped-trace2`.
+    const fs = new FakeCollectorFs();
+    fs.seedBytes(BINARY, PAYLOAD);
+    fs.mkdirp(`${HOME}/.claude`);
+    fs.writeText(collectorStatePath(REPO), JSON.stringify(skippedByTrace2()));
+    const exec = new FakeSequencedExec({
+      // THREE reads happen on this path, in order: the unlatch check added here,
+      // `installHooks`' own guard, and the post-install verification that git-ai
+      // wrote its key. The first two must report EMPTY (git exits 1 with no
+      // output when the regexp matched nothing — the genuine empty answer); the
+      // third must report git-ai's own key, or the install records `unverified`.
+      [TRACE2_READ]: [
+        { code: 1 },
+        { code: 1 },
+        { code: 0, stdout: 'trace2.eventtarget af_unix:/tmp/s\ntrace2.eventnesting 3\n' },
+      ],
+      [`${BINARY} install-hooks`]: { code: 0, stdout: 'hooks installed' },
+    });
+
+    const outcome = await autoInstallCollector(deps({ fs, exec }));
+
+    expect(outcome.action).toBe('installed');
+    // `action: 'installed'` alone is NOT the property — it reports the CLI
+    // stage, and stays `installed` even when the hook stage was refused. The
+    // first draft of this test passed on exactly that, with hooks still skipped.
+    expect(outcome.detail).toContain('hooks: installed');
+    // The proof it is not merely a nicer message: the vendor command RAN.
+    expect(exec.calls.some((c) => c.args.includes('install-hooks'))).toBe(true);
+    // And the record no longer says the thing that is no longer true.
+    const health = readCollectorHealth({
+      fs,
+      host: { platform: 'darwin', arch: 'arm64', home: HOME },
+      cwd: REPO,
+      hash: new NodeHash(),
+      manifest: pin(),
+    });
+    expect(health.verdict).not.toBe('cli-only-trace2');
+  });
+
+  it('fails CLOSED when the live config cannot be read — unknown is not empty', async () => {
+    // The mirror of the unlatch: re-reading must not become a way to talk the
+    // guard into opening. `mayInstallHooks` treats `unknown` as present, and
+    // this branch uses that same predicate rather than its own comparison.
+    const fs = new FakeCollectorFs();
+    fs.seedBytes(BINARY, PAYLOAD);
+    fs.writeText(collectorStatePath(REPO), JSON.stringify(skippedByTrace2()));
+    const exec = new FakeSequencedExec({ [TRACE2_READ]: { code: 128, stderr: 'no git here' } });
+
+    const outcome = await autoInstallCollector(deps({ fs, exec }));
+
+    expect(outcome.action).toBe('skipped-guard');
+    expect(exec.calls.some((c) => c.args.includes('install-hooks'))).toBe(false);
+  });
+
+  it('pins WHY the unlatch routes through install and not recheck', async () => {
+    // `recheckCollector` short-circuits on "no new agents", which is precisely
+    // the shape of an operator who changed only their trace2 config. Routing the
+    // unlatch through it would have reported success having done nothing — so
+    // this asserts the early return exists, rather than trusting the reading of
+    // it. Callers: `acts/doctor.ts` (--recheck-collector) and nothing else.
+    const fs = new FakeCollectorFs();
+    fs.seedBytes(BINARY, PAYLOAD);
+    fs.mkdirp(`${HOME}/.claude`);
+    fs.writeText(
+      collectorStatePath(REPO),
+      JSON.stringify({
+        ...skippedByTrace2(),
+        hooks: { status: 'installed', at: NOW, agents: ['claude'], detail: 'hooks installed' },
+      }),
+    );
+    const exec = new FakeSequencedExec({});
+
+    const result = await recheckCollector(deps({ fs, exec }));
+
+    expect(result.newAgents).toEqual([]);
     expect(exec.calls).toEqual([]);
   });
 });
@@ -335,5 +459,198 @@ describe('agents — the one-directional diff is a DECLARED non-goal, pinned her
     expect(UNDETECTED_INSTALLERS).toContain('VSCode');
     expect(UNDETECTED_INSTALLERS).toContain('JetBrains');
     expect(AGENT_MARKERS.length + UNDETECTED_INSTALLERS.length).toBe(15);
+  });
+});
+
+/**
+ * The three P1s from the cross-model review (pij-assistant-asp / gpt-5.6-terra,
+ * 2026-08-09). Every one of them was reachable through the shipped code and
+ * NONE of them turned a test red — the 358-test doctor suite stayed green with
+ * all three defects live, which is why they are pinned here rather than only
+ * fixed.
+ */
+describe('P1-A — a failing HOOK stage is recorded, not repeated forever', () => {
+  /** CLI already placed and current; the hook stage is what we drive. */
+  function readyToHook(): { fs: FakeCollectorFs } {
+    const fs = new FakeCollectorFs();
+    fs.seedBytes(BINARY, PAYLOAD);
+    fs.mkdirp(`${HOME}/.claude`);
+    fs.writeText(collectorStatePath(REPO), JSON.stringify(skippedByTrace2()));
+    return { fs };
+  }
+
+  it('BLOCKS after install-hooks fails — the repeat rewrote agent configs every run', async () => {
+    // The defect: only `cli === 'failed'` wrote the block, so a successful CLI
+    // with a failed hook stage returned `installed`, recorded nothing, and left a
+    // `degraded` reading that routed straight back here on the next bare doctor.
+    // Each repeat re-ran a command that rewrites every detected agent's config in
+    // place and discards its JSONC comments.
+    const { fs } = readyToHook();
+    const exec = new FakeSequencedExec({
+      [TRACE2_READ]: { code: 1 },
+      [`${BINARY} install-hooks`]: { code: 3, stderr: 'boom' },
+    });
+
+    const first = await autoInstallCollector(deps({ fs, exec }));
+
+    expect(first.action).toBe('failed');
+    expect(
+      readAutoInstallBlock(fs, { platform: 'darwin', arch: 'arm64', home: HOME }),
+    ).not.toBeNull();
+
+    // THE PROPERTY, and it is the one the old code failed: a second bare doctor
+    // does not run the destructive command again.
+    const second = new FakeSequencedExec({
+      [TRACE2_READ]: { code: 1 },
+      [`${BINARY} install-hooks`]: { code: 3, stderr: 'boom' },
+    });
+    const repeat = await autoInstallCollector(deps({ fs, exec: second }));
+
+    expect(repeat.action).toBe('skipped-blocked');
+    expect(second.calls).toEqual([]);
+  });
+
+  it('BLOCKS on `unverified` too — a zero exit that hooked nothing is not success', async () => {
+    // git-ai's arg parser ends in `_ => {}`, so it exits 0 for invocations it
+    // never understood. `unverified` is that outcome, and it re-entered the loop
+    // exactly like `failed` did.
+    const { fs } = readyToHook();
+    const exec = new FakeSequencedExec({
+      // Guard reads EMPTY; the post-install read finds git-ai's key ABSENT.
+      [TRACE2_READ]: [{ code: 1 }, { code: 1 }],
+      [`${BINARY} install-hooks`]: { code: 0, stdout: 'ok' },
+    });
+
+    const outcome = await autoInstallCollector(deps({ fs, exec }));
+
+    expect(outcome.action).toBe('failed');
+    expect(
+      readAutoInstallBlock(fs, { platform: 'darwin', arch: 'arm64', home: HOME }),
+    ).not.toBeNull();
+  });
+
+  it('does NOT block on a guard refusal — the exclusion the unlatch depends on', async () => {
+    // The load-bearing half. `skipped-trace2` and `skipped-skills` are recoverable
+    // by an operator action, so they must be re-attempted on EVERY run. Blocking
+    // them would reintroduce the latch through a second door: the operator clears
+    // their trace2 config and the machine-wide record refuses anyway.
+    const { fs } = readyToHook();
+    const exec = new FakeSequencedExec({ [TRACE2_READ]: TRACE2_PRESENT });
+
+    const outcome = await autoInstallCollector(deps({ fs, exec }));
+
+    expect(outcome.action).toBe('skipped-guard');
+    expect(readAutoInstallBlock(fs, { platform: 'darwin', arch: 'arm64', home: HOME })).toBeNull();
+  });
+
+  it('does NOT block when the LIFECYCLE itself returns a guard refusal', async () => {
+    // A SECOND, DIFFERENT EXCLUSION, and the test above does not cover it — a
+    // mutation that added `skipped-trace2` to HOOK_STAGE_FAILURES survived the
+    // whole suite, because the case above never reaches that set at all: it is
+    // refused earlier, in `decide`. The set is only consulted once the lifecycle
+    // has actually run.
+    //
+    // Reaching it needs the TOCTOU window that is inherent to re-reading: the
+    // unlatch check observes EMPTY, and `installHooks`' own guard — a separate
+    // read, moments later — observes PRESENT because the operator (or another
+    // process) put it back. That returns hooks: 'skipped-trace2' FROM the
+    // lifecycle. Blocking there would make a transient config restore
+    // permanently suppress the automatic install.
+    const fs = new FakeCollectorFs();
+    fs.seedBytes(BINARY, PAYLOAD);
+    fs.mkdirp(`${HOME}/.claude`);
+    fs.writeText(collectorStatePath(REPO), JSON.stringify(skippedByTrace2()));
+    const exec = new FakeSequencedExec({
+      [TRACE2_READ]: [{ code: 1 }, TRACE2_PRESENT],
+    });
+
+    const outcome = await autoInstallCollector(deps({ fs, exec }));
+
+    // The lifecycle ran and its hook stage refused — not the same thing as the
+    // early refusal above, which never runs the lifecycle at all.
+    expect(outcome.detail).toContain('hooks: skipped-trace2');
+    expect(exec.calls.some((c) => c.args.includes('install-hooks'))).toBe(false);
+    // AND NO BLOCK: the next bare doctor must be free to try again.
+    expect(readAutoInstallBlock(fs, { platform: 'darwin', arch: 'arm64', home: HOME })).toBeNull();
+  });
+});
+
+describe('P1-B — a pin that could not be written stops the first execution', () => {
+  it('never invokes the binary when auto-update could not be disabled', async () => {
+    // The ordering ac-0007 protects is "config BEFORE first execution", because
+    // git-ai's updater runs on invocation. The old code pushed a warning and ran
+    // it anyway — which does not preserve the ordering, it narrates its loss.
+    const fs = new FakeCollectorFs();
+    fs.seedBytes(BINARY, PAYLOAD);
+    fs.mkdirp(`${HOME}/.claude`);
+    fs.writeText(collectorStatePath(REPO), JSON.stringify(skippedByTrace2()));
+    fs.failWrites.add(configPathFor(HOME));
+    const exec = new FakeSequencedExec({ [TRACE2_READ]: { code: 1 } });
+
+    const outcome = await autoInstallCollector(deps({ fs, exec }));
+
+    // The whole assertion: the digest-verified artifact was NOT run — not
+    // `install-hooks`, and not the `status --json` schema probe either.
+    expect(exec.calls.filter((c) => c.command === BINARY)).toEqual([]);
+    expect(outcome.action).toBe('failed');
+  });
+});
+
+describe('P1-C — a backup we could not take blocks the step it protects', () => {
+  it('never invokes install-hooks when an agent config could not be copied', async () => {
+    // The harm is the CLAIM, not the loss: because the copy is non-blocking, the
+    // success line could name a backup directory to an operator whose config had
+    // just been rewritten and NOT copied. Someone told their originals are safe
+    // stops looking for them.
+    const fs = new FakeCollectorFs();
+    fs.seedBytes(BINARY, PAYLOAD);
+    fs.mkdirp(`${HOME}/.claude`);
+    fs.writeText(`${HOME}/.claude/settings.json`, '{ /* keep me */ }');
+    // The copy DESTINATION is unwritable — a full disk or a read-only mount.
+    fs.failWrites.add(`${backupDirFor(HOME, NOW)}/.claude__settings.json`);
+    fs.writeText(collectorStatePath(REPO), JSON.stringify(skippedByTrace2()));
+    const exec = new FakeSequencedExec({ [TRACE2_READ]: { code: 1 } });
+
+    const outcome = await autoInstallCollector(deps({ fs, exec }));
+
+    expect(exec.calls.some((c) => c.args.includes('install-hooks'))).toBe(false);
+    // And the original is still exactly what the operator wrote, comments intact.
+    expect(fs.readText(`${HOME}/.claude/settings.json`)).toBe('{ /* keep me */ }');
+    expect(outcome.action).toBe('failed');
+  });
+
+  it('proceeds when there is genuinely nothing to copy — absence is not failure', async () => {
+    // The mirror, and it covers BOTH shapes of "nothing copied", which are not
+    // the same fact:
+    //
+    //   - `.claude` — a declared config path with no file at it yet. Most first
+    //     installs. Blocking here would refuse on the commonest machine there is.
+    //   - `.codeium` (Windsurf) — DETECTED, and we declare no config path for it
+    //     at all. That is the honest denominator gap, not a failure, and it is
+    //     permanent: blocking on it would refuse forever on every Windsurf box,
+    //     with nothing the operator could do about it.
+    //
+    // The second half is here because a mutation that added `undeclared` to the
+    // blocking condition survived the whole suite without it.
+    const fs = new FakeCollectorFs();
+    fs.seedBytes(BINARY, PAYLOAD);
+    fs.mkdirp(`${HOME}/.claude`);
+    fs.mkdirp(`${HOME}/.codeium`);
+    fs.writeText(collectorStatePath(REPO), JSON.stringify(skippedByTrace2()));
+    const exec = new FakeSequencedExec({
+      [TRACE2_READ]: [
+        { code: 1 },
+        { code: 1 },
+        { code: 0, stdout: 'trace2.eventtarget af_unix:/tmp/s\n' },
+      ],
+      [`${BINARY} install-hooks`]: { code: 0, stdout: 'hooks installed' },
+    });
+
+    const outcome = await autoInstallCollector(deps({ fs, exec }));
+
+    expect(outcome.detail).toContain('hooks: installed');
+    // The gap is REPORTED, not silently swallowed — that is what makes it a
+    // declared denominator rather than an omission.
+    expect(outcome.warnings.join(' ')).toContain('windsurf');
   });
 });

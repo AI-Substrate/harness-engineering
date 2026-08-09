@@ -15,9 +15,19 @@ import type { CollectorDeps } from './types.js';
  * this is a file copy, not a transaction log, and it is not a safety mechanism
  * that makes anything else acceptable.
  *
- * NEVER THROWS, and never blocks the install. A backup that could abort the
- * thing it protects would be a worse failure than the comment loss it prevents.
- * Every error is captured and reported as a `failed` entry.
+ * NEVER THROWS. Every error is captured and reported as a `failed` entry rather
+ * than raised — but a non-empty `failed` list now BLOCKS the install at the call
+ * site (`installHooks`), and that reverses a judgement written here originally:
+ * "a backup that could abort the thing it protects would be a worse failure than
+ * the comment loss it prevents."
+ *
+ * That was wrong, and the cross-model review (2026-08-09) named why. The harm is
+ * not the comment loss on its own; it is the CLAIM. Because this function is
+ * non-blocking, the install's success line could name a backup directory to an
+ * operator whose config had just been rewritten and NOT copied. Someone told
+ * their originals are safe stops looking for them. So the copy still never
+ * throws — the DECISION belongs to the caller, which is the only place that
+ * knows what is about to be destroyed.
  *
  * PLATFORM. Paths are composed from `host.home`, which the composition root
  * resolves as `$HOME || %USERPROFILE% || os.homedir()`, and joined with `/` —

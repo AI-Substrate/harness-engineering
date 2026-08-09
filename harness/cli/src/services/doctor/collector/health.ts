@@ -324,13 +324,24 @@ export function readCollectorHealth(deps: CollectorHealthDeps): CollectorHealth 
   // The distinct partial state (ac-0014): the CLI is genuinely installed and
   // verified; the hooks are genuinely not on, for a named and recoverable
   // reason. Not healthy, not a failed install, not could-not-determine.
+  //
+  // THIS RUNG QUOTES A RECORD, AND NOW SAYS SO. `readCollectorHealth` is
+  // synchronous by design, so it cannot re-read the live git config — every
+  // word here is about what the LAST ATTEMPT observed, at the timestamp given.
+  // Stating that as a present-tense fact about the machine is what made the
+  // operator-facing half of the latch: they removed the section we told them to
+  // remove and were told it was still there. The unlatch itself lives in
+  // `auto-install.ts` (it re-reads the live config before trusting this
+  // verdict); what belongs HERE is not overclaiming, and naming a command that
+  // works from where they are standing.
   if (state.hooks.status === 'skipped-trace2') {
+    const observedAt = base.trace2 === null ? '' : ` when last checked (${base.trace2.at})`;
     return {
       ...base,
       verdict: 'cli-only-trace2',
-      detail: `git-ai CLI installed and hash-matching (${manifest.version}), hooks NOT installed because a global trace2 config is present — no AI attribution is being collected`,
+      detail: `git-ai CLI installed and hash-matching (${manifest.version}), hooks NOT installed because a global trace2 config was observed present${observedAt} — no AI attribution is being collected`,
       next_action:
-        'Back up your global trace2 keys, then run `git-ai install-hooks` yourself (it deletes the whole global trace2 section). Harness will not do it for you.',
+        'Back up your global trace2 keys and remove the section (`git-ai install-hooks` deletes it machine-wide, so harness will not do it for you) — then a plain `harness doctor` re-reads the live config and installs the hooks. `harness doctor --install-collector` forces it immediately. If you would rather keep your trace2 config, run `git-ai install-hooks` yourself knowing the section goes.',
     };
   }
   if (state.hooks.status === 'skipped-skills') {
@@ -363,7 +374,12 @@ export function readCollectorHealth(deps: CollectorHealthDeps): CollectorHealth 
     // The gap is about the NEW harness, never about the collector as a whole:
     // the hooks that are on are still on and still collecting. When a re-check
     // has already been blocked by a guard, saying "re-run the re-check" is
-    // advice we know does not work — name the manual command instead.
+    // advice we know does not work — `--recheck-collector` is still not named
+    // here, and for a second reason found since: `recheckCollector` returns
+    // early when no NEW agent is detected, so it is not a general remedy at all.
+    // What the operator IS told is the pair that works — remove the cause and
+    // re-run a plain doctor (which now re-reads the live config), or run the
+    // vendor command by hand.
     const labels = missing.map((agent) => agent.label).join(', ');
     const covered = `hooks remain installed and collecting for ${state.hooks.agents.length} agent(s)${
       state.hooks.agents.length === 0 ? '' : ` (${state.hooks.agents.join(', ')})`
@@ -372,8 +388,8 @@ export function readCollectorHealth(deps: CollectorHealthDeps): CollectorHealth 
       return {
         ...base,
         verdict: 'hooks-incomplete',
-        detail: `${covered}, but ${labels} is NOT instrumented — the automatic re-install was blocked because a global trace2 config is present`,
-        next_action: `Back up your global trace2 keys, then run \`${binaryPath} install-hooks\` yourself to cover ${labels} (it deletes the whole global trace2 section, so harness will not do it for you). The hooks already installed are unaffected either way.`,
+        detail: `${covered}, but ${labels} is NOT instrumented — the automatic re-install was blocked because a global trace2 config was observed present at ${attempt.at}`,
+        next_action: `Back up your global trace2 keys and remove the section, then re-run \`harness doctor\` — it re-reads the live config and will cover ${labels} automatically. Or run \`${binaryPath} install-hooks\` yourself (it deletes the whole global trace2 section, so harness will not do it for you). The hooks already installed are unaffected either way.`,
       };
     }
     if (attempt?.status === 'skipped-skills') {

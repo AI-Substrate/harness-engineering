@@ -305,6 +305,37 @@ export async function installHooks(
   // a refused install changes nothing, so backing up ahead of the guards would
   // litter the disk on exactly the runs that touched nothing.
   const backup = backupAgentConfigs(deps);
+  if (backup.failed.length > 0) {
+    // P1-C (cross-model review 2026-08-09). A BACKUP WE COULD NOT TAKE MUST STOP
+    // THE STEP IT EXISTS TO PROTECT.
+    //
+    // This block reverses a judgement made when the backup was written — that a
+    // backup which could abort the install would be a worse failure than the
+    // comment loss it prevents. The review is right that it had it backwards,
+    // and the reason is not the loss itself but the CLAIM: `backupAgentConfigs`
+    // is non-blocking, so the success line could name a backup directory for an
+    // operator whose config was rewritten and NOT copied. Telling someone their
+    // originals are safe, having destroyed them, is worse than not copying at
+    // all — they stop looking.
+    //
+    // Only `failed` blocks. `undeclared` is the honest, declared denominator gap
+    // (agents git-ai hooks that we do not enumerate); blocking on that would be a
+    // permanent refusal on every machine, which is a refusal nobody can act on.
+    const detail = `install-hooks was NOT run: the agent configs it rewrites in place could not be copied first (${backup.failed.join('; ')}). It discards JSONC comments and keeps no backup of its own, so harness will not run it without one.`;
+    next = recordAttempt(next, now, {
+      status: 'not-attempted',
+      detail,
+      uncovered: uncoveredAgentIds(deps, next),
+      preserveCoverage: true,
+    });
+    writeCollectorState(deps.fs, deps.cwd, next);
+    return {
+      hooks: 'not-attempted',
+      state: next,
+      warnings: [detail],
+      manual: manualHookInstructions(binaryPath, reading.entries),
+    };
+  }
   let result: { code: number; stdout: string; stderr: string };
   try {
     result = await deps.exec.run(binaryPath, ['install-hooks'], {
@@ -396,10 +427,22 @@ export async function installHooks(
   // where configs were actually rewritten, so it is the run whose operator most
   // needs to know where the originals went. Reported as a warning-channel line
   // because it is information, not a problem; doctor never fails on these.
+  //
+  // `undeclared` counts as something to say, and adding it is the same P1-C
+  // principle applied to its inverse. It used to be suppressed whenever nothing
+  // was copied — so a machine where we DETECTED an agent and simply did not know
+  // where its config lives reported the identical silence as a machine with
+  // nothing to copy. "We backed up nothing because there was nothing" and "we
+  // backed up nothing because we did not look" are different facts, and only one
+  // of them means the operator's file is safe. (`failed` can no longer reach
+  // here at all — it blocks above — and is kept only so this line stays true if
+  // that ever changes.)
+  const backupWorthSaying =
+    backup.copied.length > 0 || backup.failed.length > 0 || backup.undeclared.length > 0;
   return {
     hooks: 'installed',
     state: next,
-    warnings: backup.copied.length === 0 && backup.failed.length === 0 ? [] : [backup.detail],
+    warnings: backupWorthSaying ? [backup.detail] : [],
     manual: [],
   };
 }
@@ -537,8 +580,39 @@ export async function installCollector(deps: CollectorDeps): Promise<CollectorIn
 
   // Config BEFORE first execution (ac-0007) — the updater runs on invocation, so
   // "before the first run" is the only moment this write is worth anything.
+  //
+  // AND A FAILED WRITE STOPS THE EXECUTION (P1-B, cross-model review 2026-08-09).
+  // It used to push a warning and run the binary anyway, which defeats the
+  // ordering entirely: the whole value of writing the config first is that
+  // git-ai never gets to self-update away from the pin, and a warning does not
+  // prevent that — it annotates it. If we cannot disable the updater, the pinned,
+  // digest-verified artifact we just placed is exactly what we must not run.
+  //
+  // Nothing is half-done here: the CLI stage's own result stands (the binary is
+  // placed and verified), and NEITHER binary invocation happens — not
+  // `install-hooks`, not the `status --json` schema probe.
   const config = writePinnedConfig(deps);
-  if (!config.ok) warnings.push(config.detail);
+  if (!config.ok) {
+    state = {
+      ...state,
+      hooks: {
+        status: 'not-attempted',
+        at: null,
+        agents: [],
+        detail: `git-ai's auto-update could not be disabled (${config.detail}), so the pinned binary was NOT executed — running it could replace the digest-verified artifact with whatever the updater fetches`,
+      },
+    };
+    writeCollectorState(deps.fs, deps.cwd, state);
+    return {
+      cli,
+      hooks: 'not-attempted',
+      state,
+      warnings: [...warnings, config.detail, state.hooks.detail],
+      // Nothing was invoked, so nothing was disclosed-and-done.
+      disclosures: [],
+      manualInstructions: [],
+    };
+  }
 
   writeCollectorState(deps.fs, deps.cwd, state);
 

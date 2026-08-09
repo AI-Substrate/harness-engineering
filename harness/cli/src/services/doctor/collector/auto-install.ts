@@ -2,6 +2,7 @@ import { readAutoInstallBlock, writeAutoInstallBlock } from './auto-install-bloc
 import { readCollectorHealth } from './health.js';
 import { installCollector, recheckCollector } from './install.js';
 import { GITAI_PIN } from './pin.js';
+import { mayInstallHooks, readGlobalTrace2 } from './trace2.js';
 import type { CollectorDeps } from './types.js';
 
 /**
@@ -69,6 +70,25 @@ export type AutoInstallAction =
  */
 export const COLLECTOR_OPT_OUT_ENV = 'HARNESS_NO_COLLECTOR';
 
+/**
+ * The sentence the latch made a lie, and the reason it is a named constant.
+ *
+ * Whatever the refusal says next, it has to name a command that WORKS FROM
+ * WHERE THE OPERATOR IS STANDING. Before the unlatch fix the message said "run
+ * `git-ai install-hooks`" and nothing else — so the one action our own advice
+ * led to (remove the trace2 section, re-run doctor) produced the identical
+ * refusal, and the only command that would have recovered was never mentioned.
+ *
+ * Both routes named here are MEASURED, not assumed: a bare `harness doctor`
+ * re-reads the live config on the branch above, and `--install-collector` goes
+ * through `installCollector`, which always reaches `installHooks`.
+ * `--recheck-collector` is deliberately NOT named — it returns early when no new
+ * agent is detected, which is exactly the state of an operator who changed only
+ * their trace2 config.
+ */
+const UNLATCH_HINT =
+  'Once you clear that section yourself, a plain `harness doctor` picks it up on the next run — it re-reads the live git config every time, so this refusal will not outlive its cause. `harness doctor --install-collector` forces the same thing immediately.';
+
 export interface AutoInstallOutcome {
   action: AutoInstallAction;
   /** One operator line. Empty only when nothing happened and nothing needed to. */
@@ -130,17 +150,49 @@ async function decide(deps: CollectorDeps): Promise<AutoInstallOutcome> {
       // sandbox, and reinstalling cannot open a socket.
       return quiet();
 
-    case 'cli-only-trace2':
+    case 'cli-only-trace2': {
       // THE ONE WARN CASE. A pre-existing global trace2 config is a real user
-      // setting that `git-ai install-hooks` deletes machine-wide. The guard
-      // inside `installHooks` would refuse anyway — not attempting means we also
-      // do not rewrite the attempt record on every single doctor run.
-      return {
-        action: 'skipped-guard',
-        detail:
-          'git-ai hooks were NOT installed automatically: a global git `trace2` config is already present, and `git-ai install-hooks` deletes that whole section machine-wide. Harness will not do that to a setting it did not make.',
-        warnings: [],
-      };
+      // setting that `git-ai install-hooks` deletes machine-wide.
+      //
+      // AND THE ONE THAT MUST NOT LATCH. `readCollectorHealth` is synchronous,
+      // so this verdict is derived from the RECORDED outcome of the last
+      // attempt, never from the live git config. Refusing on the record alone —
+      // which is what this branch used to do, deliberately, to avoid rewriting
+      // the attempt record on every doctor run — made the refusal
+      // SELF-SUSTAINING: an operator who did exactly what our own `next_action`
+      // told them (back up the trace2 keys, remove the section) re-ran
+      // `harness doctor` and was told, again, that the config they had just
+      // deleted was present. The documented remedy was unreachable through the
+      // documented command. Found by pij-exuberant-skaffen on a real macOS run,
+      // 2026-08-09; a guard that cannot stop refusing is as broken as one that
+      // cannot start.
+      //
+      // So the guard re-reads its OWN PRECONDITION before trusting the record.
+      // One `git config --global --get-regexp '^trace2\.'` — read-only, cheap,
+      // and the identical call `installHooks` is about to make anyway. The
+      // write-amplification argument still holds where it was actually true:
+      // while trace2 is genuinely present, the refusal below still writes
+      // nothing at all.
+      const live = await readGlobalTrace2({ exec: deps.exec, cwd: deps.cwd }, deps.clock.nowIso());
+      if (!mayInstallHooks(live)) {
+        // Fail-closed on `unknown` too, via the same predicate `installHooks`
+        // uses: a guard that cannot read the thing it is guarding must not clear.
+        return {
+          action: 'skipped-guard',
+          detail: `git-ai hooks were NOT installed automatically: ${live.detail}. Harness will not do that to a setting it did not make. ${UNLATCH_HINT}`,
+          warnings: [],
+        };
+      }
+      // THE PRECONDITION IS GONE, so the refusal goes with it.
+      //
+      // Through `installCollector` (`runLifecycle('installed')`), NOT
+      // `recheckCollector`: the re-check returns early when no NEW agent is
+      // detected (`install.ts` recheckCollector, and `acts/doctor.ts` is its only
+      // caller besides this one), which is exactly the shape of an operator who
+      // changed nothing but their trace2 config. Routing here through the
+      // re-check would have silently done nothing and reported success.
+      return runLifecycle(deps, 'installed');
+    }
 
     case 'cli-only-skills':
       return {
@@ -199,6 +251,12 @@ async function runLifecycle(
 
   if (action === 'rechecked') {
     const result = await recheckCollector(deps);
+    if (HOOK_STAGE_FAILURES.has(result.hooks)) {
+      // Same unbounded-repeat hazard as the install path below, reached from the
+      // other direction: a re-check that fails leaves a `degraded`/`incomplete`
+      // reading, which routes straight back here on the next bare doctor.
+      return recordAndReport(deps, `the hook re-check reported ${result.hooks}`, result.warnings);
+    }
     return {
       action: 'rechecked',
       detail: `harness re-ran the git-ai hook install to cover a newly-detected coding harness (hooks: ${result.hooks})`,
@@ -213,23 +271,81 @@ async function runLifecycle(
     // state, which is a fact about the machine and survives a failed attempt
     // intact. Conflating the two once made doctor report that nothing was being
     // collected while the hooks were live.
-    writeAutoInstallBlock(
-      deps.fs,
-      deps.host,
-      deps.clock,
-      detail,
-      (deps.manifest ?? GITAI_PIN).version,
+    return recordAndReport(
+      deps,
+      `the pinned git-ai binary could not be installed — ${detail}`,
+      result.warnings.slice(1),
     );
-    return {
-      action: 'failed',
-      detail: `the pinned git-ai binary could not be installed automatically — ${detail}. Doctor continued and nothing else is affected; this will NOT be retried on every run. Retry with \`harness doctor --install-collector\`, or install git-ai from https://github.com/git-ai-tools/git-ai.`,
-      warnings: result.warnings.slice(1),
-    };
+  }
+  if (HOOK_STAGE_FAILURES.has(result.hooks)) {
+    // P1-A (cross-model review, pij-assistant-asp / gpt-5.6-terra, 2026-08-09).
+    //
+    // THE DEFECT: only a failed CLI stage was recorded. A run where the CLI
+    // succeeded and the HOOK stage came back `failed` or `unverified` returned
+    // `action: 'installed'`, wrote no block, and left a `degraded` reading — so
+    // the next bare doctor re-entered here and ran `install-hooks` again.
+    // Unbounded, and destructive on every repeat: `install-hooks` rewrites every
+    // detected agent's config in place, discarding JSONC comments each time.
+    //
+    // It also made a printed sentence FALSE. The cli-failed path says "this will
+    // NOT be retried on every run" — true there, and the exact opposite of what
+    // this path did. Two of the three facts in that message were about a branch
+    // the operator was not on.
+    //
+    // The guard refusals are deliberately NOT here. `skipped-trace2` and
+    // `skipped-skills` are recoverable by an operator action, and the unlatch
+    // above depends on re-attempting them on every run — blocking those would
+    // reintroduce the latch through a second door.
+    return recordAndReport(
+      deps,
+      `the pinned git-ai CLI is installed, but the hook install reported ${result.hooks} — no AI attribution is being collected`,
+      result.warnings,
+    );
   }
   return {
     action: 'installed',
     detail: `harness installed the pinned git-ai collector automatically (cli: ${result.cli}, hooks: ${result.hooks}) — no flag required`,
     warnings: result.warnings,
+  };
+}
+
+/**
+ * Hook-stage outcomes that must STOP the automatic retry loop.
+ *
+ * `failed` and `unverified` mean the vendor command ran (or tried to) and did
+ * not achieve hooks; `not-attempted` means a precondition of OURS refused to let
+ * it run at all. All three leave a reading that routes straight back into
+ * `runLifecycle` on the next bare doctor, so all three need a record.
+ *
+ * The guard refusals — `skipped-trace2`, `skipped-skills` — are deliberately
+ * absent, and their absence is load-bearing: they are recoverable by an operator
+ * action, and the unlatch depends on re-attempting them on every run.
+ */
+const HOOK_STAGE_FAILURES: ReadonlySet<string> = new Set(['failed', 'unverified', 'not-attempted']);
+
+/**
+ * Record the failure MACHINE-WIDE, then report it — the single place that pairs
+ * those two, so no failure branch can write one without the other.
+ *
+ * `--install-collector` clears this record on its way in, which is what makes it
+ * the retry: the operator asks, explicitly, at a moment of their choosing.
+ */
+function recordAndReport(
+  deps: CollectorDeps,
+  cause: string,
+  warnings: string[],
+): AutoInstallOutcome {
+  writeAutoInstallBlock(
+    deps.fs,
+    deps.host,
+    deps.clock,
+    cause,
+    (deps.manifest ?? GITAI_PIN).version,
+  );
+  return {
+    action: 'failed',
+    detail: `the automatic git-ai setup did not complete — ${cause}. Doctor continued and nothing else is affected; this will NOT be retried on every run. Retry with \`harness doctor --install-collector\`, or install git-ai from https://github.com/git-ai-tools/git-ai.`,
+    warnings,
   };
 }
 
