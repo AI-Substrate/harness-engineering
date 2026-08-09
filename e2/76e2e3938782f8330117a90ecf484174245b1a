@@ -1,0 +1,59 @@
+docs/plans/080-dd-consume-upgrade/the-flow.json
+  s_397a51e23fc2cd::t_2e96021009dfc0 667-693,1199,1202,1215-1224
+docs/plans/080-dd-consume-upgrade/the-flow.md
+  s_397a51e23fc2cd::t_2e96021009dfc0 4,26,79-81
+docs/plans/080-dd-consume-upgrade/assets/backpressure.dd.json
+  s_dfbe7bea3d1b7e::t_21961f061b65f2 87,96,105,115,125,134,143,152,161,170,179,189,198,207,216
+docs/plans/080-dd-consume-upgrade/assets/backpressure.dd.md
+  s_dfbe7bea3d1b7e::t_aa5b048a693909 40-54
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-1/tasks.dd.json
+  s_dfbe7bea3d1b7e::t_264c3022e3fdc5 141
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-1/tasks.dd.md
+  s_dfbe7bea3d1b7e::t_5fe1576840abf9 81
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-2/tasks.dd.json
+  s_dfbe7bea3d1b7e::t_af87e94464eb2c 172
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-2/tasks.dd.md
+  s_dfbe7bea3d1b7e::t_1885da8aab5bb0 89
+docs/plans/080-dd-consume-upgrade/assets/dogfood-ledger.md
+  s_c88674e85f3aea::t_261d272fec8345 36,38
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-3/tasks.dd.json
+  s_c88674e85f3aea::t_f7b2112c500610 84,191-193
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-3/tasks.dd.md
+  s_c88674e85f3aea::t_257b098688715c 44,94-97
+docs/plans/080-dd-consume-upgrade/plan.dd.json
+  s_c88674e85f3aea::t_08736d80c038b8 64,79,84,89,94,99,104,109,156
+docs/plans/080-dd-consume-upgrade/plan.dd.md
+  s_c88674e85f3aea::t_dfe3f5ee94fb96 61,64-70,80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e276e2e3938782f8330117a90ecf484174245b1a",
+  "prompts": {},
+  "sessions": {
+    "s_397a51e23fc2cd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "3fe3c47b-5424-4214-892e-81ef19c49d45",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_c88674e85f3aea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71679da4-5249-4e02-9117-68a3abf3ed0e",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_dfbe7bea3d1b7e": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "d854c5fd-5185-4f9c-99f4-40038b3158a0",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
