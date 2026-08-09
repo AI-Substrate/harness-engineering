@@ -559,15 +559,70 @@ function checkSensorWatcher(
  * really ship — a `.dd.json` edited and committed without its `.dd.md` — and it is
  * knowable from `exists()` alone.
  *
- * It NEVER runs the sweep (P7): the deep answer is `harness dd doctor`, and the
- * next_action says so rather than this row pretending to have asked. A repo with
- * no dd documents stays ok and silent — the same "don't pester a repo the feature
- * doesn't apply to" posture as the quality-gate and telemetry rows.
+ * It NEVER runs the sweep (P7): the deep answer is `node_modules/.bin/dd doctor`,
+ * and the next_action says so rather than this row pretending to have asked. A repo
+ * with no dd documents stays ok and silent — the same "don't pester a repo the
+ * feature doesn't apply to" posture as the quality-gate and telemetry rows.
  *
  * The sweep's exclusion contract is honoured exactly, by asking dd-core rather
  * than re-deriving it: a known-bad fixture and a `sweep_exclude` document are not
  * missing a render, they are deliberately not participating (AC-15).
  */
+/**
+ * Is the standalone `dd` CLI reachable? (plan 080 tk-000e, D-2 rider.)
+ *
+ * `harness dd *` was deleted in plan 080 phase 3 — dd is consumed as a package
+ * and operated through its OWN CLI. This layer tells a reader that, once, in the
+ * place they already look when something is missing, instead of letting them
+ * discover it as `E108 unknown command` mid-task.
+ *
+ * NOT `proc.which('dd')`, and that is the whole subtlety: on every POSIX host
+ * `which('dd')` finds `/bin/dd`, coreutils' disk-dump utility, so a PATH probe
+ * reports PRESENT on machines that do not have our CLI at all — a false green,
+ * everywhere, forever. The probe therefore looks for the installed bin the repo
+ * actually resolves. Do not "simplify" this to a PATH lookup.
+ *
+ * Advisory only: dd's CLI is optional for building and testing this repo, so a
+ * miss is `ok: false` (degraded, exit 0) and never fatal.
+ */
+function checkDdCli(fs: FsPort, proc: ProcessPort): LayerReport {
+  const name = 'dd-cli';
+  const cwd = toPosix(proc.cwd());
+  const localBin = `${cwd}/node_modules/.bin/dd`;
+  if (fs.exists(localBin)) {
+    return {
+      name,
+      ok: true,
+      detail: 'standalone dd CLI available at node_modules/.bin/dd',
+    };
+  }
+
+  // Only warn a repo that actually USES dd. A missing optional CLI is not a
+  // finding in a repo with no deterministic documents, and degrading every such
+  // repo's doctor would be exactly the nagging the dd-documents row above
+  // refuses. This keeps the warning proportional: it fires where the absence
+  // will really bite, and stays silent where it cannot.
+  const scan = scanCorpus(fs, cwd);
+  const usesDd = scan.paths.some((path) => {
+    const text = fs.readText(path);
+    if (text === null) return false;
+    const doc = parseDd(text);
+    return !Array.isArray(doc) && !shouldExcludeFromSweep(path, doc);
+  });
+  if (!usesDd) {
+    return { name, ok: true, detail: 'no dd documents here — the standalone dd CLI is not needed' };
+  }
+
+  return {
+    name,
+    ok: false,
+    detail:
+      'standalone dd CLI not found — `harness dd *` was removed in plan 080, so dd verbs (validate, build, set, doctor) now come from dd itself',
+    next_action:
+      'Install the dd package in this repo, then invoke it as `node_modules/.bin/dd <verb>`. Do NOT run bare `dd` (that is coreutils disk-dump) or `npx dd` (an unrelated package of that name exists on npm and would be fetched and executed).',
+  };
+}
+
 function checkDd(fs: FsPort, proc: ProcessPort): LayerReport {
   const name = 'dd-documents';
   const cwd = toPosix(proc.cwd());
@@ -578,7 +633,7 @@ function checkDd(fs: FsPort, proc: ProcessPort): LayerReport {
       ok: false,
       detail: `deterministic documents could not be enumerated: ${scan.issues[0]?.message ?? 'unknown'}`,
       next_action:
-        'Fix the unreadable path, then re-run `harness doctor`. `harness dd doctor` gives the full sweep.',
+        'Fix the unreadable path, then re-run `harness doctor`. `node_modules/.bin/dd doctor` gives the full sweep.',
     };
   }
 
@@ -601,7 +656,7 @@ function checkDd(fs: FsPort, proc: ProcessPort): LayerReport {
     return {
       name,
       ok: true,
-      detail: `${swept.length} deterministic document(s), each with its rendered sibling — run \`harness dd doctor\` for the full sweep`,
+      detail: `${swept.length} deterministic document(s), each with its rendered sibling — run \`node_modules/.bin/dd doctor\` for the full sweep`,
     };
   }
   return {
@@ -612,7 +667,7 @@ function checkDd(fs: FsPort, proc: ProcessPort): LayerReport {
       .slice(0, 3)
       .join(', ')}${unrendered.length > 3 ? ', …' : ''}`,
     next_action:
-      'Regenerate with `harness dd build <path>` (or `harness plan render <plan>`) and commit the sibling beside its document. `harness dd doctor` reports the deeper findings this row cannot.',
+      'Regenerate with `node_modules/.bin/dd build <path>` (or `harness plan render <plan>`) and commit the sibling beside its document. `node_modules/.bin/dd doctor` reports the deeper findings this row cannot.',
   };
 }
 
@@ -1142,6 +1197,7 @@ export function buildDoctorReport(
       ? [checkAttributionAtRisk(deps.attribution, deps.ingress).layer]
       : []),
     checkDd(deps.fs, deps.proc),
+    checkDdCli(deps.fs, deps.proc),
     checkPrecommitLatency(deps.fs, deps.proc),
     checkCoreInstructions(),
     checkCommitGuidance(deps.fs, deps.proc),

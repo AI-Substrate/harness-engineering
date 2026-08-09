@@ -39,6 +39,31 @@ So when working on `the-flow` (schema, template, references, routing), open `/Us
 
 This repo HAS its own governance doc at `.harness/engineering-harness.md` (hand-written in plan 014; boot = the CLI's vitest suite via `just test`) — `/eng-harness-flow` boots it and reports normally here. The repo's *rules* (constitution, architecture, idioms) still live separately in `docs/project-rules/`. **Do not run `/eng-harness-flow` adoption against this repo** — this is the harness's own home, not a target repo; its governance doc is maintained by hand like any other repo's. For a zero-context start **in this repo**, invoke the bin via node directly: `node harness/cli/bin/harness.js instructions` (the agent briefing), then `… help` / `… doctor --json`. Don't lean on `npx` for the repo's *own* bin — `npx --no-install` resolution of the root package's own bin is nondeterministic across npm majors (plan 017; npm 10 ok, npm 11.13 `Permission denied`), and bare `npx harness` fetches an unrelated registry package. In **consumer** repos (harness installed as a dependency) `npx --no-install harness …` is fine — that path is proven by the package-smoke CI job.
 
+## Deterministic documents: the `dd` CLI (there is no `harness dd`)
+
+`harness dd *` was **removed** (plan 080). dd is consumed as a *package*
+(`@ai-substrate/dd`, pinned by full 40-char git sha in the root `package.json`) and
+operated through **its own CLI**. `harness plan` and `harness flow` still work — they use
+the package directly — but `dd validate|build|set|doctor|link` now come from dd.
+
+**Invoke it as `node_modules/.bin/dd <verb>`.** That is the only spelling that is both
+correct and runnable today:
+
+| spelling | what actually runs |
+|---|---|
+| `node_modules/.bin/dd` | **ours — use this** |
+| `dd` | coreutils' disk-dump utility (`/bin/dd`) — fails loudly on our verbs |
+| `npx dd` | **an unrelated package that really exists on npm** (v0.26.0). In a repo without ours installed this **fetches and executes remote code** |
+| `npx @ai-substrate/dd` | ours, but **not published yet** (`npm view` → E404). Correct only after the release lands, and after registry/proxy lag clears |
+
+The middle row is the trap worth internalising: `npx dd` is dangerous *precisely because
+it looks like the careful fix* for bare `dd`. A rule that only says "don't use bare `dd`"
+steers people straight into it — so name the safe spelling, never just forbid the unsafe
+one.
+
+`harness doctor` carries a `dd-cli` row that reports this, non-fatally, and only in a
+repo that actually has `.dd.json` documents.
+
 ## Local checks
 
 - Run the composite gate **`harness checks`** yourself before declaring work done — tests+coverage, biome, typecheck, the docs/flows/telemetry drift guards, and arch/skills/markdown/windows-check, in one envelope. (`just checks` builds first, then runs it.) **CI + branch protection are the authoritative gate.**

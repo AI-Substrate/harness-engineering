@@ -260,3 +260,60 @@ runs right now**; the scoped form is the post-release route and must be written 
 This matters more than it looks — a prescription that 404s is exactly how a reader talks
 themselves back into `npx dd`. The safe rule has to be runnable *at the moment it is
 read*, or it launders into the unsafe one. `27d90a02`'s comment carries the publish gate.
+
+## tk-000e — doctor `dd-cli` warning + AGENTS.md (D-2 rider)
+
+### The probe deliberately does NOT use `which`
+
+The obvious implementation is `proc.which('dd')`, which is what every other toolchain
+row in this file uses. It would be **wrong here**, and wrong in the worst way: on every
+POSIX host `which('dd')` finds `/bin/dd` — coreutils' disk-dump — so the layer would
+report our CLI PRESENT on machines that do not have it at all. A false green, everywhere,
+permanently. The probe looks for `node_modules/.bin/dd` instead, and a test pins the
+decision so a later "simplification" back to `which` fails loudly.
+
+### Proportionality — a correction I made to my own first version
+
+My first version warned whenever the CLI was missing. It degraded **8 existing doctor
+tests**, and that was the design telling me something rather than a test problem: dd's
+CLI is OPTIONAL, so warning a repo with no `.dd.json` documents is nagging about a tool
+that cannot bite there — precisely the posture the neighbouring `dd-documents` row
+refuses ("don't pester a repo the feature doesn't apply to"). The layer now warns only
+when the repo actually uses dd. The 8 tests went green by being *right*, not by being
+updated.
+
+### Both control arms (dw-001b)
+
+```
+PRESENT (this repo):
+  dd-cli | ok=True | standalone dd CLI available at node_modules/.bin/dd
+  → no next_action
+
+ABSENT (fresh temp repo, cwd outside this tree):
+  envelope status: degraded          ← non-fatal, exit 0
+  dd-cli | ok=False
+    detail:      standalone dd CLI not found — `harness dd *` was removed in plan 080 …
+    next_action: Install the dd package in this repo, then invoke it as
+                 `node_modules/.bin/dd <verb>`. Do NOT run bare `dd` (that is coreutils
+                 disk-dump) or `npx dd` (an unrelated package of that name exists on npm
+                 and would be fetched and executed).
+```
+
+The `next_action` names **both** wrong programs by design, and a test asserts it does. A
+warning that said only "install dd" would send the reader to coreutils or, worse, to the
+npm squat — the failure mode being that a *helpful* message becomes the delivery vehicle
+for the hazard it was written to prevent.
+
+### Stale prescriptions migrated in the same pass
+
+`checkDd`'s three `next_action`/detail strings and one doc comment still told operators to
+run `harness dd doctor` / `harness dd build` — verbs deleted one task earlier. Migrated to
+`node_modules/.bin/dd`, and the two doctor tests that ASSERTED the old strings were
+updated with them: those tests were pinning a prescription for a command that no longer
+exists, which is worse than no assertion.
+
+AGENTS.md gains a `dd` CLI section with the four-spelling table and the publish gate.
+
+**Green**: `just build` exit 0; **294 files / 4487 tests** (+5: four new `dd-cli` cases and
+the layer-list contract row). `test/acts/doctor.test.ts` caught the new layer via its
+layer-name list — a contract test doing exactly its job.

@@ -86,6 +86,7 @@ describe('registerDoctorAct', () => {
       // real repo's attribution reads. READ-ONLY: it names the nudge, never runs it.
       'attribution-at-risk',
       'dd-documents',
+      'dd-cli',
       'precommit-hook-latency',
       'instructions',
       // plan 074 · ac-0008 — warns when AGENTS.md carries no managed block.
