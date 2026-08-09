@@ -1,0 +1,85 @@
+harness/cli/src/services/flow/flow-schema.ts
+  s_397a51e23fc2cd::t_e58beb0890aaba 159-162,167
+harness/cli/test/acts/flow-bundled-flight-plan.test.ts
+  s_19f7e253dcd61b::t_032a946e7507bf 1-130
+harness/cli/src/services/flow/schemas-content.ts
+  s_a76964380084ef::t_8b1a2f80b7032e 2-3,65-90,218-399
+harness/cli/test/integration/flow-reachability-fixtures.int.test.ts
+  s_2bef307df718bc::t_cc97f1bad98562 1-81
+harness/cli/test/services/flow/fixtures/reachability/098-shaped/SEAT.md
+  s_2bef307df718bc::t_1edbd59a7c8b52 1
+harness/cli/test/services/flow/fixtures/reachability/098-shaped/bench/notes.md
+  s_2bef307df718bc::t_83285514f12c42 1
+harness/cli/test/services/flow/fixtures/reachability/098-shaped/findings.md
+  s_2bef307df718bc::t_99a64949cac7ba 1-2
+harness/cli/test/services/flow/fixtures/reachability/099-shaped/assets/notes.md
+  s_2bef307df718bc::t_ad5248d7001dc8 1
+harness/cli/test/services/flow/fixtures/reachability/README.md
+  s_2bef307df718bc::t_4cda8cd71f97e3 1-21
+harness/cli/test/services/flow/fixtures/reachability/both-good/assets/tasks/phase-1/tasks.dd.json
+  s_2bef307df718bc::t_8df478bbf915d8 1-29
+harness/cli/test/services/flow/fixtures/reachability/both-good/assets/tasks/phase-1/tasks.dd.md
+  s_2bef307df718bc::t_764b4fad24b98e 1-42
+harness/cli/test/services/flow/fixtures/reachability/both-good/plan.dd.json
+  s_2bef307df718bc::t_d2bc5e15df1833 1-45
+harness/cli/test/services/flow/fixtures/reachability/both-good/plan.dd.md
+  s_2bef307df718bc::t_0ba591b7b47aa1 1-56
+harness/cli/test/services/flow/fixtures/reachability/both-good/the-flow.json
+  s_2bef307df718bc::t_446d7d128a24de 1-249
+harness/cli/test/services/flow/fixtures/reachability/both-good/the-flow.md
+  s_2bef307df718bc::t_486a275b2df0d4 1-39
+harness/cli/test/services/flow/fixtures/reachability/legacy-flow/the-flow.json
+  s_2bef307df718bc::t_2a3ad25e071f71 1
+harness/cli/test/services/flow/fixtures/reachability/malformed-flow/the-flow.json
+  s_2bef307df718bc::t_b41b68c90c8e2e 1
+harness/cli/test/services/flow/fixtures/reachability/plan-without-flow/assets/tasks/phase-1/tasks.dd.json
+  s_2bef307df718bc::t_583699c2a330a3 1-29
+harness/cli/test/services/flow/fixtures/reachability/plan-without-flow/assets/tasks/phase-1/tasks.dd.md
+  s_2bef307df718bc::t_fa7fbd93b79f08 1-42
+harness/cli/test/services/flow/fixtures/reachability/plan-without-flow/plan.dd.json
+  s_2bef307df718bc::t_df950d69d77380 1-45
+harness/cli/test/services/flow/fixtures/reachability/plan-without-flow/plan.dd.md
+  s_2bef307df718bc::t_773092bc233191 1-56
+scripts/gen-flows.mjs
+  s_2bef307df718bc::t_585f606ca9d148 18-24,53-80,91-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "02c0aa4094d7dc10d1d674120d5a0dbc1e1e5324",
+  "prompts": {},
+  "sessions": {
+    "s_19f7e253dcd61b": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "df4fe8c9-c893-434b-8f2c-b08b4eb337d3",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_2bef307df718bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb3484ee-e8b4-4f68-89fa-22abb2a7a8c3",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_397a51e23fc2cd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "3fe3c47b-5424-4214-892e-81ef19c49d45",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
