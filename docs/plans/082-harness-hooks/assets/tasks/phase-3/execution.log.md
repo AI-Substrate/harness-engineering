@@ -769,6 +769,13 @@ stale entry can only ever make an uninstall remove a key we *did* create, never 
   `harness hooks status --json` will say `unresolvable`, and `harness hooks uninstall` is the exit.
   This is stated so that "installed and validated on a real machine" is not read as "shipped and
   stable".
+  - **AND THE SHARPER HALF, learned when it happened (F004).** The hazard is not only that the file
+    will one day vanish. **While the worktree exists, the binary's CONTENT is mutable by our routine
+    work.** Rebuilding `dist/` during the F004 fix silently moved the live install from *broken* to
+    *working* — no config touched, no install run, nobody asked. The same mechanism can move it the
+    other way: any `just build` on a half-finished change is, for as long as this install stands, a
+    change to the operator's live hook behaviour underneath him. A config pointing into a development
+    tree does not name a fixed artifact; it names whatever that tree last compiled.
 - **Byte equality on uninstall is not CLAIMED**, though it was ACHIEVED on all seven live files.
   `jsonc-parser` normalises the internal whitespace of any container it edits, so a container that
   arrived compact comes back expanded. It happened not to bite here because these files already
@@ -1047,6 +1054,30 @@ is the only reason it surfaced; a `toBeGreaterThan(0)` would have passed.
 All **16** composed commands (8 files × 2 phases) are now executed for real, each asserted exit 0,
 silent, and journalled — one journal entry per command, so a single silent death is visible.
 
+#### The defect and its echo — the same shape, twice, and the second time inside the test that closed the first
+
+This is worth naming as a **class** rather than filing as a footnote, because it has now been observed
+twice in this plan, on the same two files:
+
+| | the original | its echo |
+|---|---|---|
+| where | `hook-marker.ts` — Strategy A ownership | `composed-command.int.test.ts` — the fixture's path list |
+| the two adjacent files | git-ai's entry vs ours, **in one config** | `.copilot/hooks/git-ai.json` vs `.copilot/hooks/harness.json`, **in one directory** |
+| the mistake available | claim the whole entry as ours and delete somebody else's work | read somebody else's file and conclude ours was not written |
+| what caught it | exact-token matching, decided before any writer assumed it | an exact **count** (16), not a `toBeGreaterThan(0)` |
+
+**Two adjacent files, one of them somebody else's, and a name that does not distinguish them.** The
+first time it threatened a user's config; the second time it silently narrowed a test — the *same*
+test written to close the first. The echo is the more instructive of the two: the person who wrote it
+had the original defect in mind, was actively widening coverage to avoid a related gap, and still
+reached for the wrong path, because the detection table is where copilot's config path is *written
+down* and it happens to be a different file from the one we write.
+
+The transferable rule is not "be careful with copilot". It is that **wherever we sit beside another
+tool's artifact, the two names must be distinguished at the point of use** — and that an assertion on
+an exact expected count is what turns "we checked the set" from a belief into a measurement. A
+`toBeGreaterThan(0)` here would have reported success over seven-eighths of the surface.
+
 ### `status` reported six agents HEALTHY while none of them could run
 
 `binaryState: 'resolves'` stats the **binary**. The binary existed. The arguments were rejected, and
@@ -1068,13 +1099,21 @@ declaration. It does not execute anything. It cannot see a binary that is a diff
 broken node install, or a runtime failure inside `fire`. For that the journal (`fires.recorded`) is
 the only honest evidence — which is why `fireSummary` separates "never fired" from "fired and failed".
 
-### Incidental finding: `hooks status` is NOT read-only
+### Incidental finding: `hooks status` is NOT read-only — a NOTE, not this plan's job
 
-`fireSummary` calls `journal.compact()`, and `FileHookJournal` `mkdirp`s its directory. So `status`
-can write. It was therefore **not** run against Jordan's real home while investigating, under the
-standing stop-and-tell constraint. Bounding the journal on a reader is a defensible design; a verb a
-user reaches for to *diagnose* being able to modify the thing diagnosed is worth knowing about, and it
-is unremarked anywhere else.
+**The mechanism, named so nobody has to re-derive it:** `fireSummary` (`hooks-verbs.ts`) calls
+`journal.compact()`, and `FileHookJournal`'s constructor `mkdirp`s its directory
+(`hook-journal.ts:100`). So `harness hooks status` can create `~/.harness/hooks/` and can rewrite
+`fires.jsonl`. It was therefore **not** run against Jordan's real home while investigating F004, under
+the standing stop-and-tell constraint; the behaviour was confirmed in a fenced home instead.
+
+Bounding the journal on a reader rather than on the fire path is a defensible design — the fire path
+is the one that must stay fast and silent. But the consequence is a **footgun in precisely the moment
+the verb gets used**: nobody runs `status` when things are fine. They run it when something is already
+wrong, and the diagnostic then modifies the artifact being diagnosed — including truncating the very
+journal entries that might explain the failure. Recorded as a note; the fix (compact on a writer, or
+behind an explicit flag) belongs to whoever owns the journal's lifetime, alongside the
+`install-record.json` GC that is also still unwritten.
 
 ### Rows added
 
