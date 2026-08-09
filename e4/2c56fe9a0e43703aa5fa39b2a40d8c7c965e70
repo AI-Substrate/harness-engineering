@@ -1,0 +1,23 @@
+harness/cli/test/services/hooks/verbs-e2e.int.test.ts
+  s_ed609d39de2442::t_2badb99c216189 1-137
+docs/plans/082-harness-hooks/assets/tasks/phase-2/execution.log.md
+  s_ed609d39de2442::t_351921d52eb064 1178-1220
+harness/cli/test/app.test.ts
+  s_ed609d39de2442::t_5410f88172cac4 135-157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e42c56fe9a0e43703aa5fa39b2a40d8c7c965e70",
+  "prompts": {},
+  "sessions": {
+    "s_ed609d39de2442": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "62892a0d-07d6-4784-b490-986f797be544",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
