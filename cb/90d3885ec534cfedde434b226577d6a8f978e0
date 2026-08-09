@@ -1,0 +1,38 @@
+docs/plans/082-harness-hooks/assets/tasks/phase-3/tasks.dd.md
+  s_ed609d39de2442::t_fdce0026e8d3ef 39,63-66
+harness/cli/test/services/hooks/doctor-hooks.int.test.ts
+  s_ed609d39de2442::t_46f7158c4d8644 1-2,39-45,73-74,92
+  s_ed609d39de2442::t_ac543300a13a64 3-38,46-57,75-91,93-108,110-111,129,134,139,147-159,162-201,208-230,239,245-246,249-267
+  s_ed609d39de2442::t_b90dd2cc5d4013 131-133
+  s_ed609d39de2442::t_27313731f13902 202-207,231-238,240-244,247-248
+  s_ed609d39de2442::t_efe6648b06255e 109,112-122,130,138,140-145,160-161
+  s_ed609d39de2442::t_4f816dbab547d9 58-72,123-128,135-137,146
+harness/cli/src/services/hooks/hooks-verbs.ts
+  s_ed609d39de2442::t_32f07a9524a4c8 531-570,572-604
+  s_ed609d39de2442::t_b90dd2cc5d4013 605
+  s_ed609d39de2442::t_ac677d87fc6721 73-102,142-143,166-174,571
+docs/plans/082-harness-hooks/assets/tasks/phase-3/execution.log.md
+  s_ed609d39de2442::t_b90dd2cc5d4013 233-291,307-334,341-361
+  s_ed609d39de2442::t_a33ae55c9d93d4 292-306,335-340
+docs/plans/082-harness-hooks/assets/tasks/phase-3/tasks.dd.json
+  s_ed609d39de2442::t_fdce0026e8d3ef 35,123,129,135,141
+harness/cli/src/acts/doctor.ts
+  s_ed609d39de2442::t_9a3896d980bfce 36,257-271,303-315,326-329,337
+  s_ed609d39de2442::t_b90dd2cc5d4013 40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "cb90d3885ec534cfedde434b226577d6a8f978e0",
+  "prompts": {},
+  "sessions": {
+    "s_ed609d39de2442": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "62892a0d-07d6-4784-b490-986f797be544",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
