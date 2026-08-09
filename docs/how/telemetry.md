@@ -662,28 +662,31 @@ bounded by a timeout) is *reported*, never thrown, and never fails `checks`:
 
 To enable or suppress this path, see [Capture controls](#capture-controls).
 
-### The git hooks — capture at pre-commit, flush at post-commit
+### The git hooks — REMOVED (plan 077 · #108)
 
-`just install-hooks` still arms the telemetry hooks, but the capture gate makes
-their harness telemetry work a no-op on a default install. With
-`HARNESS_TELEMETRY_CAPTURE=1`, their historical behavior is:
+There are no tracked git hooks in this repo, and no `just install-hooks` recipe.
 
-- **`.githooks/pre-commit`** (plan 068) — one counts-only **capture**, so file
-  evidence anchors to the commit's true parent no matter whether any harness
-  verb ran since the last edit. Never syncs, never pushes, never runs checks;
-  `trap 'exit 0'` first — git HONOURS this hook's exit code (unlike
-  post-commit's), so exit-0 is enforced by trap, not discipline. Amend commits
-  are deduped losslessly (the capture cursor doesn't advance, so the next fire
-  captures the same work against a commit that exists); amend *detection* is a
-  labelled heuristic over the lossy `ps` argv rendering, steered so its
-  residual errors capture-as-noise rather than skip. Latency is instrumented,
-  not asserted: each fire logs to `.harness/temp/precommit-latency.tsv`,
-  `harness doctor` warns when p95 crosses the budget (2000 ms; measured
-  baseline p95 217–485 ms under load — re-measure with
-  `./scripts/precommit-latency-harness.sh`). Disarm just this hook with
-  `HARNESS_NO_TELEMETRY_PRECOMMIT=1`.
-- **`.githooks/post-commit`** — the deterministic **flush** point
-  (`harness telemetry sync`), unchanged.
+`.githooks/pre-commit` (one counts-only capture, anchoring file evidence to the
+commit's true parent) and `.githooks/post-commit` (the deterministic
+`harness telemetry sync` flush) both existed to serve **harness-side capture**, which
+[went off by default in code](#capture-controls) when git-ai became the collector
+(`CAPTURE_DEFAULT_ENABLED = false`). On a default install their telemetry work was
+already a no-op, so they were removed rather than left arming a path that does not run.
+
+Two doctor checks went with them, because both read evidence only those hooks produced:
+`telemetry-flush-hook` (looked for a `post-commit` running `telemetry sync`) and
+`precommit-hook-latency` (read `.harness/temp/precommit-latency.tsv`, whose sole writer
+was the pre-commit hook). The `./scripts/precommit-latency-harness.sh` re-measurement rig
+went too.
+
+If you ran `just install-hooks` while it existed, your clone still has
+`core.hooksPath=.githooks` pointing at a directory that is no longer there. Git finds no
+hook and proceeds, so it is harmless; clear it with `git config --unset core.hooksPath`.
+
+**Unaffected, and not to be confused with the above:** `git ai install-hooks` is a
+different command belonging to the [git-ai collector](./gitai-collector.md), and the
+`core.hooksPath=` argument in `exec-remote-telemetry-git.ts` is a *suppression* that keeps
+the telemetry push hook-free — it is what makes that push recursion-proof.
 
 ### Team scale — many engineers, one repo
 

@@ -77,12 +77,34 @@ paved path; a timeout above 180 seconds is a design smell. **If your sensor need
 20 minutes, it isn't a sensor.** See [the sensors guide](docs/how/harness-sensors.md)
 for the shipped set, authoring rules, and watch globs.
 
-### Git hooks: NO pre-push gate, YES a post-commit telemetry flush
+### Git hooks: this repo installs NONE — and two rules survive their removal
 
-These are deliberately asymmetric — keep them straight:
+**There is no `just install-hooks`, no `.githooks/`, and no tracked git hook here.** The
+harness-side capture those hooks fed went **off by default in code** at plan 073
+(`capture-gate.ts` — `CAPTURE_DEFAULT_ENABLED = false`), when git-ai became the collector,
+so a `pre-commit` that buffered a capture and a `post-commit` that flushed it were serving a
+path that no longer runs unless someone sets `HARNESS_TELEMETRY_CAPTURE=1`. They were
+removed rather than left to rot.
 
-- **NO `pre-push` checks gate.** A tracked `.githooks/pre-push` that ran `harness checks` on every push was removed because it recursed: `harness checks` auto-pushes telemetry on exit, the push re-fired the gate, and it pinned a 16-core box at load 175. **Do not re-add a push-triggered `harness checks` gate.**
-- **YES a `post-commit` telemetry flush** (`just install-hooks` → `core.hooksPath=.githooks` → `.githooks/post-commit`). It runs **only `harness telemetry sync`** — a counts-only push to `refs/harness-telemetry/*` — so each commit flushes buffered telemetry without anyone remembering to. It **cannot recurse** (no build, no tests; the telemetry push is `--no-verify`, so it triggers no hook) and **cannot block a commit** (post-commit's exit code is ignored). `harness doctor` warns when a repo is capturing telemetry but has no flush hook — run `just install-hooks` to resolve it. The `--no-verify` on the telemetry push (`exec-git-write.ts`) is **load-bearing**: it is what makes any commit/push-time flush recursion-proof.
+If you ran `just install-hooks` before it was removed, your clone still has
+`core.hooksPath=.githooks` pointing at a directory that no longer exists. That is harmless —
+git finds no hook and proceeds — but you can clear it with
+`git config --unset core.hooksPath`.
+
+Two rules outlived the hooks, and both still bind:
+
+- **Never add a push-triggered `harness checks` gate.** A tracked `.githooks/pre-push` that
+  ran `harness checks` on every push recursed — `harness checks` auto-pushes telemetry on
+  exit, the push re-fired the gate — and it pinned a 16-core box at load 175.
+- **The `--no-verify` on the telemetry push (`exec-git-write.ts`) is load-bearing.** It is
+  what makes any commit- or push-time flush recursion-proof, and it must stay even though
+  nothing hooks those events today.
+
+**`git-ai install-hooks` is a DIFFERENT command and is untouched by any of the above.** It
+belongs to the live collector (`services/doctor/collector/`), it is what plan 073 replaced
+harness-side capture *with*, and a search-and-destroy on the string `install-hooks` would
+gut it. Likewise `core.hooksPath=` in `exec-remote-telemetry-git.ts` is a *suppression* that
+makes the telemetry push hook-free — not an install.
 
 ## Model-to-task fit & delegation (token discipline)
 

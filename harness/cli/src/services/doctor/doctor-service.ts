@@ -646,82 +646,6 @@ function checkRecordTypes(recordTypes: RecordTypeEntry[]): LayerReport {
   };
 }
 
-/** The kill-switch env (mirrors capture-service's `KILL_SWITCH_ENV`; doctor stays
- *  decoupled from the telemetry module, so the name is duplicated, not imported). */
-const TELEMETRY_KILL_SWITCH = 'HARNESS_NO_TELEMETRY';
-
-/**
- * Resolve the EFFECTIVE git hooks dir: `core.hooksPath` when set (read from
- * `.git/config` — deterministic for the standard single-repo layout; worktrees /
- * config-includes fall back to `.git/hooks`, which is the git default anyway).
- */
-function resolveHooksDir(fs: FsPort, cwd: string): string {
-  const cfg = fs.exists(posixJoin(cwd, '.git/config'))
-    ? fs.readText(posixJoin(cwd, '.git/config'))
-    : null;
-  const m = cfg?.match(/^\s*hooksPath\s*=\s*(.+?)\s*$/m);
-  if (m?.[1]) {
-    return resolveInRepo(m[1].trim(), cwd);
-  }
-  return posixJoin(cwd, '.git/hooks');
-}
-
-/**
- * Deterministic scan for the **post-commit telemetry-flush hook** — the
- * recursion-safe mechanism that flushes the counts-only telemetry buffer to
- * `refs/harness-telemetry/*` on every commit, so a session that commits without
- * running `checks`/`ship` never strands its telemetry (the model can't "forget").
- *
- * Scoped to the case that actually matters: a git repo that IS capturing telemetry
- * (the buffer exists) but has NO flush hook. A repo that never captured, has
- * telemetry disabled, or isn't a git repo gets no nag (stays ok). The hook is
- * "active" when the effective hooks dir holds a `post-commit` that runs
- * `harness telemetry sync`. NEVER invokes anything (P7) — a pure fs/port read.
- */
-function checkTelemetryHook(
-  fs: FsPort,
-  proc: ProcessPort,
-  git: GitPort,
-  env: EnvPort,
-): LayerReport {
-  const name = 'telemetry-flush-hook';
-  const cwd = toPosix(proc.cwd());
-  const capturing = fs.exists(posixJoin(cwd, HARNESS_DIR, TEMP_DIR, 'telemetry'));
-  if (!capturing || !git.isRepo() || env.get(TELEMETRY_KILL_SWITCH) === '1') {
-    return {
-      name,
-      ok: true,
-      detail: capturing
-        ? 'telemetry off or not a git repo — flush hook not needed'
-        : 'no telemetry captured yet — flush hook not needed',
-    };
-  }
-  const hookPath = posixJoin(resolveHooksDir(fs, cwd), 'post-commit');
-  const body = fs.exists(hookPath) ? fs.readText(hookPath) : null;
-  if (body?.includes('telemetry sync')) {
-    return {
-      name,
-      ok: true,
-      detail: `post-commit telemetry-sync hook active (${posixRelative(cwd, hookPath) || hookPath})`,
-    };
-  }
-  const dev = fs.exists(CLI_DEV_MARKER);
-  return {
-    name,
-    ok: false,
-    detail:
-      'telemetry is being captured but NO post-commit flush hook is installed — buffered ' +
-      'segments may never reach refs/harness-telemetry/* if you commit without running `checks`/`ship`',
-    next_action: dev
-      ? 'Run `just install-hooks` — installs a recursion-safe `post-commit` hook that runs ' +
-        '`harness telemetry sync` (a counts-only ref push; NOT the heavyweight checks gate). ' +
-        'It also arms the `pre-commit` capture hook that anchors evidence to the right commit; ' +
-        'disarm just that one with HARNESS_NO_TELEMETRY_PRECOMMIT=1.'
-      : 'Add a `post-commit` git hook that runs `harness telemetry sync`, so each commit flushes ' +
-        'buffered telemetry to refs/harness-telemetry/* (counts-only; recursion-safe).',
-  };
-}
-
 /**
  * The **capture-liveness** layer (plan 070 · AC-1) — the product's answer to a
  * capture that silently stops happening.
@@ -912,96 +836,6 @@ function checkCaptureLiveness(
 }
 
 /**
- * The p95 wall-time budget for the `pre-commit` telemetry-capture hook, in
- * milliseconds. Recorded as a CONSTANT, not a comment, because the hook sits on
- * the critical path of every commit: a plan that lands 84 commits pays this
- * number 84 times, so the difference between 200 ms and 2 s is minutes of pure
- * hook tax on one stream. 2000 ms is the o-prime's proposed ceiling from the
- * enablement discussion; move it only with fresh measurements attached.
- */
-export const PRECOMMIT_P95_BUDGET_MS = 2000;
-
-/** Samples below this floor describe one host's luck, not a distribution — reported, never judged. */
-export const PRECOMMIT_MIN_SAMPLES = 5;
-
-/** Where the pre-commit hook appends `<epoch_ms>\t<duration_ms>` (gitignored transient). */
-const PRECOMMIT_SAMPLES_FILE = 'precommit-latency.tsv';
-
-/** Nearest-rank percentile over an ASCENDING-sorted, non-empty array. */
-function percentile(sortedAsc: readonly number[], p: number): number {
-  const rank = Math.ceil(p * sortedAsc.length);
-  return sortedAsc[Math.min(Math.max(rank, 1), sortedAsc.length) - 1] as number;
-}
-
-/**
- * The C4 budget INSTRUMENT for the `pre-commit` telemetry-capture hook — the
- * condition that a time budget must be something that can fail, not a sentence
- * in a header. The hook appends one `<epoch_ms>\t<duration_ms>` line per fire to
- * `.harness/temp/precommit-latency.tsv`; this reads that ring and compares p95
- * against {@link PRECOMMIT_P95_BUDGET_MS}.
- *
- * Honest about its own gaps rather than silent (plan 068's house rule): no file
- * means "never fired / no sub-second clock on this host", not "fast"; fewer than
- * {@link PRECOMMIT_MIN_SAMPLES} readings are reported WITH their percentiles but
- * never used to fail a verdict; unparseable lines are counted and named instead
- * of being quietly dropped. NEVER invokes anything (P7) — a pure fs/port read.
- */
-function checkPrecommitLatency(fs: FsPort, proc: ProcessPort): LayerReport {
-  const name = 'precommit-hook-latency';
-  const cwd = toPosix(proc.cwd());
-  const path = posixJoin(cwd, HARNESS_DIR, TEMP_DIR, PRECOMMIT_SAMPLES_FILE);
-  if (!fs.exists(path)) {
-    return {
-      name,
-      ok: true,
-      detail:
-        'no pre-commit capture timings recorded — the hook has not fired here ' +
-        '(not installed, or this host has no sub-second clock)',
-    };
-  }
-  const lines = (fs.readText(path) ?? '').split('\n').filter((l) => l.trim() !== '');
-  const durations: number[] = [];
-  let unparseable = 0;
-  for (const line of lines) {
-    const raw = line.split('\t')[1];
-    const ms = raw === undefined ? Number.NaN : Number(raw);
-    if (Number.isFinite(ms) && ms >= 0) durations.push(ms);
-    else unparseable++;
-  }
-  const skipped = unparseable > 0 ? `, ${unparseable} unparseable line(s) skipped` : '';
-  if (durations.length === 0) {
-    return {
-      name,
-      ok: true,
-      detail: `pre-commit capture timings file present but holds no readable samples${skipped}`,
-    };
-  }
-  const sorted = [...durations].sort((a, b) => a - b);
-  const p50 = percentile(sorted, 0.5);
-  const p95 = percentile(sorted, 0.95);
-  const stats = `${durations.length} sample(s): p50 ${p50}ms, p95 ${p95}ms (budget ${PRECOMMIT_P95_BUDGET_MS}ms)`;
-  if (durations.length < PRECOMMIT_MIN_SAMPLES) {
-    return {
-      name,
-      ok: true,
-      detail: `${stats} — below the ${PRECOMMIT_MIN_SAMPLES}-sample floor, reported not judged${skipped}`,
-    };
-  }
-  if (p95 > PRECOMMIT_P95_BUDGET_MS) {
-    return {
-      name,
-      ok: false,
-      detail: `pre-commit capture hook is OVER BUDGET — ${stats}${skipped}`,
-      next_action:
-        'The pre-commit telemetry capture is taxing every commit. Disarm it with ' +
-        '`export HARNESS_NO_TELEMETRY_PRECOMMIT=1` (post-commit flush keeps working), ' +
-        'then find the cost — a very long first-capture transcript is the usual one.',
-    };
-  }
-  return { name, ok: true, detail: `pre-commit capture hook within budget — ${stats}${skipped}` };
-}
-
-/**
  * The **git-ai collector** layer (plan 073 · ac-000a, ac-000b, ac-000c, ac-0014).
  *
  * Harness stopped collecting its own telemetry, so this row is the only place a
@@ -1133,7 +967,6 @@ export function buildDoctorReport(
     checkExtensions(registry, conventions),
     checkQualityGate(registry),
     checkSensorWatcher(deps.fs, deps.clock, deps.proc, registry),
-    checkTelemetryHook(deps.fs, deps.proc, deps.git, deps.env),
     checkCaptureLiveness(deps.fs, deps.proc, deps.env, deps.clock, deps.adapters, deps.db),
     ...(deps.collectorHost !== undefined
       ? [checkCollector(deps.fs, deps.proc, deps.collectorHost, deps.hash, deps.ingress)]
@@ -1142,7 +975,6 @@ export function buildDoctorReport(
       ? [checkAttributionAtRisk(deps.attribution, deps.ingress).layer]
       : []),
     checkDd(deps.fs, deps.proc),
-    checkPrecommitLatency(deps.fs, deps.proc),
     checkCoreInstructions(),
     checkCommitGuidance(deps.fs, deps.proc),
     checkRecordTypes(recordTypes),

@@ -76,7 +76,6 @@ describe('registerDoctorAct', () => {
       'extensions',
       'quality-gate',
       'sensor-watcher',
-      'telemetry-flush-hook',
       'capture-liveness',
       // plan 073 — wired by DEFAULT. The row was previously omitted whenever the
       // composition root supplied no host, which it always did; a doctor without
@@ -87,7 +86,6 @@ describe('registerDoctorAct', () => {
       // real repo's attribution reads. READ-ONLY: it names the nudge, never runs it.
       'attribution-at-risk',
       'dd-documents',
-      'precommit-hook-latency',
       'instructions',
       // plan 074 · ac-0008 — warns when AGENTS.md carries no managed block.
       'commit-guidance',
