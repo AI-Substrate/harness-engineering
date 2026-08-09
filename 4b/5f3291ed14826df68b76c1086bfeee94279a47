@@ -1,0 +1,19 @@
+.harness/records/retro/2026-08-09/003-080-phase-3.md
+  s_19a84a88383f5b::t_03824b76e58d9c 1-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4b5f3291ed14826df68b76c1086bfeee94279a47",
+  "prompts": {},
+  "sessions": {
+    "s_19a84a88383f5b": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "e9a11817-53a3-42b6-a41f-25dcffefd677",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
