@@ -55,6 +55,12 @@
             "../../../plan.dd.json#acceptance_criteria/ac-0011"
           ],
           "note": "This is the honesty column. It is the difference between 'we can now see the path-shape class' and 'Windows is covered'."
+        },
+        {
+          "id": "tk-0405",
+          "title": "Add a per-file zero-collection signal to the windows leg: no test file may report ZERO collected tests. A file that dies during COLLECTION (the probeShell finally{rmSync} EPERM, #108 round seven) reports `Tests: no tests` — every case UNRUN rather than failed — and the existing 4800 undercollection floor cannot see it, because losing 7 of 5166 is 0.1% while the floor sits 7% away. The floor was built to catch a HALVED suite; this is a different animal. Detect the shape directly from testResults[] rather than hoping an aggregate moves far enough.",
+          "state": "unchecked",
+          "note": "LOGGED AS A DECISION, NOT BUILT (round seven). Deferred deliberately so it is not rediscovered later as a gap. Context: our runner reported the affected file GREEN while the consumer lost the whole file, so this is also a runner-vs-real-box divergence the summariser is currently blind to."
         }
       ]
     },

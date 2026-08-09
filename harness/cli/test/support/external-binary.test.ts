@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   canRunShellScript,
+  discardProbeRoot,
   hasBinary,
   incapableBinaryReason,
   POST_COMMIT_HOOK_CONTRACT,
@@ -718,5 +719,83 @@ describe('the probe cannot silently fall behind the hook it guards', () => {
     );
 
     expect(delegations).toEqual([]);
+  });
+});
+
+/**
+ * The teardown must never take the caller down (plan 077 · #108).
+ *
+ * `probeShell` is called at MODULE SCOPE, so a throw out of it lands during
+ * COLLECTION: the whole file reports `Tests no tests` and every case in it goes
+ * UNRUN — not failed, unrun — with one file-level red as the only trace. That is
+ * what an unguarded `finally { rmSync }` did on a consumer's Windows box, where
+ * removing the probe root returned EPERM.
+ *
+ * These cases drive a REAL undeletable directory through the cleanup rather than
+ * mocking `rmSync`, because the property under test is "survives a refusal from
+ * the actual filesystem" and a stubbed throw would only prove our stub throws.
+ */
+describe('discardProbeRoot — capability is not disposability', () => {
+  /**
+   * POSIX-only and non-root-only, both load-bearing: the fixture makes removal
+   * fail by clearing WRITE on the parent directory, and root bypasses that check
+   * entirely. Skipped rather than silently vacuous, because a test that cannot
+   * fail is worse than one that does not run.
+   */
+  const CAN_DENY_UNLINK = process.platform !== 'win32' && process.getuid?.() !== 0;
+
+  it('removes the root on the happy path', () => {
+    const base = mkdtempSync(join(tmpdir(), 'harness-discard-ok-'));
+    writeFileSync(join(base, 'child'), 'x');
+    discardProbeRoot(base);
+    expect(existsSync(base)).toBe(false);
+  });
+
+  it.skipIf(!CAN_DENY_UNLINK)(
+    'SWALLOWS a refused removal and still returns — the caller is never taken down',
+    () => {
+      const parent = mkdtempSync(join(tmpdir(), 'harness-discard-deny-'));
+      const root = join(parent, 'probe-root');
+      mkdirSync(root);
+      writeFileSync(join(root, 'child'), 'x');
+      // Clearing write on the PARENT is what makes unlinking `root` impossible.
+      chmodSync(parent, 0o500);
+      try {
+        // The assertion is the absence of a throw: this is the exact call that
+        // ran during collection and killed seven tests.
+        expect(() => discardProbeRoot(root)).not.toThrow();
+        expect(existsSync(root)).toBe(true); // leaked, deliberately
+      } finally {
+        chmodSync(parent, 0o700);
+        rmSync(parent, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it.skipIf(!CAN_DENY_UNLINK)('DECLARES the leak — swallowed must not mean silent', () => {
+    const parent = mkdtempSync(join(tmpdir(), 'harness-discard-loud-'));
+    const root = join(parent, 'probe-root');
+    mkdirSync(root);
+    writeFileSync(join(root, 'child'), 'x');
+    chmodSync(parent, 0o500);
+    const written: string[] = [];
+    const original = process.stderr.write.bind(process.stderr);
+    process.stderr.write = ((chunk: string | Uint8Array): boolean => {
+      written.push(String(chunk));
+      return true;
+    }) as typeof process.stderr.write;
+    try {
+      discardProbeRoot(root);
+    } finally {
+      process.stderr.write = original;
+      chmodSync(parent, 0o700);
+      rmSync(parent, { recursive: true, force: true });
+    }
+    const said = written.join('');
+    // The PATH, so the leak can be cleaned up, and the REASON, so it can be
+    // diagnosed. A message with neither is the quiet leak this guards against.
+    expect(said).toContain(root);
+    expect(said).toMatch(/EACCES|EPERM|ENOTEMPTY/);
+    expect(said).toContain('LEAKING it deliberately');
   });
 });

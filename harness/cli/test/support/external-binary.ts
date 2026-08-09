@@ -47,6 +47,23 @@ import { delimiter, join } from 'node:path';
  * {@link canRunShellScript} is the fix — it executes the mechanism rather than
  * asking after the name. See its own doc for what it proves.
  *
+ * ## And CAPABILITY is not DISPOSABILITY — the next rung of the same rule
+ *
+ * The consumer's phrase, and it names the second way this file got it wrong
+ * (#108, round seven). A probe can determine that a shell is unusable and still
+ * be unable to clean up after finding out. Those are different questions, and a
+ * teardown that assumes removal cannot be REFUSED will destroy a verdict it had
+ * already reached correctly.
+ *
+ * That is not hypothetical and it is not merely untidy: {@link probeShell} runs
+ * at MODULE SCOPE, so its throw landed during COLLECTION and took an entire file
+ * with it — `Tests: no tests`, seven cases neither passed nor failed but UNRUN,
+ * with one file-level red as the only evidence they exist. See
+ * {@link discardProbeRoot} for the trade that replaced it.
+ *
+ * Both rungs are the same lesson: **what you proved is not what you assumed you
+ * proved.** Presence is not capability; capability is not disposability.
+ *
  * ## The cache is per-process, deliberately
  *
  * A binary does not appear mid-run, and probing once per call would add spawns
@@ -386,11 +403,88 @@ export function probeShell(shell: string, contract: ShellContract): ShellCapabil
   } catch (error) {
     result = { capable: false, failure: `the probe could not be set up (${String(error)})` };
   } finally {
-    if (root !== undefined) rmSync(root, { recursive: true, force: true });
+    // NOT a bare `rmSync`. See `discardProbeRoot`: this runs on every path,
+    // including the one where the probe already has its answer, so a throw here
+    // destroys a correct verdict — and destroys it during COLLECTION.
+    if (root !== undefined) discardProbeRoot(root);
   }
 
   capabilityCache.set(key, result);
   return result;
+}
+
+/**
+ * Remove a probe's scratch root, and NEVER let that removal take the caller
+ * down (plan 077 · #108).
+ *
+ * The rule this file's header states is *presence is not capability*. This is
+ * the next rung: **capability is not disposability.** The probe can determine
+ * that a shell is unusable and still be unable to clean up after finding out —
+ * those are different questions, and only the first one is what a caller asked.
+ *
+ * Why it matters more than a leaked directory. `probeShell` is called at MODULE
+ * SCOPE (`const BASH = probeShell(...)` in post-commit-hook.test.ts), so a throw
+ * out of it happens during COLLECTION: the file reports `Tests no tests` and all
+ * seven cases are neither passed nor failed — they are UNRUN, with a single
+ * file-level red as the only evidence they exist. Losing a whole file this way is
+ * also nearly invisible to aggregate counts.
+ *
+ * The teardown was previously an unguarded `finally`, which made the failure
+ * UNCONDITIONAL: a probe that had correctly concluded `capable: false` — the
+ * right answer, cheaply reached — still threw on the way out. The defect was in
+ * the EXIT, not the DECISION.
+ *
+ * Observed on a consumer's Windows box: `EPERM` unlinking the probe root, where
+ * `bash` resolves to WSL. A plausible reading is that the WSL side holds a handle
+ * to the 9P-translated Windows temp path past process exit, so the immediate
+ * removal hits a sharing violation. That mechanism is UNPROVEN and is recorded as
+ * an observation, not a diagnosis. What IS established: the teardown fails there,
+ * and the probe's own file operations do not.
+ *
+ * So the trade is deliberate — a leaked temp directory in exchange for an honest
+ * verdict. On a host where the probe was going to decline anyway, a directory in
+ * TEMP costs less than seven unrun tests reported as one red file. But a
+ * swallowed failure that says nothing would trade a loud wrong answer for a quiet
+ * leak, so this ANNOUNCES: path and reason, every time.
+ *
+ * ## THE TRADE, NAMED — do not "fix" this by restoring the bare `rmSync`
+ *
+ * WHAT LEAKS: one `harness-shell-probe-*` directory in the OS temp dir, per
+ * probe whose removal is refused. The cache means one per shell+contract per
+ * process, not one per test.
+ *
+ * WHY WE ACCEPT IT: the alternative is not "no leak" — it is a collection-phase
+ * crash that silently unruns every case in the calling file. A directory that
+ * something else can clean up beats seven tests that nobody notices are gone.
+ *
+ * THE KNOWN COST: on a host that refuses removal every time, these ACCUMULATE in
+ * TEMP across runs. That is real, it is accepted, and it is why the announcement
+ * carries the path — so a human or a cleanup job can act on it. Temp directories
+ * are also reclaimed by the OS on the platforms this runs on.
+ *
+ * If you are here because the leak annoys you: making this `rmSync` unguarded
+ * again re-creates the exact defect (#108) — it does not fix the leak, it
+ * restores a crash. Fix the leak by retrying, by deferring removal to process
+ * exit, or by cleaning TEMP; not by removing the guard.
+ * Exported so the guarantee is TESTABLE. A cleanup path that only ever runs on
+ * hosts where cleanup succeeds is a control that cannot fail, which is the exact
+ * shape this plan keeps removing — its own test drives a genuinely undeletable
+ * directory through it.
+ */
+export function discardProbeRoot(root: string): void {
+  try {
+    rmSync(root, { recursive: true, force: true });
+  } catch (error) {
+    // Deliberately swallowed, loudly declared. `force: true` already ignores a
+    // root that is simply absent, so reaching here means the removal was
+    // REFUSED — which is a fact about the host, not about the shell.
+    process.stderr.write(
+      `\n[external-binary] could not remove the shell-probe scratch root; LEAKING it deliberately rather than failing the probe.\n` +
+        `[external-binary]   path: ${root}\n` +
+        `[external-binary]   reason: ${String(error)}\n` +
+        '[external-binary] the capability verdict below is unaffected — being unable to delete the probe says nothing about whether the shell works (capability is not disposability). This directory will need removing by hand or by the OS.\n',
+    );
+  }
 }
 
 /** {@link probeShell}, reduced to the boolean a `skipIf` needs. */
