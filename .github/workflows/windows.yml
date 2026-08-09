@@ -240,8 +240,20 @@ jobs:
           # move it, move it in its own change and say why the new number is
           # legitimate.
           #
-          # Day one's 56 case-level skips include 2 fully-skipped FILES.
-          $EXPECTED_SKIPS = 56
+          # Day one measured 56 (run 31293261626). Now 58, measured on run
+          # 31297297873, and the +2 is ATTRIBUTED rather than absorbed:
+          # `discardProbeRoot`'s two fault-injection cases in
+          # test/support/external-binary.test.ts decline on win32, because they
+          # make removal fail by clearing write on a parent directory and Windows
+          # does not honour that the way POSIX does. Nothing stopped being
+          # measured — two NEW proofs were added that cannot run here, and the
+          # property they prove (a refused cleanup is survived and announced) is
+          # still proven on every push by the POSIX legs.
+          #
+          # This pin moved in its OWN commit, not folded into the change that
+          # caused the rise. That sequencing is the point: a baseline bumped
+          # inside an unrelated edit is how a number stops meaning anything.
+          $EXPECTED_SKIPS = 58
           $EXPECTED_SKIPPED_FILES = 2
 
           # Failing files are derived above, from the same source as the table.
@@ -272,13 +284,13 @@ jobs:
             $sum += "**$skipped test(s) did not run on this platform.** This round deliberately skipped the real-``git daemon`` cluster and the URL-scope credential case, so a non-zero number is expected — but it is reported here, as a number, so that it CANNOT rise quietly. If this figure grows, something stopped being measured; find out what before reading the pass count as progress."
             $sum += ""
             if ($skipped -gt $EXPECTED_SKIPS) {
-              $sum += "> **:rotating_light: SKIPS HAVE RISEN by $($skipped - $EXPECTED_SKIPS)** — $skipped now versus **$EXPECTED_SKIPS measured on day one** (run 31293261626). Something stopped being measured since then."
+              $sum += "> **:rotating_light: SKIPS HAVE RISEN by $($skipped - $EXPECTED_SKIPS)** — $skipped now versus **$EXPECTED_SKIPS, the last MEASURED pin**. Something stopped being measured since then."
               $sum += ">"
               $sum += "> Do NOT re-baseline this in the same change that caused it. Name what stopped being proven, say what still proves it, and move the pin as its own deliberate edit — a skip added and a baseline bumped together is ""we stopped looking"" wearing a green."
             } elseif ($skipped -lt $EXPECTED_SKIPS) {
               $sum += "> Skips have FALLEN by $($EXPECTED_SKIPS - $skipped) — $skipped versus the day-one baseline of $EXPECTED_SKIPS. Something started being measured again; move the pin DOWN so the new, better floor is the one being defended."
             } else {
-              $sum += "Matches the day-one baseline of **$EXPECTED_SKIPS** — a number **measured** on run 31293261626, not chosen. Of these, $EXPECTED_SKIPPED_FILES are whole FILES skipped rather than individual cases; a file-level skip and a case-level skip read very differently when scanning this number."
+              $sum += "Matches the pinned baseline of **$EXPECTED_SKIPS** — **measured** (day one 56 on run 31293261626; re-pinned to 58 on run 31297297873 when two new fault-injection proofs were added that cannot run on win32), not chosen. Of these, $EXPECTED_SKIPPED_FILES are whole FILES skipped rather than individual cases; a file-level skip and a case-level skip read very differently when scanning this number."
             }
           } else {
             $sum += "No tests were skipped on this run."
