@@ -64,7 +64,7 @@
           "id": "tk-000a",
           "title": "OQ-2 verdict packet: trial report with every primitive carrying sufficient + named falsifier + RAN, or insufficient + exact gap, or UNPROVEN; contradictions with the dated prediction stated loudly (including the shared-cause framing fault: dd's does-not-ship record + my unquestioning prediction); resolution recorded as Jordan's ontology ruling (layer is builder's, keep-and-promote) superseding the D-3 export premise; delivered to dd on the crab channel",
           "phase": "ph-1633",
-          "state": "unchecked",
+          "state": "checked",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0004",
             "../../../plan.dd.json#acceptance_criteria/ac-0005"
@@ -74,7 +74,7 @@
           "id": "tk-000b",
           "title": "Dogfood proof at the phase boundary: flow orient/rail and plan validate green against plan 080's own documents on the rewired build; any new dd-implementation or builder-flow defect gets a dogfood-ledger row, zero silent workarounds",
           "phase": "ph-1633",
-          "state": "unchecked",
+          "state": "checked",
           "satisfies_toward": [
             "../../../plan.dd.json#acceptance_criteria/ac-000b",
             "../../../plan.dd.json#acceptance_criteria/ac-000c"
@@ -147,14 +147,15 @@
           {
             "id": "dw-0012",
             "assertion": "the trial report exists beside the prediction; every one of the 9 primitives carries exactly one of {sufficient, insufficient + exact missing surface, UNPROVEN}; each SUFFICIENT verdict links its falsifier test id, the RED commit sha, the run command and its result (prose alone is not evidence); any contradiction with prediction.md is stated in its own words",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0004"
           },
           {
             "id": "dw-0013",
             "assertion": "verdict delivered to pij-certain-crab with a send receipt; the packet records Jordan's ontology ruling as the resolution superseding D-3's export premise, and enumerates which mechanism internals harness temporarily copies (reciprocal rule: dd knows exactly which copies their seam work will replace)",
-            "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-0005"
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0005",
+            "note": "delivered 2026-08-09 to pij-certain-crab, send receipt queued->logged in koala session; report at commit 97aed547; reciprocity list (4 copies) enumerated in the send"
           }
         ],
         "tk-000b": [

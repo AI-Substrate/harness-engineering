@@ -66,12 +66,12 @@
         {
           "id": "ac-0004",
           "claim": "The round-3 trial report exists with the dated prediction recorded BEFORE the trial ran, and every primitive carries either sufficient + the named falsifier case + the statement it was RUN, or UNPROVEN, or insufficient + the exact gap",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "ac-0005",
           "claim": "The OQ-2 verdict (sufficient / insufficient + gaps) is delivered to dd on the crab channel; on insufficiency, phase 2 blocks per ratified D-3 - no local fork, no shim, dd exports and we re-pin",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "ac-0006",
@@ -117,7 +117,7 @@
           "id": "ph-1d68",
           "title": "Take the dependency and rewire the four consumers",
           "brief": "Add @ai-substrate/dd pinned by full sha, rewire every import that has a verified public home (all non-plan symbols across the 4 surviving files), prove with typecheck + suite + dogfood.",
-          "state": "unchecked",
+          "state": "checked",
           "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks",
           "objective": "Harness compiles and its full suite passes with every public-home dd import coming from the package instead of the fork",
           "delivers": [
@@ -134,7 +134,7 @@
           "id": "ph-1633",
           "title": "Round-3 trial: plan semantics on public primitives",
           "brief": "The deciding round for upstream OQ-2. Dated prediction first, falsifier tests before implementation (TDD per testing strategy), then re-implement the 9 plan-semantics symbols on public primitives - or block per D-3 with a defect packet to dd.",
-          "state": "unchecked",
+          "state": "checked",
           "depends_on": [
             "ph-1d68"
           ],
