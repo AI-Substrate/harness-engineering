@@ -38,6 +38,7 @@ import {
 import { ErrorCodes } from '../../output/error-codes.js';
 import { exitWithEnvelope } from '../../output/exit.js';
 import { type CliIo, createOutputPort } from '../../output/output-port.js';
+import { readBackpressureSurvey } from '../../services/flow/chores-read.js';
 import {
   buildPlanIndex,
   itemKey,
@@ -45,8 +46,7 @@ import {
   type ReadyReading,
   readPlanCheck,
   readPlanReadiness,
-} from '../../services/dd/plan/index.js';
-import { readBackpressureSurvey } from '../../services/flow/chores-read.js';
+} from '../../services/plan-semantics/index.js';
 import {
   isWithin,
   posixDirname,

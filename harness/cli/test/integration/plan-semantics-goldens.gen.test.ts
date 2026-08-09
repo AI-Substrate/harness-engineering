@@ -15,10 +15,10 @@ import {
   itemShape,
   nonBuiltinRelCorpus,
   orphanCorpus,
-  planDocuments,
   PLAN_PATH,
-  rollupCorpus,
+  planDocuments,
   ROOT,
+  rollupCorpus,
   SURVEY_OK,
   SURVEY_UNKNOWN,
 } from './fixtures/plan-semantics-corpora.js';
@@ -43,6 +43,14 @@ Test Doc:
   from `harness/cli`. The corpora come from the shared fixtures module, never a
   local copy — a drifted fixture would re-baseline the goldens it is supposed to
   be measured against.
+- ORDERING FACT (cannot be recovered from the JSON, so it is stated here): the
+  A-2 `tracked` drain landed at `2169808e` and the goldens were captured at
+  `5f8cfa44`. `git merge-base --is-ancestor 2169808e 5f8cfa44` exits 0 — verified
+  by prime and re-verified here — so these literals pin POST-FIX behaviour:
+  `tracked` is honestly `null` on a host with no tracking concept, never the
+  `true` the pre-drain fork asserted. The fixture loader returns `tracked: null`
+  for exactly that reason. A future reader re-basing these goldens onto a tree
+  WITHOUT the A-2 drain would silently re-pin the lie.
 - Quality Contribution: without this, "the promoted module behaves like the fork"
   is unfalsifiable the moment the fork stops existing.
 - Worked Example: change the fork's rollup rule and run this file without the env

@@ -1,7 +1,10 @@
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ConventionSchemaResolver, FsDocLoader } from '@ai-substrate/dd';
+import { NodeSchemaFs } from '@ai-substrate/dd/node';
 import { describe, expect, it } from 'vitest';
+import { NodeHash } from '../../src/adapters/hash/node-hash.js';
 import type { DdDoc } from '../../src/services/dd/core/model.js';
 import { indexDocument } from '../../src/services/dd/links/map.js';
 import type { DdLinkEdge } from '../../src/services/dd/links/model.js';
@@ -401,9 +404,9 @@ describe('OQ-2 falsifier · #9 readPlanCheck', () => {
  * product never performs.
  */
 function realDeps(): Parameters<typeof forkReadPlanCheck>[1] {
-  const { ConventionSchemaResolver, FsDocLoader } = require_('@ai-substrate/dd');
-  const { NodeSchemaFs } = require_('@ai-substrate/dd/node');
-  const { NodeHash } = require_('../../src/adapters/hash/node-hash.js');
+  // Static ESM imports, NOT `require`: the package's "." export declares only
+  // `types` and `import` conditions — no `require` — so a CJS require of the
+  // barrel fails with "No exports main defined".
   const fs = new NodeSchemaFs();
   return {
     schemaResolver: new ConventionSchemaResolver({ fs, repoRoot: REPO_ROOT }),
@@ -413,12 +416,17 @@ function realDeps(): Parameters<typeof forkReadPlanCheck>[1] {
 
 describe('OQ-2 trial · the subject module', () => {
   /**
-   * Always runs. While the reshape is parked this is the one assertion that
-   * states, in the suite itself, that the trial has not been run to green — so
-   * "the falsifiers are in the tree" can never be mistaken for "the falsifiers
-   * pass".
+   * Always runs, and it is the reason the falsifiers above cannot quietly become
+   * decoration. Every one of them loads the subject through a RUNTIME specifier;
+   * if that module vanished, each would fail with a module-not-found rather than
+   * an assertion — readable, but it would no longer be measuring anything. This
+   * states the precondition once, by name.
+   *
+   * It was inverted at tk-0008 (it previously asserted ABSENCE while the reshape
+   * was parked), which is the whole point: the suite has to say out loud which
+   * side of the promotion it is on.
    */
-  it('is absent until the reshape lands, and the reshape is parked on the route ruling', () => {
-    expect(subjectPresent()).toBe(false);
+  it('exists, so the thirteen falsifiers above measured a real subject', () => {
+    expect(subjectPresent()).toBe(true);
   });
 });

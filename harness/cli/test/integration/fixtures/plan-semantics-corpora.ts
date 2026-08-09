@@ -242,7 +242,11 @@ export const SURVEY_UNKNOWN: SurveyDimension = {
   expected_basis: 'sha-expected',
 };
 
-export const SURVEY_OK: SurveyDimension = { ...SURVEY_UNKNOWN, satisfied: true, reason: 'survey-done' };
+export const SURVEY_OK: SurveyDimension = {
+  ...SURVEY_UNKNOWN,
+  satisfied: true,
+  reason: 'survey-done',
+};
 
 export function checkDeps(corpus: ReadonlyMap<string, DdDoc>) {
   const resolver = new FixtureSchemaResolver();

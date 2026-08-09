@@ -318,3 +318,162 @@ $ npx vitest run
 The ONLY red is the 13 deliberate falsifiers. Blast radius is clean: no existing test
 changed behaviour. `dw-000d` stays unchecked per koala's ruling — it wants a green suite,
 and the suite is red by design while the reshape is parked.
+
+---
+
+## tk-0008 — the promotion (keep-and-promote, BY COPY)
+
+**Module**: `harness/cli/src/services/plan-semantics/` — the five plan modules
+(`check`, `index-plan`, `model`, `ready`, `semantics`) plus the barrel, copied from the
+fork, with every dd import re-pointed. `harness/cli/src/services/plan-semantics/dd-mechanisms/`
+holds the enumerated temporary copies.
+
+### Where each dd import went, and why
+
+| fork import | promoted to | basis |
+|---|---|---|
+| `core/address` | `@ai-substrate/dd` (root barrel) | public |
+| `core/model` | `@ai-substrate/dd/core/model` | public |
+| `core/validate` | `@ai-substrate/dd/core/validate` | public |
+| `core/walk` | `@ai-substrate/dd/core/walk` | public |
+| `links/index`, `links/map`, `links/model` | `@ai-substrate/dd/links` | public (all three collapse to one subpath) |
+| `schema/index` | `@ai-substrate/dd/schema` | public |
+| `core/constants` | `./dd-mechanisms/constants.js` | **no public home**; vocabulary, builder-owned by ruling |
+| `core/derive` | `./dd-mechanisms/derive.js` | **no public home** |
+| `core/rel` | `./dd-mechanisms/rel.js` | **no public home** |
+| `core/value` | `./dd-mechanisms/value.js` | **no public home** |
+| `../../shared/posix-path` | `../shared/posix-path.js` | **not copied** — already harness-owned, outside the fence |
+
+**Correction to the ledger's drift surface (worth a line, because it changes a trigger).**
+The drift section enumerates five copied internals including `shared/posix-path`. The
+promotion copies **four**: `posix-path` is harness's own module (`services/shared/`), not
+inside `services/dd/**`, so the promoted module simply imports it. Trigger 1 ("re-run a
+diff of the copied mechanism files against dd's sources at the new pin") should diff four
+files, not five — a phantom fifth would produce a permanent, meaningless divergence.
+
+### `deriveSchemaItems` was considered as a public route and rejected on evidence
+
+`./schema` publicly exports `deriveSchemaItems`/`deriveSchemaState`, and dd's own docs say
+both project the same collector as `deriveItems`. Under dw-000f ("copies no symbol that has
+a public home") that looked like it might forbid the `core/derive` copy, so I checked the
+signatures rather than the prose:
+
+- they take a full `SchemaRecord` (`name`, `description`, `version`, `path`, `root`,
+  `schema`); `buildPlanIndex` holds only a `ResolvedDdSchema`, so the provenance fields
+  would have to be fabricated — a shim wearing a public import's clothes;
+- they decide `terminal` from the SCHEMA's `gate_terminal`, while the plan layer must apply
+  the terminal set carried by the ENTRY (`entry.terminal ?? DEFAULT_GATE_TERMINAL_STATES`).
+
+So `deriveItems` genuinely has no public home, the copy stands, and the reasoning is
+recorded at the declaration so a reviewer does not have to re-derive it. Only the collector
+is copied — `deriveState`/`deriveRollup` are NOT, because nothing calls them and unused
+copied surface widens the drift footprint for free.
+
+### dw-000f is enforced by a test, not by a one-off grep
+
+`test/architecture/plan-semantics-boundary.test.ts` (5 tests): the copies are confined to
+`dd-mechanisms/` and that set equals the enumeration; the module reaches dd only through
+public subpaths; **every copied origin is re-measured as unreachable against the INSTALLED
+package with Node's own resolver**, so a copy stops being legitimate the moment dd publishes
+the thing; provenance and the `6aaef35` sunset appear at each declaration; and the
+vocabulary copy states it is sanctioned by ruling rather than tolerated as a gap.
+
+Control-armed — I added a `parse.ts` copying `parseAddress` (which IS public):
+
+```
+AssertionError: expected [ 'constants.ts', 'derive.ts', …(3) ]
+             to strictly equal [ 'constants.ts', 'derive.ts', …(2) ]
+      Tests  1 failed | 4 passed (5)
+```
+
+Also hardened after that run: the enumeration and the origin map are now asserted to be in
+lockstep, so a new copy cannot be added to one list and skip the reachability check in the
+other.
+
+### dw-000e — the fork is byte-untouched
+
+```
+$ git grep -nE "services/dd|acts/dd|node_modules|@ai-substrate/dd/dist" -- harness/cli/src/services/plan-semantics/
+ZERO matches
+$ git diff --quiet -- harness/cli/src/services/dd harness/cli/src/acts/dd
+FENCE CLEAN: git diff empty over services/dd + acts/dd
+$ npx vitest run test/architecture/dd-plan-semantics-frozen.test.ts
+ ✓ 2 passed          # semantics.ts FROZEN_DIGEST intact
+```
+
+Re-verified after `just build`, which regenerates `services/dd/docs/docs-content.ts` — the
+fence stayed clean, but that generator writes INSIDE the fence and is worth knowing about
+before phase 3 treats a dirty fence as tampering.
+
+---
+
+## tk-0009 — the rewire, and the full-zero proof (dw-0010)
+
+Two one-line import changes (`acts/plan/index.ts`, `acts/plan/pr-body.ts`), plus moving the
+import block to keep biome's ordering happy.
+
+```
+$ git grep -nE "services/dd|acts/dd|\./dd/" -- harness/cli/src/acts/flow.ts \
+    harness/cli/src/acts/plan/fence.ts harness/cli/src/acts/plan/index.ts \
+    harness/cli/src/acts/plan/pr-body.ts
+ZERO matches — full-zero proof holds
+```
+
+That is **ac-0002 in full**, superseding phase 1's bounded `bp-000f`.
+
+### The falsifiers went green — which is the actual trial result
+
+```
+ ✓ #1 itemKey (2)   ✓ #2-#5 PlanDocument/Item/Edge/Index   ✓ #6/#7 readiness (3+1)
+ ✓ #8 buildPlanIndex (a) rollup (b) non-builtin relation
+ ✓ #9 readPlanCheck × 4 corpora   ✓ #9 live corpus: plan 080's own documents
+```
+
+The live-corpus test is the one that matters most: the promoted module and the fork produce
+an **identical findings set and identical counts** on plan 080's real 541-item corpus. A
+synthetic fixture cannot catch what only appears at that scale.
+
+`realDeps` had to move from `require()` to static ESM imports: the package's `"."` export
+declares only `types` and `import` conditions — **no `require`** — so a CJS require of the
+barrel dies with `No exports main defined`. Worth knowing for any future consumer that is
+not ESM.
+
+### Full gate
+
+```
+$ npx tsc --noEmit -p harness/cli/tsconfig.json   → exit 0
+$ just build                                       → exit 0
+$ npx vitest run
+ Test Files  351 passed (351)
+      Tests  5180 passed (5180)
+```
+
+`just checks`: **tests ok, typecheck ok**, docs/flows/telemetry/doctrine/dd-docs/root-smoke/
+dd-doctor/skills all ok; arch-check, markdown-lint, windows-check degraded (pre-existing
+warn-launch). **biome fails on ONE pre-existing error in a file I never touched** —
+`harness/cli/test/services/dd/schema/builder-rels.test.ts`, a pure line-length format
+violation committed at `8e641add` (prime's dw-0154 rel guard). Verified pre-existing:
+the file is unmodified in my working tree. My changed areas are clean; the 5 remaining
+`noUnusedImports`/`noUnusedVariables` warnings in `acts/plan/index.ts` are also
+pre-existing (identical at HEAD) and deliberately NOT fixed — that is dead code with an
+owner, not my diff.
+
+---
+
+## tk-000b evidence — dogfood on the rewired build (dw-0014)
+
+```
+$ node harness/cli/bin/harness.js plan validate docs/plans/080-dd-consume-upgrade/plan.dd.json
+status ok  counts {"error":0,"warn":0,"semantic":{"items":541,"completable":63,"open":45,
+                    "contradictions":0,"orphans":8,"in_scope":541}}
+$ node harness/cli/bin/harness.js flow rail --path .../the-flow.json     → status ok
+$ node harness/cli/bin/harness.js flow orient --path .../the-flow.json   → renders; no gate
+                                        ✕; due chores only (Observe: P2, Retro: P2)
+```
+
+All three return **ok** on the rewired build — and this time `plan validate` is genuinely
+`ok`, not `degraded`, because prime's `satisfies_toward` convention cleared the
+cross-phase contradictions. dw-0014's strict "all return ok" reading is satisfiable now,
+so unlike phase 1's dw-0009 it needed no interpretation.
+
+`dw-0015` stays unchecked: it is deliberately human-tier (ledger judgement, `bp-000c`).
