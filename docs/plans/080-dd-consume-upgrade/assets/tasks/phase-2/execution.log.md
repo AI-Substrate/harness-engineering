@@ -658,6 +658,16 @@ none of them are mine — checked, not assumed: `arch-check`'s 2 warnings are bo
 `markdown-lint`'s 211 findings do not include this log or any phase-2 file;
 `windows-check`'s 6 are in `.harness/extensions/html-snap` and friends.
 
+> **Annotation appended 2026-08-09, after phase-2 approval** (additive only — no figure
+> above was altered). The `211` was measured **pre-`6a43fd4d`**, against a markdown-lint
+> gate with **three** checks. PR #146 added a fourth, `unexamined`, which reports in-scope
+> **untracked** markdown — files the other three never received, because their file list
+> comes from `git ls-files`. **The total above will not reproduce after a rebase onto main,
+> and that delta is not a regression**: it is the new check counting documents nobody had
+> linted. The claim this figure supports — that none of the findings are phase-2's — is
+> unaffected and still holds. Recorded here so a future reviewer of this commit reads the
+> number with the gate it was taken against, rather than reconstructing it without context.
+
 **The failure mode worth keeping.** The biome red was a REAL observation — when I first
 made it. I then carried it forward across several commits and restated it as current fact
 in both the log and a report, without re-running the command. It is the same defect class

@@ -398,6 +398,55 @@ PR-body material and this page cannot drift apart.
 
 `markdown-lint`: **0 findings** for the new file.
 
+> **CORRECTION (2026-08-09, after fleet notices on PR #146 / `6a43fd4d`).** That claim
+> was **vacuous as recorded, and is true as re-measured.** Both facts are the record.
+>
+> *Why it was vacuous.* `git log -S` shows the claim and the file it describes entered
+> the tree in the **same commit**, `1fda575d` — so the measurement was necessarily taken
+> while `consuming-dd.md` was still **untracked**. The gate's three tool checks take their
+> file list from `git ls-files`. An untracked file is never handed to them, and a check
+> that never receives a file cannot report a finding on it. My "0 findings" was produced
+> by a gate that had **not opened the document**. This is exactly the blindness `6a43fd4d`
+> fixes; I had shipped a claim resting on it.
+>
+> *Re-measured at head, with the file tracked, each probe carrying its own denominator*
+> — the denominator is the point, because it is what separates *the tool looked and found
+> nothing* from *the tool did not look*:
+>
+> ```
+> $ ./node_modules/.bin/markdownlint-cli2 docs/how/consuming-dd.md
+> Linting: 1 file(s)
+> Summary: 0 error(s)
+>
+> $ ./node_modules/.bin/remark docs/how/consuming-dd.md --use remark-validate-links --frail --no-stdout
+> docs/how/consuming-dd.md: no issues found
+> ```
+>
+> `Linting: 1 file(s)` and the file named by `remark` are the load-bearing halves. The
+> conclusion survives: the document contributes **0** of the repo's 211 findings.
+>
+> *A second instance I walked into while verifying this.* My first re-measurement ran
+> `remark … --quiet --no-stdout`, which printed **nothing** and exited 0 — and I nearly
+> logged that as proof. `--quiet` suppresses the per-file line, so its output cannot
+> distinguish clean from unexamined either. Same defect class as the one I was correcting,
+> committed while correcting it. A negative control settles it: `remark` on a path that
+> does not exist fails loudly (`✖ 1 error`, `ENOENT`), so silence there is not skipping —
+> but I could not have known that from the silent output alone. **Encodable practice:**
+> a proof-of-absence is only proof if the command reports its denominator; never accept a
+> quiet exit 0 as evidence that something was examined.
+>
+> *Attribution for the wider gate*, by the fleet's own discriminator
+> (`harness markdown-lint --json | jq '.data.checks[] | {name, outcome, findings, examined}'`):
+> `markdownlint 195/133`, `links 15/133`, `mermaid 1/31` = **211**, identical to the
+> phase-2 baseline. No check moved under this phase. There is no `unexamined` check on this
+> branch at all — `git merge-base --is-ancestor 6a43fd4d HEAD` exits **1**, so this tree has
+> not taken the new gate; and `git status --porcelain` is **empty**, so it would have no
+> input here regardless. Every markdown-lint figure quoted in this plan's committed
+> evidence (this file; `../phase-2/execution.log.md:658`; `the-flow.{md,json}`) was measured
+> **pre-`6a43fd4d`, against a three-check gate**, and will not reproduce as a total once
+> this branch rebases. That delta is the fourth check counting files nobody had linted —
+> **not** a regression, and not to be "fixed" by re-running or amending history.
+
 ## tk-0013 — command-surface migration
 
 **151 prescriptive references across 24 files** migrated from `harness dd <verb>` to
