@@ -1,0 +1,21 @@
+docs/plans/080-dd-consume-upgrade/the-flow.json
+  s_dfbe7bea3d1b7e::t_0670c5d84a7773 6,694-768,1229,1234,1244-1245,1306,1309,1323-1332,1338,1341,1352-1361
+docs/plans/080-dd-consume-upgrade/the-flow.md
+  s_dfbe7bea3d1b7e::t_a7d4952183bfba 4,6,16,26,44,82-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f1ac36775e914922431dba4cd74a5b6ffa607f8f",
+  "prompts": {},
+  "sessions": {
+    "s_dfbe7bea3d1b7e": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "d854c5fd-5185-4f9c-99f4-40038b3158a0",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
