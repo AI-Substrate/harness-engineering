@@ -230,3 +230,132 @@ fixture directory — a fixture would prove the restore against a layout only th
 - The verb rows additionally require a `npm run build` first — `verbs-e2e.int` drives `bin/harness.js`,
   which runs `dist`. The first run of these rows failed for exactly that reason, which is a small
   reminder that the end-to-end surface and the source can disagree.
+
+---
+
+## The sweep's question was wrong, and the phase-2 review is what proved it
+
+Recorded here rather than as another instance, because anyone re-running the sweep with the old
+question will miss the same class again.
+
+I swept the checked phase-2 tasks asking of each: **do its rows call an internal function, or drive
+the deliverable?** That found three instances. The review found a fourth my sweep could not have
+caught, because the row **does** drive the real bin — for the fire — while reading the result through
+`fireSummary()`. Half the chain being end-to-end is exactly what makes a row look finished.
+
+> **A test can be end-to-end in its SETUP and layer-beneath in its ASSERTION, and only the assertion
+> decides what it proves. The question has to be asked of the assertion, not of the test.**
+
+---
+
+## tk-0002 — doctor installs our hooks, and survives us
+
+### The failure posture is the task; the install is the easy half
+
+A doctor that dies on our optional step is worse than one that never had it: the operator ran doctor
+to diagnose something else, and every other row is what they came for. So a hook-install failure is
+a **warning**, doctor still **exits 0**, and every other row still prints.
+
+But warn-only is worthless if the warning is not emitted. A swallowed failure means the machine now
+differs from what the operator believes and **nothing said so** — that is the defect, not the safe
+default. Hence every row asserts on the OUTPUT: an exit code of 0 is equally consistent with
+*installed fine* and *gave up silently*, so it cannot carry the claim by itself.
+
+### What was built
+
+- `autoInstallHooks` in the hooks service — never throws, never changes an exit code, returns
+  `action` + `detail` + `warnings`.
+- Doctor's call site composes through the hooks act's **own `hooksDeps`**, never a second copy.
+  Doctor building its own would be free to resolve a different binary path or home, and the config
+  written on first run would then differ from the one `harness hooks status` reads back — the
+  divergence class that produced `detectId` and `configPathsFor`.
+- **Both surfaces.** The text render prints the announcement beside the collector's; the JSON
+  envelope carries `data.agentHooks`. An agent reads `doctor --json`, and a warning that exists only
+  in the text render is swallowed for exactly the reader most likely to act on it.
+- Carried **beside** the report rather than as a doctor LAYER, deliberately: a failing layer flips
+  the envelope to `degraded`, and our optional step must not change the verdict on the machine's
+  readiness. Same never-break-the-command posture as exit 0, applied to the envelope.
+
+### The opt-out, and why `0` is the value that proves it (dw-0008)
+
+`hooksDisabled` is **the verb's own predicate**, called by doctor — one predicate, one answer, so the
+call site and the verb cannot disagree about what a value MEANS. **Any non-empty value opts out**,
+including `0` and `false`, because someone exporting `HARNESS_NO_HOOKS=0` is reaching for the off
+switch and a variable named NO_HOOKS that installs when set to `0` is a trap.
+
+This is a live risk, not a hypothetical: **the neighbouring collector opt-out in the same call site
+tests `=== '1'`**. A hooks call site copying that pattern would install for someone who declined. The
+row asserts the same string — `0` — writes nothing through **doctor** and nothing through the
+**verb**, on the filesystem rather than on a message, because a message is what a broken
+implementation prints while writing anyway.
+
+**RULED, not left decided-by-implementation** (PM, mid-task). Presence-based semantics are kept —
+declining is the recoverable direction — but the surprising case is made **observable**. The decline
+always names the variable **and the value that caused it**, and when the value is one a user
+plausibly wrote meaning *no, do not disable* (`0`, `false`, `no`, `off`) it adds the correction:
+*any non-empty value declines; UNSET the variable rather than setting it to "0"*.
+
+The alternatives each fail on one property. A second convention (`0` means proceed) leaves
+`HARNESS_NO_HOOKS=` ambiguous. A blunt README line only reaches the reader who went looking. This is
+the only option where **a user who got it wrong finds out** — do the safe thing, and make it
+observable rather than silent, which is the shape this plan keeps reaching for.
+
+The corrective line fires **only** for the surprising values: `=1` gets the plain notice, asserted
+by its own row. Otherwise every declining user reads a warning aimed at a mistake they did not make,
+which is how a message stops being read.
+
+The two variables stay separate on purpose: declining telemetry collection and declining
+editor-config writes are different decisions. A discriminator row proves it — `HARNESS_NO_COLLECTOR=1`
+(which every other row sets for hermeticity) still installs hooks. Without it, "nothing was written"
+could have been satisfied by the collector opt-out disabling our step too, and every assertion would
+have passed for a reason unrelated to `HARNESS_NO_HOOKS`.
+
+### A comparison, not a spot-check — and the confound it exposed
+
+"Every other row still printed" is a claim about the **whole** report. A spot-check for a `git:` line
+would be satisfied by a doctor that dropped three others, so the row runs the same doctor with and
+without the broken config and requires the layer list to match **exactly, name and verdict** — which
+also proves our step cannot silently DEGRADE a layer, not merely that it cannot remove one.
+
+The first attempt compared two runs in ONE home and reported **13 layers against 12**. The difference
+had nothing to do with the hook failure: **doctor's first run changes the machine it is reporting
+on** — it installs, it writes state, and the second run legitimately sees more. A control has to
+differ from its subject in one respect, and sequential runs in a shared home differ in two. Fixed
+with an independent control home. Measured, not foreseen.
+
+### PROVEN BY REFUSAL — four RED, and one deliberate GREEN
+
+| # | mutation | result |
+| --- | --- | --- |
+| D1 | doctor's opt-out restated as `=== '1'` — the neighbouring collector's pattern | RED — 1 failed \| 6 passed |
+| D2 | doctor never installs hooks at all | RED — 4 failed \| 3 passed |
+| D3 | the failure is swallowed — installed, no warning printed | RED — 2 failed \| 5 passed |
+| D4 | the JSON envelope drops `agentHooks` (text-only visibility) | RED — 3 failed \| 4 passed |
+| D5 | `installHooks` throws again — **doctor must SURVIVE it** | **GREEN, as required** — 7 passed |
+
+**D5 IS THE FIRST MUTATION IN THIS PLAN ASSERTED TO SURVIVE, and that is a different property from
+every other one tonight.** Every mutation so far has been asked to go RED — which tests that the
+rows are *sensitive*. A mutation asserted to survive tests that they are not **over-constrained**:
+that they pin BEHAVIOUR rather than implementation. A suite where every conceivable mutation goes
+red is not maximally rigorous, it is brittle, and nothing in this plan had checked that until here.
+
+**D5 is not a refusal and is labelled as one that must not be.** It removes the per-agent catch so
+the install throws, and asks whether doctor still finishes. It does — `autoInstallHooks`'s outer
+catch is what holds — so green is the pass here. Stating the expected direction *before* running it
+is what stops a green being read as proof of whatever the reader hoped.
+
+**A discarded mutation, recorded because the discard is the point.** My first D5 was
+`if (true) throw err;` inside the catch, and it reported RED — but the build had failed. **A red for
+a compile error is not a refusal**; it is the same ambiguity as a green under an unapplied mutation,
+pointing the other way. It was replaced with one that compiles.
+
+### The forcing instrument
+
+Failures are forced by making `~/.cursor/hooks.json` a **DIRECTORY**. Chosen over a `chmod` because
+it fails on every platform including Windows, and because a permission bit is **bypassed by running
+as root** — which CI containers routinely do, so a chmod-based row would silently stop failing there
+and pass for the wrong reason.
+
+### Verification
+
+`npx vitest run test/services/hooks/doctor-hooks.int.test.ts` — 7 rows, all through the real bin.

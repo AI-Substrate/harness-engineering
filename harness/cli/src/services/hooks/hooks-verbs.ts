@@ -70,6 +70,36 @@ export const hooksDisabled = (env: (name: string) => string | undefined): boolea
   return raw !== undefined && raw.length > 0;
 };
 
+/**
+ * Values a user plausibly wrote MEANING "no, do not disable hooks" — and which
+ * presence-based semantics decline on anyway.
+ */
+const AFFIRMATIVE_LOOKING = new Set(['0', 'false', 'no', 'off']);
+
+/**
+ * The decline, in words, naming the variable AND the value that caused it.
+ *
+ * WHY THE VALUE IS IN THE MESSAGE. Presence-based semantics are a legitimate and
+ * common convention, and this keeps them — but someone who exports
+ * `HARNESS_NO_HOOKS=0` almost certainly means *no, do NOT disable hooks*, and gets
+ * the opposite. Silently, and invisibly: hooks simply never install, and the machine
+ * looks configured. That is this plan's own silent-failure class arriving through an
+ * environment variable.
+ *
+ * So the safe thing still happens — we decline, because declining is the recoverable
+ * direction — and it is made OBSERVABLE rather than silent. A user who got it wrong
+ * finds out, which is the only property none of the alternatives had: a second
+ * convention (`0` means proceed) would leave `HARNESS_NO_HOOKS=` ambiguous, and a
+ * README line only reaches the reader who went looking.
+ */
+export function optOutNotice(env: (name: string) => string | undefined): string {
+  const raw = env('HARNESS_NO_HOOKS') ?? '';
+  const base = `agent hooks were NOT installed — HARNESS_NO_HOOKS is set to "${raw}"`;
+  return AFFIRMATIVE_LOOKING.has(raw.trim().toLowerCase())
+    ? `${base}. ANY non-empty value declines, including this one: if you meant to ALLOW hooks, UNSET the variable rather than setting it to "${raw}"`
+    : base;
+}
+
 export interface HooksDeps {
   fs: FsPort;
   home: string;
@@ -109,6 +139,8 @@ export function listAgents(deps: HooksDeps): AgentReport[] {
 export interface InstallReport {
   /** Nothing was attempted because the opt-out is engaged. */
   optedOut: boolean;
+  /** Present only when opted out: which variable, which value, and what to do. */
+  optedOutDetail?: string;
   installed: { agent: string; path: string; created: boolean }[];
   /** Agents refused BY NAME, never silently skipped. */
   refused: { agent: string; reason: string }[];
@@ -131,7 +163,15 @@ export interface InstallReport {
 /** Install into every DETECTED, SUPPORTED agent. */
 export function installHooks(deps: HooksDeps): InstallReport {
   if (hooksDisabled(deps.env)) {
-    return { optedOut: true, installed: [], refused: [], failed: [] };
+    // The verb says it too, in the same words: a decline the operator did not intend
+    // must be visible wherever they reached for it, not only through doctor.
+    return {
+      optedOut: true,
+      optedOutDetail: optOutNotice(deps.env),
+      installed: [],
+      refused: [],
+      failed: [],
+    };
   }
 
   const reports = listAgents(deps);
@@ -487,4 +527,79 @@ export function uninstallHooks(deps: HooksDeps): UninstallReport {
 
   forgetInstalled(deps.fs, stateDir, done);
   return { removed, untouched, refused, failed, unsupported };
+}
+/** What doctor learned from trying to install our hooks. */
+export interface HooksAutoInstall {
+  action: 'not-needed' | 'opted-out' | 'installed' | 'failed';
+  /** One line for the operator. */
+  detail: string;
+  /** Warning rows — never fatal. Empty when everything worked. */
+  warnings: string[];
+}
+
+/**
+ * Install our agent hooks from `harness doctor`, alongside the git-ai collector
+ * (plan 082 tk-0002).
+ *
+ * **WARN-ONLY, ALWAYS. NEVER THROWS, NEVER CHANGES AN EXIT CODE.** A doctor that
+ * dies on our optional step is worse than a doctor that never had it: the operator
+ * ran it to diagnose something else, and every other row is what they came for.
+ * The failure posture is the load-bearing part of this task, not the install.
+ *
+ * **BUT IT IS NEVER SILENT.** A swallowed failure is the defect, not the safe
+ * default — the machine now differs from what the operator believes and nothing
+ * said so. Failures come back as `warnings`, which doctor prints.
+ *
+ * **THE OPT-OUT IS THE VERB'S, NOT A SECOND COPY OF IT** (dw-0008). This calls
+ * {@link hooksDisabled}, the same predicate `harness hooks install` uses, so the
+ * call site and the verb cannot disagree about what a value MEANS. That matters
+ * because the neighbouring collector opt-out tests `=== '1'`, and a hooks call site
+ * copying that pattern would install hooks for someone who exported
+ * `HARNESS_NO_HOOKS=0` — a variable named NO_HOOKS doing the opposite of what its
+ * name says, at the exact moment the operator was reaching for the off switch. One
+ * predicate, one answer; the same lesson as `detectId` and `configPathsFor`.
+ */
+export function autoInstallHooks(deps: HooksDeps | null): HooksAutoInstall {
+  if (deps === null) {
+    return {
+      action: 'not-needed',
+      detail: 'agent hooks were not installed: no home directory to install into',
+      warnings: [],
+    };
+  }
+  if (hooksDisabled(deps.env)) {
+    return { action: 'opted-out', detail: optOutNotice(deps.env), warnings: [] };
+  }
+
+  let report: InstallReport;
+  try {
+    report = installHooks(deps);
+  } catch (err) {
+    // The last line of defence. `installHooks` already catches per agent, so
+    // reaching here means something outside the per-agent loop broke — detection,
+    // or the matrix. Doctor still finishes.
+    const reason = err instanceof Error ? err.message : String(err);
+    return {
+      action: 'failed',
+      detail: 'agent hooks could NOT be installed',
+      warnings: [`agent hooks: ${reason}`],
+    };
+  }
+
+  const warnings = report.failed.map((f) => `agent hooks: ${f.agent} — ${f.reason}`);
+  if (report.installed.length === 0) {
+    return {
+      action: warnings.length > 0 ? 'failed' : 'not-needed',
+      detail:
+        warnings.length > 0
+          ? 'agent hooks could NOT be installed for any detected agent'
+          : 'no detected agent needed an agent hook installed',
+      warnings,
+    };
+  }
+  return {
+    action: warnings.length > 0 ? 'failed' : 'installed',
+    detail: `agent hooks installed for ${[...new Set(report.installed.map((i) => i.agent))].join(', ')}`,
+    warnings,
+  };
 }

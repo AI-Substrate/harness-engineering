@@ -32,7 +32,7 @@
         {
           "id": "tk-0002",
           "title": "Wire hooks into `harness doctor` — warn-only, exit 0, every other row still printed",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-3",
           "success": "Doctor installs our agent hooks alongside the pinned git-ai collector on first run. The failure posture is the load-bearing part: a hook-install failure is a WARNING, doctor still exits 0, and every other doctor row still prints. A doctor that dies on our optional step is worse than one that never had it. HARNESS_NO_HOOKS=1 is honoured here as well as inside the verb — phase 2 asserted the verb honours it directly so the opt-out cannot be bypassed; this asserts doctor's call site respects it too, and that the two agree on what the value means.",
           "satisfies": [
@@ -120,25 +120,25 @@
           {
             "id": "dw-0005",
             "assertion": "A forced hook-install failure leaves doctor at exit 0 with every other row still printed — asserted on the output, never on the exit code alone.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0006",
             "assertion": "The failure is VISIBLE as a warning row rather than swallowed; a silent success on a failed install is the defect.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0007",
             "assertion": "HARNESS_NO_HOOKS=1 through doctor writes nothing, asserted on the filesystem.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0008",
             "assertion": "Doctor's call site and the verb agree on the variable's value semantics — the same string is honoured by both, asserted rather than assumed.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],

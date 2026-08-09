@@ -33,9 +33,11 @@ import {
 } from '../services/doctor/doctor-service.js';
 import type { VerbRegistry } from '../services/extensions/registry.js';
 import { readEnvOverrides } from '../services/hooks/agent-matrix.js';
+import { autoInstallHooks } from '../services/hooks/hooks-verbs.js';
 import type { RecordRegistry } from '../services/record/registry.js';
 import { toPosix } from '../services/shared/posix-path.js';
 import { readVersion } from '../version.js';
+import { hooksDeps } from './hooks.js';
 
 /**
  * The host the git-ai collector resolves against.
@@ -252,6 +254,21 @@ export function registerDoctorAct(
                 // The composition root reads the global, never the service (P2).
                 env.get(COLLECTOR_OPT_OUT_ENV) === '1',
               );
+        // OUR AGENT HOOKS, alongside the collector and with the SAME posture
+        // (plan 082 tk-0002). Warn-only: it never throws, never changes the exit
+        // code, and never suppresses a doctor row. A doctor that dies on our
+        // optional step is worse than one that never had it — the operator ran it
+        // to diagnose something else, and every other row is what they came for.
+        //
+        // It is NEVER SILENT, though: a swallowed failure means the machine now
+        // differs from what the operator believes and nothing said so. Failures
+        // come back as warnings and are printed beside the collector's.
+        //
+        // Composed through the hooks act's OWN `hooksDeps`, never a second copy:
+        // doctor building its own would be free to resolve a different binary path
+        // or home, and the config written on first run would then differ from the
+        // one `harness hooks status` reads back.
+        const hooks = !autoInstall ? null : autoInstallHooks(hooksDeps({ fs, clock, env }));
         const report = buildDoctorReport(
           {
             fs,
@@ -283,7 +300,19 @@ export function registerDoctorAct(
           registry,
           recordRegistry,
         );
-        const envelope = doctorEnvelope(report, clock, io.quiet === true);
+        const base = doctorEnvelope(report, clock, io.quiet === true);
+        // VISIBLE ON BOTH SURFACES, and the JSON one is not an afterthought: an
+        // agent reads `doctor --json`, and a warning that exists only in the text
+        // render is swallowed for exactly the reader most likely to act on it.
+        //
+        // Carried BESIDE the report rather than as a doctor LAYER, deliberately. A
+        // failing layer flips the envelope to `degraded`, and our optional step must
+        // not change the verdict on the machine's readiness — that is the same
+        // never-break-the-command posture as exit 0, applied to the envelope.
+        const envelope =
+          hooks === null || hooks.action === 'not-needed'
+            ? base
+            : { ...base, data: { ...(base.data as Record<string, unknown>), agentHooks: hooks } };
         // TELL, DON'T ASK (packet §3a). An install the operator was never told
         // about is worse than one that did not happen: it changed their machine
         // and left them no way to know. Emitted on the text surface alongside
@@ -294,6 +323,10 @@ export function registerDoctorAct(
             : [`git-ai collector: ${auto.detail}`, ...auto.warnings.map((w) => `  - ${w}`)].join(
                 '\n',
               );
+        const hooksAnnouncement =
+          hooks === null || hooks.action === 'not-needed'
+            ? null
+            : [hooks.detail, ...hooks.warnings.map((w) => `  - ${w}`)].join('\n');
         const port: OutputPort =
           io.mode === 'json'
             ? createOutputPort('json', io.writers)
@@ -301,6 +334,7 @@ export function registerDoctorAct(
                 emit: (e) => {
                   io.writers.err(renderDoctorText(report));
                   if (announcement !== null) io.writers.err(`${announcement}\n`);
+                  if (hooksAnnouncement !== null) io.writers.err(`${hooksAnnouncement}\n`);
                   io.writers.out(`doctor: ${e.status}\n`);
                 },
               };
