@@ -65,6 +65,97 @@ type Fence = { path: string; text: string };
 type FenceResult = { path?: string; valid: boolean; error?: string };
 
 const why = (e: unknown): string => (e as Error)?.message ?? String(e);
+const secs = (ms: number): string => `${(ms / 1000).toFixed(1)}s`;
+
+/**
+ * Node puts the ENTIRE argv into `Command failed: …`, and our argv is the JSON
+ * of every fence — tens of KB of mermaid source. Left alone, the message whose
+ * whole job is to make this failure legible becomes the reason nobody can read
+ * it (#108, found by fault injection). Swap the payload for its shape, keep one
+ * line; the parts a reader needs (status, signal, runner path, stderr head) are
+ * reported separately by the caller.
+ */
+const briefly = (msg: string, payload: string, fenceCount: number): string =>
+  msg.split('\n')[0].replace(payload, `<${fenceCount} fence(s), ${payload.length} bytes>`);
+
+/**
+ * This batch's timeout budget, and why it is a number here rather than the
+ * suite's 30s default (#108).
+ *
+ * This is NOT the suite ceiling being raised a second time, and the distinction
+ * is the whole justification. Round two refused a raise, correctly: raising a
+ * ceiling to accommodate work nobody had measured buys one quiet round and then
+ * the same failure, and it concedes the pattern. The work is measured now. This
+ * batch is ONE `node` spawn that loads mermaid + jsdom, clocked on the
+ * consumer's Windows box at 22.3s–27.5s. Against a 30s cap that is 1.09x, which
+ * is a coin toss rather than a budget. Sizing a budget to KNOWN work is a
+ * different act from raising a ceiling to hide UNKNOWN work — only the second
+ * one is the thing round two refused.
+ *
+ * 120s covers a two-attempt worst case on that box (~55s) with room to spare. A
+ * genuinely hung spawn still fails; it just takes longer to say so.
+ */
+const BATCH_BUDGET_MS = 120_000;
+
+/** Warn (do not fail) once the batch has eaten this share of its budget. */
+const BATCH_WARN_FRACTION = 0.5;
+
+/**
+ * Fail LEGIBLY when the batch overruns, because vitest will otherwise fail it
+ * ILLEGIBLY (#108) — and this is the mechanism that defeated the last fix.
+ *
+ * `execFileSync` blocks the event loop, so vitest's timeout timer cannot fire
+ * while the runner spawn is in flight. The rejection comes instead from a
+ * post-hoc elapsed check that runs AFTER the body returns: a test that ran to
+ * completion and asserted successfully is failed retroactively. Nothing throws,
+ * so a `try/catch` around the spawn — however carefully written — never sees a
+ * thing and produces nothing. That is not a handler bug; there is no error to
+ * handle.
+ *
+ * What gets reported then is a definition-site sentinel whose stack has been
+ * pasted over the real one:
+ *
+ *     Error: STACK_TRACE_ERROR
+ *         at task (@vitest/runner/dist/chunk-artifact.js:1784:27)
+ *         …collection frames, then this file's `it(` REGISTRATION line
+ *
+ * No command, no fence count, no exit status, no stderr, and a line number
+ * pointing at a registration site rather than at anything that failed. (The
+ * informative text does survive on `error.message`; only `error.stack` is
+ * clobbered, so whether a reader ever sees it depends on their reporter — CI
+ * logs and JSON/junit output read the stack. Upstream defect: the operands of
+ * that `.replace` are transposed relative to the correct siblings in the same
+ * file.)
+ *
+ * The escape hatch is that the post-hoc check guards the RESOLVE path only. An
+ * error we throw OURSELVES is passed straight through, untouched. So once the
+ * budget is already gone we throw first and keep our own message.
+ *
+ * This can only replace a failure vitest was about to raise anyway — it never
+ * invents one. Below the ceiling it warns and stays green, so a machine that is
+ * degrading says so before it starts failing.
+ */
+function guardBatchBudget(elapsedMs: number, fenceCount: number): void {
+  if (elapsedMs >= BATCH_BUDGET_MS) {
+    throw new Error(
+      `mermaid-runner batch OVERRAN its ${secs(BATCH_BUDGET_MS)} budget: ${fenceCount} ` +
+        `fence(s) took ${secs(elapsedMs)}. This is an environment/performance failure, not a ` +
+        'mermaid syntax error — the batch ran to completion, it was simply too slow to be ' +
+        'allowed to count.\n' +
+        `  runner: ${MERMAID_RUNNER}\n` +
+        '  the runner spawns `node` and loads mermaid + jsdom; that cost is process startup ' +
+        'and is flat in fence count, so this number measures the machine, not the diagrams.',
+    );
+  }
+  if (elapsedMs >= BATCH_BUDGET_MS * BATCH_WARN_FRACTION) {
+    process.stderr.write(
+      `\n[flow-renderer] mermaid-runner batch took ${secs(elapsedMs)} of its ` +
+        `${secs(BATCH_BUDGET_MS)} budget (${fenceCount} fence(s)) — still green, but this ` +
+        'box is slow enough that the margin is shrinking.\n' +
+        '[flow-renderer] that is an environment signal, not a mermaid one.\n',
+    );
+  }
+}
 
 /**
  * ONE run of the mermaid-runner subprocess. Every failure path throws with the
@@ -74,14 +165,15 @@ const why = (e: unknown): string => (e as Error)?.message ?? String(e);
  * cause nor the component (#108).
  */
 function runMermaidOnce(fences: Fence[]): FenceResult[] {
+  const payload = JSON.stringify(fences);
   let out: string;
   try {
-    out = execFileSync('node', [MERMAID_RUNNER, JSON.stringify(fences)], { encoding: 'utf8' });
+    out = execFileSync('node', [MERMAID_RUNNER, payload], { encoding: 'utf8' });
   } catch (e) {
     const err = e as { status?: number | null; signal?: string | null; stderr?: string };
     throw new Error(
       `mermaid-runner did not run (${fences.length} fence(s), status=${err.status ?? 'none'}, ` +
-        `signal=${err.signal ?? 'none'}): ${why(e)}\n` +
+        `signal=${err.signal ?? 'none'}): ${briefly(why(e), payload, fences.length)}\n` +
         `  runner: ${MERMAID_RUNNER}\n` +
         `  stderr: ${
           String(err.stderr ?? '')
@@ -119,11 +211,33 @@ function runMermaidOnce(fences: Fence[]): FenceResult[] {
  * Why it exists: on the consumer's Windows box a child process costs ~1s
  * (measured), and one transient spawn failure turned a green suite red with an
  * error that explained nothing.
+ *
+ * BUDGET-AWARE (#108, round five). The safety argument above is about MASKING
+ * and says nothing about TIME, which was the incomplete question. A retry
+ * spends the SAME per-test budget as the first attempt, so on a box where one
+ * spawn costs ~25s a retry under the old 30s cap did not rescue the run — it
+ * guaranteed an overrun, converting a legible one-attempt failure into the
+ * unreadable sentinel described above. The retry was not wrong; the budget was
+ * too small to hold it. With the budget sized to the real work a second attempt
+ * fits comfortably, and we additionally refuse to START one that cannot finish
+ * inside what is left. Failing on the cause beats failing on the clock.
  */
-function validateMermaid(fences: Fence[]): FenceResult[] {
+function validateMermaid(fences: Fence[], startedAt: number): FenceResult[] {
   try {
     return runMermaidOnce(fences);
   } catch (first) {
+    const firstCost = Date.now() - startedAt;
+    const remaining = Math.max(0, BATCH_BUDGET_MS - firstCost);
+    if (firstCost > remaining) {
+      throw new Error(
+        'mermaid-runner failed and the retry was SKIPPED — a second attempt could not have ' +
+          `finished inside the budget (attempt 1 cost ${secs(firstCost)}, leaving ` +
+          `${secs(remaining)} of ${secs(BATCH_BUDGET_MS)}). Retrying would spend the rest of ` +
+          'the budget and then fail on the clock instead of on the cause, replacing this ' +
+          'message with an unreadable timeout sentinel.\n' +
+          `  attempt 1: ${why(first)}`,
+      );
+    }
     // A retry that heals silently hides a degrading machine, which is the
     // opposite of what a suite is for. Say it happened, then carry on green.
     process.stderr.write(
@@ -278,6 +392,7 @@ function parseBatchResults(): Map<string, FenceResult> {
     );
   }
   if (parseBatch) return parseBatch;
+  const startedAt = Date.now();
   const fences: Fence[] = [
     ...PARSE_FIXTURES.map((name) => ({
       path: `fixture:${name}`,
@@ -296,7 +411,13 @@ function parseBatchResults(): Map<string, FenceResult> {
     { path: 'contract:invalid', text: INVALID_MERMAID },
   ];
   try {
-    parseBatch = new Map(validateMermaid(fences).map((r) => [r.path ?? '', r]));
+    const results = validateMermaid(fences, startedAt);
+    // AFTER the spawn, BEFORE we hand back a result vitest would retroactively
+    // reject — see `guardBatchBudget`. Ordered this way deliberately: an
+    // overrun here is reported as an overrun, not as whatever the caller
+    // asserted next.
+    guardBatchBudget(Date.now() - startedAt, fences.length);
+    parseBatch = new Map(results.map((r) => [r.path ?? '', r]));
   } catch (e) {
     parseBatchFailure = why(e);
     throw e;
@@ -317,7 +438,15 @@ function fencesUnder(prefix: string): { key: string; valid: boolean; error?: str
   return hits;
 }
 
-describe('flow-renderer · rendered mermaid is parse-valid (plan 040)', () => {
+/**
+ * The budget rides the SUITE, not one test, because the payer is whichever of
+ * these three runs FIRST — `parseBatchResults` memoises, so the first caller
+ * pays for the shared spawn and the other two are free. Which one that is
+ * depends on execution order, so all three must be able to afford it.
+ */
+describe('flow-renderer · rendered mermaid is parse-valid (plan 040)', {
+  timeout: BATCH_BUDGET_MS,
+}, () => {
   /**
    * ENCODES THE RETRY'S PRECONDITION (#108) — do not delete without reading
    * `validateMermaid`.
