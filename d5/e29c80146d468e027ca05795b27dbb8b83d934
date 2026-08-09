@@ -1,0 +1,19 @@
+harness/cli/src/acts/flow.ts
+  s_cd998e7882a3c3::t_f149677ccb0b42 236-243
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d5e29c80146d468e027ca05795b27dbb8b83d934",
+  "prompts": {},
+  "sessions": {
+    "s_cd998e7882a3c3": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "622101c7-ba88-4803-8ca5-9e6de8edbc6f",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
