@@ -1,0 +1,67 @@
+.github/workflows/windows.yml
+  s_6b8a25b7716dd8::t_e247fb79030c20 1-293
+docs/how/guard-evasion-catalogue.md
+  s_2bef307df718bc::t_74e978c3bfba19 1-230
+harness/cli/src/acts/flow.ts
+  s_2bef307df718bc::t_c2e25910badd02 804-808,825,836-855,890-894,911,913-931,943,1445-1490
+harness/cli/src/services/dd/core/validate.ts
+  s_2bef307df718bc::t_889946fce83116 86-104,107
+harness/cli/src/services/flow/flow-events.ts
+  s_2bef307df718bc::t_c5ef49b3ff33ed 196-225,273-281,361-408
+harness/cli/src/services/flow/flow-mutations.ts
+  s_2bef307df718bc::t_2b0438e65b4a4a 17,19,633-645,653-688,812-824,1360-1370,1383-1386
+harness/cli/src/services/flow/schemas-content.ts
+  s_2bef307df718bc::t_f519a564ab88f8 28
+harness/cli/src/services/flow/schemas/flow.schema.json
+  s_2bef307df718bc::t_f9aba11f1cd82b 22
+harness/cli/test/acts/dd-live.test.ts
+  s_2bef307df718bc::t_a7500690d0ca64 225-238,240,275
+harness/cli/test/acts/flow.test.ts
+  s_2bef307df718bc::t_c67e81f85ac0f8 658-734
+harness/cli/test/architecture/dd-core-isolation.test.ts
+  s_2bef307df718bc::t_478821b6f87534 38-65,69,72-74,83,89-93,107-113,133,157-187
+harness/cli/test/architecture/hermetic-git-fixtures.test.ts
+  s_2bef307df718bc::t_aa0cdb553cce47 53-54,62-70
+harness/cli/test/architecture/history-md-guard.test.ts
+  s_2bef307df718bc::t_77191a1eda6bf0 21-36,56-70,73-80
+harness/cli/test/architecture/no-direct-exit.test.ts
+  s_2bef307df718bc::t_f0824352f678af 27-28,32-42
+harness/cli/test/architecture/no-direct-node-io.test.ts
+  s_2bef307df718bc::t_14a74af94d77d6 34-35,42-49
+harness/cli/test/services/dd/core/validate.test.ts
+  s_2bef307df718bc::t_b03511496eede0 3-7,136-190
+harness/cli/test/services/dd/links/map-exemplar.test.ts
+  s_2bef307df718bc::t_564625c2614da7 19-34
+harness/cli/test/services/flow/flow-apply-field-allowlist.test.ts
+  s_2bef307df718bc::t_8c5ecca635d63b 1-206
+harness/cli/test/services/flow/flow-apply-gate-fires.test.ts
+  s_2bef307df718bc::t_846d3a57ad26d3 1-132
+harness/cli/test/services/flow/flow-node-fields-drift.test.ts
+  s_2bef307df718bc::t_fdb5939b318b7f 1-56
+skills/builder/references/flight-plan-ops.md
+  s_2bef307df718bc::t_94f09fba65d214 75,78-81,84-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8af7b94c44ddffc7459e6ac15e090883813b7042",
+  "prompts": {},
+  "sessions": {
+    "s_2bef307df718bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb3484ee-e8b4-4f68-89fa-22abb2a7a8c3",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_6b8a25b7716dd8": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "0566e436-a7a0-4359-99b4-8a2dc8a4c21d",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
