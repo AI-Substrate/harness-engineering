@@ -1,0 +1,114 @@
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-1/tasks.dd.md
+  s_397a51e23fc2cd::t_a25a6f41b80992 1
+harness/cli/src/services/doctor/doctor-service.ts
+  s_397a51e23fc2cd::t_425efa9326f4e2 11-13
+docs/how/dd/exemplar/fence/dispatch.dd.md
+  s_397a51e23fc2cd::t_a25a6f41b80992 1
+package.json
+  s_397a51e23fc2cd::t_c8679aa6c39a5c 44
+docs/how/dd/exemplar/backpressure.dd.md
+  s_397a51e23fc2cd::t_a25a6f41b80992 1
+docs/plans/archive/071-dd-native-builder/execution-log.dd.md
+  s_397a51e23fc2cd::t_a25a6f41b80992 1
+harness/cli/test/acts/plan-semantics.test.ts
+  s_397a51e23fc2cd::t_cfac767b13e257 3
+  s_397a51e23fc2cd::t_5ff167aa57e7bf 443,473,488
+  s_397a51e23fc2cd::t_251ace54f72e01 382
+harness/cli/src/services/flow/flow-dd-gate.ts
+  s_397a51e23fc2cd::t_4134d4c7499185 6,14-21
+docs/plans/073-gitai-collector-v1/assets/backpressure.dd.md
+  s_397a51e23fc2cd::t_a25a6f41b80992 1
+harness/cli/test/services/flow/archive-move.test.ts
+  s_397a51e23fc2cd::t_251ace54f72e01 175,205,237
+  s_397a51e23fc2cd::t_cfac767b13e257 15
+docs/plans/075-windows-nudge-honesty/plan.dd.md
+  s_397a51e23fc2cd::t_a25a6f41b80992 1
+harness/cli/test/services/flow/gate-fixtures/index.ts
+  s_397a51e23fc2cd::t_ebb5acc87e3ca7 4-5,7-8
+docs/plans/080-dd-consume-upgrade/plan.dd.md
+  s_397a51e23fc2cd::t_a25a6f41b80992 1
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-2/tasks.dd.md
+  s_397a51e23fc2cd::t_a25a6f41b80992 1
+harness/cli/test/acts/plan-review.test.ts
+  s_397a51e23fc2cd::t_cfac767b13e257 5
+  s_397a51e23fc2cd::t_251ace54f72e01 62,67
+docs/plans/078-collector-install-host-pin/plan.dd.md
+  s_397a51e23fc2cd::t_a25a6f41b80992 1
+harness/cli/test/support/run-cli.ts
+  s_397a51e23fc2cd::t_ca05cea9b416fa 115-156
+docs/plans/080-dd-consume-upgrade/assets/backpressure.dd.md
+  s_397a51e23fc2cd::t_a25a6f41b80992 1
+docs/plans/fx009-cursor-write-strreplace/plan.dd.md
+  s_397a51e23fc2cd::t_a25a6f41b80992 1
+docs/plans/076-commit-guidance-convergence/plan.dd.md
+  s_397a51e23fc2cd::t_a25a6f41b80992 1
+docs/how/dd/exemplar/custom-render/release.dd.md
+  s_397a51e23fc2cd::t_a25a6f41b80992 1
+docs/plans/074-sandbox-attribution/plan.dd.md
+  s_397a51e23fc2cd::t_a25a6f41b80992 1
+harness/cli/test/integration/fixtures/plan-semantics-corpora.ts
+  s_397a51e23fc2cd::t_f8a35a0a10e0c3 6-9,185,205,224,261
+  s_397a51e23fc2cd::t_ef911124ee8f41 1-4,11
+harness/cli/test/acts/plan-fence.test.ts
+  s_397a51e23fc2cd::t_cfac767b13e257 11
+  s_397a51e23fc2cd::t_251ace54f72e01 162
+  s_397a51e23fc2cd::t_ebb5acc87e3ca7 10
+docs/plans/archive/071-dd-native-builder/review/round-3.dd.md
+  s_397a51e23fc2cd::t_a25a6f41b80992 1
+harness/cli/src/services/flow/flow-renderer.ts
+  s_397a51e23fc2cd::t_0ca7bab8065d0f 1
+harness/cli/src/services/flow/flow-events.ts
+  s_397a51e23fc2cd::t_0ca7bab8065d0f 2
+.harness/extensions/checks/extension.ts
+  s_397a51e23fc2cd::t_d16688e36aabf9 116-117
+  s_397a51e23fc2cd::t_fed9464e735c5d 200-205,207-218
+docs/how/dd/exemplar/execution-log.dd.md
+  s_397a51e23fc2cd::t_a25a6f41b80992 1
+harness/cli/test/services/flow/flight-plan-gates.test.ts
+  s_397a51e23fc2cd::t_ebb5acc87e3ca7 6-7,14-15
+.harness/extensions/repo-sensors/extension.test.ts
+  s_397a51e23fc2cd::t_248f80daaec308 101,103-105
+docs/how/dd/exemplar/review/round-1.dd.md
+  s_397a51e23fc2cd::t_a25a6f41b80992 1
+harness/cli/src/services/flow/flow-mutations.ts
+  s_397a51e23fc2cd::t_0ca7bab8065d0f 3
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-3/tasks.dd.md
+  s_397a51e23fc2cd::t_a25a6f41b80992 1
+docs/plans/archive/071-dd-native-builder/plan.dd.md
+  s_397a51e23fc2cd::t_a25a6f41b80992 1
+harness/cli/test/services/flow/flow-dd-check-gate.test.ts
+  s_397a51e23fc2cd::t_ebb5acc87e3ca7 2-3,7-8
+docs/plans/073-gitai-collector-v1/plan.dd.md
+  s_397a51e23fc2cd::t_a25a6f41b80992 1
+harness/cli/src/services/flow/chores-read.ts
+  s_397a51e23fc2cd::t_0ca7bab8065d0f 2
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-3/fork-drain-checklist.md
+  s_397a51e23fc2cd::t_10cf8a0ed59323 58-74
+docs/how/dd/exemplar/plan.dd.md
+  s_397a51e23fc2cd::t_a25a6f41b80992 1
+docs/plans/archive/071-dd-native-builder/backpressure.dd.md
+  s_397a51e23fc2cd::t_a25a6f41b80992 1
+harness/cli/test/integration/plan-semantics-falsifiers.int.test.ts
+  s_397a51e23fc2cd::t_682254de207466 399-411,413,420,422-430,438,446,455
+  s_397a51e23fc2cd::t_0eda7f45b87a8f 73-81
+  s_397a51e23fc2cd::t_f8a35a0a10e0c3 115,118-120,161,165,199,228,279,463
+  s_397a51e23fc2cd::t_cca26ebe7728a9 8-9
+  s_397a51e23fc2cd::t_561994bdf4656c 10-22,24-34
+  s_397a51e23fc2cd::t_8a90f053b0b575 431-437,439-445
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "237ab2e1de4e06b1aeefba89e5ae49ddb916fece",
+  "prompts": {},
+  "sessions": {
+    "s_397a51e23fc2cd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "3fe3c47b-5424-4214-892e-81ef19c49d45",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
