@@ -1,0 +1,28 @@
+harness/cli/test/services/flow/flow-renderer.test.ts
+  s_6b8a25b7716dd8::t_3e4993845d9ee4 441-446
+  s_6b8a25b7716dd8::t_3406fa0c4d46c9 214-223,225,229,231-240
+  s_6b8a25b7716dd8::t_e326c9a48d0e19 68-70,82-97,99-158
+  s_6b8a25b7716dd8::t_de736a1c7b3e66 230
+  s_6b8a25b7716dd8::t_022a5990b5e6b9 71-81
+  s_6b8a25b7716dd8::t_1bb4febb493168 98
+  s_6b8a25b7716dd8::t_1c3be928ff9f54 395
+  s_6b8a25b7716dd8::t_93d26211a4802b 414-420
+  s_6b8a25b7716dd8::t_6af50659bdfc4e 447-449
+  s_6b8a25b7716dd8::t_5c9a90db7a554c 168,171,176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "800333791a58f41becf062cfa3b051f25bb48d6b",
+  "prompts": {},
+  "sessions": {
+    "s_6b8a25b7716dd8": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "0566e436-a7a0-4359-99b4-8a2dc8a4c21d",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
