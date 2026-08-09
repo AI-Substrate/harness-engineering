@@ -1,0 +1,19 @@
+harness/cli/src/adapters/git/exec-remote-telemetry-git.ts
+  s_a76964380084ef::t_cb6b364b7340cb 101-103,105-118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "592abcc4659501f807a8411d695752638b2a4b7b",
+  "prompts": {},
+  "sessions": {
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
