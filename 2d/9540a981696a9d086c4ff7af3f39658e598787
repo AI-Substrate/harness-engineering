@@ -1,0 +1,39 @@
+docs/plans/081-flow-reachability/assets/backpressure-coverage.md
+  s_e2ef1441ad1dbd::t_4f636ee0bc9e6f 1-65
+docs/plans/081-flow-reachability/assets/backpressure.dd.json
+  s_e2ef1441ad1dbd::t_7880fc79b2aed8 1-159
+docs/plans/081-flow-reachability/assets/backpressure.dd.md
+  s_e2ef1441ad1dbd::t_efc9b8ba1431f4 1-42
+docs/plans/081-flow-reachability/the-flow.json
+  s_e2ef1441ad1dbd::t_6698158c1d7368 62-88,208,224-234
+docs/plans/081-flow-reachability/the-flow.md
+  s_e2ef1441ad1dbd::t_0278f1814d08d8 4,19,40-44
+docs/plans/081-flow-reachability/plan.dd.json
+  s_2bef307df718bc::t_c41ac0f9aa10bf 14-15,48-49,54-55,60-61,66-67,72-73,78-79,84-85,90-91
+docs/plans/081-flow-reachability/plan.dd.md
+  s_2bef307df718bc::t_7e0fde6030a882 18,58-65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2d9540a981696a9d086c4ff7af3f39658e598787",
+  "prompts": {},
+  "sessions": {
+    "s_2bef307df718bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb3484ee-e8b4-4f68-89fa-22abb2a7a8c3",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_e2ef1441ad1dbd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "265d8845-1914-4476-9977-4a05f12f4b06",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
