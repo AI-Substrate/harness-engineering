@@ -1,0 +1,22 @@
+.github/workflows/windows.yml
+  s_6b8a25b7716dd8::t_c631a982ebfa07 281-286,290-293,296-309,311,318
+  s_6b8a25b7716dd8::t_d01b903cedafaa 310,312-316
+  s_6b8a25b7716dd8::t_dbda4771d28339 362-369
+  s_6b8a25b7716dd8::t_6827e72d5a50bc 317
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "50fd1d396ca540699016fb8db31b0e36f207ca8f",
+  "prompts": {},
+  "sessions": {
+    "s_6b8a25b7716dd8": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "0566e436-a7a0-4359-99b4-8a2dc8a4c21d",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
