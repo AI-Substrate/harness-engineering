@@ -118,7 +118,7 @@
         {
           "id": "tk-000a",
           "title": "REUSE backupAgentConfigs — and widen it, because it is blind to exactly the env overrides the installer now reads",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-2",
           "success": "services/doctor/collector/backup.ts already backs up agent configs to ~/.git-ai/harness-backups/<iso>/ and reports copied / failed / UNDECLARED, the last distinguishing 'nothing to copy' from 'we did not know where to look'. Two mechanisms writing agent-config backups to near-identical locations would make restore ambiguous, defeating the uninstall criterion. BUT THE REUSE INHERITS A DECLARED BLINDNESS, AND IT BITES PRECISELY HERE: agents.ts states in its own comment that it does NOT read CLAUDE_CONFIG_DIR, CODEX_HOME or GEMINI_CLI_HOME, and backupAgentConfigs composes every source path from that table. The matrix task makes the INSTALLER override-aware. So on a machine with CLAUDE_CONFIG_DIR set we would back up ~/.claude/settings.json and then modify $CLAUDE_CONFIG_DIR/settings.json — backing up the wrong file and writing to an unbacked one, silently. Widening backup.ts to share the matrix is IN SCOPE, not a hedge.",
           "satisfies": [
@@ -429,25 +429,25 @@
           {
             "id": "dw-0023",
             "assertion": "backup.ts resolves config paths through the SAME matrix the installer uses; a fixture with CLAUDE_CONFIG_DIR set asserts the backed-up file is the one that gets modified.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0024",
             "assertion": "No second backup mechanism is introduced; the existing helper is widened.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0025",
             "assertion": "The backup path is NAMED in the command output — naming a backup you did not take is the specific harm backup.ts's own doc comment warns about, so the output is asserted against what was actually copied.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0026",
             "assertion": "An agent whose config did not exist is reported as created-not-backed-up rather than silently counted as covered.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],

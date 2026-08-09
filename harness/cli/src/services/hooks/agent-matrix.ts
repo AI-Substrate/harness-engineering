@@ -209,3 +209,27 @@ export function resolveConfigFiles(
 /** Look one up by slug. `undefined` for an agent this strategy does not cover. */
 export const findAgent = (agent: string): AgentSpec | undefined =>
   AGENT_MATRIX.find((spec) => spec.agent === agent);
+
+/**
+ * Read every config-root override the matrix declares, as an ordinary map.
+ *
+ * ONE place answers "which environment variables move an agent's config", so the
+ * installer and `backupAgentConfigs` cannot disagree about it — which is exactly
+ * how a backup ends up copying `~/.claude/settings.json` while the write lands in
+ * `$CLAUDE_CONFIG_DIR/settings.json`. Adding an override is still adding a row.
+ *
+ * Blank values are dropped, matching {@link resolveConfigRoot}: an exported-but-empty
+ * variable is not a location.
+ */
+export function readEnvOverrides(
+  get: (name: string) => string | undefined,
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const spec of AGENT_MATRIX) {
+    const name = spec.override?.name;
+    if (name === undefined) continue;
+    const value = get(name);
+    if (value !== undefined && value.trim() !== '') out[name] = value;
+  }
+  return out;
+}

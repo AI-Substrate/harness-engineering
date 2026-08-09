@@ -45,6 +45,23 @@ export interface HostTarget {
    * touches. Absent → the guard falls back to `<home>/.claude`.
    */
   claudeConfigDir?: string;
+  /**
+   * Every config-root env override the AGENT MATRIX declares, as read from the
+   * environment (plan 082 tk-000a).
+   *
+   * WHY THIS EXISTS. `backupAgentConfigs` composed every source path as
+   * `<home>/<rel>`, and `agents.ts` states in its own comment that it does NOT read
+   * `CLAUDE_CONFIG_DIR`, `CODEX_HOME` or `GEMINI_CLI_HOME`. Harmless while nothing
+   * else was override-aware — but the installer now IS, so on a machine with
+   * `CLAUDE_CONFIG_DIR` set we would back up `~/.claude/settings.json` and then
+   * modify `$CLAUDE_CONFIG_DIR/settings.json`: **backing up the wrong file and
+   * writing to an unbacked one, silently**, while reporting a backup directory to
+   * an operator who would stop looking for their originals.
+   *
+   * Keyed by variable NAME so the matrix stays the single source of truth about
+   * which variables matter — adding an override is still adding a matrix row.
+   */
+  envOverrides?: Readonly<Record<string, string>>;
 }
 
 /** One artifact resolved for a host: what to fetch and what it must hash to. */

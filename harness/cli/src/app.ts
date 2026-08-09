@@ -61,6 +61,7 @@ import {
   type ExtensionRegistry,
   type VerbRegistry,
 } from './services/extensions/registry.js';
+import { readEnvOverrides } from './services/hooks/agent-matrix.js';
 import {
   buildRecordRegistry,
   coreRecordTypes,
@@ -354,6 +355,8 @@ function readCollectorHooksForNudge(
         ...(claudeConfigDir !== undefined && claudeConfigDir.trim() !== ''
           ? { claudeConfigDir: toPosix(claudeConfigDir) }
           : {}),
+        // Every override the MATRIX declares, so backup and install resolve alike.
+        envOverrides: readEnvOverrides((n) => env.get(n)),
       },
     });
     if (health.hooks.missing.length === 0) return null;

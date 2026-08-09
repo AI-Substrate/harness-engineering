@@ -967,3 +967,57 @@ general one gets a shrug.
 **This is the SECOND independent reason Windows stays EXPECTED-UNVERIFIED.** The first was the
 af_unix tickler refusing to emit on a named-pipe host. Two unrelated reasons pointing the same way is
 a stronger statement than either alone.
+
+---
+
+## tk-000a — backup REUSED and widened, not replaced
+
+`backupAgentConfigs` already existed and already reported copied / failed / **undeclared** — that last
+one distinguishing *nothing to copy* from *we did not know where to look*, which is the honest shape.
+Two mechanisms writing agent-config backups to near-identical locations would make a restore
+ambiguous, defeating the uninstall criterion, so the existing helper was widened (dw-0024).
+
+### The blindness it inherited, and why it bites exactly here
+
+`agents.ts` states in its own comment that it does **not** read `CLAUDE_CONFIG_DIR`, `CODEX_HOME` or
+`GEMINI_CLI_HOME`, and `backupAgentConfigs` composed every source as `<home>/<rel>`. Harmless while
+nothing else was override-aware — **but the installer now is**. On a machine with `CLAUDE_CONFIG_DIR`
+set we would have copied `~/.claude/settings.json` and then modified
+`$CLAUDE_CONFIG_DIR/settings.json`: the wrong file backed up, the written one unbacked, and a backup
+directory **named** to an operator who would then stop looking for their originals — which is the
+specific harm backup.ts's own doc warns about.
+
+### One source of truth: `readEnvOverrides` reads the MATRIX
+
+Which variables matter is answered by the matrix rows themselves, so adding an override is still
+adding a row. If backup kept its own list, adding an override to the matrix would silently leave
+backup blind to it — the original defect with a new coat of paint. Blank values are dropped, matching
+the resolver, so the two cannot diverge on exactly the machine the widening protects.
+
+`HostTarget` gains `envOverrides`, populated at **both** composition roots (`app.ts` and
+`acts/doctor.ts`) from `readEnvOverrides`.
+
+### The sources are a UNION, not a replacement
+
+The collector's `configs` are **git-ai's** install targets; the matrix is **where we write**. Both
+destroy content, and for copilot they deliberately differ, so backup copies the union. Matrix paths
+resolve through the same function the installer uses, so an override moves the backup and the write
+**together** rather than apart.
+
+### Proven by refusal
+
+Reverting the source list to the home-composed `agent.configs` turns the override row RED — with the
+anchor asserted first, so a green would have meant a blind test rather than an unapplied patch.
+
+The row asserts the two paths are **the same string**, rather than asserting each is individually
+correct: agreement is the property that was broken, so agreement is what is measured.
+
+### dw-0026 — silence is not coverage
+
+A detected agent with no config yet is skipped by `backupAgentConfigs` (it skips a non-existent
+source), so it appears in neither `copied` nor `failed`. That silence must not read as coverage, and
+the installer's `created: true` is the only thing that distinguishes it — which is why that flag
+exists and why uninstall's symmetry there is delete-not-restore.
+
+A **positive control** asserts a config that does exist is copied and named; without it, every row
+above is satisfied by a backup that never copies anything at all.

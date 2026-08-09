@@ -32,6 +32,7 @@ import {
   renderDoctorText,
 } from '../services/doctor/doctor-service.js';
 import type { VerbRegistry } from '../services/extensions/registry.js';
+import { readEnvOverrides } from '../services/hooks/agent-matrix.js';
 import type { RecordRegistry } from '../services/record/registry.js';
 import { toPosix } from '../services/shared/posix-path.js';
 import { readVersion } from '../version.js';
@@ -56,6 +57,8 @@ function collectorHostTarget(env: NodeEnv): HostTarget | undefined {
     ...(claudeConfigDir !== undefined && claudeConfigDir.trim() !== ''
       ? { claudeConfigDir: toPosix(claudeConfigDir) }
       : {}),
+    // Every override the MATRIX declares, so backup and install resolve alike.
+    envOverrides: readEnvOverrides((n) => env.get(n)),
   };
 }
 
