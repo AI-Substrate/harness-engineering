@@ -16,6 +16,10 @@ torn down before this plan, so shapes could not be re-verified against disk.
 | both-good | valid (CLI-scaffolded) | valid (CLI-created) | ok |
 | legacy-flow | absent | no `provenance` (E308) | plan clause decides; flow reason = legacy |
 | malformed-flow | absent | invalid JSON (E300) | plan clause decides; flow reason = malformed |
+| future-version-flow | absent | `schema_version: 99` (E306) | plan clause decides; flow reason = future-version |
 
 The valid artifacts were produced by the real CLI (`plan new`, `flow create`), never
 hand-written, so schema evolution regenerates rather than rots them.
+`future-version-flow/the-flow.json` is a real `flow create flight-plan` output with
+its `schema_version` bumped past this CLI's supported major — the one field a
+current CLI cannot legitimately emit.
