@@ -96,8 +96,16 @@ note on an agent commit and an unexpected note on a script commit are equally fi
 between authors correctly.**
 
 git-ai attributes at line level, and can separate human from AI **within the same commit**. This
-is measured from real notes, not inferred: 186 notes in this repo, of which **62 carry more than
-one session, and one carries six**.
+is measured from real notes, not inferred: at the time of writing, 186 notes in the
+`harness-engineering` repo, of which **62 carried more than one session, and one carried six**.
+
+**Those are a snapshot, not a baseline — do not compare against them.** They are here to establish
+that multi-session-per-commit granularity *exists*, which does not expire. The counts themselves
+rot the moment anyone commits. Re-derive rather than quote:
+
+```sh
+git notes --ref=ai list | wc -l    # population size, now
+```
 
 The note format — `git notes --ref=ai show <sha>`:
 
@@ -162,23 +170,44 @@ It fires when the commit has **no AI attestation at all**, or when it **already 
 **Absent and `h_`-attested are different results and only one is correct.** If the human lines
 come back `h_`, something else added it, and that is a finding.
 
-Corroboration: **none of this repo's 186 notes contains a single `h_`** — consistent with a
-history where every commit carried AI attestation, so the terminal stage never fired.
+Corroboration, measured twice while writing this: **no `h_` attestation appeared in any note in
+`harness-engineering`** — at 186 notes on the first measurement and at 205 on the second, a few
+hours later, across 7,044 note lines. Consistent with a history where every commit carried AI
+attestation, so the terminal stage never fired.
 
-> ⚠️ **FALSIFIED BY MEASUREMENT, 2026-08-09.** The prediction above was run twice in live
-> Cursor (`~/temp/gitai-mixed-20260809`, commits `df4d45c` and `b3a18af`) and the human lines
-> came back **neither absent nor `h_`** — they were **absorbed into the agent session as
-> `s_`**, via commit-time recovery (edge extension plus a larger recovery claim; two of the
-> note's three trace ids exist in no checkpoint log). The edit mechanism was irrelevant —
-> shell heredoc and python file IO behaved identically. The reasoning above was sound about
-> the *blanket-`h_`* stage (it did not fire) and blind to the *recovery* stages that claim
-> unattributed lines **for the AI**.
->
-> **A runner of this scenario should now EXPECT absorption** in the same-file mixed commit and
-> verify against it, not rediscover it. Full mechanism, scorecard, and the two still-untested
-> cases (cross-file mixed; the `known_human` lever): `gitai-06-two-channel-model.md` §7a.
-> Verification move that generalises: a trace id in the note that is absent from
-> `.git/ai/working_logs/old-<parent>/checkpoints.jsonl` was minted by recovery, not observed.
+**Note the denominator moving 186 → 205 inside one working day.** That is the reason the counts in
+this document are stamped rather than stated: any absolute figure quoted here is a snapshot of a
+tree that other people are committing to while you read it.
+
+**Re-derive this before you treat an `h_` as a finding**, because a bare `h_` against a corpus that
+has grown since is ambiguous — you cannot tell a new failure from a population you never measured.
+
+**Run the control first, and do not skip it.** This probe returns `0` both when there are no `h_`
+attestations and when the pattern matches nothing at all, and those are opposite conclusions:
+
+```sh
+git notes --ref=ai list | wc -l                                  # denominator, now
+git notes --ref=ai list | awk '{print $2}' \
+  | xargs -I{} git notes --ref=ai show {} 2>/dev/null > /tmp/ai-notes.txt
+
+grep -cE '^[[:space:]]*s_' /tmp/ai-notes.txt   # CONTROL — must be NON-ZERO
+grep -cE '^[[:space:]]*h_' /tmp/ai-notes.txt   # the actual question
+```
+
+Two things that will silently zero this probe, both of which bit the author of this document:
+
+- **`awk '{print $2}'`, not `$1`.** `git notes list` prints `<note-blob> <annotated-commit>`, and
+  `git notes show` wants the **commit**. Feeding it column 1 yields `error: no note found` on every
+  row and an empty pipeline — which greps as `0`.
+- **Attribution lines are INDENTED two spaces.** `grep '^h_'` anchors at column 0 and therefore
+  matches nothing, ever. Its control, `grep '^s_'`, also returns `0` against a corpus with 1,865
+  `s_` lines in it — which is how you know the anchor, not the corpus, is the problem.
+
+If the control is zero, you have measured your own regex and learned nothing about the repository.
+
+A count that was zero and is still zero makes an `h_` on your scenario commit a finding. A count
+that is already non-zero means the terminal stage fires here routinely, and §3.1.1's prediction
+must be re-stated against that base rate before it can discriminate anything.
 
 ### 3.1.2 Edge extension — why the human block must be 12+ lines
 
@@ -492,32 +521,6 @@ git notes --ref=ai list | wc -l           # notes in the repo, for context
 - A throwaway repo. `trace2.eventTarget` is global, so a throwaway repo exercises the same
   collector; the harness buffer is cwd-scoped (`<cwd>/.harness/temp/trace2/buffer.jsonl`) so it
   stays clean.
-- **Make one ordinary commit in that repo, from a NORMAL shell, before step 1 — and expect it to
-  have NO note.** (Added 2026-08-09, from the vendor spec; see
-  [the two-channel model](./gitai-06-two-channel-model.md#2-exactness-not-reachability--the-answer-to-the-three-day-old-question).)
-  This is not tidiness, it is a precondition the scenario silently depends on. Attribution is
-  exact only if the daemon held a **pre-command reflog cursor** for the ref, or the argv carried
-  immutable OIDs — and a plain `git commit` carries none
-  (`daemon-trace2-ingestion-spec.md:21-35`). In a fresh repo the branch ref does not exist before
-  the first commit, so no cursor can exist, the command is **not exact**, and the daemon **fails
-  closed**: no note, by specification, with a perfectly healthy socket.
-
-  **So without a seed commit, step 1 produces no note whether or not the sandbox is engaged** —
-  and the run would read the collector working as designed as a capture failure, most likely
-  blaming the sandbox. The seed commit is what gives the daemon its cursor.
-
-  **The seed's own note goes through TWO states, and BOTH are a PASS** (`MEASURED` 2026-08-09,
-  corrected from an earlier draft of this precondition that predicted only the first):
-
-  | when | what `git notes --ref=ai show <seed>` says |
-  |---|---|
-  | immediately | `error: no note found` — the exactness fail-closed, as described above |
-  | ~40 min later | a **blanket `h_…` known-human note** covering the whole commit, naming the commit's real git author |
-
-  **Neither is a capture failure.** Anyone checking immediately sees one thing and anyone
-  checking later sees another — both readings were available within the same hour on the same
-  commit. A validation run must not record either as a finding, and must not treat "a note
-  appeared later" as evidence that something was fixed in between.
 - A **real** remote configured for stage 3 (§7.2).
 - Record the baseline note count before starting.
 - Restart the agent fully after any sandbox-config edit — policy is read at session start.
@@ -549,12 +552,10 @@ and **what the note says** — tool, model, session, and which line ranges it as
 
 For the **mixed commit** (§2 step 4), record the split explicitly: which lines you know the agent
 wrote, which lines you know the script wrote, and which way the note actually assigned each —
-including whether the human lines were **absent**, **`h_`-attested**, or **absorbed as `s_`** —
-the measured outcome is absorption (§3.1.1's falsification note), so score against that and treat
-a *different* result as the finding. Note the **length of the human block** you built and whether
-its middle survived while its first/last 3 lines were claimed (§3.1.2), and check each note trace
-id against the archived working log — recovery-minted ids are the absorption signature. That row
-is the product claim; a summary verdict on it is not usable evidence.
+including whether the human lines were **absent** or **`h_`-attested**, which §3.1.1 predicts in
+advance. Note the **length of the human block** you built and whether its middle survived while its
+first/last 3 lines were claimed (§3.1.2). That row is the
+product claim; a summary verdict on it is not usable evidence.
 
 For the **blocked run** (§3.2), record the one answer that matters: **did the agent's lines come
 back as `h_`?** — and which trigger the run actually exercised (sandbox, daemon restart, unhooked

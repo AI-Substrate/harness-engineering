@@ -41,6 +41,34 @@ attached to the wrong change**. Anyone re-deriving 211 before the merge gets con
 concludes the numbers are sound; the same person after the merge gets a mismatch. Both
 readings are available and which you get depends on *when you looked*.
 
+## 2a. THE CAUSE IN §1 IS UNPROVEN — and the real reason is stronger
+
+**Withdrawn, 2026-08-09:** §1 attributes the 210 → 211 gap to *drift nobody tracked tightly
+enough*. The **observation** is solid — the briefs say 210, this branch measures 211 — but the
+**cause** is not established, and a second explanation fits the same evidence.
+
+**The three checks derive scope from `git ls-files`, so the total is BRANCH-DEPENDENT.** One
+branch measures 194 `markdownlint` findings; another measures 195. **Both are correct
+simultaneously and nobody has drifted** — the branches simply track different sets of markdown
+files. So 210 vs 211 may be temporal drift, or the briefs may have been written from elsewhere
+in the tree. Both fit, and nobody can tell which without knowing where each figure was measured.
+
+**This makes the guidance stronger, not weaker.** A copied total rots along **two axes at once
+— time AND branch**, and a coder comparing against "about 210" cannot distinguish drift from
+simply standing somewhere else:
+
+> **An absolute total is not even wrong in a single place, because it has no single true value.**
+
+So *"derive the baseline at the moment you use it, from your own merge-base"* is not merely
+tidier than copying a number — it is **the only formulation that is well-defined at all**. A
+copied total is a claim whose truth depends on where the reader stands, stated as a constant.
+
+**Report in the long form.** On a pre-`6a43fd4d` branch, *"markdown findings identical to
+baseline"* overclaims by omission — it presents a three-row result as a complete answer. Say
+**"three checks unchanged; fourth not available here."**
+
+---
+
 ## 3. THE FIX — stop quoting a number, derive it
 
 **Do not treat any hardcoded lint total in this folder's briefs as authoritative.** Derive the
