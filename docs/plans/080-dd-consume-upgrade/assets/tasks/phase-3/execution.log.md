@@ -511,3 +511,75 @@ no-op:
   points.
 
 Prime mirrors this inversion onto #119; this entry is the consumer-facing half.
+
+## tk-0011 — the plan-new fixes bundle (ledger #1 + #2)
+
+### The defect, reproduced before it was fixed
+
+Ledger #1's authoring workaround is real and its error message says so:
+
+```
+$ dd add …/plan.dd.json#open_questions '{"question":"probe"}'
+E450  "the document has no section \"open_questions\""   reason: section-absent
+next_action: The schema declares this section; the document has not created it yet.
+             Seed the section in the document, then write into it —
+             THE WRITER VERBS CANNOT CREATE A SECTION TODAY.
+```
+
+`builder/plan` declares **22** sections; `plan new` seeded **6**. So sixteen declared
+sections met every author with the same manual seed-then-write dance.
+
+Worth recording: dw-001f's stated test — "`dd validate` on a fresh scaffold shows zero
+declared-but-absent sections" — is **vacuously true**, because validate does not report
+absent sections at all (a fresh scaffold validated `error 0, warn 1`, the warn being an
+unrelated untracked-file E432). Had I taken that assertion at face value the task would
+have "passed" without touching the defect. The real acceptance is the E450 above, so that
+is what I drove.
+
+### After
+
+```
+$ harness plan new dd-consume-upgrade --ordinal 80
+folder: 080-dd-consume-upgrade        meta.slug: 'dd-consume-upgrade'   meta.ordinal: 80
+sections seeded: 22                   declared-but-absent: []
+
+$ dd add …#open_questions '{"question":"probe question","state":"unchecked"}'   → ok
+```
+
+The write that produced **E450 section-absent** now lands. Along the way the probe hit
+`E454` (unregistered mint prefix) and `E451 schema-refused` — both are *my probe* being
+wrong, and both are the RIGHT errors: the section exists and validation is judging the
+payload. The barrier moved from "you cannot write here" to "that value is not valid
+here", which is the whole point.
+
+Ledger #2 is the ordinal: the number now lives in the folder name and `meta.ordinal`, and
+**`meta.slug` stays clean** — previously the number had to be typed into the slug, so a
+later bare-slug run minted a second folder whose meta disagreed with the first.
+
+Seeding is **schema-driven, not a longer hard-coded list** — a fixed list would drift the
+moment the schema gained a section, which is the same class as the stale-render defect
+this phase already found. Six tests pin it, including the two failure modes a naive
+implementation hits: seeding an array section as `{}` (refuses the first `dd add` just as
+hard as absence), and flattening the already-filled `meta` to `{}` (a plan with no
+identity, silently, because an empty meta is still schema-shaped).
+
+### A blocking gate I broke and repaired
+
+`biome ci` was **exit 0 at phase-3 start** and **exit 1** here. It was mine, and finding
+that out required not trusting my first read:
+
+- My first hypothesis — unused imports in `acts/plan/index.ts` — was **wrong**. Those 5
+  findings are WARNINGS and are identical with and without my edit (verified by stashing
+  it), and they exist at `d7daf94c` too.
+- The actual errors were **formatting** in the two files I edited programmatically, plus
+  **`organizeImports` assist errors in seven files whose import blocks I rewrote** during
+  tk-000d/tk-000e. `npm run lint` (`biome check harness/cli`) does not surface the assist
+  class; only `biome ci` does — so the leg I had been running clean was not the leg CI
+  runs.
+
+Baseline captured from a throwaway `git worktree` at `d7daf94c` rather than by checking
+out over my own tree — a `git checkout` mid-task in a shared worktree is how work gets
+lost. After the repair: **exit 0, 9 warnings, 4 infos — identical to the baseline**, so
+the gate is restored rather than merely quietened.
+
+**Green**: tsc 0; `just build` 0; **294 files / 4493 tests** (+6); `biome ci` 0.

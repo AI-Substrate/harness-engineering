@@ -85,15 +85,24 @@ describe('ac-7116 layer a — orient teaches each node its own dd commands (tk-7
 
 describe('ac-7116 layer b — each stage module teaches its own seam (tk-7145)', () => {
   it.each([
-    ['stages/20-plan.md', ['plan.dd.json', 'harness plan new', 'node_modules/.bin/dd add', '--mint ac']],
-    ['stages/50-phase-tasks.md', ['tasks.dd.json', 'node_modules/.bin/dd add', '--mint tk', '--mint dw']],
+    [
+      'stages/20-plan.md',
+      ['plan.dd.json', 'harness plan new', 'node_modules/.bin/dd add', '--mint ac'],
+    ],
+    [
+      'stages/50-phase-tasks.md',
+      ['tasks.dd.json', 'node_modules/.bin/dd add', '--mint tk', '--mint dw'],
+    ],
     ['stages/60-implement.md', ['node_modules/.bin/dd set', 'harness plan validate', '--address']],
     ['stages/62-progress.md', ['node_modules/.bin/dd set']],
     [
       'stages/70-review.md',
       ['harness plan validate', '--complete', 'node_modules/.bin/dd link verify-basis'],
     ],
-    ['stages/80-ship.md', ['node_modules/.bin/dd get', 'node_modules/.bin/dd graph map', 'archive']],
+    [
+      'stages/80-ship.md',
+      ['node_modules/.bin/dd get', 'node_modules/.bin/dd graph map', 'archive'],
+    ],
   ])('%s teaches its commands', (module, commands) => {
     const text = read(module);
     for (const command of commands) expect(text).toContain(command);

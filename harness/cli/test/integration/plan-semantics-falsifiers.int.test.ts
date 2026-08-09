@@ -2,11 +2,11 @@ import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ConventionSchemaResolver, FsDocLoader } from '@ai-substrate/dd';
+import type { DdDoc } from '@ai-substrate/dd/core/model';
+import { type DdLinkEdge, indexDocument } from '@ai-substrate/dd/links';
 import { NodeSchemaFs } from '@ai-substrate/dd/node';
 import { describe, expect, it } from 'vitest';
 import { NodeHash } from '../../src/adapters/hash/node-hash.js';
-import type { DdDoc } from '@ai-substrate/dd/core/model';
-import { type DdLinkEdge, indexDocument } from '@ai-substrate/dd/links';
 /*
  * The plan-semantics TYPES and the key formatter now come from the promoted
  * module, because phase 3 deleted the fork (tk-000d). They were named `fork*`
@@ -32,6 +32,7 @@ import {
 
 /** The `readPlanCheck` signature, for the dependency-composition helper. */
 type SubjectReadPlanCheck = typeof refReadPlanCheck;
+
 import {
   checkDeps,
   contradictionCorpus,

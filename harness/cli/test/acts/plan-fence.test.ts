@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import type { DdDoc } from '@ai-substrate/dd/core/model';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   checkFence,
@@ -7,7 +8,6 @@ import {
   fenceMatches,
   readFenceRows,
 } from '../../src/acts/plan/fence.js';
-import type { DdDoc } from '@ai-substrate/dd/core/model';
 import { runCli, runDd } from '../support/run-cli.js';
 
 /**

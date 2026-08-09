@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { runCli, runDd } from '../support/run-cli.js';
+import { runDd } from '../support/run-cli.js';
 
 /**
  * tk-7172 / dw-000d, ac-7121 — a review round is a document.

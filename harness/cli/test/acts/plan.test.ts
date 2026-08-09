@@ -145,6 +145,106 @@ describe('plan scaffold — pure', () => {
   });
 });
 
+describe('plan scaffold — the plan-new fixes bundle (plan 080 tk-0011)', () => {
+  it('seeds every section the schema declares, not a fixed list', () => {
+    // dogfood-ledger #1, harness half. The writer verbs cannot CREATE a section
+    // (`dd add …#open_questions` → E450 `section-absent`, "the writer verbs
+    // cannot create a section today"), so a scaffold that seeds fewer sections
+    // than the schema declares hands every author the same manual workaround.
+    const declared = {
+      meta: {},
+      summary: '',
+      goals: [],
+      open_questions: [],
+      risks: [],
+      gate_matrix: [],
+      done_when: {},
+    };
+    const scaffold = buildPlanScaffold({ slug: 'demo', phases: ['A'], declaredSections: declared });
+    const names = (JSON.parse(scaffold.plan.json) as { sections: { name: string }[] }).sections.map(
+      (section) => section.name,
+    );
+    for (const name of Object.keys(declared)) expect(names).toContain(name);
+  });
+
+  it('seeds each declared section with an empty value of its own SHAPE', () => {
+    // An array section seeded `{}` would refuse the first `dd add` just as hard
+    // as an absent one — the fix has to carry the shape, not merely the name.
+    const scaffold = buildPlanScaffold({
+      slug: 'demo',
+      phases: ['A'],
+      declaredSections: { open_questions: [], risks_assumptions: {}, research_context: '' },
+    });
+    const sections = (
+      JSON.parse(scaffold.plan.json) as { sections: { name: string; value: unknown }[] }
+    ).sections;
+    const byName = new Map(sections.map((section) => [section.name, section.value]));
+    expect(byName.get('open_questions')).toEqual([]);
+    expect(byName.get('risks_assumptions')).toEqual({});
+    expect(byName.get('research_context')).toBe('');
+  });
+
+  it('never overwrites a section the scaffold already filled', () => {
+    // `meta` arrives with a real title/slug. A naive "seed everything declared"
+    // pass would flatten it to `{}` and the scaffold would emit a plan with no
+    // identity — silently, because an empty meta is still schema-shaped.
+    const scaffold = buildPlanScaffold({
+      slug: 'demo',
+      title: 'Demo Plan',
+      phases: ['A'],
+      declaredSections: { meta: {}, goals: [] },
+    });
+    const sections = (
+      JSON.parse(scaffold.plan.json) as { sections: { name: string; value: unknown }[] }
+    ).sections;
+    const meta = sections.find((section) => section.name === 'meta')?.value as { title?: string };
+    expect(meta.title).toBe('Demo Plan');
+    expect(sections.filter((section) => section.name === 'meta')).toHaveLength(1);
+  });
+
+  it('records an ordinal on meta and leaves the slug CLEAN', () => {
+    // dogfood-ledger #2's pre-agreed acceptance test. The defect was that the
+    // number had to be typed into the slug, so `meta.slug` carried the prefix and
+    // a later bare-slug run minted a SECOND folder whose meta disagreed.
+    const scaffold = buildPlanScaffold({ slug: 'dd-consume-upgrade', ordinal: 80, phases: ['A'] });
+    const meta = (
+      JSON.parse(scaffold.plan.json) as { sections: { name: string; value: unknown }[] }
+    ).sections.find((section) => section.name === 'meta')?.value as {
+      slug?: string;
+      ordinal?: number;
+    };
+    expect(meta.slug).toBe('dd-consume-upgrade');
+    expect(meta.slug).not.toContain('80');
+    expect(meta.ordinal).toBe(80);
+  });
+
+  it('omits ordinal entirely when none is given, rather than defaulting one', () => {
+    // A plan with no number must not claim `ordinal: 0` — that is a fact nobody
+    // asserted, and it would sort ahead of every real plan.
+    const scaffold = buildPlanScaffold({ slug: 'demo', phases: ['A'] });
+    const meta = (
+      JSON.parse(scaffold.plan.json) as { sections: { name: string; value: unknown }[] }
+    ).sections.find((section) => section.name === 'meta')?.value as Record<string, unknown>;
+    expect('ordinal' in meta).toBe(false);
+  });
+
+  it('seeds the declared sections into the PHASE task files too', () => {
+    // The task documents share `builder/plan`, so they inherit the same E450
+    // hazard — a fix that only covered plan.dd.json would leave every phase file
+    // needing the manual workaround.
+    const scaffold = buildPlanScaffold({
+      slug: 'demo',
+      phases: ['A'],
+      declaredSections: { open_questions: [] },
+    });
+    const names = (
+      JSON.parse(scaffold.taskFiles[0]?.json ?? '{}') as { sections: { name: string }[] }
+    ).sections.map((section) => section.name);
+    expect(names).toContain('open_questions');
+    expect(names).toContain('done_when');
+  });
+});
+
 describe('harness plan — live over a real corpus', () => {
   let repo = '';
   let previousCwd = '';

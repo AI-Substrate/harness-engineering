@@ -56,6 +56,28 @@ export interface PlanScaffoldInput {
   title?: string;
   /** Phase titles, in order. */
   phases: readonly string[];
+  /**
+   * The plan's ordinal (the numeric prefix on its folder), when the caller knows
+   * it. Recorded on `meta.ordinal` so the document states its own position
+   * instead of leaving it to be re-derived from a folder name.
+   */
+  ordinal?: number;
+  /**
+   * Every section the RESOLVED schema declares, as `name -> empty value`.
+   *
+   * `plan new` used to seed a fixed list, which was fine until an author tried to
+   * write into a section the schema declares but the scaffold never created:
+   * `dd add <plan>#open_questions …` fails **E450 `section-absent`** —
+   * "the writer verbs cannot create a section today". The workaround was to
+   * hand-seed the section first, which is dogfood-ledger #1's authoring
+   * workaround, harness half.
+   *
+   * Passing the declared set closes it at the source: whatever the schema
+   * declares, the scaffold creates empty. Optional so the scaffold still works
+   * when the schema cannot be resolved — the caller reports that separately, and
+   * a scaffold that emits the old fixed list beats one that refuses to emit.
+   */
+  declaredSections?: Readonly<Record<string, unknown>>;
 }
 
 export interface ScaffoldedDocument {
@@ -67,6 +89,31 @@ export interface ScaffoldedDocument {
 export interface PlanScaffold {
   plan: ScaffoldedDocument;
   taskFiles: ScaffoldedDocument[];
+}
+
+interface SeededSection {
+  name: string;
+  value: unknown;
+}
+
+/**
+ * Add every schema-declared section the scaffold did not already write, empty.
+ *
+ * Order matters for readability, not correctness: the hand-written sections stay
+ * first, in the sequence a reader expects, and the schema's extras follow in
+ * declaration order. Sections the scaffold already seeded are never overwritten —
+ * a real `meta` must not be flattened to an empty object by this pass.
+ */
+function withDeclaredSections(
+  sections: readonly SeededSection[],
+  declared: Readonly<Record<string, unknown>> | undefined,
+): SeededSection[] {
+  if (declared === undefined) return [...sections];
+  const present = new Set(sections.map((section) => section.name));
+  const additions = Object.entries(declared)
+    .filter(([name]) => !present.has(name))
+    .map(([name, value]) => ({ name, value }));
+  return [...sections, ...additions];
 }
 
 function stringify(value: unknown): string {
@@ -111,6 +158,7 @@ export function buildPlanScaffold(input: PlanScaffoldInput): PlanScaffold {
         value: {
           title,
           slug: input.slug,
+          ...(input.ordinal !== undefined && { ordinal: input.ordinal }),
           status: 'draft',
           summary: '',
         },
@@ -159,5 +207,23 @@ export function buildPlanScaffold(input: PlanScaffoldInput): PlanScaffold {
     }),
   }));
 
-  return { plan: { relativePath: 'plan.dd.json', json: stringify(plan) }, taskFiles };
+  const seeded = {
+    ...plan,
+    sections: withDeclaredSections(plan.sections, input.declaredSections),
+  };
+  const seededTaskFiles = taskFiles.map((file) => {
+    const parsed = JSON.parse(file.json) as { sections: SeededSection[] };
+    return {
+      relativePath: file.relativePath,
+      json: stringify({
+        ...parsed,
+        sections: withDeclaredSections(parsed.sections, input.declaredSections),
+      }),
+    };
+  });
+
+  return {
+    plan: { relativePath: 'plan.dd.json', json: stringify(seeded) },
+    taskFiles: seededTaskFiles,
+  };
 }

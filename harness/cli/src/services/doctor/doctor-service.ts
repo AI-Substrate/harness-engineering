@@ -1,3 +1,6 @@
+import { parse as parseDd } from '@ai-substrate/dd/core/parse';
+import { shouldExcludeFromSweep } from '@ai-substrate/dd/core/walk';
+import { DD_SUFFIX, scanCorpus } from '@ai-substrate/dd/links';
 import type { Clock } from '../../adapters/clock/clock-port.js';
 import type { DbPort } from '../../adapters/db/db-port.js';
 import type { EnvPort } from '../../adapters/env/env-port.js';
@@ -8,9 +11,6 @@ import type { HashPort } from '../../adapters/hash/hash-port.js';
 import type { ProcessPort } from '../../adapters/process/process-port.js';
 import { type Envelope, formatDegraded, formatOk } from '../../output/envelope.js';
 import { ErrorCodes } from '../../output/error-codes.js';
-import { parse as parseDd } from '@ai-substrate/dd/core/parse';
-import { shouldExcludeFromSweep } from '@ai-substrate/dd/core/walk';
-import { DD_SUFFIX, scanCorpus } from '@ai-substrate/dd/links';
 import type { ExtensionRecord } from '../extensions/contract.js';
 import type { VerbRegistry } from '../extensions/registry.js';
 import { AGENTS_FILE, readAgentsBlock } from '../instructions/commit-guidance.js';

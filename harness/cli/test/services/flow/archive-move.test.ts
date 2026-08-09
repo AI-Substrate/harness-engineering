@@ -12,7 +12,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import { runCli, runCliIn, runDd } from '../../support/run-cli.js';
+import { runCliIn, runDd } from '../../support/run-cli.js';
 
 /**
  * tk-7165 / dw-0008 — the archive move, proven end to end.
