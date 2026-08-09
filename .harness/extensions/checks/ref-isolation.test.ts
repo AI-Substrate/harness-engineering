@@ -106,6 +106,27 @@ describe('checks --ref', () => {
     expect(calls.some((c) => c.args[0] === 'worktree' && c.args[1] === 'remove')).toBe(false);
   });
 
+  it('reports stale worktrees from interrupted runs instead of deleting them', async () => {
+    // MEASURED: killing a run mid-install leaves the entry registered, and
+    // `git worktree prune` does NOT reclaim it (the directory still exists).
+    // They are reported, not removed — a concurrent seat may be running its own
+    // --ref gate and the name cannot tell a crashed tree from a live one.
+    const { ctx, calls } = makeCtx({
+      options: { ref: 'abc' },
+      exec: (c) => {
+        if (c.args.includes('rev-parse')) return { code: 0, stdout: 'deadbeef\n', stderr: '' };
+        if (c.args[0] === 'worktree' && c.args[1] === 'list')
+          return { code: 0, stdout: 'worktree /tmp/harness-checks-ref-OLD\nworktree /repo\n', stderr: '' };
+        return { code: 0, stdout: okEnvelope, stderr: '' };
+      },
+    });
+    const r = (await checks.run(ctx)) as unknown as { data: { staleWorktrees?: string[] } };
+    expect(r.data.staleWorktrees).toEqual(['/tmp/harness-checks-ref-OLD']);
+    // Reported, never reaped: only its OWN worktree may be removed.
+    const removed = calls.filter((c) => c.args[0] === 'worktree' && c.args[1] === 'remove');
+    expect(removed.every((c) => !c.args.includes('/tmp/harness-checks-ref-OLD'))).toBe(true);
+  });
+
   it('rejects a bad ref before creating anything', async () => {
     const { ctx, calls } = makeCtx({
       options: { ref: 'nope' },

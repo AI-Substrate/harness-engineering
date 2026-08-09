@@ -895,6 +895,16 @@ of 18**, behind only the entire test suite.
 | Measured median wall for the whole phase | **1,475 ms** |
 | Share of phase that is process creation | **~100 %** |
 
+> **Provenance of the 131** (added after the fact, so a future reader is not
+> misled): this figure was measured **before `6a43fd4d`**, when `markdown-lint`
+> had three checks. That commit added a fourth, `unexamined`, which reports
+> in-scope *untracked* markdown and carries its **own** `examined` denominator —
+> so a post-`6a43fd4d` run shows four checks and two different "examined"
+> numbers. The 131 here is the **tracked** file count feeding
+> markdownlint/links/mermaid, and it still reproduces: verified by reading the
+> diff, `6a43fd4d` only adds, and leaves the `git ls-files` scope of the three
+> original checks untouched. The `264 = 131 × 2 + 2` derivation is unaffected.
+
 The spawn floor alone (~1.8 s) **meets or exceeds the phase's entire measured
 median**. Within the precision this box allows, **essentially all of
 `markdown-lint`'s cost is creating processes, and none of it is linting

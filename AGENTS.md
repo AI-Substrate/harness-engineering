@@ -53,6 +53,8 @@ This repo HAS its own governance doc at `.harness/engineering-harness.md` (hand-
 
 **`harness checks --ref <ref> [--keep]`** runs the whole gate against any ref in a throwaway worktree that installs its own dependencies, and returns a verdict pinned to the resolved sha. Your tree is never touched — the isolation is structural, so there is nothing to be careful about. ~55s cold. The isolated tree **must** own its `node_modules`: vitest writes `node_modules/.vite/vitest/<hash>/results.json` on an ordinary run, so sharing or symlinking deps would leak writes back into your checkout — an untracked write, invisible to `git status`.
 
+If a `--ref` run is **interrupted**, it leaves a registered worktree — and **`git worktree prune` will not reclaim it**, because prune only drops entries whose directory is gone and a half-installed tree still has one. Recover with `git worktree remove --force <path>`. The verb reports any it finds rather than deleting them: another seat may be running its own `--ref` gate, and the name cannot distinguish a crashed tree from a live one. **`git worktree prune` is itself repo-global** — it can remove other seats' entries, so prefer the targeted `remove`.
+
 ### Test scope: the suite runs FAST by default, and says so
 
 The test suite defaults to a **fast scope** that skips the 12 slowest files — **5% of the tests, ~81% of the runtime, 1,363 of 1,617 process spawns** (measured: `just test` 22.5s → 8.9s; `harness checks` 31.5s → 19.6s). The list is `SLOW_TESTS` in `harness/cli/vitest.config.ts`, each entry carrying its measured median.

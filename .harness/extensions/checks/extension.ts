@@ -107,6 +107,34 @@ async function runVerbGate(
 }
 
 /**
+ * Stale `--ref` worktrees left by an earlier interrupted run.
+ *
+ * MEASURED, not assumed: killing a run mid-install leaves the worktree
+ * registered, and `git worktree prune` does NOT reclaim it — prune only drops
+ * entries whose directory is missing, and a half-installed tree still has one.
+ * (During that test the prune ALSO removed an unrelated dead entry belonging to
+ * another seat, which made the worktree count return to its baseline and look
+ * like success. The count agreed; the thing it was supposed to prove did not.)
+ *
+ * These are REPORTED, never removed: a concurrent seat may legitimately be
+ * running its own `--ref` gate, and nothing in the name distinguishes a crashed
+ * tree from a live one. Deleting a peer's in-flight worktree would be exactly
+ * the shared-state mutation this verb exists to end.
+ */
+async function findStaleRefWorktrees(
+  ctx: Parameters<HarnessVerb['run']>[0],
+  selfDir: string,
+): Promise<string[]> {
+  const r = await ctx.exec('git', ['worktree', 'list', '--porcelain'], { cwd: ctx.cwd });
+  if (!r.ok) return [];
+  return r.stdout
+    .split('\n')
+    .filter((l) => l.startsWith('worktree '))
+    .map((l) => l.slice('worktree '.length).trim())
+    .filter((p) => p.includes('harness-checks-ref-') && p !== selfDir);
+}
+
+/**
  * Run the gate against a REF, in a throwaway worktree that owns everything it
  * touches (#145).
  *
@@ -132,9 +160,19 @@ async function runVerbGate(
  *    proving a negative about what the toolchain writes, and one unpredicted
  *    write has already been found.
  *  - Cleanup is unconditional (`finally`). The failure mode this verb REPLACES
- *    fails by silent acquisition; this one fails by leaving a stale worktree,
- *    which is listable and prunable. Trading an invisible failure for a visible
- *    one is most of the point — so the visible one must not be swallowed.
+ *    fails by silent acquisition; this one fails by leaving a stale worktree.
+ *    MEASURED, because "acceptable by design" and "observed" are different
+ *    claims: kill a run mid-install and the entry survives, and
+ *    `git worktree prune` does NOT reclaim it — prune only drops entries whose
+ *    directory is GONE, and a half-installed tree still has one. Recovery is
+ *    `git worktree remove --force <path>`. So stale trees are surfaced in the
+ *    envelope below with that exact command, rather than left for someone to
+ *    discover via a puzzling `git worktree list`.
+ *
+ * Stale trees are REPORTED, never auto-removed. Another seat may be running a
+ * `--ref` gate concurrently, and reaping by name alone cannot tell a crashed
+ * tree from a live one — silently deleting a peer's in-flight worktree would be
+ * a fresh instance of the shared-state mutation this verb exists to end.
  *
  * There is deliberately NO platform-divergent fast path (e.g. an APFS
  * copy-on-write clone of `node_modules`). It would mean the isolated tree is
@@ -166,6 +204,7 @@ async function runAgainstRef(
   const sha = rev.stdout.trim();
 
   const dir = ctx.fsWrite.mkdtemp('harness-checks-ref-');
+  const stale = await findStaleRefWorktrees(ctx, dir);
   let added = false;
   try {
     const add = await ctx.exec('git', ['worktree', 'add', '--detach', dir, sha], { cwd: ctx.cwd });
@@ -224,9 +263,14 @@ async function runAgainstRef(
       durationMs: inner.data?.durationMs,
       summary: inner.data?.summary ?? '',
       gates: inner.data?.gates ?? [],
+      ...(stale.length > 0 ? { staleWorktrees: stale } : {}),
     };
     const status = inner.status ?? (run.ok ? 'ok' : 'error');
-    const basis = `Gate run against ${ref} (${sha.slice(0, 12)}), test scope "${scope}", in an isolated worktree — your tree was not touched.`;
+    const staleNote =
+      stale.length > 0
+        ? ` NOTE: ${stale.length} stale --ref worktree(s) from an interrupted run — \`git worktree prune\` will NOT reclaim these (the directory still exists); use \`git worktree remove --force <path>\`: ${stale.join(', ')}`
+        : '';
+    const basis = `Gate run against ${ref} (${sha.slice(0, 12)}), test scope "${scope}", in an isolated worktree — your tree was not touched.${staleNote}`;
 
     if (status === 'error') {
       return ctx.error('E_CHECKS_FAILED', `Quality gate failed at ${ref} (${sha.slice(0, 12)}).`, {

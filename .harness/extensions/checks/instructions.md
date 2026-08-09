@@ -83,7 +83,12 @@ Two invariants, both load-bearing:
   invisible to `git status`. No dependency-sharing scheme, however clever.
 
 Test scope defaults to `all` here (a ref verdict should mean the whole gate),
-overridden by `HARNESS_TEST_SCOPE`. Cleanup is unconditional: the failure mode is
-a *stale worktree*, which `git worktree list` shows and `git worktree prune`
-clears — visible, unlike the one it replaces. `.harness/extensions/checks/ref-isolation.test.ts`
-asserts the negative (nothing gate-like runs in the caller's cwd).
+overridden by `HARNESS_TEST_SCOPE`. Cleanup is unconditional — but if a run is
+**interrupted** (killed, or `npm ci` fails) the worktree survives, and
+**`git worktree prune` will NOT reclaim it**: prune only drops entries whose
+directory is missing, and a half-installed tree still has one. Recovery is
+`git worktree remove --force <path>`, and the verb reports any it finds rather
+than deleting them — a concurrent seat may be running its own `--ref` gate, and
+the name alone cannot tell a crashed tree from a live one.
+`.harness/extensions/checks/ref-isolation.test.ts` asserts the negative (nothing
+gate-like runs in the caller's cwd).
