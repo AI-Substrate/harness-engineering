@@ -1,0 +1,21 @@
+docs/plans/082-harness-hooks/the-flow.json
+  s_a76964380084ef::t_040ada6ed0a9a7 326-337,433-441
+docs/plans/082-harness-hooks/the-flow.md
+  s_a76964380084ef::t_4aa5aa35e8eaa4 4,13,51-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "fe356dd26340dc67058e28f6e813d4ad62dd8189",
+  "prompts": {},
+  "sessions": {
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
