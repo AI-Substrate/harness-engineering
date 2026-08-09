@@ -1,0 +1,19 @@
+.harness/records/retro/2026-08-09/002-082-harness-hooks-phases-2-3.md
+  s_f1a7ee9f435ed3::t_8852fb8ffac184 169-217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "96fd9808e131cc4232dcde29ae8b30cc39d3be61",
+  "prompts": {},
+  "sessions": {
+    "s_f1a7ee9f435ed3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6616ca6a-61c0-4a92-b9be-3512605a2826",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
