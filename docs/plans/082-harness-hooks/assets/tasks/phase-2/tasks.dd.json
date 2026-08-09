@@ -501,6 +501,12 @@
             "assertion": "Mutating the journal read away turns the fixture RED — the assertion cannot be satisfied by status merely reporting the config entry exists.",
             "state": "unchecked",
             "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-0040",
+            "assertion": "status is the FIRST real caller of compact(), so it is where the rotation fix stops being a unit property and becomes a live one. The doubled-rotation defect was measured at ce594abf (2001 live records reduced to 1 by two rotations racing) and fixed with an exclusive claim PLUS a re-check after taking it — the claim alone is insufficient, since the second rotator's guard was passed before the first rename. This task asserts the fix holds when status drives it: concurrent status invocations over a journal past the rotate threshold lose no records, measured on the real filesystem rather than modelled.",
+            "state": "unchecked",
+            "pressure": "not-applicable"
           }
         ],
         "tk-000d": [

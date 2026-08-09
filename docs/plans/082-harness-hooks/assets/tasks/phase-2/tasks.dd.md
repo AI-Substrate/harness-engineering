@@ -162,6 +162,7 @@ The installer, built as ONE declarative matrix over four write strategies — th
 | dw-002c | Proven against Phase 1's unreachable-socket fixture: a fire that failed to emit is VISIBLE in status output, asserted on the journal-derived field and never on an exit code. | [ ] unchecked | not-applicable |
 | dw-002d | A repo with no journal yet is reported as no-fires-recorded, distinctly from all-fires-succeeded. | [ ] unchecked | not-applicable |
 | dw-002e | Mutating the journal read away turns the fixture RED — the assertion cannot be satisfied by status merely reporting the config entry exists. | [ ] unchecked | not-applicable |
+| dw-0040 | status is the FIRST real caller of compact(), so it is where the rotation fix stops being a unit property and becomes a live one. The doubled-rotation defect was measured at ce594abf (2001 live records reduced to 1 by two rotations racing) and fixed with an exclusive claim PLUS a re-check after taking it — the claim alone is insufficient, since the second rotator's guard was passed before the first rename. This task asserts the fix holds when status drives it: concurrent status invocations over a journal past the rotate threshold lose no records, measured on the real filesystem rather than modelled. | [ ] unchecked | not-applicable |
 
 ### tk-000d
 
