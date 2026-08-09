@@ -797,3 +797,145 @@ green is a smaller claim than a CI green, by design and by declaration.
 | Linux | **MEASURED** | native arm64, 26 files / 469 tests |
 | Windows | **EXPECTED-UNVERIFIED** | three named questions above |
 | A sandboxed Cursor commit gets attributed | **UNVERIFIED** | the prompt exists; the run has not happened |
+
+---
+
+## PHASE 3 REVIEW FIXES — F001 and F002
+
+Cross-model review: **REQUEST_CHANGES, two confirmed HIGH**
+(`assets/tasks/phase-3/reviews/review.phase-3.md`). Both attack the same guarantee — the one the
+live install was authorised on: *fully reversible with `harness hooks uninstall`*. Both produce the
+same end state: **a config file we created, left behind after an uninstall the user believes cleaned
+up.** Both are in provenance; the review's mutations found the escape fence and the recovery path
+clean.
+
+### The concentration the review exposes, stated once
+
+**The install record is the single point of truth for what uninstall may delete, and both findings
+are failures to WRITE or MERGE it.** A design where *no record* is indistinguishable from *we
+created nothing* fails toward leaving cruft — the safe direction, chosen deliberately (see
+`install-record.ts`) — but the corollary was never written down: **every record-write bug degrades
+cleanup silently.** There is no signal at uninstall time that provenance was ever expected. F001 is
+that corollary arriving as a defect, and F002 is it arriving as an untested invariant.
+
+### Both findings reproduced INDEPENDENTLY before any code was changed
+
+Neither was taken on the reviewer's report.
+
+**F001 — install ignored `recordInstall` returning false.** Real bin, `~/.harness` occupied by a
+regular file:
+
+```text
+install  → "installed": [{ "agent": "cursor", … "created": true }],  "failed": []
+uninstall→ "removed": [{ … "entries": 2, "deleted": false }]
+after    → /tmp/f001-home/.cursor/hooks.json  STILL EXISTS  {"hooks":{"preToolUse":[],"postToolUse":[]}}
+```
+
+The original state was **no file at all**. The install reported success for a write that did not
+happen — the shape named in this plan's own doctor work: *naming a backup you did not take is the
+harm*.
+
+**F002 — the merge-across-installs guarantee had no assertion.** The reviewer's own mutation
+(`createdFile: outcome.created` / `createdKeys: [...outcome.createdKeys]`, replacing the OR and the
+union) applied to `install-record.ts`, rebuilt, then:
+
+```text
+targeted hooks suite, HARNESS_TEST_SCOPE=all: Test Files 23 passed · Tests 383 passed (383)
+real bin, install → install → uninstall: "deleted": false · hooks.json SURVIVES
+```
+
+**383 green under a mutant that leaves a file we created on the user's disk.** This is not the
+deliverable-vs-layer shape the phase-2 sweep was built to catch, and it is worse: there was **no row
+at all**. The property was described precisely — *"merged rather than replaced; installing twice must
+not forget that the FIRST install created the key"* — implemented correctly, and never asserted. The
+existing second-install row asserts the **config bytes** do not change, which is idempotency; the
+provenance lives in a different file that row never opens.
+
+**Why the second install is the dangerous one:** it finds our entry present, creates nothing, and its
+own outcome is honestly empty. Only the merge with what the FIRST install recorded remembers that the
+file is ours. An overwrite is invisible in every artifact except the one nobody was reading.
+
+### F001, fixed with two mechanisms — and why both
+
+1. **`ensureRecordWritable` — asked BEFORE the first config is touched.** An idempotent round trip
+   (read the record, write it back) rather than a probe file, so a failure leaves no litter. If it
+   fails, every detected+supported agent is reported in `failed` **by name** with the record path,
+   and **nothing is written**.
+2. **The return value of `recordInstall` is now checked**, and on failure the entries this run wrote
+   are **compensated** through the real `uninstallStrategyA` — using the in-memory outcomes, which
+   are the only provenance that exists at that moment and are exactly what uninstall would have read.
+
+The probe alone cannot cover a disk that fills between the probe and the write. The compensation
+alone leaves a **window**: the config is written, and a process killed before the undo leaves the
+orphan F001 is about. Compensation touches **only what this run wrote** — an `alreadyPresent` file
+belongs to an earlier run whose record probably did persist, and removing its entry to compensate for
+our bookkeeping failure would be a worse error than the one being compensated.
+
+### The gap I found in my own fix, by asking what would still pass
+
+**Delete the probe entirely and the real-bin F001 row still passes.** Install writes the config, the
+record write fails, the compensation undoes it, and the observable end state — named failure, config
+absent — is *identical*. Two mechanisms, one visible outcome, and the review's own finding was a
+mechanism nothing could distinguish. So the probe got the row that distinguishes it: **assert on the
+writes ATTEMPTED**, which is the only place "never written" and "written, then un-written" differ.
+
+### Five mutations, five RED
+
+Anchor-checked, rebuilt each time, restored after each — including on build failure.
+
+| # | mutation | result |
+|---|---|---|
+| M1 | the reviewer's own: merge → replacement in `recordInstall` | **RED** — 2 failed (both new F002 rows) |
+| M2 | the pre-flight probe branch deleted | **RED** — `attempts NO config write at all…` |
+| M3 | `recordInstall`'s return value discarded again (the original defect) | **RED** — 2 failed |
+| M4 | compensation over-reaches into an earlier install | **RED** — `leaves an EARLIER install alone…` |
+| M5 | the probe always says yes | **RED** — same row as M2 |
+
+**M2 and M5 fail ONE row, not two** — the real-bin F001 row stays green under both. That is the
+defence-in-depth result stated as a measurement rather than a hope: the two mechanisms are genuinely
+redundant on the end state, which is exactly why the write-attempt row had to exist.
+
+### My mutation harness reported the wrong answer first — the third instrument failure of the night
+
+The first run printed `M1: !!! SURVIVED !!!` while the output beneath it read `Tests 2 failed | 52
+passed`. Two bugs, both mine: the RED detector grepped `Tests +[0-9]+ failed` against **ANSI-coloured
+output**, and the build-failure branch `return`ed *before* `restore`, so M3's broken source stayed on
+disk and M4 and M5 "failed to build" against code they never touched.
+
+Both halves reported confidently. That is the PM's lost `cut`, and my earlier mis-parse of
+`digest N bytes path`, arriving a third time in the same evening — **a broken instrument reports its
+answer in exactly the format a working one uses**. The tell was structural, not textual: a mutation
+"surviving" a suite that says `2 failed` is not a plausible shape.
+
+### A cosmetic residue, measured while writing the F002 row and NOT hidden
+
+Install → install → uninstall on a config that had `"hooks": {}` returns a file that **parses equal**
+to the original with **no key of ours surviving** — but is not byte-identical: removing the last key
+leaves the surgical writer's `{\n  }` where the user wrote `{}`. That is whitespace inside a
+container we legitimately edited; the writer is textual precisely so it preserves comments and every
+byte it did not touch, and collapsing the brace would mean reformatting on the user's behalf. The row
+therefore asserts the true claim (parse-equal, keys gone, **whitespace-only** difference) rather than
+a byte claim it would have had to weaken later. This is consistent with the phase-3 close, which
+already declined to claim byte equality on uninstall.
+
+### Rows added
+
+| row | file | proves |
+|---|---|---|
+| install, install, uninstall — a file WE created is still deleted | `verbs-e2e.int.test.ts` | F002, real bin, three separate OS processes |
+| install, install, uninstall — event keys WE created still disappear | `verbs-e2e.int.test.ts` | F002's `createdKeys` half, over a user's own file |
+| refuses BY NAME and leaves the config exactly as it found it | `verbs-e2e.int.test.ts` | F001, real bin, `~/.harness` a regular file |
+| the record write fails AFTER the probe passed | `hooks-verbs.test.ts` | the compensation path |
+| leaves an EARLIER install alone when this run wrote nothing | `hooks-verbs.test.ts` | the compensation's own stated invariant |
+| attempts NO config write at all when provenance is unwritable | `hooks-verbs.test.ts` | the probe, distinguished from the compensation |
+
+Targeted hooks suite: **383 → 389 tests, all green** (`HARNESS_TEST_SCOPE=all`).
+
+### Softest claim on this fix
+
+**The compensation has never run on a real filesystem failure, only on an injected one.** Every row
+that exercises it makes `writeText` throw from a wrapper around `NodeFs`; the probe's refusal is
+proven against a genuinely occupied `~/.harness` on the real bin, but the *race* the compensation
+exists for — a disk filling between the probe and the write — is reasoned, not measured. Its direction
+is safe (it can only remove entries this run wrote, and it reports `stranded` when it cannot), and
+that is an argument about the shape of the error, not evidence that it fires.

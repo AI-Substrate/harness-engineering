@@ -46,6 +46,42 @@ export function installRecordPath(stateDir: string): string {
   return `${stateDir.replace(/\/+$/, '')}/install-record.json`;
 }
 
+/**
+ * CAN we persist provenance? Asked BEFORE the first config is touched.
+ *
+ * WHY A PROBE AND NOT JUST A RETURN VALUE (plan 082, phase-3 review F001). The
+ * record is the single point of truth for what uninstall may delete, so a config
+ * written without one is a config uninstall under-removes — the safe direction, and
+ * still a file left on a user's machine after a cleanup they believe succeeded. The
+ * review reproduced exactly that with `~/.harness` occupied by a regular file: the
+ * install reported `created: true` and `failed: []`, and the created config survived
+ * the uninstall.
+ *
+ * ASKING FIRST IS STRICTLY BETTER THAN COMPENSATING AFTER, because the end state is
+ * the original one rather than a restored one — nothing was written, so nothing has
+ * to be un-written correctly. It does not REPLACE the return-value check in
+ * {@link recordInstall}: a probe answers for the instant it ran, and the disk can
+ * fill between the probe and the write. Both, therefore: this closes the
+ * reproducible case, and the caller's compensation closes the race.
+ *
+ * IT WRITES THE RECORD IT READ — an idempotent round trip rather than a probe file,
+ * so a failed probe leaves no litter and a successful one leaves only the empty
+ * record it would have created anyway.
+ */
+export function ensureRecordWritable(fs: FsPort, stateDir: string): boolean {
+  const record = readInstallRecord(fs, stateDir);
+  try {
+    fs.mkdirp(stateDir);
+    fs.writeText(installRecordPath(stateDir), serialize(record.entries));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const serialize = (entries: readonly InstallRecordEntry[]): string =>
+  `${JSON.stringify({ version: INSTALL_RECORD_VERSION, entries }, null, 2)}\n`;
+
 const EMPTY: InstallRecord = { version: INSTALL_RECORD_VERSION, entries: [] };
 
 /** Read the record, or an empty one. NEVER throws — absence is a normal state. */
@@ -95,10 +131,7 @@ export function recordInstall(
 
   try {
     fs.mkdirp(stateDir);
-    fs.writeText(
-      installRecordPath(stateDir),
-      `${JSON.stringify({ version: INSTALL_RECORD_VERSION, entries: [...byPath.values()] }, null, 2)}\n`,
-    );
+    fs.writeText(installRecordPath(stateDir), serialize([...byPath.values()]));
     return true;
   } catch {
     return false;
@@ -113,10 +146,7 @@ export function forgetInstalled(fs: FsPort, stateDir: string, paths: readonly st
   const entries = record.entries.filter((e) => !drop.has(e.path));
   try {
     fs.mkdirp(stateDir);
-    fs.writeText(
-      installRecordPath(stateDir),
-      `${JSON.stringify({ version: INSTALL_RECORD_VERSION, entries }, null, 2)}\n`,
-    );
+    fs.writeText(installRecordPath(stateDir), serialize(entries));
   } catch {
     // A record we could not prune leaves stale provenance, which can only ever cause
     // us to remove a key we did create. Never fatal.

@@ -479,3 +479,135 @@ describe('provenance is pruned on NO-LONGER-OURS, not on WE-REMOVED-IT', () => {
     expect(entriesOf()).not.toContain(config);
   });
 });
+
+describe('a stated invariant with no assertion (phase-3 review F002)', () => {
+  /*
+   * THE PROPERTY WAS DESCRIBED PRECISELY, IMPLEMENTED CORRECTLY, AND NEVER ASSERTED.
+   *
+   * "Provenance recorded before the first write, persisted, MERGED rather than
+   * replaced — installing twice must not forget that the FIRST install created the
+   * key" was written down as a deliverable. The reviewer replaced the union in
+   * `recordInstall` with a plain replacement and ALL 383 tests in the targeted hooks
+   * suite stayed green, then reproduced the consequence on the real bin: install,
+   * install, uninstall, and a config we created survives.
+   *
+   * That is not the deliverable-vs-layer shape the earlier sweep was built to catch.
+   * It is narrower and worse — there was no row at all. The existing second-install
+   * row asserts the CONFIG BYTES do not change, which is idempotency; the provenance
+   * lives in a different file and was never read.
+   *
+   * WHY THE SECOND INSTALL IS THE DANGEROUS ONE: it finds our entry already present,
+   * so it creates nothing and its own outcome is honestly empty. Only the merge with
+   * what the FIRST install recorded remembers that the file is ours. An overwrite is
+   * invisible in every artifact except the one nobody was reading.
+   *
+   * Both rows run install twice as SEPARATE PROCESSES, because the record only
+   * round-trips through the filesystem that way.
+   */
+  const cursorConfig = () => join(home, '.cursor', 'hooks.json');
+
+  it('install, install, uninstall — a file WE created is still deleted', () => {
+    /*
+    Test Doc:
+    - Contract: with no config to begin with, two installs and one uninstall leave the
+      filesystem as it started. Asserted on the filesystem, and on `deleted` in the
+      delivered payload so a silent no-op cannot pass.
+    */
+    mkdirSync(join(home, '.cursor'), { recursive: true });
+    expect(existsSync(cursorConfig())).toBe(false);
+
+    run(['install', '--json']);
+    run(['install', '--json']);
+    expect(existsSync(cursorConfig())).toBe(true);
+
+    const report = JSON.parse(run(['uninstall', '--json'])) as {
+      removed: { agent: string; deleted: boolean }[];
+    };
+    expect(report.removed.find((r) => r.agent === 'cursor')?.deleted).toBe(true);
+    expect(existsSync(cursorConfig())).toBe(false);
+  });
+
+  it('install, install, uninstall — event keys WE created still disappear', () => {
+    /*
+    Test Doc:
+    - Why: the createdKeys half of the same guarantee, and the one with a user's file
+      underneath it. A config that exists but carries no event keys is the ordinary
+      state of a `settings.json` holding only `model` — install creates both arrays,
+      and only the first install knows it did.
+    - Contract: after two installs and an uninstall the keys we created are GONE and
+      the file is byte-identical to the one the user had.
+    */
+    mkdirSync(join(home, '.cursor'), { recursive: true });
+    const before = `${JSON.stringify({ version: 1, hooks: {} }, null, 2)}\n`;
+    writeFileSync(cursorConfig(), before);
+
+    run(['install', '--json']);
+    run(['install', '--json']);
+    const afterInstall = JSON.parse(readFileSync(cursorConfig(), 'utf8')) as {
+      hooks: Record<string, unknown>;
+    };
+    expect(Object.keys(afterInstall.hooks).sort()).toEqual(['postToolUse', 'preToolUse']);
+
+    run(['uninstall', '--json']);
+    const after = readFileSync(cursorConfig(), 'utf8');
+    // Not "the arrays are empty" — the keys we created are not there AT ALL, and the
+    // user's own document is otherwise the one they wrote.
+    expect(JSON.parse(after)).toEqual(JSON.parse(before));
+    expect(Object.keys((JSON.parse(after) as { hooks: object }).hooks)).toEqual([]);
+
+    /*
+     * MEASURED WHILE WRITING THIS ROW, and stated rather than hidden: the file is NOT
+     * byte-identical. Removing the last key from `hooks` leaves the surgical writer's
+     * `{\n  }` where the user had `{}`. That is whitespace inside a container we
+     * legitimately edited — the writer is deliberately textual so it preserves
+     * comments and every byte it did not touch, and collapsing that brace would mean
+     * reformatting a region on the user's behalf.
+     *
+     * So the claim is narrowed to what is true: no key of ours survives, the document
+     * parses equal, and the only residue is whitespace. Asserting it here means a
+     * future change that starts rewriting real bytes cannot pass as "cosmetic".
+     */
+    expect(after.replace(/\s+/g, '')).toBe(before.replace(/\s+/g, ''));
+  });
+});
+
+describe('an install we cannot RECORD is an install we do not CLAIM (phase-3 review F001)', () => {
+  /*
+   * THE INSTALL REPORTED SUCCESS FOR A WRITE THAT DID NOT HAPPEN.
+   *
+   * `recordInstall` has always returned false when it could not persist, and the
+   * caller discarded it. The review reproduced the consequence on the real bin with
+   * `~/.harness` occupied by a regular file: `hooks install --json` reported cursor
+   * `created: true` and `failed: []`, and the config it created then survived
+   * `hooks uninstall` — because the record uninstall reads to know the file is ours
+   * was never written.
+   *
+   * The record is the SINGLE POINT OF TRUTH for what uninstall may delete, so every
+   * failure to write it degrades cleanup, and it degrades it silently: a missing
+   * record is indistinguishable from "we created nothing". That direction is the safe
+   * one and was chosen deliberately — but safe-direction is not the same as correct,
+   * and reversibility is the guarantee the live install was authorised on.
+   *
+   * A REGULAR FILE AT `~/.harness` is the instrument for the same reason a DIRECTORY
+   * at the config path is: platform-independent, and not bypassed by running as root.
+   */
+  it('refuses BY NAME and leaves the config exactly as it found it', () => {
+    mkdirSync(join(home, '.cursor'), { recursive: true });
+    writeFileSync(join(home, '.harness'), 'occupied');
+    const config = join(home, '.cursor', 'hooks.json');
+    expect(existsSync(config)).toBe(false);
+
+    const report = JSON.parse(run(['install', '--json'])) as {
+      installed: { agent: string }[];
+      failed: { agent: string; reason: string }[];
+    };
+
+    // Named, with the path that has to be fixed — not a silent skip.
+    const cursor = report.failed.find((f) => f.agent === 'cursor');
+    expect(cursor).toBeDefined();
+    expect(cursor?.reason).toContain('install-record.json');
+    expect(report.installed).toEqual([]);
+    // And the machine is as it was: no orphan to find later.
+    expect(existsSync(config)).toBe(false);
+  });
+});

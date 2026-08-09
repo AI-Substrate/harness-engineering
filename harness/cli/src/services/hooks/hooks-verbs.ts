@@ -8,7 +8,14 @@ import { extractBinaryPath } from './binary-path.js';
 import { FileHookJournal } from './hook-journal.js';
 import { isOwnedByUs } from './hook-marker.js';
 import { hookJournalPath, hookStateDir } from './hook-payload.js';
-import { forgetInstalled, readInstallRecord, recordInstall } from './install-record.js';
+import {
+  ensureRecordWritable,
+  forgetInstalled,
+  installRecordPath,
+  readInstallRecord,
+  recordInstall,
+} from './install-record.js';
+import type { InstallOutcome } from './install-strategy-a.js';
 import { installStrategyA } from './install-strategy-a.js';
 import { uninstallStrategyA } from './uninstall-strategy-a.js';
 
@@ -179,6 +186,14 @@ export function installHooks(deps: HooksDeps): InstallReport {
   const refused: InstallReport['refused'] = [];
   const failed: InstallReport['failed'] = [];
 
+  // ASKED BEFORE THE FIRST CONFIG IS TOUCHED (phase-3 review F001). An install we
+  // cannot record is an install uninstall cannot fully reverse, and the promise this
+  // family makes to an operator is reversibility. So the question is asked while the
+  // answer is still free: nothing has been written, so refusing costs nothing and
+  // leaves the machine exactly as it was.
+  const stateDir = hookStateDir(deps.home);
+  const canRecord = ensureRecordWritable(deps.fs, stateDir);
+
   for (const report of reports) {
     if (!report.detected) continue;
     if (!report.supported) {
@@ -190,12 +205,27 @@ export function installHooks(deps: HooksDeps): InstallReport {
     }
     const spec = AGENT_MATRIX.find((s) => s.agent === report.agent);
     if (spec === undefined) continue;
+    if (!canRecord) {
+      // BY NAME, like every other failure here — an agent that silently got no hook
+      // is the shape this plan exists to stop.
+      failed.push({ agent: report.agent, reason: unrecordableReason(stateDir, 'nothing') });
+      continue;
+    }
     try {
       const outcomes = installStrategyA(deps.fs, spec, deps.home, deps.env, deps.binary);
       // Provenance FIRST, before anything can fail afterwards: a config we wrote and
       // did not record is one uninstall will under-remove, which is the safe
       // direction but still a divergence between the disk and what we know.
-      recordInstall(deps.fs, hookStateDir(deps.home), outcomes);
+      if (!recordInstall(deps.fs, hookStateDir(deps.home), outcomes)) {
+        // The probe above passed and the write still failed — a disk that filled, a
+        // directory removed underneath us. Undo what THIS run wrote, so the config is
+        // returned to the state whose provenance we could not keep.
+        failed.push({
+          agent: report.agent,
+          reason: unrecordableReason(stateDir, compensate(deps, spec, outcomes)),
+        });
+        continue;
+      }
       for (const outcome of outcomes) {
         installed.push({ agent: outcome.agent, path: outcome.path, created: outcome.created });
       }
@@ -207,6 +237,54 @@ export function installHooks(deps: HooksDeps): InstallReport {
     }
   }
   return { optedOut: false, installed, refused, failed };
+}
+
+/** One sentence, four endings — what happened to the config we could not record. */
+type Compensation = 'nothing' | 'nothing-written' | 'rolled-back' | 'stranded';
+
+function unrecordableReason(stateDir: string, outcome: Compensation): string {
+  const head = `install provenance could not be written to ${installRecordPath(stateDir)}`;
+  if (outcome === 'nothing') return `${head}; nothing was installed for this agent`;
+  if (outcome === 'nothing-written')
+    return `${head}; this run wrote nothing for this agent, so its existing install was left alone`;
+  if (outcome === 'rolled-back') return `${head}; the entries just written were rolled back`;
+  return `${head}, AND the rollback also failed — this agent's config still carries our entry and must be removed by hand`;
+}
+
+/**
+ * Undo the entries this run wrote, using the provenance we hold IN MEMORY.
+ *
+ * The record on disk is precisely what we could not write, so the in-memory outcomes
+ * are the only provenance that exists — and they are exactly the provenance uninstall
+ * would have read. Running the real uninstall path rather than a bespoke unwind keeps
+ * one removal implementation, including its refusals.
+ *
+ * ONLY WHAT THIS RUN WROTE, AND THAT IS THE LOAD-BEARING HALF. An `alreadyPresent`
+ * file was installed by an EARLIER run whose record very likely DID persist; removing
+ * its entry to compensate for our own failed write would undo a good install and
+ * leave a record claiming a file that no longer carries our marker. A compensation
+ * that over-reaches is a worse failure than the one it is compensating for, because
+ * the first is a config we cannot fully remove and this one is a config we removed
+ * without being asked.
+ */
+function compensate(deps: HooksDeps, spec: AgentSpec, outcomes: InstallOutcome[]): Compensation {
+  const ours = outcomes.filter((o) => !o.alreadyPresent);
+  if (ours.length === 0) return 'nothing-written';
+  try {
+    uninstallStrategyA(
+      {
+        fs: deps.fs,
+        home: deps.home,
+        env: deps.env,
+        createdFiles: new Set(ours.filter((o) => o.created).map((o) => o.path)),
+        createdKeys: new Map(ours.map((o) => [o.path, new Set(o.createdKeys)])),
+      },
+      spec,
+    );
+    return 'rolled-back';
+  } catch {
+    return 'stranded';
+  }
 }
 
 /** How a configured binary reads, as three states rather than a boolean. */

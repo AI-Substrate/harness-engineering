@@ -1,4 +1,12 @@
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -204,5 +212,150 @@ describe('`status` proves its target RESOLVES, not merely that an entry exists',
     installHooks(deps());
     const after = statusHooks(deps()).find((r) => r.agent === 'windsurf');
     expect(after?.files.map((f) => f.exists)).toEqual([true, true]);
+  });
+});
+
+describe('the record write fails AFTER the probe passed (phase-3 review F001)', () => {
+  /*
+   * THE PROBE ANSWERS FOR THE INSTANT IT RAN. `ensureRecordWritable` closes the
+   * reproducible case — an occupied `~/.harness` — by asking before anything is
+   * written, so the refusal costs nothing and the machine is left exactly as it was.
+   * It cannot close the race: a disk can fill, or a directory be removed, between the
+   * probe and the real write.
+   *
+   * This row drives the branch the probe cannot reach, and it is the reason the
+   * return value of `recordInstall` is checked as well as the probe. Without it the
+   * compensation path would be code nothing exercises — which is the shape that
+   * produced F002 one finding earlier.
+   *
+   * WHY THE FAKE WRAPS NodeFs RATHER THAN REPLACING IT: everything except the one
+   * failing write must behave exactly as it does in production, including the config
+   * write we then have to undo. A fake filesystem would be asserting the fake.
+   */
+  it('rolls the config back and reports the agent as FAILED', () => {
+    present('.cursor');
+    const config = join(home, '.cursor', 'hooks.json');
+
+    let recordWrites = 0;
+    const flaky = {
+      ...fs,
+      exists: (p: string) => fs.exists(p),
+      readText: (p: string) => fs.readText(p),
+      mkdirp: (p: string) => fs.mkdirp(p),
+      deleteFile: (p: string) => fs.deleteFile(p),
+      writeText: (p: string, text: string) => {
+        if (p.endsWith('install-record.json')) {
+          recordWrites += 1;
+          // The probe's round trip is the first write and must succeed, or this row
+          // would be re-testing the refusal instead of the compensation.
+          if (recordWrites > 1) throw new Error('ENOSPC: no space left on device');
+        }
+        fs.writeText(p, text);
+      },
+    } as typeof fs;
+
+    const report = installHooks(deps({ fs: flaky }));
+
+    expect(report.installed).toEqual([]);
+    const cursor = report.failed.find((f) => f.agent === 'cursor');
+    expect(cursor?.reason).toContain('rolled back');
+    // The compensation ran through the real uninstall path: a file we created is
+    // deleted, so the filesystem is back where it started.
+    expect(existsSync(config)).toBe(false);
+  });
+});
+
+describe('the compensation does not over-reach (phase-3 review F002, applied to F001)', () => {
+  /*
+   * F002 WAS A STATED INVARIANT WITH NO ASSERTION. The compensation added for F001
+   * carries one of exactly the same kind — "only what THIS run wrote" — written down
+   * in a doc comment, and it would be silently lost the moment somebody simplified
+   * the filter away. So it gets its row here rather than a sentence there.
+   *
+   * The case: a good install already exists, a second install finds our entry present
+   * and writes nothing, and THEN the record write fails. There is nothing of this
+   * run's to undo, and undoing the earlier run's entry would remove a working install
+   * to compensate for a bookkeeping failure — a strictly worse outcome than the one
+   * being compensated for.
+   */
+  it('leaves an EARLIER install alone when this run wrote nothing', () => {
+    present('.cursor');
+    const config = join(home, '.cursor', 'hooks.json');
+
+    installHooks(deps());
+    const afterFirst = readFileSync(config, 'utf8');
+    expect(afterFirst).toContain('hooks fire cursor');
+
+    let recordWrites = 0;
+    const flaky = {
+      ...fs,
+      exists: (p: string) => fs.exists(p),
+      readText: (p: string) => fs.readText(p),
+      mkdirp: (p: string) => fs.mkdirp(p),
+      deleteFile: (p: string) => fs.deleteFile(p),
+      writeText: (p: string, text: string) => {
+        if (p.endsWith('install-record.json')) {
+          recordWrites += 1;
+          if (recordWrites > 1) throw new Error('ENOSPC: no space left on device');
+        }
+        fs.writeText(p, text);
+      },
+    } as typeof fs;
+
+    const report = installHooks(deps({ fs: flaky }));
+
+    // Reported honestly — the failure is real and named — but nothing was undone.
+    expect(report.failed.find((f) => f.agent === 'cursor')?.reason).toContain('left alone');
+    expect(readFileSync(config, 'utf8')).toBe(afterFirst);
+  });
+});
+
+describe('the probe is NOT the compensation (phase-3 review F001)', () => {
+  /*
+   * WITHOUT THIS ROW THE PROBE IS UNPINNED, and I found that by asking what would
+   * still pass if it were deleted. Remove `ensureRecordWritable` and the real-bin F001
+   * row STILL passes: the install writes the config, the record write fails, the
+   * compensation undoes it, and the observable end state — named failure, config
+   * absent — is identical. Two mechanisms, one visible outcome, and the review's own
+   * finding was a mechanism nothing could distinguish.
+   *
+   * They are not the same guarantee. "Never written" and "written, then un-written"
+   * differ for exactly the reason this plan cares about: the second has a window. A
+   * process killed between the config write and the compensation leaves the orphan
+   * F001 is about, and the compensation itself can fail — that is why the report has
+   * a `stranded` ending at all.
+   *
+   * So the assertion is on the WRITES ATTEMPTED, which is the only place the two
+   * differ. This row keeps the probe honest; the flaky-write row keeps the
+   * compensation honest; neither substitutes for the other.
+   */
+  it('attempts NO config write at all when provenance is unwritable', () => {
+    present('.cursor');
+    present('.claude');
+
+    const attempted: string[] = [];
+    const blocked = {
+      ...fs,
+      exists: (p: string) => fs.exists(p),
+      readText: (p: string) => fs.readText(p),
+      deleteFile: (p: string) => fs.deleteFile(p),
+      mkdirp: (p: string) => {
+        if (p.includes('.harness')) throw new Error('ENOTDIR: not a directory');
+        fs.mkdirp(p);
+      },
+      writeText: (p: string, text: string) => {
+        attempted.push(p);
+        if (p.endsWith('install-record.json')) throw new Error('ENOTDIR: not a directory');
+        fs.writeText(p, text);
+      },
+    } as typeof fs;
+
+    const report = installHooks(deps({ fs: blocked }));
+
+    expect(report.installed).toEqual([]);
+    expect(report.failed.map((f) => f.agent).sort()).toEqual(['claude-code', 'cursor']);
+    // The only write ever attempted was the record probe. No agent config was touched,
+    // so there is no window in which an orphan exists.
+    expect(attempted.filter((p) => !p.endsWith('install-record.json'))).toEqual([]);
   });
 });
