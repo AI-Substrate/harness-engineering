@@ -582,3 +582,53 @@ $ npm ls @ai-substrate/dd
   (`review-1` is `next` in the flight plan), not the implementing seat's.
 - **`ac-0002` / `ac-0003` stay unchecked** — see above.
 - **Nothing pushed, no PR opened**, per the dispatch.
+
+---
+
+## Post-review: F001 (review APPROVE, 2026-08-09, pij-modern-caribou / GPT-5.6 Terra)
+
+Review verdict **APPROVE**, Required Fixes: **None**. Two adjudications landed that this
+log had left open:
+
+- **dw-0009 accepted as checked** — explicitly on the "pair ran with zero errors" reading,
+  *not* a claim that all three envelopes carry `status: ok`. The judgement call flagged in
+  the tk-0005 section is therefore closed as ruled, not as assumed. No state change needed.
+- **The A-2 drain and the `a37a20ec` pin** were both re-verified independently by the
+  reviewer (`merge-base --is-ancestor` exit 0; no surviving truthiness read of `tracked`).
+
+### F001 (LOW, evidence) — ledger entry 4 inventoried 5 contradictions, live run reports 7
+
+Verified rather than accepted on report:
+
+```
+$ node harness/cli/bin/harness.js plan validate docs/plans/080-dd-consume-upgrade/plan.dd.json
+{"command":"plan validate","status":"degraded", ...
+ "counts":{"error":0,"warn":7,
+   "semantic":{"items":436,"completable":45,"open":30,"contradictions":7,"orphans":7,...}}
+"next_action":"7 contradiction(s) and 0 other WARN-class finding(s) — a row claims to be
+ done while something it rests on is not."
+EXIT=0
+```
+
+The seven edges, from the same run:
+
+| task | → AC | why the AC cannot close yet |
+|---|---|---|
+| tk-0002 | ac-0003 | "at **every** phase boundary" |
+| tk-0003 | ac-0002 | phase 2 takes plan semantics off the fork |
+| tk-0003 | ac-0003 | "at every phase boundary" |
+| tk-0004 | ac-0002 | phase 2 |
+| tk-0004 | ac-0003 | "at every phase boundary" |
+| tk-0005 | ac-000b | "at each phase boundary" |
+| tk-0005 | ac-000c | "every defect ... zero silent workarounds" |
+
+**Root cause of the miscount, which is not a typo.** The row was written *during* tk-0005,
+before tk-0005 itself was checked; checking it then added its own two edges. The inventory
+is a moving number by construction — it grows every time a task closes against a still-open
+multi-phase AC. That makes the miscount a second, sharper datum for entry 4 rather than an
+erratum: a hand-kept count of this class of WARN is stale the moment the next task closes.
+Recorded as such in the ledger; error count is unchanged at **0**, so no proof is affected.
+
+Ledger entry 4 updated (count 5 → 7, both `tk-0005` edges named, correction dated and
+attributed to review F001). No source change — trigger 4 still fires, so the design ruling
+remains OPEN and unpatched.
