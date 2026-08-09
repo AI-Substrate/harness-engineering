@@ -53,7 +53,7 @@
           "id": "tk-000f",
           "title": "docs/how/consuming-dd.md: the consume route end to end - full-40-char-sha pinning (dd main NOT pinnable, work branch is), the re-pin procedure (report -> dd fixes on branch -> push -> re-pin -> 12s reinstall), the npm-git sandbox caveat, the re-verify trio (pack shape / foreign-port injection / A-2 tracked===null), the CJS no-require caveat on the barrel, and the mechanism-copy drift triggers + sunset (ledger drift-surface section)",
           "phase": "ph-08e2",
-          "state": "unchecked",
+          "state": "checked",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0009"
           ]
@@ -62,7 +62,7 @@
           "id": "tk-0010",
           "title": "D-4: document the retired flow-to-dd boundary at each guard site that goes blind (comment naming the retirement, or remove the blind guard) plus the plan note - and build NO new package-aware guard",
           "phase": "ph-08e2",
-          "state": "unchecked",
+          "state": "checked",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-000a"
           ],
@@ -72,7 +72,7 @@
           "id": "tk-0011",
           "title": "plan-new fixes bundle (ledger #1 harness-fallback + #2): plan new seeds ALL declared sections (closes the E450 authoring workaround harness-side) and gains --ordinal (or ordinal-aware slug resolution) so a bare slug no longer mints a second folder with a prefixed meta.slug. SEQUENCING GATE: touches acts/plan/scaffold.ts, which the standing ruling ordered BEHIND #119 - #119 has NOT landed (verified against origin/main at phase-3 open); prime re-rules the order before this task starts",
           "phase": "ph-08e2",
-          "state": "unchecked",
+          "state": "checked",
           "satisfies_toward": [
             "../../../plan.dd.json#acceptance_criteria/ac-000c"
           ]
@@ -92,7 +92,7 @@
           "id": "tk-0013",
           "title": "F3 command-surface migration: every operating surface that prescribes the removed harness dd verb family migrates to the standalone dd CLI or is explicitly retired - docs/how/dd/**, the builder skill references (8 files under skills/builder/references), and the dd-native-builder eval scenario (live-testing/scenarios/dd-native-builder/assertions.json executable command) - per the checklist adjudication; historical records (.harness/records, archived plans, retros) are exempt as frozen provenance",
           "phase": "ph-08e2",
-          "state": "unchecked",
+          "state": "checked",
           "satisfies_toward": [
             "../../../plan.dd.json#acceptance_criteria/ac-0008",
             "../../../plan.dd.json#acceptance_criteria/ac-000c"
@@ -156,7 +156,7 @@
           {
             "id": "dw-001c",
             "assertion": "docs/how/consuming-dd.md exists, passes markdown lint, and carries all six named contents: sha pinning + branch-not-main, re-pin procedure, sandbox caveat, re-verify trio, CJS no-require caveat, drift triggers + sunset",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0009"
           }
         ],
@@ -164,7 +164,7 @@
           {
             "id": "dw-001d",
             "assertion": "each guard site that goes blind carries the D-4 retirement comment (or the blind guard is removed) - grep proves; the plan note exists; git diff shows NO new guard was added",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-000a"
           }
         ],
@@ -172,14 +172,14 @@
           {
             "id": "dw-001e",
             "assertion": "prime's sequencing ruling on #119-vs-this-bundle is recorded in the execution log BEFORE the first scaffold.ts commit; a bare 'plan new dd-consume-upgrade --ordinal 80' (or the ruled equivalent) reproduces this plan's folder shape with a CLEAN meta.slug (ledger #2's pre-agreed acceptance test)",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable",
             "note": "sequencing-gated on prime; ledger #2's acceptance test was pre-agreed at entry time"
           },
           {
             "id": "dw-001f",
             "assertion": "plan new seeds ALL sections the resolved schema declares (dd validate on a fresh scaffold shows zero declared-but-absent sections); the E450 seed-then-validate workaround is thereby retired harness-side and ledger #1's harness half moves to CLOSED",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable",
             "note": "ledger #1 fallback - dd's implicit-create remains dd-side and closes by re-pin whenever it ships"
           }
@@ -194,7 +194,7 @@
           {
             "id": "dw-0021",
             "assertion": "at the final boundary on the fork-less build: tsc --noEmit exit 0, full vitest suite green, and node harness/cli/bin/harness.js flow orient + rail + plan validate all ok against plan 080's own documents",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-000b"
           }
         ],
@@ -202,7 +202,7 @@
           {
             "id": "dw-0024",
             "assertion": "a NON-HISTORICAL zero-reference proof: git grep for the harness dd verb surface (harness dd , harness.js dd , dd doctor as a harness verb) across docs/how, skills/, live-testing/scenarios returns zero prescriptive matches (frozen provenance under .harness/records, docs/plans/archive, and retro records exempt and the exemption list named in the log); each migrated surface names its replacement (standalone dd CLI invocation) and the eval scenario still dry-scores with every placeholder reading ?",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0008"
           }
         ]
