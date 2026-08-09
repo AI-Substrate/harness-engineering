@@ -1,0 +1,54 @@
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-1/reviews/review.take-the-dependency-and-rewire-the-four-consumers.md
+  s_421ed3db0f41a5::t_cdf9901fae6ebc 1-153
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-1/tasks.dd.json
+  s_397a51e23fc2cd::t_ab6f24e247f72a 65
+  s_a76964380084ef::t_541f96384cdd6b 36,45,55
+docs/plans/080-dd-consume-upgrade/assets/dogfood-ledger.md
+  s_397a51e23fc2cd::t_06132bc637b6bb 34
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-1/tasks.dd.md
+  s_397a51e23fc2cd::t_ab6f24e247f72a 42
+  s_397a51e23fc2cd::t_3be39ce02c3b65 39-41
+  s_a76964380084ef::t_26ba423e488be7 36-38
+.dd/schemas/builder/plan/schema.json
+  s_c88674e85f3aea::t_dd312b51d75b70 3,273-280,615
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "57d8bd1f4689ac114600b4cf898c8e27d215101b",
+  "prompts": {},
+  "sessions": {
+    "s_397a51e23fc2cd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "3fe3c47b-5424-4214-892e-81ef19c49d45",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_421ed3db0f41a5": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "8af3eb43-5dda-47e8-9e43-c7398f16c595",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_c88674e85f3aea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71679da4-5249-4e02-9117-68a3abf3ed0e",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
