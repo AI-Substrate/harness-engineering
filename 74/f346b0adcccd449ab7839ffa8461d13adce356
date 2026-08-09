@@ -1,0 +1,58 @@
+harness/cli/src/acts/hooks.ts
+  s_ed609d39de2442::t_3e64cc6dc61811 134-144
+  s_ed609d39de2442::t_9f7f177a77f39c 28,109-114
+  s_ed609d39de2442::t_6cad4c2b731608 115-116
+harness/cli/src/services/hooks/hooks-verbs.ts
+  s_ed609d39de2442::t_910e217e418cc0 403-411,442,446-453,489
+  s_ed609d39de2442::t_f1ae090a4cb15d 115-128,134,140,153,160-166,169
+  s_ed609d39de2442::t_41c29ea93ba3d7 11
+  s_ed609d39de2442::t_a4a16136bfb5f7 13,154-159,393-402,412-441,443-445,454-488
+  s_ed609d39de2442::t_07d99df932b9ee 392,490
+harness/cli/src/services/hooks/install-record.ts
+  s_ed609d39de2442::t_5ce81ae5ec2227 1-124
+harness/cli/test/services/hooks/verbs-e2e.int.test.ts
+  s_ed609d39de2442::t_88a4f36abd1aec 2,308-365,386-405
+  s_ed609d39de2442::t_5a9e016b9a9403 366-385
+  s_ed609d39de2442::t_0772817d355fac 242-307,406-407
+  s_ed609d39de2442::t_79a1ff727abeda 408-438
+docs/plans/082-harness-hooks/assets/tasks/phase-2/reviews/review.phase-2.md
+  s_b6462178e5559e::t_c4122f9f463f93 1-160
+harness/cli/test/app.test.ts
+  s_ed609d39de2442::t_9f7f177a77f39c 148-155,165
+harness/cli/src/services/hooks/install-strategy-a.ts
+  s_ed609d39de2442::t_08e5602156c053 52-66,115-118,124,140-155
+docs/plans/082-harness-hooks/assets/tasks/phase-2/execution.log.md
+  s_ed609d39de2442::t_d200f69d266520 1535-1541,1549-1557
+  s_ed609d39de2442::t_63b43b56487da6 1430-1534,1542-1548,1558-1568
+docs/plans/082-harness-hooks/assets/tasks/phase-2/reviews/fix-tasks.phase-2.md
+  s_b6462178e5559e::t_c4122f9f463f93 1-36
+harness/cli/src/services/hooks/uninstall-strategy-a.ts
+  s_ed609d39de2442::t_561f952d8ee610 64-72,159-165,167-172,174-175,177,179
+harness/cli/test/services/hooks/uninstall.test.ts
+  s_ed609d39de2442::t_9e74a363e5062d 392-399,401-402
+  s_ed609d39de2442::t_201a9c3a40d531 123-127,137-140,147,149,151,164-177,185-213,215,217-219
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "74f346b0adcccd449ab7839ffa8461d13adce356",
+  "prompts": {},
+  "sessions": {
+    "s_b6462178e5559e": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "36dbaa5b-8e07-44f6-bc49-99a8b17f637d",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_ed609d39de2442": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "62892a0d-07d6-4784-b490-986f797be544",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
