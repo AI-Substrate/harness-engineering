@@ -3,7 +3,7 @@
   "kind": "flight-plan",
   "slug": "080-dd-consume-upgrade",
   "nav": {
-    "now": "phase-2",
+    "now": "phase-3",
     "next": "review-2",
     "intent": "Upgrade harness to consume standalone @ai-substrate/dd (git-sha route) in place of the in-repo dd implementation; round-3 primitive-sufficiency trial decides OQ-2"
   },
@@ -556,6 +556,114 @@
           "comments"
         ]
       }
+    },
+    {
+      "id": "UPD-017",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-09T05:21:48.237Z",
+      "details": {
+        "node": "observe-2",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-014",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-09T05:21:48.557Z",
+      "details": {
+        "node": "observe-2",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "UPD-018",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-09T05:21:48.882Z",
+      "details": {
+        "node": "retro-2",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-015",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-09T05:21:49.196Z",
+      "details": {
+        "node": "retro-2",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "STA-016",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-09T05:21:57.949Z",
+      "details": {
+        "node": "phase-2",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-005",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-08-09T05:21:58.275Z",
+      "details": {
+        "from": "phase-2",
+        "to": "review-2"
+      }
+    },
+    {
+      "id": "UPD-019",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-09T05:21:58.643Z",
+      "details": {
+        "node": "review-2",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-017",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-09T05:21:59.023Z",
+      "details": {
+        "node": "review-2",
+        "from": "known",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-006",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-08-09T05:21:59.490Z",
+      "details": {
+        "from": "review-2",
+        "to": "phase-3"
+      }
     }
   ],
   "nodes": [
@@ -861,12 +969,12 @@
       "id": "phase-2",
       "type": "phase",
       "label": "P2: Round-3 trial - plan semantics",
-      "status": "in_progress",
+      "status": "done",
       "next": [
         "review-2"
       ],
       "created_at": "2026-08-09T03:10:52.507Z",
-      "modified_at": "2026-08-09T03:12:33.583Z",
+      "modified_at": "2026-08-09T05:21:57.949Z",
       "instructions": [
         "Implement exactly ONE phase using the plan's testing approach and domain placement rules — keep the task table and execution.log.md live as you go.",
         "Run /builder 6 implement --plan \"<plan path>\"; log discoveries, tagging any Deferred/Noteworthy a human must see before ship.",
@@ -876,18 +984,19 @@
         "Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.",
         "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
         "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
-      ]
+      ],
+      "ran_at": "2026-08-09T05:21:57.949Z"
     },
     {
       "id": "review-2",
       "type": "review",
       "label": "Review: P2",
-      "status": "known",
+      "status": "done",
       "next": [
         "phase-3"
       ],
       "created_at": "2026-08-09T03:10:52.507Z",
-      "modified_at": "2026-08-09T03:10:52.507Z",
+      "modified_at": "2026-08-09T05:21:59.023Z",
       "instructions": [
         "Review exactly ONE phase's diff against its acceptance criteria — confirm the tests prove behaviour and nothing risky slipped in.",
         "Run /builder 7 review — it inspects the newest assets/reviews/*.md and surfaces a verdict; REQUEST_CHANGES loops back to fix, clean continues to the next phase or post-flight.",
@@ -896,7 +1005,16 @@
         "Close criteria through the CLI: harness dd set \"<plan dir>/plan.dd.json#acceptance_criteria/ac-XXXX/state\" checked, and re-verify any moved basis with harness dd link verify-basis <address> --sha <sha> --update <doc>.",
         "If the gate refuses and departing anyway is the HUMAN's decision, they pass --force — it records a defended override. An agent may not force a dd gate on its own judgment."
       ],
-      "zone": "flight"
+      "zone": "flight",
+      "comments": [
+        {
+          "at": "2026-08-09T05:21:58.643Z",
+          "text": "decision:done reason:external-review time:2026-08-09T05:22Z - terra (pij-modern-caribou, copilot gpt-5.6-terra high) r1 REJECT 0/1/0/1 (F001 evidence-staleness, F002 test type import) -> fixes 622f0840+4fe34c81 -> r2 APPROVE 0/0/0/0, both findings independently re-verified; artifact assets/tasks/phase-2/reviews/review.round-3-trial.md committed 3dff33ab",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-09T05:21:59.023Z"
     },
     {
       "id": "boot-2",
@@ -945,10 +1063,10 @@
       "id": "observe-2",
       "type": "observe",
       "label": "Observe: P2",
-      "status": "known",
+      "status": "done",
       "next": [],
       "created_at": "2026-08-09T03:10:52.507Z",
-      "modified_at": "2026-08-09T03:10:52.507Z",
+      "modified_at": "2026-08-09T05:21:48.557Z",
       "branch_of": "phase-2",
       "instructions": [
         "Mid-phase capture: record observations (decisions, gotchas, surprises) AS you code, so they don't evaporate as remembered prose.",
@@ -962,16 +1080,25 @@
       "chore": {
         "kind": "command",
         "importance": "recommended"
-      }
+      },
+      "comments": [
+        {
+          "at": "2026-08-09T05:21:48.237Z",
+          "text": "decision:done reason:real-captures time:2026-08-09T05:21Z - 7 real harness observe captures this phase (WIN-001, DL-001..DL-006), drained to .harness/records/retro/2026-08-09/002-080-phase-2.md at 17950bce",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-09T05:21:48.557Z"
     },
     {
       "id": "retro-2",
       "type": "harness-retro",
       "label": "Retro: P2 (drain)",
-      "status": "known",
+      "status": "done",
       "next": [],
       "created_at": "2026-08-09T03:10:52.507Z",
-      "modified_at": "2026-08-09T03:10:52.507Z",
+      "modified_at": "2026-08-09T05:21:49.196Z",
       "branch_of": "phase-2",
       "instructions": [
         "Post-coding seam: drain this phase's observe buffer into durable retro notes before moving on.",
@@ -982,7 +1109,16 @@
       "chore": {
         "kind": "command",
         "importance": "recommended"
-      }
+      },
+      "comments": [
+        {
+          "at": "2026-08-09T05:21:48.882Z",
+          "text": "decision:done reason:drained time:2026-08-09T05:21Z - /eng-harness-flow --hook post-coding ran; observe --list 7 entries 0 malformed; record .harness/records/retro/2026-08-09/002-080-phase-2.md (dispositions: 1 plan, 1 task, 1 deferred, 4 kept); observe --clear cleared 7",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-09T05:21:49.196Z"
     },
     {
       "id": "phase-3",
