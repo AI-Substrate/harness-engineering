@@ -1,0 +1,48 @@
+harness/cli/test/fixtures/hooks/droid.input.jsonc
+  s_ed609d39de2442::t_f7d5fe16e4fb7c 1-15
+harness/cli/src/services/hooks/hook-marker.ts
+  s_ed609d39de2442::t_8401f2218aca1b 78,80-143,149-157,159
+  s_ed609d39de2442::t_89b935c80e7867 1-77,79,144-148,158,160-178
+harness/cli/test/services/hooks/hook-marker.test.ts
+  s_ed609d39de2442::t_f8aef68037f302 37-40
+  s_ed609d39de2442::t_3f6705af18a571 1-2,4-9,11-36,41-87,89-90,97-100,135-187
+  s_ed609d39de2442::t_482e62d78625fc 3,10
+  s_ed609d39de2442::t_5be25285033edb 88,91-96,101-134
+harness/cli/test/services/hooks/config-fixture.test.ts
+  s_ed609d39de2442::t_97af1cfd2ad129 1,3,9,164-167
+  s_ed609d39de2442::t_e98904b09b9a8d 98-118,120-127
+  s_ed609d39de2442::t_579c9604f28925 2,4-8,10-97,130,132-163,168-216
+  s_ed609d39de2442::t_bc8fa6933e7b32 119,128-129,131
+harness/cli/test/fixtures/hooks/droid.golden.jsonc
+  s_ed609d39de2442::t_f7d5fe16e4fb7c 1-17
+harness/cli/test/fixtures/hooks/cursor.input.json
+  s_ed609d39de2442::t_f7d5fe16e4fb7c 1-15
+docs/plans/082-harness-hooks/assets/tasks/phase-2/tasks.dd.md
+  s_ed609d39de2442::t_f822118f85bb7c 38,40,64-67,82-85
+docs/plans/082-harness-hooks/assets/tasks/phase-2/execution.log.md
+  s_ed609d39de2442::t_9b34c86157903b 217-249,315-376
+  s_ed609d39de2442::t_23d2c316245446 250-314
+harness/cli/test/support/config-fixture.ts
+  s_ed609d39de2442::t_2d493dfb924cfa 1-89,95-190
+  s_ed609d39de2442::t_97af1cfd2ad129 90-94
+docs/plans/082-harness-hooks/assets/tasks/phase-2/tasks.dd.json
+  s_ed609d39de2442::t_f822118f85bb7c 25,47,210,216,222,228,262,268,274,280
+harness/cli/test/fixtures/hooks/cursor.golden.json
+  s_ed609d39de2442::t_f7d5fe16e4fb7c 1-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f718e8b528c11888ab9332cbc1e6638823187cfb",
+  "prompts": {},
+  "sessions": {
+    "s_ed609d39de2442": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "62892a0d-07d6-4784-b490-986f797be544",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
