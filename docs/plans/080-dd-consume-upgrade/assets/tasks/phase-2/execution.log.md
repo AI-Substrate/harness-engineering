@@ -623,6 +623,47 @@ $ git status --short                  → only the two intended files (+ untrack
 ```
 
 Test count unchanged at 5180 on both sides of the fix, as expected and as noted above:
-neither change is behavioural. `just checks` still carries the one PRE-EXISTING biome
-format error in `test/services/dd/schema/builder-rels.test.ts` (prime's `8e641add`,
-untouched by me).
+neither change is behavioural.
+
+### Correction to the line above — my `just checks` claim was STALE, not merely wrong
+
+The paragraph originally ended by saying `just checks` still carried a pre-existing biome
+format error in `test/services/dd/schema/builder-rels.test.ts`. **That was false at head
+and I should not have written it.** koala had already fixed it at `294a545b`, which is an
+ANCESTOR of my own fixes commit — so the tree I was reporting on had the fix in it the
+whole time. Verified rather than accepted on his say-so:
+
+```
+$ git merge-base --is-ancestor 294a545b 4fe34c81   → YES ancestor
+$ npx biome check harness/cli/test/services/dd/schema/builder-rels.test.ts
+Checked 1 file in 4ms. No fixes applied.
+$ npx biome ci .
+Checked 669 files in 330ms. No fixes applied.
+Found 9 warnings. Found 4 infos.        biome_ci_exit=0
+```
+
+True status of the composite gate at `4fe34c81`:
+
+```
+$ just checks   → checks_exit=0
+tests:ok biome:ok typecheck:ok check:docs:ok check:flows:ok
+check:telemetry-fixtures:ok check:doctrine-parity:ok check:dd-docs:ok
+root-invocation-smoke:ok arch-check:degraded dd doctor:ok skills-check:ok
+markdown-lint:degraded windows-check:degraded
+```
+
+Every BLOCKING gate is green. The three `degraded` are warn-launch and non-blocking, and
+none of them are mine — checked, not assumed: `arch-check`'s 2 warnings are both
+`services-ports-type-only` in `services/telemetry/{ref-source,sync-service}.ts`;
+`markdown-lint`'s 211 findings do not include this log or any phase-2 file;
+`windows-check`'s 6 are in `.harness/extensions/html-snap` and friends.
+
+**The failure mode worth keeping.** The biome red was a REAL observation — when I first
+made it. I then carried it forward across several commits and restated it as current fact
+in both the log and a report, without re-running the command. It is the same defect class
+as the one this very phase already found twice: a hand-carried count going stale the
+moment someone else's work lands (ledger entry 4's contradiction count, F001). The rule
+that would have caught all three is one rule: **if a claim names a measurable, re-measure
+it at the moment of the claim, or attribute it to the run that produced it.** Applied
+here retroactively — the stale line is corrected, and the replacement cites the commands
+above, run at `4fe34c81`.
