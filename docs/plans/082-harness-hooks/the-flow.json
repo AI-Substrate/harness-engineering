@@ -3,7 +3,7 @@
   "kind": "flight-plan",
   "slug": "082-harness-hooks",
   "nav": {
-    "now": "phase-1",
+    "now": "review-1",
     "next": null
   },
   "created_at": "2026-08-09T12:39:19.978Z",
@@ -248,6 +248,81 @@
           "importance": "recommended"
         }
       }
+    },
+    {
+      "id": "UPD-004",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-09T14:35:28.018Z",
+      "details": {
+        "node": "observe-1",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-005",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-09T14:35:31.625Z",
+      "details": {
+        "node": "observe-1",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "UPD-005",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-09T14:38:00.067Z",
+      "details": {
+        "node": "retro-1",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-006",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-09T14:38:00.403Z",
+      "details": {
+        "node": "retro-1",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "STA-007",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-09T14:38:10.290Z",
+      "details": {
+        "node": "phase-1",
+        "from": "known",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-002",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-08-09T14:38:10.665Z",
+      "details": {
+        "from": "phase-1",
+        "to": "review-1"
+      }
     }
   ],
   "nodes": [
@@ -292,13 +367,21 @@
       "type": "phase",
       "phase": 1,
       "label": "P1: Implementation",
-      "status": "known",
+      "status": "done",
       "command": "/builder 6 implement",
       "next": [
         "review-1"
       ],
       "dd_link": {
-        "address": "docs/plans/082-harness-hooks/assets/tasks/phase-1/tasks.dd.json#tasks"
+        "address": "docs/plans/082-harness-hooks/assets/tasks/phase-1/tasks.dd.json#tasks",
+        "basis_sha": "874268d545b48983a77e6feb6d9022f4893c561b2e63a3b8e6b50a44df2d1a56",
+        "reading": {
+          "status": "complete",
+          "terminal": 13,
+          "total": 13,
+          "incomplete": [],
+          "at": "2026-08-09T14:38:10.665Z"
+        }
       },
       "instructions": [
         "Implement exactly ONE phase using the plan's testing approach and domain placement rules — keep the task table and execution.log.md live as you go.",
@@ -309,7 +392,9 @@
         "Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.",
         "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
         "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
-      ]
+      ],
+      "modified_at": "2026-08-09T14:38:10.290Z",
+      "ran_at": "2026-08-09T14:38:10.290Z"
     },
     {
       "id": "review-1",
@@ -432,7 +517,7 @@
       "id": "observe-1",
       "type": "observe",
       "label": "Observe: P1",
-      "status": "known",
+      "status": "done",
       "branch_of": "phase-1",
       "next": [
         "phase-1"
@@ -449,13 +534,23 @@
         "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
         "Terminalize at phase end BEFORE the retro drain, receipt first, status second: harness flow comment --path <flow-path> --node observe-1 --kind validation --source agent --text \"captures:<count> pointer:<real capture record> time:<…>\" THEN harness flow status --path <flow-path> --node observe-1 --to done — done only after at least one real capture. Human decline instead: harness flow comment --path <flow-path> --node observe-1 --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node observe-1 --to skipped.",
         "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
-      ]
+      ],
+      "comments": [
+        {
+          "at": "2026-08-09T14:35:28.018Z",
+          "text": "decision:satisfied reason:two real captures in the agent bucket, not a narrated one time:2026-08-09T14:35:01Z records: DL-001 fp bfd7a291aafe first_seen 2026-08-09T12:31:20Z (harness plan new scaffolds 6 of 20 schema-declared sections and neither dd set nor dd add can create a seventh, E450 section-unknown, so risks/key_findings/gate_matrix/execution_guardrails/testing_strategy have no CLI route into an existing plan); DL-002 fp 10230faea671 first_seen 2026-08-09T13:30:47Z (the live Cursor hook points at scratch/attrib-probe in the MAIN checkout, untracked working space, so a clean silently breaks every Cursor tool call - this is the argument for the installer writing an absolute quoted path to a stable installed binary and for hooks status to prove its target resolves). DL-002 is already carried into phase 2 as the status-must-stat-its-target task.",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "modified_at": "2026-08-09T14:35:31.625Z",
+      "ran_at": "2026-08-09T14:35:31.625Z"
     },
     {
       "id": "retro-1",
       "type": "harness-retro",
       "label": "Retro: P1 (drain)",
-      "status": "known",
+      "status": "done",
       "branch_of": "phase-1",
       "next": [
         "phase-1"
@@ -469,7 +564,17 @@
         "Post-coding seam: drain this phase's observe buffer into durable retro notes before moving on.",
         "Run /eng-harness-flow --hook post-coding --json — a REAL invocation; narrate its envelope verbatim.",
         "Runs after this phase's observe chore is terminalized (real capture receipt, or human decline). On done, receipt first, status second: harness flow comment --path <flow-path> --node retro-1 --kind validation --source agent --text \"verdict:<…> time:<…>\" (router missing / envelope noop/UNAVAILABLE → text \"decision:unavailable reason:<…> time:<…>\" — a completed attempt, not a skip) THEN harness flow status --path <flow-path> --node retro-1 --to done. Mandatory unless the human declines — a decline is: harness flow comment --path <flow-path> --node retro-1 --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node retro-1 --to skipped."
-      ]
+      ],
+      "comments": [
+        {
+          "at": "2026-08-09T14:38:00.067Z",
+          "text": "decision:drained verdict:2 entries saved, buffer cleared time:2026-08-09T14:36:29Z Real invocation of /eng-harness-flow --hook post-coding via the Skill tool, routed to the retro verb module, drain surface. Record written at .harness/records/retro/2026-08-09/001-082-harness-hooks-phase-1.md; harness observe --clear reported cleared:2 malformed_skipped:0 and a follow-up --list confirmed the buffer empty. DL-001 disposition:task (harness plan new reaches 6 of 20 schema-declared sections; this IS the harness repo so it routes to a local source fix, never an upstream issue). DL-002 disposition:plan, resolved_by the phase-2 status-must-stat-its-target task. Win beat recorded: the observe buffer survived a context compaction intact, so neither entry was re-derived from memory.",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "modified_at": "2026-08-09T14:38:00.403Z",
+      "ran_at": "2026-08-09T14:38:00.403Z"
     },
     {
       "id": "retro-harvest",
