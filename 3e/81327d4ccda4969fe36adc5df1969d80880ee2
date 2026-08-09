@@ -1,0 +1,44 @@
+harness/cli/test/acts/plan-fence.test.ts
+  s_397a51e23fc2cd::t_a0483f239c0136 3
+harness/cli/src/services/doctor/doctor-service.ts
+  s_397a51e23fc2cd::t_a0483f239c0136 1-3
+harness/cli/test/services/flow/gate-fixtures/index.ts
+  s_397a51e23fc2cd::t_4232583f8dbafb 6,8
+harness/cli/src/acts/plan/index.ts
+  s_397a51e23fc2cd::t_2e96021009dfc0 65-123,265-266,268-269,288-317,321-322
+  s_397a51e23fc2cd::t_88f6cb5a6e0c26 267
+harness/cli/test/acts/plan-review.test.ts
+  s_397a51e23fc2cd::t_2e96021009dfc0 5
+harness/cli/src/acts/plan/scaffold.ts
+  s_397a51e23fc2cd::t_2e96021009dfc0 59-80,94-118,161,210-228
+harness/cli/test/integration/plan-semantics-falsifiers.int.test.ts
+  s_397a51e23fc2cd::t_a0483f239c0136 5-6,35
+harness/cli/test/acts/plan.test.ts
+  s_397a51e23fc2cd::t_2e96021009dfc0 148-247
+harness/cli/test/services/flow/archive-move.test.ts
+  s_397a51e23fc2cd::t_2e96021009dfc0 15
+harness/cli/test/services/flow/flight-plan-gates.test.ts
+  s_397a51e23fc2cd::t_4232583f8dbafb 6-9
+harness/cli/test/services/flow/flow-dd-check-gate.test.ts
+  s_397a51e23fc2cd::t_4232583f8dbafb 2-5
+harness/cli/test/acts/builder-dd-teaching.test.ts
+  s_397a51e23fc2cd::t_88f6cb5a6e0c26 88-95,102-105
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-3/execution.log.md
+  s_397a51e23fc2cd::t_2ab60822bdce97 514-585
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3e81327d4ccda4969fe36adc5df1969d80880ee2",
+  "prompts": {},
+  "sessions": {
+    "s_397a51e23fc2cd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "3fe3c47b-5424-4214-892e-81ef19c49d45",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
