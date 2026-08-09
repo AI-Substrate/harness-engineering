@@ -15,7 +15,7 @@
 | status | ready |
 | complexity | CS-3 |
 | summary | Deterministic verb surface for pij workteam: bundled flight-plan flow type + a two-clause flow/plan check verb, red-first, handed off to ermine. |
-| backpressure | — |
+| backpressure | [rows](assets/backpressure.dd.md#rows) |
 | log | — |
 | mode | Full |
 | plan_version | — |
@@ -55,14 +55,14 @@ Build the deterministic harness surface pij workteam verbs will call to detect a
 
 | id | claim | state | note | receipt | pressure | proven_by |
 | --- | --- | --- | --- | --- | --- | --- |
-| ac-0001 | In a repo WITHOUT the builder skill resolvable, `harness flow create flight-plan --slug s --plan-dir &lt;dir&gt; --path &lt;dir&gt;/the-flow.json` (no --schema, no --template) exits 0 and writes a flow the CLI can read back (flow rail succeeds) | [ ] unchecked | — | — | — | — |
-| ac-0002 | A vitest test written BEFORE the verb exists runs the new check verb against the 098-shaped fixture (findings.md + SEAT.md, no plan.dd.json, no the-flow.json) AND the 099-shaped fixture (assets/ only) and was observed RED (verb absent/failing) before implementation; after implementation both fixtures assert envelope status=error, exit 1 | [ ] unchecked | — | — | — | — |
-| ac-0003 | The check verb on a folder whose plan.dd.json validates but which has no the-flow.json returns status=degraded (warning), exit 0, with a reason naming the missing flight plan and a next_action carrying the bare flow create invocation | [ ] unchecked | — | — | — | — |
-| ac-0004 | The check verb on a folder with a valid plan.dd.json AND a readable flight plan returns status=ok, exit 0 | [ ] unchecked | — | — | — | — |
-| ac-0005 | Every check envelope reports counts of artifacts examined and excluded (plan present/absent, flow present/absent/legacy/malformed/future-version), never only survivors; E301 absent, E308 legacy, E300 malformed and E306 future-version flows each carry a distinct reason and all report as the degraded warning class with exit 0 when the plan itself validates | [ ] unchecked | — | — | — | — |
-| ac-0006 | plan validate and plan ready envelopes are field-equal excluding timestamp, with equal exit codes, against base ee8f37fb behaviour on the probe matrix (E400 no-plan, ok valid, cant-tell no-flow) — and no edits landed in acts/plan/index.ts, services/dd/**, or acts/dd/** | [ ] unchecked | — | — | — | — |
-| ac-0007 | docs/how guide for the bundled flow type + check verb exists; harness checks passes including generated-docs drift | [ ] unchecked | — | — | — | — |
-| ac-0008 | A pij-facing contract document (verb name, invocation, envelope fields, exit codes, warning-vs-error semantics, caching via basis fields where applicable) exists in the plan folder and the handoff + collaboration offer has been sent to ermine via prime, recorded with a pointer | [ ] unchecked | — | — | — | — |
+| ac-0001 | In a repo WITHOUT the builder skill resolvable, `harness flow create flight-plan --slug s --plan-dir &lt;dir&gt; --path &lt;dir&gt;/the-flow.json` (no --schema, no --template) exits 0 and writes a flow the CLI can read back (flow rail succeeds) | [ ] unchecked | — | — | [bp-0001](assets/backpressure.dd.md#rows) | — |
+| ac-0002 | A vitest test written BEFORE the verb exists runs the new check verb against the 098-shaped fixture (findings.md + SEAT.md, no plan.dd.json, no the-flow.json) AND the 099-shaped fixture (assets/ only) and was observed RED (verb absent/failing) before implementation; after implementation both fixtures assert envelope status=error, exit 1 | [ ] unchecked | — | — | [bp-0002](assets/backpressure.dd.md#rows) | — |
+| ac-0003 | The check verb on a folder whose plan.dd.json validates but which has no the-flow.json returns status=degraded (warning), exit 0, with a reason naming the missing flight plan and a next_action carrying the bare flow create invocation | [ ] unchecked | — | — | [bp-0003](assets/backpressure.dd.md#rows) | — |
+| ac-0004 | The check verb on a folder with a valid plan.dd.json AND a readable flight plan returns status=ok, exit 0 | [ ] unchecked | — | — | [bp-0004](assets/backpressure.dd.md#rows) | — |
+| ac-0005 | Every check envelope reports counts of artifacts examined and excluded (plan present/absent, flow present/absent/legacy/malformed/future-version), never only survivors; E301 absent, E308 legacy, E300 malformed and E306 future-version flows each carry a distinct reason and all report as the degraded warning class with exit 0 when the plan itself validates | [ ] unchecked | — | — | [bp-0005](assets/backpressure.dd.md#rows) | — |
+| ac-0006 | plan validate and plan ready envelopes are field-equal excluding timestamp, with equal exit codes, against base ee8f37fb behaviour on the probe matrix (E400 no-plan, ok valid, cant-tell no-flow) — and no edits landed in acts/plan/index.ts, services/dd/**, or acts/dd/** | [ ] unchecked | — | — | [bp-0006](assets/backpressure.dd.md#rows) | — |
+| ac-0007 | docs/how guide for the bundled flow type + check verb exists; harness checks passes including generated-docs drift | [ ] unchecked | — | — | [bp-0007](assets/backpressure.dd.md#rows) | — |
+| ac-0008 | A pij-facing contract document (verb name, invocation, envelope fields, exit codes, warning-vs-error semantics, caching via basis fields where applicable) exists in the plan folder and the handoff + collaboration offer has been sent to ermine via prime, recorded with a pointer | [ ] unchecked | — | — | [bp-0008](assets/backpressure.dd.md#rows) | — |
 
 <a id="phases"></a>
 

@@ -59,6 +59,33 @@
         "from": "research",
         "to": "plan"
       }
+    },
+    {
+      "id": "UPD-001",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-09T02:38:01.569Z",
+      "details": {
+        "node": "backpressure",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-003",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-09T02:38:01.884Z",
+      "details": {
+        "node": "backpressure",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "optional"
+        }
+      }
     }
   ],
   "nodes": [
@@ -178,7 +205,7 @@
       "id": "backpressure",
       "type": "backpressure",
       "label": "Backpressure survey",
-      "status": "known",
+      "status": "done",
       "branch_of": "plan",
       "next": [
         "plan"
@@ -194,7 +221,17 @@
         "On done, receipt first, status second: harness flow comment --path <flow-path> --node backpressure --kind validation --source agent --text \"decision:<…> verdict:<…> time:<…> basis_sha256:<full SHA-256 of the plan file>\" THEN harness flow status --path <flow-path> --node backpressure --to done. Mandatory unless the human declines — a decline is: harness flow comment --path <flow-path> --node backpressure --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node backpressure --to skipped; never a narrated skip.",
         "Basis is the LATEST plan: on each guided entry recompute the plan file's SHA-256 — a mismatch with (or absence of) the recorded basis_sha256 re-opens this seam via a deterministic new chore, id backpressure-<first 12 hex of that SHA-256> (full hash in its receipt; same bytes re-use this node + receipt, changed bytes create exactly one new node; never resurrect this one — D5).",
         "Router missing, or envelope noop/UNAVAILABLE → same two calls with the detection receipt/envelope as the text: harness flow comment --path <flow-path> --node backpressure --kind validation --source agent --text \"decision:unavailable reason:<…> time:<…>\" THEN harness flow status --path <flow-path> --node backpressure --to done — a completed attempt, not a skip."
-      ]
+      ],
+      "comments": [
+        {
+          "at": "2026-08-09T02:38:01.569Z",
+          "text": "decision:done verdict:Partial counts:1RUN/1EXTEND/5BUILD/1ABSENT artifact:assets/backpressure-coverage.md dd:assets/backpressure.dd.json (8 rows, all ACs pressure-linked) time:2026-08-09T02:45Z basis_sha256:4df59d8e761cc40d772c8f58f361ca3998b7843ced8fcd56de680b24f1e6cc0a",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "modified_at": "2026-08-09T02:38:01.884Z",
+      "ran_at": "2026-08-09T02:38:01.884Z"
     },
     {
       "id": "boot-1",

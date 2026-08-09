@@ -11,7 +11,8 @@
         "status": "ready",
         "summary": "Deterministic verb surface for pij workteam: bundled flight-plan flow type + a two-clause flow/plan check verb, red-first, handed off to ermine.",
         "mode": "Full",
-        "complexity": "CS-3"
+        "complexity": "CS-3",
+        "backpressure": "assets/backpressure.dd.json#rows"
       }
     },
     {
@@ -44,42 +45,50 @@
         {
           "id": "ac-0001",
           "claim": "In a repo WITHOUT the builder skill resolvable, `harness flow create flight-plan --slug s --plan-dir <dir> --path <dir>/the-flow.json` (no --schema, no --template) exits 0 and writes a flow the CLI can read back (flow rail succeeds)",
-          "state": "unchecked"
+          "state": "unchecked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0001"
         },
         {
           "id": "ac-0002",
           "claim": "A vitest test written BEFORE the verb exists runs the new check verb against the 098-shaped fixture (findings.md + SEAT.md, no plan.dd.json, no the-flow.json) AND the 099-shaped fixture (assets/ only) and was observed RED (verb absent/failing) before implementation; after implementation both fixtures assert envelope status=error, exit 1",
-          "state": "unchecked"
+          "state": "unchecked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0002"
         },
         {
           "id": "ac-0003",
           "claim": "The check verb on a folder whose plan.dd.json validates but which has no the-flow.json returns status=degraded (warning), exit 0, with a reason naming the missing flight plan and a next_action carrying the bare flow create invocation",
-          "state": "unchecked"
+          "state": "unchecked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0003"
         },
         {
           "id": "ac-0004",
           "claim": "The check verb on a folder with a valid plan.dd.json AND a readable flight plan returns status=ok, exit 0",
-          "state": "unchecked"
+          "state": "unchecked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0004"
         },
         {
           "id": "ac-0005",
           "claim": "Every check envelope reports counts of artifacts examined and excluded (plan present/absent, flow present/absent/legacy/malformed/future-version), never only survivors; E301 absent, E308 legacy, E300 malformed and E306 future-version flows each carry a distinct reason and all report as the degraded warning class with exit 0 when the plan itself validates",
-          "state": "unchecked"
+          "state": "unchecked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0005"
         },
         {
           "id": "ac-0006",
           "claim": "plan validate and plan ready envelopes are field-equal excluding timestamp, with equal exit codes, against base ee8f37fb behaviour on the probe matrix (E400 no-plan, ok valid, cant-tell no-flow) — and no edits landed in acts/plan/index.ts, services/dd/**, or acts/dd/**",
-          "state": "unchecked"
+          "state": "unchecked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0006"
         },
         {
           "id": "ac-0007",
           "claim": "docs/how guide for the bundled flow type + check verb exists; harness checks passes including generated-docs drift",
-          "state": "unchecked"
+          "state": "unchecked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0007"
         },
         {
           "id": "ac-0008",
           "claim": "A pij-facing contract document (verb name, invocation, envelope fields, exit codes, warning-vs-error semantics, caching via basis fields where applicable) exists in the plan folder and the handoff + collaboration offer has been sent to ermine via prime, recorded with a pointer",
-          "state": "unchecked"
+          "state": "unchecked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0008"
         }
       ]
     },

@@ -1,0 +1,159 @@
+{
+  "dd": {
+    "schema": "builder/backpressure"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Backpressure coverage — flow reachability (081)",
+        "plan": "../plan.dd.json#meta",
+        "basis_sha": "4df59d8e761cc40d772c8f58f361ca3998b7843ced8fcd56de680b24f1e6cc0a",
+        "certainty": "Partial"
+      }
+    },
+    {
+      "name": "rows",
+      "value": [
+        {
+          "id": "bp-0001",
+          "criterion": "Bare flight-plan create works without the builder skill (ac-0001)",
+          "phase": "1",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "phase-1 vitest test (skill-less temp repo, no --schema/--template); paves: cd harness/cli && npx vitest run",
+          "state": "unchecked",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-0001"
+          ]
+        },
+        {
+          "id": "bp-0002",
+          "criterion": "Verb observed RED on 098- and 099-shaped fixtures before implementation, error/exit 1 after (ac-0002)",
+          "phase": "2",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "phase-2 red-first vitest specs against the phase-1 fixtures; paved: just test",
+          "state": "unchecked",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-0002"
+          ]
+        },
+        {
+          "id": "bp-0003",
+          "criterion": "Valid plan + missing flow yields degraded warning exit 0 with reason + bare-create next_action (ac-0003)",
+          "phase": "2",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "phase-2 verdict spec (plan-without-flow fixture); paved: just test",
+          "state": "unchecked",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-0003"
+          ]
+        },
+        {
+          "id": "bp-0004",
+          "criterion": "Valid plan + readable flow yields ok exit 0 (ac-0004)",
+          "phase": "2",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "phase-2 verdict spec (both-good fixture); paved: just test",
+          "state": "unchecked",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-0004"
+          ]
+        },
+        {
+          "id": "bp-0005",
+          "criterion": "Envelope counts examined/excluded; E301/E308/E300/E306 distinct reasons, all warning-class (ac-0005)",
+          "phase": "2",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "phase-2 envelope-contract specs incl. legacy/malformed/future-version fixtures; paved: just test",
+          "state": "unchecked",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-0005"
+          ]
+        },
+        {
+          "id": "bp-0006",
+          "criterion": "plan validate/ready parity: field-equal minus timestamp, equal exit codes, frozen surfaces untouched (ac-0006)",
+          "phase": "2",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "add a parity spec to the existing vitest suite (probe matrix vs recorded base envelopes) + git diff --stat vs merge-base over frozen paths; same paved command: just test",
+          "state": "unchecked",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-0006"
+          ]
+        },
+        {
+          "id": "bp-0007",
+          "criterion": "docs/how guide exists and all repo gates pass incl. generated-docs drift (ac-0007)",
+          "phase": "3",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "node harness/cli/bin/harness.js checks",
+          "state": "unchecked",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-0007"
+          ]
+        },
+        {
+          "id": "bp-0008",
+          "criterion": "pij-facing contract written and handoff + collaboration offer delivered to ermine (ac-0008)",
+          "phase": "3",
+          "mode": "ABSENT",
+          "tier": "human-judgement",
+          "proof": "",
+          "state": "unchecked",
+          "note": "acceptance of a handoff is a human act; deterministic residue = contract file committed + pij spine receipt pointer recorded in the execution log",
+          "probe": "no glob can prove a cross-fleet handoff; searched for precedent handoff sensors under .harness/extensions/* and docs/how/* — none exist",
+          "satisfies": [
+            "../plan.dd.json#acceptance_criteria/ac-0008"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sensors",
+      "value": [
+        {
+          "id": "sensor-1",
+          "name": "vitest suite (423+ tests)",
+          "command": "just test",
+          "dimension": "behaviour",
+          "found_in": "harness/cli"
+        },
+        {
+          "id": "sensor-2",
+          "name": "biome lint/format",
+          "command": "just fix",
+          "dimension": "maintainability",
+          "found_in": "root"
+        },
+        {
+          "id": "sensor-3",
+          "name": "typecheck",
+          "command": "npx tsc --noEmit -p harness/cli/tsconfig.json",
+          "dimension": "maintainability",
+          "found_in": "harness/cli"
+        },
+        {
+          "id": "sensor-4",
+          "name": "harness checks (11 sub-gates incl docs/flows drift, arch, skills, markdown, windows)",
+          "command": "node harness/cli/bin/harness.js checks",
+          "dimension": "behaviour",
+          "found_in": ".harness/extensions/checks"
+        },
+        {
+          "id": "sensor-5",
+          "name": "plan validate / dd validate",
+          "command": "node harness/cli/bin/harness.js plan validate docs/plans/081-flow-reachability --complete",
+          "dimension": "behaviour",
+          "found_in": "harness/cli acts"
+        }
+      ]
+    }
+  ]
+}
