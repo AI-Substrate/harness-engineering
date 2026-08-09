@@ -1,0 +1,49 @@
+harness/cli/src/services/hooks/fire-options.ts
+  s_ed609d39de2442::t_7c28cd697c6423 51-55
+  s_ed609d39de2442::t_9a72795592f109 1,3-50,56-83
+  s_ed609d39de2442::t_3ea127286d8610 2
+docs/plans/082-harness-hooks/assets/tasks/phase-3/execution.log.md
+  s_ed609d39de2442::t_8b5cd42d6cfc9b 942-1106
+harness/cli/test/services/hooks/composed-command.int.test.ts
+  s_ed609d39de2442::t_6a94e3888d881d 85-90
+  s_ed609d39de2442::t_56ff366b02a201 1,3-10,12-53,56-58,94-129,131,149-182,185-195,197-199,201-211,217,219,222-223,227-229,233-254,260,262,266-281,283-309,397
+  s_ed609d39de2442::t_4ac07218288607 310-322,324-334,341-346,355-375,377-396
+  s_ed609d39de2442::t_4db909d06f4e92 335-340,347-354
+  s_ed609d39de2442::t_7551bc21a6b148 11
+  s_ed609d39de2442::t_da7e20f2dcbb5b 130,132-148
+  s_ed609d39de2442::t_3ea127286d8610 196,200,376
+  s_ed609d39de2442::t_06f0064fc541ee 212-216,218,220-221,224-226,230-232
+  s_ed609d39de2442::t_82e0701443bd1c 54-55,59-84,91-93
+  s_ed609d39de2442::t_b673eddad947cf 183-184
+  s_ed609d39de2442::t_692c5f6a504b97 255-259,261,263-265,282,323
+  s_ed609d39de2442::t_a7027dbc9a2ac5 2
+harness/cli/src/services/hooks/hooks-verbs.ts
+  s_ed609d39de2442::t_3ea127286d8610 293
+  s_ed609d39de2442::t_63fa1c212697d1 291-292,294-315
+  s_ed609d39de2442::t_09159885214af7 8
+  s_ed609d39de2442::t_046718f52c50d8 360-369
+  s_ed609d39de2442::t_02c1473d435352 375-376,383-389,397-398
+harness/cli/src/acts/hooks.ts
+  s_ed609d39de2442::t_1cbc143962877c 43-49
+  s_ed609d39de2442::t_f4b8d11bd2778d 11
+  s_ed609d39de2442::t_015ab0197891ba 78,80-99,103-104
+  s_ed609d39de2442::t_3ea127286d8610 79
+  s_ed609d39de2442::t_c9fa5fb6d235cb 233-234
+  s_ed609d39de2442::t_106390ae83c53c 74,105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a305dfcca5e9ecacd3dfcbcf7d6b059b831e091f",
+  "prompts": {},
+  "sessions": {
+    "s_ed609d39de2442": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "62892a0d-07d6-4784-b490-986f797be544",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
