@@ -543,6 +543,28 @@
           "importance": "recommended"
         }
       }
+    },
+    {
+      "id": "STA-019",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-09T08:29:23.909Z",
+      "details": {
+        "node": "ship",
+        "from": "assumed",
+        "to": "done"
+      }
+    },
+    {
+      "id": "STA-020",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-09T08:29:24.266Z",
+      "details": {
+        "node": "post-flight",
+        "from": "assumed",
+        "to": "done"
+      }
     }
   ],
   "nodes": [
@@ -644,7 +666,7 @@
       "id": "post-flight",
       "type": "post-flight",
       "label": "Post-flight",
-      "status": "assumed",
+      "status": "done",
       "command": "/builder 7b post-flight",
       "next": [
         "ship"
@@ -654,20 +676,24 @@
         "Close out the flight BEFORE any ship: every phase and review is done; the terminal harness harvest fires at this edge, then the plan folder is archived — this stage runs whether or not the work ever ships.",
         "Run /builder 7b post-flight --plan \"<plan path>\" — it verifies completion, writes assets/post-flight.md (close-out note + open-items digest), then moves the WHOLE plan folder to docs/plans/archive/<ord>-<slug>/ (git mv, layout intact). Land every flight-plan receipt before the move — the flow file's path changes with the folder.",
         "Done when the close-out note exists and the plan folder lives under docs/plans/archive/ — ship (optional, later) resolves --plan from the archive path."
-      ]
+      ],
+      "modified_at": "2026-08-09T08:29:24.265Z",
+      "ran_at": "2026-08-09T08:29:24.265Z"
     },
     {
       "id": "ship",
       "type": "ship",
       "label": "Ship",
-      "status": "assumed",
+      "status": "done",
       "command": "/builder 8 ship",
       "next": [],
       "instructions": [
         "Get the work out — push the branch, open a PR (using the repo's PR guidance), watch its CI checks, and report problems; the merge itself is optional.",
         "Run /builder 8 ship --plan \"<plan path>\" — the plan folder was archived at post-flight, so resolve --plan under docs/plans/archive/<ord>-<slug>/; push and PR-open each pause for a separate confirm, and any merge waits for a typed PROCEED.",
         "Done when the PR is open and its checks are green (or the failures are reported with a fix-loop offer); a diverged base hands off to 8c reconcile."
-      ]
+      ],
+      "modified_at": "2026-08-09T08:29:23.908Z",
+      "ran_at": "2026-08-09T08:29:23.908Z"
     },
     {
       "id": "backpressure",
