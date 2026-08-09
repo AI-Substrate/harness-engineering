@@ -130,7 +130,7 @@
           "phase": "ph-08e2",
           "mode": "BUILD",
           "tier": "computational",
-          "proof": "BUILD->RUN: phase-3 task builds scripts/dd-drain-check (git log <fork-point>..main -- harness/cli/src/services/dd harness/cli/src/acts/dd cross-checked against dd by merge-base ancestry, named shas); then node scripts/dd-drain-check.mjs green",
+          "proof": "BUILD->RUN: phase-3 task builds scripts/dd-drain-check - BIDIRECTIONAL (prime ruling 2026-08-09): (a) enumerate git log <fork-point>..main -- harness/cli/src/services/dd harness/cli/src/acts/dd and confirm each present in dd by merge-base ancestry; (b) enumerate dd-side fixes to ported files (dd log on src/) and confirm each present in the fork or explicitly deferred-with-owner; named shas both directions; then node scripts/dd-drain-check.mjs green",
           "state": "unchecked"
         },
         {
