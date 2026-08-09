@@ -54,12 +54,14 @@ describe('downloadAndVerify — the happy path places a verified, executable bin
 
     expect(result).toMatchObject({ ok: true, path: DEST, digest: DIGEST, executable: true });
     // Verification happened on the temp path, and the ONLY publish was a rename.
-    expect(fs.mkdtemps).toEqual(['harness-gitai-']);
-    expect(fs.writes).toEqual(['/tmp/harness-gitai-0/download.bin']);
-    expect(fs.renames).toEqual([`/tmp/harness-gitai-0/download.bin->${DEST}`]);
+    expect(fs.siblingTempDirs).toEqual(['/home/u/.git-ai/bin/.git-ai.harness-gitai-0']);
+    expect(fs.writes).toEqual(['/home/u/.git-ai/bin/.git-ai.harness-gitai-0/download.bin']);
+    expect(fs.renames).toEqual([
+      `/home/u/.git-ai/bin/.git-ai.harness-gitai-0/download.bin->${DEST}`,
+    ]);
     expect(fs.paths()).toEqual([DEST]);
     // The mode is set BEFORE the rename — the final path is never non-executable.
-    expect(exe.calls).toEqual(['/tmp/harness-gitai-0/download.bin']);
+    expect(exe.calls).toEqual(['/home/u/.git-ai/bin/.git-ai.harness-gitai-0/download.bin']);
   });
 
   it('does not attempt a Unix mode on Windows', async () => {
@@ -100,7 +102,9 @@ describe('downloadAndVerify — GitHub’s real redirect SUCCEEDS (078 · ac-000
     const result = await downloadAndVerify(d, request());
 
     expect(result).toMatchObject({ ok: true, path: DEST, digest: DIGEST, redirects: 1 });
-    expect(fs.renames).toEqual([`/tmp/harness-gitai-0/download.bin->${DEST}`]);
+    expect(fs.renames).toEqual([
+      `/home/u/.git-ai/bin/.git-ai.harness-gitai-0/download.bin->${DEST}`,
+    ]);
     expect(fs.paths()).toEqual([DEST]);
   });
 });
@@ -121,7 +125,7 @@ describe('downloadAndVerify — a digest mismatch fails closed (ac-0005)', () =>
     // Nothing placed, nothing left behind.
     expect(fs.paths()).toEqual([]);
     expect(fs.renames).toEqual([]);
-    expect(fs.removedDirs).toEqual(['/tmp/harness-gitai-0']);
+    expect(fs.removedDirs).toEqual(['/home/u/.git-ai/bin/.git-ai.harness-gitai-0']);
   });
 
   it('still refuses a bad digest AFTER a redirect to the real CDN host (078 · ac-0003)', async () => {
@@ -142,7 +146,7 @@ describe('downloadAndVerify — a digest mismatch fails closed (ac-0005)', () =>
     expect(result).toMatchObject({ ok: false, reason: 'digest-mismatch' });
     expect(fs.paths()).toEqual([]);
     expect(fs.renames).toEqual([]);
-    expect(fs.removedDirs).toEqual(['/tmp/harness-gitai-0']);
+    expect(fs.removedDirs).toEqual(['/home/u/.git-ai/bin/.git-ai.harness-gitai-0']);
   });
 });
 
@@ -154,7 +158,7 @@ describe('downloadAndVerify — every transport failure is named, not collapsed 
 
     expect(result).toMatchObject({ ok: false, reason: 'http-status' });
     expect(fs.paths()).toEqual([]);
-    expect(fs.mkdtemps).toEqual([]); // aborted before any disk was touched
+    expect(fs.siblingTempDirs).toEqual([]); // aborted before any disk was touched
   });
 
   // DELETED HERE (078 · #124): "a redirect off the pinned host is refused BEFORE
@@ -200,7 +204,7 @@ describe('downloadAndVerify — every transport failure is named, not collapsed 
 
   it('an interrupted write is caught by reading the bytes BACK off disk', async () => {
     const fs = new FakeCollectorFs();
-    fs.truncateOnReadBack.set('/tmp/harness-gitai-0/download.bin', 3);
+    fs.truncateOnReadBack.set('/home/u/.git-ai/bin/.git-ai.harness-gitai-0/download.bin', 3);
     const result = await downloadAndVerify(
       {
         fs,
@@ -218,7 +222,7 @@ describe('downloadAndVerify — every transport failure is named, not collapsed 
 
   it('a refused write aborts as write-failed and cleans up', async () => {
     const fs = new FakeCollectorFs();
-    fs.failWrites.add('/tmp/harness-gitai-0/download.bin');
+    fs.failWrites.add('/home/u/.git-ai/bin/.git-ai.harness-gitai-0/download.bin');
     const result = await downloadAndVerify(
       {
         fs,
@@ -231,7 +235,7 @@ describe('downloadAndVerify — every transport failure is named, not collapsed 
 
     expect(result).toMatchObject({ ok: false, reason: 'write-failed' });
     expect(fs.paths()).toEqual([]);
-    expect(fs.removedDirs).toEqual(['/tmp/harness-gitai-0']);
+    expect(fs.removedDirs).toEqual(['/home/u/.git-ai/bin/.git-ai.harness-gitai-0']);
   });
 });
 
@@ -252,5 +256,61 @@ describe('downloadAndVerify — hashing never shells out (ac-0006)', () => {
     expect(source).not.toMatch(/exec\.run\(\s*['"](shasum|sha256sum|certutil|openssl)/);
     expect(source).not.toContain('child_process');
     expect(source).toContain('deps.hash.sha256Hex');
+  });
+});
+
+/**
+ * Plan 077 — EXDEV. The publish must stay on the destination's filesystem.
+ *
+ * MEASURED on a clean Ubuntu 25.04 VM before this fix: the download succeeded,
+ * the digest matched, and the atomic publish failed with
+ * `EXDEV: cross-device link not permitted` renaming
+ * `/tmp/harness-gitai-…/download.bin` -> `~/.git-ai/bin/git-ai`. `/tmp` was
+ * tmpfs (device 50), `$HOME` was /dev/vdb1 (device 41). POSIX `rename(2)`
+ * cannot cross a filesystem boundary, so on most Linux boxes the install could
+ * NEVER have succeeded — deterministic, not a flake.
+ *
+ * It hid on macOS, where `/tmp` and `$HOME` are usually one volume. The unit
+ * suite hid it too, because `FakeCollectorFs.rename` used to move bytes between
+ * any two paths happily. A fake that is permissive where the kernel is strict
+ * cannot fail on the thing that matters, so the fake now enforces EXDEV and
+ * these two tests stand on that.
+ */
+describe('plan 077 — staging is BESIDE the target, so the publish cannot hit EXDEV', () => {
+  it('stages on the destination’s filesystem and renames within it', async () => {
+    const fs = new FakeCollectorFs();
+    const result = await downloadAndVerify(
+      {
+        fs,
+        hash: new NodeHash(),
+        http: new FakeDownload({ [URL]: ok200(PAYLOAD) }),
+        exe: new FakeExecutableBit(),
+      },
+      request(),
+    );
+
+    expect(result.ok).toBe(true);
+    // Never the system temp dir…
+    expect(fs.mkdtemps).toEqual([]);
+    // …always a sibling of the destination.
+    for (const dir of fs.siblingTempDirs) {
+      expect(dir.startsWith('/home/u/.git-ai/bin/')).toBe(true);
+    }
+    for (const rename of fs.renames) {
+      const [from, to] = rename.split('->');
+      expect(from?.split('/')[1]).toBe(to?.split('/')[1]);
+    }
+  });
+
+  it('the OLD behaviour is now detectable — a cross-device rename throws', () => {
+    // The control that makes the test above mean something. Before the fix this
+    // exact move was what the code performed, and the fake permitted it, so no
+    // test could have gone red. Now it cannot pass silently.
+    const fs = new FakeCollectorFs();
+    fs.writeBytes('/tmp/staged/download.bin', new Uint8Array([1, 2, 3]));
+
+    expect(() => fs.rename('/tmp/staged/download.bin', '/home/u/.git-ai/bin/git-ai')).toThrow(
+      /EXDEV/,
+    );
   });
 });

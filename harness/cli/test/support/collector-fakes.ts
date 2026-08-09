@@ -29,6 +29,8 @@ export class FakeCollectorFs implements CollectorFsPort {
   readonly deletes: string[] = [];
   readonly removedDirs: string[] = [];
   readonly mkdtemps: string[] = [];
+  /** Sibling temp dirs handed out, so a test can assert WHERE staging happened. */
+  readonly siblingTempDirs: string[] = [];
   /** Paths whose write should FAIL — models a full disk / read-only mount. */
   readonly failWrites = new Set<string>();
   /** Paths whose read-back should return SHORT bytes — models an interrupted write. */
@@ -83,8 +85,34 @@ export class FakeCollectorFs implements CollectorFsPort {
     return dir;
   }
 
+  /**
+   * Sibling staging — a temp dir on the TARGET's own filesystem.
+   *
+   * Modelled faithfully enough to be falsifiable: `rename` below refuses to move
+   * a path across a device boundary, exactly as POSIX `rename(2)` does, and the
+   * device is derived from the first path segment. Without that, this fake would
+   * happily rename `/tmp/... -> /home/u/...` and a test could never tell the
+   * EXDEV bug from the fix (plan 077).
+   */
+  createSiblingTempDir(target: string, prefix: string): string {
+    const parent = target.replace(/\/[^/]*$/, '') || '/';
+    const dir = `${parent}/.${target.split('/').pop() ?? 'x'}.${prefix}${this.tempCounter++}`;
+    this.siblingTempDirs.push(dir);
+    this.dirs.add(dir);
+    return dir;
+  }
+
   rename(from: string, to: string): void {
     this.renames.push(`${from}->${to}`);
+    // POSIX `rename(2)` returns EXDEV across a filesystem boundary. Modelled
+    // here because the fake NOT modelling it is what let a guaranteed-fatal
+    // Linux bug ship: staging in `/tmp` and publishing into `$HOME` can never
+    // succeed where `/tmp` is tmpfs, and every unit test passed anyway (plan
+    // 077). A fake permissive where the kernel is strict cannot fail on the one
+    // thing that matters. `/` + first segment stands in for the device.
+    if (device(from) !== device(to)) {
+      throw new Error(`EXDEV: cross-device link not permitted, rename '${from}' -> '${to}'`);
+    }
     const bytes = this.files.get(from);
     if (bytes === undefined) throw new Error(`FakeCollectorFs: rename source missing: ${from}`);
     this.files.set(to, bytes);
@@ -216,4 +244,12 @@ export class FakePathKind implements PathKindPort {
     this.calls.push(path);
     return this.kinds[path] ?? 'absent';
   }
+}
+
+/**
+ * Stand-in for a filesystem id: the first path segment. `/tmp/...` and
+ * `/home/...` are different devices, which is the real-world case that matters.
+ */
+function device(path: string): string {
+  return `/${path.replace(/^\/+/, '').split('/')[0] ?? ''}`;
 }

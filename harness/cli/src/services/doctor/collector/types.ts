@@ -76,6 +76,7 @@ export type CollectorFsPort = Pick<
   | 'writeBytes'
   | 'mkdirp'
   | 'mkdtemp'
+  | 'createSiblingTempDir'
   | 'rename'
   | 'deleteFile'
   | 'removeDir'
