@@ -65,6 +65,36 @@ fixed at gate level and `#148` records at tool level.
 **Absent is not zero** — `pij-exuberant-skaffen`'s catch, and the same rule we are enforcing in
 #144, where a missing Cursor config must give *"cannot tell"* and never a green.
 
+## 3a. NARROWER THAN FIRST STATED — only the AGGREGATE moves
+
+**Correction, 2026-08-09, from the check's own author who tested it rather than reasoning
+about it:** `6a43fd4d` changed **only** the new `unexamined` check and the **aggregate**
+`totals.findings`. The per-check counts — `markdownlint`, `links`, `mermaid` — are
+**byte-for-byte unaffected**.
+
+So:
+
+| what you quoted | does it still reproduce? |
+|---|---|
+| an **aggregate** (`markdown-lint 210`, `211 total`) | **no** — annotate it |
+| a **per-check** figure (`195 lint`, `links 15 before / 15 after`) | **yes, exactly** — no annotation needed |
+
+That cuts the annotation set substantially. The six briefs in this folder quote an
+**aggregate**, so they do need this note. `2fbbfba7`'s `15 before, 15 after` is **per-check**
+and still reproduces.
+
+**And plan assets cannot produce an `unexamined` finding at all.** Measured by planting an
+untracked, genuinely broken `.md` (two H1s, a real MD025) into plan assets and running the
+gate: `unexamined: pass, findings=0, examined 4 -> 5`. The gate **saw** the file and correctly
+declined to claim it was in scope — `docs/plans/**` and `.harness/**` are both in
+`IGNORE_GLOBS`. That `examined` move with `findings=0` is the denominator doing exactly its
+job: **an exclusion and a blind spot look identical without it.**
+
+The realistic shared-tree case is therefore a peer's untracked draft of a **guide or a skill**
+(`docs/how/**`, `docs/guide/**`, `skills/**`, the root docs) — not a brief, not a packet.
+
+---
+
 ## 4. A caveat that must travel with the correction
 
 The **links** sub-count is structurally blind to `docs/plans/**`, which `markdown-lint`'s scope
