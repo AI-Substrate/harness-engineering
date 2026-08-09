@@ -60,18 +60,22 @@ describe('detection reuses the collector — no second detector (dw-0019)', () =
     expect(unresolved.map((s) => `${s.agent} -> ${s.detectId}`)).toEqual([]);
   });
 
-  it('the two independently-derived CONFIG tables agree', () => {
+  it('the two config tables have not DRIFTED from each other', () => {
     /*
     Test Doc:
-    - Why: the collector's marker table and our matrix were built from the same
-      source raid at different times, by different tasks. Both name config paths. If
-      they disagree, one of them is writing to a file the other never backs up — and
-      neither would report it.
-    - Contract: for every linked agent, our resolved config files are exactly the
-      collector's declared configs (which are home-relative).
-    - Quality Contribution: a cross-check between two tables is stronger than either
-      table's own tests, because it cannot be satisfied by copying one into the other
-      — they are consumed by different code.
+    - Why: the collector's marker table and our matrix were built from the SAME
+      source raid at different times by different tasks. If they disagree, one is
+      writing to a file the other never backs up, and neither would report it.
+    - Contract: for every linked agent, our resolved config files are among the
+      collector's declared configs (home-relative).
+    - WHAT THIS IS NOT: it is NOT corroboration of the paths. Both tables descend
+      from one source, so a raid that misread a path puts the SAME error in both and
+      this passes cleanly. Agreement between two derivations of one source is a
+      shared blind spot, not independent evidence.
+    - WHAT IT IS: a DRIFT guard. A transcription slip introduced by either task
+      after the raid now fails here — which is precisely the class that produced the
+      detectId divergence above. Actual corroboration needs a different source; see
+      the live-config row below.
     */
     const byId = new Map(AGENT_MARKERS.map((marker) => [marker.id.toLowerCase(), marker]));
     const disagreements: string[] = [];
@@ -164,5 +168,66 @@ describe('Cline is UNDETECTED, not absent (dw-001b)', () => {
 
   it('the undetected list is non-empty and declared — not an empty constant nobody fills', () => {
     expect(UNDETECTED_INSTALLERS.length).toBeGreaterThan(0);
+  });
+});
+
+describe('CORROBORATION from a source other than the raid — the live filesystem', () => {
+  it('every DETECTED agent has a config where the matrix says it does', () => {
+    /*
+    Test Doc:
+    - Why: the drift check above compares two tables sharing one ancestor, so it
+      cannot corroborate a path. The live filesystem is genuinely independent
+      evidence: these files were written by the agents themselves, not transcribed
+      by us.
+    - Contract: if detection reports ANY agent present, at least one detected agent
+      must have a config file exactly where the matrix says. If detection reports
+      none, this is a REAL skip and says so.
+    - HOW IT CAN FAIL — the property an earlier version of this row lacked. Break
+      the matrix paths and a detected agent yields no existing config, so it goes
+      red. That also couples the two tables: being able to detect an agent by its
+      marker directory while finding no config where the matrix claims one means one
+      of the two is wrong — the exact failure that produced `detectId`.
+    - WHAT IT DELIBERATELY DOES NOT ASSERT: which agents a developer has installed.
+      That is not a property of this codebase, so the gate is detection (observed),
+      never a hardcoded expectation.
+    - READ ONLY. Nothing here opens a file for writing: the live ~/.cursor/hooks.json
+      holds the git-ai checkpoint pipeline that phase 1's only end-to-end measurement
+      depends on.
+    */
+    const realHome = process.env.HOME ?? process.env.USERPROFILE;
+    if (realHome === undefined || realHome.length === 0) {
+      expect(realHome).toBeUndefined();
+      return;
+    }
+
+    const readEnv = (name: string) => process.env[name];
+    const detected = detectAgents(fs, realHome).map((m) => m.id.toLowerCase());
+
+    const found: string[] = [];
+    const absent: string[] = [];
+    for (const spec of AGENT_MATRIX) {
+      if (!detected.includes(spec.detectId.toLowerCase())) continue;
+      for (const path of resolveConfigFiles(spec, realHome, readEnv)) {
+        (fs.exists(path) ? found : absent).push(`${spec.agent}: ${path}`);
+      }
+    }
+
+    console.log(
+      `live-config corroboration — detected ${detected.length}, config FOUND ${found.length}, ABSENT ${absent.length}`,
+    );
+    for (const entry of found) console.log(`  present: ${entry}`);
+    for (const entry of absent) console.log(`  absent:  ${entry}`);
+
+    if (detected.length === 0) {
+      // A REAL skip: no agents on this machine (the CI case). Asserted as
+      // "nothing detected", not merely "nothing found" — the latter is also what a
+      // broken matrix produces.
+      expect(detected).toEqual([]);
+      return;
+    }
+
+    // Detection found agents, so the matrix must locate at least one of their
+    // configs. A matrix with broken paths fails here.
+    expect(found.length).toBeGreaterThan(0);
   });
 });

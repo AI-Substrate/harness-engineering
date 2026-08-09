@@ -97,7 +97,7 @@
         {
           "id": "tk-0008",
           "title": "Wire `harness hooks install|status|uninstall|list` with --json, define what `list` OUTPUTS, and refuse an unimplemented strategy by NAME",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-2",
           "success": "Registered the way Phase 1 registered `hooks fire`, with `hooks` already in RESERVED_NAMES and the command group already created at acts/hooks.ts:52. HARNESS_NO_HOOKS=1 is honoured by install ITSELF, not only at doctor's call site, so the opt-out cannot be bypassed by invoking the verb directly — and its value semantics are stated (=1 only, or any non-empty) so doctor's call site and the verb cannot disagree about what opting out means. THE CUT-LINE SEAM: if Strategies C and D are cut, the matrix has four rows with no writer. `list` would advertise agents that cannot be installed, `install` would hit a row with no strategy, and `status` would report them identically to not-installed. A silent skip there is this plan's own defect class. `list` currently has no success criterion anywhere, which makes it the verb most likely to make a false claim after a cut.",
           "satisfies": [
@@ -108,7 +108,7 @@
         {
           "id": "tk-0009",
           "title": "Make install IDEMPOTENT and prove it on BYTES — against the GOLDEN, not merely against the second run",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-2",
           "success": "A second run leaves every touched config byte-identical. BUT HASHING BEFORE AND AFTER THE SECOND RUN PROVES ONLY THAT run2 EQUALS run1 — it says nothing about run1 versus the original. A writer that alphabetically re-sorts the whole config on the FIRST install (exactly git-ai's BTreeMap behaviour) and then re-sorts identically on the second produces byte-identical run1 and run2 and passes a naive idempotency test GREEN. So idempotency is asserted run1-vs-run2, and order preservation is asserted run1-vs-GOLDEN; they are two assertions, not one. Include the case where the config already holds git-ai's entries, since that is where a naive merge reorders. The denominator is EVERY touched config — which for windsurf is two files.",
           "satisfies": [
@@ -383,25 +383,25 @@
           {
             "id": "dw-001c",
             "assertion": "`list` has a defined output contract, asserted — per agent: detected, supported, installed.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-001d",
             "assertion": "A matrix row whose strategy is unimplemented is reported NOT SUPPORTED by list and status, and REFUSED by install with a named reason. Never silently skipped.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-001e",
             "assertion": "HARNESS_NO_HOOKS is honoured inside the verb: calling install directly with it set writes nothing, asserted on the filesystem rather than on a status message.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-001f",
             "assertion": "The variable's value semantics are fixed in writing and asserted, so doctor's call site and the verb cannot disagree.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],
@@ -409,19 +409,19 @@
           {
             "id": "dw-0020",
             "assertion": "Idempotency is asserted as run2 == run1 on bytes, over EVERY touched config including both windsurf paths.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0021",
             "assertion": "First-run order and comment preservation is asserted separately against the golden — a first-run re-sort must go RED even though it is perfectly idempotent.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0022",
             "assertion": "The git-ai-entries-already-present fixture is included, since that is where a naive merge reorders.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],

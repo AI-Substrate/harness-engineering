@@ -704,3 +704,174 @@ Asked at the gate, answered mechanically rather than assumed. `install-strategy-
 (`.copilot/hooks/` and `.codeium/windsurf/`) are asserted with `existsSync` on disk. So `mkdirp`
 semantics for a nested create are proven against real `node:fs`, not against a fake that has already
 been measured generous once today.
+
+### Three corrections to the tk-0007 claims
+
+**1. The `created`-flag mutation was never in the ambiguous class.** Re-taken with the anchor
+assertion in place: `anchor matched; patch applied`, then **2 rows red** — and they are exactly the
+two that install twice and compare. So the observation stands as measured.
+
+The scope of the anchor near-miss is narrower than it first looked, and worth stating precisely: a
+mutation that produced **red self-evidently applied**, so every refusal recorded on this plan stands
+(disjoint sets, marker rows, resolver swap, compact re-check, extractor quoting). The ambiguity only
+touches a mutation whose result was green — and even then it is resolved if **any** row went red in
+the same run, since one red proves the patch landed. That leaves exactly one class: a mutation where
+the entire run was green. Only the `one-file` attempt was ever in it, and it has been re-taken (3
+rows red).
+
+**2. The cross-check is a DRIFT guard, not corroboration — relabelled.** I had called it
+"independently corroborated". It is not independent: both tables descend from the **same source
+raid**, so a raid that misread a path puts the identical error in both and the check passes cleanly.
+Agreement between two derivations of one source is a shared blind spot. What it genuinely proves is
+that the tables have not **drifted** since — which is precisely the class that produced the
+`detectId` divergence, so it is kept, correctly labelled.
+
+**3. Actual corroboration, from a source that is not the raid: the live filesystem.**
+
+```
+live-config corroboration — FOUND 7, ABSENT 1
+  present: claude-code:    ~/.claude/settings.json
+  present: cursor:         ~/.cursor/hooks.json
+  present: gemini:         ~/.gemini/settings.json
+  present: droid:          ~/.factory/settings.json
+  present: github-copilot: ~/.copilot/hooks/git-ai.json
+  present: windsurf:       ~/.codeium/hooks.json
+  present: windsurf:       ~/.codeium/windsurf/hooks.json
+```
+
+Seven of eight resolved paths are real files **written by those agents**, not transcribed by us. That
+independently confirms the two shapes most likely to be wrong: `github-copilot`'s two-level
+`hooks/git-ai.json`, and **both** of windsurf's paths — dw-0014's claim, verified against something
+other than the table that asserts it. Only firebender is absent here.
+
+**AND THE FIRST VERSION OF THAT ROW COULD NOT FAIL — an eighth instance, caught in review.** It sorted
+paths into `found`/`absent`, then took a SKIPPED branch when `found` was empty, asserting only
+`absent.length > 0`. Break every path in the matrix and nothing exists, everything lands in `absent`,
+and the row goes green — **a totally broken matrix and a machine with no agents installed were
+indistinguishable**. The row added specifically to fix a can't-fail problem could not itself fail.
+
+Its surviving assertion was worse than useless: `expect(entry).toContain(realHome)` restated its own
+construction (the path was *built* from `realHome`), so it was vacuous in the ordinary case — and
+with `CLAUDE_CONFIG_DIR` set it would have gone **spuriously red on a correctly-behaving machine**,
+because a correct resolution yields the override root, not the home. Deleted.
+
+**The repair gates on DETECTION, which is observable rather than expected.** If `detectAgents`
+reports any agent present, at least one detected agent must have a config exactly where the matrix
+says. That is falsifiable, and it couples the two tables: being able to detect an agent by its marker
+while finding no config where the matrix claims one means one of them is wrong — the very failure
+that produced `detectId`. The skip branch now asserts **nothing was detected**, not merely that
+nothing was found.
+
+**Measured on this machine (2026-08-10), so the evidence outlives the scrollback:**
+
+```
+live-config corroboration — detected 8, config FOUND 7, ABSENT 0
+  present: claude-code:    ~/.claude/settings.json
+  present: cursor:         ~/.cursor/hooks.json
+  present: gemini:         ~/.gemini/settings.json
+  present: droid:          ~/.factory/settings.json
+  present: github-copilot: ~/.copilot/hooks/git-ai.json
+  present: windsurf:       ~/.codeium/hooks.json
+  present: windsurf:       ~/.codeium/windsurf/hooks.json
+```
+
+**Proven able to refuse** — every `configFiles` entry in the matrix rewritten to a garbage path:
+
+```
+anchor matched; every matrix path broken
+live-config corroboration — detected 8, config FOUND 0, ABSENT 6
+FAIL  every DETECTED agent has a config where the matrix says it does
+      AssertionError: expected 0 to be greater than 0
+```
+
+The drift check went red in the same run, which is the pair behaving as designed: one guards the
+tables against each other, the other guards both against the world.
+
+The row is **read-only** and records `FOUND`/`ABSENT` counts. On CI nothing is detected and it is a
+real skip.
+
+---
+
+## tk-0008 — the verb family
+
+### The opt-out lives in the VERB, and is asserted on the filesystem
+
+A guard at doctor's call site is bypassed the moment someone runs
+`harness hooks install` directly — which is exactly what a user reaching for the command does. So
+`installHooks` checks it itself, and the row asserts the home is **byte-for-byte unchanged**, never
+that a message was returned. A message is what a broken implementation prints while installing anyway.
+
+### The value semantics are fixed here so two call sites cannot disagree (dw-001f)
+
+**Any non-empty value opts out.** `1`, `true`, `yes` — and deliberately `0` and `false` too. Someone
+exporting `HARNESS_NO_HOOKS=0` is reaching for the off switch, and a variable named NO_HOOKS that
+*installs* when set to `0` is a trap. Only unset or empty proceeds, with a **positive control** row
+asserting that unset really does install — without it, "opts out" is satisfied by a verb that never
+installs at all.
+
+### The cut line is named, never skipped (dw-001d)
+
+Strategies C and D are the acceptable casualties, which leaves four agents with no writer. `list`
+reports them `supported: false` with a reason naming the strategy; `install` puts a detected one in
+`refused` **by name** and writes nothing for it. A discriminator row asserts a *supported* agent
+carries **no** reason — otherwise "reason set for unsupported" would pass for an implementation that
+sets one on everything.
+
+`cline` additionally carries `undetectable: true`: editor-level, so marker detection cannot reach it,
+and "not detected" must not collapse into "not installed".
+
+### `status` stats the target, because an entry is not a working hook
+
+Measured on this machine: the live Cursor hook points into untracked `scratch/`. An entry can exist
+while its target does not, and because a hook exits 0 by design that is indistinguishable from a
+working hook. `status` extracts the binary back out of the command string and stats it — with a row
+that **deletes the binary after installing** and asserts `binaryResolves: false`, since asserting only
+the healthy case proves nothing about the case that matters.
+
+### Proven by refusal — four mutations, every anchor asserted
+
+| mutation | rows red |
+| --- | --- |
+| opt-out left to the caller | 1 |
+| opt-out narrowed to `=== '1'` | **5** |
+| unsupported agent silently skipped | 1 |
+| `binaryResolves` hard-coded true | 1 |
+
+Every run printed `anchor matched` before the build, per the rule the near-miss produced — so a green
+here would have meant blind tests, not an unapplied patch.
+
+---
+
+## tk-0009 — idempotency is TWO assertions, not one
+
+Hashing the bytes before and after the **second** run proves only that run2 equals run1. It says
+nothing about run1 versus the **original** — and the gap is not theoretical. A writer that
+alphabetically re-sorts on the first install (git-ai's actual `BTreeMap` behaviour) and re-sorts
+identically on the second produces byte-identical run1 and run2, and passes a naive idempotency test
+**green, with the customer's config already rearranged**.
+
+So: idempotency is asserted **run1 vs run2**; order preservation is asserted **run1 vs GOLDEN**.
+
+### The row that makes the inadequacy executable
+
+One row runs the re-sorting writer and asserts **both** facts about it at once:
+
+- `run2 === run1` — perfectly idempotent, so the naive check is green;
+- `run1 !== golden`, with `postToolUse` now ahead of `preToolUse` — the order destroyed.
+
+Then it runs our real writer on the same input and shows it is idempotent **and** matches the golden.
+Kept as an exhibit for the same reason as the set-vs-unset row: the normal fate of a demonstration
+like this is deletion as redundant, and the reason the second assertion exists leaves with it.
+
+### Three runs, not two, and both windsurf files
+
+Two runs cannot see a duplicate that first appears on run three, so the check runs three times.
+The denominator is **every** touched config: windsurf's two files are read individually, and each is
+asserted to contain the marker exactly twice — an idempotency check that read only the first file
+would pass while the second accumulated an entry per run.
+
+### The populated case is the interesting one (dw-0022)
+
+An empty config has nothing to rearrange, so idempotency is asserted against the fixture that already
+holds git-ai's compound entry — which is where a naive merge reorders — and that entry is asserted to
+survive both runs.
