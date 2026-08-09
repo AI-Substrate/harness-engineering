@@ -471,3 +471,43 @@ grammar. The other machine-readable targets were re-validated for the same reaso
 (three `.json` files parsed; only one `.ts` was in the blast radius).
 
 **Green**: `just build` exit 0; **294 files / 4487 tests**; `skills-check` ok.
+
+## tk-0011 — the sequencing ruling, recorded BEFORE the first `scaffold.ts` commit
+
+dw-001e requires the ruling to be in this log before any `acts/plan/scaffold.ts` change is
+committed. This entry is that record, and it is committed on its own for exactly that
+reason — the ordering is the evidence, as with tk-000c's checklist.
+
+### The standing order, and why it inverted
+
+`acts/plan/scaffold.ts` was ordered **behind #119**. #119 has **not landed**:
+
+```
+$ git log --oneline origin/main -1     → 7853f460 ci: a windows-latest leg … (#141)
+$ git log origin/main --grep=119       → no #119 commit
+```
+
+**Prime's ruling — option (b): this bundle lands FIRST, #119 rebases over us.** The
+reasoning, in prime's terms: *a sequencing decision has a premise; the premise expired —
+holding a staffed phase behind unstaffed intent is a stall, not a queue.* The original
+order was correct when #119 looked imminent. It stopped being correct when #119 stopped
+moving, and a queue that never drains is not a queue.
+
+What makes this honest rather than convenient: the ruling names the **cost** and assigns
+it. #119 pays a rebase. That is a real bill, handed to a named party, not an externality
+waved through.
+
+### What moved, for #119's rebase
+
+`scaffold.ts`'s **shape** changes under this bundle — #119 will not be rebasing over a
+no-op:
+
+- **Section seeding** becomes schema-driven rather than a fixed list: `plan new` seeds
+  every section the RESOLVED schema declares, so a scaffold no longer validates with
+  declared-but-absent sections (ledger #1's harness half). Anything in #119 that assumes
+  the hard-coded seed set must re-read the schema instead.
+- **Ordinal handling**: a bare slug no longer mints a second folder with a prefixed
+  `meta.slug` (ledger #2). Folder naming and `meta.slug` derivation are the two touch
+  points.
+
+Prime mirrors this inversion onto #119; this entry is the consumer-facing half.
