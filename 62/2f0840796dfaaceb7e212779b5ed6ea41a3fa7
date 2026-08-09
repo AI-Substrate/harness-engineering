@@ -1,0 +1,25 @@
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-2/tasks.dd.json
+  s_c88674e85f3aea::t_56661b3ae8f1df 165-166
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-2/tasks.dd.md
+  s_c88674e85f3aea::t_2eb5183e932ab5 88
+docs/plans/080-dd-consume-upgrade/plan.dd.json
+  s_c88674e85f3aea::t_0770e15a167112 59
+docs/plans/080-dd-consume-upgrade/plan.dd.md
+  s_c88674e85f3aea::t_acf6232e6d998b 60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "622f0840796dfaaceb7e212779b5ed6ea41a3fa7",
+  "prompts": {},
+  "sessions": {
+    "s_c88674e85f3aea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71679da4-5249-4e02-9117-68a3abf3ed0e",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
