@@ -1,0 +1,28 @@
+.github/workflows/windows.yml
+  s_6b8a25b7716dd8::t_69fbfccafe8268 244,246
+  s_6b8a25b7716dd8::t_a4ff4540201b8d 265
+  s_6b8a25b7716dd8::t_f84ad6158f300a 291-295,300
+  s_6b8a25b7716dd8::t_f0e84d087cef5f 275-277,279,281
+  s_6b8a25b7716dd8::t_96d19a9f8a9a44 229-243,245
+  s_6b8a25b7716dd8::t_033b3f46d9ca22 266
+  s_6b8a25b7716dd8::t_6844eb7a28285c 247
+  s_6b8a25b7716dd8::t_244eeb3bd13f8a 308-310
+  s_6b8a25b7716dd8::t_c5f7be81a8f0ce 274,278,280,282
+  s_6b8a25b7716dd8::t_358f02c6d84316 192-212
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "1103ec6a964ef86eae94aaafce5417c2d368a958",
+  "prompts": {},
+  "sessions": {
+    "s_6b8a25b7716dd8": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "0566e436-a7a0-4359-99b4-8a2dc8a4c21d",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
