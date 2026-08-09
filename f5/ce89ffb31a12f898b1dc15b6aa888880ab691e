@@ -1,0 +1,60 @@
+harness/cli/test/services/doctor/collector/install.test.ts
+  s_e2ef1441ad1dbd::t_0ceaa6daf35563 410-418,593-601
+  s_e2ef1441ad1dbd::t_8a2cd6248d88d0 83-91
+  s_e2ef1441ad1dbd::t_d065c4ad80c8ae 94-121
+harness/cli/src/services/doctor/collector/state.ts
+  s_e2ef1441ad1dbd::t_6011113c1a0473 107-111,113-131
+  s_e2ef1441ad1dbd::t_572fe3d49c12a0 233-246
+harness/cli/src/services/doctor/collector/health.ts
+  s_e2ef1441ad1dbd::t_274c2286776f16 298-300
+  s_e2ef1441ad1dbd::t_9dcd1322ef81a2 6
+  s_e2ef1441ad1dbd::t_2e29a483481732 386,388,456-462,478-491
+  s_e2ef1441ad1dbd::t_9c11a50263e3b2 492
+harness/cli/test/services/doctor/collector/auto-install.test.ts
+  s_e2ef1441ad1dbd::t_889ac1ac463abd 639-643,657-671
+harness/cli/test/services/doctor/collector/evidence.test.ts
+  s_e2ef1441ad1dbd::t_04d163c44b2146 1-16,18-33,35-179
+  s_e2ef1441ad1dbd::t_b8ca8e20f6e853 34,230-233,235-237
+  s_e2ef1441ad1dbd::t_f8067e85813b54 17,210,257
+  s_e2ef1441ad1dbd::t_f1212b63bdd1bd 218-222
+  s_e2ef1441ad1dbd::t_5f76abf2f75743 180-209,211-217,223-229,234,238-256,258-342
+harness/cli/test/services/doctor/collector/recheck-coverage.test.ts
+  s_e2ef1441ad1dbd::t_f21e348c46497c 75-97
+harness/cli/src/services/doctor/collector/install.ts
+  s_e2ef1441ad1dbd::t_88c9c7078083e0 1
+  s_e2ef1441ad1dbd::t_59317ac336d606 356-360
+  s_e2ef1441ad1dbd::t_912fa2f2c0747a 488-491
+  s_e2ef1441ad1dbd::t_274c2286776f16 5,11,209-210
+  s_e2ef1441ad1dbd::t_b91bd6f7fadf45 422-431,433,435-436
+  s_e2ef1441ad1dbd::t_d7b5fb55b75faa 191-192,197-201
+  s_e2ef1441ad1dbd::t_371c6cbfb77a37 207
+  s_e2ef1441ad1dbd::t_572fe3d49c12a0 261,746-748
+  s_e2ef1441ad1dbd::t_bf6e6446bae5f6 480-481,492-497
+  s_e2ef1441ad1dbd::t_d616f4d9414681 160-163,165-172,174-190,195,202-206,208,211
+  s_e2ef1441ad1dbd::t_0e3e1047d8f1fa 164,173
+harness/cli/test/support/collector-fakes.ts
+  s_e2ef1441ad1dbd::t_cc5a2b3c6c448a 202-220,242-245
+  s_e2ef1441ad1dbd::t_a86f28be42c750 246
+harness/cli/src/services/doctor/collector/evidence.ts
+  s_e2ef1441ad1dbd::t_febd562c8ac512 127-156
+  s_e2ef1441ad1dbd::t_ef0b9d9b00e9da 1-2
+  s_e2ef1441ad1dbd::t_79bb9423dc1692 3-126,157-166
+harness/cli/src/services/doctor/collector/agents.ts
+  s_e2ef1441ad1dbd::t_35cd9a55fe2580 45-50,52-72,77-97,99,101-112,114-117,119,121,123-130,135-144,146-147
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f5ce89ffb31a12f898b1dc15b6aa888880ab691e",
+  "prompts": {},
+  "sessions": {
+    "s_e2ef1441ad1dbd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "265d8845-1914-4476-9977-4a05f12f4b06",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
