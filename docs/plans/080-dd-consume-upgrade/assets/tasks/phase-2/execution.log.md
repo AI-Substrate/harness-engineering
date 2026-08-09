@@ -105,3 +105,113 @@ harness-side — is the pre-committed **INSUFFICIENT** call and a D-3 block, nev
 
 Reported to koala at recon time rather than at phase end, because the re-pin loop is fast
 and the gap is on the critical path. `tk-0007` continues in parallel, unblocked.
+
+---
+
+## tk-0007 — falsifier suite authored and run RED (dw-000c evidence)
+
+**File**: `harness/cli/test/integration/plan-semantics-falsifiers.int.test.ts`
+**Subject (absent by design)**: `harness/cli/src/services/plan-semantics/index.ts` — the
+module tk-0008 will create. Its ABSENCE is the sanctioned RED control for dw-000c.
+
+### Coverage: all NINE primitives, 13 falsifier tests
+
+| # | primitive | falsifier | test |
+|---|---|---|---|
+| 1 | `itemKey` | native-separator vs POSIX spelling collapse to one key; key agrees with public `indexDocument` addressing | 2 |
+| 2-5 | `PlanDocument`, `PlanItem`, `PlanEdge`, `PlanIndex` | every field of every item/edge filled from the same public inputs, compared field-by-field against the fork | 1 |
+| 6-7 | `ReadyReading`, `readPlanReadiness` | three fixtures producing three DISTINCT verdicts: ready / not-ready / cant-tell | 3 |
+| 8 | `buildPlanIndex` | (a) derived rollup state for a stateless container; (b) non-builtin `satisfies-toward` behaves as the fork's, with no local vocabulary | 2 |
+| 9 | `readPlanCheck` | findings-set + counts equality on 4 synthetic corpora **and** on plan 080's own documents | 5 |
+
+### The RED run (subject absent) — verbatim
+
+```
+$ npx vitest run test/integration/plan-semantics-falsifiers.int.test.ts
+ × #1 itemKey > collapses a native-separator spelling and a POSIX spelling to one key
+ × #1 itemKey > agrees with the public indexDocument addressing for every indexed node
+ × #2/#3/#4/#5 > fills every PlanItem and PlanEdge field from the same public inputs as the fork
+ × #6/#7 > reproduces the fork verdict: ready
+ × #6/#7 > reproduces the fork verdict: not-ready (unclaimed criterion)
+ × #6/#7 > reproduces the fork verdict: cant-tell (survey unreadable)
+ × #8 buildPlanIndex > (a) reproduces derived rollup state for a container with no state of its own
+ × #8 buildPlanIndex > (b) treats a non-builtin relation exactly as the fork does, without a local vocabulary
+ × #9 readPlanCheck > findings set equal to the fork: constructed contradiction (checked task, open criterion)
+ × #9 readPlanCheck > findings set equal to the fork: non-builtin relation makes NO contradiction
+ × #9 readPlanCheck > findings set equal to the fork: orphan-claim under --complete
+ × #9 readPlanCheck > findings set equal to the fork: rollup corpus, per-row accounting
+ × #9 readPlanCheck > agrees with the fork on plan 080 own documents
+ ✓ the subject module > is absent until tk-0008 lands, and tk-0008 is blocked on the dd export gap
+
+ Test Files  1 failed (1)
+      Tests  13 failed | 1 passed (14)
+```
+
+### A RED that cannot go green is not a control — so I proved it can
+
+A suite that fails because of a typo fails identically to one that fails for the reason
+you claim. I stubbed the subject module deliberately WRONG (an `itemKey` that skips
+`toPosix`, empty `buildPlanIndex`/`readPlanCheck` returns), re-ran, and confirmed every
+falsifier then failed on **behaviour** rather than on absence:
+
+```
+AssertionError: expected 'C:\repo\docs\p.dd.json#tasks/tk-0001'
+             to be 'C:/repo/docs/p.dd.json#tasks/tk-0001'      # A2 caught by #1
+AssertionError: expected [] to strictly equal [ { …(14) }, { …(14) }, …(10) ]   # #2-#5
+AssertionError: expected 'ready' to be 'not-ready'                              # #6/#7
+AssertionError: no rollup item at …/plan.dd.json#: expected undefined to be defined  # #8a
+AssertionError: expected [] to strictly equal [ Array(1) ]                      # #9
+```
+
+The stub was then deleted (`rm -rf harness/cli/src/services/plan-semantics`); the tree
+carries no subject module.
+
+### Two traps found while building it, both fixed rather than worked around
+
+1. **Fixture shape.** `DdDoc.sections` is `DdSection[]` (`{name,title?,value}`), not a
+   record. My first fixtures were record-shaped and the ORACLE crashed
+   (`doc.sections.map is not a function`) — the falsifiers would have "failed" for a
+   reason having nothing to do with the trial.
+2. **Vacuous oracle.** After that fix the oracle returned `error: 1, semantic: null` —
+   `link value must be a string`, because the schema declares `type: 'link'` and I passed
+   an array. The semantic read never ran, so the contradiction falsifier was comparing two
+   EMPTY finding sets and would have passed against almost anything.
+
+Both were caught only by reading the oracle's actual output rather than its pass/fail. So
+the fixtures are now **pinned against vacuity**, permanently:
+
+- each `readPlanCheck` scenario asserts the finding classes the ORACLE must produce
+  (`['contradiction']`, `[]`, `['open-completable','open-completable','orphan-claim']`,
+  `['open-completable','orphan-claim']`) before comparing the subject to it;
+- each readiness scenario pins the oracle's `{verdict, reason, decided_by}` triple;
+- `#8a` asserts the oracle found at least one `derived` item.
+
+The strongest of these is the **control pair**: scenarios 1 and 2 are the SAME document
+with only the relation changed (`satisfies` → `satisfies-toward`), and the contradiction
+appears in one and not the other. That is what makes the vocabulary question testable at
+all — a subject carrying a hand-copied `BUILTIN_RELS` cannot track a relation added after
+the copy was made, and fails exactly there.
+
+### Bound on what a test can prove here (honesty note for the verdict)
+
+The prediction's #2/#3 falsifiers are stated as *"strict `tsc` of the re-declared type
+against package types"*. **In this repo a test file cannot carry that claim**: the only
+tsconfig is `harness/cli/tsconfig.json` with `include: ["src"]`, and `harness checks`
+typechecks exactly that project (`.harness/extensions/checks/extension.ts:153`); vitest
+transpiles tests without typechecking. So a type-level assertion written in a test is
+INERT — it can never fail.
+
+This is not fatal to #2/#3 and does not make them UNPROVEN, but it relocates the proof and
+that must be stated: the type half is enforced when the subject module lands in `src/`
+(tk-0008) and `acts/plan/*` consumes it (tk-0009) — both inside the typechecked project.
+The test file's contribution to #2/#3 is the RUNTIME half (every field filled, compared
+field-by-field). Recorded as `harness observe` DL-003, because untypechecked tests are a
+harness-wide property, not a plan-080 one.
+
+### State
+
+`dw-000c` is earned (all nine have a runnable falsifier, each run RED, per-primitive
+output above; commit order is the proof). **`dw-000d` is NOT earned and stays unchecked**:
+it wants `just build && just test` green with the suite in the tree, and the suite is red
+by design until tk-0008 — which is D-3 blocked. `tsc --noEmit -p harness/cli/tsconfig.json`
+exits 0 and biome is clean on the new file.
