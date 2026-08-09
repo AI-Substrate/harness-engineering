@@ -1,0 +1,69 @@
+harness/cli/test/integration/fixtures/plan-semantics-corpora.ts
+  s_397a51e23fc2cd::t_4b1053af1124ea 245-249
+harness/cli/src/services/plan-semantics/dd-mechanisms/README.md
+  s_397a51e23fc2cd::t_943f460ce7cf1c 1-25
+harness/cli/src/services/plan-semantics/dd-mechanisms/rel.ts
+  s_397a51e23fc2cd::t_8a868c701de086 1-16,18,20-87
+  s_397a51e23fc2cd::t_910158a9928b03 17,19
+harness/cli/src/services/plan-semantics/dd-mechanisms/constants.ts
+  s_397a51e23fc2cd::t_910158a9928b03 18-24
+  s_397a51e23fc2cd::t_39733e4123f2bb 1-17,25-43
+harness/cli/src/acts/plan/pr-body.ts
+  s_397a51e23fc2cd::t_f1e96a0c672f2e 2
+harness/cli/test/architecture/plan-semantics-boundary.test.ts
+  s_397a51e23fc2cd::t_31ddd2b02af65f 1-87,92-129
+  s_397a51e23fc2cd::t_1c9eb4b77d90a8 88-91
+harness/cli/src/services/plan-semantics/dd-mechanisms/derive.ts
+  s_397a51e23fc2cd::t_fc0712fd73301d 1-71
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-2/tasks.dd.json
+  s_397a51e23fc2cd::t_ec4c27e586bddf 35,45,55,106,114,120,126,135,141,163
+harness/cli/src/services/plan-semantics/semantics.ts
+  s_397a51e23fc2cd::t_d0f5146e2ffe57 2-196
+  s_397a51e23fc2cd::t_a75a6b2a18984e 1
+harness/cli/src/services/plan-semantics/check.ts
+  s_397a51e23fc2cd::t_a75a6b2a18984e 1-2,8-11
+  s_397a51e23fc2cd::t_d0f5146e2ffe57 3-7,13-329
+  s_397a51e23fc2cd::t_910158a9928b03 12
+harness/cli/src/services/plan-semantics/ready.ts
+  s_397a51e23fc2cd::t_d0f5146e2ffe57 1-222
+harness/cli/src/services/plan-semantics/dd-mechanisms/value.ts
+  s_397a51e23fc2cd::t_943f460ce7cf1c 1-9
+harness/cli/test/integration/plan-semantics-falsifiers.int.test.ts
+  s_397a51e23fc2cd::t_6ba9e969d57f8b 419-427,429-430
+  s_397a51e23fc2cd::t_409dc2062e3bfd 4-5,7,407-409
+harness/cli/test/integration/plan-semantics-goldens.gen.test.ts
+  s_397a51e23fc2cd::t_4b1053af1124ea 19,21
+  s_397a51e23fc2cd::t_fb3d9cd44b097d 46-53
+harness/cli/src/services/plan-semantics/index-plan.ts
+  s_397a51e23fc2cd::t_910158a9928b03 4,11-15
+  s_397a51e23fc2cd::t_d0f5146e2ffe57 5-9,16-232
+  s_397a51e23fc2cd::t_a75a6b2a18984e 1-3,10
+harness/cli/src/acts/plan/index.ts
+  s_397a51e23fc2cd::t_ee768b30081ecf 41
+  s_397a51e23fc2cd::t_f1e96a0c672f2e 49
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-2/tasks.dd.md
+  s_397a51e23fc2cd::t_ec4c27e586bddf 39-41,60,66-68,74-75,88
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-2/execution.log.md
+  s_397a51e23fc2cd::t_d2600d07781d58 321-479
+harness/cli/src/services/plan-semantics/model.ts
+  s_397a51e23fc2cd::t_a75a6b2a18984e 1-2
+  s_397a51e23fc2cd::t_d0f5146e2ffe57 3-119
+harness/cli/src/services/plan-semantics/index.ts
+  s_397a51e23fc2cd::t_d0f5146e2ffe57 1-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "964640f895201f82a0d080af70a7472fcac38617",
+  "prompts": {},
+  "sessions": {
+    "s_397a51e23fc2cd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "3fe3c47b-5424-4214-892e-81ef19c49d45",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
