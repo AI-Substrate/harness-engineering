@@ -1,0 +1,46 @@
+harness/cli/test/services/flow/reachability.test.ts
+  s_19a84a88383f5b::t_7d3a4b98ee2648 161-163
+  s_19a84a88383f5b::t_c715ed0bb4623f 1-160,164-185,187-193,195-201,203-204,206-323,382-411
+  s_19a84a88383f5b::t_457df1639216d8 324-381
+  s_19a84a88383f5b::t_2c8e10e0ab43ab 186,194,202,205
+harness/cli/src/services/flow/reachability.ts
+  s_cd998e7882a3c3::t_2818325caa3f11 364
+  s_19a84a88383f5b::t_a25b60ea34ff79 1-2,10-12,45-46,70-71,88-89,91,93,98,100,102,104-110,112,114,116,118,120,122-124,126,128,130,132,134,136,138-144,146,148,150,333-334,341-342,344-346,384,391-392
+  s_19a84a88383f5b::t_e79f28ba7f3bdf 321-324
+  s_19a84a88383f5b::t_8bec1324bc4e22 3-9,13-44,47-54,69,72-87,90,92,94-97,99,101,103,111,113,115,117,119,121,125,127,129,131,133,135,137,145,147,149,151-154,156-160,167-169,173-241,257-258,265-272,276-320,325-332,335-340,343,347-363,365-383,385-390
+  s_19a84a88383f5b::t_329a893e1cd557 55-68
+  s_19a84a88383f5b::t_afad472f837d27 155,161-166,170-172
+  s_19a84a88383f5b::t_42914af62f831d 242-256,259-264,273-275
+harness/cli/test/services/flow/fixtures/reachability/README.md
+  s_19a84a88383f5b::t_bf4ebcea66f7f2 19,23-25
+harness/cli/test/services/flow/reachability-real-cli.test.ts
+  s_19a84a88383f5b::t_0541afa6bf8745 1-64,70,80-161
+  s_19a84a88383f5b::t_8bec1324bc4e22 65-69,71-79
+harness/cli/test/services/flow/fixtures/reachability/future-version-flow/the-flow.json
+  s_19a84a88383f5b::t_0484965957e250 2
+  s_19a84a88383f5b::t_e8d665bed22de6 1,3-249
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3a48cd29c85fa3365eab4405729328a962c3dc74",
+  "prompts": {},
+  "sessions": {
+    "s_19a84a88383f5b": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "e9a11817-53a3-42b6-a41f-25dcffefd677",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_cd998e7882a3c3": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "622101c7-ba88-4803-8ca5-9e6de8edbc6f",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
