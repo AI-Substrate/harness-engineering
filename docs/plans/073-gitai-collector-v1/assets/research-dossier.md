@@ -112,9 +112,9 @@ start, tool name not in the allowlist, checkpoint IPC failing → `exit(0)`).
 | Rung | How | Notes |
 |---|---|---|
 | Binary + pinned hash | ours | see open decision 1 |
-| Hooks current | `install-hooks --dry-run` | **verified non-mutating**; per-tool `not_found\|installed\|already_installed\|failed` |
+| Hooks current | `install-hooks --dry-run` | ⚠️ **CORRECTED 2026-08-09 — this was WRONG. `--dry-run` is NOT non-mutating.** It is in our own `FORBIDDEN_HOOK_ARGS` (`services/doctor/collector/install.ts:106-113`) precisely because git-ai's `parse_install_options` ends `_ => {}`, so an unrecognised safety flag **fails OPEN** and performs a full machine-wide install. Never pass it. Original claim, left visible: *"verified non-mutating"*; per-tool `not_found\|installed\|already_installed\|failed` |
 | Daemon alive | read `~/.git-ai/internal/daemon/daemon.pid.json` | `bg status` and `debug` have **no `--json`** — do not parse them |
-| **Collection actually happening** | `git ai status --json` | **the real signal** — a recent checkpoint for this tree, with `time_ago` + `tool_model` |
+| **Collection actually happening** | `git ai status --json` | ⚠️ **CORRECTED 2026-08-09 — NOT the real signal.** It reports only the current *uncommitted* working log, which git-ai deletes at commit, so an empty result cannot distinguish a broken collector from a clean tree (`services/doctor/collector/health.ts:17-24`; `docs/how/gitai-collector.md`). Original claim, left visible: *"the real signal"* — a recent checkpoint for this tree, with `time_ago` + `tool_model` |
 | Format drift | note at HEAD | assert `schema_version == authorship/3.0.0` |
 | Deep check | `git ai debug` | synthetic repo, end-to-end; occasional, not per-session |
 

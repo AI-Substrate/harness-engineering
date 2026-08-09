@@ -76,19 +76,34 @@ socket", and it should not be restated as that. It is still untested by toggling
 
 ---
 
-## 3. The question from that run that is STILL unanswered
+## 3. The question from that run — ANSWERED 2026-08-09, by the vendor's own spec
 
-The Cursor agent asked it in `run-1.md` and nobody answered:
+The Cursor agent asked it in `run-1.md` and nobody answered it for three days:
 
 > *"Why does the normal commit not reach the collector if the probe can connect to its
 > socket?"*
 
 **Probe `connected`, and the plain `git commit` still produced no note.** So socket
-reachability was **necessary but not sufficient**, and whatever the remaining gap is, we have
-never named it.
+reachability was **necessary but not sufficient** — and the remaining gap now has a name.
 
-This matters directly to *"telemetry must work from inside Cursor with no external
-intervention"*: making the socket reachable may not be enough on its own.
+**It is exactness, not reachability.** trace2 carries no commit sha, so the daemon cannot tell
+*which* reflog entries a command produced; it needs either a **pre-command reflog cursor** for
+that ref or **immutable argv OIDs**. With neither, it **fails closed** — no guessed authorship
+— and uses the command only to set a future baseline. A first commit in a fresh repo, or the
+first commit after a daemon restart, therefore produces no note *by specification*, with a
+perfectly healthy socket.
+
+Full quotes from `daemon-trace2-ingestion-spec.md` and the corollaries are in
+[the two-channel model](./gitai-06-two-channel-model.md#2-exactness-not-reachability--the-answer-to-the-three-day-old-question).
+
+**What this changes about the section above:** a missing note is *not* evidence that the
+socket was blocked. Fail-closed and blocked-transport produce the same observable, so any run
+that reasons backwards from "no note" to "the sandbox did it" is under-determined — including
+some of ours.
+
+This still matters to *"telemetry must work from inside Cursor with no external
+intervention"*: making the socket reachable may not be enough on its own, and now we know
+which other condition has to hold.
 
 ---
 
@@ -104,6 +119,15 @@ intervention"*: making the socket reachable may not be enough on its own.
 **The shipped `next_action` is over-strong**: it says *"Run `harness doctor telemetry-nudge`
 from an UNSANDBOXED shell"* unconditionally, when the probe could tell the user whether that
 is actually necessary. Worth correcting.
+
+> **And it fails the product requirement, which is the stronger objection.** The acceptance
+> criterion is that the customer gets working Cursor telemetry **without large machine
+> customisations** — see
+> [§0 of the mechanism doc](./gitai-06-two-channel-model.md#0-the-requirement--this-comes-before-the-mechanism-because-it-decides-which-fix-is-right).
+> An instruction to go and find an unsandboxed shell pushes manual work back onto the customer,
+> unconditionally, for a condition the probe can already detect. **The goal is that they never
+> have to.** So this is not only over-strong, it is pointed the wrong way: the fix is for
+> harness to determine whether a drain is needed and own it, not to instruct.
 
 ---
 

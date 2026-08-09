@@ -1,5 +1,32 @@
 # Harness telemetry
 
+## Before you investigate — read these, in order
+
+Three separate investigations this week re-derived facts that were already written down, one
+of them from a document in this very folder. **The failure was never missing documentation. It
+was reaching for the config before reading the record.** So, in order:
+
+1. **`~/github/git-ai`** — *the source*, currently **v1.6.22** (our collector pin expects
+   1.6.21; the skew is real). Read the code before reasoning about behaviour.
+2. **`~/github/git-ai/docs/`** — *the vendor's own specs, and they are authoritative*:
+   `daemon-trace2-ingestion-spec.md`, `rewrite-ops-spec.md`, `notes-backend-spec.md`,
+   `attribution-fuzzer-spec.md`, `session-event-attribution-recovery-plan.md`,
+   `bash-attribution-recovery-plan.md`. The three-day-old question *"why does a connected
+   probe still produce no note?"* was answered by the first of these, in a paragraph that had
+   been sitting there the whole time.
+3. **`~/.cursor/hooks.json`** — the local checkpoint channel, already documented in
+   [our agent-coverage review](./gitai-03-agent-coverage.md).
+4. **These docs** — our analysis, dated and provenance-marked.
+
+**Read 1–4 before investigating the machine.** Every re-derivation this week started by poking
+at config instead. If you are about to run an experiment, check first whether you are about to
+re-measure something the vendor already specified.
+
+**Start here for mechanism:**
+[git-ai's two channels — and why a reachable socket is not enough](./gitai-06-two-channel-model.md).
+
+---
+
 The front door for harness telemetry: what changed when
 [git-ai became the collector](../gitai-collector.md), how to read the frozen
 `refs/harness-telemetry/*` corpus, and the counts-only segment, event-stream,
@@ -957,9 +984,15 @@ Rescued out of a gitignored `scratch/` directory (plan 077 · #108) — the Curs
 answer had already been re-derived from scratch twice because the record was somewhere git
 does not track.
 
+- [How agent telemetry actually reaches a git note — and what breaks it](./gitai-06-two-channel-model.md)
+  — **read this first.** The requirement (working telemetry with NO machine customisation), the
+  full five-link chain including the note PUSH nobody had written down, why a reachable socket
+  is still not enough, and which of the two sandbox escapes is the product.
+- [Validating telemetry capture inside a sandboxed agent](./validating-telemetry-capture-in-sandboxed-agents.md)
+  — the interleaved scenario that exercises both channels and fails them independently, with
+  per-line attribution as the thing being proven.
 - [Validating telemetry attribution inside a sandboxed agent harness](./sandbox-03-validation-playbook.md)
-  — **start here.** The general procedure for proving commits made from inside an agent
-  harness are attributed, with Cursor as the worked example and an explicit table of which
+  — the general procedure, with Cursor as the worked example and an explicit table of which
   harnesses have and have not been tested.
 - [The sandbox investigation](./sandbox-01-investigation.md) — the root cause, found and
   proven on macOS: a sandbox can leave a socket visible and still refuse the `connect()`.

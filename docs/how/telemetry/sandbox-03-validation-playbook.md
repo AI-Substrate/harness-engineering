@@ -52,6 +52,62 @@ general mechanism is measured, the per-harness policy is not.
 
 ---
 
+## The three-layer verification
+
+**This is the first-class method. Use it for every check, on every harness.** Three layers,
+because a claim about one says nothing about the others — and a run that checks only layer 2
+cannot tell "never captured" from "captured but never synced".
+
+```bash
+# 0. ALWAYS FIRST — removes the async race that invalidated every prior investigation
+git-ai await
+```
+
+**`git-ai await` fixes a three-day-old problem.** The daemon reads trace2 asynchronously, so
+every earlier run raced it and had to guess whether "no note" meant *failed* or *not yet*.
+Nothing below is trustworthy without it. Put it at step 0 of every check, not just the first.
+
+```bash
+# 1. LOCAL, UNCOMMITTED — the working log
+git-ai status --json
+```
+
+**CAVEAT that makes this layer nearly useless after a commit:** it reports only the CURRENT
+uncommitted working log, which git-ai **deletes at commit**. So an empty result cannot
+distinguish a broken collector from a clean tree. **Meaningful ONLY pre-commit** — do not use
+it as a health check.
+
+```bash
+# 2. LOCAL, COMMITTED — the note exists in refs/notes/ai
+git notes --ref=ai show <sha>        # raw: path + line ranges + JSON footer
+git-ai show <rev>                    # or: git-ai log --notes
+git notes --ref=ai list | wc -l
+```
+
+```bash
+# 3. SYNCED — the note actually reached the REMOTE
+git ls-remote <remote> 'refs/notes/*'
+```
+
+**Comparing local vs remote OID is NOT sufficient** — the two refs legitimately differ, so a
+mismatch is not evidence of a sync failure. Only a per-commit check answers it:
+
+```bash
+git fetch origin '+refs/notes/ai:refs/notes/_syncprobe'
+git notes --ref=_syncprobe show <sha>     # present => that commit's note IS on the remote
+git update-ref -d refs/notes/_syncprobe   # clean up
+```
+
+**Why layer 3 exists at all:** you never push notes yourself. The daemon pushes
+`refs/notes/ai` as a **side effect** of detecting *your* `git push`
+(`VERIFIED-AT-SOURCE src/daemon.rs:1273`). So a sandbox that blocks the socket costs you
+twice — the note for this commit, and the delivery of every note written earlier. Layer 3 is
+the only layer that catches the second one, and it is invisible locally.
+
+See [the mechanism doc](./gitai-06-two-channel-model.md) for the full five-link chain.
+
+---
+
 ## 2. The methodology (this is the transferable part)
 
 ### 2.1 Set up a throwaway repo with a control

@@ -349,6 +349,23 @@ A controlled investigation established two more things that shape the response:
 So no editor configuration is a reliable fix. Detection and a safe commit path
 have to live in the harness.
 
+> ⚠️ **F-04 DOWNGRADED 2026-08-09 — the command-shape mechanism above is stated more
+> causally than the evidence supports.** It was contradicted by run 7 and again by
+> shipped-code validation, and was never re-adjudicated; **its "High" confidence is not
+> supportable.** A mechanism contradicted twice and never re-tested does not stay High.
+>
+> **HYPOTHESIS — not yet tested here:** the vendor's ownership rule explains the same
+> observations without reference to command shape. Attribution is exact only when the daemon
+> holds a **pre-command reflog cursor** for the ref (or the argv carries immutable OIDs);
+> otherwise it **fails closed** (`daemon-trace2-ingestion-spec.md:21-35`). That makes the
+> outcome depend on **daemon history** — prior commands on that ref, uptime, restarts — so two
+> sessions running byte-identical commands would diverge exactly as F-05 recorded and could
+> not explain. See [the two-channel model](./telemetry/gitai-06-two-channel-model.md).
+>
+> **The experiment that settles it, unrun:** same command shape twice — once with a warm
+> cursor, once after a daemon restart. The conclusion above (*detection and a safe commit path
+> belong in the harness*) holds either way; only the stated cause is in doubt.
+
 ### The probe verdict
 
 Harness answers "can this process reach the ingress?" the only way that is
@@ -577,9 +594,16 @@ There is no reliable signal available today:
 - Its `time_ago` field is a **human string** ("2 minutes ago"), not a timestamp,
   so it cannot be compared, thresholded, or reasoned about.
 - A **daemon liveness check would pass for every silent-failure mode git-ai
-  has.** On the dogfood machine, 52 already-running Claude Code processes were
-  live, healthy, and completely uninstrumented, because hooks only take effect
-  after a restart.
+  has.** On the dogfood machine the installer **listed 52 already-running Claude
+  Code processes and warned that they need restarting**, because hooks only take
+  effect after a restart.
+
+  > ⚠️ **CORRECTED 2026-08-09.** This previously read "52 … were live, healthy, and
+  > completely uninstrumented". That overstated the evidence: the installer
+  > *enumerated* those PIDs and issued a restart warning — **nobody measured whether
+  > they were emitting**. The restart requirement is real and is the reason for the
+  > warning; the uninstrumented-ness of those specific 52 processes was inferred, not
+  > observed. The argument the bullet supports is unaffected.
 
 Shipping a check that cannot tell a broken collector from a clean tree would be
 the exact defect this repo keeps killing: a system reporting a conclusion it did
