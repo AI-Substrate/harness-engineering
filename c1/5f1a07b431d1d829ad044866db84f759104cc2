@@ -1,0 +1,105 @@
+docs/how/telemetry/gitai-06-two-channel-model.md
+  s_e2ef1441ad1dbd::t_d7b5a5abfc5795 42-75
+harness/cli/src/services/doctor/collector/install.ts
+  s_e2ef1441ad1dbd::t_b4f581519117ee 3
+  s_e2ef1441ad1dbd::t_4343608ac10164 2
+  s_e2ef1441ad1dbd::t_8128bbd986a0a3 301-307
+  s_e2ef1441ad1dbd::t_baf35a133ec6ee 423-428
+  s_e2ef1441ad1dbd::t_620559f51a55fc 395-404
+harness/cli/src/services/doctor/collector/backup.ts
+  s_e2ef1441ad1dbd::t_c7ba108af64e51 1
+  s_e2ef1441ad1dbd::t_6fefc4d7685a4f 2-103,105-127
+  s_e2ef1441ad1dbd::t_ac6d485efc0702 104
+README.md
+  s_e2ef1441ad1dbd::t_82db31ae9f5271 170,174-182
+  s_e2ef1441ad1dbd::t_9af79a21ebcd50 183
+harness/cli/test/services/doctor/collector/health.test.ts
+  s_e2ef1441ad1dbd::t_84808bfefe0a2a 35
+  s_e2ef1441ad1dbd::t_da2b00bf4f4262 310-314,316
+  s_e2ef1441ad1dbd::t_d2caab16cc6b6c 257-309,315,317-365
+  s_e2ef1441ad1dbd::t_c7ba108af64e51 2,4-5,10
+  s_e2ef1441ad1dbd::t_8af268d8578e39 366
+harness/cli/src/index.ts
+  s_e2ef1441ad1dbd::t_fe757edd058120 24-29
+harness/cli/src/services/docs/docs-content.ts
+  s_e2ef1441ad1dbd::t_48963a678a6826 85
+harness/cli/src/services/doctor/collector/auto-install.ts
+  s_e2ef1441ad1dbd::t_9a90930f25355f 191-198,211-222,225
+  s_e2ef1441ad1dbd::t_8d9989fda30803 1,4,46
+  s_e2ef1441ad1dbd::t_da8c3cf7c6b947 81,83-87
+  s_e2ef1441ad1dbd::t_699884b7ce45f9 2-3,5-43,45,47,71-80,82,88,104-154,160-190,199-210,223-224,226-246
+  s_e2ef1441ad1dbd::t_ac6d485efc0702 155-159
+  s_e2ef1441ad1dbd::t_40e0dd3cb13b35 89-103
+  s_e2ef1441ad1dbd::t_af9928738a8059 44,48-70
+harness/cli/src/services/doctor/collector/agents.ts
+  s_e2ef1441ad1dbd::t_43a1c29a706395 16-29
+  s_e2ef1441ad1dbd::t_bffcbfcac0df09 44-53,57-104
+  s_e2ef1441ad1dbd::t_e2dcfee653334c 30-34
+  s_e2ef1441ad1dbd::t_6d0ea83cfb782d 117-144
+harness/cli/test/acts/doctor.test.ts
+  s_e2ef1441ad1dbd::t_7897dbeef32491 15-21,39-43,51-64,77-80,82-89
+  s_e2ef1441ad1dbd::t_c7ba108af64e51 7-8,11
+  s_e2ef1441ad1dbd::t_af8526b5dce524 44-50,65-76,81
+  s_e2ef1441ad1dbd::t_ab2568eb6747aa 246-291
+  s_e2ef1441ad1dbd::t_b8bdc855119135 292
+harness/cli/src/acts/doctor.ts
+  s_e2ef1441ad1dbd::t_75f0d31e29a775 284-293,300
+  s_e2ef1441ad1dbd::t_470d02f3c830d9 144-163
+  s_6b8a25b7716dd8::t_a26d95b17d7214 446-449
+  s_e2ef1441ad1dbd::t_6483933295e82b 245
+  s_e2ef1441ad1dbd::t_c0dfd59ebb893b 249-250
+  s_e2ef1441ad1dbd::t_c7ba108af64e51 22
+  s_e2ef1441ad1dbd::t_abbe0767f4d647 20,23
+  s_e2ef1441ad1dbd::t_b8e0fe7f5952f8 236-244,246-248,251
+  s_e2ef1441ad1dbd::t_4960691ebb8c52 106-110,112-122,126-127
+  s_6b8a25b7716dd8::t_979e5f0e4a0080 271
+  s_e2ef1441ad1dbd::t_412d3bca26be4c 21
+  s_6b8a25b7716dd8::t_27bfe8a7b0ce43 450
+harness/cli/src/services/doctor/collector/auto-install-block.ts
+  s_e2ef1441ad1dbd::t_ac6d485efc0702 83
+  s_e2ef1441ad1dbd::t_e2226ffcb700e7 1-82,84-100
+harness/cli/src/services/doctor/collector/health.ts
+  s_e2ef1441ad1dbd::t_c5a9968857ab26 291
+  s_e2ef1441ad1dbd::t_932ba606b9c472 190-199,202-207
+  s_e2ef1441ad1dbd::t_bd1da3d890bfc5 78-82
+  s_e2ef1441ad1dbd::t_ae7d4fc3df2b2d 232-236
+  s_e2ef1441ad1dbd::t_3890a0b8e2af18 399
+  s_e2ef1441ad1dbd::t_0a97be5bf1dd96 108-118,213
+  s_e2ef1441ad1dbd::t_8bbc6a2c1f286d 200-201,261,276,279-280,282-284
+  s_e2ef1441ad1dbd::t_ac6d485efc0702 185-186,214,281
+  s_e2ef1441ad1dbd::t_6c114e071046d5 272-275
+  s_e2ef1441ad1dbd::t_2a75207c4b92bb 121-142,146,149,160,162-184,188
+  s_e2ef1441ad1dbd::t_c6cc7be348c077 187,189
+harness/cli/test/services/doctor/collector/auto-install.test.ts
+  s_e2ef1441ad1dbd::t_683c1af644c186 183,193-218,221
+  s_e2ef1441ad1dbd::t_c7ba108af64e51 3-12
+  s_e2ef1441ad1dbd::t_f8a8069cd0f4d3 17,234-298
+  s_e2ef1441ad1dbd::t_a811051b1d662a 1-2,13-16,18-182,184-192,219-220,222-233,299-300,310,313,326,329,338-339
+  s_e2ef1441ad1dbd::t_b77c03f1b8de70 301-309,311-312,314-325,327-328,330-337
+docs/how/telemetry/README.md
+  s_e2ef1441ad1dbd::t_2e4c8eb5626988 383-384,389,391-407
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c15f1a07b431d1d829ad044866db84f759104cc2",
+  "prompts": {},
+  "sessions": {
+    "s_6b8a25b7716dd8": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "0566e436-a7a0-4359-99b4-8a2dc8a4c21d",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_e2ef1441ad1dbd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "265d8845-1914-4476-9977-4a05f12f4b06",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
