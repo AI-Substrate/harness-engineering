@@ -1,0 +1,38 @@
+harness/cli/src/services/hooks/config-writer.ts
+  s_ed609d39de2442::t_83deeb049dce38 1,72-79
+  s_ed609d39de2442::t_bc07043262190d 2-71,80-113
+package.json
+  s_ed609d39de2442::t_c2a434d0fcbefe 57
+docs/plans/082-harness-hooks/assets/tasks/phase-2/tasks.dd.md
+  s_ed609d39de2442::t_1f2feb3c7e7abb 39,73-76
+docs/plans/082-harness-hooks/assets/tasks/phase-2/execution.log.md
+  s_ed609d39de2442::t_6f1ec0a98f243e 409-425
+  s_ed609d39de2442::t_4d714da947c3ba 377-408,426-464
+harness/cli/test/fixtures/hooks/droid.golden.jsonc
+  s_ed609d39de2442::t_e6d3db7c4a6f53 9-14,17-22
+docs/plans/082-harness-hooks/assets/tasks/phase-2/tasks.dd.json
+  s_ed609d39de2442::t_1f2feb3c7e7abb 36,236,242,248,254
+harness/cli/test/services/hooks/config-writer.test.ts
+  s_ed609d39de2442::t_1a9385af7d100d 1-5,7-10,17-18,145-146
+  s_ed609d39de2442::t_0f0d1498928425 179-215
+  s_ed609d39de2442::t_d3137242c0e7b3 6
+  s_ed609d39de2442::t_efd8521ee35cf1 11-16,19-144,147-178,216-232
+package-lock.json
+  s_ed609d39de2442::t_b14bec06506708 13,34-36,1926,1933,3262,3267,3410,3417,6651-6660,6721,6731
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2675472ae2f0433740ded3fd33ffe748bee79b16",
+  "prompts": {},
+  "sessions": {
+    "s_ed609d39de2442": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "62892a0d-07d6-4784-b490-986f797be544",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
