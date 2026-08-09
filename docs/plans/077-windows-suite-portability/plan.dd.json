@@ -1,152 +1,180 @@
 {
- "dd": {
-  "schema": "builder/plan"
- },
- "sections": [
-  {
-   "name": "meta",
-   "value": {
-    "title": "Windows suite portability — unblocking a downstream consumer (#108)",
-    "slug": "077-windows-suite-portability",
-    "status": "draft",
-    "summary": "Carry the two #108 failure classes that are not Windows bugs, in consumer-ranked rounds, on an open iteration branch."
-   }
+  "dd": {
+    "schema": "builder/plan"
   },
-  {
-   "name": "summary",
-   "value": "A downstream consumer is shipping harness to production and is blocked by 134 test failures across 32 files on Windows. This plan carries the two failure classes that are NOT Windows bugs — undeclared external binaries (class 3) and load-sensitive contention (class 4) — while pij-spiritual-turkey carries the path-separator and symlink-privilege classes.\n\nThe split exists because a windows-latest CI leg would surface classes 3 and 4 as WINDOWS failures. That is the right symptom with the wrong diagnosis attached, and it ends with someone platform-guarding a real cross-platform bug. Both classes bite a Linux dev box too.\n\nDelivery is an ITERATION LOOP, not a merge: PR #118 stays open, the consumer pulls the branch, runs, and reports; each round becomes a commit. Scope for each round is set by THEIR ranking of what blocks them, not by our reading of which file has the most failures."
-  },
-  {
-   "name": "goals",
-   "value": [
-    "Remove failures from the consumer's run in small consumable rounds, ranked by what blocks THEM — turnaround beats scope while they are blocked in production.",
-    "Never claim more than is measured: report FAILURES FIXED, FAILURES DECLARED and SKIPS RECOVERED as three separate numbers, so a declared skip is never read as coverage.",
-    "Where an external binary is the test's SUBJECT rather than its mechanism, declare it loudly rather than rewriting it — a rewrite would keep the test green while destroying what it proves.",
-    "Keep the branch current with main so the consumer is never testing against a stale base."
-   ]
-  },
-  {
-   "name": "non_goals",
-   "value": [
-    "Classes 1 and 2 (path separators, symlink privilege) — pij-spiritual-turkey's ground. Their work lands on THIS branch by prime's ruling, but this seat does not recruit their commits.",
-    "Arming the windows-latest CI leg — approved with conditions but bound to turkey's PR, and its billing must change first (see ac-0005).",
-    "services/doctor/collector/nudge.test.ts — 40 failures, the largest single file and 30% of all Windows failures, in no class and no brief. Recorded and routed to Jordan, deliberately not absorbed here.",
-    "Merging PR #118. It is the consumer's iteration branch and stays open by design.",
-    "Reproducing the consumer's environment in CI. A hosted runner is curated and cannot stand in for their box — proven, not assumed (ac-0005)."
-   ]
-  },
-  {
-   "name": "acceptance_criteria",
-   "value": [
+  "sections": [
     {
-     "state": "checked",
-     "id": "ac-0001",
-     "claim": "Class 3 swept by CLASS, not by reported instance: every real (unmocked) external-binary spawn in src and test enumerated, with the predicate stated so the count is auditable, and each site classified as guarded/unguarded and subject/mechanism.",
-     "receipt": "4 unguarded of 6 candidates; 2 already guarded (mkfifo DIRECTLY via it.skipIf, chmod TRANSITIVELY via a helper whose only callers sit inside describe.skipIf(win32)). Of the 4 unguarded, only 2 are eliminable. A naive grep reports 13 binaries of which 2 (cmd.exe, x.cmd) are doc text or mock assertions, not real spawns. src spawns exactly one binary: git. jq appears in src ONLY as documentation text, which drops it from a shipping defect to a portability one."
+      "name": "meta",
+      "value": {
+        "title": "Windows suite portability — unblocking a downstream consumer (#108)",
+        "slug": "077-windows-suite-portability",
+        "status": "draft",
+        "summary": "Carry the two #108 failure classes that are not Windows bugs, in consumer-ranked rounds, on an open iteration branch."
+      }
     },
     {
-     "state": "checked",
-     "id": "ac-0002",
-     "claim": "Binaries that are the MECHANISM are eliminated outright; binaries that are the SUBJECT of the assertion are declared with a loud skip. A guard that skips is still coverage we do not have, so elimination is preferred wherever the rewrite is honest.",
-     "receipt": "Eliminated: grep -c -> countMatchingLines() (x2), cp -> copyFileSync(), chmod +x -> chmodSync(0o755). Declared: jq (done_when dw-000d states verbatim that 'a jq recipe answers which findings were refuted', and our dd docs recommend jq to users — those cases are the only thing proving that recommendation holds); bash (the cases execute the REAL tracked .githooks/post-commit, so a JS reimplementation would test a copy). Commit 038d1e50."
+      "name": "summary",
+      "value": "A downstream consumer is shipping harness to production and is blocked by 134 test failures across 32 files on Windows. This plan carries the two failure classes that are NOT Windows bugs — undeclared external binaries (class 3) and load-sensitive contention (class 4) — while pij-spiritual-turkey carries the path-separator and symlink-privilege classes.\n\nThe split exists because a windows-latest CI leg would surface classes 3 and 4 as WINDOWS failures. That is the right symptom with the wrong diagnosis attached, and it ends with someone platform-guarding a real cross-platform bug. Both classes bite a Linux dev box too.\n\nDelivery is an ITERATION LOOP, not a merge: PR #118 stays open, the consumer pulls the branch, runs, and reports; each round becomes a commit. Scope for each round is set by THEIR ranking of what blocks them, not by our reading of which file has the most failures."
     },
     {
-     "state": "checked",
-     "id": "ac-0003",
-     "claim": "Every rewrite carries a POSITIVE control run in the same commit before the binary was deleted — old and new computed against the same real fixture and asserted equal. Every skip guard carries a NEGATIVE control proving it bites.",
-     "receipt": "Positive: grep at both sites (non-vacuous — one asserts exactly 1), cp on the hook bytes, chmod on the mode bits. Negative: probe forced to a non-existent binary skipped 3 (jq) and 4 (bash), printing the reason — tested SEPARATELY rather than assuming the second from the first. just checks green on every hard gate."
+      "name": "goals",
+      "value": [
+        "Remove failures from the consumer's run in small consumable rounds, ranked by what blocks THEM — turnaround beats scope while they are blocked in production.",
+        "Never claim more than is measured: report FAILURES FIXED, FAILURES DECLARED and SKIPS RECOVERED as three separate numbers, so a declared skip is never read as coverage.",
+        "Where an external binary is the test's SUBJECT rather than its mechanism, declare it loudly rather than rewriting it — a rewrite would keep the test green while destroying what it proves.",
+        "Keep the branch current with main so the consumer is never testing against a stale base."
+      ]
     },
     {
-     "state": "checked",
-     "id": "ac-0004",
-     "claim": "Impact is reported as THREE numbers — failures fixed, failures declared, skips recovered — never one, and an unproven number is marked pending rather than asserted.",
-     "receipt": "0 FIXED (pending failure signatures for post-commit-hook and cat-file-batch) / 3 DECLARED (plan-review jq, confirmed ENOENT at source) / 0 RECOVERED. Their run moves 134 -> 131. The signatures flip FIXED from 0 to as much as 11."
+      "name": "non_goals",
+      "value": [
+        "Classes 1 and 2 (path separators, symlink privilege) — pij-spiritual-turkey's ground. Their work lands on THIS branch by prime's ruling, but this seat does not recruit their commits.",
+        "services/doctor/collector/nudge.test.ts — 40 failures, the largest single file and 30% of all Windows failures, in no class and no brief. Recorded and routed to Jordan, deliberately not absorbed here.",
+        "Merging PR #118. It is the consumer's iteration branch and stays open by design.",
+        "Reproducing the consumer's environment in CI. A hosted runner is curated and cannot stand in for their box — proven, not assumed (ac-0005).",
+        "Arming the windows-latest leg as a BLOCKING gate, or on an automatic trigger. Phase 4 builds it as workflow_dispatch + warn-launch only. The original non-goal's two conditions are now MET and recorded rather than quietly dropped: it was bound to turkey's PR (landed, c5ff7d11) and required the billing to change first (workflow_dispatch bills nothing until it is run).",
+        "Treating a green windows-latest run as evidence the consumer's box is green. ac-0005 proved a hosted runner is curated; Phase 4 does not disturb that finding and must not imply it."
+      ]
     },
     {
-     "state": "checked",
-     "id": "ac-0005",
-     "claim": "The windows-latest runner's binary availability is MEASURED from the runner-image manifest, not assumed, and the CI leg is re-billed accordingly: a curated runner is not a proxy for a user machine and is silent by construction exactly where they differ.",
-     "receipt": "actions/runner-images Windows2022-Readme.md: jq 1.8.1 PRESENT on the runner, ABSENT on the consumer's box; Git for Windows 2.55.0 installed; MSYS2 installed but explicitly NOT on PATH. So a green leg would have said nothing about the failure they actually hit. Whether Git's bundled usr/bin is on PATH is deliberately NOT inferred from the MSYS2 line — different directories — and resolves with one CI line."
+      "name": "acceptance_criteria",
+      "value": [
+        {
+          "state": "checked",
+          "id": "ac-0001",
+          "claim": "Class 3 swept by CLASS, not by reported instance: every real (unmocked) external-binary spawn in src and test enumerated, with the predicate stated so the count is auditable, and each site classified as guarded/unguarded and subject/mechanism.",
+          "receipt": "4 unguarded of 6 candidates; 2 already guarded (mkfifo DIRECTLY via it.skipIf, chmod TRANSITIVELY via a helper whose only callers sit inside describe.skipIf(win32)). Of the 4 unguarded, only 2 are eliminable. A naive grep reports 13 binaries of which 2 (cmd.exe, x.cmd) are doc text or mock assertions, not real spawns. src spawns exactly one binary: git. jq appears in src ONLY as documentation text, which drops it from a shipping defect to a portability one."
+        },
+        {
+          "state": "checked",
+          "id": "ac-0002",
+          "claim": "Binaries that are the MECHANISM are eliminated outright; binaries that are the SUBJECT of the assertion are declared with a loud skip. A guard that skips is still coverage we do not have, so elimination is preferred wherever the rewrite is honest.",
+          "receipt": "Eliminated: grep -c -> countMatchingLines() (x2), cp -> copyFileSync(), chmod +x -> chmodSync(0o755). Declared: jq (done_when dw-000d states verbatim that 'a jq recipe answers which findings were refuted', and our dd docs recommend jq to users — those cases are the only thing proving that recommendation holds); bash (the cases execute the REAL tracked .githooks/post-commit, so a JS reimplementation would test a copy). Commit 038d1e50."
+        },
+        {
+          "state": "checked",
+          "id": "ac-0003",
+          "claim": "Every rewrite carries a POSITIVE control run in the same commit before the binary was deleted — old and new computed against the same real fixture and asserted equal. Every skip guard carries a NEGATIVE control proving it bites.",
+          "receipt": "Positive: grep at both sites (non-vacuous — one asserts exactly 1), cp on the hook bytes, chmod on the mode bits. Negative: probe forced to a non-existent binary skipped 3 (jq) and 4 (bash), printing the reason — tested SEPARATELY rather than assuming the second from the first. just checks green on every hard gate."
+        },
+        {
+          "state": "checked",
+          "id": "ac-0004",
+          "claim": "Impact is reported as THREE numbers — failures fixed, failures declared, skips recovered — never one, and an unproven number is marked pending rather than asserted.",
+          "receipt": "0 FIXED (pending failure signatures for post-commit-hook and cat-file-batch) / 3 DECLARED (plan-review jq, confirmed ENOENT at source) / 0 RECOVERED. Their run moves 134 -> 131. The signatures flip FIXED from 0 to as much as 11."
+        },
+        {
+          "state": "checked",
+          "id": "ac-0005",
+          "claim": "The windows-latest runner's binary availability is MEASURED from the runner-image manifest, not assumed, and the CI leg is re-billed accordingly: a curated runner is not a proxy for a user machine and is silent by construction exactly where they differ.",
+          "receipt": "actions/runner-images Windows2022-Readme.md: jq 1.8.1 PRESENT on the runner, ABSENT on the consumer's box; Git for Windows 2.55.0 installed; MSYS2 installed but explicitly NOT on PATH. So a green leg would have said nothing about the failure they actually hit. Whether Git's bundled usr/bin is on PATH is deliberately NOT inferred from the MSYS2 line — different directories — and resolves with one CI line."
+        },
+        {
+          "state": "unchecked",
+          "id": "ac-0006",
+          "claim": "Round scope is set by the CONSUMER's ranking of what blocks them, and the round-one set is agreed with them before work starts rather than inferred from failure counts.",
+          "receipt": "Pending their reply on #108. Prompt issued asking them to rank; we work their order."
+        },
+        {
+          "state": "unchecked",
+          "id": "ac-0007",
+          "claim": "Class 4 (load-sensitive contention) is not measured before coordinating with pij-tiny-bug, whose #109 instrument already exists — and its numbers are treated as LOWER bounds, never ceilings.",
+          "receipt": "Pending prime's introduction. Instrument under-counts by construction: fs-write columns patch writeFileSync and fs.promises but not the fd API, and grandchild processes are undercounted."
+        },
+        {
+          "state": "unchecked",
+          "id": "ac-0008",
+          "claim": "The consumer's delivery path is established rather than assumed — if their shipping artefact comes from the registry, none of this work reaches them until a release ships.",
+          "receipt": "Pending. Measured datum attached to the question: latest PUBLISHED @ai-substrate/engineering-harness is 0.13.0 and main is also 0.13.0, with the bump held in release-please #84 — so the registry carries none of #104/#105/#106/#107/#112/#116."
+        },
+        {
+          "state": "checked",
+          "id": "ac-0009",
+          "claim": "The 5000ms default test timeout is raised so a stopwatch stops being reported as a failure. ~30% of every failure the consumer reports is a timeout, and on the s077 branch it MANUFACTURED phantom failures in five files that pass on main — so while it stands, neither side can measure whether anything else worked.",
+          "receipt": "Consumer measurement: 37 of 144 FAIL lines on cfa501a6 and 46 of 151 on s077 are 'timed out in 5000ms'; the s077 run was 32% slower on the same box with nothing else changed.",
+          "note": "Raised GLOBALLY to 30s (testTimeout+hookTimeout), not win32-only: the cost is process-spawn contention, which bites a loaded Linux box and CI too - the two files that had already raised their own budget say so from their own measurements (p50 73ms/max 1202ms per child; cases at 4-6s under load). Made a FLOOR: three vi.setConfig 20s calls became downgrades and were removed, docblocks kept. Controls both ways: a 7s case passes, the same case at 5000ms fails, and a 35s case is still reported as timed out - the instrument still bites. Up to 46 of their FAIL lines expected to clear; expected, UNVERIFIED ON WIN32."
+        },
+        {
+          "state": "checked",
+          "id": "ac-000a",
+          "claim": "nudge.test.ts's shared deps() helper passes platform explicitly, so the win32 fallback stops reading the HOST. This is test hygiene, not a product defect — the composition root passes platform explicitly, and nudge.ts:300 already states the rule (P3: pass the parameter, never patch process.platform).",
+          "receipt": "Root cause traced by the consumer: deps() at nudge.test.ts:92 never sets platform, so deps.platform is undefined and isWin32() falls back to IS_WIN32. The file's OWN convention is to inject it (pipeDeps({platform:'win32'}) at 1470/1483/1495/1513). The tell is a case asserting a value is NOT 'unsupported-platform' receiving exactly that.",
+          "note": "Their root cause confirmed and INCOMPLETE as scoped: the shared deps() helper was 80% of the class, and two further helpers (nudgeDeps in the R2 and R4 describes) had the identical defect - invisible to the grouped signatures, found by negative control. Also repaired, not deleted, the ~1605 control that the fix would otherwise have broken: it asserted the POSIX outcome while silently depending on a POSIX host, which is what produced their tell ('expected unsupported-platform not to be unsupported-platform'); it now asserts per-host and so PROVES the fallback on Windows. nudge.ts untouched - the guard is correct. Measured under a process.platform simulation: 39 failed -> 62/62; 62/62 on darwin unchanged."
+        },
+        {
+          "state": "checked",
+          "id": "ac-000b",
+          "claim": "A binary probe tests CAPABILITY, not presence, wherever presence and usability can diverge. A presence-only guard that lets a test proceed to fail is worse than no guard, because the declaration makes the gap look handled.",
+          "receipt": "Consumer reproduction: (Get-Command bash).Source is C:\\Windows\\system32\\bash.exe (WSL bash), which eats backslashes in a Windows path and exits 127; 'which node' inside it also fails. hasBinary('bash') returns TRUE and post-commit-hook stays red. This is a defect in PR #118 as shipped, found by the consumer, and it is ours to fix.",
+          "note": "Round 6 - the DOCUMENTATION was false, which is the original defect one layer in. Terra (asked 'does the claim match the capability' rather than 'is there a ninth'): the doc said the subshell form was matched POSITION-INDEPENDENTLY and it was not - 'if ( : ); then :; fi' got 0 scope matches, 0 unaccounted commands. Not D15 reopening: documenting a limit is honest, describing a limit INACCURATELY is the defect we started with. I then audited every other form the same way, empirically over ten contexts, and found a FOURTH instance myself - dot-sourcing had the identical gap ('if true; then . helper.sh; fi'). Fixed in the same commit rather than queued. Both anchored patterns gained a keyword branch: dot-source now caught in all ten contexts, subshell in eight of ten, still missing inside $( ) and backticks which is now listed as a known limit. No pattern appended; no false positives on the real hook. The doc no longer says 'position-independent' (false for 2 of 7) and instead states the real division: UNANCHORED patterns (source, eval, exec, trap, ./) carry no positional anchor so context cannot hide them; ANCHORED ones (. and () must be anchored because an unanchored . or ( matches this file's own comments, and reach their anchor set and no further. Three overclaims removed - 'every way', 'listed in full', 'the ways of leaving a file are finite' - which I found in my own prose before terra reported them. Replaced by the claim that does the work: THE ENUMERATED SET IS FIXED and does not grow as the hook changes. Termination never depended on exhaustiveness, only on the set being fixed and the guard REJECTING rather than FOLLOWING - D16: over-arguing a case already won, where an unnecessary claim inherits none of the scrutiny the necessary ones get. Both documented limits verified failing ZERO assertions. 5116/5116 over three consecutive full runs; just checks every hard gate ok; consumer's number moved by zero, as in rounds 2-5."
+        },
+        {
+          "state": "unchecked",
+          "id": "ac-000c",
+          "claim": "The eight cases now hitting the 30s ceiling no longer sit at flake-margin headroom. Round one eliminated the 5000ms timeout class (46 -> 0) and REPLACED it with a 30000ms one — smaller, same shape. A 27.5s median against a 30s budget is 1.09x headroom, which is a flake generator rather than a pass, and a flaky suite is worth less than a red one.",
+          "receipt": "Consumer medians on their box: flow-renderer importance-border 27.5s, app telemetry-equivalence 26.0s, flow-renderer all-goldens 25.9s, update-banner negative control 25.0s, flow-renderer TD-columns 22.3s, app throwing-CaptureDeps 18.4s. Treat as order-of-magnitude — measured on a non-green branch with severe run-to-run variance (identical isolated repeats gave 25.7s and 77.8s). || ROUND TWO, NOT CLOSED. flow-renderer 3 cases -> 1 by batching all three parse proofs into ONE mermaid-runner spawn (cost is spawns, not assertions: 1 fence 508ms vs 20 fences 558ms), keeping every property. The surviving case's Windows elapsed is UNMEASURED — an earlier derived '~26s/1.15x' is withdrawn. The other five cases are NOT fixed: a read-only child_process observer measured 144 spawns across both files, 99 (69%) in those five, at 9 per doctor run, because acts/doctor.ts runReport() constructs NodeFs/ExecGit/ExecGitAttribution itself and ignores injected fakes. Candidate, not cause — their medians do not scale with spawn count."
+        },
+        {
+          "state": "checked",
+          "id": "ac-000d",
+          "claim": "skills.test.ts's 10 failures are TRACED to a root cause and classified honestly as a product defect or a test-environment one. This is the ONLY item in the consumer's whole ledger that anyone suspects of being a product smell rather than test portability, and it is in src/ — so it is the only one that could reach real users.",
+          "receipt": "TRACED AND CLASSIFIED: test-environment, NOT a product defect. skills-service.ts:19 explains 1 of the 10 — the drive-letter-less fixture at skills.test.ts:51; win32 semantics run locally via fileURLToPath(url,{windows:true}) over four realistic module URLs show the product resolver cannot throw, because import.meta.url on Windows always carries a drive letter. The other 9 are FakeFs.copyDir comparing a POSIX-normalised needle against raw seeded keys. 9+1=10, mechanism verified for both parts, controls demonstrated red-before/green-after; review confirmed. 'It is in src/' was true of FakeFs (a test double) too, so location was never evidence of reachability. Fixed on this branch. EXPECTED, UNVERIFIED on win32 — the consumer's re-run is the measurement."
+        },
+        {
+          "state": "unchecked",
+          "id": "ac-000e",
+          "claim": "A windows-latest job exists and can be run ON DEMAND against any branch (workflow_dispatch), so the Windows failure count is observable from inside this repo rather than only by a downstream volunteer running our suite on their laptop."
+        },
+        {
+          "state": "unchecked",
+          "id": "ac-000f",
+          "claim": "The job REPORTS passed/failed/SKIPPED as three numbers and cannot go green by skipping: a rising skip count is visible in the job summary without opening logs. A green that means 'we stopped looking' is the defect this AC exists to prevent."
+        },
+        {
+          "state": "unchecked",
+          "id": "ac-0010",
+          "claim": "The job blocks nothing on day one (warn-launch, same posture as windows-check/arch-check/markdown-lint) and says so in the workflow, so 'non-blocking' cannot later be read as 'nobody cared'. Promotion to a gate is a separate, evidenced decision."
+        },
+        {
+          "state": "unchecked",
+          "id": "ac-0011",
+          "claim": "The job's first real numbers are COMPARED against the consumer's last pristine measurement (12 files / 27 tests failing of 5121 on f19bf0d1, minus what 5a8e8f5b fixed). A dramatically lower count is treated as a suspect JOB before it is believed as a suspect SUITE."
+        }
+      ]
     },
     {
-     "state": "unchecked",
-     "id": "ac-0006",
-     "claim": "Round scope is set by the CONSUMER's ranking of what blocks them, and the round-one set is agreed with them before work starts rather than inferred from failure counts.",
-     "receipt": "Pending their reply on #108. Prompt issued asking them to rank; we work their order."
-    },
-    {
-     "state": "unchecked",
-     "id": "ac-0007",
-     "claim": "Class 4 (load-sensitive contention) is not measured before coordinating with pij-tiny-bug, whose #109 instrument already exists — and its numbers are treated as LOWER bounds, never ceilings.",
-     "receipt": "Pending prime's introduction. Instrument under-counts by construction: fs-write columns patch writeFileSync and fs.promises but not the fd API, and grandchild processes are undercounted."
-    },
-    {
-     "state": "unchecked",
-     "id": "ac-0008",
-     "claim": "The consumer's delivery path is established rather than assumed — if their shipping artefact comes from the registry, none of this work reaches them until a release ships.",
-     "receipt": "Pending. Measured datum attached to the question: latest PUBLISHED @ai-substrate/engineering-harness is 0.13.0 and main is also 0.13.0, with the bump held in release-please #84 — so the registry carries none of #104/#105/#106/#107/#112/#116."
-    },
-    {
-     "state": "checked",
-     "id": "ac-0009",
-     "claim": "The 5000ms default test timeout is raised so a stopwatch stops being reported as a failure. ~30% of every failure the consumer reports is a timeout, and on the s077 branch it MANUFACTURED phantom failures in five files that pass on main — so while it stands, neither side can measure whether anything else worked.",
-     "receipt": "Consumer measurement: 37 of 144 FAIL lines on cfa501a6 and 46 of 151 on s077 are 'timed out in 5000ms'; the s077 run was 32% slower on the same box with nothing else changed.",
-     "note": "Raised GLOBALLY to 30s (testTimeout+hookTimeout), not win32-only: the cost is process-spawn contention, which bites a loaded Linux box and CI too - the two files that had already raised their own budget say so from their own measurements (p50 73ms/max 1202ms per child; cases at 4-6s under load). Made a FLOOR: three vi.setConfig 20s calls became downgrades and were removed, docblocks kept. Controls both ways: a 7s case passes, the same case at 5000ms fails, and a 35s case is still reported as timed out - the instrument still bites. Up to 46 of their FAIL lines expected to clear; expected, UNVERIFIED ON WIN32."
-    },
-    {
-     "state": "checked",
-     "id": "ac-000a",
-     "claim": "nudge.test.ts's shared deps() helper passes platform explicitly, so the win32 fallback stops reading the HOST. This is test hygiene, not a product defect — the composition root passes platform explicitly, and nudge.ts:300 already states the rule (P3: pass the parameter, never patch process.platform).",
-     "receipt": "Root cause traced by the consumer: deps() at nudge.test.ts:92 never sets platform, so deps.platform is undefined and isWin32() falls back to IS_WIN32. The file's OWN convention is to inject it (pipeDeps({platform:'win32'}) at 1470/1483/1495/1513). The tell is a case asserting a value is NOT 'unsupported-platform' receiving exactly that.",
-     "note": "Their root cause confirmed and INCOMPLETE as scoped: the shared deps() helper was 80% of the class, and two further helpers (nudgeDeps in the R2 and R4 describes) had the identical defect - invisible to the grouped signatures, found by negative control. Also repaired, not deleted, the ~1605 control that the fix would otherwise have broken: it asserted the POSIX outcome while silently depending on a POSIX host, which is what produced their tell ('expected unsupported-platform not to be unsupported-platform'); it now asserts per-host and so PROVES the fallback on Windows. nudge.ts untouched - the guard is correct. Measured under a process.platform simulation: 39 failed -> 62/62; 62/62 on darwin unchanged."
-    },
-    {
-     "state": "checked",
-     "id": "ac-000b",
-     "claim": "A binary probe tests CAPABILITY, not presence, wherever presence and usability can diverge. A presence-only guard that lets a test proceed to fail is worse than no guard, because the declaration makes the gap look handled.",
-     "receipt": "Consumer reproduction: (Get-Command bash).Source is C:\\Windows\\system32\\bash.exe (WSL bash), which eats backslashes in a Windows path and exits 127; 'which node' inside it also fails. hasBinary('bash') returns TRUE and post-commit-hook stays red. This is a defect in PR #118 as shipped, found by the consumer, and it is ours to fix.",
-     "note": "Round 6 - the DOCUMENTATION was false, which is the original defect one layer in. Terra (asked 'does the claim match the capability' rather than 'is there a ninth'): the doc said the subshell form was matched POSITION-INDEPENDENTLY and it was not - 'if ( : ); then :; fi' got 0 scope matches, 0 unaccounted commands. Not D15 reopening: documenting a limit is honest, describing a limit INACCURATELY is the defect we started with. I then audited every other form the same way, empirically over ten contexts, and found a FOURTH instance myself - dot-sourcing had the identical gap ('if true; then . helper.sh; fi'). Fixed in the same commit rather than queued. Both anchored patterns gained a keyword branch: dot-source now caught in all ten contexts, subshell in eight of ten, still missing inside $( ) and backticks which is now listed as a known limit. No pattern appended; no false positives on the real hook. The doc no longer says 'position-independent' (false for 2 of 7) and instead states the real division: UNANCHORED patterns (source, eval, exec, trap, ./) carry no positional anchor so context cannot hide them; ANCHORED ones (. and () must be anchored because an unanchored . or ( matches this file's own comments, and reach their anchor set and no further. Three overclaims removed - 'every way', 'listed in full', 'the ways of leaving a file are finite' - which I found in my own prose before terra reported them. Replaced by the claim that does the work: THE ENUMERATED SET IS FIXED and does not grow as the hook changes. Termination never depended on exhaustiveness, only on the set being fixed and the guard REJECTING rather than FOLLOWING - D16: over-arguing a case already won, where an unnecessary claim inherits none of the scrutiny the necessary ones get. Both documented limits verified failing ZERO assertions. 5116/5116 over three consecutive full runs; just checks every hard gate ok; consumer's number moved by zero, as in rounds 2-5."
-    },
-    {
-     "state": "unchecked",
-     "id": "ac-000c",
-     "claim": "The eight cases now hitting the 30s ceiling no longer sit at flake-margin headroom. Round one eliminated the 5000ms timeout class (46 -> 0) and REPLACED it with a 30000ms one — smaller, same shape. A 27.5s median against a 30s budget is 1.09x headroom, which is a flake generator rather than a pass, and a flaky suite is worth less than a red one.",
-     "receipt": "Consumer medians on their box: flow-renderer importance-border 27.5s, app telemetry-equivalence 26.0s, flow-renderer all-goldens 25.9s, update-banner negative control 25.0s, flow-renderer TD-columns 22.3s, app throwing-CaptureDeps 18.4s. Treat as order-of-magnitude — measured on a non-green branch with severe run-to-run variance (identical isolated repeats gave 25.7s and 77.8s). || ROUND TWO, NOT CLOSED. flow-renderer 3 cases -> 1 by batching all three parse proofs into ONE mermaid-runner spawn (cost is spawns, not assertions: 1 fence 508ms vs 20 fences 558ms), keeping every property. The surviving case's Windows elapsed is UNMEASURED — an earlier derived '~26s/1.15x' is withdrawn. The other five cases are NOT fixed: a read-only child_process observer measured 144 spawns across both files, 99 (69%) in those five, at 9 per doctor run, because acts/doctor.ts runReport() constructs NodeFs/ExecGit/ExecGitAttribution itself and ignores injected fakes. Candidate, not cause — their medians do not scale with spawn count."
-    },
-    {
-     "state": "checked",
-     "id": "ac-000d",
-     "claim": "skills.test.ts's 10 failures are TRACED to a root cause and classified honestly as a product defect or a test-environment one. This is the ONLY item in the consumer's whole ledger that anyone suspects of being a product smell rather than test portability, and it is in src/ — so it is the only one that could reach real users.",
-     "receipt": "TRACED AND CLASSIFIED: test-environment, NOT a product defect. skills-service.ts:19 explains 1 of the 10 — the drive-letter-less fixture at skills.test.ts:51; win32 semantics run locally via fileURLToPath(url,{windows:true}) over four realistic module URLs show the product resolver cannot throw, because import.meta.url on Windows always carries a drive letter. The other 9 are FakeFs.copyDir comparing a POSIX-normalised needle against raw seeded keys. 9+1=10, mechanism verified for both parts, controls demonstrated red-before/green-after; review confirmed. 'It is in src/' was true of FakeFs (a test double) too, so location was never evidence of reachability. Fixed on this branch. EXPECTED, UNVERIFIED on win32 — the consumer's re-run is the measurement."
+      "name": "phases",
+      "value": [
+        {
+          "id": "ph-4ad6",
+          "title": "Phase 1: Class 3 — undeclared external binaries",
+          "brief": "Class 3: tests shelling out to binaries the project never declared. Eliminate where the binary is the mechanism, declare loudly where it is the subject. Shipped as PR #118, which stays OPEN as the consumer's iteration branch.",
+          "state": "unchecked",
+          "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
+        },
+        {
+          "id": "ph-2a01",
+          "title": "Phase 2: Round one — the consumer-ranked noise removal",
+          "brief": "Scope set BY THE CONSUMER, ranked by noise removed per unit of work rather than by failure count. Target ~140 failures down to ~40, at which point the remainder is small enough to inspect individually.",
+          "state": "checked",
+          "tasks": "assets/tasks/phase-2/tasks.dd.json#tasks",
+          "receipt": "Round one complete on s077/suite-portability. FIXED 39-40 + up to 46 + 3 / DECLARED 16 + 4 / RECOVERED 0 - three columns, never a mixed total, every win32 figure marked expected-unverified. Local: 5103/5103 green, just checks every hard gate ok. Execution log: assets/tasks/phase-2/execution.log.md. One flagged deviation (tk-0104 narrowed from the file to the daemon cluster) and one scope surprise (tk-0102 needed three helpers, not one)."
+        },
+        {
+          "id": "ph-3b01",
+          "title": "Phase 3: Round two — the flake class we created, and the one product smell",
+          "brief": "Two items only. The consumer says the marginal value is now low and that stopping here would be reasonable — so this round fixes what WE caused and traces the one thing that might be a real defect, then stops.",
+          "state": "unchecked",
+          "tasks": "assets/tasks/phase-3/tasks.dd.json#tasks"
+        },
+        {
+          "id": "ph-4c01",
+          "title": "Phase 4: A windows-latest leg we can run ourselves",
+          "brief": "The thread's actual finding: windows-check caught ZERO of the four defects fixed in 5a8e8f5b and cleared zero, because every one was a logical-vs-native path SHAPE mismatch at a comparison, which no per-line lint can see. Today the only instrument that sees this class is a downstream volunteer on their own laptop. This phase builds an on-demand windows-latest job so the count is observable from inside the repo — WITHOUT pretending a curated hosted runner substitutes for a real user's box (ac-0005 proved it does not).",
+          "state": "unchecked",
+          "tasks": "assets/tasks/phase-4/tasks.dd.json#tasks"
+        }
+      ]
     }
-   ]
-  },
-  {
-   "name": "phases",
-   "value": [
-    {
-     "id": "ph-4ad6",
-     "title": "Phase 1: Class 3 — undeclared external binaries",
-     "brief": "Class 3: tests shelling out to binaries the project never declared. Eliminate where the binary is the mechanism, declare loudly where it is the subject. Shipped as PR #118, which stays OPEN as the consumer's iteration branch.",
-     "state": "unchecked",
-     "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
-    },
-    {
-     "id": "ph-2a01",
-     "title": "Phase 2: Round one — the consumer-ranked noise removal",
-     "brief": "Scope set BY THE CONSUMER, ranked by noise removed per unit of work rather than by failure count. Target ~140 failures down to ~40, at which point the remainder is small enough to inspect individually.",
-     "state": "checked",
-     "tasks": "assets/tasks/phase-2/tasks.dd.json#tasks",
-     "receipt": "Round one complete on s077/suite-portability. FIXED 39-40 + up to 46 + 3 / DECLARED 16 + 4 / RECOVERED 0 - three columns, never a mixed total, every win32 figure marked expected-unverified. Local: 5103/5103 green, just checks every hard gate ok. Execution log: assets/tasks/phase-2/execution.log.md. One flagged deviation (tk-0104 narrowed from the file to the daemon cluster) and one scope surprise (tk-0102 needed three helpers, not one)."
-    },
-    {
-     "id": "ph-3b01",
-     "title": "Phase 3: Round two — the flake class we created, and the one product smell",
-     "brief": "Two items only. The consumer says the marginal value is now low and that stopping here would be reasonable — so this round fixes what WE caused and traces the one thing that might be a real defect, then stops.",
-     "state": "unchecked",
-     "tasks": "assets/tasks/phase-3/tasks.dd.json#tasks"
-    }
-   ]
-  }
- ]
+  ]
 }
