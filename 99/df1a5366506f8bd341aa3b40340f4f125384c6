@@ -1,0 +1,31 @@
+docs/plans/archive/080-dd-consume-upgrade/assets/post-flight.md
+  s_d29d5684ac2d30::t_46fd5624ab10fa 1-62
+docs/plans/archive/080-dd-consume-upgrade/assets/pr-body.md
+  s_d29d5684ac2d30::t_b56387ec4f57d6 99-124
+harness/cli/test/integration/plan-semantics-falsifiers.int.test.ts
+  s_e2ef1441ad1dbd::t_2dc7d2ad385866 416
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "99df1a5366506f8bd341aa3b40340f4f125384c6",
+  "prompts": {},
+  "sessions": {
+    "s_d29d5684ac2d30": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "85595c65-81a4-43a2-9ccd-a8318d59a80a",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_e2ef1441ad1dbd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "265d8845-1914-4476-9977-4a05f12f4b06",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
