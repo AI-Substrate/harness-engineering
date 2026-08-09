@@ -56,7 +56,7 @@ _Empty._
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-000c | every SUFFICIENT-predicted primitive has a runnable falsifier test, and the execution log evidences each ran RED (against a deliberately-broken control or the absent surface) BEFORE the implementation commit that turns it green - commit order is the proof | [ ] unchecked | [bp-000d](../../backpressure.dd.md#rows) |
+| dw-000c | ALL NINE primitives (not just the SUFFICIENT-predicted ones) have a runnable falsifier test authored and run RED - against a deliberately-broken control or the absent surface - BEFORE the implementation commit that turns each green; the execution log records the RED run per primitive and commit order is the proof (a primitive whose final verdict flips from the prediction gets no exemption) | [ ] unchecked | [bp-000d](../../backpressure.dd.md#rows) |
 | dw-000d | just build && just test green with the falsifier suite in the tree | [ ] unchecked | [bp-0003](../../backpressure.dd.md#rows) |
 
 ### tk-0008
@@ -64,7 +64,7 @@ _Empty._
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
 | dw-000e | the new module imports ONLY @ai-substrate/dd public subpaths (git grep proves zero services/dd, acts/dd, or node_modules deep-dist imports in it) AND the fork's semantics.ts byte-pin (dd-plan-semantics-frozen.test.ts) stays green | [ ] unchecked | [bp-000d](../../backpressure.dd.md#rows) |
-| dw-000f | git grep for re-declared dd vocabulary (BUILTIN_RELS, CLAIMING_RELS, DEFAULT_GATE_TERMINAL_STATES, COMPLETION_STATES value lists) in the new module returns zero - any vocabulary need is evidenced in the execution log as a dd export + re-pin, or the task is BLOCKED per D-3 | [ ] unchecked | [bp-000d](../../backpressure.dd.md#rows) |
+| dw-000f | a deterministic vocabulary probe runs and is logged on EVERY outcome (sufficient or not): grep over the new implementation's transitive LOCAL file closure for the dd vocabulary VALUE tuples (the builtin-rel list pressure/proven_by/satisfies/derives/ref, the gate-terminal list checked/human-skipped/na, the completion-state list) as well as the constant names - zero local declarations or copies; imports from @ai-substrate/dd public subpaths are the only sanctioned source; any hit is a D-3 BLOCK, never a shim | [ ] unchecked | [bp-000d](../../backpressure.dd.md#rows) |
 
 ### tk-0009
 
@@ -77,8 +77,8 @@ _Empty._
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0012 | the trial report exists beside the prediction, every one of the 9 primitives carries exactly one of {sufficient + named falsifier + RAN, insufficient + exact missing surface, UNPROVEN}, and any contradiction with prediction.md is stated in its own words | [ ] unchecked | [bp-0004](../../backpressure.dd.md#rows) |
-| dw-0013 | verdict delivered to pij-certain-crab with a send receipt; if any primitive is insufficient, the blocked tasks are marked and NO shim or local fork exists in the tree | [ ] unchecked | [bp-0005](../../backpressure.dd.md#rows) |
+| dw-0012 | the trial report exists beside the prediction; every one of the 9 primitives carries exactly one of {sufficient, insufficient + exact missing surface, UNPROVEN}; each SUFFICIENT verdict links its falsifier test id, the RED commit sha, the run command and its result (prose alone is not evidence); any contradiction with prediction.md is stated in its own words | [ ] unchecked | [bp-0004](../../backpressure.dd.md#rows) |
+| dw-0013 | verdict delivered to pij-certain-crab with a send receipt; if any primitive is insufficient, the dependent tasks are marked blocked per D-3; the dw-000f vocabulary-probe result (which runs on every outcome) is cited in the packet as the no-shim/no-local-fork evidence | [ ] unchecked | [bp-0005](../../backpressure.dd.md#rows) |
 
 ### tk-000b
 

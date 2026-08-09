@@ -194,7 +194,7 @@
           "phase": "ph-1633",
           "mode": "EXTEND",
           "tier": "computational",
-          "proof": "EXTEND->RUN: falsifier test per primitive lands in vitest BEFORE implementation (TDD, testing_strategy) and the FROZEN_DIGEST pin in dd-plan-semantics-frozen.test.ts is updated DELIBERATELY with the reason in the commit; then just test",
+          "proof": "EXTEND->RUN: falsifier test per primitive lands in vitest BEFORE implementation (TDD, testing_strategy) with its RED run logged; the FROZEN_DIGEST pin in dd-plan-semantics-frozen.test.ts stays UNCHANGED and green for all of phase 2 (the fork is byte-frozen until phase-3 deletion); RED->GREEN chronology is proved by commit order in the execution log; then just test",
           "state": "unchecked"
         },
         {
