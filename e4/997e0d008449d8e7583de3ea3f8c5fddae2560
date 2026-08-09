@@ -1,0 +1,30 @@
+docs/plans/082-harness-hooks/assets/tasks/phase-2/execution.log.md
+  s_ed609d39de2442::t_1a9fa665bcd977 878-969
+harness/cli/src/services/hooks/agent-matrix.ts
+  s_ed609d39de2442::t_2a8fcb5ea1b362 148-156
+  s_ed609d39de2442::t_f610d767006b7b 79-93,158
+harness/cli/src/services/hooks/install-strategy-a.ts
+  s_ed609d39de2442::t_f610d767006b7b 115-116
+harness/cli/test/services/hooks/agent-detection.test.ts
+  s_ed609d39de2442::t_a8da139b0ee59e 86-91,240-288
+harness/cli/test/services/hooks/agent-matrix.test.ts
+  s_ed609d39de2442::t_401379b5ca8edd 140
+harness/cli/test/services/hooks/install-strategy-a.test.ts
+  s_ed609d39de2442::t_b6ce842db5ede0 54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e4997e0d008449d8e7583de3ea3f8c5fddae2560",
+  "prompts": {},
+  "sessions": {
+    "s_ed609d39de2442": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "62892a0d-07d6-4784-b490-986f797be544",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
