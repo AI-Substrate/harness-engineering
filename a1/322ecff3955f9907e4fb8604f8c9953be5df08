@@ -1,0 +1,39 @@
+harness/cli/test/services/doctor/collector/cursor-sandbox.test.ts
+  s_6b8a25b7716dd8::t_fcdab2ad9515e3 1-146
+harness/cli/src/services/doctor/doctor-service.ts
+  s_6b8a25b7716dd8::t_709fe1a76c7c6b 1086-1093,1095-1104
+  s_6b8a25b7716dd8::t_b049349f1ae7ab 1084-1085,1094
+  s_6b8a25b7716dd8::t_1b2b5c5fddd773 1027-1036
+  s_e2ef1441ad1dbd::t_166bf5844352db 31,1105-1106
+harness/cli/src/services/doctor/collector/cursor-sandbox.ts
+  s_6b8a25b7716dd8::t_d4ef02917c9e3b 167-168
+  s_6b8a25b7716dd8::t_554eb13741458a 1-159,161-166,169-170
+  s_6b8a25b7716dd8::t_eb175ed02201b8 160
+harness/cli/test/services/doctor/doctor-service.test.ts
+  s_6b8a25b7716dd8::t_e2a8ac09acc04f 1005-1010,1022-1028,1053-1054
+  s_6b8a25b7716dd8::t_5989833f433a81 989-1004,1011-1021,1029-1052,1055-1069
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a1322ecff3955f9907e4fb8604f8c9953be5df08",
+  "prompts": {},
+  "sessions": {
+    "s_6b8a25b7716dd8": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "0566e436-a7a0-4359-99b4-8a2dc8a4c21d",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_e2ef1441ad1dbd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "265d8845-1914-4476-9977-4a05f12f4b06",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
