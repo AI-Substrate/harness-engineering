@@ -2,6 +2,7 @@ import type { HarnessVerb, VerbContext, VerbResult } from '@ai-substrate/enginee
 import { type CheckResult, decide } from './lib/decision.js';
 import { extractMermaidFences, type MermaidFence } from './lib/extract.js';
 import { filterInScope, normalizePath } from './lib/scope.js';
+import { describeUnexamined, scanUntracked } from './lib/untracked.js';
 
 /**
  * `harness markdown-lint` — one honest envelope over three third-party markdown
@@ -150,6 +151,54 @@ async function runMermaid(ctx: VerbContext, files: string[]): Promise<CheckResul
   return { name: 'mermaid', outcome: 'pass', findings: 0, examined: fences.length, summary: `${fences.length} mermaid fence(s) parsed, 0 invalid` };
 }
 
+/**
+ * The fourth check, and the only one that reports on what the other three could
+ * NOT see (plan 081 IMPROVE, DL-001).
+ *
+ * The tool checks are driven by `git ls-files`, so an untracked `.md` is never
+ * handed to them — and a check that receives no file cannot fail on it. Before
+ * this existed the verb answered "is the authored markdown clean?" with a green
+ * envelope while a brand-new guide sat unopened beside it. A gate can only ever
+ * be as honest as its enumerator, so the enumerator's blind spot is reported as a
+ * finding rather than left for a reader to infer from a file count.
+ *
+ * It degrades (warn-launch, exit 0) — the gate's existing posture is unchanged.
+ * A `git status` that FAILS is `unavailable`, never "nothing untracked": an
+ * enumerator that errored must not be indistinguishable from one that found
+ * nothing, which is the same defect one layer down.
+ */
+async function runUnexamined(ctx: VerbContext, dir: string | undefined): Promise<CheckResult> {
+  const r = await ctx.exec('git', ['status', '--porcelain', '--untracked-files=all', '-z'], {
+    cwd: ctx.cwd,
+  });
+  if (!r.ok) {
+    return unavailable(
+      'unexamined',
+      `could not list untracked files (git status exited ${r.code}) — this run cannot say ` +
+        `whether any authored markdown went unexamined. ${snippet(r.stderr)}`.trim(),
+    );
+  }
+  const { untracked, unexamined } = scanUntracked(r.stdout, dir);
+  if (unexamined.length === 0) {
+    return {
+      name: 'unexamined',
+      outcome: 'pass',
+      findings: 0,
+      // The denominator, kept even when it is the only number: "0 findings from
+      // 0 paths scanned" and "0 findings from 40" are different claims.
+      examined: untracked.length,
+      summary: `${untracked.length} untracked path(s) scanned, 0 unexamined in-scope markdown`,
+    };
+  }
+  return {
+    name: 'unexamined',
+    outcome: 'findings',
+    findings: unexamined.length,
+    examined: untracked.length,
+    summary: describeUnexamined(unexamined),
+  };
+}
+
 const markdownLint: HarnessVerb = {
   name: 'markdown-lint',
   summary: 'Lint authored markdown, validate in-repo links/anchors, and syntax-check mermaid fences — one honest envelope.',
@@ -183,12 +232,13 @@ const markdownLint: HarnessVerb = {
       const dir = typeof ctx.options.dir === 'string' ? normalizePath(ctx.options.dir).replace(/\/+$/, '') : undefined;
       if (dir) files = files.filter((f) => f === dir || f.startsWith(`${dir}/`));
 
-      const [mdl, links, mermaid] = await Promise.all([
+      const [mdl, links, mermaid, unexamined] = await Promise.all([
         runMarkdownlint(ctx, files),
         runLinks(ctx, files),
         runMermaid(ctx, files),
+        runUnexamined(ctx, dir),
       ]);
-      const decision = decide([mdl, links, mermaid]);
+      const decision = decide([mdl, links, mermaid, unexamined]);
 
       if (decision.status === 'unconfigured') {
         return ctx.unconfigured(decision.next_action as string, { data: decision.data });

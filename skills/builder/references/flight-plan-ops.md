@@ -41,8 +41,8 @@ harness flow nav set     --path <f> [--now <id>] [--next <id>|--clear-next] [--i
 harness flow render      --path <f> --output <flow.md>
 harness flow rail        --path <f>            # the one-line spine rail
 
-# Transactional batch + the new mutation primitives (plan 039) — prefer `apply` for ANY multi-node change:
-harness flow apply       --path <f> --ops <file | ->   # JSON array of ops; two-phase, one DAG-check, one atomic write or none
+# Batched mutation + the new mutation primitives (plan 039) — prefer `apply` for ANY multi-node change:
+harness flow apply       --path <f> --ops <file | ->   # JSON array of ops; two-phase, one DAG-check, one atomic SOURCE write or none (the sibling .md refresh after it can still refuse — E302)
 harness flow remove-node --path <f> --id <id> [--force]                                                  # delete + rewire preds→succs
 harness flow mv-node     --path <f> --id <id> (--after <n>|--before <n>|--branch-of <n>) [--rejoin <n>] [--force]   # re-parent + rewire
 ```
