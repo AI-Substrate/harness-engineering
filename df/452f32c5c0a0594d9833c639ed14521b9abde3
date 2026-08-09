@@ -1,0 +1,29 @@
+docs/plans/080-dd-consume-upgrade/assets/dogfood-ledger.md
+  s_397a51e23fc2cd::t_57ea465b664a76 34-35
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-1/tasks.dd.json
+  s_397a51e23fc2cd::t_266a90c165cfed 64,135
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-1/execution.log.md
+  s_397a51e23fc2cd::t_c3d121d7021600 451-584
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-1/tasks.dd.md
+  s_397a51e23fc2cd::t_266a90c165cfed 42,80
+docs/plans/080-dd-consume-upgrade/plan.dd.json
+  s_397a51e23fc2cd::t_a59b345d242c54 54
+docs/plans/080-dd-consume-upgrade/plan.dd.md
+  s_397a51e23fc2cd::t_7be4e66f521cc1 59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "df452f32c5c0a0594d9833c639ed14521b9abde3",
+  "prompts": {},
+  "sessions": {
+    "s_397a51e23fc2cd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "3fe3c47b-5424-4214-892e-81ef19c49d45",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
