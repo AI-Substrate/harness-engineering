@@ -214,3 +214,163 @@ POC-modified. Phase 3 compares against the **recorded pre-install bytes**, not a
 
 Confirmed rather than assumed in the same read: the Cursor event names really are lowerCamel —
 `preToolUse` / `postToolUse` — from a real config, not from the workshop.
+
+
+---
+
+## tk-0003 — the owned marker
+
+Decided before any writer assumes it, because three tasks match on "our marker" and nothing said
+what it is. The lazy answer at implementation time would have been `command.includes('harness')` —
+git-ai's rejected two-substring heuristic under a new name.
+
+**The literal**: `ai-substrate-harness-hook-v1`, carried by a `--hook-owner` flag. Same literal in
+all three locations — a `command` token for Strategy A, a header comment for C, a `#` line for D — so
+one grep finds every artifact we install.
+
+**Why the marker is its own ARGUMENT and not part of the binary path.** The path is quoted (it may
+contain a space) and Windows-normalised (`C:\x\y.exe` → `C:/x/y.exe`, `\\?\` stripped). A marker
+inside the path would be mangled by both; a standalone token is invariant under both. Asserted
+against four path shapes including a quoted space-bearing path and a normalised Windows path
+(dw-000b) rather than argued.
+
+### The compound-command rows, from the LIVE config (finding `41d6b7da`)
+
+The live `~/.cursor/hooks.json` has **no standalone git-ai entry**. Its checkpoint call is one
+pipeline stage inside a compound command the POC wrote — `python3 …probe.py PRE …; tee -a … |
+…/git-ai checkpoint cursor --hook-input stdin`. Both directions are asserted (dw-000c):
+
+- our predicate does **not** claim that entry — it contains three tools, only one of them git-ai's;
+- git-ai's own `contains("git-ai") && contains("checkpoint")` **does** claim it, asserted as an
+  executable contrast rather than a narrated one. An uninstall on that predicate would delete an
+  entry it did not write, along with two other tools' invocations;
+- git-ai's predicate does not claim ours (our command contains neither string, deliberately);
+- our marker mentioned inside someone else's compound command does not make that entry ours.
+
+### A SEVENTH instance — a test whose TITLE was its strongest claim, and its body tested nothing of it
+
+The row named *"our marker inside someone else's compound command does not make that entry ours"*
+used `${HOOK_MARKER}-ish` as its foreign command. That is a **longer token**, so it returned false
+via the longer-token rule already proven two rows above. **It proved that rule twice and
+compound attribution never** — while its title claimed the hardest property in the file.
+
+Different in kind from the earlier six. The other probes could not see the opposite; this one could,
+it just was not looking at the thing it named. Verified mechanically before acting:
+
+```
+MENTION tokens : ["ai-substrate-harness-hook-v1-ish"]   <- a different token entirely
+MENTION owned  : false
+REAL COMPOUND  : true   <- deleting this entry deletes `other-tool --run`
+```
+
+I had written a LIMIT comment stating the real case correctly, so the gap was not knowledge — the
+comment framed the claim as harmless and nobody had drawn the consequence.
+
+### THE CONSEQUENCE — it is git-ai's defect with our name on it
+
+An entry that will exist:
+
+```
+other-tool --run && harness hooks fire cursor --hook-owner ai-substrate-harness-hook-v1
+```
+
+`isOwnedByUs` is **correctly true** — our invocation really is in there. An uninstall that removes
+"our marked entry" deletes `other-tool --run` with it. That is precisely what
+`contains("git-ai") && contains("checkpoint")` does to the POC entry on this machine: claims a
+compound entry it did not author and destroys somebody else's work. The same defect, more precisely
+targeted, with a better marker.
+
+Not hypothetical: the measured evidence *is* the finding. A third party — our own POC — took a
+tool's standalone hook invocation and wrapped it into a chained command. That is the observed
+normal.
+
+### THE DECISION — REFUSE, decided explicitly rather than by default
+
+`classifyOwnership` now returns **three** states, because a boolean makes the wrong behaviour the
+easy one (*"is it ours? yes → delete it"*):
+
+| state | meaning | uninstall |
+| --- | --- | --- |
+| `not-ours` | no exact marker token | leave alone |
+| `wholly-ours` | every segment is our invocation | **removable** |
+| `ours-with-foreign` | our invocation chained with foreign work | **reported, never deleted** |
+
+**REFUSE**, for two reasons and the first settles it: a refusal that surprises someone is
+recoverable and a deletion that surprises them is not — *"we never delete work we did not write"* is
+a sentence we can keep. And it is the same refuse-to-clobber posture already adopted for Strategies
+C and D (cline.rs's, not amp.rs's unconditional `remove_file`), so ownership behaves identically
+across all three.
+
+Per-segment surgery is the better behaviour and more machinery; it is **deferred, not silently
+skipped**. A bare mention of the exact marker beside foreign work also lands in
+`ours-with-foreign` — refusing gives the safe answer without needing to tell an invocation from a
+mention.
+
+**Proven by refusal**: reverting `mayRemove` to the bare boolean turns **2 rows RED**, including a
+positive control that a wholly-ours entry *is* removable — without which "refuses to remove" would
+be satisfied by an uninstall that does nothing.
+
+`isOwnedByUs` is kept for the question idempotency and `status` actually ask ("is our hook already
+here?"), which is not the question uninstall asks.
+
+**Proven by refusal.** Swapping exact-token matching for `command.includes(...)` — git-ai's shape —
+turns **5 rows RED**, including every substring row and the foreign-compound row.
+
+---
+
+## tk-0001 — the config fixture harness, with three known-bad writers
+
+Sensors before feature code. A per-agent fixture materialises a realistic config under an injected
+home, runs a writer, and compares byte-for-byte against a **committed golden**.
+
+**Why a golden and not a self-diff** (dw-0003): after a legitimate install the bytes have changed, so
+byte-equality against the input would call every correct install a failure and could only be
+satisfied by installing nothing.
+
+**Why the input already holds git-ai's entries**: preservation is the property most likely to break
+silently, and a fixture starting from an empty config could never catch a writer that destroys what
+was there.
+
+**Why the key order is deliberately not alphabetical**: the real file writes `preToolUse` before
+`postToolUse`. A fixture that happened to be sorted already would go green against a re-sorting
+writer and the most-predicted failure would be invisible.
+
+### The three known-bad writers, and why one would not have been enough
+
+| writer | what it does | what it preserves |
+| --- | --- | --- |
+| clobber | replaces the event arrays | nothing — caught by the weakest assertion anyone would write |
+| **re-sort** | adds our entry correctly, then sorts every key | **every value** — `toEqual` on the parsed docs PASSES |
+| **de-comment** | adds our entry, keeps key order, drops comments | **every value and the order** |
+
+The re-sort row asserts **both** halves — parsed-equal **and** bytes-different — because asserting
+only the difference would pass against a writer that mangled the values, and we would not know which
+property the fixture actually detects. It is git-ai's real serde_json `BTreeMap` behaviour.
+
+### THE DETECTION MATRIX — measured, and it found a blind spot
+
+```
+clobber     cursor=caught   droid=caught
+resort      cursor=caught   droid=caught
+decomment   cursor=BLIND    droid=caught
+```
+
+**The cursor fixture cannot see a de-comment** — plain JSON has no comments to lose. The JSONC
+fixture is the only proof of the workshop's comment-preservation defect. Left implicit, someone
+tidying up would delete the droid fixture and quietly void a third of dw-0001 with every test still
+green. It is now an assertion, so the blindness is a fact rather than a coincidence.
+
+### The positive control, and why "three RED" needs one
+
+"All three known-bad writers are RED" is satisfied just as well by a comparator that **never**
+passes. A sensor that always fires detects nothing, and the three refusals would then be measuring
+the fixture's own brokenness. The control emits the golden bytes verbatim and must go green. It
+proves the harness **can** say yes — and nothing about any real writer, which does not exist yet.
+
+### Injected home, by construction (dw-0004)
+
+Path assertions show the fixtures happen to be injected today; only the absence of any ambient-home
+read makes it structural. So the support module's **source** is asserted to contain no `homedir`, no
+`process.env`, no `USERPROFILE`. That is what stops a later helper adding a convenience default — and
+it matters here specifically, because the live `~/.cursor/hooks.json` holds the git-ai checkpoint
+pipeline that phase 1's only end-to-end measurement depends on.

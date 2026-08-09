@@ -22,7 +22,7 @@
         {
           "id": "tk-0001",
           "title": "Build the config-fixture harness FIRST, with THREE known-bad writers — clobber, REORDER and DE-COMMENT",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-2",
           "success": "Sensors before feature code, as in Phase 1. A per-agent fixture that materialises a realistic config, runs the installer against it, and compares against a committed golden file. The load-bearing fixture is the one seeded with git-ai's OWN hook entries already present — preservation is the property most likely to break silently. THE MUTATION SET IS THE POINT: a deliberate CLOBBER is caught by the weakest plausible assertion (toContainEqual), so proving the sensor sees deletion proves almost nothing. The two failures the workshop actually predicts are git-ai's BTreeMap alphabetical RE-SORT and Droid's JSONC-to-JSON DE-COMMENTING. Show the fixture RED against all three before any real writer exists — a gate is not verified until it has refused the thing you are afraid of, not merely something.",
           "satisfies": [
@@ -44,7 +44,7 @@
         {
           "id": "tk-0003",
           "title": "Define the OWNED MARKER — its literal form, its location per strategy, and exact-token matching",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-2",
           "success": "Three tasks depend on the marker (uninstall ownership, plugin-file ownership, script-file ownership) and idempotency needs it to FIND our entry — but nothing in the task list, the plan or the workshop says what it IS or where it lives. The workshop says only 'an explicit owned marker we write and match on'. That gap invites the lazy answer at implementation time: command.includes('harness') — a two-substring heuristic, which is git-ai's rejected defect reintroduced under a new name. For Strategy D (script files) it is obviously a comment line. For Strategy A it is genuinely hard: a Cursor entry is {\"command\": \"...\"}, so the marker must either be embedded in the command string (and survive our own quoting and Windows normalisation) or be a sibling JSON key the agent may drop or reject. Decide it once, here, before three tasks assume it.",
           "satisfies": [
@@ -207,25 +207,25 @@
           {
             "id": "dw-0001",
             "assertion": "All THREE known-bad writers are asserted RED before any real writer exists: clobber, reorder, de-comment.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0002",
             "assertion": "The reorder mutation is a whole-file alphabetical re-sort, i.e. git-ai's actual serde_json BTreeMap behaviour, not a token swap.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0003",
             "assertion": "The fixture compares against a COMMITTED GOLDEN FILE, not a self-diff — after a legitimate install the bytes have changed, so byte-equality against the input cannot be the check.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0004",
             "assertion": "Every fixture resolves its config root through the injected home. Pointing one at the real HOME is not possible by construction, not merely avoided by convention.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],
@@ -259,25 +259,25 @@
           {
             "id": "dw-0009",
             "assertion": "The marker's literal form and its location are FIXED in writing, per strategy, before any writer is built.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-000a",
             "assertion": "Matching is exact-token. A test asserts that a foreign entry merely CONTAINING our marker's text as a substring is NOT claimed as ours.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-000b",
             "assertion": "For Strategy A, the marker survives a round-trip through the binary-path quoting and Windows normalisation — asserted, not assumed.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-000c",
             "assertion": "An entry written by git-ai is not matched by our predicate, and ours is not matched by git-ai's contains(git-ai)&&contains(checkpoint) — asserted in both directions.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],

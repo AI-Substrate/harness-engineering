@@ -1,0 +1,21 @@
+{
+  "hooks": {
+    "preToolUse": [
+      {
+        "command": "python3 /home/dev/probe.py PRE >/dev/null 2>&1; tee -a /tmp/pre.jsonl | /home/dev/.git-ai/bin/git-ai checkpoint cursor --hook-input stdin"
+      },
+      {
+        "command": "\"/usr/local/bin/harness\" hooks fire cursor --phase pre --hook-input stdin --hook-owner ai-substrate-harness-hook-v1"
+      }
+    ],
+    "postToolUse": [
+      {
+        "command": "python3 /home/dev/probe.py POST >/dev/null 2>&1; tee -a /tmp/post.jsonl | /home/dev/.git-ai/bin/git-ai checkpoint cursor --hook-input stdin"
+      },
+      {
+        "command": "\"/usr/local/bin/harness\" hooks fire cursor --phase post --hook-input stdin --hook-owner ai-substrate-harness-hook-v1"
+      }
+    ]
+  },
+  "version": 1
+}
