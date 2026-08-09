@@ -595,9 +595,9 @@ and it is written down here so it cannot be closed silently.
 
 ## Related
 
-- [Harness telemetry](./telemetry.md) — the capture path this handover disabled,
+- [Harness telemetry](./telemetry/README.md) — the capture path this handover disabled,
   and the read path it left alone.
-- [Pull published telemetry from remote repositories](./telemetry-pull.md) — how
+- [Pull published telemetry from remote repositories](./telemetry/pull.md) — how
   the existing 123 published refs stay queryable.
-- [Harness telemetry § Authorship attribution](./telemetry.md#authorship-attribution--then-and-now)
+- [Harness telemetry § Authorship attribution](./telemetry/README.md#authorship-attribution--then-and-now)
   — the archived join method, its bias, and the trade made by line ranges.

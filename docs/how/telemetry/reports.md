@@ -3,7 +3,7 @@
 How an archived or explicitly captured session becomes a **report** and a **rendered view** — the
 `session save → report → report-render` pipeline (plan 047) — and how those leaves
 lay out **centrally**, at fleet scale, so an org/repo/day rollup is just a recursive
-sweep. This sits on top of the [OTLP stored shape](./telemetry-otlp.md): the git
+sweep. This sits on top of the [OTLP stored shape](./otlp.md): the git
 refs hold the counts-only OTLP spool; this page is about reading it back into a
 `SessionExport`, rolling many of those into a `TelemetryReport`, and rendering.
 
@@ -17,7 +17,7 @@ refs hold the counts-only OTLP spool; this page is about reading it back into a
 > **The corpus is frozen, the reader is live.** Harness capture is off by
 > default under plan 073, but published refs and saved exports remain readable.
 > New default-install sessions do not appear here; use
-> [git-ai](./gitai-collector.md) for current collection.
+> [git-ai](../gitai-collector.md) for current collection.
 
 ---
 
@@ -55,7 +55,7 @@ read verbs operate above them:
 - `telemetry sweep` reads a month of committed telemetry and caches per-session
   exports.
 - `telemetry insights` joins saved reports into cohort analytics; see
-  [Cohort telemetry insights](./cohort-telemetry-insights.md).
+  [Cohort telemetry insights](./cohort-insights.md).
 
 ### `harness telemetry session save <session-id>`
 
@@ -71,7 +71,7 @@ Combine a session's buffered segments into one schema-valid `SessionExport`.
 (`git status --porcelain` is byte-identical before and after) — a `for-each-ref`
 enumeration + a `cat-file` tree walk, never a write/fetch/checkout. Because the
 committed shard is the OTLP pair (`<seq>.logs.jsonl` + `<seq>.metrics.jsonl`) with
-**no** `<seq>.json` (the segment json stays local — see [telemetry-otlp](./telemetry-otlp.md)),
+**no** `<seq>.json` (the segment json stays local — see [telemetry-otlp](./otlp.md)),
 the git-ref combine reconstructs the segment + identity **from the OTLP Logs blob
 directly** (`harness.*` resource attributes for identity), yielding the same
 `SessionExport` shape as `--source temp`.
@@ -229,12 +229,12 @@ The counts-only floor extends to every **tracked** artifact this pipeline emits:
 
 ## See also
 
-- [The git-ai collector handover](./gitai-collector.md) — why new default-install
+- [The git-ai collector handover](../gitai-collector.md) — why new default-install
   sessions no longer enter this archive.
-- [Harness telemetry](./telemetry.md) — the frozen segment contract, read path,
+- [Harness telemetry](./README.md) — the frozen segment contract, read path,
   and explicit legacy-capture escape hatch.
-- [Harness telemetry — the OTLP/OTEL stored shape](./telemetry-otlp.md) — how the
+- [Harness telemetry — the OTLP/OTEL stored shape](./otlp.md) — how the
   segment is stored/published as OTLP and the keep-and-harden git refs the read path
   walks.
-- [Harness value measures](./harness-value-measures.md) — what the downstream
+- [Harness value measures](../harness-value-measures.md) — what the downstream
   program engineers from the committed telemetry.

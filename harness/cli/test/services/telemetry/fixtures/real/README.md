@@ -76,4 +76,4 @@ A captured fixture is only committed after the **manual "anything bad" review** 
 in a public repo, permanently in git history). The capture tool stages to a gitignored
 `scratch/` first; promotion to this dir happens only on scrub-pass + human sign-off.
 
-See the runbook (Phase 3: `docs/how/telemetry-fixtures.md`) for the capture workflow.
+See the runbook (Phase 3: `docs/how/telemetry/fixtures.md`) for the capture workflow.

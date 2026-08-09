@@ -1,7 +1,7 @@
 # Harness telemetry — the OTLP/OTEL stored shape
 
 How the archived counts-only telemetry `segment` (see
-[Harness telemetry](./telemetry.md)) is stored and read as OTEL/OTLP — one file
+[Harness telemetry](./README.md)) is stored and read as OTEL/OTLP — one file
 per signal, directly ingestible by any OTEL collector with zero translation.
 Harness capture is off by default, but this remains the authoritative contract
 for published refs and the explicit legacy-capture escape hatch.
@@ -220,11 +220,11 @@ shape an `otlpjsonfilereceiver` consumes, so v2 can migrate rather than reshape.
 
 ## See also
 
-- [Harness telemetry](./telemetry.md) — the frozen segment contract, live read
+- [Harness telemetry](./README.md) — the frozen segment contract, live read
   path, explicit legacy-capture opt-in, and counts-only privacy model.
-- [The git-ai collector handover](./gitai-collector.md) — why the v1 producer is
+- [The git-ai collector handover](../gitai-collector.md) — why the v1 producer is
   dormant and what collects current attribution instead.
-- [Harness value measures](./harness-value-measures.md) — what the downstream
+- [Harness value measures](../harness-value-measures.md) — what the downstream
   program engineers from the committed telemetry.
 - `harness/cli/src/services/telemetry/otlp/` — the serializer (`logs.ts`,
   `metrics.ts`, `resource.ts`), the semconv mapping (`semconv.ts`), and the frozen

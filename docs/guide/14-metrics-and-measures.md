@@ -187,7 +187,7 @@ Usage is team/repo-grained, never an individual productivity scoreboard.
 Telemetry commits retain the contributor identity for traceability, while shards
 remain keyed by opaque session rather than engineer.
 
-The exhaustive reference — offline behaviour, the watermark/consume mechanism, server-side ref-hiding, and the full field contract — is [Harness telemetry](../how/telemetry.md).
+The exhaustive reference — offline behaviour, the watermark/consume mechanism, server-side ref-hiding, and the full field contract — is [Harness telemetry](../how/telemetry/README.md).
 
 ---
 
@@ -200,7 +200,7 @@ The exhaustive reference — offline behaviour, the watermark/consume mechanism,
 ## See also
 
 - [harness-value-measures.md](../how/harness-value-measures.md) — the two measures in detail: bypass rate, change rate, the PR denominator, DORA correlation, anti-gaming guardrails.
-- [telemetry.md](../how/telemetry.md) — the archived sensor and live read-contract reference.
+- [telemetry.md](../how/telemetry/README.md) — the archived sensor and live read-contract reference.
 - [gitai-collector.md](../how/gitai-collector.md) — the current collection handover.
 - [10 · Encoding & Learning Loops](10-encoding-and-learning-loops.md) — how friction becomes an encoded fix.
 

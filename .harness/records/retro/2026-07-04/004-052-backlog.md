@@ -90,7 +90,7 @@ entries:
     agent's session memory from the 036 era — tribal, not substrate, so the blind spot survived research,
     plan validation AND code review
   target: project-sensor
-  suggested_encoding: 'docs/how/telemetry.md lane-source matrix (per-harness: where tokens live, when
+  suggested_encoding: 'docs/how/telemetry/README.md lane-source matrix (per-harness: where tokens live, when
     they materialize) so no future plan re-derives the blind spot'
   first_seen_at: '2026-07-04T05:05:40.171Z'
   system:

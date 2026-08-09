@@ -1,7 +1,7 @@
 # Harness telemetry
 
 The front door for harness telemetry: what changed when
-[git-ai became the collector](./gitai-collector.md), how to read the frozen
+[git-ai became the collector](../gitai-collector.md), how to read the frozen
 `refs/harness-telemetry/*` corpus, and the counts-only segment, event-stream,
 OTLP, reporting, attribution, privacy, and offline contracts that remain
 authoritative for those already-published records.
@@ -15,20 +15,20 @@ authoritative for those already-published records.
 > **This was the sensor, not the analyst.** The legacy producer emitted and
 > committed faithful counts; it built no scanner, dashboard, or correlation.
 > Downstream tooling can still read the committed refs and engineer measures —
-> see [Harness value measures](./harness-value-measures.md).
+> see [Harness value measures](../harness-value-measures.md).
 
 > **Stored shape is OTEL/OTLP.** Published segments were re-serialized as OTLP
 > Logs + Metrics (one file per signal), collector-ingestible with zero
 > translation. The on-disk layout, the `schema_url` policy, the keep-and-harden
 > ref contract, and the downstream read contract live in
-> [Harness telemetry — the OTLP/OTEL stored shape](./telemetry-otlp.md).
+> [Harness telemetry — the OTLP/OTEL stored shape](./otlp.md).
 
 > **Remote retrospective retrieval.** `harness telemetry ls` inventories
 > counts-only sessions published under explicit repositories'
 > `refs/harness-telemetry/**`; `harness telemetry pull` writes selected complete
 > sessions into one deterministic, integrity-verifiable bundle that the existing
 > `telemetry report` command can read. See
-> [Pull published telemetry from remote repositories](./telemetry-pull.md) for
+> [Pull published telemetry from remote repositories](./pull.md) for
 > repository inputs, selectors, bundle fields, fidelity/gaps, privacy, and
 > troubleshooting.
 
@@ -684,7 +684,7 @@ If you ran `just install-hooks` while it existed, your clone still has
 hook and proceeds, so it is harmless; clear it with `git config --unset core.hooksPath`.
 
 **Unaffected, and not to be confused with the above:** `git ai install-hooks` is a
-different command belonging to the [git-ai collector](./gitai-collector.md), and the
+different command belonging to the [git-ai collector](../gitai-collector.md), and the
 `core.hooksPath=` argument in `exec-remote-telemetry-git.ts` is a *suppression* that keeps
 the telemetry push hook-free — it is what makes that push recursion-proof.
 
@@ -762,7 +762,7 @@ commit.
 **Usage norm (P12):** attribution makes a push *traceable*, but the counts remain
 intended for **team/repo-grain** measurement — not a per-person productivity
 scoreboard (see the do-not-use-for-individuals list in
-[Harness value measures § Team-level only](./harness-value-measures.md#team-level-only--never-individual-attribution)).
+[Harness value measures § Team-level only](../harness-value-measures.md#team-level-only--never-individual-attribution)).
 The optional `agent` provenance field follows the house pattern (nullable, `null`
 when unset).
 
@@ -939,14 +939,49 @@ must disclose:
 
 ## See also
 
-- [The git-ai collector handover](./gitai-collector.md) — the current collector,
+- [The git-ai collector handover](../gitai-collector.md) — the current collector,
   installation contract, losses, and v1 proof ceiling.
-- [Harness telemetry — reports & rollups](./telemetry-reports.md) — read and
+- [Harness telemetry — reports & rollups](./reports.md) — read and
   render the frozen published corpus.
-- [Pull published telemetry from remote repositories](./telemetry-pull.md) —
+- [Pull published telemetry from remote repositories](./pull.md) —
   retrieve complete published sessions without enabling capture.
-- [Harness telemetry — the OTLP/OTEL stored shape](./telemetry-otlp.md) — the
+- [Harness telemetry — the OTLP/OTEL stored shape](./otlp.md) — the
   frozen wire contract and read path.
-- [Harness value measures](./harness-value-measures.md) — how the `segment`
+- [Harness value measures](../harness-value-measures.md) — how the `segment`
   contract feeds the team/repo-grain eng-thrive measures.
 - `harness/cli/src/services/telemetry/segment.schema.json` — the machine schema.
+
+### Validating attribution inside an agent harness
+
+Rescued out of a gitignored `scratch/` directory (plan 077 · #108) — the Cursor sandbox
+answer had already been re-derived from scratch twice because the record was somewhere git
+does not track.
+
+- [Validating telemetry attribution inside a sandboxed agent harness](./sandbox-03-validation-playbook.md)
+  — **start here.** The general procedure for proving commits made from inside an agent
+  harness are attributed, with Cursor as the worked example and an explicit table of which
+  harnesses have and have not been tested.
+- [The sandbox investigation](./sandbox-01-investigation.md) — the root cause, found and
+  proven on macOS: a sandbox can leave a socket visible and still refuse the `connect()`.
+- [Two proven routes around the sandbox](./sandbox-02-workarounds-proven.md) — both
+  measured, neither needs a git-ai change.
+- [Sandbox config reference](./sandbox-04-config-reference.md) — the settings that govern
+  it, and an explicit note on which parts are measured versus inferred.
+
+### What each collector captures
+
+- [What harness telemetry captures](./gitai-01-what-harness-captures.md) — read from the
+  schemas and services directly, every claim cited.
+- [git-ai capture inventory](./gitai-02-capture-inventory.md) — its persistent stores and
+  data surface, `file:line` cited.
+- [git-ai agent coverage](./gitai-03-agent-coverage.md) — which agents it ingests
+  transcripts from, and how.
+- [What git-ai pushes, and what you can filter](./gitai-04-push-and-filtering.md) — the two
+  channels, and which one is a git ref.
+- [git-ai attribution algorithm](./gitai-05-attribution-algorithm.md) — how a line becomes
+  attributed, and the correctness machinery around it.
+
+> These were written against `git-ai @ 7df7e2069` in August 2026 and are **point-in-time
+> source reads**, not a maintained contract. They are here because the analysis is expensive
+> to redo, not because it self-updates — re-verify against the current source before relying
+> on a specific `file:line`.

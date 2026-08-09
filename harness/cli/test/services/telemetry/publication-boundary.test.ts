@@ -319,7 +319,7 @@ describe('publication boundary — an owning scan spends exactly two git childre
       if (r.status !== 0) throw new Error(`fixture git ${args.join(' ')} failed: ${r.stderr}`);
     };
     write('.gitignore', '*.log\n');
-    write('docs/how/telemetry-reports.md', 'a doc\n');
+    write('docs/how/telemetry/reports.md', 'a doc\n');
     write('harness/cli/src/services/telemetry/render/r.ts', 'export const r = 1;\n');
     write('a.session.json', '{}\n');
     write('b.report.json', '{}\n');
@@ -357,7 +357,7 @@ describe('publication boundary — an owning scan spends exactly two git childre
     expect(ownedArtifactPaths).toEqual([
       'a.session.json',
       'b.report.json',
-      'docs/how/telemetry-reports.md',
+      'docs/how/telemetry/reports.md',
       'harness/cli/src/services/telemetry/render/r.ts',
     ]);
     const ownedIgnoredPaths = operations.ignoredPaths([...ownedArtifactPaths, ignoredControl]);

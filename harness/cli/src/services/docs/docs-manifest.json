@@ -62,21 +62,21 @@
       "title": "Harness telemetry",
       "summary": "Front door for the frozen counts-only telemetry corpus: capture off by default, the live read/report path, segment and event-stream contracts, the explicit legacy-capture opt-in, and the git-ai handover.",
       "audience": "both",
-      "sourcePath": "docs/how/telemetry.md"
+      "sourcePath": "docs/how/telemetry/README.md"
     },
     {
       "id": "telemetry-pull",
       "title": "Pull published telemetry from remote repositories",
       "summary": "Use telemetry ls/pull with explicit repositories and whole-session selectors; understand deterministic bundle fields, fidelity/provenance gaps, reporting, privacy, and E220–E227 troubleshooting.",
       "audience": "both",
-      "sourcePath": "docs/how/telemetry-pull.md"
+      "sourcePath": "docs/how/telemetry/pull.md"
     },
     {
       "id": "telemetry-otlp",
       "title": "Harness telemetry \u2014 the OTLP/OTEL stored shape",
       "summary": "How the counts-only segment is stored and published as OTEL/OTLP (one file per signal), the `schema_url` + two-layer naming policy, the keep-and-harden git-refs contract + graduation tripwire, and the downstream eng-thrive scraper read contract.",
       "audience": "both",
-      "sourcePath": "docs/how/telemetry-otlp.md"
+      "sourcePath": "docs/how/telemetry/otlp.md"
     },
     {
       "id": "harness-flow",

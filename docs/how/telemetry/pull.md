@@ -7,7 +7,7 @@ explicit remote repositories only. They do not infer the current checkout,
 `origin`, local telemetry refs, a runtime store, or a cache.
 
 > **The corpus is frozen.** Harness stopped capturing its own telemetry at v1 — see
-> [git-ai as the collector](./gitai-collector.md). Everything described here still works
+> [git-ai as the collector](../gitai-collector.md). Everything described here still works
 > exactly as documented against the sessions published before that point; what changes is
 > that `ls` returns a fixed set which will not grow.
 

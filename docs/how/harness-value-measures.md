@@ -289,7 +289,7 @@ harness telemetry corpus contains per-session **`segment`** records captured by
 the former ambient sensor. Harness capture is now off by default, but the
 segment remains a contract the eng-thrive measures can consume from published
 refs. The archived mechanics and live read path are in the
-[telemetry guide](./telemetry.md).
+[telemetry guide](./telemetry/README.md).
 
 **What the measures may read.** The enumerated field set is the segment's plan
 (`docs/plans/034-harness-telemetry-collection/…` `### Segment Schema`) and the
@@ -301,7 +301,7 @@ api-error / local-command event counts; branch, model, effort, timecode, and the
 capture window. As of schema **v2.0** they also include the timestamped
 **`event_stream[]`** and its derived **`rollup`** (activity / flow-stage time /
 outcomes — see [the example](#e-the-telemetry-segment--a-counts-only-sensor-contract)
-below and the [telemetry guide](./telemetry.md#the-event-stream-v20)). **No content
+below and the [telemetry guide](./telemetry/README.md#the-event-stream-v20)). **No content
 fields ever** — no prompt/message text, no file contents, no free-form tool-arg
 strings; an event is `t + kind + name + numbers`.
 
@@ -413,7 +413,7 @@ later.
 
 ## See also
 
-- [Harness telemetry](./telemetry.md) — the frozen counts-only `segment`
+- [Harness telemetry](./telemetry/README.md) — the frozen counts-only `segment`
   contract, live read path, and explicit legacy-capture escape hatch.
 - [The git-ai collector handover](./gitai-collector.md) — current attribution
   collection and the v1 proof ceiling.

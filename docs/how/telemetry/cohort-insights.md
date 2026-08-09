@@ -11,17 +11,17 @@ self-contained HTML page, with an LLM at the very edge writing prose over the
 computed numbers and proposing new generators as reviewed code.
 
 This page is a map, not a manual. It sits **on top of** the measures pipeline in
-[telemetry-reports.md](./telemetry-reports.md) (`session save → report →
+[telemetry-reports.md](./reports.md) (`session save → report →
 report-render`): a report answers *"what happened in one rollup"*; the insights
 layer joins **1..N reports** into the seven WS001 v1 sections plus the
 loop-discipline panel. The section semantics, row schema, and n-threshold are
 defined once — read them there, not here:
 
-- [`insights.schema.json`](../../harness/cli/src/services/telemetry/insights.schema.json)
+- [`insights.schema.json`](../../../harness/cli/src/services/telemetry/insights.schema.json)
   — the row contract (`{claim, measures, n, interval?, caveat}`) and every section.
-- [Workshop 001](../plans/048-cohort-telemetry-insights/workshops/001-cohort-measures-and-insights-layer.md)
+- [Workshop 001](../../plans/048-cohort-telemetry-insights/workshops/001-cohort-measures-and-insights-layer.md)
   — the four layers, D1–D7, and *why* the LLM may never compute a rendered number.
-- [The plan](../plans/048-cohort-telemetry-insights/cohort-telemetry-insights-plan.md)
+- [The plan](../../plans/048-cohort-telemetry-insights/cohort-telemetry-insights-plan.md)
   — the acceptance criteria this loop satisfies (AC-08…AC-11).
 
 ## Why a separate layer
@@ -85,7 +85,7 @@ a number that appears in a report**:
   they are never self-merged.
 
 Both roles are routed by the
-[`telemetry-insights-narrate` skill](../../.claude/skills/telemetry-insights-narrate/SKILL.md)
+[`telemetry-insights-narrate` skill](../../../.claude/skills/telemetry-insights-narrate/SKILL.md)
 — read it for the injection mechanic and the honesty check.
 
 ## Feed it back
@@ -102,11 +102,11 @@ pretty page. A recurring finding becomes work, per the normal harness rule:
 
 ## See also
 
-- [Harness telemetry — reports & rollups](./telemetry-reports.md) — the measures
+- [Harness telemetry — reports & rollups](./reports.md) — the measures
   layer this sits on.
-- [Harness value measures](./harness-value-measures.md) — what the broader
+- [Harness value measures](../harness-value-measures.md) — what the broader
   program engineers from committed telemetry.
-- [Harness telemetry — the OTLP stored shape](./telemetry-otlp.md) — the
+- [Harness telemetry — the OTLP stored shape](./otlp.md) — the
   counts-only spool the whole pipeline reads.
-- [The git-ai collector handover](./gitai-collector.md) — why the corpus stopped
+- [The git-ai collector handover](../gitai-collector.md) — why the corpus stopped
   growing and what captures current line attribution.
