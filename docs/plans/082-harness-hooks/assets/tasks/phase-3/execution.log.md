@@ -456,6 +456,30 @@ holding only `git-ai.json`, no install record.
 
 Prune fix: **RED — 1 failed | 14 passed**.
 
+### The fence held under the heaviest load anyone has put on it — measured by ABSENCE
+
+Two hours after the incident, and by accident rather than by design, the escape fix got the strongest
+test it will ever get.
+
+At **07:36** a full `HARNESS_TEST_SCOPE=all` suite ran on this machine — hundreds of processes, the
+hooks rows spawning real `git` in temp repos, the doctor rows driving the real auto-installer. At the
+same time the PM was capturing the live baseline for the Cursor run-9 validation, and the **run 9 that
+followed produced exactly six journal entries: three pre/post pairs, every one with `repoRoot
+/Users/jordanknight/temp/attrib-probe`.**
+
+**Not one entry from the suite. Nothing written to the real journal, nothing to the real configs.**
+
+That is a different grade of evidence from the guard's own row. The row asserts its fence and passes;
+this is the fence **not being crossed** by a full suite it was never specially prepared for, verified
+from *outside* by counting what arrived in a real user's journal. A guard that asserts its own
+correctness and a guard whose absence of effect is observed downstream are not the same claim, and
+only the second one rules out the fence being satisfied vacuously.
+
+It was offered to the PM as a **caveat** — "if your counts look off by a small amount, that run is a
+candidate cause worth ruling out". It came back as a **positive control**. Worth noticing that the
+honest hedge and the strongest available evidence were the same act: naming a possible contaminant
+before the measurement is what let its absence mean something afterwards.
+
 ### The uninstall verb performed a real recovery on real damage
 
 Worth stating plainly: the PM cleaned five contaminated configs and one created file with
@@ -781,10 +805,11 @@ stale entry can only ever make an uninstall remove a key we *did* create, never 
   arrived compact comes back expanded. It happened not to bite here because these files already
   carried the expanded shape. A stronger result on one input is not a stronger guarantee.
 - **`install-record.json` has no garbage collector.** Lifetime unmeasured; direction safe.
-- **The Cursor end-to-end validation has NOT been run.** `CURSOR-PROMPT-8.md` is written and its
-  claims are verified against the live machine, but nobody has yet pasted it into Cursor. **The
-  feature's central claim — that a sandboxed agent's commit gets attributed — is therefore still
-  UNVERIFIED end to end on the shipped verb.**
+- **The Cursor end-to-end validation HAS NOW BEEN RUN — see the RUN 9 section.** The hook fired three
+  times on real agent traffic, stayed silent twice for the right reason, and emitted once on the
+  commit. **Run 10 then closed the narrower question that was hidden inside this bullet — whether the
+  relay was NECESSARY** — by removing the competing relay and measuring the sandbox for that run: shell
+  REFUSED on both sockets, one channel-2 relay, we emitted, the note landed. See the RUN 10 section.
 
 ### Two proofs that live outside the default test scope
 
@@ -803,7 +828,7 @@ green is a smaller claim than a CI green, by design and by declaration.
 | The journal is loss-free across processes | **MEASURED** | phase 2, real OS processes |
 | Linux | **MEASURED** | native arm64, 26 files / 469 tests |
 | Windows | **EXPECTED-UNVERIFIED** | three named questions above |
-| A sandboxed Cursor commit gets attributed | **UNVERIFIED** | the prompt exists; the run has not happened |
+| A sandboxed Cursor commit gets attributed | **MEASURED** | run 10 · head `5ac3eaa` · sandbox `seatbelt`, both sockets REFUSED · one relay |
 
 ---
 
@@ -1143,3 +1168,108 @@ A second, narrower one: the fixture's agent list is **hand-maintained**. It is p
 newly supported agent fails the row rather than being silently skipped — but the failure will read as
 a broken test rather than as "add the new agent here", and the person who meets it will be someone
 else.
+
+---
+
+## RUNS 9 AND 10 — the guard discriminates on REAL agent traffic, and the relay is proven NECESSARY
+
+Run by Jordan in Cursor, on the binary this worktree had compiled at **07:33:49** — the same bytes the
+PM had independently verified accept `--hook-owner`, and unchanged across the docs commit and push
+that followed (mtime proof, both sides). A build freeze was held for the duration precisely because
+that binary is mutable by our routine work; run 9 is the first time the ephemeral-path hazard cost
+anybody anything, and it cost a twenty-minute freeze rather than a result measured across two
+different programs.
+
+### What the hook did
+
+| tool call | outcome | why |
+|---|---|---|
+| edited files, no commit | **SILENT** | `head-unchanged` |
+| edited files, no commit | **SILENT** | `head-unchanged` |
+| committed | **EMITTED** | head moved to `1cbdf0de` |
+
+Three fires, one emission. The note anchors `AI6.md` 1–3 and `seed.mjs` line 7 to the agent session.
+
+**This is the first time the discrimination has been exercised by an agent rather than by a fixture.**
+The 32 provocation rows established that the guard stays silent for checkout, reset, rebase,
+fast-forward pull and `read-tree -m -u` — all of them constructed. Run 9 is two genuine
+file-editing tool calls that changed the working tree without moving HEAD, and the guard was silent
+for the right reason and named it.
+
+### RUN 10 SETTLES IT — and run 9 plus run 10 are a control pair
+
+Run 9 left one thing open: **whether the relay was NECESSARY.** A note existed, but a note would also
+exist if the sandboxed shell's own trace2 had reached the collector unaided, in which case the feature
+relayed something nobody was losing.
+
+Run 10 closes it, three minutes later, differing from run 9 in **exactly one material variable**.
+
+| | run 9 (`1cbdf0de`) | run 10 (`5ac3eaa`) |
+|---|---|---|
+| shell sandboxed | `seatbelt`, both sockets `REFUSED` | `seatbelt`, both sockets `REFUSED` |
+| channel-2 relays installed | **2** — the POC's `harness-commit-hook.mjs` and ours | **1** — ours |
+| our hook | emitted for `1cbdf0de` | emitted for `5ac3eaa` |
+| note | present, correct split | present, correct split |
+| **verdict** | **INCONCLUSIVE** | **PASS** |
+
+**Run 9 was confounded.** The POC's own relay does the same job as ours and fired for the same commit
+**one second before it**:
+
+```text
+07:38:10  ~/.harness/commit-hook-state.json -> {"…/attrib-probe": "1cbdf0de…"}
+07:38:11  ~/.harness/hooks/fires.jsonl      -> {"kind":"emitted","head":"1cbdf0de…"}
+```
+
+The note was real. Either relay could have caused it, and nothing in the note distinguishes them.
+
+**Run 10 removed the POC relay**, and its state file is still frozen at 07:38:10 — it writes on PRE,
+so it cannot have run. So: a sandboxed commit could not reach the daemon, nothing else could send the
+commit signal, we sent it, and the note exists. **The relay was necessary and sufficient for that
+commit.**
+
+#### The two-channel conflation, recorded because it nearly voided both runs
+
+Reviewing run 10, this seat argued that BOTH runs were confounded, on the evidence that
+`git-ai checkpoint` demonstrably ran during both — proven from `checkpoints.jsonl`, which only
+`git-ai checkpoint` writes. **That evidence was correct and the conclusion was wrong.** `git-ai
+checkpoint` is CHANNEL 1: it records what the agent wrote and cannot produce a note on its own. The
+relay removed between the runs was channel 2. **Proving "a relay ran" is not proving "a commit signal
+was sent",** and the two are one grep apart.
+
+The same seat then read `/tmp/hook-probe.log` — 130 lines, `control=OK trace2=OK sandbox=unset`, ten
+hours, not one EPERM — and concluded the sandbox had never been engaged. That log measures the **HOOK**
+context, which is **not sandboxed by design**: a hook-side OK is the PREMISE of the relay (it is where
+we emit from), not evidence of an absent sandbox. The shell-side probe, which is the one that matters,
+reported `CURSOR_SANDBOX seatbelt` and `connect(): REFUSED` on both sockets for **both** runs.
+
+Both errors are the same shape: **an instrument read correctly, in the wrong context.** They are
+recorded here because the phase-4 verb is built to make both impossible to repeat — it classifies
+every relay by channel, and its probe prints `"context": "shell"` on its own face.
+
+#### The precondition that was measured once and carried forward
+
+Run 10's PASS was **provisional for twenty minutes**. Its shell-side probe had not been pasted; the
+sandbox condition was inferred from run 9. Not a wrong measurement — an **un-repeated** one. That
+inference was load-bearing: an unsandboxed shell would have reached the daemon unaided and produced
+the same note without us. The probe (`DURING-COMMIT-RUN-E`) then landed and confirmed it.
+
+That is the incident behind `validate-attribution --begin`'s refusal to certify a run without a
+shell-side probe **for that run**. The rule has a real incident behind it rather than a principle.
+
+### The claims table, corrected
+
+| claim | label | evidence |
+|---|---|---|
+| A sandboxed Cursor commit gets attributed | **MEASURED** | run 9 · head `1cbdf0de` · note anchors `AI6.md` 1–3, `seed.mjs`:7 |
+| The guard stays silent on real non-commit agent traffic | **MEASURED** | run 9 · 2 fires, `head-unchanged` |
+| The relay was NECESSARY — attribution would have been LOST without it | **MEASURED** | run 10 · shell REFUSED on both sockets, exactly one channel-2 relay, we emitted, note landed |
+| The fence holds under a full suite on a live machine | **MEASURED** | 07:36 `HARNESS_TEST_SCOPE=all` · 0 entries in the real journal; run 9's 6 entries all from `attrib-probe` |
+
+Splitting the first two rows was the correction; run 10 is what then satisfied both. Carried inside
+one row, "a commit gets attributed" would have been read as "the relay was needed" on the strength of
+run 9 alone — which was confounded, and which nobody would have noticed from the note.
+
+**What is STILL open**, so the close does not read as more than it is: this is one agent, one machine,
+one commit. Windows is unmeasured; the mixed human+AI commit is known to over-count AI at commit
+granularity and this changes nothing about it; and `--end` of the phase-4 verb has never scored a live
+run.
