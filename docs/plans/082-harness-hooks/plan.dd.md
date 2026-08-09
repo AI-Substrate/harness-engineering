@@ -62,6 +62,8 @@
 | ac-000a | harness hooks uninstall removes only entries we own and leaves other tools entries intact. | [ ] unchecked | — | — | — | — |
 | ac-000b | A fire that failed to emit is VISIBLE in `harness hooks status --json` with its cause — proven by a fixture where the socket is unreachable. Exit 0 must never be the only signal; a silent failure is the exact defect this plan exists to fix, and shipping one would reproduce it. | [ ] unchecked | — | — | — | — |
 | ac-000c | The root README states plainly that `harness doctor` installs the git-ai collector AND installs our agent hooks on first run — what it writes, where, and how to opt out with HARNESS_NO_HOOKS=1. A reader must not be surprised by a machine change they did not know doctor makes. | [ ] unchecked | — | — | — | — |
+| ac-000d | The hook command we write resolves and runs on a path containing a SPACE: absolute, Windows-normalised, and always quoted — and `harness hooks status` can parse that same path back out of the command string to stat it. | [ ] unchecked | — | — | — | — |
+| ac-000e | A config carrying COMMENTS and non-alphabetical keys comes back from an install with both intact — the defect git-ai's serde_json BTreeMap re-serialization cannot avoid. | [ ] unchecked | — | — | — | — |
 
 <a id="phases"></a>
 

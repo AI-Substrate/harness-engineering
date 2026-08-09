@@ -97,6 +97,16 @@
           "id": "ac-000c",
           "claim": "The root README states plainly that `harness doctor` installs the git-ai collector AND installs our agent hooks on first run — what it writes, where, and how to opt out with HARNESS_NO_HOOKS=1. A reader must not be surprised by a machine change they did not know doctor makes.",
           "state": "unchecked"
+        },
+        {
+          "id": "ac-000d",
+          "claim": "The hook command we write resolves and runs on a path containing a SPACE: absolute, Windows-normalised, and always quoted — and `harness hooks status` can parse that same path back out of the command string to stat it.",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-000e",
+          "claim": "A config carrying COMMENTS and non-alphabetical keys comes back from an install with both intact — the defect git-ai's serde_json BTreeMap re-serialization cannot avoid.",
+          "state": "unchecked"
         }
       ]
     },
