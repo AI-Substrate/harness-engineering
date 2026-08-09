@@ -45,8 +45,25 @@ export interface AgentEnvOverride {
 }
 
 export interface AgentSpec {
-  /** Slug, as it appears in our hook command. */
+  /** Slug, as it appears in our hook command (`harness hooks fire <agent>`). */
   agent: string;
+  /**
+   * The COLLECTOR's marker id for this same agent (`AGENT_MARKERS` in
+   * `doctor/collector/agents.ts`).
+   *
+   * Two namespaces, deliberately linked rather than merged. Our slug is a CLI
+   * argument the user can see; the collector's id mirrors git-ai's own marker
+   * table, where the same agents are called `claude` and `copilot`. MEASURED: a
+   * test comparing the two sets directly found `claude-code` and `github-copilot`
+   * unmatched — which is exactly the "two answers to which agents are here" that
+   * reusing one detector is supposed to prevent, arriving through naming instead
+   * of through a second detector.
+   *
+   * Declaring the link makes it assertable: every `detectId` must resolve to a real
+   * marker, so a rename on either side fails a test instead of silently detecting
+   * nothing.
+   */
+  detectId: string;
   /** Directory under the home, e.g. `.cursor`. Also what a `home-root` override appends. */
   subdir: string;
   /**
@@ -72,6 +89,7 @@ export interface AgentSpec {
 export const AGENT_MATRIX: AgentSpec[] = [
   {
     agent: 'claude-code',
+    detectId: 'claude',
     subdir: '.claude',
     configFiles: ['settings.json'],
     events: { pre: 'PreToolUse', post: 'PostToolUse' },
@@ -80,12 +98,14 @@ export const AGENT_MATRIX: AgentSpec[] = [
   },
   {
     agent: 'cursor',
+    detectId: 'cursor',
     subdir: '.cursor',
     configFiles: ['hooks.json'],
     events: { pre: 'preToolUse', post: 'postToolUse' },
   },
   {
     agent: 'gemini',
+    detectId: 'gemini',
     subdir: '.gemini',
     configFiles: ['settings.json'],
     events: { pre: 'BeforeTool', post: 'AfterTool' },
@@ -94,24 +114,28 @@ export const AGENT_MATRIX: AgentSpec[] = [
   },
   {
     agent: 'droid',
+    detectId: 'droid',
     subdir: '.factory',
     configFiles: ['settings.json'],
     events: { pre: 'PreToolUse', post: 'PostToolUse' },
   },
   {
     agent: 'firebender',
+    detectId: 'firebender',
     subdir: '.firebender',
     configFiles: ['hooks.json'],
     events: { pre: 'preToolUse', post: 'postToolUse' },
   },
   {
     agent: 'github-copilot',
+    detectId: 'copilot',
     subdir: '.copilot',
     configFiles: ['hooks/git-ai.json'],
     events: { pre: 'PreToolUse', post: 'PostToolUse' },
   },
   {
     agent: 'windsurf',
+    detectId: 'windsurf',
     subdir: '.codeium',
     // TWO files. Both are written; installing one is installing half.
     configFiles: ['hooks.json', 'windsurf/hooks.json'],

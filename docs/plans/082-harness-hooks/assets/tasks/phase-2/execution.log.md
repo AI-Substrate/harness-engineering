@@ -523,3 +523,184 @@ The fake agent resolves its paths, events and override through the shared functi
 change — but **the installer is tk-0005 and does not exist yet**, so the install half is unproven.
 Checking it now would be claiming a proof I have not taken; it is completed in tk-0005 by driving
 the same fake row through the real writer.
+
+---
+
+## tk-0005 — Strategy A, absent-file first
+
+### The absent-file case is ONE situation with three consequences
+
+Built first, deliberately: every fixture before this task starts from a config that **exists**, so
+the no-config case is the one with no fixture shape yet — which is exactly the one that gets quietly
+dropped. Not hypothetical either; the collector's evidence already records git-ai creating copilot's
+hooks file fresh on this machine.
+
+1. **Create the file AND its parents, with a skeleton built FROM THE MATRIX ROW.** `github-copilot`
+   lives at `.copilot/hooks/git-ai.json` — the parent is two levels deep and routinely absent. A
+   skeleton hard-coded to `PreToolUse` would produce a config gemini and cursor silently ignore: an
+   install that reports success and does nothing.
+2. **`created: true` means created-not-backed-up, NOT covered.** `backupAgentConfigs` skips a
+   non-existent source, so a created file has no backup, and "no backup" must never look like
+   "backed up successfully".
+3. **Uninstall's symmetry is DELETE, not restore** — there are no original bytes. Written down for
+   tk-000d rather than solved here; this flag is the input that decision needs.
+
+### Proven by refusal — three properties, three independent mutations
+
+| mutation | rows red |
+| --- | --- |
+| install only the FIRST config file | **3** — both windsurf rows *and* the fake-agent row |
+| skeleton hard-coded to `PreToolUse`/`PostToolUse` | **2** |
+| `created` always true | **2** |
+
+The `created` mutation is worth its own note: every absent-file row still passes individually when
+`created` is always true. Only the row that installs **twice and compares** catches it — a flag whose
+whole purpose is to distinguish two cases cannot be tested one case at a time.
+
+### A NEAR-MISS IN MY OWN MUTATION METHOD, and the lesson generalises
+
+The first `one-file` mutation **silently failed to apply** — biome had reformatted the anchor text
+after I copied it — and the run printed `Tests 12 passed`. That output is **indistinguishable from
+"the tests cannot detect this mutation"**, and I would have recorded a false all-clear.
+
+It was caught only because the patch script `assert`s its anchor matched and raised. So the rule the
+harness needs: **a mutation script must fail LOUDLY when its anchor does not match.** Otherwise
+"green under mutation" is ambiguous between *the tests are blind* and *nothing was mutated*, and the
+ambiguity resolves in the flattering direction every time. Re-run against the real formatted text, it
+turned 3 rows red.
+
+Same family as the seven, one level up: the probe was fine, the thing being probed was never
+perturbed.
+
+### dw-0013 is asserted from the INPUT, not from our own entry
+
+The row reads the pre-existing commands out of the input document, then asserts each survives the
+install byte-for-byte. Confirming *our* entry landed proves nothing about what happened to theirs —
+and theirs is what a clobbering or re-sorting writer destroys.
+
+### dw-0010 is now CHECKED — the install half exists
+
+Left unchecked in tk-0004 because the installer did not exist. The same invented agent row now drives
+the **real writer** end-to-end: it creates its directories, both its files and its entries, using its
+own event casing, with no code change. Adding an agent is adding a row, measured rather than argued.
+
+### Idempotency finds our entry by MARKER, not by string equality
+
+The binary path can legitimately differ between installs (a moved install, a different user).
+Matching the whole command string would fail to recognise our own entry and append a second one on
+every run. Asserted with a deliberately different binary path.
+
+---
+
+## tk-0006 — the binary path
+
+### The space case is the DEFAULT, not a special row
+
+Every fixture in this suite installs into a home directory whose name **contains a space**
+(`mkdtemp('harness binary path ')`). Making it the default rather than one named row means the
+ordinary install rows exercise the property too — a single row named "handles a space" is the shape
+that gets deleted as redundant, taking the coverage with it.
+
+Workshop sensor #7, and its failure is invisible until a user whose username has a space installs.
+Seven of git-ai's fifteen installers interpolate an unquoted path; only Copilot and Cline quote.
+
+### Quoting is UNCONDITIONAL, and that is the argument
+
+"Quote if it looks like it needs it" is a predicate that has to be right about every character a
+filesystem allows, and it is wrong the first time someone's path has a character nobody considered.
+Quoting always is one rule with no exceptions to get wrong.
+
+### The read-back is real work, and the naive version is kept as an exhibit
+
+`status` must stat the configured binary, which means getting a quoted, space-bearing,
+forward-slashed path back OUT of a command string. `split(' ')[0]` returns `"/Users/ada` — **a
+leading quote** — so the stat fails and **every healthy install reports as broken**. That naive
+expression is asserted alongside the correct one on the same input, so the reason the real extractor
+is more complicated cannot be lost to a later simplification.
+
+### Absolute is necessary and NOT sufficient (dw-0017)
+
+The measured hazard on this machine is a live hook pointing into untracked `scratch/` — which is
+absolute. So the check refuses `scratch`, `src`, `dist`, `node_modules`, `.git` and `worktrees`
+segments as well as relative paths. A **positive control** row accepts four real install shapes,
+because a predicate that refused everything would pass every refusal row while making installation
+impossible.
+
+### Proven by refusal — three mutations
+
+| mutation | rows red |
+| --- | --- |
+| quoting removed | **7** |
+| absolute treated as sufficient | **5** |
+| extractor forced down the naive split path | **10** |
+
+### Windows is EXPECTED-UNVERIFIED, and the label is in the describe name
+
+The normalisation rows run on macOS against **simulated** win32 inputs — `\\?\C:\…` prefix stripping
+and backslash conversion. They prove the transformation and **not** behaviour on a Windows host. The
+label lives in the suite name so a green cannot be read as Windows coverage; the real answer waits on
+tk-0010's remote agent.
+
+One reason recorded rather than assumed: forward slashes are chosen over backslashes because a
+backslash inside a double-quoted string is an **escape character** on POSIX shells, so a backslash
+path would need escaping the moment it is quoted. Normalising removes that class of bug — asserted,
+not just stated.
+
+---
+
+## tk-0007 — detection reused, and a divergence it caught immediately
+
+### The row meant to prove "no second detector" found one, in disguise
+
+dw-0019 exists because a second detector is a second answer to *which agents are here*. Comparing our
+matrix slugs against the collector's marker ids returned:
+
+```
+expected [ 'claude-code', 'github-copilot' ] to deeply equal []
+```
+
+Not a second detector — a second **naming**. The collector mirrors git-ai's table, where those agents
+are `claude` and `copilot`; the workshop (and our hook command) calls them `claude-code` and
+`github-copilot`. The same failure with a cheaper disguise: nothing would have detected those two
+agents, and nothing would have said so.
+
+**Resolved by declaring the link, not by renaming either side.** They are genuinely two namespaces —
+our slug is a CLI argument a user types, the collector's id mirrors an external tool's table. A
+`detectId` field makes the correspondence assertable, so a rename on either side fails a test instead
+of silently detecting nothing.
+
+### A cross-check between two independently-derived tables
+
+Both the collector's marker table and our matrix name config paths, built from the same source raid
+at different times by different tasks. A row now asserts our resolved paths are a subset of the
+collector's declared configs for the linked agent. That is stronger than either table's own tests,
+because it cannot be satisfied by copying one into the other — they are consumed by different code.
+It passes, which independently corroborates the matrix paths.
+
+### The decoy is a positive control for a trap we avoided by INHERITANCE
+
+git-ai's amp/opencode/pi installers test `.amp`/`.opencode`/`.pi` in the **current working
+directory**, so installing from a project that happens to contain one marks the agent present. We
+cannot inherit that, because `detectAgents` composes absolute paths from the injected home — we get
+the property free, from a function written for another purpose.
+
+Free is exactly why it is asserted: inheritance can be refactored away by someone who does not know
+it was load-bearing. The rows `chdir` into a directory containing each decoy marker and assert
+nothing is detected — **plus a discriminator row** placing the same marker in the home and asserting
+it *is* detected, because five rows asserting an empty result would all pass for a detector that
+always returns nothing.
+
+### Cline is UNDETECTED, not absent
+
+Editor-level, so marker detection cannot reach it. Asserted as present in `UNDETECTED_INSTALLERS` and
+asserted *absent* from the Strategy A matrix — the second row guards against someone "fixing" the
+detection gap by adding cline to the JSON matrix, which would write a config file cline does not
+read.
+
+### Gate answer: the absent-file path runs against the REAL filesystem
+
+Asked at the gate, answered mechanically rather than assumed. `install-strategy-a.test.ts` uses
+`new NodeFs()` throughout — no `FakeFs` anywhere in the file — and both two-level creates
+(`.copilot/hooks/` and `.codeium/windsurf/`) are asserted with `existsSync` on disk. So `mkdirp`
+semantics for a nested create are proven against real `node:fs`, not against a fake that has already
+been measured generous once today.

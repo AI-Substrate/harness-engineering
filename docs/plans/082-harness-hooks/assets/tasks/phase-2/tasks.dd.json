@@ -55,7 +55,7 @@
         {
           "id": "tk-0004",
           "title": "Encode the agent matrix as DATA — config path, event names, entry shape, casing — and prove the env overrides by SWAPPING them",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-2",
           "success": "One table, no per-agent code. Event names are NOT consistent and assuming PreToolUse is wrong: cursor and firebender use lowerCamel (preToolUse), gemini uses BeforeTool/AfterTool, windsurf has five Cascade events. THE TWO ENV OVERRIDES BEHAVE DIFFERENTLY and getting them backwards writes to the wrong place silently: CLAUDE_CONFIG_DIR is used VERBATIM AS THE DIR with no .claude appended, while GEMINI_CLI_HOME points at the HOME ROOT and .gemini IS appended (verified against git-ai's src/mdm/utils.rs directly, not via the workshop). 'Assert both directions' is NOT set-vs-unset — a lazy implementation passes that while still appending .claude. The assertion that proves the ASYMMETRY is a mutation: swap the two resolvers and BOTH fixtures must go RED.",
           "satisfies": [
@@ -66,7 +66,7 @@
         {
           "id": "tk-0005",
           "title": "Implement Strategy A — JSON config merge — for the 7 agents, including CREATING the file when the agent is detected but the config is absent",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-2",
           "success": "claude-code, cursor, gemini, droid, firebender, github-copilot, windsurf. Merge our single owned entry into the events key through the comment-preserving writer. THE ABSENT-FILE CASE IS NOT HYPOTHETICAL AND IS CURRENTLY UNASSIGNED: collector/evidence.ts already records that git-ai created copilot's .copilot/hooks/git-ai.json fresh. A detected agent with no config file yet needs the file AND its parent dirs created with a defined skeleton — and it has two knock-on effects that must be handled here: backupAgentConfigs is structurally silent for it (backup.ts:87 skips a non-existent source), and uninstall's 'restore the ORIGINAL bytes' is undefined when there were none, where the correct symmetry is to DELETE the file we created.",
           "satisfies": [
@@ -77,7 +77,7 @@
         {
           "id": "tk-0006",
           "title": "Resolve the binary path absolutely, normalise it for Windows, ALWAYS quote it — and prove it on a path CONTAINING A SPACE",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-2",
           "success": "current_exe -> canonicalize -> strip the Windows \\\\?\\ prefix, then normalise C:\\x\\y.exe to C:/x/y.exe. git-ai normalises in only 3 of its 15 installers and quotes in only 2; we do both everywhere. The space case is workshop sensor #7 and it is the one property whose failure is INVISIBLE until a customer whose username contains a space installs — so it needs an assertion, not a rationale. AND THE READ-BACK IS REAL WORK NOBODY OWNS: status must stat the configured binary, which means extracting a quoted, possibly space-bearing, possibly forward-slashed path back OUT of a shell command string. A naive split(' ')[0] returns a leading quote, stats false, and reports every healthy install as broken. MEASURED HAZARD: the live hook on this machine points into untracked scratch/. Never write a source or scratch path — an absolute path to a stable installed binary only.",
           "satisfies": [
@@ -87,7 +87,7 @@
         {
           "id": "tk-0007",
           "title": "Detect agents from ABSOLUTE markers only — by REUSING detectAgents(), not rebuilding it",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-2",
           "success": "git-ai's amp/opencode/pi installers test .amp / .opencode / .pi in the CURRENT WORKING DIRECTORY, so running the installer from a directory that happens to contain such a folder marks the agent installed. We already structurally cannot inherit that: collector/agents.ts detectAgents() composes absolute paths from the injected home. REUSE IT rather than writing a second detector — a second detector is a second answer to 'which agents are here', and the two will diverge. Keep the decoy test anyway: run detection from inside a directory containing a decoy marker dir and assert the agent is NOT detected. That is a positive control for a trap we avoided by inheritance rather than by design, and inheritance can be refactored away.",
           "satisfies": [
@@ -303,7 +303,7 @@
           {
             "id": "dw-0010",
             "assertion": "No agent-specific branching exists in the writer: adding an agent is a table row, proven by adding a fake agent in a test and installing it with no code change.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],
@@ -311,25 +311,25 @@
           {
             "id": "dw-0011",
             "assertion": "A detected agent with NO existing config gets the file and its parent directories created, with the skeleton shape asserted.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0012",
             "assertion": "The created-file case is explicitly marked as one backup cannot cover, so uninstall's symmetry for it is delete-not-restore.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0013",
             "assertion": "Every pre-existing sibling entry, including git-ai's own, is byte-identical after install — asserted against the golden, not by re-reading our own entry.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0014",
             "assertion": "Windsurf's two config paths are both written; a test asserts the second is not forgotten, since half-working is the failure mode.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],
@@ -337,25 +337,25 @@
           {
             "id": "dw-0015",
             "assertion": "Installing into a home directory whose name CONTAINS A SPACE produces a command that resolves and runs; removing the quoting turns it RED.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0016",
             "assertion": "The path extracted back out of the command string round-trips to the same absolute path, asserted for a quoted space-bearing Windows-normalised path.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0017",
             "assertion": "The written path is absolute and points at an installed binary; a test asserts a scratch or source path is never written.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0018",
             "assertion": "Windows normalisation is asserted by simulating win32 on macOS (fileURLToPath with windows:true), labelled EXPECTED-UNVERIFIED rather than claimed as measured.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],
@@ -363,19 +363,19 @@
           {
             "id": "dw-0019",
             "assertion": "Detection runs through the existing detectAgents(); no second detector is introduced.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-001a",
             "assertion": "The decoy test runs from inside a directory containing .amp/.opencode/.pi and asserts NOT detected — the positive control for the inherited trap.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-001b",
             "assertion": "Cline is reported as UNDETECTED rather than absent: agents.ts lists it in UNDETECTED_INSTALLERS because it is editor-level, so marker detection cannot reach it.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],
