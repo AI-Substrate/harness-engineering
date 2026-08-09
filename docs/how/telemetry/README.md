@@ -1018,3 +1018,7 @@ does not track.
 > source reads**, not a maintained contract. They are here because the analysis is expensive
 > to redo, not because it self-updates — re-verify against the current source before relying
 > on a specific `file:line`.
+
+- [`cursor-validation-kit/`](./cursor-validation-kit/README.md) — **runnable kit**: seed script,
+  three paste-ready agent prompts, the human-simulating script, a verification script, and the
+  measured results from 2026-08-09. Run it rather than re-deriving it.

@@ -195,6 +195,13 @@ all, and git-ai produced a **correct** `h_` attestation naming the right author.
 
 ---
 
+> **Correction, measured 2026-08-09 by re-running the kit as a self-test:** the delay is
+> **not a timer, it is the daemon's queue.** The seed note was first observed ~40 minutes
+> later and that figure was recorded as indicative; a self-test showed the note present
+> **seconds after the commit, immediately following `git-ai await`**. The 40 minutes was
+> how long it took someone to look again. Always `await` before reading — the state is
+> deterministic once you do.
+
 ## 3. THE SANDBOX FAILURE MODE, AND ITS TWO ESCAPES
 
 **Why it breaks:** inside the Cursor sandbox a unix-socket `connect()` is a **network

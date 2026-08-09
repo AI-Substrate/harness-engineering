@@ -11,6 +11,11 @@ source. An inherited mechanism is a hypothesis; treat the two differently.
 
 ---
 
+> **Want the artifacts rather than the reasoning?** The paste-ready prompts, the seed and
+> human-step scripts, the verification script, and the measured results from the run of
+> 2026-08-09 are in **[`./cursor-validation-kit/`](./cursor-validation-kit/README.md)**.
+> This document explains *why* the scenario is shaped the way it is; the kit is the runbook.
+
 ## 1. What this validates, and what it does not
 
 The thing worth proving is not that the collector is *reachable*. It is that the collector can
