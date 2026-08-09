@@ -1,0 +1,25 @@
+docs/how/telemetry/README.md
+  s_a76964380084ef::t_72fbdb5f37a170 25-31
+docs/how/telemetry/cursor-validation-kit/README.md
+  s_a76964380084ef::t_bbbd8db0a06c35 18-61
+docs/how/telemetry/sandbox-03-validation-playbook.md
+  s_a76964380084ef::t_1850b067aae708 11-21
+docs/how/telemetry/validating-telemetry-capture-in-sandboxed-agents.md
+  s_a76964380084ef::t_d64b846b220802 14-20,25-31,391-411
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c1d1ba0dbbbe8f7396ecb16b237f6fede36cb4e8",
+  "prompts": {},
+  "sessions": {
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
