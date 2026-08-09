@@ -6,12 +6,20 @@
     // preToolUse is deliberately written BEFORE postToolUse: not alphabetical, so a
     // whole-file re-sort is visible in the bytes.
     "preToolUse": [
-      { "command": "echo droid-pre" },
-      { "command": "\"/usr/local/bin/harness\" hooks fire droid --phase pre --hook-input stdin --hook-owner ai-substrate-harness-hook-v1" }
+      {
+        "command": "echo droid-pre"
+      },
+      {
+        "command": "\"/usr/local/bin/harness\" hooks fire droid --phase pre --hook-input stdin --hook-owner ai-substrate-harness-hook-v1"
+      }
     ],
     "postToolUse": [
-      { "command": "echo droid-post" },
-      { "command": "\"/usr/local/bin/harness\" hooks fire droid --phase post --hook-input stdin --hook-owner ai-substrate-harness-hook-v1" }
+      {
+        "command": "echo droid-post"
+      },
+      {
+        "command": "\"/usr/local/bin/harness\" hooks fire droid --phase post --hook-input stdin --hook-owner ai-substrate-harness-hook-v1"
+      }
     ]
   }
 }

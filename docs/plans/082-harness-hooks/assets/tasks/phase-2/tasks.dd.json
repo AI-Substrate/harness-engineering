@@ -33,7 +33,7 @@
         {
           "id": "tk-0002",
           "title": "Acquire a comment- and order-preserving JSON writer — the repo does not have one",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-2",
           "success": "This is one of the FOUR headline defects the workshop exists to fix and it currently has no owner: grep for jsonc/json5/comment-json across both package.json files returns NOTHING, so the capability must be ACQUIRED, not just used. git-ai has exactly one such writer (utils.rs:747-786, a jsonc_parser CST round-trip) and that is the pattern — a CST round-trip that edits the tree and re-prints, never a parse-to-object-and-re-serialize. Split out as its own task for the same reason Phase 1 split out the reflog port: it is a dependency decision with its own failure mode, and burying it inside the Strategy A merge would hide it. SYMLINK: git-ai's write_atomic canonicalizes a symlinked path BEFORE the temp-write-and-rename, because a rename onto a symlink REPLACES it with a regular file and silently detaches a dotfile-managed config (chezmoi, stow) from its source of truth. Backup does not save us — readBytesNoFollow backs up the LINK, not the content. Correct and destructive are independent.",
           "satisfies": [
@@ -233,25 +233,25 @@
           {
             "id": "dw-0005",
             "assertion": "A JSONC config with comments AND non-alphabetical keys survives a write with both intact, asserted against a golden file.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0006",
             "assertion": "The writer edits a tree and re-prints; a parse-to-object-and-re-serialize implementation must fail the golden comparison.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0007",
             "assertion": "Writing through a SYMLINKED config path leaves the symlink intact and updates its target — asserted, since a rename-based atomic write silently breaks this.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0008",
             "assertion": "The dependency choice (new package vs hand-rolled CST) is recorded with its reason, since it is the first new runtime dependency this plan adds.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],
