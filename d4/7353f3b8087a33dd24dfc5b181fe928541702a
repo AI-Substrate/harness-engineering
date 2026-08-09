@@ -1,0 +1,25 @@
+docs/plans/081-flow-reachability/assets/tasks/phase-1/tasks.dd.json
+  s_2bef307df718bc::t_975446fa78834e 21-68,72-113,115
+docs/plans/081-flow-reachability/assets/tasks/phase-1/tasks.dd.md
+  s_2bef307df718bc::t_ede8df9b92ce73 36-42,48-76
+docs/plans/081-flow-reachability/plan.dd.json
+  s_2bef307df718bc::t_9d6e07abbe912b 108,399-404,415-416
+docs/plans/081-flow-reachability/plan.dd.md
+  s_2bef307df718bc::t_d6123fda536352 74,206,217
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d47353f3b8087a33dd24dfc5b181fe928541702a",
+  "prompts": {},
+  "sessions": {
+    "s_2bef307df718bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb3484ee-e8b4-4f68-89fa-22abb2a7a8c3",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
