@@ -16,13 +16,7 @@ import type { VerbRegistry } from '../extensions/registry.js';
 import { AGENTS_FILE, readAgentsBlock } from '../instructions/commit-guidance.js';
 import type { RecordRegistry, RecordTypeEntry } from '../record/registry.js';
 import { SensorStateStore } from '../sensors/state-store.js';
-import {
-  posixDirname,
-  posixJoin,
-  posixRelative,
-  resolveInRepo,
-  toPosix,
-} from '../shared/posix-path.js';
+import { posixDirname, posixJoin, posixRelative, toPosix } from '../shared/posix-path.js';
 import { HARNESS_DIR, TEMP_DIR } from '../shared/temp.js';
 import type { HarnessAdapter } from '../telemetry/adapters/harness-adapter.js';
 import { coreTelemetryAdapters } from '../telemetry/adapters/index.js';
@@ -34,7 +28,7 @@ import {
 } from '../telemetry/capture-liveness.js';
 import { laneRecoveryReason, type SkipLaneReason } from '../telemetry/capture-reconcile.js';
 import { type AtRiskReport, enumerateAtRisk } from './collector/at-risk.js';
-import { readCollectorHealth } from './collector/health.js';
+import { type CollectorHealth, readCollectorHealth } from './collector/health.js';
 import type { IngressReading } from './collector/ingress.js';
 import type { HostTarget } from './collector/types.js';
 
@@ -76,6 +70,12 @@ export interface DoctorDeps {
    * determine" on every host with no wiring teaches operators to ignore it.
    */
   collectorHost?: HostTarget;
+  /**
+   * `HARNESS_NO_COLLECTOR=1`. Read at the composition root (P2) and threaded
+   * through so the collector row can say "you opted out" rather than describing
+   * a deliberate choice as an undiagnosable machine.
+   */
+  collectorOptedOut?: boolean;
   /**
    * SHA-256 for the collector row (plan 073 · ac-000a). With it, the pinned
    * binary's digest is RE-verified on every doctor run; without it the digest
@@ -861,15 +861,41 @@ function checkCollector(
   host: HostTarget,
   hash?: HashPort,
   ingress?: IngressReading,
+  optedOut = false,
 ): LayerReport {
   const name = 'gitai-collector';
-  const health = readCollectorHealth({
-    fs,
-    host,
-    cwd: toPosix(proc.cwd()),
-    ...(hash !== undefined ? { hash } : {}),
-    ...(ingress !== undefined ? { ingress } : {}),
-  });
+  // MEASURED, not defensive-by-habit: before this guard, a single throwing
+  // `fs.exists` on a `.git-ai` path took the WHOLE `harness doctor` verb down —
+  // no envelope at all, not a degraded row. The layers are built in one array
+  // literal, so a throw here escapes the entire report.
+  //
+  // That matters more the more this path does. `doctor` is the health command;
+  // it runs for people who never opted into telemetry, and the collector row is
+  // the one row backed by on-disk state written by another program. An
+  // unreadable state file must cost that ROW, never the verb.
+  //
+  // Degraded and never healthy: a reading we could not take is not good news.
+  let health: CollectorHealth;
+  try {
+    health = readCollectorHealth({
+      fs,
+      host,
+      cwd: toPosix(proc.cwd()),
+      ...(hash !== undefined ? { hash } : {}),
+      ...(ingress !== undefined ? { ingress } : {}),
+      optedOut,
+    });
+  } catch (err) {
+    return {
+      name,
+      ok: false,
+      detail: `could-not-determine — reading the collector's recorded state failed: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+      next_action:
+        'This row could not be read; every other row above is unaffected. Re-run `harness doctor` and, if it persists, inspect the collector state file it names.',
+    };
+  }
   return {
     name,
     ok: health.verdict === 'healthy',
@@ -947,6 +973,38 @@ function checkCommitGuidance(fs: FsPort, proc: ProcessPort): LayerReport {
 }
 
 /**
+ * Run one layer so that a throw inside it costs THE ROW, never the verb.
+ *
+ * MEASURED, not defensive-by-habit. Before this existed, a single throwing
+ * `fs.exists` on a `.git-ai` path produced NO ENVELOPE AT ALL from `harness
+ * doctor` — not a degraded row, not a failed layer. The mechanism is structural:
+ * every layer is built in ONE array literal, so a throw in any element escapes
+ * the whole report.
+ *
+ * That matters because `doctor` is the health command. It is what you run WHEN
+ * something is already wrong, on a machine whose state may be exactly what is
+ * broken, and several rows are backed by state written by OTHER programs. The row
+ * that cannot be read is the row you most need to see reported.
+ *
+ * NEVER `ok: true` on a caught throw. A reading we could not take is not good
+ * news — the same rule the collector's `undetermined()` already enforces.
+ */
+function safeLayer(name: string, read: () => LayerReport): LayerReport {
+  try {
+    return read();
+  } catch (err) {
+    return {
+      name,
+      ok: false,
+      detail: `could-not-determine — this check failed while running: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+      next_action: `The \`${name}\` check could not complete; every other row in this report is unaffected and was read normally. Re-run \`harness doctor\`, and if it persists the error above names what failed.`,
+    };
+  }
+}
+
+/**
  * Gather the doctor report via the injected adapters + the assembled verb
  * registry. Pure of `process.exit` and direct Node I/O — all side effects go
  * through the ports, so the whole thing is unit-testable with fakes. The optional
@@ -958,29 +1016,93 @@ export function buildDoctorReport(
   recordRegistry?: RecordRegistry,
 ): DoctorReport {
   const recordTypes = recordRegistry?.types ?? [];
-  const conventions = checkConventions(deps.fs, deps.proc, registry);
+  // OUTSIDE the array literal, and the one that gets missed: `conventions` is
+  // computed first and feeds BOTH `checkExtensions` and the report body, so a
+  // throw here killed the verb without ever reaching a layer. It cannot use
+  // `safeLayer` — it returns complaints, not a row — so it degrades to "no
+  // complaints readable" and the extensions row carries the visible failure.
+  const collectorHost = deps.collectorHost;
+  const attribution = deps.attribution;
+  let conventions: ConventionComplaint[];
+  let conventionsError: string | null = null;
+  try {
+    conventions = checkConventions(deps.fs, deps.proc, registry);
+  } catch (err) {
+    conventions = [];
+    conventionsError = err instanceof Error ? err.message : String(err);
+  }
   const layers = [
-    checkToolchain(deps.proc, deps.fs),
-    checkNodeRuntime(deps.proc),
-    checkCliBuild(deps.fs),
-    checkVersionSkew(deps.fs, deps.runningVersion),
-    checkExtensions(registry, conventions),
-    checkQualityGate(registry),
-    checkSensorWatcher(deps.fs, deps.clock, deps.proc, registry),
-    checkCaptureLiveness(deps.fs, deps.proc, deps.env, deps.clock, deps.adapters, deps.db),
-    ...(deps.collectorHost !== undefined
-      ? [checkCollector(deps.fs, deps.proc, deps.collectorHost, deps.hash, deps.ingress)]
+    safeLayer('toolchain', () => checkToolchain(deps.proc, deps.fs)),
+    safeLayer('node-runtime', () => checkNodeRuntime(deps.proc)),
+    safeLayer('cli-build', () => checkCliBuild(deps.fs)),
+    safeLayer('version-skew', () => checkVersionSkew(deps.fs, deps.runningVersion)),
+    // An empty `conventions` after a throw would otherwise read as "no
+    // convention complaints", which is good news we did not establish.
+    conventionsError !== null
+      ? {
+          name: 'extensions',
+          ok: false,
+          detail: `could-not-determine — the convention scan failed while running: ${conventionsError}`,
+          next_action:
+            'Extension convention complaints could not be read, so this row cannot speak for them; every other row in this report is unaffected. Re-run `harness doctor`.',
+        }
+      : safeLayer('extensions', () => checkExtensions(registry, conventions)),
+    safeLayer('quality-gate', () => checkQualityGate(registry)),
+    safeLayer('sensor-watcher', () => checkSensorWatcher(deps.fs, deps.clock, deps.proc, registry)),
+    safeLayer('capture-liveness', () =>
+      checkCaptureLiveness(deps.fs, deps.proc, deps.env, deps.clock, deps.adapters, deps.db),
+    ),
+    // Hoisted rather than cast: capturing the narrowed value keeps TypeScript's
+    // control-flow narrowing through the closure, so neither of these needs an
+    // `as`. A cast here would have silenced a real mismatch — the first draft
+    // asserted the wrong type on `attribution` and tsc caught it.
+    ...(collectorHost !== undefined
+      ? [
+          safeLayer('gitai-collector', () =>
+            checkCollector(
+              deps.fs,
+              deps.proc,
+              collectorHost,
+              deps.hash,
+              deps.ingress,
+              deps.collectorOptedOut === true,
+            ),
+          ),
+        ]
       : []),
-    ...(deps.attribution !== undefined
-      ? [checkAttributionAtRisk(deps.attribution, deps.ingress).layer]
+    ...(attribution !== undefined
+      ? [
+          safeLayer(
+            'attribution-at-risk',
+            () => checkAttributionAtRisk(attribution, deps.ingress).layer,
+          ),
+        ]
       : []),
-    checkDd(deps.fs, deps.proc),
-    checkCoreInstructions(),
-    checkCommitGuidance(deps.fs, deps.proc),
-    checkRecordTypes(recordTypes),
+    safeLayer('dd', () => checkDd(deps.fs, deps.proc)),
+    safeLayer('core-instructions', () => checkCoreInstructions()),
+    safeLayer('commit-guidance', () => checkCommitGuidance(deps.fs, deps.proc)),
+    safeLayer('record-types', () => checkRecordTypes(recordTypes)),
   ];
-  const branch = deps.git.isRepo() ? deps.git.currentBranch() : null;
-  const json_env = deps.env.get('HARNESS_JSON') === '1';
+  // ALSO OUTSIDE THE ARRAY, and both found by fault injection rather than by
+  // reading: with all fifteen layers wrapped, poisoning `git` or `env` STILL
+  // killed the verb outright. These two reads are the reason.
+  //
+  // They are not layers, so they get no row and cannot use `safeLayer` — they
+  // are report metadata. A repo whose git is unusable is exactly a machine
+  // someone runs `doctor` on, so neither may be fatal. `null` branch and a
+  // false `json_env` are the honest degraded values: absent, not asserted.
+  let branch: string | null = null;
+  try {
+    branch = deps.git.isRepo() ? deps.git.currentBranch() : null;
+  } catch {
+    branch = null;
+  }
+  let json_env = false;
+  try {
+    json_env = deps.env.get('HARNESS_JSON') === '1';
+  } catch {
+    json_env = false;
+  }
   return { layers, branch, json_env, extensions: registry.records, conventions, recordTypes };
 }
 

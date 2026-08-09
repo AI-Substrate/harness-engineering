@@ -824,3 +824,165 @@ describe('doctor — the shipped dd layer', () => {
     expect(layer?.detail).toContain('could not be enumerated');
   });
 });
+
+/**
+ * The collector row's fail-safe contract (packet 3c/§5 case 4).
+ *
+ * "Failure must not break things" is a claim, so it is exercised by injecting the
+ * fault rather than by reading the code. The specific hazard: `doctor` builds all
+ * its layers in ONE array literal, so a throw inside any layer escapes the whole
+ * report — and this is the row backed by on-disk state written by ANOTHER program
+ * (git-ai), on a verb that runs for people who never opted into telemetry.
+ *
+ * MEASURED BEFORE THE GUARD EXISTED: a single throwing `fs.exists` on a `.git-ai`
+ * path produced NO ENVELOPE AT ALL — not a degraded row, not a failed layer. The
+ * entire verb died. These tests are red against that code.
+ */
+describe('doctor — the collector row degrades, it does not take the verb down', () => {
+  function throwingCollectorFs(message = 'EIO: collector state unreadable'): FakeFs {
+    const fs = new FakeFs(BUILT_CLI);
+    const passthrough = fs.exists.bind(fs);
+    (fs as unknown as { exists: (p: string) => boolean }).exists = (p: string) => {
+      if (p.includes('.git-ai')) throw new Error(message);
+      return passthrough(p);
+    };
+    return fs;
+  }
+
+  const HOST = { platform: 'darwin', arch: 'arm64', home: '/home/u' };
+
+  // NOTE: the shared `deps()` helper enumerates the fields it forwards, so an
+  // unknown key like `collectorHost` is silently DROPPED. That produced a
+  // vacuous pass here — a test comparing two runs that both had no collector
+  // row at all. Build the deps explicitly so the row is genuinely present.
+  const withCollector = (fs: FakeFs): DoctorDeps =>
+    ({ ...deps({ fs }), collectorHost: HOST }) as DoctorDeps;
+
+  it('an unreadable collector state costs the ROW, never the envelope', () => {
+    const env = runDoctor(withCollector(throwingCollectorFs()), EMPTY);
+
+    // The verb completed and still reports.
+    expect(env.command).toBe('doctor');
+    const layers = (env.data as { layers?: { name: string; ok: boolean; detail: string }[] })
+      ?.layers;
+    const row = layers?.find((l) => l.name === 'gitai-collector');
+    expect(row?.ok).toBe(false);
+    expect(row?.detail).toContain('could-not-determine');
+    expect(row?.detail).toContain('EIO: collector state unreadable');
+  });
+
+  it('every OTHER row still prints — the failure is contained to one layer', () => {
+    const healthy = runDoctor(withCollector(new FakeFs(BUILT_CLI)), EMPTY);
+    const broken = runDoctor(withCollector(throwingCollectorFs()), EMPTY);
+
+    const names = (e: typeof healthy): string[] =>
+      ((e.data as { layers?: { name: string }[] })?.layers ?? []).map((l) => l.name);
+
+    // Non-vacuous: the row must actually be present in both runs, or this
+    // comparison proves nothing (it passed vacuously before `collectorHost`
+    // was forwarded).
+    expect(names(healthy)).toContain('gitai-collector');
+    expect(names(broken)).toContain('gitai-collector');
+    // Same rows, same order. Only the collector row's verdict changed.
+    expect(names(broken)).toEqual(names(healthy));
+    expect(names(broken).length).toBeGreaterThan(1);
+  });
+
+  it('a failed reading is never reported as healthy — absent evidence is not good news', () => {
+    const env = runDoctor(withCollector(throwingCollectorFs()), EMPTY);
+    const row = (
+      env.data as { layers?: { name: string; ok: boolean; next_action?: string }[] }
+    )?.layers?.find((l) => l.name === 'gitai-collector');
+
+    expect(row?.ok).toBe(false);
+    // and it says what is unaffected, so the operator is not left guessing scope
+    expect(row?.next_action).toContain('every other row above is unaffected');
+  });
+});
+
+/**
+ * Whole-report containment (Jordan's ruling): a throw ANYWHERE in the report
+ * costs its row, never the verb.
+ *
+ * The collector row above proved the mechanism for one layer. These pin it for
+ * the rest — including the three sites that are NOT layers and therefore cannot
+ * use `safeLayer`:
+ *
+ *   - `checkConventions`, computed before the array and feeding `checkExtensions`
+ *   - `deps.git.isRepo()/currentBranch()`, read after the array
+ *   - `deps.env.get('HARNESS_JSON')`, likewise
+ *
+ * The last two were found by INJECTION, not by reading: with all fifteen layers
+ * wrapped, poisoning `git` or `env` still killed the verb outright. Nothing in
+ * the layer inventory pointed at them. That is why the ruling asked for the
+ * fault to be injected per-dependency rather than reasoned about per-layer.
+ */
+describe('doctor — no single failure can take the verb down', () => {
+  const HOST = { platform: 'darwin', arch: 'arm64', home: '/home/u' };
+
+  /** Every method of `obj` throws — the bluntest available fault. */
+  function poison<T extends object>(obj: T, label: string): T {
+    return new Proxy(obj, {
+      get(target, prop, recv) {
+        const v = Reflect.get(target, prop, recv);
+        return typeof v === 'function'
+          ? () => {
+              throw new Error(`POISON(${label}.${String(prop)})`);
+            }
+          : v;
+      },
+    });
+  }
+
+  function reportWith(over: Record<string, unknown>) {
+    return buildDoctorReport(
+      { ...deps(), collectorHost: HOST, ...over } as unknown as DoctorDeps,
+      EMPTY,
+    );
+  }
+
+  it.each([
+    'fs',
+    'proc',
+    'git',
+    'env',
+    'clock',
+  ])('a totally unusable %s port still produces a report', (port) => {
+    const base = { ...deps(), collectorHost: HOST } as unknown as Record<string, unknown>;
+    const report = reportWith({ [port]: poison(base[port] as object, port) });
+
+    // The verb survived and still enumerates every row it would normally.
+    expect(report.layers.length).toBeGreaterThan(10);
+    // No row silently claims to be fine on the strength of a failed read.
+    for (const layer of report.layers) {
+      if (layer.detail.includes('failed while running')) expect(layer.ok).toBe(false);
+    }
+  });
+
+  it('a throwing git port degrades the branch to null rather than killing the verb', () => {
+    // Found by injection: this read sits AFTER the layer array, so wrapping all
+    // fifteen layers did not cover it and the verb still died.
+    const base = { ...deps(), collectorHost: HOST } as unknown as Record<string, unknown>;
+    const report = reportWith({ git: poison(base.git as object, 'git') });
+    expect(report.branch).toBeNull();
+    expect(report.layers.length).toBeGreaterThan(10);
+  });
+
+  it('a throwing env port degrades json_env to false rather than killing the verb', () => {
+    const base = { ...deps(), collectorHost: HOST } as unknown as Record<string, unknown>;
+    const report = reportWith({ env: poison(base.env as object, 'env') });
+    expect(report.json_env).toBe(false);
+    expect(report.layers.length).toBeGreaterThan(10);
+  });
+
+  it('a failed convention scan is NOT reported as "no complaints"', () => {
+    // The subtle one. `conventions` degrades to `[]` on a throw, and an empty
+    // list otherwise READS as "scanned, nothing wrong" — good news we did not
+    // establish. The extensions row must carry the failure instead.
+    const base = { ...deps(), collectorHost: HOST } as unknown as Record<string, unknown>;
+    const report = reportWith({ fs: poison(base.fs as object, 'fs') });
+    const extensions = report.layers.find((l) => l.name === 'extensions');
+    expect(extensions?.ok).toBe(false);
+    expect(extensions?.detail).toContain('convention scan failed');
+  });
+});
