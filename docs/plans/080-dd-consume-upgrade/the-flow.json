@@ -3,7 +3,7 @@
   "kind": "flight-plan",
   "slug": "080-dd-consume-upgrade",
   "nav": {
-    "now": "phase-3",
+    "now": "review-3",
     "next": "review-2",
     "intent": "Upgrade harness to consume standalone @ai-substrate/dd (git-sha route) in place of the in-repo dd implementation; round-3 primitive-sufficiency trial decides OQ-2"
   },
@@ -691,6 +691,81 @@
           "importance": "recommended"
         }
       }
+    },
+    {
+      "id": "UPD-021",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-09T08:34:42.971Z",
+      "details": {
+        "node": "observe-3",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-019",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-09T08:34:43.320Z",
+      "details": {
+        "node": "observe-3",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "UPD-022",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-09T08:34:43.683Z",
+      "details": {
+        "node": "retro-3",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-020",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-09T08:34:44.020Z",
+      "details": {
+        "node": "retro-3",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "STA-021",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-09T08:34:44.353Z",
+      "details": {
+        "node": "phase-3",
+        "from": "known",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-007",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-08-09T08:34:44.678Z",
+      "details": {
+        "from": "phase-3",
+        "to": "review-3"
+      }
     }
   ],
   "nodes": [
@@ -1151,12 +1226,12 @@
       "id": "phase-3",
       "type": "phase",
       "label": "P3: Fork drain, deletion, cleanup",
-      "status": "known",
+      "status": "done",
       "next": [
         "review-3"
       ],
       "created_at": "2026-08-09T03:10:52.507Z",
-      "modified_at": "2026-08-09T03:10:52.507Z",
+      "modified_at": "2026-08-09T08:34:44.353Z",
       "instructions": [
         "Implement exactly ONE phase using the plan's testing approach and domain placement rules — keep the task table and execution.log.md live as you go.",
         "Run /builder 6 implement --plan \"<plan path>\"; log discoveries, tagging any Deferred/Noteworthy a human must see before ship.",
@@ -1166,7 +1241,8 @@
         "Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.",
         "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
         "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
-      ]
+      ],
+      "ran_at": "2026-08-09T08:34:44.353Z"
     },
     {
       "id": "review-3",
@@ -1227,10 +1303,10 @@
       "id": "observe-3",
       "type": "observe",
       "label": "Observe: P3",
-      "status": "known",
+      "status": "done",
       "next": [],
       "created_at": "2026-08-09T03:10:52.507Z",
-      "modified_at": "2026-08-09T03:10:52.507Z",
+      "modified_at": "2026-08-09T08:34:43.320Z",
       "branch_of": "phase-3",
       "instructions": [
         "Mid-phase capture: record observations (decisions, gotchas, surprises) AS you code, so they don't evaporate as remembered prose.",
@@ -1244,16 +1320,25 @@
       "chore": {
         "kind": "command",
         "importance": "recommended"
-      }
+      },
+      "comments": [
+        {
+          "at": "2026-08-09T08:34:42.971Z",
+          "text": "decision:done reason:real-captures time:2026-08-09T08:35Z - 6 real captures this phase (DL-001 coder's regen-blast-radius + 5 at-drain from phase reports), drained to .harness/records/retro/2026-08-09/003-080-phase-3.md",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-09T08:34:43.320Z"
     },
     {
       "id": "retro-3",
       "type": "harness-retro",
       "label": "Retro: P3 (drain)",
-      "status": "known",
+      "status": "done",
       "next": [],
       "created_at": "2026-08-09T03:10:52.507Z",
-      "modified_at": "2026-08-09T03:10:52.507Z",
+      "modified_at": "2026-08-09T08:34:44.020Z",
       "branch_of": "phase-3",
       "instructions": [
         "Post-coding seam: drain this phase's observe buffer into durable retro notes before moving on.",
@@ -1264,7 +1349,16 @@
       "chore": {
         "kind": "command",
         "importance": "recommended"
-      }
+      },
+      "comments": [
+        {
+          "at": "2026-08-09T08:34:43.683Z",
+          "text": "decision:done reason:drained time:2026-08-09T08:35Z - /eng-harness-flow --hook post-coding ran; 6 entries 0 malformed; record 003-080-phase-3.md (1 plan, 2 task, 1 fixed-now/encoded, 2 kept); buffer cleared",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-09T08:34:44.020Z"
     }
   ],
   "plan_dir": "docs/plans/080-dd-consume-upgrade",
