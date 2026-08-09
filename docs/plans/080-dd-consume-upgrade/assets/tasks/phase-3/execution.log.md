@@ -583,3 +583,54 @@ lost. After the repair: **exit 0, 9 warnings, 4 infos — identical to the basel
 the gate is restored rather than merely quietened.
 
 **Green**: tsc 0; `just build` 0; **294 files / 4493 tests** (+6); `biome ci` 0.
+
+## tk-0012 — close-out at the final boundary
+
+### dw-0021 — the fork-less build proves itself
+
+```
+$ npx tsc --noEmit -p harness/cli/tsconfig.json            → exit 0
+$ just build                                               → exit 0
+$ just test                       → Test Files 294 passed | Tests 4493 passed
+$ npx biome ci .                  → exit 0 (9 warnings, 4 infos — baseline-identical)
+
+$ harness flow orient --path docs/plans/080-dd-consume-upgrade/the-flow.json   → ok
+$ harness flow rail   --path …/the-flow.json                                   → ok
+$ harness plan validate …/plan.dd.json   → error 0, items 675, orphans 0
+```
+
+`flow orient` first returned `E301 "no flow file specified"` and then, with `--slug`,
+looked in `.harness/flows/` — **my invocation was wrong, not the build**. This plan's flow
+lives beside the plan (`docs/plans/080-.../the-flow.json`), so `--path` is the correct
+form. Recorded because "the dogfood pair errored" would have been a false alarm reported
+against a fork removal, which is exactly the kind of finding that costs a reviewer an hour.
+
+### The 5 contradictions are the AC-check gap, not a regression
+
+`plan validate` reports `error 0` and **`contradictions 5`**, one each for tk-000c…tk-0010:
+every one is *"task is `checked` but satisfies an acceptance criterion that is still
+`unchecked`"*. That is the **same class as phase 1's ledger entry 4**, and it is the
+expected mid-close state — the ACs (ac-0006…ac-000a) are checked at phase close by the PM,
+as ac-0002/0004/0005 were at the end of phase 2.
+
+I am **not** checking them: an AC is the PM's judgement that the criterion is met, and a
+coder checking its own ACs is the proof graph marking its own homework. Flagged rather
+than silently left, since `contradictions 5` in a close-out envelope is exactly what a
+reviewer should ask about.
+
+### dw-0020 evidence (koala judges; I supply)
+
+Ledger rows **#1 and #2 read OPEN and their HARNESS halves are now closed by tk-0011**:
+
+- **#1 E450 section-create gap** — "`plan new` seeds 6/22 declared sections" is fixed;
+  it now seeds all 22, schema-driven. dd's half (writer verbs cannot create a section)
+  stays dd-side and closes on a re-pin, per dw-001f's own wording.
+- **#2 fr-0007 ordinal gap** — `--ordinal` exists, the folder contract is honoured, and
+  `meta.slug` stays clean. Ledger #2's pre-agreed acceptance test passes verbatim.
+
+Rows **#5 (FX014)** and **#6 (banner)** are the two ruled, named degradations that ship
+with the plan and must both appear in the PR body. Row **#3 (A-2)** is CLOSED.
+
+I have not edited the ledger: it is koala's document, dw-0020 is explicitly his to judge,
+and this phase already lost 261 file-deletions to two seats writing the same worktree.
+Supplying evidence and leaving the write to its owner is the cheaper half of that lesson.
