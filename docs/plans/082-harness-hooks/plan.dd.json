@@ -1,0 +1,65 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "A first-class harness hooks verb",
+        "slug": "harness-hooks",
+        "status": "draft",
+        "summary": ""
+      }
+    },
+    {
+      "name": "summary",
+      "value": ""
+    },
+    {
+      "name": "goals",
+      "value": []
+    },
+    {
+      "name": "non_goals",
+      "value": []
+    },
+    {
+      "name": "acceptance_criteria",
+      "value": []
+    },
+    {
+      "name": "phases",
+      "value": [
+        {
+          "id": "ph-5fde",
+          "title": "Prove the unknowns and harden the hook runtime",
+          "brief": "",
+          "state": "unchecked",
+          "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
+        },
+        {
+          "id": "ph-ea21",
+          "title": "The agent matrix and the harness hooks verb family",
+          "brief": "",
+          "state": "unchecked",
+          "depends_on": [
+            "ph-5fde"
+          ],
+          "tasks": "assets/tasks/phase-2/tasks.dd.json#tasks"
+        },
+        {
+          "id": "ph-10a4",
+          "title": "Doctor installs hooks alongside git-ai",
+          "brief": "",
+          "state": "unchecked",
+          "depends_on": [
+            "ph-ea21"
+          ],
+          "tasks": "assets/tasks/phase-3/tasks.dd.json#tasks"
+        }
+      ]
+    }
+  ],
+  "references": []
+}
