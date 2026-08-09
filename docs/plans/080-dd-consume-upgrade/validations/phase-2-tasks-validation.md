@@ -1,17 +1,17 @@
 # Validation — phase-2/tasks.dd.json
 
-- **Validated**: 2026-08-09T04:16:00Z
-- **Target**: `docs/plans/080-dd-consume-upgrade/assets/tasks/phase-2/tasks.dd.json` (`adbd63781c8d0a2187d2ad245423275972e4bddf`, commit `b2794645`)
-- **Contract sources**: phase-2 `context.md`; dated `prediction.md` at `51558dbc`; `plan.dd.json` AC-0002..AC-0005; `backpressure.dd.json`; workshop 001 D-3; installed `@ai-substrate/dd` at `a37a20ec`
-- **Checks**: in-tree `dd validate` (0 errors/warnings); in-tree `plan validate` (0 errors/warnings); task/backpressure `dd build --check` (no drift); git prediction-order proof; installed package exports/declarations inspection; task-edge extraction
-- **Verdict**: NEEDS ATTENTION
-- **Thesis / proof**: partial — the dossier preserves an outcome-neutral trial and correct completion edges, but its acceptance assertions do not yet prove every sufficient verdict or enforce D-3 reliably; Implementation target -> incomplete Implementation evidence
-- **Consumers**: phase-2 implementer and OQ-2 verdict consumer are blocked on 3 assertion fixes; `tk-0009 -> ac-0002` and `tk-000a -> ac-0004/ac-0005` are the only genuine `satisfies` edges, as required
+- **Validated**: 2026-08-09T04:21:08Z
+- **Target**: `docs/plans/080-dd-consume-upgrade/assets/tasks/phase-2/tasks.dd.json` (`e25d82b0f057dad43c4737d0d344f1a717f338f3`, commit `5d090cd4`)
+- **Contract sources**: prior findings in this sidecar at `b2794645`; phase-2 `context.md` hard rules 1, 3, and 4; `backpressure.dd.json#rows/bp-000d`
+- **Checks**: scoped source re-check of `dw-000c`, `dw-000f`, `dw-0012`, `dw-0013`, and `bp-000d`; in-tree `dd validate` for task and backpressure documents (0 errors/warnings); in-tree `plan validate` (0 errors/warnings); in-tree task/backpressure `dd build --check` (no drift); fix commit inspection
+- **Verdict**: VALIDATED
+- **Thesis / proof**: advanced — all three prior HIGH findings are resolved at contract level and the deterministic documents remain valid and drift-free; Implementation target -> supported Implementation evidence
+- **Consumers**: phase-2 implementer and OQ-2 verdict consumer are unblocked on F1-F3
 
 ## Findings
 
 | Severity | Finding | Evidence | Status |
 |---|---|---|---|
-| HIGH | Final-sufficiency proof is prediction-biased: an at-risk primitive that flips to sufficient can pass with prose rather than test-first falsifier evidence. | `dw-000c` requires RED-before-implementation evidence only for “SUFFICIENT-predicted” primitives, excluding prediction rows 5–6; `dw-0012` then accepts a bare “named falsifier + RAN”. This conflicts with the plan testing strategy and phase deliverable requiring a failing falsifier for each primitive before it is called sufficient. | Open — require all nine falsifiers before implementation and link each final sufficient verdict to test id, RED commit, command, and result. |
-| HIGH | The D-3 no-shim/no-redeclared-vocabulary assertion is not a sound runnable guard. | `dw-000f` gives no concrete grep expression and scopes only the new module: a later public import named `BUILTIN_RELS` would match, while renamed literals or a copied tuple in a helper file would evade it. `dw-0013` adds a tree-wide claim but no executable probe, and runs only on an insufficient verdict. | Open — add a deterministic repository check over the implementation's transitive local closure that permits public package imports but rejects local vocabulary declarations/copies and shims on every outcome. |
-| HIGH | The linked pressure row directs the implementer to update the frozen digest even though phase 2 forbids changing the frozen fork. | `bp-000d` says the `FROZEN_DIGEST` pin is “updated DELIBERATELY”; phase-2 hard rule 1 requires `services/dd/plan/semantics.ts` to remain byte-pinned, and `dw-000e` requires the existing pin to stay green. | Open — rewrite `bp-000d` to require the frozen file/digest to remain unchanged and green while separately proving falsifier RED-to-GREEN chronology. |
+| HIGH | F1: RED-first falsifier evidence was prediction-biased and final sufficient verdicts accepted incomplete evidence. | `dw-000c` now binds all nine primitives regardless of predicted or final verdict; `dw-0012` requires test id, RED commit SHA, run command, and result for every SUFFICIENT verdict. | Resolved |
+| HIGH | F2: the D-3 vocabulary guard was neither deterministic over the implementation closure nor outcome-neutral. | `dw-000f` now probes constant names and value tuples across the transitive local file closure on every outcome, permits only public-package imports, and blocks on any local copy; `dw-0013` requires its result in the verdict packet. | Resolved |
+| HIGH | F3: `bp-000d` licensed a phase-2 update to the frozen digest. | `bp-000d` now requires the `FROZEN_DIGEST` pin to stay unchanged and green throughout phase 2 while commit order separately proves RED-to-GREEN chronology. | Resolved |
