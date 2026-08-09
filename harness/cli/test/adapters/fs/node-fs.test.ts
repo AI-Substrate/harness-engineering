@@ -53,6 +53,22 @@ function canStageSymlinkSwap(): boolean {
 
 const SYMLINK_SWAP_STAGEABLE = canStageSymlinkSwap();
 
+// Declared to STDERR, not only to the reporter, following the same pattern the
+// win32 skip declarations in `exec-remote-telemetry-git.int.test.ts` use.
+//
+// The test name below already differs by which property was proven, which reaches
+// the JSON reporter — but vitest's DEFAULT reporter does not print the names of
+// PASSING tests, so on a run where nothing fails the distinction never appears in
+// the log a human actually scans. It would sit in an artifact nobody downloads.
+// Asymmetric on purpose: silence means the full property was proven, and this line
+// means it was not, so a reader does not have to know the convention to notice the
+// weaker one.
+if (!SYMLINK_SWAP_STAGEABLE) {
+  console.warn(
+    'WEAKER PROPERTY ONLY — this host cannot create symlinks (no privilege; on Windows that means unelevated with Developer Mode off), so the no-follow control CANNOT stage its swap and does NOT prove that the post-open re-lstat catches a FOLLOWED symlink. What it still proves here: the read is refused and no foreign bytes reach the caller. On this host the regular-file swap case — which needs no privilege — is the ONLY half of the O_NOFOLLOW relaxation actually proven. A privileged host (our CI runner) proves the full property; that is where it is covered, and it is NOT covered here.',
+  );
+}
+
 describe('NodeFs — bounded no-follow text reads (P063 T003)', () => {
   it('probes and reads a regular file using its UTF-8 byte length', () => {
     withTempDir((dir) => {
