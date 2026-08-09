@@ -137,14 +137,26 @@ describe('markdown-lint cannot report green over markdown it never examined (DL-
     expect(nowTracked.status).toBe('degraded');
   });
 
-  it('names the file and teaches the repair (`git add -N`), not just the fact', async () => {
+  it('names the file and offers the BRANCH, never a single unconditional repair', async () => {
+    // The first shipped version said `git add -N <file>` flat. Whose file it is
+    // decides the answer, and in a shared worktree it may be a PEER'S in-flight
+    // work — where `git add -N` publishes a draft its author never chose to
+    // publish. An unconditional instruction about a conditional situation is the
+    // exact defect class this gate was built to catch, so the message must carry
+    // all three branches and this test pins each one.
     const res = await markdownLint.run(ctxFor({ status: `?? ${BROKEN}\0` }));
     const check = checkOf(res, 'unexamined');
 
     expect(check).toBeDefined();
     expect(check?.outcome).toBe('findings');
     expect(check?.summary).toContain(BROKEN);
+    // yours + should be tracked
     expect(check?.summary).toContain('git add -N');
+    // yours + deliberately untracked
+    expect(check?.summary).toMatch(/needs no action/i);
+    // NOT yours — the branch whose tempting repair is destructive
+    expect(check?.summary).toMatch(/not yours/i);
+    expect(check?.summary).toMatch(/in-flight work/i);
   });
 
   it('counts EVERY untracked entry it parsed, not just the in-scope ones — the vacuity guard', async () => {

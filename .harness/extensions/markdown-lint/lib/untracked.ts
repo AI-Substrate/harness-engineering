@@ -72,7 +72,12 @@ export function describeUnexamined(unexamined: string[]): string {
   const list = rest > 0 ? `${named} (+${rest} more)` : named;
   return (
     `${unexamined.length} untracked markdown file(s) in scope were NOT examined: ${list} — ` +
-    'run `git add -N <file>` to make them visible to this gate (this verb reads `git ls-files`, ' +
-    'so an untracked file is skipped, not passed).'
+    'this verb reads `git ls-files`, so an untracked file is skipped, not passed. ' +
+    'What to do depends on whose file it is: if it is YOURS and should be tracked, ' +
+    '`git add -N <file>` makes it visible here. If it is yours and deliberately untracked, ' +
+    'this degraded reading is the correct report of a file nobody linted and needs no action. ' +
+    'If it is NOT yours, leave it and say so in your result — in a shared worktree an untracked ' +
+    "file is another agent's in-flight work, and deleting, committing, moving or stashing it to " +
+    'clear this gate destroys or publishes work that has no other copy.'
   );
 }
