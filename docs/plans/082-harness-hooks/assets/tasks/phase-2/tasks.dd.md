@@ -88,9 +88,9 @@ The installer, built as ONE declarative matrix over four write strategies — th
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-000d | Swapping the CLAUDE_CONFIG_DIR and GEMINI_CLI_HOME resolvers turns BOTH fixtures RED — set-vs-unset alone is not accepted as the proof. | [ ] unchecked | not-applicable |
-| dw-000e | Windsurf writes TWO paths (~/.codeium/hooks.json AND ~/.codeium/windsurf/hooks.json); both are in the matrix and both are asserted. | [ ] unchecked | not-applicable |
-| dw-000f | Event-name casing is asserted per agent from the matrix, including cursor/firebender lowerCamel and gemini BeforeTool/AfterTool. | [ ] unchecked | not-applicable |
+| dw-000d | Swapping the CLAUDE_CONFIG_DIR and GEMINI_CLI_HOME resolvers turns BOTH fixtures RED — set-vs-unset alone is not accepted as the proof. | [x] checked | not-applicable |
+| dw-000e | Windsurf writes TWO paths (~/.codeium/hooks.json AND ~/.codeium/windsurf/hooks.json); both are in the matrix and both are asserted. | [x] checked | not-applicable |
+| dw-000f | Event-name casing is asserted per agent from the matrix, including cursor/firebender lowerCamel and gemini BeforeTool/AfterTool. | [x] checked | not-applicable |
 | dw-0010 | No agent-specific branching exists in the writer: adding an agent is a table row, proven by adding a fake agent in a test and installing it with no code change. | [ ] unchecked | not-applicable |
 
 ### tk-0005

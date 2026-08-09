@@ -285,19 +285,19 @@
           {
             "id": "dw-000d",
             "assertion": "Swapping the CLAUDE_CONFIG_DIR and GEMINI_CLI_HOME resolvers turns BOTH fixtures RED — set-vs-unset alone is not accepted as the proof.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-000e",
             "assertion": "Windsurf writes TWO paths (~/.codeium/hooks.json AND ~/.codeium/windsurf/hooks.json); both are in the matrix and both are asserted.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-000f",
             "assertion": "Event-name casing is asserted per agent from the matrix, including cursor/firebender lowerCamel and gemini BeforeTool/AfterTool.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {

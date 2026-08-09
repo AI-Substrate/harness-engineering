@@ -462,3 +462,64 @@ Rather than let the row overclaim, a second row **demonstrates the hazard**: tem
 the symlink leaves `lstat().isSymbolicLink() === false` and the real file untouched, while
 `writeThroughSymlink` keeps the link and updates the target. "A rename would break this" is now a
 measurement instead of a comment.
+
+---
+
+## tk-0004 — the agent matrix as data
+
+### The swap refusal was taken AFTER green, not before
+
+The obvious order is to write the swap row first and watch it fail. That red is worthless: a row
+written before the resolvers exist goes red **because there are no resolvers**. It proves the row
+runs; it proves nothing about whether it can detect a *swap*, because with nothing to swap there is
+no asymmetry for it to be sensitive to.
+
+So the sequence was: implement → **watch the rows go green (24 passing)** → *then* swap the two
+override kinds → watch them go red. Same lesson as a rewritten fixture not inheriting its
+predecessor's refusal, with the roles reversed: there the instrument changed, here the **subject
+arrived**. Either way, a refusal recorded against a different state of the world is not a refusal
+against this one.
+
+### The swap — BOTH fixtures red (dw-000d)
+
+One-line mutation, `config-dir` and `home-root` exchanged:
+
+```
+FAIL  CLAUDE_CONFIG_DIR is used VERBATIM — nothing is appended
+      expected '/cfg/.claude' to be '/cfg'
+FAIL  GEMINI_CLI_HOME is the HOME ROOT — .gemini IS appended
+      expected '/elsewhere' to be '/elsewhere/.gemini'
+FAIL  a FAKE agent resolves fully with NO code change
+      expected '/x' to be '/x/.invented'
+```
+
+**And the row that proves why set-vs-unset is not accepted STAYED GREEN under that same mutation.**
+That is the whole argument, executable: unset, both kinds resolve to `home/subdir`, so a resolver
+with the bug fully present passes a set-vs-unset test. The inadequate test is kept deliberately,
+labelled, so nobody later "simplifies" the swap mutation into it.
+
+The fake-agent row going red as well is a bonus result: it shows the dw-0010 row is sensitive to the
+same property rather than merely exercising a happy path.
+
+### The asymmetry is DATA, not branching
+
+`OverrideKind` is a field on the row, so the two behaviours differ by one value rather than by two
+`if` branches. That is what makes the swap a **single, unambiguous edit** — had it been branching,
+swapping would have been a rewrite and the mutation would have proved less.
+
+### Event casing (dw-000f) and windsurf's two files (dw-000e)
+
+Three genuinely different casings among seven agents — `PreToolUse`, `preToolUse`, `BeforeTool` —
+asserted as a set so "all Pascal by accident" cannot pass. A wrong key writes a hook the agent never
+fires: an install that reports success and does nothing.
+
+Windsurf is the **only** multi-file agent, asserted as such — which is precisely why a single-file
+assumption would pass against the other six and install half of windsurf's hooks.
+
+### dw-0010 is deliberately LEFT UNCHECKED
+
+Its text is *"proven by adding a fake agent in a test and **installing** it with no code change"*.
+The fake agent resolves its paths, events and override through the shared functions with no code
+change — but **the installer is tk-0005 and does not exist yet**, so the install half is unproven.
+Checking it now would be claiming a proof I have not taken; it is completed in tk-0005 by driving
+the same fake row through the real writer.
