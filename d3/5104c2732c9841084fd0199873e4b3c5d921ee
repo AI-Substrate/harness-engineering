@@ -1,0 +1,70 @@
+skills/builder/references/stages/20-plan.md
+  s_397a51e23fc2cd::t_0744d0d21b9a3b 11,71-74,77
+docs/how/consuming-dd.md
+  s_397a51e23fc2cd::t_0744d0d21b9a3b 9,126
+skills/builder/references/flight-plan.template.json
+  s_397a51e23fc2cd::t_0744d0d21b9a3b 19,30,45
+docs/how/dd/exemplar/custom-render/README.md
+  s_397a51e23fc2cd::t_0744d0d21b9a3b 5,97,121,131
+skills/builder/references/stages/70-review.md
+  s_397a51e23fc2cd::t_0744d0d21b9a3b 31-33
+docs/how/dd/10-command-reference.md
+  s_397a51e23fc2cd::t_0744d0d21b9a3b 16-22,34-35,44-47,52,64-66,78-83,101-106,179,214-216,226,233,240
+docs/how/dd/11-the-builder-proof-graph.md
+  s_397a51e23fc2cd::t_0744d0d21b9a3b 87,166,184
+docs/how/dd/exemplar/backpressure.dd.md
+  s_397a51e23fc2cd::t_fdf1c047f24fed 25,37
+docs/how/dd/02-addresses-and-links.md
+  s_397a51e23fc2cd::t_0744d0d21b9a3b 24,58,65,87,156,167
+docs/how/dd/README.md
+  s_397a51e23fc2cd::t_0744d0d21b9a3b 20,64,94,136,153,175,180,269-271,277,351-353
+live-testing/scenarios/dd-native-builder/assertions.json
+  s_397a51e23fc2cd::t_0744d0d21b9a3b 122
+skills/builder/references/stages/60-implement.md
+  s_397a51e23fc2cd::t_0744d0d21b9a3b 78-82,85
+docs/how/dd/03-schema-packages-and-resolution.md
+  s_397a51e23fc2cd::t_0744d0d21b9a3b 64,179-180,199
+docs/how/dd/06-custom-types-and-adapters.md
+  s_397a51e23fc2cd::t_0744d0d21b9a3b 158,165
+docs/how/dd/09-querying-with-jq.md
+  s_397a51e23fc2cd::t_0744d0d21b9a3b 145,152
+skills/builder/references/stages/80-ship.md
+  s_397a51e23fc2cd::t_0744d0d21b9a3b 26-27
+docs/how/dd/07-freshness-and-the-basis-ledger.md
+  s_397a51e23fc2cd::t_0744d0d21b9a3b 52,66
+skills/builder/references/stages/50-phase-tasks.md
+  s_397a51e23fc2cd::t_0744d0d21b9a3b 22,26,32,41
+docs/how/dd/01-the-document-envelope.md
+  s_397a51e23fc2cd::t_0744d0d21b9a3b 58,170
+docs/how/dd/08-validation-and-doctor.md
+  s_397a51e23fc2cd::t_0744d0d21b9a3b 12,58,64,104-105
+docs/how/dd/exemplar/backpressure.dd.json
+  s_397a51e23fc2cd::t_0744d0d21b9a3b 43,87
+docs/how/dd/justfile
+  s_397a51e23fc2cd::t_0744d0d21b9a3b 25,29,33,37,41,45,50,56,60,64,68,73,80,84,88,106,115,117,119,139,143,147-148,152,156,160,164,166,184,263
+harness/cli/test/acts/builder-dd-teaching.test.ts
+  s_397a51e23fc2cd::t_33451b09a88eb3 48-50,88-91,94,96
+  s_397a51e23fc2cd::t_6e9768e52a5485 125
+docs/how/dd/05-generated-markdown.md
+  s_397a51e23fc2cd::t_0744d0d21b9a3b 7,25,31
+skills/builder/references/stages/62-progress.md
+  s_397a51e23fc2cd::t_0744d0d21b9a3b 96-99,102
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-3/execution.log.md
+  s_397a51e23fc2cd::t_bb769be3f061a3 400-473
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d35104c2732c9841084fd0199873e4b3c5d921ee",
+  "prompts": {},
+  "sessions": {
+    "s_397a51e23fc2cd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "3fe3c47b-5424-4214-892e-81ef19c49d45",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
