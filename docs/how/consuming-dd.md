@@ -6,7 +6,7 @@ is the whole route: how the pin works, how to move it, what to re-verify when yo
 the traps that have already cost this repo time.
 
 Plan 080 removed the vendored fork (`services/dd`, `acts/dd`) and the entire
-`harness dd *` verb family. If you are looking for `harness dd validate`, that is why it
+`node_modules/.bin/dd *` verb family. If you are looking for `node_modules/.bin/dd validate`, that is why it
 is gone — see [the CLI section](#the-cli-there-is-no-harness-dd) below.
 
 ---
@@ -123,7 +123,7 @@ not just the copies.
 
 ## The CLI: there is no `harness dd`
 
-`harness dd *` was removed. `harness plan` and `harness flow` still work — they consume
+`node_modules/.bin/dd *` was removed. `harness plan` and `harness flow` still work — they consume
 the package directly — but `validate`, `build`, `set`, `doctor`, and `link` now come from
 dd's own CLI.
 

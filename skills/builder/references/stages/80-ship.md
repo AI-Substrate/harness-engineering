@@ -23,8 +23,8 @@ The plan folder archived at post-flight, so the corpus is read from `docs/plans/
 ARCHIVE="docs/plans/archive/<ord>-<slug>"
 harness plan validate "${ARCHIVE}/plan.dd.json" --complete   # must be green before you claim it is
 harness plan pr-body  "${ARCHIVE}/plan.dd.json" --pin-head   # the AC table, every link pinned at HEAD
-harness dd get "${ARCHIVE}/plan.dd.json#acceptance_criteria" # the closed criteria + their receipts
-harness dd graph map "${ARCHIVE}/plan.dd.json#acceptance_criteria/ac-XXXX" --direction in
+node_modules/.bin/dd get "${ARCHIVE}/plan.dd.json#acceptance_criteria" # the closed criteria + their receipts
+node_modules/.bin/dd graph map "${ARCHIVE}/plan.dd.json#acceptance_criteria/ac-XXXX" --direction in
 ```
 
 `plan pr-body` emits `data.markdown` — paste it into the PR body verbatim. It renders each closed criterion beside the evidence it rests on: `proven_by`, its `pressure` instrument, and the incoming `satisfies` naming the tasks that accounted for it.

@@ -397,3 +397,77 @@ The known-accepted-degradations section carries ledger #5 (FX014) and #6 (banner
 PR-body material and this page cannot drift apart.
 
 `markdown-lint`: **0 findings** for the new file.
+
+## tk-0013 — command-surface migration
+
+**151 prescriptive references across 24 files** migrated from `harness dd <verb>` to
+`node_modules/.bin/dd <verb>` — the only spelling that both runs today and cannot resolve
+to coreutils or the npm squat (ledger #6; three-way enumeration binding per koala).
+
+Migrated by FILE CLASS, not by one global replace, because the classes fail differently:
+
+| class | files | handling |
+|---|---|---|
+| prose (`.md`, `justfile`, `.json` configs) | 23 | direct replacement |
+| dd SOURCE (`backpressure.dd.json`) | 1 | edited the JSON, then **regenerated** the sibling |
+| GENERATED (`backpressure.dd.md`) | 1 | **never edited directly** — it is output; editing it would drift it from its source |
+| test expectations (`builder-dd-teaching.test.ts`) | 1 | migrated with the docs it pins |
+
+### dw-0024 zero-reference proof
+
+```
+$ git grep -n "harness dd " -- docs/how skills/ live-testing/     → 0
+```
+
+**Exemption list, named as dw-0024 requires** (frozen provenance, deliberately untouched):
+`.harness/records` (1), `docs/plans/archive` (33).
+
+And one category the assertion's wording does not name, so I am naming it rather than
+letting a reviewer's grep find it unexplained: **`docs/plans/<active>` carries 49
+references, and they are correct.** They are DESCRIPTIVE, not prescriptive — plan 080's
+own `plan.dd.json` says "remove `harness dd *` verb registration", task titles name the
+verbs they delete, and the execution logs quote commands that were run at the time.
+Rewriting those to `node_modules/.bin/dd` would make them **false**: the plan did not
+remove a command that never existed. The distinction that matters is *tells the reader to
+run it* vs *names it as a subject*, and only the first migrates.
+
+### Executable surfaces re-run, not assumed
+
+```
+$ cd docs/how/dd && just drift      → dd build --check … "drift":false        exit 0
+$ cd docs/how/dd && just graph-ac   → dd graph map … 20 nodes / 22 edges      exit 0
+```
+
+The justfile's recipes `cd` to the repo root before running, so the relative bin path
+resolves — checked by running two of them rather than reasoning about it.
+
+Eval scenario dry-scored (dw-0024's last clause): `PASS_WITH_NOTES`, 7 passed / 1 failed /
+**5 unknown**, and the report's judged rows read `?` as required. The single failure is
+**A6 corpus-floor** ("22 of 76 task rows carry no `satisfies`"), and it is **not mine** —
+proven, not asserted:
+
+```
+$ git diff d7daf94c HEAD -- '*.dd.json' | grep '^[+-]' | grep -v '^[+-][+-]' | grep -c satisfies
+0
+```
+
+Phase 3 changed zero `satisfies` fields. A6 is downstream of the `satisfies_toward`
+convention (`57d8bd1f`) and is `required: false`. The probe's run directory was deleted
+and its ledger append reverted — a diagnostic run must not leave a scored run in the
+record.
+
+### A self-inflicted near-miss worth recording
+
+The bulk replace broke a **regex literal**: `/harness dd set …/` became
+`/node_modules/.bin/dd set …/`, where the unescaped `/` in the path **terminates the
+regex**, and the file stopped parsing (`Expected ',' or ')' but found 'set'`). Vitest
+reported `Test Files 1 failed | Tests no tests` — a whole file silently contributing zero
+assertions, which is the same shape as the vacuity traps from phase 2: not a wrong answer,
+an absent one. Repaired with proper escaping and re-run (24/24).
+
+The lesson generalises past this file: **a blind textual replace is safe in prose and
+unsafe in code**, because code has contexts where the replacement text changes the
+grammar. The other machine-readable targets were re-validated for the same reason
+(three `.json` files parsed; only one `.ts` was in the blast radius).
+
+**Green**: `just build` exit 0; **294 files / 4487 tests**; `skills-check` ok.

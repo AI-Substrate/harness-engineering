@@ -9,7 +9,7 @@ unlimited radius.
 From the repository root:
 
 ```bash
-harness dd validate \
+node_modules/.bin/dd validate \
   docs/how/dd/exemplar/plan.dd.json \
   --depth 3
 ```
@@ -55,13 +55,13 @@ ids, missing state notes or receipts, and link type mismatches are errors.
 ## Sweep the corpus
 
 ```bash
-harness dd doctor
+node_modules/.bin/dd doctor
 ```
 
 Scope the starting set:
 
 ```bash
-harness dd doctor \
+node_modules/.bin/dd doctor \
   --path docs/how/dd/exemplar
 ```
 
@@ -101,8 +101,8 @@ and `sweep_exclude` rules still apply.
 ## Build and drift checking
 
 ```bash
-harness dd build path/to/document.dd.json
-harness dd build path/to/document.dd.json --check
+node_modules/.bin/dd build path/to/document.dd.json
+node_modules/.bin/dd build path/to/document.dd.json --check
 ```
 
 The first command writes the sibling `.dd.md`. The second renders in memory and

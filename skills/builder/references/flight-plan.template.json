@@ -16,7 +16,7 @@
         "Write ONE planning document in a single atomic pass — `## Business Specification` (WHAT/WHY) on top, `## Implementation Plan` (HOW: phases, task tables, acceptance criteria, gates G1–G7) below.",
         "Run /builder 1b plan \"<intent>\" (add --simple for a one-phase flow); it front-loads the clarifying questions, then auto-runs /validate-v2.",
         "Done when plan.dd.json carries both halves and reads Status: READY — DRAFT means a gate FAILed, so resolve the gaps and re-run. The plan is dd-native: plan.dd.json plus its GENERATED plan.dd.md sibling, and no <slug>-plan.md exists.",
-        "Scaffold and fill through the CLI: harness plan new <slug> --title \"<title>\" --phase \"<title>\", then harness dd set / harness dd add (add --mint ac for criteria). Validation runs BEFORE every write and the sibling rebuilds in the same operation — never hand-edit either file.",
+        "Scaffold and fill through the CLI: harness plan new <slug> --title \"<title>\" --phase \"<title>\", then node_modules/.bin/dd set / node_modules/.bin/dd add (add --mint ac for criteria). Validation runs BEFORE every write and the sibling rebuilds in the same operation — never hand-edit either file.",
         "Create the flow with harness flow create flight-plan --plan-dir \"<plan dir>\" — without it the baked gate addresses stay plan-relative and every departure refuses E441."
       ] },
 
@@ -27,7 +27,7 @@
         "Implement exactly ONE phase using the plan's testing approach and domain placement rules — keep the task table and execution.log.md live as you go.",
         "Run /builder 6 implement --plan \"<plan path>\"; log discoveries, tagging any Deferred/Noteworthy a human must see before ship.",
         "Done when the phase's acceptance criteria are met, the tests pass, and the execution log records what changed plus the proof.",
-        "Mutate task state through the CLI, never an editor: harness dd set \"<plan dir>/assets/tasks/phase-N/tasks.dd.json#tasks/tk-XXXX/state\" checked (and #done_when/tk-XXXX/dw-XXXX/state for each assertion). The .dd.md sibling is GENERATED — editing it is drift.",
+        "Mutate task state through the CLI, never an editor: node_modules/.bin/dd set \"<plan dir>/assets/tasks/phase-N/tasks.dd.json#tasks/tk-XXXX/state\" checked (and #done_when/tk-XXXX/dw-XXXX/state for each assertion). The .dd.md sibling is GENERATED — editing it is drift.",
         "Rehearse this node's gate before you try to leave: harness plan validate \"<plan dir>/plan.dd.json\" --address \"<plan dir>/assets/tasks/phase-N/tasks.dd.json#tasks\". Gate-terminal states are checked, human-skipped, na; unchecked and blocked hold it.",
         "Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.",
         "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
@@ -42,7 +42,7 @@
         "Run /builder 7 review — it inspects the newest assets/reviews/*.md and surfaces a verdict; REQUEST_CHANGES loops back to fix, clean continues to the next phase or post-flight.",
         "Done when the verdict is recorded (one finding line) and either accepted or routed to a fix-loop.",
         "This node carries the plan-validate CHECK gate: departure is refused until harness plan validate \"<plan dir>/plan.dd.json\" --complete is green (zero errors AND zero warnings). Run it BEFORE you try to leave — the refusal quotes every finding, but reading them early is cheaper.",
-        "Close criteria through the CLI: harness dd set \"<plan dir>/plan.dd.json#acceptance_criteria/ac-XXXX/state\" checked, and re-verify any moved basis with harness dd link verify-basis <address> --sha <sha> --update <doc>.",
+        "Close criteria through the CLI: node_modules/.bin/dd set \"<plan dir>/plan.dd.json#acceptance_criteria/ac-XXXX/state\" checked, and re-verify any moved basis with node_modules/.bin/dd link verify-basis <address> --sha <sha> --update <doc>.",
         "If the gate refuses and departing anyway is the HUMAN's decision, they pass --force — it records a defended override. An agent may not force a dd gate on its own judgment."
       ] },
 

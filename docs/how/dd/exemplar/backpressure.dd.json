@@ -40,7 +40,7 @@
           "tier": "computational",
           "proof": "This corpus is the subject: validate it at depth 3, prove the rendered siblings do not drift, sweep it with the doctor, and answer a real question with jq.",
           "state": "unchecked",
-          "probe": "harness dd validate docs/how/dd/exemplar/plan.dd.json --depth 3"
+          "probe": "node_modules/.bin/dd validate docs/how/dd/exemplar/plan.dd.json --depth 3"
         },
         {
           "id": "bp-1201",
@@ -84,7 +84,7 @@
         {
           "id": "sensor-dd-doctor",
           "name": "dd corpus sweep at infinite radius",
-          "command": "harness dd doctor --json",
+          "command": "node_modules/.bin/dd doctor --json",
           "dimension": "document health",
           "found_in": "harness/cli/src/acts/dd/doctor.ts"
         }

@@ -13,13 +13,13 @@ For what these verbs are collectively FOR, see
 
 | Command | Effect |
 | --- | --- |
-| `harness dd validate <path>` | validate a document and three outbound hops |
-| `harness dd validate <path> --depth 0` | validate only the named document |
-| `harness dd validate <path> --depth <n>` | validate the named outbound radius |
-| `harness dd build <path>` | write the canonical `.dd.md` sibling |
-| `harness dd build <path> --check` | compare the canonical render without writing |
-| `harness dd doctor` | sweep the repository at unlimited radius |
-| `harness dd doctor --path <dir>` | scope the sweep's starting set |
+| `node_modules/.bin/dd validate <path>` | validate a document and three outbound hops |
+| `node_modules/.bin/dd validate <path> --depth 0` | validate only the named document |
+| `node_modules/.bin/dd validate <path> --depth <n>` | validate the named outbound radius |
+| `node_modules/.bin/dd build <path>` | write the canonical `.dd.md` sibling |
+| `node_modules/.bin/dd build <path> --check` | compare the canonical render without writing |
+| `node_modules/.bin/dd doctor` | sweep the repository at unlimited radius |
+| `node_modules/.bin/dd doctor --path <dir>` | scope the sweep's starting set |
 
 `validate` returns `ok`, `degraded` for warnings only, or `error` when any
 ERROR-class finding exists. `doctor` follows the same severity posture.
@@ -31,8 +31,8 @@ The affected values use an explicit raw fallback.
 
 | Command | Effect |
 | --- | --- |
-| `harness dd schema list` | list winning repository, harness, and home schemas |
-| `harness dd schema show <package>/<schema>` | show one resolved package in detail |
+| `node_modules/.bin/dd schema list` | list winning repository, harness, and home schemas |
+| `node_modules/.bin/dd schema show <package>/<schema>` | show one resolved package in detail |
 
 `schema list` cannot include a document-folder root because it accepts no
 document path. Validate a document to prove its local package resolves.
@@ -41,15 +41,15 @@ document path. Validate a document to prove its local package resolves.
 
 | Command | Effect |
 | --- | --- |
-| `harness dd address generate <interior>` | generate a bare same-document address |
-| `harness dd address generate <interior> --path <file>` | generate a qualified address |
-| `harness dd address validate <address>` | check syntax and normalization |
-| `harness dd address validate <address> --resolve` | resolve and classify every segment |
+| `node_modules/.bin/dd address generate <interior>` | generate a bare same-document address |
+| `node_modules/.bin/dd address generate <interior> --path <file>` | generate a qualified address |
+| `node_modules/.bin/dd address validate <address>` | check syntax and normalization |
+| `node_modules/.bin/dd address validate <address> --resolve` | resolve and classify every segment |
 
 Example:
 
 ```bash
-harness dd address generate \
+node_modules/.bin/dd address generate \
   "phases/ph-0002/tasks" \
   --path docs/how/dd/exemplar/plan.dd.json
 ```
@@ -61,9 +61,9 @@ document. Use `<path>#<interior>` with `--resolve`.
 
 | Command | Effect |
 | --- | --- |
-| `harness dd link resolve <address>` | return the addressed value and target metadata |
-| `harness dd link verify-basis <address> --sha <sha>` | compare a recorded SHA with the target |
-| `harness dd link verify-basis <address> --sha <sha> --update <doc>` | move an existing ledger entry and regenerate its sibling |
+| `node_modules/.bin/dd link resolve <address>` | return the addressed value and target metadata |
+| `node_modules/.bin/dd link verify-basis <address> --sha <sha>` | compare a recorded SHA with the target |
+| `node_modules/.bin/dd link verify-basis <address> --sha <sha> --update <doc>` | move an existing ledger entry and regenerate its sibling |
 
 `verify-basis` returns `fresh` or `stale`. Stale is a degraded result rather
 than a failing result.
@@ -75,12 +75,12 @@ ledger entry.
 
 | Command | Effect |
 | --- | --- |
-| `harness dd links <target>` | report inbound and outbound edges for one document |
-| `harness dd graph` | return the repository graph as Mermaid and structured data |
-| `harness dd graph --path <dir>` | seed the graph from a subtree |
-| `harness dd graph map <address>` | walk one row's neighbourhood in both directions |
-| `harness dd graph map <address> --direction in` | only what points AT this row |
-| `harness dd graph map <address> --rel <rel>` | follow only edges carrying that relation (repeatable) |
+| `node_modules/.bin/dd links <target>` | report inbound and outbound edges for one document |
+| `node_modules/.bin/dd graph` | return the repository graph as Mermaid and structured data |
+| `node_modules/.bin/dd graph --path <dir>` | seed the graph from a subtree |
+| `node_modules/.bin/dd graph map <address>` | walk one row's neighbourhood in both directions |
+| `node_modules/.bin/dd graph map <address> --direction in` | only what points AT this row |
+| `node_modules/.bin/dd graph map <address> --rel <rel>` | follow only edges carrying that relation (repeatable) |
 
 `dd links` accepts a document path or a qualified address, but reports edges at
 document granularity.
@@ -98,12 +98,12 @@ can never leave source and sibling out of step.
 
 | Command | Effect |
 | --- | --- |
-| `harness dd get <address>` | return the value at any address |
-| `harness dd set <address> <value>` | replace the value at an address |
-| `harness dd set <address> <json> --value-json` | replace it with parsed JSON (arrays, objects, numbers) |
-| `harness dd add <address> <json>` | append an item to a list |
-| `harness dd add <address> <json> --mint <prefix>` | append it with a fresh collision-free id |
-| `harness dd rm <address>` | remove the item at an address |
+| `node_modules/.bin/dd get <address>` | return the value at any address |
+| `node_modules/.bin/dd set <address> <value>` | replace the value at an address |
+| `node_modules/.bin/dd set <address> <json> --value-json` | replace it with parsed JSON (arrays, objects, numbers) |
+| `node_modules/.bin/dd add <address> <json>` | append an item to a list |
+| `node_modules/.bin/dd add <address> <json> --mint <prefix>` | append it with a fresh collision-free id |
+| `node_modules/.bin/dd rm <address>` | remove the item at an address |
 
 Do not hand-edit a `.dd.json`. Two things go wrong quietly when you do: the
 sibling `.dd.md` stops matching its source (which `dd build --check` then reports
@@ -176,7 +176,7 @@ There is no verb for this, and there does not need to be one: a review corpus
 validates, renders and is queried like any other document.
 
 ```bash
-harness dd validate docs/how/dd/exemplar/review/round-1.dd.json
+node_modules/.bin/dd validate docs/how/dd/exemplar/review/round-1.dd.json
 just review-refuted        # which findings were refuted, and on what grounds?
 just review-dim0           # what did Dim-0 probe, and what did it cite?
 just review-unresolved     # silence means every finding was decided
@@ -211,9 +211,9 @@ as a defended decision rather than silently allowing it.
 
 | Command | Effect |
 | --- | --- |
-| `harness dd docs list` | list documentation compiled into the CLI |
-| `harness dd docs get dd-overview` | print the built-in overview |
-| `harness dd docs get how-to-add-a-schema` | print the schema and adapter guide |
+| `node_modules/.bin/dd docs list` | list documentation compiled into the CLI |
+| `node_modules/.bin/dd docs get dd-overview` | print the built-in overview |
+| `node_modules/.bin/dd docs get how-to-add-a-schema` | print the schema and adapter guide |
 
 In human mode, `docs get` prints markdown directly. In JSON mode, the markdown
 is returned in `data.content`.
@@ -223,20 +223,20 @@ is returned in `data.content`.
 Validation counts:
 
 ```bash
-harness dd validate path/to/document.dd.json --json \
+node_modules/.bin/dd validate path/to/document.dd.json --json \
   | jq '{status, counts: .data.counts}'
 ```
 
 Resolved schema paths:
 
 ```bash
-harness dd schema list --json \
+node_modules/.bin/dd schema list --json \
   | jq -r '.data.schemas[] | "\(.name)\t\(.path)"'
 ```
 
 Graph size:
 
 ```bash
-harness dd graph --path path/to/corpus --json \
+node_modules/.bin/dd graph --path path/to/corpus --json \
   | jq '.data.counts'
 ```
