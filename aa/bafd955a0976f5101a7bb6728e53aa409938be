@@ -1,0 +1,71 @@
+harness/cli/src/services/flow/flow-events.ts
+  s_3fcdc055efffb7::t_4c99e9ddd5399b 196-225,361
+  s_3fcdc055efffb7::t_e3f728a14c40ec 362-408
+  s_3fcdc055efffb7::t_aa79013f118d43 273-281
+harness/cli/src/services/flow/schemas/flow.schema.json
+  s_3fcdc055efffb7::t_55675929fc2ebe 22
+harness/cli/src/services/flow/flow-mutations.ts
+  s_3fcdc055efffb7::t_f0eceaf86fb9ae 812-816,818-824
+  s_3fcdc055efffb7::t_e5a667e8433ede 633-645,653-686
+  s_3fcdc055efffb7::t_3887a67aa1d7b6 17,19
+  s_3fcdc055efffb7::t_5008ebe755517e 817
+  s_3fcdc055efffb7::t_5b3c9785c2df2c 1360-1370
+  s_3fcdc055efffb7::t_baa1dc5041a016 1383-1386
+  s_3fcdc055efffb7::t_29660d0ad0db59 687-688
+harness/cli/test/services/flow/flow-apply-gate-fires.test.ts
+  s_3fcdc055efffb7::t_5008ebe755517e 12,125-129
+  s_3fcdc055efffb7::t_839b0e20b5984c 1-11,13-124,130-132
+harness/cli/test/services/flow/flow-node-fields-drift.test.ts
+  s_3fcdc055efffb7::t_5008ebe755517e 38
+  s_3fcdc055efffb7::t_8d6c9ad9b94213 1-37,39-56
+harness/cli/src/services/flow/schemas-content.ts
+  s_3fcdc055efffb7::t_50ee00e97019f7 28
+skills/builder/references/flight-plan-ops.md
+  s_3fcdc055efffb7::t_e3cccad628b2a1 75,78-80,83-87
+  s_e3460fd42f286c::t_7a19c2287aef8d 88
+harness/cli/test/services/flow/flow-apply-field-allowlist.test.ts
+  s_3fcdc055efffb7::t_54a5b17fa2160c 2-3,5
+  s_3fcdc055efffb7::t_f20b8695f10c8b 58-97,100-104,107-112,115,144-154,156-190,192-203,205-206
+  s_3fcdc055efffb7::t_addd3b2f43d78d 105-106,116-143
+  s_3fcdc055efffb7::t_444e337b351d6b 98-99,113-114,155,191,204
+  s_3fcdc055efffb7::t_9bd1fc0cc41160 1,4,6-57
+harness/cli/src/acts/flow.ts
+  s_3fcdc055efffb7::t_dcbbc76f50670f 1446-1490
+  s_3fcdc055efffb7::t_ae3a51e976cb49 804-808,825,836-844,847,852-855
+  s_3fcdc055efffb7::t_7f751b5e52fc81 890-894,911,913-921,924,929-931
+  s_a6b77772852964::t_5501fe117e0be4 845-846,848-851,922-923,925-928,943,1445
+harness/cli/test/acts/flow.test.ts
+  s_3fcdc055efffb7::t_a8fb9e10a88016 658-734
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "aabafd955a0976f5101a7bb6728e53aa409938be",
+  "prompts": {},
+  "sessions": {
+    "s_3fcdc055efffb7": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "f1575938-81cb-4506-9f3d-756db2229628",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_a6b77772852964": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "c800c9ff-86e7-4a5f-bdc3-f63517243af6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_e3460fd42f286c": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "b007eb76-365c-4da0-8164-519fdee51c00",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
