@@ -5,6 +5,32 @@
  * doctor stays unit-testable with `FakeGit` and never shells out to `git`.
  */
 /**
+ * Whether the index carried staged content at the moment it was read (plan 082
+ * tk-0003) — THE discriminator the commit guard rests on.
+ *
+ * It exists because everything cheaper was measured dead. Parent-count catches
+ * only `--no-ff` merges. The reflog subject catches ff-pull, cherry-pick, revert
+ * and amend, and misses seven transitions that read `commit: <msg>` byte-for-byte
+ * like a real commit. `.git` state (MERGE_HEAD / SQUASH_MSG) cannot be consulted
+ * at all: `merge --squash` never writes MERGE_HEAD, and git unlinks SQUASH_MSG
+ * before even its OWN post-commit hook runs — an agent hook fires later still and
+ * would read an empty directory.
+ *
+ * What remains is the index, read at PRE — BEFORE the commit that would erase the
+ * evidence. A genuine agent edit reaches PRE with a CLEAN index (the agent has
+ * not staged anything yet). All seven defeaters — `merge --squash`,
+ * `cherry-pick -n`, `revert -n`, `git apply`, `checkout <ref> -- <path>`,
+ * `restore --source`, `read-tree -m -u` — reach it with content ALREADY STAGED,
+ * because staging is how each of them delivers content it did not author here.
+ *
+ * `unknown` is not a third outcome to reason over: it means the read failed, and
+ * the guard treats it exactly as it treats `already-staged` — stay silent. The
+ * only error direction this can produce is a FALSE NEGATIVE (a missing note),
+ * which is the direction the plan's risk register demands.
+ */
+export type IndexState = 'clean' | 'already-staged' | 'unknown';
+
+/**
  * One `git reflog` entry, whole (plan 082 tk-0002).
  *
  * The commit guard has to tell "the agent authored this here" from "HEAD moved
@@ -97,4 +123,27 @@ export interface GitPort {
    * failure.
    */
   readReflog(ref: string, limit: number): ReflogRead;
+  /**
+   * Whether the index carries staged content RIGHT NOW (`git diff --cached
+   * --quiet`: exit 0 clean, exit 1 already-staged, anything else `unknown`).
+   *
+   * Read-only and cheap — one spawn, no output parsed. Correct on an UNBORN HEAD
+   * too (verified: an empty index in a fresh repo exits 0, a staged file exits 1),
+   * which matters because the very first commit in a repository is a case the
+   * guard must still get right.
+   *
+   * See {@link IndexState} for why this, and not the reflog or `.git` state, is
+   * the discriminator.
+   */
+  indexState(): IndexState;
+  /**
+   * The parents of HEAD, in order (`rev-list --parents -1 HEAD`). `[]` for a root
+   * commit; `null` when HEAD cannot be read at all (unborn branch, not a repo).
+   *
+   * `null` and `[]` are different answers and the guard treats them differently:
+   * `[]` is an established fact about a root commit, `null` is a read that did not
+   * happen. Order matters — only the FIRST parent carries lineage, while the COUNT
+   * is what rejects a merge commit.
+   */
+  headParents(): readonly string[] | null;
 }

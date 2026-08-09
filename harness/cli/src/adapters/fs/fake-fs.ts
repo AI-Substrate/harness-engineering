@@ -195,6 +195,19 @@ export class FakeFs implements FsPort, FileSystemWritePort {
     return names;
   }
 
+  createExclusive(path: string, contents: string): boolean {
+    // Models the O_EXCL branch, including the loser: a path that already exists
+    // (as text OR bytes) is NOT created and NOT overwritten.
+    if (path in this.files || this.byteFiles.has(path)) return false;
+    this.writes.push(path);
+    this.files[path] = contents;
+    // Same mtime stamping as writeText: a claim marker's age is what the pruner
+    // orders by, so the fake must age files exactly as NodeFs does or the two
+    // would prune different survivors.
+    this.mtimes[path] = this.nextMtime++;
+    return true;
+  }
+
   mkdirp(path: string): void {
     this.mkdirs.push(path);
     // Register each ancestor segment so exists() models a recursive create

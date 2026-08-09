@@ -68,12 +68,13 @@
         {
           "id": "tk-0005",
           "title": "Build the provocation suite AGAINST REAL GIT REPOSITORIES, not against the pure classifier",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-1",
           "success": "Every row drives real git in an isolated repo and asserts on the RUNTIME's decision. A suite that feeds the pure function a fabricated state proves only that the implementation matches itself. Class (a) HEAD did not advance by exactly one: checkout, reset --hard, rebase, amend, no-op, detached HEAD, no prior state, multi-commit ff pull. Class (b) HEAD advanced by one, first parent == recorded HEAD, nothing authored here — ALL SEVEN MEASURED DEFEATERS: merge --squash, cherry-pick -n, revert -n, git apply, checkout REF -- path, restore --source, read-tree -m -u. Plus single-commit ff pull, --no-ff merge, cherry-pick, revert, git am. Plus the positive control (a genuine agent edit then commit) so the suite can see the opposite, and the CONCURRENT case: two POSTs racing produce at most one emit. Plus the KNOWN-BLIND row: a human committing inside the bracket is indistinguishable and MUST be asserted as emitting — documenting the limitation, not hiding it.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0003"
-          ]
+          ],
+          "receipt": "test/services/hooks/provocation.int.test.ts — 32 rows driving REAL git in isolated repos, asserting the RUNTIME's decision. Caught a real bug: git writes full argv in the reflog subject (pull -q --ff-only origin main: Fast-forward), so the literal 'pull:' prefix matched NO real pull while a fabricated unit test passed."
         },
         {
           "id": "tk-0006",
@@ -89,12 +90,13 @@
         {
           "id": "tk-0007",
           "title": "Implement the commit intercept over the classifier, with an atomic PRE state write",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-1",
           "success": "The POC writes state after emitting — the read-then-write window that lets two concurrent fires both emit. Exclusive create or lock file. Every class (a) and (b) row silent against REAL git; the positive row emits.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0003"
-          ]
+          ],
+          "receipt": "src/services/hooks/commit-intercept.ts — claim taken BEFORE emit (the POC writes state after). All class (a)+(b) rows silent against real git; 3 racing POSTs produce exactly 1 emit."
         },
         {
           "id": "tk-0008",
@@ -149,12 +151,13 @@
         {
           "id": "tk-000d",
           "title": "Add a SECOND guard layer: scan the PRE payload's tool_input.command for content-importing operations",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-1",
           "success": "MEASURED 2026-08-09 from /tmp/cursor-hook-pre.jsonl (76 records): Cursor issues chained git commands in ONE Shell tool call — the captured line is `git add -A && git commit --trailer ... -m ...`. So defeater-inside-one-bracket is the NORMAL shape, not an exotic case, and index-at-PRE alone does not catch it: PRE sees a clean index because the defeater has not run yet. The same PRE record carries tool_name and tool_input.command, so interrogate the bracket directly. Refuse to emit when the command names merge (with or without --squash), cherry-pick, revert, am, apply, rebase, read-tree, checkout/restore with a source ref or pathspec, reset, stash pop/apply, or subtree. PARSE PER SEGMENT split on && ; || and newline — the defeater and the commit are different segments of one line, so a scan of the first token misses it every time. This NARROWS, it does not close: a script, alias, shell function, Makefile target or heredoc hides the operation, and those rows are asserted as EMIT and labelled KNOWN-BLIND alongside the human-in-the-bracket row. It is a SECOND layer over index-at-PRE, never a replacement — mutate each layer separately AND both together, because a single-layer negation passes while the other layer silently covers for it. Like every other check it may only move the answer TOWARD silence, adding no new false-positive path.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0003"
-          ]
+          ],
+          "receipt": "src/services/hooks/scan-command.ts — segment-aware scan (&& || ; | newline). 36 unit tests + 5 defeater-inside-bracket rows + 3 KNOWN-BLIND rows. Layer mutations: command-scan-only OFF = 5 RED, index-only OFF = 7 RED (disjoint), both OFF = 12 RED (exact union)."
         }
       ]
     },
@@ -209,37 +212,37 @@
           {
             "id": "dw-0007",
             "assertion": "Every row drives real git in an isolated repo and asserts on the RUNTIME's decision, not on the pure function.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0008",
             "assertion": "All SEVEN measured defeaters assert SILENT: merge --squash, cherry-pick -n, revert -n, git apply, checkout REF -- path, restore --source, read-tree -m -u.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0009",
             "assertion": "Every class (a) row asserts SILENT, including the multi-commit fast-forward pull.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-000a",
             "assertion": "The positive control EMITS, so the suite can see the opposite.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-000b",
             "assertion": "The concurrent row passes: two racing POSTs produce at most one emit.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-000c",
             "assertion": "The human-in-bracket row asserts EMIT and is labelled KNOWN-BLIND — the limitation is documented, not hidden.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],
@@ -273,13 +276,13 @@
           {
             "id": "dw-0011",
             "assertion": "Every class (a) and (b) row is silent against REAL git, not against the pure classifier.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0012",
             "assertion": "The concurrent row is green against the real intercept.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],
@@ -363,19 +366,19 @@
           {
             "id": "dw-001e",
             "assertion": "The scan splits the command on && ; || and newline and inspects EVERY segment — proven by a row where `git merge --squash X && git commit -m msg` is refused, which a first-token scan would pass.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-001f",
             "assertion": "Each layer is mutated SEPARATELY and both together: disabling the command scan alone must go RED on the defeater-inside-bracket rows, and disabling index-at-PRE alone must go RED on the defeater-before-bracket rows. A defence-in-depth guard that only passes a both-layers negation has not tested either layer.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0020",
             "assertion": "Obfuscated defeaters (wrapped in a script or alias) are asserted as EMIT and labelled KNOWN-BLIND in the test name — documenting the limit rather than hiding it, exactly as the human-in-the-bracket row does.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {

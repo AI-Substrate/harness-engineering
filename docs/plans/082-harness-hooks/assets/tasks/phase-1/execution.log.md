@@ -213,3 +213,205 @@ touch.** Attribution was established per-finding, not by comparing totals:
 all `ok`. Note the `checks` envelope runs `tests` at the **fast** scope and says so in its own
 note; the full scope is the separate `just test-all` run above.
 
+
+
+---
+
+## tk-0003 — the PRE hook records the INDEX STATE, atomically
+
+**Files**: `src/adapters/git/git-port.ts` (`IndexState`, `indexState()`),
+`src/adapters/fs/fs-port.ts` (`createExclusive`), `src/services/hooks/hook-state.ts`, adapters and
+fakes for each, `test/services/hooks/hook-state.test.ts`.
+
+Exit codes were **measured before the code was written**, including the case expected to be a
+problem and was not: `git diff --cached --quiet` exits 0 on an **unborn HEAD with an empty index**
+and 1 with a file staged. So the first commit in a repository is handled by the ordinary path
+rather than special-cased. 129 (not a repo) and everything else map to `unknown`.
+
+### Two different races, two different mechanisms
+
+They are not the same fix and conflating them is how the bug returns:
+
+| race | mechanism | what it guarantees |
+|---|---|---|
+| a POST reading a half-written record | atomic replace (unique temp → `rename`) | reads are **coherent** |
+| two POSTs deciding on one commit | `O_EXCL` claim keyed by (repo, destination head) | the decision is **unique** |
+
+An atomic write does **not** give the second property: the read-then-write window *is* the bug,
+and only `O_EXCL` closes it. State is one file per repository keyed by `sha256(repoRoot)`, not the
+POC's single shared JSON keyed by repo path — that shape has a lost-update race the moment two
+repositories fire at once.
+
+`FakeGit.indexState()` defaults to **`unknown`**, deliberately. A `clean` default would make every
+test that forgot to seed it look like a genuine authored commit — the exact failure the
+discriminator exists to prevent.
+
+### The claim prune (found in review by `pij-respectable-clam`)
+
+One marker per commit, never removed, is unbounded growth in a hidden directory. When it
+eventually meets an inode or quota limit `createExclusive` starts returning `false` — which means
+*"someone else won"* — so the guard fails closed and **silently stops emitting** while every path
+still exits 0. `CLAIM_KEEP = 50`, pruned on write, best-effort so a prune failure can never cost
+the claim that already succeeded.
+
+Assertions are on the **identity** of the survivors, not a global count: a count could be
+satisfied by unrelated cleanup, or by deleting the *wrong* markers. A second test proves another
+repository's markers are untouched **and its claim is still held** — a prune that silently freed a
+claim would let a re-fire double-emit, which a count assertion would never have seen.
+
+One deliberate exception, recorded rather than discovered: the **real-filesystem** prune test
+asserts only the *bound*, not which markers survive. Real mtimes are millisecond-resolution, 55
+creates land inside one millisecond, and the survivor set is then genuinely arbitrary — asserting
+identity there would be a flake generator. Identity is pinned in the `FakeFs` test where ordering
+is deterministic. `FakeFs.createExclusive` had to stamp mtimes like `writeText` does, or fake and
+real would prune different survivors.
+
+**Evidence**: 14 tests, one driving real git end to end — agent edit → `clean` → record → commit →
+still reads `clean`; `merge --squash` → `already-staged` → record → commit → still reads
+`already-staged`. The same test asserts `.git/MERGE_HEAD` and `.git/SQUASH_MSG` are **both absent**
+after the squash commit, which is why `.git` state is not a classifier parameter.
+
+**Mutation checks (6, all caught)**: claim made non-exclusive; `recordPre` made an in-place write;
+`indexState` mapping exit 1 to `clean`; prune disabled; prune keeping the *oldest*; prune ignoring
+the repo prefix.
+
+---
+
+## tk-0004 — the pure classifier
+
+`classifyHeadTransition({ prev, head, parents, reflogSubject, indexAtPre, commandScan })`. Pure,
+single type-only import. Checks run cheapest-first and **every one can only move the answer toward
+silence**.
+
+Both `done_when` items are guards, so both were proven **by refusal**, not by passing:
+
+- planting `import { readFileSync } from 'node:fs'` → the purity test failed with
+  ``/from\s+['"]node:fs['"]/ must not appear: expected true to be false``.
+- planting `gitDirState?: { MERGE_HEAD: boolean }` into `TransitionInputs` → the no-`.git`-state
+  test failed. It scans the **interface block only**, so naming `MERGE_HEAD` in the prose that
+  explains its absence stays legal while declaring it as a field does not.
+
+**Mutation checks**: index check removed → 8 RED; `unknown` treated as `clean` → RED; reflog
+matched as a substring → RED.
+
+---
+
+## tk-000d — the command scan, and the bug the real-git suite found
+
+### The most important finding on this plan
+
+> **A unit test built from a plausible-looking fabricated reflog subject PASSED while the deny list
+> matched a prefix that no real pull has ever produced.**
+
+git writes the **whole argv** into the reflog subject:
+
+```
+pull -q --ff-only origin main: Fast-forward
+```
+
+not `pull: Fast-forward`. The implementation matched the literal prefix `pull:` — matching **no
+real pull, ever** — and the unit test agreed with it, because both came from the same imagination.
+The provocation row against a real repository went RED and exposed it.
+
+This is the entire argument for driving real repositories rather than the pure function, and it was
+settled by a failing row instead of an argument. The fix: take the phrase before the **first
+colon**; its leading word is the operation. Every reflog string in the unit tests is now one git
+actually produced, with a comment at `classify-head-transition.test.ts` banning fabricated ones —
+**that comment is the thing that stops this being re-introduced in six months.**
+
+Consequences pinned as tests: `commit: pull: rename the helper` still **emits** (the phrase is just
+`commit`); `commit (initial)` is **authorship**, while `(amend)`, `(merge)` and `(cherry-pick)` are
+not.
+
+### The scan itself
+
+Segments split on `&&`, `||`, `;`, `|` and newline, **every** segment inspected, matched at the git
+*invocation*. Measured from 76 captured Cursor PRE payloads: the agent chains
+`git add -A && git commit …` in **one** Shell tool call, so an import chained the same way reaches
+PRE with a **clean** index and index-at-PRE cannot see it. A first-token scan misses every real
+instance.
+
+`checkout`, `restore` and `reset` are qualified rather than blanket-matched (`--` pathspec,
+`--source`, a target ref) because `git checkout -b foo` authors nothing and silencing it would cost
+ordinary work.
+
+Two decisions, both upheld on review:
+
+1. **`unavailable` ABSTAINS.** It neither silences nor approves. If a missing command forced
+   silence, any client that sends no command would have the feature switched off wholesale — a
+   config-shaped outage that looks like a working guard. Abstaining keeps the layer's property
+   intact: it only ever **adds** silence when it positively recognises an import, so it introduces
+   **no new false-positive path and no new false-negative path**.
+2. **The captured Cursor line is asserted as `authors-only`** — a positive control on the guard
+   itself. If it ever scanned as an import, the feature would emit nothing and every silence row
+   would pass for the wrong reason: a suite green because the system is dead.
+
+### A known-blind row that was not blind
+
+The heredoc row was specified as KNOWN-BLIND. Built as specified, it went **RED**: the heredoc body
+is in the same command string and the scan splits on newlines, so it **is** caught. It moved to the
+caught rows with a comment saying it is caught **incidentally, not by design** — the row was not
+deleted for contradicting the spec, and the accident was not recorded as a capability. Script
+wrapper, alias and Makefile target remain genuinely blind and assert EMIT.
+
+### Defence in depth, measured (dw-001f)
+
+| negation | RED rows |
+|---|---|
+| command scan OFF only | **5** — every defeater-INSIDE-bracket row |
+| index-at-PRE OFF only | **7** — every defeater-BEFORE-bracket row |
+| both OFF | **12** — the exact union |
+
+The failure sets are **disjoint**: neither layer covers for the other, and that is now measured
+rather than argued.
+
+### What an over-emit costs is UNMEASURED
+
+Stated as the open question it is — neither upgraded to "fabricates authorship" nor downgraded to
+"harmless". The six events tell the daemon a commit happened; the line-level attribution is
+git-ai's own, computed from checkpoint records its hooks wrote. A row records the observed daemon
+behaviour for an over-emit and reports **SKIPPED** without a live daemon; it deliberately asserts
+nothing about the outcome, because an assertion there would encode the very guess it exists to
+replace.
+
+---
+
+## tk-0005 / tk-0007 — the provocation suite and the intercept
+
+32 rows, each driving **real git in an isolated repository** and asserting on the **runtime's**
+decision, in the real agent shape: `PRE fire → the transition → POST fire`.
+
+The intercept takes the **claim before the emit** (the POC writes state *after* emitting — that is
+the window). Three racing POSTs against a real filesystem produce exactly **one** emit. Every
+failure is an outcome, never a throw. The baseline is re-based on every POST path *including the
+silent ones*: an ignored checkout still moved HEAD, and leaving a stale baseline would make the
+next commit look like a multi-commit jump and be dropped too.
+
+### Trade-off recorded: `SLOW_TESTS` and the fast scope
+
+The suite costs ~8.7s, so it is registered in `SLOW_TESTS` (`vitest.config.ts`) with a measured
+median, consistent with the existing band. **Name the consequence:** this suite is the *only* proof
+the guard works, and `SLOW_TESTS` means **it does not run under `just test`**. A developer on the
+default scope gets **zero signal on the most safety-critical thing in this plan**, and the
+fast-scope banner reports green regardless. CI sets `HARNESS_TEST_SCOPE=all`, so the branch is
+covered — but a broken guard can pass a green local run. Written down here so it is not discovered
+by shipping.
+
+### Gate evidence (baton `s077-gate`, lease `lease-08ce0cc5`)
+
+`just test-all` — the scope CI gates on:
+
+```
+ Test Files  363 passed (363)
+      Tests  5451 passed (5451)
+Statements : 89.91%  Branches : 81.32%  Functions : 92.3%  Lines : 92.25%
+```
+
+5451 vs the 5326 at the previous commit — +125 tests, no regressions.
+
+`just checks` — `degraded`, exit 0, with the **identical** finding counts to the previous commit
+(2 arch / 211 markdown / 7 windows). Every degraded gate is pre-existing and in files this diff
+does not touch; the four new service modules under `src/services/hooks/` added **zero** findings
+(dependency-cruiser now cruises 319 modules, up from 315, with the same two warnings naming
+`services/telemetry/sync-service.ts` and `services/telemetry/ref-source.ts`). `markdown-lint`
+still ignores `docs/plans/**`, so this log remains **unscanned, not proven clean**.

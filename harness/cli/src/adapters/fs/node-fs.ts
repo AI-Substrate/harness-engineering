@@ -269,6 +269,22 @@ export class NodeFs implements FsPort, FileSystemWritePort {
     writeFileSync(path, contents);
   }
 
+  createExclusive(path: string, contents: string): boolean {
+    // 'wx' is open(O_CREAT|O_EXCL|O_WRONLY): the existence check and the create
+    // are ONE syscall, so there is no window for a second caller to slip between
+    // them. EEXIST means someone else won — a normal outcome, not an error.
+    let descriptor: number | null = null;
+    try {
+      descriptor = openSync(path, 'wx');
+      writeFileSync(descriptor, contents);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      if (descriptor !== null) closeSync(descriptor);
+    }
+  }
+
   normalizeBundleTargetIdentity(target: string): string {
     return resolve(target);
   }

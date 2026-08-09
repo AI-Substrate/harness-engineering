@@ -267,3 +267,39 @@ describe('ExecGit — the reflog read against REAL git (plan 082 tk-0002)', () =
     }
   });
 });
+
+describe('the index-state read (plan 082 tk-0003)', () => {
+  it('FakeGit defaults to `unknown` — the state that makes the guard stay SILENT', () => {
+    // A default of `clean` would make every test that forgot to seed it look like
+    // a genuine authored commit, which is the exact failure the discriminator exists
+    // to prevent. The safe default must be the honest one.
+    const git = new FakeGit();
+    expect(git.indexState()).toBe('unknown');
+    expect(git.calls).toEqual(['indexState']);
+    expect(new FakeGit({ indexState: 'already-staged' }).indexState()).toBe('already-staged');
+  });
+
+  it('ExecGit maps real git exit codes: 0 clean, 1 already-staged, otherwise unknown', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'harness-indexstate-'));
+    const git = (args: string[]): string =>
+      execFileSync('git', args, { cwd: dir, encoding: 'utf8', env: hermeticGitEnv() }).trim();
+    try {
+      // Not a repository at all → the read failed; never silently `clean`.
+      expect(new ExecGit(dir).indexState()).toBe('unknown');
+
+      git(['init', '-q', '-b', 'main']);
+      // UNBORN HEAD with an empty index: still readable, and clean. This matters —
+      // the first commit in a repository is a case the guard must get right.
+      expect(new ExecGit(dir).indexState()).toBe('clean');
+
+      writeFileSync(join(dir, 'a.txt'), 'a\n');
+      git(['add', 'a.txt']);
+      expect(new ExecGit(dir).indexState()).toBe('already-staged');
+
+      git(['commit', '-qm', 'seed']);
+      expect(new ExecGit(dir).indexState()).toBe('clean');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

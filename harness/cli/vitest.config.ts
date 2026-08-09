@@ -27,6 +27,7 @@ import { configDefaults, defineConfig } from 'vitest/config';
  */
 export const SLOW_TESTS = [
   'test/adapters/git/exec-remote-telemetry-git.int.test.ts', // 25.5s · 712 spawns
+  'test/services/hooks/provocation.int.test.ts', //             8.7s · real git, 32 isolated repos
   'test/sensors/tui/pty-input.test.ts', //                     10.4s · skipped on win32
   'test/adapters/git/cat-file-batch.int.test.ts', //            6.9s · 117 spawns
   'test/adapters/git/exec-git-write.int.test.ts', //            6.0s · 119 spawns

@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { GIT_MAX_BUFFER } from './exec-git-limits.js';
-import type { GitPort, ReflogEntry, ReflogRead } from './git-port.js';
+import type { GitPort, IndexState, ReflogEntry, ReflogRead } from './git-port.js';
 
 /** Real git access — wraps `git rev-parse` (read-only, informational). */
 function isAbsoluteWorktreePath(path: string): boolean {
@@ -182,5 +182,39 @@ export class ExecGit implements GitPort {
       return { status: 'unavailable', reason: 'unreadable' };
     }
     return parseReflogPorcelain(result.stdout, limit);
+  }
+
+  indexState(): IndexState {
+    // `--quiet` makes the exit code the whole answer: 0 clean, 1 staged. No
+    // stdout is parsed, so there is nothing to mis-frame. `--` terminates
+    // options; the command takes no user input at all.
+    const result = spawnSync('git', ['diff', '--cached', '--quiet', '--'], {
+      cwd: this.cwd,
+      encoding: 'utf8',
+      timeout: this.timeoutMs,
+    });
+    if (result.error !== undefined) return 'unknown';
+    if (result.status === 0) return 'clean';
+    if (result.status === 1) return 'already-staged';
+    // 129 (not a repository) and anything else: the read failed. `unknown`, and
+    // the guard treats it as it treats already-staged — silence.
+    return 'unknown';
+  }
+
+  headParents(): readonly string[] | null {
+    // `rev-list --parents -1 HEAD` prints one line: `<commit> <parent>...`. The
+    // commit's own sha leads, so the parents are everything after it.
+    const result = spawnSync('git', ['rev-list', '--parents', '-1', 'HEAD'], {
+      cwd: this.cwd,
+      encoding: 'utf8',
+      timeout: this.timeoutMs,
+    });
+    if (result.error !== undefined || result.status !== 0) return null;
+    const fields = result.stdout.trim().split(/\s+/).filter(Boolean);
+    if (fields.length === 0 || !OID.test(fields[0].toLowerCase())) return null;
+    const parents = fields.slice(1).map((f) => f.toLowerCase());
+    // A field that is not an OID means the output was not what we assumed; report
+    // nothing rather than a half-parsed lineage.
+    return parents.every((p) => OID.test(p)) ? parents : null;
   }
 }

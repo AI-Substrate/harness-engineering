@@ -720,3 +720,40 @@ describe('NodeFs', () => {
     }
   });
 });
+
+describe('createExclusive — the claim primitive (plan 082 tk-0003)', () => {
+  it('NodeFs and FakeFs agree: the first call creates, every later call loses', () => {
+    /*
+    Test Doc:
+    - Why: the commit guard's concurrency defence is O_EXCL. If the fake models it
+      as an ordinary write, every concurrency test in the suite passes while the
+      real system double-emits.
+    - Contract: createExclusive returns true exactly once per path, false after,
+      and never overwrites the existing contents.
+    - Quality Contribution: pins REAL and FAKE to the same behaviour in one test,
+      so they cannot drift.
+    */
+    const dir = mkdtempSync(join(tmpdir(), 'harness-createexcl-'));
+    try {
+      const real = new NodeFs();
+      const target = join(dir, 'claim');
+      expect(real.createExclusive(target, 'first')).toBe(true);
+      expect(real.createExclusive(target, 'second')).toBe(false);
+      expect(real.readText(target)).toBe('first');
+
+      const fake = new FakeFs();
+      expect(fake.createExclusive('/x/claim', 'first')).toBe(true);
+      expect(fake.createExclusive('/x/claim', 'second')).toBe(false);
+      expect(fake.readText('/x/claim')).toBe('first');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('reports an impossible create as LOST rather than throwing', () => {
+    // A missing parent directory is an I/O failure, not a win. The caller must
+    // never read "I could not claim this" as "I claimed this".
+    const real = new NodeFs();
+    expect(real.createExclusive('/nonexistent-root-42/claim', 'x')).toBe(false);
+  });
+});

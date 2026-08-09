@@ -55,6 +55,24 @@ export interface FsPort {
   writeText(path: string, contents: string): void;
   /** Write raw bytes exactly. Caller ensures the parent directory exists. */
   writeBytes(path: string, contents: Uint8Array): void;
+  /**
+   * Create `path` with `contents` ONLY if it does not already exist, and report
+   * which happened: `true` when THIS call created it, `false` when it was already
+   * there (plan 082 tk-0003).
+   *
+   * `O_EXCL` semantics, and the exclusivity is the entire point — this is a CLAIM,
+   * not a write. The commit guard fires once per agent tool call, so two POST
+   * phases can race on the same commit; both would read the same prior state and
+   * both would emit, giving the collector two sessions for one commit. Whoever
+   * creates the marker owns the transition; everyone else sees `false` and stays
+   * silent. A read-then-write pair cannot express that — the window between the
+   * two is exactly the bug.
+   *
+   * Never throws for the ordinary loser case: losing the race is a normal outcome,
+   * not an error. Any other I/O failure also returns `false`, because a claim that
+   * could not be established must never be treated as won.
+   */
+  createExclusive(path: string, contents: string): boolean;
   /** Canonical native absolute identity for a bundle target; path aliases converge. */
   normalizeBundleTargetIdentity(target: string): string;
   /** Create a unique sibling temp directory on the target filesystem. */
