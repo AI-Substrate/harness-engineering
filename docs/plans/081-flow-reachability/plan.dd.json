@@ -105,7 +105,7 @@
         {
           "id": "ph-1bca",
           "title": "The flow check verb, red-first",
-          "brief": "Add the check verb to the flow act family (acts/flow.ts; one registration line in app.ts if a new act module is cleaner). Working invocation: harness flow check --plan-dir <dir> [--flow <path>] — clause 2 resolves the flight plan at <dir>/the-flow.json by default, --flow overrides (same convention as plan ready). Red-first against the phase-1 fixtures, including the 099-shaped one. Clause 1: plan validity via the plan validate --json envelope of this same binary (CLI-is-the-API; child process, precedent validate-harness-flow). Clause 2: flight-plan existence/readability via readFlowDoc; E301 absent, E308 legacy, E300 malformed and E306 future-version each get a DISTINCT reported reason and ALL compose as the warning class (ruled polarity: only a missing/unusable-plan-document is an error; an unusable flow warns). Verdicts: plan-invalid-or-missing=error(exit 1); plan-ok-but-flow-absent-or-unusable(E301/E308/E300/E306)=degraded warning(exit 0); both-good=ok(0). Envelope counts examined and excluded artifacts; next_action carries the bare create invocation from phase 1.",
+          "brief": "Add the check verb — SEAM BROKERED BY PRIME (acts/flow.ts is koala-hot with three claimants; do not open it or the app.ts registration line until prime grants a window/fold; preferred fallback: a separate act module so flow.ts itself stays untouched, if prime clears the single app.ts line). Working invocation: harness flow check --plan-dir <dir> [--flow <path>] — clause 2 resolves the flight plan at <dir>/the-flow.json by default, --flow overrides (same convention as plan ready). Red-first against the phase-1 fixtures, including the 099-shaped one. Clause 1: plan validity via the plan validate --json envelope of this same binary (CLI-is-the-API; child process, precedent validate-harness-flow). Clause 2: flight-plan existence/readability via readFlowDoc; E301 absent, E308 legacy, E300 malformed and E306 future-version each get a DISTINCT reported reason and ALL compose as the warning class. Verdicts: plan-invalid-or-missing=error(exit 1); plan-ok-but-flow-absent-or-unusable=degraded warning(exit 0); both-good=ok(0). Envelope counts examined and excluded artifacts; next_action carries the bare create invocation from phase 1.",
           "state": "unchecked",
           "depends_on": [
             "ph-404d"
@@ -396,6 +396,12 @@
           "likelihood": "Medium",
           "impact": "Low",
           "mitigation": "Contract doc names the working name and marks it ratifiable; semantics, not naming, are the load-bearing surface"
+        },
+        {
+          "risk": "acts/flow.ts is triple-claimed (koala rewire, #137, this verb) — phase 2 could collide or stall",
+          "likelihood": "Medium",
+          "impact": "High",
+          "mitigation": "Prime brokers a window or fold before phase 2 touches it; fallback: register the check verb as its own act module IF prime clears the one-line app.ts registration, keeping flow.ts untouched"
         }
       ]
     },
@@ -406,7 +412,8 @@
         "Always invoke THIS worktrees CLI (node harness/cli/bin/harness.js) — bare harness resolves to the root checkouts dist; rebuild with just build after src edits",
         "Explicit pathspecs only, never git add -A; just fix before pushing; tell prime before push/PR",
         "Red-first discipline: each fixtures failing test is committed/observed BEFORE the code that turns it green; label claims MEASURED or REASONED in reports",
-        "Real streams under ~/pi-hacking/pij-worktrees/ are READ-ONLY references — never write there; local fixtures live in harness/cli test fixtures"
+        "Real streams under ~/pi-hacking/pij-worktrees/ are READ-ONLY references — never write there; local fixtures live in harness/cli test fixtures",
+        "CORRECTED FENCE (source: prime message 2026-08-09, quoting koala s080 declared touch set — NOT my memory of it): acts/flow.ts and the app.ts verb-registration line are OFF LIMITS — three claimants (koala rewire ph1-2, #137 --no-dd-link fix, this verb). Phase 2 opens acts/flow.ts ONLY after prime brokers a window/fold; never route to koala directly. A scope statement is a SNAPSHOT — re-verify with prime at phase-2 entry."
       ]
     }
   ]
