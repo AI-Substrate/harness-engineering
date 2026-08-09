@@ -1,0 +1,41 @@
+.harness/extensions/markdown-lint/extension.test.ts
+  s_19a84a88383f5b::t_6856ae70c34946 1-210
+.harness/extensions/markdown-lint/extension.ts
+  s_19a84a88383f5b::t_dddb806f38a8f6 235,239
+  s_19a84a88383f5b::t_0d95e3cf503c94 154-201
+  s_19a84a88383f5b::t_32404399b40446 5
+  s_19a84a88383f5b::t_c584417acc9652 241
+.harness/extensions/markdown-lint/lib/untracked.ts
+  s_19a84a88383f5b::t_f618225c81ce54 1-78
+.harness/extensions/markdown-lint/lib/decision.ts
+  s_19a84a88383f5b::t_ee5aa070a67da1 51
+  s_19a84a88383f5b::t_0784266c3bd850 16
+docs/plans/081-flow-reachability/plan.dd.json
+  s_dfbe7bea3d1b7e::t_b419d434c2ccec 448-452
+docs/plans/081-flow-reachability/plan.dd.md
+  s_dfbe7bea3d1b7e::t_5a312d06915518 208
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ea86c9c45a06c49191e1055edbb7adde6190dd40",
+  "prompts": {},
+  "sessions": {
+    "s_19a84a88383f5b": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "e9a11817-53a3-42b6-a41f-25dcffefd677",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_dfbe7bea3d1b7e": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "d854c5fd-5185-4f9c-99f4-40038b3158a0",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
