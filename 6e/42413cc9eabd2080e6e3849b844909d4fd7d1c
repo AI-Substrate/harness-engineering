@@ -1,0 +1,54 @@
+.harness/extensions/checks/extension.ts
+  s_dfbe7bea3d1b7e::t_8f5fd8e1001643 134-139,143-146,152-153
+  s_dfbe7bea3d1b7e::t_c5c4b28f09e56a 141
+AGENTS.md
+  s_dfbe7bea3d1b7e::t_a8a94873cf0574 42-57
+REPORT.md
+  s_dfbe7bea3d1b7e::t_6472665b86ce2c 1036-1076
+  s_dfbe7bea3d1b7e::t_008e3cea64df82 450,688
+  s_dfbe7bea3d1b7e::t_fa14a105954b5f 101
+  s_dfbe7bea3d1b7e::t_841880cdbbe84a 989-1035
+  s_dfbe7bea3d1b7e::t_ec3979326d4d78 1-100,102-311,315-369
+  s_dfbe7bea3d1b7e::t_4f22cf2ce2e942 370-381,384-407,409-435,439,441,447-449,451-635,637-687,689-731
+  s_dfbe7bea3d1b7e::t_6075792ed64ada 312-314
+  s_dfbe7bea3d1b7e::t_d460b9f0bb516a 408,436-438,440,442-446,636
+  s_dfbe7bea3d1b7e::t_514f0658cad1e3 732-988
+  s_dfbe7bea3d1b7e::t_6c09292c0309da 382-383
+harness/cli/test/architecture/fast-scope-guard.test.ts
+  s_dfbe7bea3d1b7e::t_64b2721ae78aeb 1-48
+.github/workflows/ci.yml
+  s_dfbe7bea3d1b7e::t_693a28bf4ba24d 85-90,92-93
+harness/cli/vitest.config.ts
+  s_dfbe7bea3d1b7e::t_07da625f19bbaf 1
+  s_dfbe7bea3d1b7e::t_141febccc21278 19
+  s_dfbe7bea3d1b7e::t_1b776ad01d330f 21-22
+  s_dfbe7bea3d1b7e::t_d002615230df8f 3-18,20,23-70,77-78
+  s_dfbe7bea3d1b7e::t_ab325f79aeaaa8 2
+justfile
+  s_dfbe7bea3d1b7e::t_fe3bf429005632 209-212,216-223
+  s_2a2451d95e064e::t_20e8888df695aa 224
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "6e42413cc9eabd2080e6e3849b844909d4fd7d1c",
+  "prompts": {},
+  "sessions": {
+    "s_2a2451d95e064e": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "587f8924-3447-4784-b872-2fb1c784af82",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_dfbe7bea3d1b7e": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "d854c5fd-5185-4f9c-99f4-40038b3158a0",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
