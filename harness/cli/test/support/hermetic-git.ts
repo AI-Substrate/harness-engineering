@@ -1,3 +1,5 @@
+import { spawnSync } from 'node:child_process';
+import { statSync } from 'node:fs';
 import { devNull } from 'node:os';
 
 /**
@@ -85,4 +87,55 @@ export function hermeticGitEnv(
     });
   }
   return { ...env, ...overrides };
+}
+
+/**
+ * THE LIVE-DAEMON PAIR (plan 082 tk-0006).
+ *
+ * `vitest.config.ts` sets `GIT_TRACE2_EVENT='0'` for the WHOLE run, which makes a
+ * negative-only fixture trivially true: of course no note appeared — trace2 was
+ * discarded before git even started. A fixture that asserted only that would pass
+ * on a machine where the entire feature was broken.
+ *
+ * So the pair is the point. The NEGATIVE proves a note does not appear when the
+ * events go nowhere; the POSITIVE proves one DOES appear when the same events
+ * reach a live daemon. Only together do they establish that the note is caused by
+ * what we sent.
+ *
+ * This override lives HERE because `hermetic-git-fixtures.test.ts` walks every
+ * `.ts` under `test/` and fails any file other than this one that names a
+ * `GIT_TRACE2*` key — a guard that exists because copy-pasted disables are how the
+ * contamination bug survived the first time.
+ */
+
+/** Where git records the machine's collector ingress. Read, never recomputed. */
+export function globalTrace2Target(): string | null {
+  const result = spawnSync('git', ['config', '--global', '--get', 'trace2.eventTarget'], {
+    encoding: 'utf8',
+    env: hermeticGitEnv({}, { isolateGlobalConfig: false }),
+  });
+  if (result.status !== 0) return null;
+  const value = result.stdout.trim();
+  return value.length > 0 ? value : null;
+}
+
+/**
+ * The live collector socket, or `null` when there is none.
+ *
+ * `null` is the SKIPPED signal for the positive half. A fixture that could not
+ * find a daemon must record SKIPPED — never PASSED — because "no note appeared"
+ * and "nothing was listening" are different facts and only one of them is a
+ * result.
+ */
+export function liveCollectorSocket(): string | null {
+  const target = globalTrace2Target();
+  if (target === null) return null;
+  const match = /^af_unix:(?:stream:|dgram:)?(.+)$/.exec(target.trim());
+  if (match === null) return null;
+  const path = match[1];
+  try {
+    return statSync(path).isSocket() ? path : null;
+  } catch {
+    return null;
+  }
 }

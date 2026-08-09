@@ -79,13 +79,14 @@
         {
           "id": "tk-0006",
           "title": "Build the live-daemon note fixture in test/support/hermetic-git.ts with a PAIRED positive control",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-1",
           "success": "vitest.config.ts:132 sets GIT_TRACE2_EVENT='0' run-wide, so a negative-only fixture is trivially true. hermetic-git-fixtures.test.ts walks EVERY .ts under test/ and allows only this exact path. Assert BOTH directions. Assert note IDENTITY — file, line range AND session id — never a count. Without a live daemon the positive records SKIPPED, never PASSED. IF NO DAEMON IS AVAILABLE IN CI, say so in the execution log: ac-0001 and ac-0002 then end Phase 1 UNPROVEN and that must be visible, not discovered later.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0001",
             "../../../plan.dd.json#acceptance_criteria/ac-0002"
-          ]
+          ],
+          "receipt": "MEASURED on this machine against the live git-ai 1.6.21 daemon — note PRESENT with identity a.txt / range 1-3 / session cross-referenced to the note body. CAUSATION control: identical commit with NO emit -> note ABSENT over a 3s window (10s in the manual probe). Negative half asserts no note when trace2 is discarded."
         },
         {
           "id": "tk-0007",
@@ -101,52 +102,57 @@
         {
           "id": "tk-0008",
           "title": "Implement the trace2 tickler as ONE send() carrying all six newline-joined events",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-1",
           "success": "SocketRelayPort.send(path, payload) opens a connection and half-closes per call — six calls would give the daemon six sessions, not one. Join the six events with newlines into a single payload, as the POC does. No node:net in any service; `just checks` passes WITH the rule added by tk-0001.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0001"
-          ]
+          ],
+          "receipt": "Trace2Tickler over the EXISTING SocketRelayPort; ingress read from git's global trace2.eventTarget, not a reimplemented digest. 12 tests. Mutations: six separate sends -> RED; trailing newline dropped -> RED."
         },
         {
           "id": "tk-0009",
           "title": "Wire `harness hooks fire <agent> --phase pre|post --hook-input stdin` as a core verb",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-1",
           "success": "src/app.ts:469-515 registers core verbs flatly; registerCommitAct is the precedent. Update BOTH frozen lists in test/app.test.ts (two blocks) and test/index.test.ts, AND add the verb to RESERVED_NAMES in src/services/extensions/registry.ts — without it a repo extension can shadow a core verb.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0001"
-          ]
+          ],
+          "receipt": "harness hooks fire <agent> --phase pre|post --hook-input stdin registered in app.ts; 'hooks' added to RESERVED_NAMES; all three frozen verb-list blocks updated (2 in app.test.ts, 1 in index.test.ts) — they caught the omission themselves."
         },
         {
           "id": "tk-000a",
           "title": "Make every failure path exit 0 and silent, proven by fault injection",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-1",
           "success": "Dead socket, unreadable config, malformed payload, non-git directory, thrown exception — each exits 0 and writes nothing the agent can see. Because exit 0 is unconditional, NO assertion anywhere may rest on the exit code alone: it carries no information by design. Assert on the journal.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0007"
-          ]
+          ],
+          "receipt": "5 fault-injection rows through the REAL bin: malformed/empty/scalar payload, non-repo dir, no repo. Each exit 0 + empty stdout. No assertion rests on the exit code."
         },
         {
           "id": "tk-000b",
           "title": "Write every fire outcome to a Phase-1-owned journal, so a silent failure is visible without Phase 2",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-1",
           "success": "`harness hooks status` is a Phase 2 deliverable and Phase 2 depends on Phase 1, so Phase 1 cannot assert on it. The runtime journals emitted / silent-with-reason / failed-with-cause; this task asserts on THAT file with an unreachable socket. Phase 2's status verb merely reads it. Coverage of ac-000b is therefore PARTIAL by design, and Phase 1 must not close claiming that AC.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-000b"
-          ]
+          ],
+          "receipt": "FileHookJournal (JSONL, newest-500). Unreachable ingress journals {kind:'failed',cause:'no af_unix trace2 ingress configured'} — asserted UNCONDITIONALLY, never via hooks status (Phase 2)."
         },
         {
           "id": "tk-000c",
           "title": "Prove the runtime on Linux in the OrbStack VM — the assumption everything rests on",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-1",
           "success": "The plan's own Key Finding says the unsandboxed-hook-runner premise is measured on macOS ONLY and 'the entire design rests on this'. Run the provocation suite and the live-daemon fixture inside the VM. Record the result as MEASURED for Linux with the invocation pasted. Windows stays UNVERIFIED and is written into the findings doc for the remote agent on #108 — a promise to escalate needs an artifact in the same action.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0001"
-          ]
+          ],
+          "receipt": "Linux MEASURED in OrbStack ubuntu (aarch64, node 22.23.2, git 2.48.1): 138/138 hooks tests pass incl. the 32-row provocation suite; live-daemon fixture correctly SKIPPED (no daemon = the CI condition). Windows written up in assets/platform-findings.md with the exact ask for #108."
         },
         {
           "id": "tk-000d",
@@ -250,25 +256,25 @@
           {
             "id": "dw-000d",
             "assertion": "The helper lives in test/support/hermetic-git.ts and hermetic-git-fixtures.test.ts still passes.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-000e",
             "assertion": "The negative asserts no note when trace2 is discarded; the positive asserts the note IS written against a live daemon.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-000f",
             "assertion": "Assertions name the file, the line range AND the session id. Nothing counts notes.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0010",
             "assertion": "Without a daemon the positive records SKIPPED, never PASSED, and the execution log states that ac-0001 and ac-0002 end Phase 1 unproven.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],
@@ -290,13 +296,13 @@
           {
             "id": "dw-0013",
             "assertion": "Exactly ONE send() call carries all six newline-joined events — the daemon sees one session, not six.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0014",
             "assertion": "No node:net import in any service; just checks passes WITH the rule added by tk-0001.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],
@@ -304,19 +310,19 @@
           {
             "id": "dw-0015",
             "assertion": "Both frozen verb-list blocks in test/app.test.ts and the one in test/index.test.ts are updated and green.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0016",
             "assertion": "The verb appears in RESERVED_NAMES in src/services/extensions/registry.ts so a repo extension cannot shadow it.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0017",
             "assertion": "The journal records a successful fire — the assertion does NOT rest on exit code, which is unconditional by design.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],
@@ -324,13 +330,13 @@
           {
             "id": "dw-0018",
             "assertion": "Each of the five injected faults exits 0 and writes nothing the agent can see.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0019",
             "assertion": "No assertion in this task rests on the exit code alone.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],
@@ -338,13 +344,13 @@
           {
             "id": "dw-001a",
             "assertion": "With an unreachable socket, the journal records the failure AND its cause.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-001b",
             "assertion": "The assertion reads the journal file, not harness hooks status — that verb is Phase 2 and cannot be a Phase 1 dependency.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],
@@ -352,13 +358,13 @@
           {
             "id": "dw-001c",
             "assertion": "The provocation suite and the live-daemon fixture both run inside the VM, with the invocation pasted into the execution log.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-001d",
             "assertion": "Windows is written into the findings doc for the remote agent in the same action — a promise to escalate needs an artifact.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],

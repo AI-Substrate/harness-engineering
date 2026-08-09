@@ -415,3 +415,194 @@ does not touch; the four new service modules under `src/services/hooks/` added *
 (dependency-cruiser now cruises 319 modules, up from 315, with the same two warnings naming
 `services/telemetry/sync-service.ts` and `services/telemetry/ref-source.ts`). `markdown-lint`
 still ignores `docs/plans/**`, so this log remains **unscanned, not proven clean**.
+
+
+---
+
+## tk-0006 / tk-0008 — the tickler, and the live-daemon note MEASURED
+
+### The result, on this machine, against the live daemon
+
+Not skipped. `git-ai bg run` was live at the measured pin **1.6.21** with both sockets present, so
+the positive half was runnable and was run. The note the daemon wrote, verbatim:
+
+```
+a.txt
+  s_ed609d39de2442::t_eb4de9492947b2 1-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b18ebf6176be7bdb13b1795d1cc5d94eb262107e",
+  "sessions": {
+    "s_ed609d39de2442": {
+      "agent_id": { "tool": "github-copilot-cli", "id": "62892a0d-…", "model": "unknown" },
+      "human_author": "Jordan Knight <…>"
+    }
+  }
+}
+```
+
+The chain end to end: a commit made with **trace2 discarded** — the sandboxed-agent case this plan
+exists to fix — carried **no note**; our six synthetic events, in **one** send, produced one in
+~400ms. Assertions are on **identity**: the file, the line range `1-3`, and the session id from the
+range line **cross-referenced against the sessions map in the note's own body**, so the three agree
+with each other rather than each merely being present. Never a count — any unsandboxed commit
+anywhere on this machine moves a count.
+
+Observed, and relevant to the unmeasured-harm question: the daemon attributed the lines to tool
+`github-copilot-cli` under the session that was running. The line-level attribution is **git-ai's
+own**, computed from its checkpoint records; our events only told it a commit had happened.
+
+### The causation control
+
+"A note appeared after we emitted" is not the claim "our emit caused the note", and on a machine
+running a live daemon with git-ai's own hooks installed, ambient activity was a genuine competing
+explanation. So the same repository, the same commit, the same wait — and **no emit**: the note is
+**absent** over a window many times longer than the measured arrival. Found by mutating the emit
+away and watching the row stay red for the full window, which is the only way to know a control is
+actually a control.
+
+**Status of the acceptance criteria, stated precisely:** ac-0001 and ac-0002 are
+**MEASURED on macOS against a live daemon**, and **UNVERIFIED in CI** — where no daemon exists and
+the trace2 event stream is disabled run-wide. The fixture records **SKIPPED**, never PASSED, when
+no socket is reachable, and prints the trace2 target it looked at so a skip is diagnosable.
+"SKIPPED" and "unproven" are not the same claim, and neither is "Phase 1 unproven".
+
+### Two guessed formats, one method — name them together
+
+Twice on this plan a **fabricated** artifact produced a test that proved nothing, and the **real**
+artifact corrected it:
+
+1. an imagined reflog subject (`pull: Fast-forward`) that **no pull ever writes** — git writes the
+   whole argv; and
+2. an imagined JSON note shape, when the real note is a **plain-text block terminated by `---`**
+   with JSON after it.
+
+**Both times the fabricated version passed and the real one failed.** Read separately these are two
+typos; read together they are a method — *a test written from an imagined artifact tests the
+imagination, and only the real artifact can fail it.*
+
+### Other decisions
+
+- The hermetic-git guard **failed this very fixture** because a doc comment quoted a trace2 key in
+  `KEY=` form. The comment was reworded — the guard was not exempted. A guard that gets an
+  exemption the first time it inconveniences its author is decoration. A `liveDaemonGitEnv` helper
+  written and then not needed was **deleted** rather than left to explain itself later.
+- The tickler reads the ingress from git's global `trace2.eventTarget` rather than re-deriving
+  git-ai's sha256-of-internal-dir digest as the POC does. A second derivation of someone else's
+  internal path diverges **silently** the moment they change it.
+- **ONE send, not six.** `SocketRelayPort.send()` half-closes per call, so six calls would give the
+  daemon six sessions for one commit. The test asserts the **call count**, because a loop sending
+  each event separately produces identical total bytes and would pass a bytes assertion.
+
+### The scope caveat, stated once and plainly
+
+**Both suites that prove this feature works — `provocation.int.test.ts` and
+`live-daemon-note.int.test.ts` — are in `SLOW_TESTS`, so neither runs under the default
+`just test`. A local green says nothing about whether the guard is correct or whether the emit
+works. CI on `test-all` is the only place they run.** Written down so nobody learns it by shipping.
+
+
+---
+
+## tk-0009 / tk-000a / tk-000b / tk-000c — the verb, its failure paths, and the platforms
+
+### THREE guessed shapes, one method — the full list, in one place
+
+Three times on this plan a **fabricated** artifact produced a test that proved nothing, and the
+**real** artifact corrected it:
+
+1. **the reflog subject** — matched the literal prefix `pull:`, which no pull writes (git writes the
+   whole argv, `pull -q --ff-only origin main: Fast-forward`);
+2. **the note format** — parsed as JSON, when the real note is a plain-text block terminated by
+   `---` with JSON after it;
+3. **the note's attribution line** — parsed only the agent form `s_<session>::t_<turn>`, so a
+   **human-attributed** note (`h_<id>`, no `::`) parsed as *zero* attributions and the row flaked.
+
+**Every time, the fabricated version passed and the real one failed.** Three is a method, not bad
+luck: *a test written from an imagined artifact tests the imagination, and only the real artifact
+can fail it.*
+
+### The over-emit question, ANSWERED — by the flake
+
+The third instance was not merely a parser bug; chasing it answered the plan's biggest open
+question. For the **same commit shape**, this machine's daemon writes **two different notes**:
+
+```
+a.txt
+  s_ed609d39de2442::t_eb4de9492947b2 1-3     <- AGENT (body has "sessions")
+
+a.txt
+  h_9e71e8b09f7cf2 1-3                        <- HUMAN (body has "humans")
+```
+
+Observed across five consecutive runs: **agent ×1, human ×4.**
+
+Our six events tell the daemon *a commit happened here*; they do **not** determine attribution.
+That is git-ai's own computation over the checkpoint records **its** hooks wrote, and with no agent
+checkpoints covering those lines it falls back to **human**. So the observed failure direction of
+an over-emit is a **human-attributed** note — **not** a fabricated claim that the agent wrote
+someone else's code.
+
+**This is NOT a claim that a false agent attribution is impossible.** It was not observed *here*,
+in a repository with no agent checkpoint records. A repository where the agent HAS recent
+checkpoints is a different case and **remains unmeasured**.
+
+The consequence is a boundary, and it is the general lesson: the original row asserted a property
+of a system **we do not control**, which is exactly why it flaked. **A test that asserts someone
+else's behaviour reports their changes as our regressions.** The row now asserts what our emit
+*causes* — a note exists, anchored to this sha, naming this file and this line range with an actor
+cross-referenced against the note's own body — and **records** which kind of actor without
+requiring one.
+
+### An assertion tightened from conditional to unconditional
+
+The journal row was first written as `if (last.outcome?.kind === 'failed') { … }`. That passes on a
+run where the guard never reached the emit at all — **the exact invisible case the journal exists
+to expose**. It is now unconditional: `kind` is `failed` and `cause` is
+`no af_unix trace2 ingress configured`.
+
+### Windows: not "unverified" — INERT
+
+The tickler reads git's global `trace2.eventTarget` and returns `null` for anything that is not
+`af_unix:`. On a named-pipe host it therefore **refuses to emit** and journals
+`no af_unix trace2 ingress configured`. That is honest — it never claims a delivery it did not
+make — but **the feature does nothing on Windows today**. That is a materially different statement
+from "unverified on Windows", and "code-portable but unobserved" would now be too generous.
+`assets/platform-findings.md` carries the four things #108 must check and the exact command.
+
+### Platforms
+
+- **Linux MEASURED** (Ubuntu plucky, aarch64, node v22.23.2, git 2.48.1, OrbStack): **138/138**
+  hooks tests, **including the full 32-row provocation suite** — so the guard's correctness is not
+  a macOS artefact. macOS `node_modules` cannot be reused (rolldown's native binding is
+  per-platform), so the tree was copied into the VM and installed there.
+- A second result for free: the live-daemon fixture recorded **SKIPPED** with its reason printed,
+  which proves the skip path behaves correctly on a machine with **no daemon** — **exactly the CI
+  condition**. CI will record a skip, not a false pass.
+
+### What a default-scope (`just test`) developer DOES and DOES NOT get
+
+**DOES get** — every unit suite (classifier, command scan, tickler payload, hook state, journal,
+payload parsing) **and** `hooks-verb.int.test.ts`, deliberately left in the fast scope at ~1.8s so
+the default loop retains real signal on the verb: exit-0-and-silent on five injected faults, the
+journal recording a failure with its cause, and the hook leaving no trace in the observed repo.
+
+**DOES NOT get** — the two suites that prove the feature actually works:
+`provocation.int.test.ts` (the guard is correct) and `live-daemon-note.int.test.ts` (the emit
+reaches a daemon). Both are in `SLOW_TESTS`. **A green `just test` says nothing about either.** CI
+on `test-all` is the only place they run.
+
+
+### Final gate (baton `s077-gate`, lease `lease-7866c918`)
+
+```
+just test-all   ->  Test Files 367 passed (367)   Tests 5499 passed (5499)
+                    Statements 89.75%  Branches 81.3%  Functions 91.93%  Lines 92.07%
+just checks     ->  degraded, exit 0 — arch 2 / markdown 211 / windows 7
+```
+
+Those three warn-launch counts are **byte-identical to the two previous commits**, so the new act,
+the five new service modules and the seven new test files added **zero** findings. `markdown-lint`
+ignores `docs/plans/**`, so this log and `platform-findings.md` are **unscanned, not proven clean**.

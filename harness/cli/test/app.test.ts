@@ -141,6 +141,7 @@ describe('buildProgram — composition root wiring', () => {
       'doctor',
       // plan 074 — a CORE verb (the safe commit path), registered right after doctor.
       'commit',
+      'hooks',
       'init',
       'new',
       'docs',
@@ -173,6 +174,7 @@ describe('buildProgram — composition root wiring', () => {
       'doctor',
       // plan 074 — a CORE verb (the safe commit path), registered right after doctor.
       'commit',
+      'hooks',
       'init',
       'new',
       'docs',

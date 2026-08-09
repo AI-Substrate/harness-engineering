@@ -5,6 +5,7 @@ import { registerDocsAct } from './acts/docs.js';
 import { registerDoctorAct } from './acts/doctor.js';
 import { registerFlowAct } from './acts/flow.js';
 import { registerHelpAct } from './acts/help.js';
+import { registerHooksAct } from './acts/hooks.js';
 import { registerInitAct } from './acts/init.js';
 import { registerInstructionsAct } from './acts/instructions.js';
 import { registerNewAct } from './acts/new.js';
@@ -479,6 +480,10 @@ export function buildProgram(
   // plan 074 — a CORE verb: the sandbox failure it guards is a property of the
   // MACHINE, not of any repo's toolchain, so it cannot be a per-consumer extension.
   registerCommitAct(program, io);
+  // plan 082 — also a CORE verb, for the same reason: an agent's hook config and
+  // the collector daemon are properties of the MACHINE, not of any repo's
+  // toolchain, and doctor must be able to call it.
+  registerHooksAct(program, { fs: deps.fs, clock: deps.clock, env: deps.env });
   registerInitAct(program, io, deps);
   registerNewAct(program, io, deps);
   registerDocsAct(program, io);
