@@ -359,3 +359,121 @@ and pass for the wrong reason.
 ### Verification
 
 `npx vitest run test/services/hooks/doctor-hooks.int.test.ts` — 7 rows, all through the real bin.
+
+---
+
+## INCIDENT — tk-0002 wrote to a real developer's editor configs, on every gate run
+
+**2026-08-10, ~04:32 local.** Caused by me, in `cb90d388`, ninety minutes before it was found.
+Recovered fully. Recorded here in full because the interesting part is not the bug.
+
+### The line
+
+`harness/cli/src/acts/doctor.ts` — the tk-0002 wiring:
+
+```ts
+const hooks = !autoInstall ? null : autoInstallHooks(hooksDeps({ fs, clock, env }));  // WRONG
+```
+
+`fs` and `env` there are **doctor's own composition-root adapters**, not the injected
+`collectorOverride`. `hooksDeps` resolves `env.home()`, so it found the **real** home regardless of
+what a caller injected, and `embedBinaryPath(process.argv[1])` — inside a vitest worker — wrote
+`…/node_modules/vitest/dist/workers/forks.js` into six real config files. That binary path in a live
+config is what the PM spotted.
+
+### The trigger is the test written for this exact bug
+
+`test/acts/doctor.test.ts` → `runWith(true)`. Its own doc comment, which I did not read carefully
+enough before adding a line to the function it guards:
+
+> Had the auto-install defaulted ON, `vitest` would have fetched a git-ai release and run
+> `install-hooks` machine-wide on whatever box ran it — … **an install-sized blast radius**.
+
+Plan 077 fixed that with **two** things: an opt-in **flag** and an injection **seam**. My line
+honoured the flag and ignored the seam. **So the one test that deliberately opts in, in order to
+prove the seam works, became the vector.**
+
+### Blast radius: every gate run, not one bad run
+
+`test/acts/doctor.test.ts` is in the **fast** scope, so it runs on every `just checks`. I ran the
+gate four times after that line landed. Each one reinstalled.
+
+### THE CORRECTION THAT MATTERS — I reported the reassuring version of my own artifact
+
+In my incident report I wrote: *"every entry is `createdFile:false, createdKeys:[]`. Nothing was
+created and no event key was created, so the damage is strictly two appended array entries per
+file."*
+
+**That was false, and the file I was quoting said so.** I ran `head -20` on the install record, saw
+three benign entries, and generalised. The record actually contained:
+
+```
+/Users/jordanknight/.copilot/hooks/harness.json    createdFile: TRUE
+/Users/jordanknight/.codeium/hooks.json            createdKeys: ["PreToolUse","PostToolUse"]
+/Users/jordanknight/.codeium/windsurf/hooks.json   createdKeys: [...]
+```
+
+Had the PM acted on my summary, a created file and two created keys would have been left behind on a
+machine reported as clean. **This is the same shape this plan has been cataloguing for two days —
+a probe that cannot see the opposite of what it asserts — arriving in an incident report, which is
+where it is most expensive.** `head -20` on evidence is a probe with a horizon, and I did not state
+the horizon; I stated the conclusion.
+
+### A SECOND DEFECT, found BY the recovery
+
+After the clean-up, the install record still held one entry: the config the PM had restored **by
+hand**. Uninstall found no marker, correctly reported it `untouched` — and never pruned its record,
+because pruning was keyed on **what we removed** rather than on **whether the file is still ours**.
+
+That is my own softest claim from tk-000a instantiated, by a route I did not predict: not "a user
+deletes a config by hand" but **the recovery path itself**. Fixed — `unmarked` is the positive
+statement that a file carries nothing of ours, which is exactly when our record of it is obsolete.
+
+### The fixes, and the mechanism
+
+1. **One resolved deps object, both installers.** Doctor now composes hooks from
+   `collectorOverride ?? realCollectorDeps(...)`, through a new `hooksDepsFor(fs, home, env)` whose
+   escapable inputs are **arguments**. `binary` still comes from the running process (the path
+   written into a user's config *is* the running binary) and `env` only reads variables — neither can
+   write outside a fence. `fs` and `home` can, so both are injected.
+   **This is `detectId` and `configPathsFor` for the third time: two independent answers to "where is
+   home" is the defect** — and I reintroduced it in the one place where the cost is a real machine.
+2. **The guard that did not exist.** A row that seeds a detected agent *inside* the injected fs, runs
+   doctor opted-in, and asserts both directions: the config **was** written into the injected
+   filesystem at the injected home (positive — a negative-only guard is satisfied by an install that
+   never ran, and vacuity is how this class survives), and **no** written path is under the real
+   `homedir()`.
+3. **Prune on not-ours**, with a row for the out-of-band case.
+
+### Proven by refusal, safely
+
+Reverting fix 1 and rerunning: **RED — 2 failed | 5 passed**. The mutation was run with `HOME`
+redirected into a sandbox, and the sandbox assertion confirms **the escape was reproduced there**
+(`…/escape-sandbox-2fd7Iz/.cursor/hooks.json` was created) — so the RED is the guard seeing the real
+defect, not a red for some other reason, **and no real config was touched to prove it.** The real
+home was verified clean before and after: zero marker residue in all five, `~/.copilot/hooks/`
+holding only `git-ai.json`, no install record.
+
+Prune fix: **RED — 1 failed | 14 passed**.
+
+### The uninstall verb performed a real recovery on real damage
+
+Worth stating plainly: the PM cleaned five contaminated configs and one created file with
+`harness hooks uninstall` — provenance-driven, deleting a file it had created and stripping entries
+from files it had not. **Four hours after we argued about whether an operator-facing recovery verb
+was worth building, an operator needed it.** The argument for it was that everyone who reaches for
+it already has a problem; the person who had the problem was us.
+
+### The transferable lesson, which is about guards and not about care
+
+Plan 077's protection had two halves and **only one of them is visible in the function signature**.
+I satisfied the visible half. Independently, the PM verified my `restore` verb by looking for
+`restore` in a command list where `uninstall` was missing four lines above it — checking for the
+expected item rather than auditing the list.
+
+> **A guard whose two halves are not both visible at the point of use will be half-satisfied by a
+> competent person in a hurry. That is a property of the guard, not of the person.**
+
+Hence fix 2 is a *mechanical* assertion of the seam rather than a comment asking the next person to
+remember it — and the doctor call site now carries the wrong version of itself in a comment, so the
+next reader sees the trap and not just the rule.

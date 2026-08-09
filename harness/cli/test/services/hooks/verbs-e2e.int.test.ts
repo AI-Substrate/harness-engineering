@@ -436,3 +436,46 @@ describe('one broken agent config does not cost you the others', () => {
     expect(existsSync(join(home, '.claude', 'settings.json'))).toBe(true);
   });
 });
+
+describe('provenance is pruned on NO-LONGER-OURS, not on WE-REMOVED-IT', () => {
+  /*
+   * MEASURED DURING A REAL RECOVERY, by a route nobody predicted.
+   *
+   * After the doctor escape wrote to a real machine, one config was restored BY HAND
+   * from a byte snapshot and the rest were cleaned with `harness hooks uninstall`.
+   * Uninstall correctly found no marker in the hand-restored file, reported it
+   * untouched — and KEPT ITS PROVENANCE ENTRY, because pruning was keyed on whether
+   * we removed something rather than on whether the file is still ours.
+   *
+   * The stale direction is safe (a stale entry can only ever make us remove a key we
+   * DID create), which is why this is a correctness fix rather than an incident. But
+   * `unmarked` is the positive statement that the file carries nothing of ours, and
+   * that is exactly the condition under which our record of it is obsolete.
+   */
+  it('a config cleaned OUT-OF-BAND has its record entry dropped', () => {
+    mkdirSync(join(home, '.cursor'), { recursive: true });
+    const config = join(home, '.cursor', 'hooks.json');
+    const before = `${JSON.stringify({ hooks: { beforeShellExecution: [] } }, null, 2)}\n`;
+    writeFileSync(config, before);
+
+    run(['install', '--json']);
+    const recordPath = join(home, '.harness', 'hooks', 'install-record.json');
+    const entriesOf = () =>
+      (JSON.parse(readFileSync(recordPath, 'utf8')) as { entries: { path: string }[] }).entries.map(
+        (e) => e.path,
+      );
+    expect(entriesOf()).toContain(config);
+
+    // Out of band: the user (or a recovery) puts the file back by hand.
+    writeFileSync(config, before);
+
+    const report = JSON.parse(run(['uninstall', '--json'])) as {
+      untouched: { path: string }[];
+      removed: unknown[];
+    };
+    expect(report.untouched.map((u) => u.path)).toContain(config);
+    expect(report.removed).toEqual([]);
+    // The record no longer claims a file that carries nothing of ours.
+    expect(entriesOf()).not.toContain(config);
+  });
+});

@@ -503,6 +503,16 @@ export function uninstallHooks(deps: HooksDeps): UninstallReport {
         }
         if (outcome.unmarked) {
           untouched.push({ agent: outcome.agent, path: outcome.path });
+          // PRUNE ON "NO LONGER OURS", NOT ON "WE REMOVED IT".
+          //
+          // MEASURED, and by a route nobody predicted: after a real recovery on a
+          // real machine, one config had been restored BY HAND from a byte snapshot.
+          // Uninstall correctly found no marker and reported it untouched — and kept
+          // its provenance entry forever, because pruning was keyed on removal.
+          // `unmarked` is the positive statement that the file carries nothing of
+          // ours, which is exactly the condition under which our record of it is
+          // stale.
+          done.push(outcome.path);
           continue;
         }
         if (outcome.removed > 0 || outcome.deleted) {

@@ -22,6 +22,23 @@ import type {
  */
 
 export class FakeCollectorFs implements CollectorFsPort {
+  /** A config that is not a symlink resolves to itself — the hooks writer asks. */
+  realpath(path: string): string | null {
+    return this.exists(path) ? path : null;
+  }
+
+  /** Entry names directly inside a directory; `[]` when absent. */
+  readdir(path: string): string[] {
+    const prefix = `${path.replace(/\/+$/, '')}/`;
+    const names = new Set<string>();
+    for (const key of [...this.files.keys(), ...this.dirs]) {
+      if (!key.startsWith(prefix)) continue;
+      const rest = key.slice(prefix.length);
+      if (rest.length > 0) names.add(rest.split('/')[0]);
+    }
+    return [...names].sort();
+  }
+
   readonly files = new Map<string, Uint8Array>();
   readonly dirs = new Set<string>();
   readonly writes: string[] = [];

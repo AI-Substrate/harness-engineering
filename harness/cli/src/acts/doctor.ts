@@ -3,6 +3,7 @@ import { SystemClock } from '../adapters/clock/system-clock.js';
 import { NodeDb } from '../adapters/db/node-db.js';
 import { NodeEnv } from '../adapters/env/node-env.js';
 import { NodeExec } from '../adapters/exec/node-exec.js';
+import type { FsPort } from '../adapters/fs/fs-port.js';
 import { NodeExecutableBit } from '../adapters/fs/node-executable-bit.js';
 import { NodeFs } from '../adapters/fs/node-fs.js';
 import { NodePathKind } from '../adapters/fs/node-path-kind.js';
@@ -37,7 +38,7 @@ import { autoInstallHooks } from '../services/hooks/hooks-verbs.js';
 import type { RecordRegistry } from '../services/record/registry.js';
 import { toPosix } from '../services/shared/posix-path.js';
 import { readVersion } from '../version.js';
-import { hooksDeps } from './hooks.js';
+import { hooksDepsFor } from './hooks.js';
 
 /**
  * The host the git-ai collector resolves against.
@@ -246,11 +247,17 @@ export function registerDoctorAct(
         //
         // Skipped entirely when the host has no home directory — the collector
         // cannot be located, and the report says so through its own row.
+        // RESOLVED ONCE, and that is now load-bearing rather than tidy — see the
+        // hooks block below.
+        const collectorDeps =
+          host === undefined
+            ? null
+            : (collectorOverride ?? realCollectorDeps(host, toPosix(proc.cwd())));
         const auto =
-          host === undefined || !autoInstall
+          collectorDeps === null || !autoInstall
             ? null
             : await autoInstallCollector(
-                collectorOverride ?? realCollectorDeps(host, toPosix(proc.cwd())),
+                collectorDeps,
                 // The composition root reads the global, never the service (P2).
                 env.get(COLLECTOR_OPT_OUT_ENV) === '1',
               );
@@ -264,11 +271,33 @@ export function registerDoctorAct(
         // differs from what the operator believes and nothing said so. Failures
         // come back as warnings and are printed beside the collector's.
         //
-        // Composed through the hooks act's OWN `hooksDeps`, never a second copy:
-        // doctor building its own would be free to resolve a different binary path
-        // or home, and the config written on first run would then differ from the
-        // one `harness hooks status` reads back.
-        const hooks = !autoInstall ? null : autoInstallHooks(hooksDeps({ fs, clock, env }));
+        // COMPOSED FROM THE SAME RESOLVED `collectorDeps` AS THE COLLECTOR ABOVE,
+        // AND THIS LINE HAS ALREADY GONE WRONG ONCE — it wrote to a real developer's
+        // editor configs (2026-08-10). It read the composition root's own adapters:
+        //
+        //   autoInstallHooks(hooksDeps({ fs, clock, env }))   // WRONG
+        //
+        // which resolves `env.home()` to the REAL home no matter what a caller
+        // injected. Plan 077 protected the collector from exactly this with TWO
+        // things — an opt-in FLAG and an injection SEAM (`collectorOverride`) — and
+        // that line honoured the flag while ignoring the seam. So the one test that
+        // deliberately opts in, in order to prove the seam works, ran the real
+        // installer against the real machine on every gate run.
+        //
+        // The rule, which is `detectId` and `configPathsFor` for the third time:
+        // TWO INDEPENDENT ANSWERS TO "WHERE IS HOME" IS THE DEFECT. An injected
+        // override must move the hooks install exactly as it moves the collector's,
+        // so both read one resolved object.
+        //
+        // `binary` still comes from the running process (that is what must be
+        // written into a user's config) and `env` still reads variables — neither
+        // can escape a fence. `fs` and `home` can, so both come from `collectorDeps`.
+        const hooks =
+          !autoInstall || collectorDeps === null
+            ? null
+            : autoInstallHooks(
+                hooksDepsFor(collectorDeps.fs as FsPort, collectorDeps.host.home, env),
+              );
         const report = buildDoctorReport(
           {
             fs,

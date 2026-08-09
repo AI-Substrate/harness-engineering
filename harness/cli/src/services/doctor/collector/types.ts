@@ -97,6 +97,14 @@ export type CollectorFsPort = Pick<
   | 'rename'
   | 'deleteFile'
   | 'removeDir'
+  // `realpath` is here for the HOOKS installer, not the collector: `harness doctor`
+  // installs our agent hooks from these same deps, and the comment-preserving
+  // writer resolves a symlinked config before writing through it. It is listed
+  // because doctor MUST compose both installers from ONE resolved deps object —
+  // two independent answers to "where is home" is what wrote to a real developer's
+  // editor configs on 2026-08-10.
+  | 'realpath'
+  | 'readdir'
 >;
 
 /** Everything the install/re-check lifecycle needs. */

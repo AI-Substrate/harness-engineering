@@ -144,10 +144,35 @@ export function registerHooksAct(program: Command, deps: HooksActDeps): void {
 export function hooksDeps(deps: HooksActDeps): HooksDeps | null {
   const home = deps.env.home();
   if (home === undefined || home.trim() === '') return null;
+  return hooksDepsFor(deps.fs, home, deps.env);
+}
+
+/**
+ * The same composition, from an EXPLICITLY SUPPLIED fs and home.
+ *
+ * WHY THE HOME IS A PARAMETER AND NOT READ HERE. `harness doctor` installs hooks
+ * too, and it must resolve them through the deps a caller INJECTED — otherwise an
+ * injected fence moves the collector's installer and not ours. That is not
+ * hypothetical: the doctor call site read the composition root's own adapters for
+ * one commit, and the test that opts the auto-install in — written for plan 077
+ * after the identical bug — ran the real installer against a real developer's
+ * editor configs on every gate run.
+ *
+ * So the escapable inputs are arguments. `binary` stays derived from the running
+ * process, because the path written into a user's config IS the running binary and
+ * no caller can supply a truthful substitute; `env` only reads variables. Neither
+ * can write outside a fence; `fs` and `home` can.
+ */
+export function hooksDepsFor(
+  fs: FsPort,
+  home: string,
+  env: Pick<EnvPort, 'get'>,
+): HooksDeps | null {
+  if (home.trim() === '') return null;
   return {
-    fs: deps.fs,
+    fs,
     home: home.replace(/\\/g, '/').replace(/\/+$/, ''),
-    env: (name) => deps.env.get(name),
+    env: (name) => env.get(name),
     // The binary the hook command names — resolved, normalised and ALWAYS quoted.
     binary: embedBinaryPath(process.argv[1] ?? 'harness'),
   };

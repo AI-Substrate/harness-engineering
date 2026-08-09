@@ -1,5 +1,5 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Command } from 'commander';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -11,6 +11,7 @@ import type { CliIo, OutputMode, Writers } from '../../src/output/output-port.js
 import type { CollectorDeps } from '../../src/services/doctor/collector/types.js';
 import type { HarnessVerb } from '../../src/services/extensions/contract.js';
 import type { VerbRegistry } from '../../src/services/extensions/registry.js';
+import { HOOK_MARKER } from '../../src/services/hooks/hook-marker.js';
 import { toPosix } from '../../src/services/shared/posix-path.js';
 import {
   FakeCollectorFs,
@@ -288,5 +289,66 @@ describe('plan 077 — a bare doctor auto-installs ONLY when production opts in'
     // came back empty, the test above would be proving nothing.
     expect(exec.length).toBeGreaterThan(0);
     expect(announced).toContain('git-ai collector:');
+  });
+});
+
+/**
+ * THE GUARD THAT DID NOT EXIST, and its absence cost a real developer's editor
+ * configs (2026-08-10, plan 082 tk-0002).
+ *
+ * WHAT HAPPENED. `harness doctor` gained a second installer — our agent hooks —
+ * and its call site read the COMPOSITION ROOT's own adapters rather than the
+ * injected `collectorOverride`:
+ *
+ *   autoInstallHooks(hooksDeps({ fs, clock, env }))
+ *
+ * `hooksDeps` resolves `env.home()`, so the injected fence moved the collector's
+ * installer and not ours. The row directly above — `runWith(true)`, written for
+ * plan 077 AFTER THE IDENTICAL BUG, whose own doc comment names "an install-sized
+ * blast radius" — then ran the real installer against the real machine. It is in
+ * the FAST test scope, so EVERY `just checks` reinfected the box, not just one run.
+ *
+ * WHY NOTHING CAUGHT IT. Plan 077's protection has two halves — an opt-in FLAG and
+ * an injection SEAM — and only the flag is visible in the function signature. A
+ * competent reader satisfies the visible half and walks past the other. That is a
+ * property of the guard, not of the reader, which is why this file now asserts the
+ * seam MECHANICALLY instead of trusting the next person to notice it.
+ *
+ * The assertion is deliberately POSITIVE as well as negative: proving "nothing was
+ * written outside the fence" is satisfied by an install that never ran at all, and
+ * a vacuous guard is how this class survives. So it also proves the install DID
+ * happen, inside the injected filesystem.
+ */
+describe('plan 082 — doctor installs hooks ONLY into the INJECTED deps', () => {
+  it('writes our hook into the injected fs at the injected home, and nowhere else', async () => {
+    const calls: string[] = [];
+    const deps = collectorDepsRecording(calls);
+    const fs = deps.fs as FakeCollectorFs;
+    // A DETECTED agent inside the fence. Without this nothing is installed and
+    // every assertion below passes for the wrong reason.
+    fs.mkdirp(`${deps.host.home}/.cursor`);
+
+    const { io } = ioFor('text');
+    vi.spyOn(process, 'exit').mockImplementation(((c?: number) => {
+      throw new Error(`exit:${c ?? 0}`);
+    }) as never);
+    const program = new Command().name('harness');
+    registerDoctorAct(program, io, EMPTY, undefined, deps, { probe }, true);
+    await expect(program.parseAsync(['node', 'harness', 'doctor'])).rejects.toThrow(/^exit:/);
+
+    // POSITIVE: the install ran, through the INJECTED filesystem.
+    const written = [...fs.files.keys()];
+    const config = written.find((p) => p.endsWith('/.cursor/hooks.json'));
+    expect(config).toBe(`${deps.host.home}/.cursor/hooks.json`);
+    expect(new TextDecoder().decode(fs.files.get(config as string))).toContain(HOOK_MARKER);
+
+    // NEGATIVE: nothing landed outside the injected home, and in particular
+    // nothing landed under the REAL one. The real home is named explicitly because
+    // that is the failure that actually happened — a generic prefix check would
+    // pass on a machine whose home happens to sit under the fake path.
+    const realHome = homedir().replace(/\\/g, '/');
+    for (const path of written) {
+      expect(path.startsWith(realHome)).toBe(false);
+    }
   });
 });
