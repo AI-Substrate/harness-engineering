@@ -218,4 +218,7 @@ so far, three sets of findings, each measured rather than argued.
 - **`dd add` needs JSON**, not bare strings; `satisfies` needs a full relative address
   (`../../../plan.dd.json#acceptance_criteria/ac-XXXX`); assertion ids mint with `--mint dw`;
   array rows without ids can only be rewritten wholesale via `set --value-json`.
-- **`harness flow apply --ops` takes a BARE array**, and each op is flat: `{op, id, ...fields}`.
+- **`harness flow apply --ops` takes a FILE PATH** (or `-` for stdin) — **not** an inline JSON
+  string. Passing the JSON directly gives `E301: --ops file not found or unreadable` with your
+  whole payload echoed back as the "filename". The file's contents are a **bare array**, each op
+  flat: `{op, id, ...fields}`; `upsert` creates or updates in one shape.

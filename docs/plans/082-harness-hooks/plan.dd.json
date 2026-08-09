@@ -50,7 +50,7 @@
         },
         {
           "id": "ac-0003",
-          "claim": "No event is emitted unless the agent AUTHORED the commit here. The guard must reject both classes: (a) HEAD did not advance by one — checkout, reset, rebase, amend, no-op, detached HEAD, no prior recorded state; and (b) HEAD DID advance by one whose first parent is the recorded HEAD but nothing was authored — a fast-forward `git pull`/`git merge` of one commit, a `--no-ff` merge commit, `cherry-pick`, and `revert`. Class (b) SATISFIES a naive first-parent check and is the dangerous one: it fabricates a note claiming the agent authored someone else's commit.",
+          "claim": "No event is emitted unless the agent AUTHORED the commit here. THE DISCRIMINATOR IS THE INDEX STATE RECORDED AT PRE — measured, and the only mechanism that works. Three candidates are measured DEAD and must not be relied on: parent-count catches only --no-ff merges; the reflog subject catches ff-pull, cherry-pick, revert and amend; and .git state (MERGE_HEAD/SQUASH_MSG) DOES NOT EXIST when our hook runs — MERGE_HEAD is never written by --squash at all, and SQUASH_MSG is unlinked by git before even git's own post-commit hook fires, so it must not be a classifier parameter. TWO CLASSES MUST BE REJECTED: (a) HEAD did not advance by exactly one — checkout, reset --hard, rebase, amend, no-op, detached HEAD, no prior recorded state, multi-commit ff pull; and (b) HEAD advanced by one whose first parent IS the recorded HEAD but nothing was authored here — the SEVEN MEASURED DEFEATERS merge --squash, cherry-pick -n, revert -n, git apply, checkout REF -- path, restore --source, read-tree -m -u (how git subtree works), plus single-commit ff pull, --no-ff merge, cherry-pick, revert, git am. Class (b) is byte-identical to an authored commit on all three dead mechanisms; at PRE every member has an ALREADY-STAGED index where a genuine agent edit has a CLEAN one. The only permitted error mode is a false NEGATIVE. A human committing inside the PRE/POST bracket is indistinguishable and is an asserted KNOWN-BLIND row, not a gap to close.",
           "state": "unchecked"
         },
         {
@@ -305,6 +305,11 @@
           "impact": "Medium",
           "finding": "Agents write compound && chains unprompted, which defeats Cursor terminal allowlisting — git was already allowlisted and the commit still ran sandboxed.",
           "action": "Never rely on or recommend an allowlist as a remedy."
+        },
+        {
+          "finding": "MEASURED on this machine 2026-08-09: the live ~/.cursor/hooks.json points at scratch/attrib-probe/*.mjs inside the MAIN checkout. scratch/ is untracked working space, so a cleanup silently turns every Cursor tool call into a failing command against a missing file — and nothing reports it, because hook failures are exit-0 by design. A hook whose target has been deleted is indistinguishable, from the customer side, from a hook that works.",
+          "impact": "High",
+          "action": "The installer MUST write an absolute, QUOTED path to a STABLE installed binary, never a source or scratch path. And `harness hooks status` must PROVE the configured target still resolves (stat it) rather than reporting that a config entry exists — otherwise we reintroduce this plan's own silent-failure class from the installer side. Phase 2 turns this into a done_when assertion."
         }
       ]
     },
