@@ -193,6 +193,36 @@ export function ddLinkOf(node: { dd_link?: DdLink }): DdLink | undefined {
   return link as DdLink;
 }
 
+/**
+ * Every key a `dd_link` may carry — the AUTHORED half (`address`, `check`, `gate`)
+ * plus the RECORDED half the gate writes (`basis_sha`, `reading`).
+ *
+ * This is the inner twin of `NODE_FIELDS`: the same "write or refuse" rule, one
+ * level down. It is a closed list rather than a shape check because the whole point
+ * is to catch the key that ALMOST belongs — `kind` for `check`, `gated` for `gate` —
+ * which no amount of validating the keys that ARE present can see.
+ */
+const DD_LINK_KEYS: ReadonlySet<string> = new Set([
+  'address',
+  'check',
+  'gate',
+  'basis_sha',
+  'reading',
+]);
+
+/**
+ * The `dd_link` keys this CLI does not recognise, in the order they were written.
+ *
+ * Separated from {@link sanitizeDdLink} so the refusal can NAME them. `sanitizeDdLink`
+ * answers a yes/no question for untrusted input and must keep returning `null`; the
+ * authoring boundary needs the offending key itself, because "invalid dd_link" sends
+ * a reader looking at the three keys they spelled correctly.
+ */
+export function unknownDdLinkKeys(raw: unknown): string[] {
+  if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return [];
+  return Object.keys(raw as Record<string, unknown>).filter((key) => !DD_LINK_KEYS.has(key));
+}
+
 /** Whether a link gates departure — absent `gate` means gated (see {@link DdLink}). */
 export function ddLinkGates(link: DdLink | undefined): link is DdLink {
   return link !== undefined && link !== null && link.gate !== false;
@@ -240,6 +270,15 @@ const isCount = (v: unknown): v is number =>
 export function sanitizeDdLink(raw: unknown): DdLink | null {
   if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const src = raw as Record<string, unknown>;
+  // An UNRECOGNISED key is refused, exactly as an invalid `check` is (#135, dd
+  // fr-0011). Dropping it was the more dangerous of the two silent failures this
+  // issue found: the near-miss spelling is the one that passes, and what the author
+  // gets back is not "no gate" — it is a DIFFERENT gate. `{kind: "plan-complete"}`
+  // reduced to `{address}` asks the completion question on a section address, and
+  // becomes unevaluable (`E441` at every departure) on a bare document one. Both
+  // discard a stated intent without a word, which is the failure mode where an
+  // author believes the flow is protected in a way it is not.
+  if (unknownDdLinkKeys(raw).length > 0) return null;
   if (typeof src.address !== 'string' || src.address.trim().length === 0) return null;
   if (src.gate !== undefined && typeof src.gate !== 'boolean') return null;
   // The check kind is AUTHORED, so an unrecognised one is refused here rather than
@@ -318,6 +357,54 @@ export interface FlowNode {
   /** Tolerated pass-through fields (agents/output/error/note/…) round-trip. */
   [key: string]: unknown;
 }
+
+/**
+ * Every field a node may carry — the WRITE-side allowlist (#135, dd fr-0011).
+ *
+ * `validateFlowDoc` is deliberately tolerant of extra fields on READ, so pass-through
+ * bookkeeping (`agents`, `output`, `error`) round-trips. That tolerance is right for a
+ * document already on disk and wrong for an op being authored: it is why a `set` op
+ * carrying `{"path": "dd_link", "value": null}` wrote two junk keys onto a node and
+ * reported `ok`. A misspelled field must be neither a no-op nor a success — it must be
+ * a refusal, because the write it performed is not the write anybody asked for.
+ *
+ * MIRRORED from `flow.schema.json`'s `node.required` + `node.optional`, which stays
+ * schema-authoritative; `flow-node-fields-drift.test.ts` asserts set-equality in BOTH
+ * directions, so a field added to the schema and not to this list (or the reverse)
+ * fails rather than silently diverging. The same idiom as `ZONE_VALUES` /
+ * `CHORE_KINDS`, which mirror closed vocabularies for the pre-write guards — with the
+ * drift test those two do not yet have.
+ *
+ * A static constant is correct here rather than the resolved schema threaded through
+ * `MutationDeps`, because NO overlay declares a `node` block: the field set is
+ * core-static and cannot vary by flow kind. The mutation layer stays pure.
+ */
+export const NODE_FIELDS: ReadonlySet<string> = new Set([
+  'id',
+  'type',
+  'label',
+  'status',
+  'next',
+  'branch_of',
+  'created_at',
+  'modified_at',
+  'ran_at',
+  'user_input',
+  'comments',
+  'authority',
+  'agents',
+  'output',
+  'error',
+  'command',
+  'chore',
+  'note',
+  'artifacts',
+  'instructions',
+  'phase',
+  'reconstructed',
+  'zone',
+  'dd_link',
+]);
 
 /**
  * The position object (workshop 002) — the flow's single source of "where am I":
