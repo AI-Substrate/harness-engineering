@@ -1,7 +1,0 @@
-{
-  "dd": { "schema": "links/evidence", "spec": "dd@1" },
-  "sections": [
-    { "name": "entries", "value": [{ "id": "ev-6b7c", "state": "checked" }] }
-  ],
-  "references": []
-}
