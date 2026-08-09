@@ -73,9 +73,12 @@ plan-new bundle). **Order is load-bearing**: checklist (tk-000c) BEFORE deletion
 That total was measured against the **three-check** markdown-lint gate and **will not
 reproduce** after this branch takes main's `6a43fd4d` (PR #146), which adds a fourth
 check, `unexamined`, reporting in-scope untracked markdown. The delta is not a
-regression: the other three checks are unmoved (attribution run at head: markdownlint
-195 / links 15 / mermaid 1 = 211, identical to the phase-2 baseline — nothing in 080
-moved a markdown check).
+regression. The honest form (prime, notice 7): **three checks unchanged; the fourth is
+not available on this branch** — an absent `unexamined` row means "cannot tell", never
+"clean". Attribution run at head: markdownlint 195 / links 15 / mermaid 1 = 211,
+matching the phase-2 measurement. Even that comparison is weaker than it looks: all
+three checks scope from `git ls-files`, so totals are **branch-dependent** and two
+branches can differ with nobody having drifted.
 
 **And the figure should not have been here at all** (prime's ruling, 2026-08-09): a
 brief is read by a coder who has been *told to compare and report*, so a stale absolute
