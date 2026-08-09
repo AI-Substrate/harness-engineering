@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { runCli } from '../support/run-cli.js';
+import { runCli, runDd } from '../support/run-cli.js';
 
 /**
  * tk-7172 / dw-000d, ac-7121 — a review round is a document.
@@ -59,12 +59,12 @@ describe('dw-000d — the review corpus validates and renders like any other doc
   });
 
   it('validates against builder/review', async () => {
-    const validated = await runCli(['dd', 'validate', REVIEW]);
+    const validated = await runDd(['validate', REVIEW]);
     expect(validated.code).toBe(0);
   });
 
   it('renders a sibling with no drift', async () => {
-    const checked = await runCli(['dd', 'build', REVIEW, '--check']);
+    const checked = await runDd(['build', REVIEW, '--check']);
     expect(checked.code).toBe(0);
   });
 });

@@ -1,6 +1,6 @@
 import type { Clock } from '../../adapters/clock/clock-port.js';
 import { ErrorCodes } from '../../output/error-codes.js';
-import { PLAN_CHECK_KINDS } from '../dd/plan/index.js';
+import { PLAN_CHECK_KINDS } from '../plan-semantics/index.js';
 import type { DdGateFailureReason, DdGateResult } from './flow-dd-gate.js';
 import { readingOf } from './flow-dd-gate.js';
 import {

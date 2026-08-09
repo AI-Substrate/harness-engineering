@@ -7,8 +7,8 @@ import {
   fenceMatches,
   readFenceRows,
 } from '../../src/acts/plan/fence.js';
-import type { DdDoc } from '../../src/services/dd/core/model.js';
-import { runCli } from '../support/run-cli.js';
+import type { DdDoc } from '@ai-substrate/dd/core/model';
+import { runCli, runDd } from '../support/run-cli.js';
 
 /**
  * tk-7171 / dw-000c, ac-7120 — dispatch fences are data.
@@ -159,7 +159,7 @@ describe('dw-000c — the shipped fence document, end to end', () => {
   });
 
   it('validates as a builder/fence document', async () => {
-    const validated = await runCli(['dd', 'validate', FENCE]);
+    const validated = await runDd(['validate', FENCE]);
     expect(validated.code).toBe(0);
   });
 

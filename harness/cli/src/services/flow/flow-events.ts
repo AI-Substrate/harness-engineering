@@ -1,5 +1,5 @@
 import type { Clock } from '../../adapters/clock/clock-port.js';
-import { isPlanCheckKind } from '../dd/plan/index.js';
+import { isPlanCheckKind } from '../plan-semantics/index.js';
 import type { ProvenanceFields } from '../record/provenance.js';
 
 /**

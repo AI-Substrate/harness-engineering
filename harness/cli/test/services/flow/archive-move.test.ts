@@ -12,7 +12,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import { runCli, runCliIn } from '../../support/run-cli.js';
+import { runCli, runCliIn, runDd } from '../../support/run-cli.js';
 
 /**
  * tk-7165 / dw-0008 — the archive move, proven end to end.
@@ -172,7 +172,7 @@ async function reaches(address: string): Promise<boolean> {
   // own directory; without the chdir in `buildRepo` this whole control passes
   // vacuously, which is exactly how it first "passed".
   if (address.includes('#')) {
-    const resolved = await runCli(['dd', 'link', 'resolve', address]);
+    const resolved = await runDd(['link', 'resolve', address]);
     return resolved.code === 0;
   }
   return existsSync(join(root, address));
@@ -202,7 +202,7 @@ describe('dw-0008 — the archive move re-points the gates it would otherwise st
       expect(await reaches(address)).toBe(false);
     }
     // And the reason it goes unnoticed: the corpus itself is perfectly healthy.
-    const doctor = await runCli(['dd', 'doctor']);
+    const doctor = await runDd(['doctor']);
     expect(doctor.code).toBe(0);
   });
 
@@ -234,7 +234,7 @@ describe('dw-0008 — the archive move re-points the gates it would otherwise st
     const reachable: Record<string, boolean> = {};
     for (const address of after) reachable[address] = await reaches(address);
     expect(reachable).toEqual(Object.fromEntries(after.map((a) => [a, true])));
-    const doctor = await runCli(['dd', 'doctor']);
+    const doctor = await runDd(['doctor']);
     expect(doctor.code).toBe(0);
     // The flow's own record of where it belongs moved too — otherwise a second
     // relocation would have the wrong anchor to rewrite FROM.

@@ -1,18 +1,14 @@
-import type { DdDoc, ResolvedDdSchema } from '../../../src/services/dd/core/model.js';
+import type { DdDoc, ResolvedDdSchema } from '@ai-substrate/dd/core/model';
+import type { SchemaResolveResult, SchemaResolver } from '@ai-substrate/dd/core/validate';
+import type { DocLoader, DocLoadResult } from '@ai-substrate/dd/core/walk';
+import { type DdLinkEdge, traverseCorpus } from '@ai-substrate/dd/links';
 import type {
-  SchemaResolveResult,
-  SchemaResolver,
-} from '../../../src/services/dd/core/validate.js';
-import type { DocLoader, DocLoadResult } from '../../../src/services/dd/core/walk.js';
-import type { DdLinkEdge } from '../../../src/services/dd/links/model.js';
-import { traverseCorpus } from '../../../src/services/dd/links/traverse.js';
-import type {
-  PlanDocument as ForkPlanDocument,
-  PlanEdge as ForkPlanEdge,
-  PlanItem as ForkPlanItem,
-  readPlanCheck as forkReadPlanCheck,
+  PlanDocument as RefPlanDocument,
+  PlanEdge as RefPlanEdge,
+  PlanItem as RefPlanItem,
+  readPlanCheck as refReadPlanCheck,
   SurveyDimension,
-} from '../../../src/services/dd/plan/index.js';
+} from '../../../src/services/plan-semantics/index.js';
 
 /**
  * The plan-semantics trial corpora, shared by the falsifier suite and the golden
@@ -186,7 +182,7 @@ export function rollupCorpus(): Map<string, DdDoc> {
   ]);
 }
 
-export function planDocuments(corpus: ReadonlyMap<string, DdDoc>): ForkPlanDocument[] {
+export function planDocuments(corpus: ReadonlyMap<string, DdDoc>): RefPlanDocument[] {
   return [...corpus].map(([path, value]) => ({ path, doc: value, schema: SCHEMA }));
 }
 
@@ -206,7 +202,7 @@ export function edgesFor(corpus: ReadonlyMap<string, DdDoc>): DdLinkEdge[] {
   }).edges;
 }
 
-export function itemShape(item: ForkPlanItem) {
+export function itemShape(item: RefPlanItem) {
   return {
     key: item.key,
     path: item.path,
@@ -225,7 +221,7 @@ export function itemShape(item: ForkPlanItem) {
   };
 }
 
-export function edgeShape(edge: ForkPlanEdge) {
+export function edgeShape(edge: RefPlanEdge) {
   return { from: edge.from, to: edge.to, rel: edge.rel, address: edge.address };
 }
 
@@ -262,7 +258,7 @@ export function checkDeps(corpus: ReadonlyMap<string, DdDoc>) {
         issues: [],
       }),
     },
-  } as unknown as Parameters<typeof forkReadPlanCheck>[1];
+  } as unknown as Parameters<typeof refReadPlanCheck>[1];
 }
 
 // ---------------------------------------------------------------------------

@@ -1,4 +1,4 @@
-import { isPlanCheckKind, type PlanCheckKind } from '../dd/plan/index.js';
+import { isPlanCheckKind, type PlanCheckKind } from '../plan-semantics/index.js';
 import {
   ddLinkOf,
   type FlowComment,

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createSyntheticPlan, type SyntheticCorpus } from '../support/dd-corpus.js';
-import { runCli } from '../support/run-cli.js';
+import { runCli, runDd } from '../support/run-cli.js';
 
 /**
  * `harness plan validate` — the SEMANTIC layer (tk-7021..tk-7024).
@@ -379,7 +379,7 @@ describe('harness plan validate — semantics', () => {
    */
   describe('lifecycle mutations (tk-7027)', () => {
     const tasks = () => corpus.taskFileRelative('ph-0001');
-    const set = (address: string, value: string) => runCli(['dd', 'set', address, value]);
+    const set = (address: string, value: string) => runDd(['set', address, value]);
 
     it('walks tick -> contradiction -> resolve -> untick -> block -> human-skip', async () => {
       build(CONSISTENT);
@@ -440,8 +440,7 @@ describe('harness plan validate — semantics', () => {
       expect((await validate('--complete')).envelope?.status).toBe('ok');
 
       // Now the task's proof is born — open, and pointed at by the task row.
-      const born = await runCli([
-        'dd',
+      const born = await runDd([
         'add',
         `${tasks()}#done_when/tk-0001`,
         '[{"id":"dw-0001","assertion":"born late","state":"unchecked","pressure":"not-applicable"}]',
@@ -471,8 +470,7 @@ describe('harness plan validate — semantics', () => {
       });
       expect((await validate('--complete')).envelope?.status).toBe('ok');
 
-      const minted = await runCli([
-        'dd',
+      const minted = await runDd([
         'add',
         `${corpus.planRelative}#acceptance_criteria`,
         '{"claim":"a late claim","state":"checked"}',
@@ -487,8 +485,7 @@ describe('harness plan validate — semantics', () => {
       expect(data(orphaned).findings.map((finding) => finding.class)).toContain('orphan-claim');
 
       // Claim it, and --complete goes green again.
-      await runCli([
-        'dd',
+      await runDd([
         'set',
         `${tasks()}#tasks/tk-0001/satisfies`,
         '["../../../plan.dd.json#acceptance_criteria/ac-0001","../../../plan.dd.json#acceptance_criteria/ac-0002"]',

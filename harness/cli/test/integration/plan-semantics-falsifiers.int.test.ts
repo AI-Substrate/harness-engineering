@@ -5,18 +5,33 @@ import { ConventionSchemaResolver, FsDocLoader } from '@ai-substrate/dd';
 import { NodeSchemaFs } from '@ai-substrate/dd/node';
 import { describe, expect, it } from 'vitest';
 import { NodeHash } from '../../src/adapters/hash/node-hash.js';
-import type { DdDoc } from '../../src/services/dd/core/model.js';
-import { indexDocument } from '../../src/services/dd/links/map.js';
-import type { DdLinkEdge } from '../../src/services/dd/links/model.js';
+import type { DdDoc } from '@ai-substrate/dd/core/model';
+import { type DdLinkEdge, indexDocument } from '@ai-substrate/dd/links';
+/*
+ * The plan-semantics TYPES and the key formatter now come from the promoted
+ * module, because phase 3 deleted the fork (tk-000d). They were named `fork*`
+ * while a second implementation existed; keeping that prefix would now name a
+ * thing that is gone.
+ *
+ * Read the consequence honestly: `refItemKey` is no longer an independent
+ * oracle — it is the subject's own formatter. The key test below still has
+ * teeth because of what it compares it AGAINST: the entry set comes from dd's
+ * PUBLIC `indexDocument`, so the test proves the subject's index covers exactly
+ * the nodes dd's own addressing finds, and the golden LITERALS independently pin
+ * the key format. Neither of those is subject-versus-subject.
+ */
 import {
-  type PlanDocument as ForkPlanDocument,
-  type PlanIndex as ForkPlanIndex,
-  type PlanItem as ForkPlanItem,
-  type ReadyReading as ForkReadyReading,
-  itemKey as forkItemKey,
-  readPlanCheck as forkReadPlanCheck,
-  type readPlanReadiness as forkReadPlanReadiness,
-} from '../../src/services/dd/plan/index.js';
+  type PlanDocument as RefPlanDocument,
+  type PlanIndex as RefPlanIndex,
+  type PlanItem as RefPlanItem,
+  type ReadyReading as RefReadyReading,
+  itemKey as refItemKey,
+  type readPlanCheck as refReadPlanCheck,
+  type readPlanReadiness as refReadPlanReadiness,
+} from '../../src/services/plan-semantics/index.js';
+
+/** The `readPlanCheck` signature, for the dependency-composition helper. */
+type SubjectReadPlanCheck = typeof refReadPlanCheck;
 import {
   checkDeps,
   contradictionCorpus,
@@ -55,10 +70,15 @@ Test Doc:
   `dist/plan` whose barrel matches the fork's name-for-name, and this suite is
   what would catch such a module exporting the right names while behaving
   differently.
-- Usage Notes: the FORK (`src/services/dd/plan`) is the ORACLE here, deliberately
-  imported. That is not a hard-rule-2 violation: rule 2 constrains the new MODULE
-  to public subpaths, and dw-000e greps the module, not this test. Proving
-  behavioural equality requires both sides in one process. The SUBJECT is loaded
+- Usage Notes: the fork (`src/services/dd/plan`) WAS the oracle while it existed;
+  phase 3 deleted it (tk-000d), so the oracle is now the golden LITERALS in
+  `fixtures/plan-semantics-goldens.json`, captured from the live fork before
+  deletion and frozen. That is the stronger arrangement for correctness — a
+  literal cannot silently agree with a shared bug the way two copies of one
+  implementation would — and the weaker one for reach, since a frozen input can
+  only measure the inputs it froze. The live-corpus case at the end of this file
+  is the deliberate exception and now asserts structural invariants, not
+  equality; it names that trade in its own comment. The SUBJECT is loaded
   through a non-literal specifier with `@vite-ignore` so its absence is a runtime
   failure this file controls, one clean RED per primitive — a literal `import()`
   of a missing module is resolved by Vite at TRANSFORM time and fails the whole
@@ -92,12 +112,12 @@ const SUBJECT_PATH = resolve(HERE, SUBJECT_SPECIFIER);
 interface Subject {
   itemKey(path: string, interior: readonly string[]): string;
   buildPlanIndex(
-    documents: readonly ForkPlanDocument[],
+    documents: readonly RefPlanDocument[],
     edges: readonly DdLinkEdge[],
     repoRoot: string,
-  ): ForkPlanIndex;
-  readPlanCheck: typeof forkReadPlanCheck;
-  readPlanReadiness: typeof forkReadPlanReadiness;
+  ): RefPlanIndex;
+  readPlanCheck: typeof refReadPlanCheck;
+  readPlanReadiness: typeof refReadPlanReadiness;
 }
 
 const require_ = createRequire(import.meta.url);
@@ -138,11 +158,11 @@ async function loadSubject(): Promise<Subject> {
 const GOLDEN_ITEMS = (name: keyof typeof GOLDENS.index) => GOLDENS.index[name].items;
 const GOLDEN_EDGES = (name: keyof typeof GOLDENS.index) => GOLDENS.index[name].edges;
 
-function sortedItems(items: readonly ForkPlanItem[]) {
+function sortedItems(items: readonly RefPlanItem[]) {
   return items.map(itemShape).sort((a, b) => a.key.localeCompare(b.key));
 }
 
-function sortedEdges(edges: ForkPlanIndex['edges']) {
+function sortedEdges(edges: RefPlanIndex['edges']) {
   return edges.map(edgeShape).sort((a, b) => a.from.localeCompare(b.from));
 }
 
@@ -176,7 +196,7 @@ describe('OQ-2 falsifier · #1 itemKey', () => {
     // the route, because it is dd that owns the address grammar.
     const fromPublic = index.entries.map((entry) => subject.itemKey(PLAN_PATH, entry.interior));
     expect(fromPublic).toStrictEqual(
-      index.entries.map((entry) => forkItemKey(PLAN_PATH, entry.interior)),
+      index.entries.map((entry) => refItemKey(PLAN_PATH, entry.interior)),
     );
 
     // Agreement with the recorded behaviour — the half that survives the fork.
@@ -205,7 +225,7 @@ describe('OQ-2 falsifier · #2 PlanDocument / #3 PlanItem / #4 PlanEdge / #5 Pla
   it('fills every PlanItem and PlanEdge field exactly as the goldens recorded', async () => {
     const subject = await loadSubject();
     const corpus = contradictionCorpus();
-    const documents: ForkPlanDocument[] = planDocuments(corpus);
+    const documents: RefPlanDocument[] = planDocuments(corpus);
     const edges: DdLinkEdge[] = edgesFor(corpus);
 
     const mine = subject.buildPlanIndex(documents, edges, ROOT);
@@ -256,7 +276,7 @@ describe('OQ-2 falsifier · #6 ReadyReading / #7 readPlanReadiness', () => {
         repoRoot: ROOT,
         complete: true,
       });
-      const mine: ForkReadyReading = subject.readPlanReadiness(check, scenario.survey);
+      const mine: RefReadyReading = subject.readPlanReadiness(check, scenario.survey);
       const golden = GOLDENS.readiness[scenario.golden];
 
       expect({
@@ -376,26 +396,54 @@ describe('OQ-2 falsifier · #9 readPlanCheck', () => {
    * The corpus-level bar the prediction names explicitly: drive THIS plan's own
    * documents. It has no literal golden ON PURPOSE — plan 080's documents change
    * every time a task closes, so a pinned findings set would churn and teach
-   * everyone to re-baseline it. While the fork exists it is the oracle; when
-   * phase 3 deletes it, this converts to structural invariants (zero errors,
-   * non-vacuous item count) rather than a literal.
+   * everyone to re-baseline it.
+   *
+   * The fork was its oracle until phase 3 deleted the fork (tk-000d, dw-0019).
+   * There is no second implementation left to compare against, so this converts
+   * to STRUCTURAL INVARIANTS. Read what that costs: it no longer proves the
+   * subject computes the RIGHT answer on the live corpus — the literal goldens
+   * above are what carry correctness now, and they are frozen inputs. What this
+   * still catches is the class the goldens cannot: the live plan growing a shape
+   * the subject chokes on, and any regression to a vacuous reading. Each
+   * assertion below is therefore a floor, not an equality, and the non-vacuity
+   * lines exist because "zero findings on an empty parse" would otherwise sail
+   * through every one of them (the vacuity trap this suite was bitten by three
+   * times in phase 2).
    */
-  it('agrees with the fork on plan 080 own documents', async () => {
+  it('reads plan 080 own documents non-vacuously (structural invariants, fork retired)', async () => {
     const subject = await loadSubject();
     const planPath = join(REPO_ROOT, 'docs/plans/080-dd-consume-upgrade/plan.dd.json');
     const deps = realDeps();
     const options = { repoRoot: REPO_ROOT, complete: true, depth: 3 };
 
-    const theirs = forkReadPlanCheck(planPath, deps, options);
-    expect(theirs.ok, 'the live plan must load, or this proves nothing').toBe(true);
-    if (!theirs.ok) return;
-    expect(theirs.counts.semantic?.items ?? 0).toBeGreaterThan(100);
-
     const mine = subject.readPlanCheck(planPath, deps, options);
-    expect(mine.ok).toBe(true);
+    expect(mine.ok, 'the live plan must load, or this proves nothing').toBe(true);
     if (!mine.ok) return;
-    expect(findingKeys(mine.findings)).toStrictEqual(findingKeys(theirs.findings));
-    expect(mine.counts).toStrictEqual(theirs.counts);
+
+    // Non-vacuity: a reading over a real 500+ item plan that returns nothing is
+    // the failure mode, not a pass.
+    expect(mine.counts.semantic?.items ?? 0).toBeGreaterThan(100);
+    expect(mine.counts.semantic?.in_scope ?? 0).toBeGreaterThan(100);
+    expect(mine.counts.error).toBe(0);
+
+    // Shape: every finding is well-formed. A finding set can be non-empty and
+    // still be junk, so the shape is asserted rather than the count.
+    //
+    // `findings` is a UNION of two shapes and this assertion was written wrong
+    // first time round, asserting `code` on all of them: MECHANICAL findings
+    // carry `code`, SEMANTIC ones carry `class` + `severity` (and the live
+    // corpus produces the semantic kind). Rather than weaken it to the
+    // intersection, each arm is checked for the discriminator it actually has —
+    // a finding with neither is the junk this is looking for.
+    for (const finding of mine.findings) {
+      const shown = JSON.stringify(finding).slice(0, 200);
+      const record = finding as { code?: unknown; class?: unknown; message?: unknown };
+      const discriminator = record.code ?? record.class;
+      expect(typeof discriminator, `finding has neither code nor class: ${shown}`).toBe('string');
+      expect(String(discriminator).length).toBeGreaterThan(0);
+      expect(typeof record.message, `finding has no message: ${shown}`).toBe('string');
+      expect(String(record.message).length).toBeGreaterThan(0);
+    }
   });
 });
 
@@ -404,7 +452,7 @@ describe('OQ-2 falsifier · #9 readPlanCheck', () => {
  * `acts/plan/index.ts` uses, so the test cannot pass against a composition the
  * product never performs.
  */
-function realDeps(): Parameters<typeof forkReadPlanCheck>[1] {
+function realDeps(): Parameters<SubjectReadPlanCheck>[1] {
   // Static ESM imports, NOT `require`: the package's "." export declares only
   // `types` and `import` conditions — no `require` — so a CJS require of the
   // barrel fails with "No exports main defined".
@@ -412,7 +460,7 @@ function realDeps(): Parameters<typeof forkReadPlanCheck>[1] {
   return {
     schemaResolver: new ConventionSchemaResolver({ fs, repoRoot: REPO_ROOT }),
     docLoader: new FsDocLoader(fs, new NodeHash(), null),
-  } as Parameters<typeof forkReadPlanCheck>[1];
+  } as Parameters<typeof refReadPlanCheck>[1];
 }
 
 describe('OQ-2 trial · the subject module', () => {

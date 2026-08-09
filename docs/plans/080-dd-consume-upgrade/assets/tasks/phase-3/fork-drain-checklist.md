@@ -55,14 +55,23 @@ imports `validateWalk` from `@ai-substrate/dd` (the root barrel, line 1–12) an
 `harness plan validate` has been emitting the weaker message since the phase-1/2 rewire.
 The only place the good message still exists is `acts/dd/validate.ts` — a dying verb.
 
-Adjudication: **report upstream (reciprocity), dies-with-fork here.** No harness-side
-remediation: re-adding the string locally would be a shim, and the whole point of the
-plan is that dd owns this mechanism. The loss is a diagnostic-quality regression, not a
-behavioural one — the finding still fires with the same code and address, it just stops
-naming its mechanism, which is precisely the defect class the FX014 comment was written
-to prevent ("a diagnostic that omits its mechanism does not produce confusion; it
-produces a confident wrong model"). Recorded here so the regression is *chosen* rather
-than discovered later.
+Adjudication: **a known, accepted degradation — consented, not discovered.** The
+original "report upstream and let dd take the string" was **refused by dd on ontology
+grounds** (`git` is adapter vocabulary; `core` cannot name it — `tracked: null` is what
+core is allowed to say). The ruled shape is therefore a **dd seam row for the core
+wording plus a harness act-layer remedy as a post-080 follow-up**. Authoritative text:
+**dogfood-ledger row #5 (`7d112d26`)** — cite that, not this paragraph, when the wording
+matters.
+
+No harness-side remediation lands in this plan: re-adding the string locally would be a
+shim, and the layering ruling is what makes that the wrong fix rather than merely a
+discouraged one. The loss is diagnostic quality, not behaviour — the finding still fires
+with the same class and address, it just stops naming its mechanism, which is precisely
+what the FX014 comment was written to prevent ("a diagnostic that omits its mechanism
+does not produce confusion; it produces a confident wrong model"). Recorded here so the
+regression is **chosen** rather than found later by someone who assumes it was an
+accident. The PR body must carry **both strings** (fork `walk.ts:125` vs package
+`dist/core/walk.js:74`), the dd seam row, and both closers.
 
 ### F-2 (LOW) — `itemKey` POSIX collapse absent from dd's unexported plan copy
 

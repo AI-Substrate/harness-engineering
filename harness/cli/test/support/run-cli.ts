@@ -112,3 +112,45 @@ async function run(argv: string[], mode: 'json' | 'human', verbDeps: VerbActDeps
       mode === 'json' && out.trim().length > 0 ? (JSON.parse(out.trim()) as Envelope) : null,
   };
 }
+
+/**
+ * Drive the STANDALONE `dd` CLI, the way an operator does after plan 080 phase 3.
+ *
+ * `harness dd *` was deleted with the fork (tk-000d), but several tests here were
+ * never testing those verbs — they USED them as tools to validate a fixture, mint
+ * an address, or sweep a corpus. Deleting the verb does not delete that need, so
+ * this routes it to dd's own bin instead of quietly dropping the assertion.
+ *
+ * The bin is resolved from `node_modules/.bin/dd`, never as bare `dd`: on a POSIX
+ * host bare `dd` is coreutils' disk-dump utility (`which dd` → `/bin/dd`), so a
+ * PATH-spelled invocation would run the WRONG program and — worse — one that
+ * happily reads stdin and writes files. Any doc or script prescribing this route
+ * must spell it the same way.
+ */
+export async function runDd(argv: string[], cwd?: string): Promise<CliRun> {
+  const { execFile } = await import('node:child_process');
+  const { promisify } = await import('node:util');
+  const { dirname, join } = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const here = dirname(fileURLToPath(import.meta.url));
+  const bin = join(here, '../../../../node_modules/.bin/dd');
+  const run = promisify(execFile);
+  try {
+    const { stdout, stderr } = await run(bin, argv, { cwd, maxBuffer: 32 * 1024 * 1024 });
+    return {
+      out: stdout,
+      err: stderr,
+      code: 0,
+      envelope: stdout.trim().length > 0 ? (JSON.parse(stdout.trim()) as Envelope) : null,
+    };
+  } catch (error) {
+    const e = error as { stdout?: string; stderr?: string; code?: number };
+    const stdout = e.stdout ?? '';
+    return {
+      out: stdout,
+      err: e.stderr ?? '',
+      code: typeof e.code === 'number' ? e.code : 1,
+      envelope: stdout.trim().length > 0 ? (JSON.parse(stdout.trim()) as Envelope) : null,
+    };
+  }
+}
