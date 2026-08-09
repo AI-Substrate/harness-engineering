@@ -1,0 +1,43 @@
+docs/plans/080-dd-consume-upgrade/validations/phase-2-tasks-validation.md
+  s_ec55047147a99e::t_ecbfe33b9adbe8 1-17
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-2/tasks.dd.json
+  s_c155f6780a1b44::t_9391179b9f50bf 99,119,141,147
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-2/tasks.dd.md
+  s_c155f6780a1b44::t_e6c4429c927330 59,67,80-81
+docs/plans/080-dd-consume-upgrade/assets/backpressure.dd.json
+  s_c88674e85f3aea::t_c71818fe416fae 197
+docs/plans/080-dd-consume-upgrade/assets/backpressure.dd.md
+  s_c88674e85f3aea::t_d1639e6e8099aa 52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "5d090cd49063b5a9d5a3834bfd94d86524659756",
+  "prompts": {},
+  "sessions": {
+    "s_c155f6780a1b44": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "5688828f-755e-4848-83b6-7ebdc192059f",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_c88674e85f3aea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71679da4-5249-4e02-9117-68a3abf3ed0e",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_ec55047147a99e": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "52240898-44b1-44cd-be95-e08a76203116",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
