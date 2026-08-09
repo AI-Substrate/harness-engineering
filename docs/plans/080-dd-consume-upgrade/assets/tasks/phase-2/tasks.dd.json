@@ -162,7 +162,8 @@
             "id": "dw-0014",
             "assertion": "node harness/cli/bin/harness.js flow orient + rail against the-flow.json AND plan validate against plan.dd.json all return ok on the rewired build",
             "state": "checked",
-            "pressure": "../../backpressure.dd.json#rows/bp-000b"
+            "pressure": "../../backpressure.dd.json#rows/bp-000b",
+            "note": "review F001 remedy (terra REJECT round 1): the checked state was FALSE at 294a545b - tk-0009's genuine satisfies edge met a still-unchecked ac-0002 and plan validate sat degraded with 1 contradiction. ac-0002 flipped checked (earned: full-zero proven, terra 95%) per the pre-recorded ledger #4 resolution path; pair re-run at the fixed head: plan validate ok 0/0/0 contradictions, orient ok, rail ok. Retained checked TRUTHFULLY from this commit on"
           },
           {
             "id": "dw-0015",

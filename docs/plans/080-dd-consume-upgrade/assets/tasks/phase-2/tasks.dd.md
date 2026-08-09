@@ -85,5 +85,5 @@ _Empty._
 
 | id | assertion | state | pressure | note |
 | --- | --- | --- | --- | --- |
-| dw-0014 | node harness/cli/bin/harness.js flow orient + rail against the-flow.json AND plan validate against plan.dd.json all return ok on the rewired build | [x] checked | [bp-000b](../../backpressure.dd.md#rows) | — |
+| dw-0014 | node harness/cli/bin/harness.js flow orient + rail against the-flow.json AND plan validate against plan.dd.json all return ok on the rewired build | [x] checked | [bp-000b](../../backpressure.dd.md#rows) | review F001 remedy (terra REJECT round 1): the checked state was FALSE at 294a545b - tk-0009's genuine satisfies edge met a still-unchecked ac-0002 and plan validate sat degraded with 1 contradiction. ac-0002 flipped checked (earned: full-zero proven, terra 95%) per the pre-recorded ledger #4 resolution path; pair re-run at the fixed head: plan validate ok 0/0/0 contradictions, orient ok, rail ok. Retained checked TRUTHFULLY from this commit on |
 | dw-0015 | any dd-implementation defect surfaced during this phase has a dogfood-ledger row (grep the ledger; zero silent workarounds) | [ ] unchecked | not-applicable | human review of assets/dogfood-ledger.md - the ledger judgement row bp-000c is deliberately human-tier |

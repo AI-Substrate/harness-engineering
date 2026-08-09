@@ -57,7 +57,7 @@ Harness carries a 45-file / 8,173-line fork of dd (services/dd) plus a 12-file v
 | id | claim | state | note | receipt | pressure | proven_by |
 | --- | --- | --- | --- | --- | --- | --- |
 | ac-0001 | harness/cli package.json depends on @ai-substrate/dd pinned as github:AI-Substrate/dd#&lt;full 40-char sha&gt;; npm install resolves dd without touching the npm registry proxy for dd itself | [x] checked | — | — | — | — |
-| ac-0002 | acts/flow.ts, acts/plan/index.ts, acts/plan/pr-body.ts and acts/plan/fence.ts import dd exclusively from @ai-substrate/dd public subpaths - zero imports from services/dd or acts/dd remain in those files | [ ] unchecked | — | — | — | — |
+| ac-0002 | acts/flow.ts, acts/plan/index.ts, acts/plan/pr-body.ts and acts/plan/fence.ts import dd exclusively from @ai-substrate/dd public subpaths - zero imports from services/dd or acts/dd remain in those files | [x] checked | — | — | — | — |
 | ac-0003 | tsc --noEmit exits 0 and the full harness/cli vitest suite is green at every phase boundary | [ ] unchecked | — | — | — | — |
 | ac-0004 | The round-3 trial report exists with the dated prediction recorded BEFORE the trial ran, and every primitive carries either sufficient + the named falsifier case + the statement it was RUN, or UNPROVEN, or insufficient + the exact gap | [ ] unchecked | — | — | — | — |
 | ac-0005 | The OQ-2 verdict (sufficient / insufficient + gaps) is delivered to dd on the crab channel; on insufficiency, phase 2 blocks per ratified D-3 - no local fork, no shim, dd exports and we re-pin | [ ] unchecked | — | — | — | — |

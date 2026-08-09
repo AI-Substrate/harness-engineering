@@ -56,7 +56,7 @@
         {
           "id": "ac-0002",
           "claim": "acts/flow.ts, acts/plan/index.ts, acts/plan/pr-body.ts and acts/plan/fence.ts import dd exclusively from @ai-substrate/dd public subpaths - zero imports from services/dd or acts/dd remain in those files",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "ac-0003",
