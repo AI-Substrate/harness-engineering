@@ -23,7 +23,7 @@
           "id": "tk-000c",
           "title": "BIDIRECTIONAL fork-drain checklist AND full conversion inventory BEFORE any deletion (sol F1-F3 widened it from commit-history to LIVE CONSUMERS): enumerate (a) every harness-main commit touching services/dd or acts/dd since the fork point - sha + adjudication (ported / deferred / dies-with-fork); (b) every dd-side fix the fork never took (known: shouldExcludeFromSweep E436 reorder, crab in-flight; the unstaged-rollback fix, dd o-prime sequencing); (c) every LIVE consumer of the fork with a per-row conversion/retirement adjudication: production imports (services/flow/{chores-read,flow-dd-gate,flow-events,flow-mutations,flow-renderer}.ts + services/doctor/doctor-service.ts), the ~60 test files matching fork paths (fork-owned dies vs consumer-contract converts), build/check surfaces (gen:dd-docs, check:dd-docs, test/acts/dd.test.ts, dd-doctor sensor, dependency-cruiser fork rules), and operating docs/skills/scenarios prescribing harness dd verbs - committed as assets/tasks/phase-3/fork-drain-checklist.md",
           "phase": "ph-08e2",
-          "state": "unchecked",
+          "state": "checked",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0006"
           ]
@@ -106,7 +106,7 @@
           {
             "id": "dw-0017",
             "assertion": "assets/tasks/phase-3/fork-drain-checklist.md is committed BEFORE the deletion commit (git order is the proof) and carries ALL THREE inventories - (a) harness-main commit history with shas + adjudications, (b) dd-side fixes the fork never took incl. the walk.ts E436 row, (c) the live-consumer conversion inventory: every production import, test file class, build/check/sensor/arch-rule surface, and doc/skill/scenario command reference, each with an explicit convert / retire / dies-with-fork adjudication - no consumer reaches the deletion commit unadjudicated",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0006"
           }
         ],
