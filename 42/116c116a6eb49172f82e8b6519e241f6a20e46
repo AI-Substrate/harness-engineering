@@ -1,0 +1,29 @@
+harness/cli/test/support/external-binary.ts
+  s_6b8a25b7716dd8::t_83c883d14916e3 50-66
+  s_6b8a25b7716dd8::t_0144e0722b2548 416-448,473,475-489
+  s_6b8a25b7716dd8::t_a5b536ca8f2784 449-468
+  s_6b8a25b7716dd8::t_615d44c20fe088 469-472,474
+  s_6b8a25b7716dd8::t_7a42e4987addd6 406-409
+harness/cli/test/support/external-binary.test.ts
+  s_6b8a25b7716dd8::t_17cb2aa7b6a03a 724-800
+  s_6b8a25b7716dd8::t_75a244a659576a 19
+  s_6b8a25b7716dd8::t_de50d5c6e514f1 801
+docs/plans/077-windows-suite-portability/assets/tasks/phase-4/tasks.dd.json
+  s_6b8a25b7716dd8::t_69cc9bd14eaf04 58-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "42116c116a6eb49172f82e8b6519e241f6a20e46",
+  "prompts": {},
+  "sessions": {
+    "s_6b8a25b7716dd8": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "0566e436-a7a0-4359-99b4-8a2dc8a4c21d",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
