@@ -1,0 +1,27 @@
+docs/plans/077-windows-suite-portability/assets/CODER-BRIEF-round6-winci.md
+  s_2bef307df718bc::t_d341481c73ce2d 1-74
+docs/plans/077-windows-suite-portability/assets/tasks/phase-4/tasks.dd.json
+  s_2bef307df718bc::t_7901efbf8c4212 1-66
+docs/plans/077-windows-suite-portability/assets/tasks/phase-4/tasks.dd.md
+  s_2bef307df718bc::t_2981ad415ece4c 1-47
+docs/plans/077-windows-suite-portability/plan.dd.json
+  s_2bef307df718bc::t_e6cd3cc497967b 2-3,5-13,16-17,20-26,29-37,40-143,146-177,179
+docs/plans/077-windows-suite-portability/plan.dd.md
+  s_2bef307df718bc::t_e165990bfd4544 53-54,75-78,89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "02dd0a39f604d1c95849fc0aa68175aee5aaf6d1",
+  "prompts": {},
+  "sessions": {
+    "s_2bef307df718bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb3484ee-e8b4-4f68-89fa-22abb2a7a8c3",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
