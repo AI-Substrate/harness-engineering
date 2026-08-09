@@ -1,0 +1,24 @@
+.harness/extensions/checks/extension.ts
+  s_dfbe7bea3d1b7e::t_34eff040704462 141-150
+  s_dfbe7bea3d1b7e::t_f0e7f47c33e818 328
+.harness/extensions/checks/instructions.md
+  s_dfbe7bea3d1b7e::t_c968cdf64028d3 64-71
+AGENTS.md
+  s_dfbe7bea3d1b7e::t_d173eaab5fea5b 54-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "fe3ebb09d6a809387bdbd69cbe4b9b1d7f5e48cf",
+  "prompts": {},
+  "sessions": {
+    "s_dfbe7bea3d1b7e": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "d854c5fd-5185-4f9c-99f4-40038b3158a0",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
