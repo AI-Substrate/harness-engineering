@@ -9,8 +9,25 @@ import { scanCorpus } from '../../../../src/services/dd/links/scan.js';
 import { traverseCorpus } from '../../../../src/services/dd/links/traverse.js';
 import type { SchemaFs } from '../../../../src/services/dd/schema/model.js';
 import { ConventionSchemaResolver } from '../../../../src/services/dd/schema/resolve.js';
+import { toPosix } from '../../../../src/services/shared/posix-path.js';
 
-const REPO_ROOT = fileURLToPath(new URL('../../../../../../', import.meta.url)).replace(/\/$/, '');
+/**
+ * The corpus root as a LOGICAL path (plan 017), converted ONCE here at the
+ * boundary — exactly what production does with `toPosix(proc.cwd())`.
+ *
+ * `fileURLToPath` returns a NATIVE path, so on win32 this constant used to be
+ * `C:\…\repo\`: the trailing-separator strip missed a back-slash, and every
+ * address built from it was native-shaped. `scanCorpus` builds its paths with
+ * `posixJoin`, so `linksFor`'s `edge.from === path` compared a native key
+ * against POSIX-logical edges, matched nothing, and reported `outbound: []`
+ * (plan 077 · #108). On POSIX `toPosix` is the identity, so this changes
+ * nothing here and everything there — EXPECTED, UNVERIFIED: nobody on this
+ * plan has a Windows box.
+ */
+const REPO_ROOT = toPosix(fileURLToPath(new URL('../../../../../../', import.meta.url))).replace(
+  /\/$/,
+  '',
+);
 const EXEMPLAR = `${REPO_ROOT}/docs/how/dd/exemplar`;
 const AC_0201 = `${EXEMPLAR}/plan.dd.json#acceptance_criteria/ac-0201`;
 

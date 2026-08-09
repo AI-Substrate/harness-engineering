@@ -182,6 +182,21 @@ describe('refreshLiveReferences — the CLI path', () => {
       referencesTarget(consumer, `${CHAIN}docs/consumer.dd.json`, `${CHAIN}docs/other.dd.json`),
     ).toBe(false);
   });
+
+  it('knows it even when the watcher names the target in native Windows shape', () => {
+    // The lexical half of the win32 defect, proven on ANY host (the P3 idiom:
+    // exercise the shape explicitly rather than patch `process.platform`).
+    // `dependentsOf` is written against a WATCHER, and a watcher reports the
+    // OS's own spelling — back-slashed on win32. The right-hand side used to go
+    // into the comparison un-normalized, so this returned a SILENT false and the
+    // consumer's markdown was never regenerated (plan 077 · #108).
+    const path = `${CHAIN}docs/consumer.dd.json`;
+    const windowsShaped = `${CHAIN}docs\\source.dd.json`.replaceAll('/', '\\');
+    expect(windowsShaped).toContain('\\');
+    expect(referencesTarget(doc(path), path, windowsShaped)).toBe(true);
+    // Still discriminating, not merely permissive: a different file stays false.
+    expect(referencesTarget(doc(path), path, `${CHAIN}docs\\other.dd.json`)).toBe(false);
+  });
 });
 
 describe('watchForRegeneration — the subscription contract', () => {
