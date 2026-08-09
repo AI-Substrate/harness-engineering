@@ -1028,7 +1028,12 @@ export function buildDoctorReport(
   // tests an already-safe value rather than calling into the filesystem.
   let cursorSandbox: CursorSandboxRow | null = null;
   try {
-    cursorSandbox = collectorHost === undefined ? null : cursorSandboxRow(deps.fs, collectorHost);
+    cursorSandbox =
+      collectorHost === undefined
+        ? null
+        : // The repo root, so a per-repo `.cursor/sandbox.json` outranks the
+          // user's — matching how Cursor resolves it.
+          cursorSandboxRow(deps.fs, collectorHost, toPosix(deps.proc.cwd()));
   } catch {
     // A reading we could not take is silence, never an alarm — the same rule the
     // `unknown` status inside the module follows.

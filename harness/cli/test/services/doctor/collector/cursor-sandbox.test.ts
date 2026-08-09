@@ -3,6 +3,8 @@ import {
   cursorSandboxRow,
   permissionsPathFor,
   readCursorSandbox,
+  readSandboxNetwork,
+  sandboxPathsFor,
 } from '../../../../src/services/doctor/collector/cursor-sandbox.js';
 import type { HostTarget } from '../../../../src/services/doctor/collector/types.js';
 import { FakeCollectorFs } from '../../../support/collector-fakes.js';
@@ -142,5 +144,153 @@ describe('#144 — cursor sandbox allowlist row', () => {
       git: 'unknown',
       harness: 'unknown',
     });
+  });
+});
+
+/**
+ * The `networkPolicy` half — added after a measured session (plan 082 dossier
+ * §3, §6) established that the ALLOWLIST IS NOT THE DECIDING SETTING.
+ *
+ * Three measurements drive every case below:
+ *
+ *   - a sandboxed Cursor shell got EPERM on both git-ai daemon sockets
+ *   - `git` was ALREADY allowlisted and the commit still ran sandboxed, because
+ *     the agent wrote a compound `git add -A && git commit …` chain unprompted
+ *   - `networkPolicy.allow` takes hosts/wildcards/CIDR, and a unix socket has no
+ *     domain — so ONLY `default: "allow"` can ever reach it
+ *
+ * Reading the allowlist alone was therefore wrong in BOTH directions, and both
+ * directions are pinned here.
+ */
+const SANDBOX_HOME = `${HOME}/.cursor/sandbox.json`;
+const WORKSPACE = '/repo';
+const SANDBOX_REPO = `${WORKSPACE}/.cursor/sandbox.json`;
+const netPolicy = (dflt: string) => JSON.stringify({ networkPolicy: { default: dflt } });
+
+/** Cursor marker + optional permissions.json + optional sandbox.json files. */
+function fsWithSandbox(seed: Record<string, string>): FakeCollectorFs {
+  const fs = new FakeCollectorFs(seed);
+  fs.dirs.add(`${HOME}/.cursor`);
+  return fs;
+}
+
+describe('#144 — networkPolicy is the deciding setting', () => {
+  it('THE FALSE ALARM: default "allow" → NO ROW even with nothing allowlisted', () => {
+    // Auto-Run Network Access = Allow All was MEASURED to connect both sockets.
+    // Warning about the allowlist here would report a risk the config lifted.
+    const fs = fsWithSandbox({ [PERMS]: allowlist('ls'), [SANDBOX_HOME]: netPolicy('allow') });
+    expect(cursorSandboxRow(fs, host)).toBeNull();
+  });
+
+  it('THE FALSE SILENCE: a restrictive policy rows EVEN WITH git+harness allowlisted', () => {
+    // This is the case the first cut of #144 could not see at all: it read the
+    // allowlist, found both commands, and went silent on a machine whose network
+    // policy does not permit the socket.
+    const fs = fsWithSandbox({
+      [PERMS]: allowlist('git', 'harness'),
+      [SANDBOX_HOME]: netPolicy('deny'),
+    });
+    const row = cursorSandboxRow(fs, host);
+    expect(row).not.toBeNull();
+    expect(row?.detail).toMatch(/networkPolicy\.default/);
+  });
+
+  it('says a unix socket has no domain, so no allowlist entry can ever match it', () => {
+    // The reason the remedy is `harness commit` and not "add an entry".
+    const fs = fsWithSandbox({ [PERMS]: allowlist('ls'), [SANDBOX_HOME]: netPolicy('deny') });
+    expect(cursorSandboxRow(fs, host)?.detail).toMatch(/unix socket has no domain/i);
+  });
+
+  it('a restrictive policy degrades the REMEDY, because harness is sandboxed too', () => {
+    const fs = fsWithSandbox({
+      [PERMS]: allowlist('git', 'harness'),
+      [SANDBOX_HOME]: netPolicy('deny'),
+    });
+    expect(cursorSandboxRow(fs, host)?.next_action).toMatch(/UNSANDBOXED/);
+  });
+
+  it('PER-REPO PRIORITY: the workspace file outranks the user file', () => {
+    // Nothing is allowlisted, so the ONLY thing that can produce silence here is
+    // the network policy — otherwise this passes via the allowlist and asserts
+    // nothing about priority at all. (A first cut did exactly that: it survived
+    // a mutant that deleted the policy short-circuit outright.)
+    const fs = fsWithSandbox({
+      [PERMS]: allowlist('ls'),
+      [SANDBOX_HOME]: netPolicy('allow'),
+      [SANDBOX_REPO]: netPolicy('deny'),
+    });
+    // Repo says deny and outranks home's allow → a row.
+    expect(cursorSandboxRow(fs, host, WORKSPACE)).not.toBeNull();
+    // …same tree, no workspace passed → only the user file is read → allow → silent.
+    expect(cursorSandboxRow(fs, host)).toBeNull();
+  });
+
+  it('a per-repo file stating NO default falls through to the user file', () => {
+    // Deliberately assumes least: a file that expressed no opinion does not get
+    // to decide, and we have not measured whether Cursor inherits or resets.
+    // Again nothing is allowlisted, so silence can only come from reaching the
+    // user file's `allow` — which is precisely the fall-through under test.
+    const fs = fsWithSandbox({
+      [PERMS]: allowlist('ls'),
+      [SANDBOX_HOME]: netPolicy('allow'),
+      [SANDBOX_REPO]: JSON.stringify({ somethingElse: true }),
+    });
+    expect(cursorSandboxRow(fs, host, WORKSPACE)).toBeNull();
+  });
+
+  it('ABSENT IS NOT PERMISSIVE: no sandbox.json is `unknown`, never `allow`', () => {
+    // If absent read as permissive, the row would go silent on every machine
+    // that has never written the file — i.e. almost all of them.
+    expect(readSandboxNetwork(fsWithSandbox({}), HOME).policy).toBe('unknown');
+    expect(readSandboxNetwork(fsWithSandbox({}), HOME).unreadable).toMatch(/does not exist/);
+  });
+
+  it('an unknown policy alongside a missing entry SAYS the deciding setting went unread', () => {
+    // Otherwise the allowlist prose implies it is the whole story.
+    const fs = fsWithSandbox({ [PERMS]: allowlist('ls') });
+    expect(cursorSandboxRow(fs, host)?.detail).toMatch(/not the whole picture/);
+  });
+
+  it('malformed sandbox.json is `unknown` — never a throw, never a verdict', () => {
+    const fs = fsWithSandbox({
+      [PERMS]: allowlist('git', 'harness'),
+      [SANDBOX_HOME]: '{ not json',
+    });
+    expect(readSandboxNetwork(fs, HOME).policy).toBe('unknown');
+    // …and an unreadable deciding setting with a clean allowlist stays SILENT
+    // rather than inventing an alarm from a file it could not parse.
+    expect(cursorSandboxRow(fs, host)).toBeNull();
+  });
+
+  it('the path carries the .cursor/ SUBDIR the settings UI omits', () => {
+    // Writing it one level too high cost a measured attempt on 2026-08-09.
+    expect(sandboxPathsFor(HOME)).toEqual([`${HOME}/.cursor/sandbox.json`]);
+    expect(sandboxPathsFor(HOME, WORKSPACE)).toEqual([
+      SANDBOX_REPO,
+      `${HOME}/.cursor/sandbox.json`,
+    ]);
+  });
+
+  it('a repo checked out AT $HOME reads one file, not two agreeing sources', () => {
+    expect(sandboxPathsFor(HOME, HOME)).toEqual([`${HOME}/.cursor/sandbox.json`]);
+  });
+
+  it('THE F-11 GUARD, network half: a restrictive policy never claims unreachable', () => {
+    // F-11 observed the socket REACHABLE from inside a sandbox. So even the
+    // strongest config signal we can read must say PERMITS, never GUARANTEES —
+    // a connected probe outranks this row always.
+    const fs = fsWithSandbox({ [PERMS]: allowlist('ls'), [SANDBOX_HOME]: netPolicy('deny') });
+    const row = cursorSandboxRow(fs, host);
+    expect(row?.detail).not.toMatch(/is unreachable|cannot reach|is blocked|will fail/i);
+    expect(row?.detail).toMatch(/does not PERMIT/);
+    expect(row?.next_action).toMatch(/only what the config PERMITS/);
+  });
+
+  it('WRITES NOTHING to ~/.cursor, sandbox.json included', () => {
+    const fs = fsWithSandbox({ [PERMS]: allowlist('ls'), [SANDBOX_HOME]: netPolicy('deny') });
+    cursorSandboxRow(fs, host, WORKSPACE);
+    expect(fs.writes).toEqual([]);
+    expect(fs.renames).toEqual([]);
+    expect(fs.deletes).toEqual([]);
   });
 });
