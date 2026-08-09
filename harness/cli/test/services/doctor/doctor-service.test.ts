@@ -986,3 +986,84 @@ describe('doctor — no single failure can take the verb down', () => {
     expect(extensions?.detail).toContain('convention scan failed');
   });
 });
+
+/**
+ * #144 — the Cursor sandbox row as a LAYER (the 18th `safeLayer` site).
+ *
+ * The module's own behaviour is covered in `collector/cursor-sandbox.test.ts`.
+ * What is pinned here is the wiring: that it appears only when warranted, that
+ * it degrades rather than gates, and that a throw inside it costs the row and
+ * not the verb.
+ */
+describe('doctor — cursor-sandbox row wiring', () => {
+  const HOST = { platform: 'darwin', arch: 'arm64', home: '/home/u' };
+  const PERMS = '/home/u/.cursor/permissions.json';
+
+  function withCursor(permissions?: string, marker = true): DoctorDeps {
+    const seed: Record<string, string> = { ...BUILT_CLI };
+    if (permissions !== undefined) seed[PERMS] = permissions;
+    const fs = new FakeFs(seed);
+    // `mkdirp`, NOT the `dirs` constructor arg: `FakeFs.exists` consults
+    // `files`/`byteFiles`/`madeDirs` and ignores `dirs`, so seeding the latter
+    // registers no marker and every "no row" assertion passes vacuously. That
+    // is exactly how the first draft of these tests was green and meaningless.
+    if (marker) fs.mkdirp('/home/u/.cursor');
+    return { ...deps({ fs }), collectorHost: HOST } as unknown as DoctorDeps;
+  }
+
+  const names = (report: { layers: { name: string }[] }): string[] =>
+    report.layers.map((l) => l.name);
+
+  it('emits NO row when Cursor is absent', () => {
+    const report = buildDoctorReport(withCursor(undefined, false), EMPTY);
+    expect(names(report)).not.toContain('cursor-sandbox');
+  });
+
+  it('DETECTION WORKS — the marker registers, so the absences below mean something', () => {
+    // The control for the two silence assertions. Without it, a marker that
+    // never registers makes both of them pass for the wrong reason.
+    const report = buildDoctorReport(withCursor(JSON.stringify({ terminalAllowlist: [] })), EMPTY);
+    expect(names(report)).toContain('cursor-sandbox');
+  });
+
+  it('emits NO row when both commands are allowlisted', () => {
+    const report = buildDoctorReport(
+      withCursor(JSON.stringify({ terminalAllowlist: ['git', 'harness'] })),
+      EMPTY,
+    );
+    expect(names(report)).not.toContain('cursor-sandbox');
+  });
+
+  it('emits the row when an entry is missing, degraded and never gating', () => {
+    const report = buildDoctorReport(
+      withCursor(JSON.stringify({ terminalAllowlist: ['harness'] })),
+      EMPTY,
+    );
+    const row = report.layers.find((l) => l.name === 'cursor-sandbox');
+    expect(row?.ok).toBe(false);
+    expect(row?.next_action).toContain('harness commit');
+    // Every other row still present — one diagnostic never displaces the report.
+    expect(names(report)).toContain('gitai-collector');
+    expect(report.layers.length).toBeGreaterThan(10);
+  });
+
+  it('a throwing fs costs the row, never the verb', () => {
+    // The reading is taken behind its own guard, so an fs that throws on the
+    // Cursor paths must not escape into the report construction.
+    const fs = new FakeFs(BUILT_CLI);
+    fs.mkdirp('/home/u/.cursor');
+    const passthrough = fs.exists.bind(fs);
+    (fs as unknown as { exists: (p: string) => boolean }).exists = (p: string) => {
+      if (p.includes('.cursor')) throw new Error('EIO: cursor config unreadable');
+      return passthrough(p);
+    };
+    const d = { ...deps({ fs }), collectorHost: HOST } as unknown as DoctorDeps;
+
+    let report: ReturnType<typeof buildDoctorReport> | null = null;
+    expect(() => {
+      report = buildDoctorReport(d, EMPTY);
+    }).not.toThrow();
+    expect(report).not.toBeNull();
+    expect((report as unknown as { layers: unknown[] }).layers.length).toBeGreaterThan(10);
+  });
+});

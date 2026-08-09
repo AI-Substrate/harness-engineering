@@ -28,6 +28,7 @@ import {
 } from '../telemetry/capture-liveness.js';
 import { laneRecoveryReason, type SkipLaneReason } from '../telemetry/capture-reconcile.js';
 import { type AtRiskReport, enumerateAtRisk } from './collector/at-risk.js';
+import { type CursorSandboxRow, cursorSandboxRow } from './collector/cursor-sandbox.js';
 import { type CollectorHealth, readCollectorHealth } from './collector/health.js';
 import type { IngressReading } from './collector/ingress.js';
 import type { HostTarget } from './collector/types.js';
@@ -1023,6 +1024,16 @@ export function buildDoctorReport(
   // complaints readable" and the extensions row carries the visible failure.
   const collectorHost = deps.collectorHost;
   const attribution = deps.attribution;
+  // #144 read, taken here and guarded here so the layer-array condition below
+  // tests an already-safe value rather than calling into the filesystem.
+  let cursorSandbox: CursorSandboxRow | null = null;
+  try {
+    cursorSandbox = collectorHost === undefined ? null : cursorSandboxRow(deps.fs, collectorHost);
+  } catch {
+    // A reading we could not take is silence, never an alarm — the same rule the
+    // `unknown` status inside the module follows.
+    cursorSandbox = null;
+  }
   let conventions: ConventionComplaint[];
   let conventionsError: string | null = null;
   try {
@@ -1068,6 +1079,29 @@ export function buildDoctorReport(
               deps.collectorOptedOut === true,
             ),
           ),
+        ]
+      : []),
+    // #144 — the 18th wrapped site. Conditional on BOTH a resolvable host and a
+    // row actually being warranted: no Cursor marker, or an allowlist that
+    // permits both commands, emits nothing at all.
+    //
+    // The reading is computed ONCE above, inside its own guard. Calling it in
+    // this condition would have put an unguarded call outside `safeLayer` —
+    // a throw there escapes the whole report, which is precisely the class
+    // `safeLayer` exists to contain. The condition must only ever test an
+    // already-safe value.
+    ...(cursorSandbox !== null
+      ? [
+          safeLayer('cursor-sandbox', () => ({
+            name: 'cursor-sandbox',
+            // Warn-only and never gating. `ok: false` degrades the envelope
+            // (exit 0) exactly as every other doctor row does; it never
+            // contradicts the ingress probe, which is the only thing entitled
+            // to say the collector is unreachable.
+            ok: false,
+            detail: cursorSandbox.detail,
+            next_action: cursorSandbox.next_action,
+          })),
         ]
       : []),
     ...(attribution !== undefined
