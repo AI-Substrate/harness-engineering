@@ -138,9 +138,18 @@ export interface GroundTruth {
 
 export interface BinaryIdentity {
   readonly path: string;
-  /** Recorded at `--begin` and re-read at `--end`. */
-  readonly mtimeBefore: string;
-  readonly mtimeAfter: string;
+  /**
+   * A CONTENT STAMP, recorded at `--begin` and re-read at `--end`.
+   *
+   * CONTENT, NOT MTIME, for two reasons and the second is why it changed. A digest
+   * asks "is this the same program?", which is the actual question; an mtime asks
+   * "was this file touched?", which answers it only by luck. And there is no stat
+   * capability on the verb context — reaching for one meant shelling out to a node
+   * one-liner, which is a builtin import inside an extension and a constitution
+   * violation the repo's own `windows-check` caught.
+   */
+  readonly stampBefore: string;
+  readonly stampAfter: string;
 }
 
 export interface Evidence {
@@ -261,11 +270,11 @@ export function scoreRun(evidence: Evidence): Score {
   //    development tree does not name a fixed artifact; it names whatever that tree
   //    last compiled, so a rebuild mid-run measures two programs.
   const binary = evidence.binary;
-  if (binary !== undefined && binary.mtimeBefore !== binary.mtimeAfter) {
+  if (binary !== undefined && binary.stampBefore !== binary.stampAfter) {
     return {
       verdict: 'INCONCLUSIVE',
-      because: `the binary under test changed during the run (${binary.path}: ${binary.mtimeBefore} -> ${binary.mtimeAfter})`,
-      findings: [...findings, 'binary mtime moved between --begin and --end'],
+      because: `the binary under test changed during the run (${binary.path}: ${binary.stampBefore} -> ${binary.stampAfter})`,
+      findings: [...findings, 'the binary\'s contents changed between --begin and --end'],
       next_action:
         'Re-run without rebuilding. A run spanning a rebuild measures two different programs and neither result is attributable.',
     };

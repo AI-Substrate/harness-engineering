@@ -71,6 +71,27 @@ than pretend otherwise.
 
 ---
 
+## Where you must run it from
+
+**Run it from the root of a repo that has `.harness/extensions/`, and point `--repo` at the
+repository under test.** Extensions are discovered only in `<cwd>/.harness/extensions/`, and that
+directory is **not searched upward**. Running from anywhere else gives you:
+
+```text
+E149  No extensions are loadable from /private/tmp/whatever …
+```
+
+So this, not the other way round:
+
+```bash
+cd /path/to/harness-engineering            # a repo whose .harness/extensions/ has this verb
+harness validate-attribution --begin --repo ~/temp/my-probe-repo
+```
+
+This is a known limitation of shipping the verb as an extension, and it is met in practice within
+about a minute of trying. It is recorded in the phase-4 close along with the question it raises —
+whether a verb that validates a **machine** property belongs in the core surface instead.
+
 ## Your part, step by step
 
 ### 1. `harness validate-attribution --begin`

@@ -181,7 +181,7 @@ describe('the INCONCLUSIVE gates run BEFORE any PASS/FAIL check', () => {
     expect(score.next_action).toContain('HOOK-side probe reporting OK');
   });
 
-  it('a binary rebuilt mid-run is INCONCLUSIVE — two programs were measured', () => {
+  it('a binary whose CONTENTS changed mid-run is INCONCLUSIVE — two programs were measured', () => {
     /*
     Test Doc:
     - Why: measured on this machine. A hook config naming a development tree does not
@@ -195,8 +195,8 @@ describe('the INCONCLUSIVE gates run BEFORE any PASS/FAIL check', () => {
       ...RUN_10,
       binary: {
         path: '…/harness/cli/dist/index.js',
-        mtimeBefore: '2026-08-10T07:33:49Z',
-        mtimeAfter: '2026-08-10T07:44:02Z',
+        stampBefore: '1200:1a2b3c4d',
+        stampAfter: '1310:9f8e7d6c',
       },
     };
     const score = scoreRun(rebuilt);
@@ -209,8 +209,8 @@ describe('the INCONCLUSIVE gates run BEFORE any PASS/FAIL check', () => {
       ...RUN_10,
       binary: {
         path: '…/harness/cli/dist/index.js',
-        mtimeBefore: '2026-08-10T07:33:49Z',
-        mtimeAfter: '2026-08-10T07:33:49Z',
+        stampBefore: '1200:1a2b3c4d',
+        stampAfter: '1200:1a2b3c4d',
       },
     };
     expect(scoreRun(stable).verdict).toBe('PASS');

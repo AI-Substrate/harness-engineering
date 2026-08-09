@@ -43,8 +43,11 @@ export const RUN_09: Evidence = {
     {
       // ~/.cursor/hooks.json, still present today at preToolUse[0].
       source: '~/.cursor/hooks.json preToolUse[0]',
+      // A verbatim command recorded off a macOS machine: EVIDENCE, not a path this
+      // code ever opens. Preserved byte-for-byte because a control run whose inputs
+      // were tidied is not the run that happened.
       command:
-        'python3 …/attrib-probe/hook-probe.py PRE >/dev/null 2>&1; tee -a /tmp/cursor-hook-pre.jsonl | …/git-ai checkpoint cursor --hook-input stdin',
+        'python3 …/attrib-probe/hook-probe.py PRE >/dev/null 2>&1; tee -a /tmp/cursor-hook-pre.jsonl | …/git-ai checkpoint cursor --hook-input stdin', // win-ok: recorded evidence, never opened
       channel: 'checkpoint',
       ours: false,
       // The operator kept this deliberately: attribution NEEDS channel 1.
@@ -131,8 +134,11 @@ export const RUN_10: Evidence = {
   relays: [
     {
       source: '~/.cursor/hooks.json preToolUse[0]',
+      // A verbatim command recorded off a macOS machine: EVIDENCE, not a path this
+      // code ever opens. Preserved byte-for-byte because a control run whose inputs
+      // were tidied is not the run that happened.
       command:
-        'python3 …/attrib-probe/hook-probe.py PRE >/dev/null 2>&1; tee -a /tmp/cursor-hook-pre.jsonl | …/git-ai checkpoint cursor --hook-input stdin',
+        'python3 …/attrib-probe/hook-probe.py PRE >/dev/null 2>&1; tee -a /tmp/cursor-hook-pre.jsonl | …/git-ai checkpoint cursor --hook-input stdin', // win-ok: recorded evidence, never opened
       channel: 'checkpoint',
       ours: false,
       acknowledged: true,

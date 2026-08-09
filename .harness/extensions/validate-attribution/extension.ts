@@ -162,6 +162,11 @@ export function classifyCommand(command: string): Channel {
   return worst;
 }
 
+/** Last path component, on EITHER separator — a Windows config carries backslashes. */
+function basename(path: string): string {
+  return path.split(/[/\\]/).pop() ?? path;
+}
+
 function classifySegment(segment: string): Channel {
   const tokens = segment.split(/\s+/).map((t) => t.replace(/^['"]+|['"]+$/g, ''));
   // Ours: exact-token marker match, never `includes` on the whole string.
@@ -172,7 +177,7 @@ function classifySegment(segment: string): Channel {
     return 'checkpoint';
   }
   // Recognised no-ops. `tee` and a bare redirect move bytes and talk to nothing.
-  if (['tee', 'cat', 'true', ':'].includes((tokens[0] ?? '').split('/').pop() ?? '')) {
+  if (['tee', 'cat', 'true', ':'].includes(basename(tokens[0] ?? ''))) {
     return 'inert';
   }
   return 'unknown';
@@ -204,7 +209,7 @@ export function relayIdentity(command: string): string {
       tokens.find(
         (t, i) => i > 0 && /\.(py|mjs|cjs|js|sh|rb)$/.test(t),
       ) ?? tokens[0] ?? '';
-    parts.push(meaningful.split('/').pop() ?? meaningful);
+    parts.push(basename(meaningful));
   }
   return parts.join('+');
 }
@@ -312,7 +317,7 @@ interface RunRecord {
   startedAt: string;
   journalCursor: string;
   headBefore: string;
-  binary?: { path: string; mtimeBefore: string };
+  binary?: { path: string; stampBefore: string };
   acknowledgements: string[];
 }
 
@@ -382,9 +387,17 @@ function acknowledgementsOf(ctx: VerbContext): string[] {
   return [];
 }
 
-async function homeOf(ctx: VerbContext): Promise<string> {
-  const result = await ctx.exec('node', ['-e', 'process.stdout.write(require("os").homedir())']);
-  return result.stdout.trim();
+/**
+ * The operator's home, through the INJECTED env port.
+ *
+ * The first implementation shelled out to a node one-liner for the home directory.
+ * The repo's own `windows-check` refused it twice over: a builtin import inside an
+ * extension violates the constitution, and that one-liner would have resolved
+ * nothing useful on Windows anyway. `USERPROFILE` is the Windows answer, and it is
+ * one call away on a port that was already injected.
+ */
+function homeOf(ctx: VerbContext): string {
+  return (ctx.env.get('HOME') ?? ctx.env.get('USERPROFILE') ?? '').replace(/[/\\]+$/, '');
 }
 
 async function headOf(ctx: VerbContext, repo: string): Promise<string> {
@@ -393,29 +406,43 @@ async function headOf(ctx: VerbContext, repo: string): Promise<string> {
 }
 
 /**
- * A stamp for the binary that CHANGES WHEN A REBUILD CHANGES BEHAVIOUR.
+ * A content stamp for the program under test — the thing a rebuild changes.
  *
- * MEASURED. `bin/harness.js` is a thin launcher whose mtime sat at 2026-08-07 while
- * the program it loads was rebuilt four times in one evening — so stat-ing the named
- * binary alone would have watched the one file a rebuild does not touch, and the
- * mid-run-rebuild gate would never have fired. The stamp therefore folds in the
- * package's `dist/` entry when the launcher has one beside it.
+ * MEASURED, TWICE OVER. The first version stat'd the named binary, and
+ * `bin/harness.js` is a thin launcher whose mtime sat at 2026-08-07 while the
+ * program it loads was rebuilt four times in one evening — so the mid-run-rebuild
+ * gate could never have fired. The second version reached for `dist/` as well, but
+ * did it by shelling out to a node one-liner to stat the file, and `windows-check`
+ * refused that as a builtin import inside an extension.
  *
- * Returns the newest mtime of everything it could find, or null when the path is gone.
+ * So: read the bytes, through `ctx.fs`, and digest them. It needs no stat
+ * capability, no shell-out and no builtin, it is identical on every platform, and
+ * it answers the better question — "is this the same program?" rather than "was
+ * this file touched?".
  */
-async function mtimeOf(ctx: VerbContext, path: string): Promise<string | null> {
-  const candidates = [path, path.replace(/\/bin\/[^/]+$/, '/dist/index.js')];
-  const stamps: string[] = [];
+function binaryStamp(ctx: VerbContext, path: string): string | null {
+  const candidates = [path, path.replace(/[/\\]bin[/\\][^/\\]+$/, '/dist/index.js')];
+  const parts: string[] = [];
   for (const candidate of new Set(candidates)) {
-    if (!ctx.fs.exists(candidate)) continue;
-    const result = await ctx.exec('node', [
-      '-e',
-      'process.stdout.write(require("fs").statSync(process.argv[1]).mtime.toISOString())',
-      candidate,
-    ]);
-    if (result.code === 0 && result.stdout.trim() !== '') stamps.push(result.stdout.trim());
+    const text = ctx.fs.readText(candidate);
+    if (text === null) continue;
+    parts.push(`${text.length}:${digest(text)}`);
   }
-  return stamps.length === 0 ? null : stamps.sort().at(-1) ?? null;
+  return parts.length === 0 ? null : parts.join('|');
+}
+
+/**
+ * FNV-1a, 32-bit. Change detection, never security — so a non-cryptographic digest
+ * is the right tool, and writing four lines beats importing `node:crypto` into an
+ * extension that is forbidden to have it.
+ */
+function digest(text: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < text.length; i += 1) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash.toString(16).padStart(8, '0');
 }
 
 function collectCensus(
@@ -452,7 +479,7 @@ async function runBegin(ctx: VerbContext): Promise<VerbResult> {
   }
   const agent = String(ctx.options.agent ?? 'cursor');
   const repo = String(ctx.options.repo ?? ctx.cwd);
-  const home = await homeOf(ctx);
+  const home = homeOf(ctx);
   const acknowledgements = acknowledgementsOf(ctx);
 
   const relays = collectCensus(ctx, home, agent, acknowledgements);
@@ -460,7 +487,7 @@ async function runBegin(ctx: VerbContext): Promise<VerbResult> {
   const journal = ctx.fs.readText(journalPath);
   const lastAt = journalSince(journal, '').at(-1)?.at ?? '';
   const binaryPath = ourBinary(relays);
-  const binaryMtime = binaryPath === null ? null : await mtimeOf(ctx, binaryPath);
+  const binaryStampBefore = binaryPath === null ? null : binaryStamp(ctx, binaryPath);
 
   const record: RunRecord = {
     agent,
@@ -469,8 +496,8 @@ async function runBegin(ctx: VerbContext): Promise<VerbResult> {
     startedAt: new Date().toISOString(),
     journalCursor: lastAt,
     headBefore: await headOf(ctx, repo),
-    ...(binaryPath !== null && binaryMtime !== null
-      ? { binary: { path: binaryPath, mtimeBefore: binaryMtime } }
+    ...(binaryPath !== null && binaryStampBefore !== null
+      ? { binary: { path: binaryPath, stampBefore: binaryStampBefore } }
       : {}),
     acknowledgements,
   };
@@ -566,8 +593,8 @@ async function runEnd(ctx: VerbContext): Promise<VerbResult> {
       ? undefined
       : {
           path: record.binary.path,
-          mtimeBefore: record.binary.mtimeBefore,
-          mtimeAfter: (await mtimeOf(ctx, record.binary.path)) ?? record.binary.mtimeBefore,
+          stampBefore: record.binary.stampBefore,
+          stampAfter: binaryStamp(ctx, record.binary.path) ?? record.binary.stampBefore,
         };
 
   const evidence: Evidence = {

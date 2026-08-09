@@ -361,10 +361,10 @@ function fakeCtx(
     cwd: '/nowhere',
     args: {},
     options: options as Record<string, unknown>,
-    async exec(_command: string, args?: string[]) {
-      // `homeOf` shells out to node for the homedir; everything else is inert here.
-      const joined = (args ?? []).join(' ');
-      if (joined.includes('homedir')) return { code: 0, stdout: '/home/fake', stderr: '', ok: true };
+    // The home comes from the INJECTED env port, so a fixture can fence it without
+    // the verb ever consulting the real machine.
+    env: { get: (name: string) => (name === 'HOME' ? '/home/fake' : undefined) },
+    async exec() {
       return { code: 1, stdout: '', stderr: '', ok: false };
     },
     fs: {
