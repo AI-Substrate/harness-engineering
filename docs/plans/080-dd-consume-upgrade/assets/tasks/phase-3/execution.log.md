@@ -446,6 +446,24 @@ PR-body material and this page cannot drift apart.
 > **pre-`6a43fd4d`, against a three-check gate**, and will not reproduce as a total once
 > this branch rebases. That delta is the fourth check counting files nobody had linted —
 > **not** a regression, and not to be "fixed" by re-running or amending history.
+>
+> **Sharpened same day, on the fleet's own correction: absent is not zero.** My sentence
+> above reports the `unexamined` row as missing, which is right, but the safe reading of a
+> missing row is **"cannot tell"** — never "clean". Three branches: row present and
+> non-zero with the other three unchanged ⇒ main did it; any of the other three moved ⇒
+> that part is mine; **row absent ⇒ the fourth question cannot be asked on this branch at
+> all**. What I can state positively is the *input*, not the result: `git status
+> --porcelain` is empty, so the untracked population this branch would hand the new check
+> is currently zero. That is a measurement of the input set, not a prediction of a check
+> that does not exist here yet — and it expires the moment anyone drops a file in the tree.
+>
+> **Scope correction that also lands on this file.** `docs/plans/**` is in `IGNORE_GLOBS`
+> (`scope.ts:33`) and ignore beats include (`scope.ts:95`), so **this execution log is
+> itself outside the gate** — as are the checklist, the briefs and `the-flow` files. Any
+> claim of the form "markdown-lint does not flag this log" is guaranteed by scope, not
+> earned by a check. The tk-000f claim above is the exception and survives on its merits:
+> `docs/how/consuming-dd.md` is genuinely IN-SCOPE (verified with the real `inScope()`
+> predicate alongside an in-scope control, `AGENTS.md`), so its `0 of 211` is a result.
 
 ## tk-0013 — command-surface migration
 

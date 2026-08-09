@@ -667,6 +667,35 @@ none of them are mine — checked, not assumed: `arch-check`'s 2 warnings are bo
 > linted. The claim this figure supports — that none of the findings are phase-2's — is
 > unaffected and still holds. Recorded here so a future reviewer of this commit reads the
 > number with the gate it was taken against, rather than reconstructing it without context.
+>
+> **Second annotation, same day, correcting the one above.** "The claim this figure
+> supports is unaffected" is true, but it is true for a reason the sentence above the
+> annotation does not give, and the difference matters. `docs/plans/**` is in `IGNORE_GLOBS`
+> in `.harness/extensions/markdown-lint/lib/scope.ts:33`, and **ignore beats include**
+> (`inScope()`, `scope.ts:95`). This log — and every plan asset, brief, checklist and
+> `the-flow` file — is **out of the gate's scope entirely**. So "`markdown-lint`'s 211
+> findings do not include this log or any phase-2 file" was never a *result*; it was
+> **guaranteed by the scope**, and would have read identically had the file been full of
+> violations. Verified by running the real predicate with a positive control rather than by
+> reading the globs:
+>
+> ```
+> IN-SCOPE  docs/how/consuming-dd.md
+> IN-SCOPE  AGENTS.md
+> IGNORED   docs/plans/080-dd-consume-upgrade/assets/tasks/phase-2/execution.log.md
+> IGNORED   docs/plans/080-dd-consume-upgrade/assets/tasks/phase-3/context.md
+> IGNORED   docs/plans/080-dd-consume-upgrade/the-flow.md
+> ```
+>
+> The two in-scope lines are the control: the predicate does say yes to something, so the
+> IGNORED verdicts are a filter and not a broken probe. **I wrote the annotation above to
+> explain one way this number could mislead, and did not notice the sentence it annotates
+> was already vacuous for a different reason** — which is the fourth instance of this class
+> in a day and the sharpest, because it happened *inside the correction*. It also names the
+> general rule better than my earlier wording did: publishing a denominator is necessary and
+> not sufficient — **the denominator has to be the population the claim covers**, or it is a
+> more confident way of being wrong. Phase 3's figures do not inherit this defect: that
+> phase touched `AGENTS.md` and `docs/how/consuming-dd.md`, both genuinely in scope.
 
 **The failure mode worth keeping.** The biome red was a REAL observation — when I first
 made it. I then carried it forward across several commits and restated it as current fact
