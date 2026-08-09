@@ -1,0 +1,73 @@
+harness/cli/src/services/telemetry/housekeeping.ts
+  s_6b8a25b7716dd8::t_3894523aed01a8 241-245
+  s_6b8a25b7716dd8::t_8918c93ad96cf4 111,118
+  s_6b8a25b7716dd8::t_df68f73d781d19 159-176,193-200,206-208
+  s_6b8a25b7716dd8::t_f6546af9d4ace8 201
+  s_6b8a25b7716dd8::t_8fbf4a8aa32f18 202-205
+  s_6b8a25b7716dd8::t_0cde6f09e8ea3f 229-235
+  s_6b8a25b7716dd8::t_0294517874bf15 108-110,112-116,119-124
+  s_6b8a25b7716dd8::t_6c75de4fb0a76e 71-89,94-107,117
+  s_6b8a25b7716dd8::t_704798ed6350a1 236-240
+  s_6b8a25b7716dd8::t_c206aad4356b64 47-55
+  s_6b8a25b7716dd8::t_8bd411cc81f615 177-192
+  s_6b8a25b7716dd8::t_b654ed5f336d7a 125-126
+harness/cli/test/services/telemetry/housekeeping.test.ts
+  s_6b8a25b7716dd8::t_cfa0bb66b9524b 8,11,341-369,377-388
+  s_6b8a25b7716dd8::t_10e4bff539ae49 306-340
+  s_6b8a25b7716dd8::t_730c35d51445f8 62-67,74
+  s_6b8a25b7716dd8::t_c910350a670cb1 189-206,208-221,223-305,370-376,389-390
+  s_6b8a25b7716dd8::t_86a3025ded92d4 12
+  s_6b8a25b7716dd8::t_9fe8a44717f503 207,222
+harness/cli/test/services/doctor/doctor-service.test.ts
+  s_e2ef1441ad1dbd::t_b8bd71df2819eb 902-988
+  s_6b8a25b7716dd8::t_2eea7a456379ad 827-853,861,863-874,877-880,886-891,893-901
+  s_6b8a25b7716dd8::t_b5e8515ade125f 854-860,862,875-876,881-885,892
+harness/cli/src/services/doctor/doctor-service.ts
+  s_6b8a25b7716dd8::t_919eba16e5fcee 1024-1025,1055-1059,1073
+  s_6b8a25b7716dd8::t_0f456e67fc99b4 31
+  s_6b8a25b7716dd8::t_d773fd38a9ad19 976-1006
+  s_6b8a25b7716dd8::t_b5b309c3fdef01 867-877
+  s_e2ef1441ad1dbd::t_e4d438315bf3b2 886
+  s_6b8a25b7716dd8::t_5f75c12b3ef1ba 19
+  s_e2ef1441ad1dbd::t_ca9a4c91b3b6e9 864
+  s_e2ef1441ad1dbd::t_b8bd71df2819eb 1051,1074-1079
+  s_6b8a25b7716dd8::t_62b0f86732126b 1086-1093
+  s_6b8a25b7716dd8::t_6227e6bcdb5e15 1019-1023,1026-1033,1035-1050,1052-1054,1060-1061,1070-1071,1081-1084,1105
+  s_6b8a25b7716dd8::t_fe8d792d05c109 878-885,887-898
+  s_6b8a25b7716dd8::t_979e5f0e4a0080 74-78,1062-1069
+  s_6b8a25b7716dd8::t_c277ac634fe0be 73,975,1094-1104
+harness/cli/src/app.ts
+  s_e2ef1441ad1dbd::t_fe757edd058120 545-558,596,685
+  s_6b8a25b7716dd8::t_aca76ef0ff3645 75-78
+  s_6b8a25b7716dd8::t_aab4de254e4fc8 318-359,374-379
+  s_6b8a25b7716dd8::t_39497c1db6bceb 460
+  s_6b8a25b7716dd8::t_05d95067b33225 360-362
+  s_e2ef1441ad1dbd::t_1ab334bcc32f5b 391-405,470-478
+  s_e2ef1441ad1dbd::t_b8bd71df2819eb 50
+  s_6b8a25b7716dd8::t_afe1b51bfbb394 363-373
+  s_6b8a25b7716dd8::t_7943c1874f9d86 317
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "5038fe73ab1ac931c27c32fde9e00e0d738afd19",
+  "prompts": {},
+  "sessions": {
+    "s_6b8a25b7716dd8": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "0566e436-a7a0-4359-99b4-8a2dc8a4c21d",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_e2ef1441ad1dbd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "265d8845-1914-4476-9977-4a05f12f4b06",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
