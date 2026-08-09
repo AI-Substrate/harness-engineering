@@ -21,7 +21,7 @@
       "value": [
         {
           "id": "tk-000c",
-          "title": "BIDIRECTIONAL fork-drain checklist BEFORE any deletion (prime's rule, ledger: both directions): enumerate (a) every harness-main commit touching services/dd or acts/dd since the dd fork point - sha + adjudication (ported upstream / deferred / dies-with-fork), and (b) every dd-side fix the fork never took (known live entry: dd's shouldExcludeFromSweep E436 reorder, crab in-flight) - committed as assets/tasks/phase-3/fork-drain-checklist.md",
+          "title": "BIDIRECTIONAL fork-drain checklist AND full conversion inventory BEFORE any deletion (sol F1-F3 widened it from commit-history to LIVE CONSUMERS): enumerate (a) every harness-main commit touching services/dd or acts/dd since the fork point - sha + adjudication (ported / deferred / dies-with-fork); (b) every dd-side fix the fork never took (known: shouldExcludeFromSweep E436 reorder, crab in-flight; the unstaged-rollback fix, dd o-prime sequencing); (c) every LIVE consumer of the fork with a per-row conversion/retirement adjudication: production imports (services/flow/{chores-read,flow-dd-gate,flow-events,flow-mutations,flow-renderer}.ts + services/doctor/doctor-service.ts), the ~60 test files matching fork paths (fork-owned dies vs consumer-contract converts), build/check surfaces (gen:dd-docs, check:dd-docs, test/acts/dd.test.ts, dd-doctor sensor, dependency-cruiser fork rules), and operating docs/skills/scenarios prescribing harness dd verbs - committed as assets/tasks/phase-3/fork-drain-checklist.md",
           "phase": "ph-08e2",
           "state": "unchecked",
           "satisfies": [
@@ -86,6 +86,16 @@
             "../../../plan.dd.json#acceptance_criteria/ac-000b",
             "../../../plan.dd.json#acceptance_criteria/ac-000c"
           ]
+        },
+        {
+          "id": "tk-0013",
+          "title": "F3 command-surface migration: every operating surface that prescribes the removed harness dd verb family migrates to the standalone dd CLI or is explicitly retired - docs/how/dd/**, the builder skill references (8 files under skills/builder/references), and the dd-native-builder eval scenario (live-testing/scenarios/dd-native-builder/assertions.json executable command) - per the checklist adjudication; historical records (.harness/records, archived plans, retros) are exempt as frozen provenance",
+          "phase": "ph-08e2",
+          "state": "unchecked",
+          "satisfies_toward": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0008",
+            "../../../plan.dd.json#acceptance_criteria/ac-000c"
+          ]
         }
       ]
     },
@@ -95,7 +105,7 @@
         "tk-000c": [
           {
             "id": "dw-0017",
-            "assertion": "assets/tasks/phase-3/fork-drain-checklist.md is committed BEFORE the deletion commit (git order is the proof), enumerates BOTH directions with shas and a per-row adjudication (ported / deferred / dies-with-fork), and carries the walk.ts E436 row (dd fix in-flight, package-consumed, verify-at-re-pin)",
+            "assertion": "assets/tasks/phase-3/fork-drain-checklist.md is committed BEFORE the deletion commit (git order is the proof) and carries ALL THREE inventories - (a) harness-main commit history with shas + adjudications, (b) dd-side fixes the fork never took incl. the walk.ts E436 row, (c) the live-consumer conversion inventory: every production import, test file class, build/check/sensor/arch-rule surface, and doc/skill/scenario command reference, each with an explicit convert / retire / dies-with-fork adjudication - no consumer reaches the deletion commit unadjudicated",
             "state": "unchecked",
             "pressure": "../../backpressure.dd.json#rows/bp-0006"
           }
@@ -103,7 +113,7 @@
         "tk-000d": [
           {
             "id": "dw-0018",
-            "assertion": "test ! -d harness/cli/src/services/dd AND test ! -d harness/cli/src/acts/dd; repo-wide grep for their import paths returns zero matches across src/ and test/; harness dd <verb> no longer resolves (unknown-command error, control run captured); just build && just test green",
+            "assertion": "test ! -d harness/cli/src/services/dd AND test ! -d harness/cli/src/acts/dd; repo-wide grep for their import paths returns zero matches across src/ and test/; verb-removal proof is TEMPORALLY BOUND (sol F4): a named working-verb command (node harness/cli/bin/harness.js dd validate <doc>) runs successfully and is logged BEFORE the deletion commit, and the same command errors unknown-command AFTER it - both outputs in the execution log with commit order; just build && just test green",
             "state": "unchecked",
             "pressure": "../../backpressure.dd.json#rows/bp-0007"
           },
@@ -119,6 +129,18 @@
             "state": "unchecked",
             "pressure": "not-applicable",
             "note": "seat-detector re-aim - ledger drift-surface trigger 2; proof is the detector run output at the boundary"
+          },
+          {
+            "id": "dw-0022",
+            "assertion": "F1 conversion: the six production consumers (services/flow/{chores-read,flow-dd-gate,flow-events,flow-mutations,flow-renderer}.ts, services/doctor/doctor-service.ts) import zero fork paths - each rewired onto @ai-substrate/dd public subpaths or the promoted plan-semantics module per the checklist adjudication; test files adjudicated fork-owned (retire with the tree) vs consumer-contract (converted and green) - none deleted merely for referencing the fork",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0007"
+          },
+          {
+            "id": "dw-0023",
+            "assertion": "F2 build/proof surfaces: gen:dd-docs (script + package.json build wiring), check:dd-docs, test/acts/dd.test.ts, the dd-doctor sensor, and every dependency-cruiser fork rule are each retired or re-aimed per the checklist; tree absence is asserted AFTER a full just build (the generator must not resurrect or require the tree), not only before it",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0007"
           }
         ],
         "tk-000e": [
@@ -173,6 +195,14 @@
             "assertion": "at the final boundary on the fork-less build: tsc --noEmit exit 0, full vitest suite green, and node harness/cli/bin/harness.js flow orient + rail + plan validate all ok against plan 080's own documents",
             "state": "unchecked",
             "pressure": "../../backpressure.dd.json#rows/bp-000b"
+          }
+        ],
+        "tk-0013": [
+          {
+            "id": "dw-0024",
+            "assertion": "a NON-HISTORICAL zero-reference proof: git grep for the harness dd verb surface (harness dd , harness.js dd , dd doctor as a harness verb) across docs/how, skills/, live-testing/scenarios returns zero prescriptive matches (frozen provenance under .harness/records, docs/plans/archive, and retro records exempt and the exemption list named in the log); each migrated surface names its replacement (standalone dd CLI invocation) and the eval scenario still dry-scores with every placeholder reading ?",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0008"
           }
         ]
       }
