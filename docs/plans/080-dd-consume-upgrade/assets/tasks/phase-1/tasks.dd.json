@@ -21,7 +21,7 @@
       "value": [
         {
           "id": "tk-0001",
-          "title": "Pin the dependency: add @ai-substrate/dd to harness/cli package.json as github:AI-Substrate/dd#<full 40-char sha> at current dd branch head (floor f712ded; take latest green, name the sha in the execution log), npm install unsandboxed, lockfile committed",
+          "title": "Pin the dependency: add @ai-substrate/dd to the ROOT package.json (the repo single manifest - harness/cli has none) as github:AI-Substrate/dd#<full 40-char sha> at current dd branch head (ancestry-checked from floor f712ded; name the sha in the execution log), npm install unsandboxed, root package-lock.json committed",
           "phase": "ph-1d68",
           "state": "unchecked",
           "satisfies": [
@@ -49,7 +49,7 @@
         },
         {
           "id": "tk-0004",
-          "title": "Rewire acts/plan/pr-body.ts (escapeCell/headingSlug from ./render/renderer; PlanEdge/PlanIndex/PlanItem types REMAIN on the fork until phase 2) and acts/plan/index.ts non-plan imports (core address/model/parse/validate/walk, links resolveMapSeed/traverseCorpus, schema model) onto the package",
+          "title": "Rewire acts/plan/pr-body.ts (escapeCell/headingSlug from ./render/renderer; PlanEdge/PlanIndex/PlanItem types REMAIN on the fork until phase 2) and acts/plan/index.ts non-plan imports onto the package: core address/model/parse/validate/walk, links resolveMapSeed/traverseCorpus, schema model SchemaIssue AND schema resolve ConventionSchemaResolver",
           "phase": "ph-1d68",
           "state": "unchecked",
           "satisfies": [
@@ -75,7 +75,7 @@
         "tk-0001": [
           {
             "id": "dw-0001",
-            "assertion": "(cd harness/cli && npm ls @ai-substrate/dd) resolves git+ssh://...#<full 40-char sha>, sha >= f712ded, named in the execution log",
+            "assertion": "npm ls @ai-substrate/dd (repo root) resolves git+ssh://...#<full 40-char sha> AND git merge-base --is-ancestor f712ded <that sha> exits 0 in a dd clone; sha named in the execution log",
             "state": "unchecked",
             "pressure": "../../backpressure.dd.json#rows/bp-0001"
           },
@@ -103,7 +103,7 @@
         "tk-0003": [
           {
             "id": "dw-0005",
-            "assertion": "git grep of services/dd and acts/dd across acts/flow.ts and acts/plan/fence.ts returns zero matches",
+            "assertion": "git grep -nE \"services/dd|acts/dd|\\./dd/\" -- harness/cli/src/acts/flow.ts harness/cli/src/acts/plan/fence.ts returns zero matches (catches the relative ./dd/shared.js FsDocLoader import at flow.ts:80, not just the services/dd paths)",
             "state": "unchecked",
             "pressure": "../../backpressure.dd.json#rows/bp-0002"
           },
@@ -117,9 +117,9 @@
         "tk-0004": [
           {
             "id": "dw-0007",
-            "assertion": "git grep of services/dd across pr-body.ts and index.ts returns ONLY services/dd/plan imports (the bounded phase-2 remainder); acts/dd zero",
+            "assertion": "git grep -nE \"services/dd|acts/dd|\\./dd/\" across pr-body.ts and index.ts returns ONLY services/dd/plan imports (the bounded phase-2 remainder) - phase-1-scoped proof bp-000f, distinct from the phase-2 full-zero bp-0002",
             "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-0002"
+            "pressure": "../../backpressure.dd.json#rows/bp-000f"
           },
           {
             "id": "dw-0008",

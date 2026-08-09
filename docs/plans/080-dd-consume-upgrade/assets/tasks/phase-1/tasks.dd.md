@@ -35,10 +35,10 @@ _Empty._
 
 | id | title | domain | phase | state | note | receipt | done | success | notes | satisfies |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| tk-0001 | Pin the dependency: add @ai-substrate/dd to harness/cli package.json as github:AI-Substrate/dd#&lt;full 40-char sha&gt; at current dd branch head (floor f712ded; take latest green, name the sha in the execution log), npm install unsandboxed, lockfile committed | — | ph-1d68 | [ ] unchecked | — | — | — | — | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
+| tk-0001 | Pin the dependency: add @ai-substrate/dd to the ROOT package.json (the repo single manifest - harness/cli has none) as github:AI-Substrate/dd#&lt;full 40-char sha&gt; at current dd branch head (ancestry-checked from floor f712ded; name the sha in the execution log), npm install unsandboxed, root package-lock.json committed | — | ph-1d68 | [ ] unchecked | — | — | — | — | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
 | tk-0002 | Promote the POC probe trio into a vitest integration spec against the INSTALLED package: pack shape (no src/), injection with fixture-owned foreign ports (typed: const fs: SchemaFs = ...), tracked===null on null tracking set, D7 drive-rooted address resolution | — | ph-1d68 | [ ] unchecked | — | — | — | — | — | [ac-0003](../../../plan.dd.md#acceptance-criteria) |
 | tk-0003 | Rewire acts/flow.ts and acts/plan/fence.ts onto @ai-substrate/dd public subpaths (round-2 pattern: ConventionSchemaResolver+MemoizingDocLoader+FsDocLoader from the barrel, DdDoc type from the barrel) | — | ph-1d68 | [ ] unchecked | — | — | — | — | — | [ac-0002](../../../plan.dd.md#acceptance-criteria), [ac-0003](../../../plan.dd.md#acceptance-criteria) |
-| tk-0004 | Rewire acts/plan/pr-body.ts (escapeCell/headingSlug from ./render/renderer; PlanEdge/PlanIndex/PlanItem types REMAIN on the fork until phase 2) and acts/plan/index.ts non-plan imports (core address/model/parse/validate/walk, links resolveMapSeed/traverseCorpus, schema model) onto the package | — | ph-1d68 | [ ] unchecked | — | — | — | — | — | [ac-0002](../../../plan.dd.md#acceptance-criteria), [ac-0003](../../../plan.dd.md#acceptance-criteria) |
+| tk-0004 | Rewire acts/plan/pr-body.ts (escapeCell/headingSlug from ./render/renderer; PlanEdge/PlanIndex/PlanItem types REMAIN on the fork until phase 2) and acts/plan/index.ts non-plan imports onto the package: core address/model/parse/validate/walk, links resolveMapSeed/traverseCorpus, schema model SchemaIssue AND schema resolve ConventionSchemaResolver | — | ph-1d68 | [ ] unchecked | — | — | — | — | — | [ac-0002](../../../plan.dd.md#acceptance-criteria), [ac-0003](../../../plan.dd.md#acceptance-criteria) |
 | tk-0005 | Dogfood proof at the phase boundary: flow orient/rail and plan validate run green against plan 080 documents on the rewired build; any new dd-implementation defect goes to the dogfood ledger | — | ph-1d68 | [ ] unchecked | — | — | — | — | — | [ac-000b](../../../plan.dd.md#acceptance-criteria), [ac-000c](../../../plan.dd.md#acceptance-criteria) |
 
 <a id="done-when"></a>
@@ -49,7 +49,7 @@ _Empty._
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0001 | (cd harness/cli && npm ls @ai-substrate/dd) resolves git+ssh://...#&lt;full 40-char sha&gt;, sha &gt;= f712ded, named in the execution log | [ ] unchecked | [bp-0001](../../backpressure.dd.md#rows) |
+| dw-0001 | npm ls @ai-substrate/dd (repo root) resolves git+ssh://...#&lt;full 40-char sha&gt; AND git merge-base --is-ancestor f712ded &lt;that sha&gt; exits 0 in a dd clone; sha named in the execution log | [ ] unchecked | [bp-0001](../../backpressure.dd.md#rows) |
 | dw-0002 | npm install completes with the registry proxy untouched for dd (only commander/jiti from registry) and the committed lockfile pins the same sha | [ ] unchecked | [bp-0001](../../backpressure.dd.md#rows) |
 
 ### tk-0002
@@ -63,14 +63,14 @@ _Empty._
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0005 | git grep of services/dd and acts/dd across acts/flow.ts and acts/plan/fence.ts returns zero matches | [ ] unchecked | [bp-0002](../../backpressure.dd.md#rows) |
+| dw-0005 | git grep -nE "services/dd\|acts/dd\|\./dd/" -- harness/cli/src/acts/flow.ts harness/cli/src/acts/plan/fence.ts returns zero matches (catches the relative ./dd/shared.js FsDocLoader import at flow.ts:80, not just the services/dd paths) | [ ] unchecked | [bp-0002](../../backpressure.dd.md#rows) |
 | dw-0006 | just build && just test green after the rewire (423-suite bar) | [ ] unchecked | [bp-0003](../../backpressure.dd.md#rows) |
 
 ### tk-0004
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0007 | git grep of services/dd across pr-body.ts and index.ts returns ONLY services/dd/plan imports (the bounded phase-2 remainder); acts/dd zero | [ ] unchecked | [bp-0002](../../backpressure.dd.md#rows) |
+| dw-0007 | git grep -nE "services/dd\|acts/dd\|\./dd/" across pr-body.ts and index.ts returns ONLY services/dd/plan imports (the bounded phase-2 remainder) - phase-1-scoped proof bp-000f, distinct from the phase-2 full-zero bp-0002 | [ ] unchecked | [bp-000f](../../backpressure.dd.md#rows) |
 | dw-0008 | just build && just test green after the rewire | [ ] unchecked | [bp-0003](../../backpressure.dd.md#rows) |
 
 ### tk-0005

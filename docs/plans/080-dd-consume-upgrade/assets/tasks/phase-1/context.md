@@ -53,7 +53,7 @@ pair (`flow orient` + `plan validate` on this very plan's documents).
 
 | File | Change |
 |------|--------|
-| `harness/cli/package.json` (+ root lockfile) | add pinned dep |
+| **root** `package.json` (+ root `package-lock.json`) | add pinned dep — the repo has ONE manifest at root; `harness/cli` has no package.json (validation V-1) |
 | `harness/cli/src/acts/flow.ts` | rewire imports (drop `services/dd/links`, `services/dd/schema`, `./dd/shared.js` FsDocLoader) |
 | `harness/cli/src/acts/plan/fence.ts` | `DdDoc` type from the barrel |
 | `harness/cli/src/acts/plan/pr-body.ts` | render imports from `./render/renderer`; plan types stay |
