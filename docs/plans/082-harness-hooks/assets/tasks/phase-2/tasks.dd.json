@@ -14,16 +14,136 @@
     },
     {
       "name": "summary",
-      "value": ""
+      "value": "The installer, built as ONE declarative matrix over four write strategies — the authoritative design is assets/workshops/hooks-installing.md and it is the product of a source raid on git-ai's 15 bespoke installers. ORDERING IS DELIBERATE: Strategy A (7 agents, INCLUDING CURSOR) is the critical path because Cursor is the agent the end-to-end validation actually runs against. Strategies C and D come last so they are the natural cut line if time runs short — cutting breadth is acceptable, cutting the safety properties is not. TWO THINGS ALREADY MEASURED AND EASY TO GET WRONG: (1) we ALREADY have an agent-config backup mechanism in services/doctor/collector/backup.ts writing ~/.git-ai/harness-backups/<iso>/ — REUSE it, a second backup path makes restore ambiguous; (2) the live hook on this machine points into untracked scratch/, so `status` must STAT its configured target rather than report that a config entry exists — an entry pointing at a deleted file is indistinguishable from a working hook, which is this plan's own silent-failure class reintroduced from the installer side."
     },
     {
       "name": "tasks",
-      "value": []
+      "value": [
+        {
+          "id": "tk-0001",
+          "title": "Build the config-fixture harness FIRST, including a config that already holds git-ai's own entries",
+          "state": "unchecked",
+          "phase": "phase-2",
+          "success": "Sensors before feature code, as in Phase 1. A per-agent fixture that materialises a realistic config, runs the installer against it, and diffs the bytes. The load-bearing fixture is the one seeded with git-ai's OWN hook entries already present — preservation is the property most likely to break silently and the one a customer notices most. Prove the harness can SEE a failure: seed a config, have a deliberately clobbering writer destroy a sibling entry, and show the fixture goes RED before any real writer exists.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0005"
+          ]
+        },
+        {
+          "id": "tk-0002",
+          "title": "Encode the agent matrix as DATA — config path, event names, entry shape, casing — with the env overrides",
+          "state": "unchecked",
+          "phase": "phase-2",
+          "success": "One table, no per-agent code. Event names are NOT consistent and assuming PreToolUse is wrong: cursor and firebender use lowerCamel (preToolUse), gemini uses BeforeTool/AfterTool, windsurf has five Cascade events. THE TWO ENV OVERRIDES BEHAVE DIFFERENTLY and getting them backwards writes to the wrong place silently: CLAUDE_CONFIG_DIR is used VERBATIM AS THE DIR with no `.claude` appended, while GEMINI_CLI_HOME points at the HOME ROOT and `.gemini` IS appended. Assert both directions with a fixture per override.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0004"
+          ]
+        },
+        {
+          "id": "tk-0003",
+          "title": "Implement Strategy A — JSON config merge — for the 7 agents, preserving key ORDER and every sibling entry",
+          "state": "unchecked",
+          "phase": "phase-2",
+          "success": "claude-code, cursor, gemini, droid, firebender, github-copilot, windsurf. Merge our single owned entry into the events key. Preserve key order and any existing entries byte-for-byte; git-ai's order-destroying rewrite is one of the four defects we are explicitly not inheriting. Windsurf writes TWO paths (~/.codeium/hooks.json AND ~/.codeium/windsurf/hooks.json) — both, or it half-works.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0005"
+          ]
+        },
+        {
+          "id": "tk-0004",
+          "title": "Resolve the binary path absolutely, normalise it for Windows shells, and ALWAYS quote it — for every agent",
+          "state": "unchecked",
+          "phase": "phase-2",
+          "success": "current_exe -> canonicalize -> strip the Windows \\\\?\\ prefix, then normalise C:\\x\\y.exe to C:/x/y.exe. git-ai normalises in only 3 of its 15 installers and quotes in only 2; we do both everywhere, because a space in the path is the difference between a working hook and a silent one. MEASURED HAZARD: the live hook on this machine points into untracked scratch/. Never write a source or scratch path — an absolute path to a stable installed binary only.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0004"
+          ]
+        },
+        {
+          "id": "tk-0005",
+          "title": "Detect agents from ABSOLUTE markers only — never a cwd-relative path",
+          "state": "unchecked",
+          "phase": "phase-2",
+          "success": "git-ai's amp/opencode/pi installers test `.amp` / `.opencode` / `.pi` in the CURRENT WORKING DIRECTORY, so running the installer from a directory that happens to contain such a folder marks the agent installed. Do not inherit that. Prove it with a test that runs detection from inside a directory containing a decoy marker dir and asserts the agent is NOT detected — a positive control for the exact trap.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0006"
+          ]
+        },
+        {
+          "id": "tk-0006",
+          "title": "Wire `harness hooks install|status|uninstall|list`, all with --json, and honour HARNESS_NO_HOOKS=1 IN THE VERB",
+          "state": "unchecked",
+          "phase": "phase-2",
+          "success": "Registered the way Phase 1 registered `hooks fire`, with `hooks` already in RESERVED_NAMES. HARNESS_NO_HOOKS=1 is honoured by install ITSELF, not only at doctor's call site, so the opt-out cannot be bypassed by invoking the verb directly — assert that by calling the verb directly with the variable set and showing nothing was written.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0009"
+          ]
+        },
+        {
+          "id": "tk-0007",
+          "title": "Make install IDEMPOTENT and prove it on BYTES, not on a status message",
+          "state": "unchecked",
+          "phase": "phase-2",
+          "success": "A second run leaves every touched config byte-identical. Assert by hashing the file before and after the second run — a test that merely re-reads our own entry would pass while reordering keys or rewriting whitespace around them. Include the case where the config already holds git-ai's entries, since that is where a naive merge reorders.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0004"
+          ]
+        },
+        {
+          "id": "tk-0008",
+          "title": "REUSE backupAgentConfigs — do not write a second backup mechanism",
+          "state": "unchecked",
+          "phase": "phase-2",
+          "success": "services/doctor/collector/backup.ts (from the #108 doctor work) already backs up agent configs to ~/.git-ai/harness-backups/<iso>/ and already reports copied / failed / UNDECLARED, the last distinguishing 'nothing to copy' from 'we did not know where to look'. Two mechanisms writing agent-config backups to near-identical locations would make restore ambiguous, which defeats the uninstall criterion. If the existing helper needs widening, widen it and say so.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-000a"
+          ]
+        },
+        {
+          "id": "tk-0009",
+          "title": "Make `status` prove its target RESOLVES — evidence, never belief",
+          "state": "unchecked",
+          "phase": "phase-2",
+          "success": "status reports per-agent state from a file we can show we changed, and additionally STATS the configured binary path. MEASURED on this machine: the live Cursor hook points into untracked scratch/, so a config entry can exist while its target does not — and because hook failures exit 0 by design, that is indistinguishable from a working hook. A status that only confirms an entry exists reintroduces this plan's own silent-failure class from the installer side. Assert the unresolvable case explicitly.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0006"
+          ]
+        },
+        {
+          "id": "tk-000a",
+          "title": "Make `uninstall` remove ONLY our marked entry, restore the ORIGINAL bytes, and REFUSE to clobber an unmarked file",
+          "state": "unchecked",
+          "phase": "phase-2",
+          "success": "Ownership is matched on OUR marker — never git-ai's `contains(\"git-ai\") && contains(\"checkpoint\")` test, which would claim entries we do not own. Copy cline.rs:212-223's posture verbatim: REFUSE to overwrite a file lacking our marker rather than clobbering it. amp.rs:114-133 does the opposite (remove_file with no marker check) and that is the behaviour to reject. Symmetry is a test: install then uninstall returns the config to the ORIGINAL bytes, with git-ai's entries untouched.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-000a"
+          ]
+        },
+        {
+          "id": "tk-000b",
+          "title": "Strategy C — the plugin file — for amp, opencode and pi",
+          "state": "unchecked",
+          "phase": "phase-2",
+          "success": "A whole TypeScript file with our binary path substituted. Same marker-ownership and refuse-to-clobber posture as Strategy D. CUT LINE: this and the next task are the acceptable casualties if time runs short — Strategy A covers Cursor, which is what the end-to-end validation runs against. Cutting these is a breadth loss to state plainly, never a silent omission.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0005"
+          ]
+        },
+        {
+          "id": "tk-000c",
+          "title": "Strategy D — the script file — for cline, carrying the one guard git-ai got right",
+          "state": "unchecked",
+          "phase": "phase-2",
+          "success": "Two /bin/sh scripts named for the events, mode 0755, under ~/Documents/Cline/Hooks/. `ensure_hook_script_is_writable` REFUSES to overwrite a file lacking the marker — that guard is ours everywhere, and this is where git-ai actually implemented it. No-op on Windows, stated rather than silently skipped. Strategy B (codex TOML) stays DEFERRED: its sha256 trust state embeds positional indices that go stale and it is unresolved from the source whether its trust hash matches what Codex computes. Deferring it is a decision on the record, not an oversight.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0005"
+          ]
+        }
+      ]
     },
     {
       "name": "done_when",
       "value": {}
     }
-  ],
-  "references": []
+  ]
 }
