@@ -5,6 +5,7 @@ import { BACKUP_MANIFEST_NAME, restoreAgentConfigs } from '../doctor/collector/b
 import type { AgentSpec } from './agent-matrix.js';
 import { AGENT_MATRIX, resolveConfigFiles } from './agent-matrix.js';
 import { extractBinaryPath } from './binary-path.js';
+import { unacceptedOptions } from './fire-options.js';
 import { FileHookJournal } from './hook-journal.js';
 import { isOwnedByUs } from './hook-marker.js';
 import { hookJournalPath, hookStateDir } from './hook-payload.js';
@@ -287,6 +288,31 @@ function compensate(deps: HooksDeps, spec: AgentSpec, outcomes: InstallOutcome[]
   }
 }
 
+/**
+ * Whether the OPTIONS in an installed command are ones this binary declares
+ * (plan 082, F004).
+ *
+ * WHY THIS IS A SEPARATE FIELD FROM {@link BinaryState}, and it is the whole
+ * lesson: `binaryState: 'resolves'` stats the BINARY. The binary existed. Every
+ * hook on every machine was reported healthy while none of them could run,
+ * because the ARGUMENTS were rejected and `status` had no way to see it.
+ *
+ * - `absent` — no entry of ours, so there is nothing to judge.
+ * - `accepted` — every option the command names is one this binary declares.
+ * - `unknown-options` — the config and this binary disagree about at least one
+ *   option. `fire` tolerates them (it will still run), so this is a DRIFT report
+ *   rather than a fatality: usually a config written by a different version.
+ *
+ * WHAT IT DOES NOT PROVE, stated plainly because the failure it replaces was
+ * exactly a status field read as more than it measured: this is a STATIC check of
+ * option names against this binary's declaration. It does not execute the command.
+ * It cannot see a binary that is a different program, a broken node install, or a
+ * runtime failure inside `fire`. For that, the journal (`fires.recorded`) is the
+ * only honest evidence — which is why `fireSummary` distinguishes "never fired"
+ * from "fired and failed" rather than collapsing them.
+ */
+export type CommandState = 'absent' | 'accepted' | 'unknown-options';
+
 /** How a configured binary reads, as three states rather than a boolean. */
 export type BinaryState =
   /** No entry of ours, so there is no binary to judge. */
@@ -331,19 +357,36 @@ export interface StatusReport extends AgentReport {
    * cannot express it.
    */
   binaryState: BinaryState;
+  /**
+   * Whether the installed command's options are ones this binary declares.
+   *
+   * Read TOGETHER with `binaryState`: a hook is only credibly working when the
+   * binary resolves AND its options are accepted. Neither alone is "works" — see
+   * {@link CommandState} for what this still does not prove.
+   */
+  commandState: CommandState;
+  /** The specific options this binary does not declare, when `unknown-options`. */
+  unacceptedOptions?: string[];
 }
 
 export function statusHooks(deps: HooksDeps): StatusReport[] {
   return listAgents(deps).map((report) => {
     const spec = AGENT_MATRIX.find((s) => s.agent === report.agent);
-    if (spec === undefined) return { ...report, files: [], binaryState: 'absent' };
+    if (spec === undefined)
+      return { ...report, files: [], binaryState: 'absent', commandState: 'absent' };
 
     const files = resolveConfigFiles(spec, deps.home, deps.env).map((path) => ({
       path,
       exists: deps.fs.exists(path),
     }));
     const configured = configuredBinaryFor(deps, spec);
-    if (configured === null) return { ...report, files, binaryState: 'absent' };
+    if (configured === null)
+      return { ...report, files, binaryState: 'absent', commandState: 'absent' };
+
+    // Across EVERY entry of ours, not just the first: windsurf writes two files
+    // and each agent writes a pre and a post command, so a check that looked at
+    // one would report health for a set it had not examined.
+    const unaccepted = [...new Set(ourCommands(deps, spec).flatMap(unacceptedOptions))];
     const resolves = deps.fs.exists(configured);
     return {
       ...report,
@@ -351,6 +394,8 @@ export function statusHooks(deps: HooksDeps): StatusReport[] {
       configuredBinary: configured,
       binaryResolves: resolves,
       binaryState: resolves ? 'resolves' : 'unresolvable',
+      commandState: unaccepted.length === 0 ? 'accepted' : 'unknown-options',
+      ...(unaccepted.length === 0 ? {} : { unacceptedOptions: unaccepted }),
     };
   });
 }

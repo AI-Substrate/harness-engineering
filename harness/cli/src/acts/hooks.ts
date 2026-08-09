@@ -8,6 +8,7 @@ import { NodeHash } from '../adapters/hash/node-hash.js';
 import { NodeSocketProbe } from '../adapters/net/node-socket-probe.js';
 import { embedBinaryPath } from '../services/hooks/binary-path.js';
 import { CommitIntercept, type HookPhase } from '../services/hooks/commit-intercept.js';
+import { FIRE_OPTIONS } from '../services/hooks/fire-options.js';
 import { FileHookJournal } from '../services/hooks/hook-journal.js';
 import {
   couldBeCommitBearing,
@@ -39,6 +40,13 @@ export interface HooksActDeps {
 interface FireOpts {
   phase?: string;
   hookInput?: string;
+  /**
+   * PROVENANCE, NOT BEHAVIOUR. The marker the installer embeds so uninstall can
+   * recognise its own entry. `fire` accepts it and does nothing with it, and a
+   * test pins that: if it ever started changing what `fire` does, the installed
+   * command and every hand-typed reproduction of it would diverge again.
+   */
+  hookOwner?: string | boolean;
 }
 
 /**
@@ -63,15 +71,38 @@ export function registerHooksAct(program: Command, deps: HooksActDeps): void {
     .command('hooks')
     .description('Agent hook runtime: relay commit attribution the agent sandbox would lose');
 
-  hooks
+  const fireCommand = hooks
     .command('fire')
     .description('Handle one agent hook fire. Always exits 0 and prints nothing (by design).')
     .argument('<agent>', 'the agent client firing the hook (cursor, claude, copilot, …)')
-    .option('--phase <phase>', 'pre or post')
-    .option('--hook-input <source>', 'where the payload comes from; only `stdin` is supported')
+    /*
+     * TOLERANT PARSING IS PART OF THE EXIT-0 CONTRACT (F004).
+     *
+     * The contract above says every path exits 0. Argument parsing was not one of
+     * those paths: an option commander did not recognise printed an error and
+     * exited 1, BEFORE the action and its try/catch ran. That is how a flag the
+     * installer emitted killed every hook fire on every machine.
+     *
+     * Registering the flag fixes that instance. This fixes the CLASS: a config
+     * written by a different version of this binary, or hand-edited, names a word
+     * we do not know, and the hook goes on working rather than aborting an agent's
+     * turn. Tolerating is the safe direction — an ignored flag is inert, a
+     * rejected one is fatal.
+     *
+     * IT MUST NOT MASK OUR OWN DRIFT, so two other mechanisms stand beside it:
+     * `statusHooks` reports any option in an installed command that this binary
+     * does not declare, and `composed-command.int.test.ts` fails if the installer
+     * emits one. Without those, tolerance would let the installer and the verb
+     * drift apart silently — the same defect, quieter.
+     */
+    .allowUnknownOption()
+    .allowExcessArguments()
     .action(async (agent: string, opts: FireOpts): Promise<void> => {
       await fire(deps, agent, opts);
     });
+  // Registered FROM the shared declaration, so the verb cannot accept an option
+  // the installer does not know about, nor omit one the installer emits.
+  for (const option of FIRE_OPTIONS) fireCommand.option(option.flags, option.description);
 
   /*
    * THE READ/WRITE VERBS.
@@ -199,6 +230,8 @@ function emit(
 async function fire(deps: HooksActDeps, agent: string, opts: FireOpts): Promise<void> {
   try {
     const phase: HookPhase = opts.phase?.toLowerCase() === 'pre' ? 'pre' : 'post';
+    // PROVENANCE ONLY. Read, and deliberately not acted on — see FireOpts.
+    void opts.hookOwner;
     const home = deps.env.home();
     if (home === undefined) return;
 

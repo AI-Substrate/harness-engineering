@@ -939,3 +939,168 @@ proven against a genuinely occupied `~/.harness` on the real bin, but the *race*
 exists for — a disk filling between the probe and the write — is reasoned, not measured. Its direction
 is safe (it can only remove entries this run wrote, and it reports `stranded` when it cannot), and
 that is an argument about the shape of the error, not evidence that it fires.
+
+---
+
+## F004 — THE SHIPPED HOOK HAD NEVER FIRED, ON ANY MACHINE
+
+Found by Jordan running the live Cursor validation. Not a regression: it was true from the moment
+phase 2 composed its first command, on every install, on every agent, everywhere.
+
+### The defect, measured on the real bin BEFORE anything was changed
+
+```text
+$ node harness/cli/bin/harness.js hooks fire cursor --phase pre --hook-input stdin \
+    --hook-owner ai-substrate-harness-hook-v1
+error: unknown option '--hook-owner'
+{"command":"harness","status":"error", … "code":"E108" …}
+EXIT=1
+```
+
+`install-strategy-a.ts` composed `… --hook-input stdin --hook-owner <marker>`. `acts/hooks.ts`
+registered `--phase` and `--hook-input` and nothing else. Commander rejected the flag **before the
+action ran**, so the hook died in argument parsing having reached no line of our code.
+
+Two consequences, and the second is worse than the first:
+
+1. **Nothing was ever journalled.** Corroborated on the live machine: `~/.harness/hooks/` held
+   `install-record.json` and **no `fires.jsonl`**. Jordan's run-8 agent-attributed note came from
+   git-ai's own checkpoint chain, still entry `[0]` in his config. Our entry contributed nothing.
+2. **The exit-0 contract was violated on every single tool call.** Exit 1 with a line on stderr —
+   the one invariant the whole design rests on, broken by the command we ship, in the one place it
+   was supposed to be absolute.
+
+### Why nothing caught it — structural, not careless
+
+Every test that **executed** `fire` typed its own argv:
+
+| file | argv |
+|---|---|
+| `hooks-verb.int.test.ts:36` | `['hooks','fire','cursor','--phase',phase,'--hook-input','stdin']` |
+| `journal-race.int.test.ts:110` | the same shape, no marker flag |
+
+Every test that examined the **installed** command treated it as a *string*: matched the marker in
+it, stat'd the binary named by it, asserted byte idempotency on it. **Nobody ever executed the string
+the installer produces.** Producer and consumer of one contract, each asserted against its own idea
+of that contract. Phase 1 built `fire`; phase 2 invented the flag; nothing forced them to meet.
+
+**A test that retypes the argv proves the argv you typed.** That sentence is the whole finding.
+
+### The fix — three mechanisms, and they are deliberately distinguishable
+
+| # | mechanism | what it alone would leave open |
+|---|---|---|
+| 1 | `--hook-owner [marker]` registered on `fire`, accepted and ignored | the next flag |
+| 2 | `fire` given `.allowUnknownOption()` / `.allowExcessArguments()` | our own drift, now silent |
+| 3 | `composed-command.int.test.ts` — execute the string read back out of the config | — |
+
+Mechanism 2 makes the exit-0 contract *true* rather than nearly true: a config written by another
+version of this binary, or hand-edited, now degrades to an ignored word instead of an aborted agent
+turn. Tolerating is the safe direction — an ignored flag is inert, a rejected one is fatal.
+
+`--hook-owner` takes an **optional** value (`[marker]`, not `<marker>`), so a truncated config
+carrying a bare `--hook-owner` still parses. The exit-0 contract does not get to depend on a config
+file being well-formed.
+
+The option set is now declared **once, as data** (`src/services/hooks/fire-options.ts`) with three
+readers: the act registers commander options from it, `statusHooks` checks installed commands against
+it, and the test re-derives the contract independently from `hooks fire --help` and from the config
+the real installer wrote.
+
+### The measurement that mattered: tolerance MASKS the execution row
+
+Mechanism 2 can hide the defect mechanism 3 exists to catch. That was not reasoned — it was measured.
+Un-registering `--hook-owner` while leaving tolerance **on**:
+
+```text
+✓ executes the installed string verbatim: exit 0, silent, and a journal entry
+× emits no option `fire` does not register — checked flag by flag
+✓ treats the marker as PROVENANCE, not behaviour
+```
+
+The end-to-end row **goes green with the bug present**. Only the static flag-coverage row sees the
+drift. Had the tolerance been added without that row, the fix would have looked complete and the
+installer could have gone on emitting flags nobody accepts — the same defect, quieter. This is the
+F001 lesson arriving again: *delete a mechanism and ask what still passes.*
+
+### Refusal evidence — the new rows RED against current main
+
+Before any source change, all three original rows failed, row 1 reproducing the PM's stderr verbatim:
+
+```text
+× executes the installed string verbatim … → received "error: unknown option '--hook-owner'"
+× emits no option `fire` does not register … → preToolUse: `fire` must register --hook-owner
+× treats the marker as PROVENANCE … → expected 1 to be +0
+```
+
+### The fixture was cursor-only, and widening it found a second thing
+
+The existing suite's habit — install into a fenced home with only `.cursor` present — meant the new
+rows would have proven **one agent of seven**. The hook ships for **seven agents / eight config
+files**; the defect broke all of them. Widening the fixture to create every marker directory raised a
+count mismatch (**14 commands where 16 were expected**), which was a bug in the fixture's path list,
+not the product: it took copilot's path from the **detection** table (`.copilot/hooks/git-ai.json` —
+the file whose presence *detects* copilot) rather than the file we **write**
+(`.copilot/hooks/harness.json`). Two adjacent files, one of them somebody else's. The count assertion
+is the only reason it surfaced; a `toBeGreaterThan(0)` would have passed.
+
+All **16** composed commands (8 files × 2 phases) are now executed for real, each asserted exit 0,
+silent, and journalled — one journal entry per command, so a single silent death is visible.
+
+### `status` reported six agents HEALTHY while none of them could run
+
+`binaryState: 'resolves'` stats the **binary**. The binary existed. The arguments were rejected, and
+status had no field that could express it. Added `commandState`:
+
+| state | meaning |
+|---|---|
+| `absent` | no entry of ours |
+| `accepted` | every option the command names is one this binary declares |
+| `unknown-options` | the config and this binary disagree; the offending flags are **named** |
+
+Checked across **every** entry of ours, not the first — windsurf writes two files and each agent gets
+a pre and a post command, so a check that looked at one would report health for a set it had not
+examined.
+
+**What it does not prove, stated plainly**, because the failure it replaces was exactly a status field
+read as more than it measured: this is a **static** check of option names against this binary's own
+declaration. It does not execute anything. It cannot see a binary that is a different program, a
+broken node install, or a runtime failure inside `fire`. For that the journal (`fires.recorded`) is
+the only honest evidence — which is why `fireSummary` separates "never fired" from "fired and failed".
+
+### Incidental finding: `hooks status` is NOT read-only
+
+`fireSummary` calls `journal.compact()`, and `FileHookJournal` `mkdirp`s its directory. So `status`
+can write. It was therefore **not** run against Jordan's real home while investigating, under the
+standing stop-and-tell constraint. Bounding the journal on a reader is a defensible design; a verb a
+user reaches for to *diagnose* being able to modify the thing diagnosed is worth knowing about, and it
+is unremarked anywhere else.
+
+### Rows added
+
+| row | file | proves |
+|---|---|---|
+| executes the installed string verbatim | `composed-command.int.test.ts` | F004, all 16 commands, real bin |
+| emits no option `fire` does not register | `composed-command.int.test.ts` | the static producer/consumer contract; survives tolerance |
+| treats the marker as PROVENANCE, not behaviour | `composed-command.int.test.ts` | the flag is inert, so nobody later gives it meaning |
+| survives an option it does NOT declare | `composed-command.int.test.ts` | the exit-0 contract as a class, not one flag |
+| reports `accepted` for a parsable command | `composed-command.int.test.ts` | `commandState`, real bin |
+| NAMES the option this binary does not declare | `composed-command.int.test.ts` | drift is visible on the user's machine, not only in a fixture |
+
+Hooks suite **389 → 395**. `harness checks` with `HARNESS_TEST_SCOPE=all`: `tests:ok biome:ok
+typecheck:ok`, standing baseline `arch-check:degraded (2)`, `markdown-lint:degraded (211)`,
+`windows-check:degraded (7)` — unchanged.
+
+### Softest claim on this fix
+
+**Nothing here proves the hook does its JOB on a real agent.** These rows prove the composed command
+parses, exits 0, stays silent and reaches the journal — which is precisely the gap that was open, and
+precisely no more. Whether Cursor invokes it, whether the payload it hands us has the shape we parse,
+and whether the resulting trace2 emission produces an attributed note in a **sandboxed** agent's
+commit remain unverified on any machine. The plan's central claim is still waiting on Jordan's run,
+and the value of this fix is only that the run can now get past argument parsing.
+
+A second, narrower one: the fixture's agent list is **hand-maintained**. It is pinned by a count, so a
+newly supported agent fails the row rather than being silently skipped — but the failure will read as
+a broken test rather than as "add the new agent here", and the person who meets it will be someone
+else.
