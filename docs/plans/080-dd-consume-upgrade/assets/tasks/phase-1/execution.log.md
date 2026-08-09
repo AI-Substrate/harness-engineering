@@ -632,3 +632,70 @@ Recorded as such in the ledger; error count is unchanged at **0**, so no proof i
 Ledger entry 4 updated (count 5 → 7, both `tk-0005` edges named, correction dated and
 attributed to review F001). No source change — trigger 4 still fires, so the design ruling
 remains OPEN and unpatched.
+
+### Reconciliation: the F001 fix was superseded mid-write by `57d8bd1f` (prime)
+
+Sequence, recorded because it bit and will bit again in a shared worktree:
+
+1. I edited `dogfood-ledger.md` (entry 4, count 5 → 7) and appended the F001 section above.
+2. Before I committed, prime committed `57d8bd1f` **including my uncommitted ledger edit** —
+   it was swept into someone else's commit and then built upon (prime kept my corrected
+   text and extended the outcome column, attributing the count as "counted by koala; the
+   coder's 5 predated tk-0005's rows — both honest at their basis"). Nothing was lost, but
+   my own commit `7d2d4935` consequently staged **only** `execution.log.md`.
+3. **Lesson**: in a worktree with a concurrent committer, an uncommitted tracked-file edit
+   is not private. Write, then commit immediately — or stage to an ignored path. I used
+   `scratch/` (gitignored) for the measurement below for exactly this reason.
+
+### `satisfies_toward` does not remove the noise — it MOVES it (measured, control-armed)
+
+`57d8bd1f` moved the cross-phase edges to a non-claiming `satisfies_toward` relation.
+Its commit message says "five cross-phase edges"; the diff moves **seven**, across four
+tasks (tk-0002 ×1, tk-0003 ×2, tk-0004 ×2, tk-0005 ×2). Summary-mode result is real:
+
+```
+$ harness plan validate <plan>            # BEFORE 57d8bd1f
+degraded  {"error":0,"warn":7, "contradictions":7, "orphans":7}
+$ harness plan validate <plan>            # AFTER
+ok        {"error":0,"warn":0, "contradictions":0, "orphans":11}
+```
+
+Contradictions 7 → 0 is the intended win. **Orphans 7 → 11 is an unstated cost.** I did not
+assume the attribution — control arm, on a throwaway copy under `scratch/` (never in the
+tracked tree):
+
+```
+CONTROL-BASELINE  degraded {"error":0,"warn":22,"contradictions":0,"orphans":11}
+# revert ONLY tk-0005's two edges satisfies_toward -> satisfies:
+CONTROL-ARM       degraded {"error":0,"warn":24,"contradictions":2,"orphans":9}
+```
+
+Two edges restored ⇒ contradictions **+2**, orphans **−2**. A clean one-for-one trade, and
+it locates the effect precisely: the orphaned items are the **ACs**, not the tasks. With no
+inbound *claiming* edge, `ac-0002`/`ac-0003`/`ac-000b`/`ac-000c` now read as unclaimed
+by anything at all. So the ledger's "partial-ness is *recorded* in bp-000f, not *meant* by
+the edge" is true but incomplete: the AC additionally stops showing that anything is
+working toward it. Entry 4's cost line should say so when the dd builtin ruling advances.
+This does not weaken the phase-1 proof (error count 0 throughout) — it is evidence *for*
+entry 4, since a convention that trades one WARN class for another is exactly why the row
+routes to a design ruling rather than a patch.
+
+### Gate state at handover (NOT actioned — not the implementing seat's call)
+
+`flow orient` shows the `review-1` node carrying a **plan-validate CHECK gate** whose
+departure condition is `--complete` **green (zero errors AND zero warnings)**. It currently
+holds:
+
+```
+dd gate (plan-validate): docs/plans/080-dd-consume-upgrade/plan.dd.json  ✕ holds
+   22 × WARN open-completable  (ac-0002..ac-000c, ph-1d68/ph-1633/ph-08e2, bp-0001..)
+```
+
+Every one is a legitimately-open **future-phase** item — phase 2 and phase 3 have not run.
+Under `--complete`, a mid-plan multi-phase plan therefore cannot satisfy this gate at an
+intermediate boundary; it is the same shape as ledger entry 4, one level up (at the gate
+rather than at the relation). I have **not** forced it and have not touched the phase or AC
+states: the node's own instructions state an agent may not force a dd gate on its own
+judgment, and `--force` is the human's defended override. Flagged to koala for routing.
+
+Verified unaffected by `57d8bd1f`: all five task states still `checked`; `flow rail` → `ok`.
