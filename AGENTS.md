@@ -43,6 +43,22 @@ This repo HAS its own governance doc at `.harness/engineering-harness.md` (hand-
 
 - Run the composite gate **`harness checks`** yourself before declaring work done — tests+coverage, biome, typecheck, the docs/flows/telemetry drift guards, and arch/skills/markdown/windows-check, in one envelope. (`just checks` builds first, then runs it.) **CI + branch protection are the authoritative gate.**
 
+### Test scope: the suite runs FAST by default, and says so
+
+The test suite defaults to a **fast scope** that skips the 12 slowest files — **5% of the tests, ~81% of the runtime, 1,363 of 1,617 process spawns** (measured: `just test` 22.5s → 8.9s; `harness checks` 31.5s → 19.6s). The list is `SLOW_TESTS` in `harness/cli/vitest.config.ts`, each entry carrying its measured median.
+
+| Command | Scope | Use |
+|---|---|---|
+| `just test` / `just fft` / `just checks` | fast | the inner loop |
+| `just test-all` | **all** | **before you push** |
+| `just test-heavy` | the 12 slow files only | rarely, directly |
+
+- **`HARNESS_TEST_SCOPE`** (`fast`\|`all`\|`slow`) is the single control point, chosen over vitest `projects`/`--project` precisely because `harness checks` spawns vitest itself — an env var is inherited by every invocation path, so the default cannot be true locally and false in the gate. An unrecognised value **fails loudly** rather than falling back to a smaller suite.
+- **CI sets `HARNESS_TEST_SCOPE=all`** (`.github/workflows/ci.yml`). That line is load-bearing: the skipped 12 are the git adapters, the pre/post-commit hooks and the telemetry push path — the code most likely to break on Windows. Without it they would run **nowhere**.
+- **A reduced scope always declares itself** — a stderr banner on every fast run, and a `note` on the `tests` gate in the `checks` envelope for JSON consumers. A local green must never quietly mean less than yesterday's.
+- Do **not** use vitest tags for this. Tags filter *tests* but still **load the files**, and ~86% of the tail's cost is module import — you would skip the assertions and keep the cost.
+- `test/architecture/fast-scope-guard.test.ts` fails if a `SLOW_TESTS` entry stops existing (a stale entry excludes nothing and the fast scope silently grows back). It asserts composition, not wall-clock times — a duration threshold on shared hardware is a flake generator.
+
 ## Sensors: one truth, two views
 
 This repo declares its fast development signals in `.harness/extensions/repo-sensors/`.

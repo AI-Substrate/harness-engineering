@@ -131,15 +131,26 @@ const checks: HarnessVerb = {
 
       // Hard gate 1 \u2014 the unit-test suite (behaviour proof). `--coverage` so the one
       // test run also emits the lcov CI uploads (no second test pass needed).
+      //
+      // SCOPE IS PART OF THE VERDICT. The suite defaults to the FAST scope (see
+      // SLOW_TESTS in harness/cli/vitest.config.ts), so a local `checks` proves LESS
+      // than CI's does. That reduction is declared here rather than left to the
+      // subprocess's stderr banner, which no JSON consumer ever sees: a gate that
+      // quietly narrows what it proves is worse than a slow one.
       const started = Date.now();
+      const scope = ctx.env.get('HARNESS_TEST_SCOPE') ?? 'fast';
       const test = await ctx.exec('npx', ['vitest', 'run', '--coverage'], { cwd: `${root}/${CLI_DIR}` });
+      const scopeNote =
+        scope === 'all'
+          ? 'full suite'
+          : `${scope} scope \u2014 12 slow file(s) NOT run; set HARNESS_TEST_SCOPE=all for the full suite (CI does)`;
       gates.push({
         name: 'tests',
         status: test.ok ? 'ok' : 'error',
         exit: test.code,
         note: test.ok
-          ? ''
-          : `The vitest suite failed \u2014 reproduce with \`just test\`.\n${vitestFailSummary(test.stdout, test.stderr)}`,
+          ? scopeNote
+          : `The vitest suite failed (${scopeNote}) \u2014 reproduce with \`just test\`.\n${vitestFailSummary(test.stdout, test.stderr)}`,
       });
 
       // Hard gates \u2014 lint / typecheck / drift guards (read src; mirror CI's static gates).

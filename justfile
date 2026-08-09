@@ -206,9 +206,21 @@ fix:
 format:
     npx biome format --write harness/cli
 
-# Run the CLI unit tests with coverage (report-only).
+# Run the CLI unit tests with coverage (report-only). FAST scope by default —
+# the 12 slow files (see SLOW_TESTS in harness/cli/vitest.config.ts) are skipped,
+# which is ~81% of the runtime for 5% of the tests. Every fast run prints what it
+# skipped. Use `just test-all` before pushing; CI always runs everything.
 test:
     cd harness/cli && npx vitest run --coverage
+
+# The 12 slow files ONLY (real git, fixture repos, PTY). Rarely needed directly —
+# `just test-all` is usually what you want.
+test-heavy:
+    cd harness/cli && HARNESS_TEST_SCOPE=slow npx vitest run
+
+# The FULL suite — the same scope CI gates on. Run before pushing.
+test-all:
+    cd harness/cli && HARNESS_TEST_SCOPE=all npx vitest run --coverage
 
 # Regenerate the real telemetry-fixture goldens from the adapters (plan 037).
 gen-telemetry-fixtures:
