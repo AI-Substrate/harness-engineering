@@ -1,0 +1,30 @@
+docs/how/telemetry/validating-telemetry-capture-in-sandboxed-agents.md
+  s_e2ef1441ad1dbd::t_df300de39aa461 502-515
+  s_a6b77772852964::t_3e4663b3d270e7 163-177,547-552
+docs/how/telemetry/gitai-06-two-channel-model.md
+  s_a6b77772852964::t_0c038b02baa282 165-195,323-383
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "1dc1b9284193b9dfec402913d20d875fe17d14ea",
+  "prompts": {},
+  "sessions": {
+    "s_a6b77772852964": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "c800c9ff-86e7-4a5f-bdc3-f63517243af6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_e2ef1441ad1dbd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "265d8845-1914-4476-9977-4a05f12f4b06",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
