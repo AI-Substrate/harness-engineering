@@ -4,11 +4,21 @@ import { join } from 'node:path';
 import { Command } from 'commander';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { registerDoctorAct } from '../../src/acts/doctor.js';
+import { FakeClock } from '../../src/adapters/clock/fake-clock.js';
+import { NodeHash } from '../../src/adapters/hash/node-hash.js';
 import { FakeSocketProbe } from '../../src/adapters/net/fake-socket-probe.js';
 import type { CliIo, OutputMode, Writers } from '../../src/output/output-port.js';
+import type { CollectorDeps } from '../../src/services/doctor/collector/types.js';
 import type { HarnessVerb } from '../../src/services/extensions/contract.js';
 import type { VerbRegistry } from '../../src/services/extensions/registry.js';
 import { toPosix } from '../../src/services/shared/posix-path.js';
+import {
+  FakeCollectorFs,
+  FakeDownload,
+  FakeExecutableBit,
+  FakePathKind,
+  FakeSequencedExec,
+} from '../support/collector-fakes.js';
 
 function ioFor(mode: OutputMode): { io: CliIo; out: () => string; err: () => string } {
   let o = '';
@@ -25,6 +35,57 @@ function ioFor(mode: OutputMode): { io: CliIo; out: () => string; err: () => str
 }
 
 const EMPTY: VerbRegistry = { verbs: [], records: [] };
+
+/**
+ * Offline collector deps whose EXEC calls are recorded into `calls`.
+ *
+ * Nothing here can reach the network or the real filesystem: the download port
+ * has no script for any url and so always reports a network failure, which is
+ * also a free exercise of the warn-only failure path.
+ *
+ * BOTH ports record, and that matters: on a clean fake fs the install fails at
+ * the DOWNLOAD and returns before `install-hooks` is ever exec'd, so an
+ * exec-only observable reads empty on a run that very much happened. The first
+ * version of this helper watched exec alone and would have reported the
+ * opted-in run as inert — proving the guard by measuring the wrong port.
+ */
+function collectorDepsRecording(calls: string[]): CollectorDeps {
+  const exec = new FakeSequencedExec({});
+  const recording: typeof exec = new Proxy(exec, {
+    get(target, prop, receiver) {
+      if (prop === 'run') {
+        return async (command: string, args: string[], opts: { cwd: string }) => {
+          calls.push([command, ...args].join(' '));
+          return target.run(command, args, opts);
+        };
+      }
+      return Reflect.get(target, prop, receiver);
+    },
+  });
+  const http = new FakeDownload({});
+  const recordingHttp: typeof http = new Proxy(http, {
+    get(target, prop, receiver) {
+      if (prop === 'get') {
+        return async (url: string, opts: { timeoutMs: number }) => {
+          calls.push(`GET ${url}`);
+          return target.get(url, opts);
+        };
+      }
+      return Reflect.get(target, prop, receiver);
+    },
+  });
+  return {
+    fs: new FakeCollectorFs(),
+    paths: new FakePathKind({}),
+    hash: new NodeHash(),
+    http: recordingHttp,
+    exec: recording,
+    exe: new FakeExecutableBit(),
+    clock: new FakeClock('2026-08-09T00:00:00.000Z'),
+    host: { platform: 'darwin', arch: 'arm64', home: '/home/u' },
+    cwd: '/repo',
+  };
+}
 
 /**
  * The HERMETIC seam (review F006). `absent` is the honest default for a machine
@@ -180,5 +241,52 @@ describe('registerDoctorAct — CI hermeticity (plan 074 · ac-000a, review F006
       else process.env.GIT_CONFIG_GLOBAL = previous;
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+/**
+ * Plan 077 — the auto-install is OPT-IN, and the opt-in is the only lever.
+ *
+ * Production and this suite both call `registerDoctorAct` with no
+ * `collectorOverride`, so nothing inside the act can tell them apart. Had the
+ * auto-install defaulted ON, `vitest` would have fetched a git-ai release and
+ * run `install-hooks` machine-wide on whatever box ran it — the ac-000a
+ * hermeticity failure review F006 found for the socket probe, with an
+ * install-sized blast radius instead of a connect-sized one.
+ *
+ * It survived development unnoticed for an instructive reason: the dev machine
+ * already had a healthy collector, so the install path short-circuited and the
+ * suite was green for a cause unrelated to the guard. So these two assert the
+ * PORTS, not the outcome — the same fake deps, driven both ways, and the only
+ * difference is the flag.
+ */
+describe('plan 077 — a bare doctor auto-installs ONLY when production opts in', () => {
+  async function runWith(autoInstall: boolean): Promise<{ exec: string[]; announced: string }> {
+    const calls: string[] = [];
+    const deps = collectorDepsRecording(calls);
+    const { io, err } = ioFor('text');
+    vi.spyOn(process, 'exit').mockImplementation(((c?: number) => {
+      throw new Error(`exit:${c ?? 0}`);
+    }) as never);
+    const program = new Command().name('harness');
+    registerDoctorAct(program, io, EMPTY, undefined, deps, { probe }, autoInstall);
+    await expect(program.parseAsync(['node', 'harness', 'doctor'])).rejects.toThrow(/^exit:/);
+    return { exec: calls, announced: err() };
+  }
+
+  it('DEFAULT (no opt-in): the collector ports are never touched', async () => {
+    const { exec, announced } = await runWith(false);
+
+    expect(exec).toEqual([]);
+    expect(announced).not.toContain('git-ai collector:');
+  });
+
+  it('OPT-IN: the same deps ARE driven, and the run says what it did', async () => {
+    const { exec, announced } = await runWith(true);
+
+    // The guard is what makes the first assertion meaningful: if this one also
+    // came back empty, the test above would be proving nothing.
+    expect(exec.length).toBeGreaterThan(0);
+    expect(announced).toContain('git-ai collector:');
   });
 });

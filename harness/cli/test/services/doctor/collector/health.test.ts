@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import { FakeGitAttribution } from '../../../../src/adapters/git/fake-git-attribution.js';
 import { NodeHash } from '../../../../src/adapters/hash/node-hash.js';
+import { FakeSocketProbe } from '../../../../src/adapters/net/fake-socket-probe.js';
+import type { ProbeOutcome } from '../../../../src/adapters/net/socket-probe-port.js';
 import {
   type CollectorHealth,
   readCollectorHealth,
 } from '../../../../src/services/doctor/collector/health.js';
+import { readIngress } from '../../../../src/services/doctor/collector/ingress.js';
 import { GITAI_PIN } from '../../../../src/services/doctor/collector/pin.js';
 import {
   type CollectorState,
@@ -28,6 +32,7 @@ const REPO = '/repo';
 const NOW = '2026-08-06T10:00:00.000Z';
 const BINARY = '/home/u/.git-ai/bin/git-ai';
 const DAEMON_PID = '/home/u/.git-ai/internal/daemon/daemon.pid.json';
+const SOCKET = '/home/u/.git-ai/internal/daemon/trace2.sock';
 const PAYLOAD = new TextEncoder().encode('#!/bin/sh\necho git-ai\n');
 const DIGEST = new NodeHash().sha256Hex(PAYLOAD);
 
@@ -247,5 +252,115 @@ describe('a NEW coding harness is surfaced by the health read (ac-0010)', () => 
     expect(result.hooks.missing).toEqual(['cursor']);
     expect(result.detail).toContain('Cursor');
     expect(result.next_action).toContain('trace2 guard runs again');
+  });
+});
+
+/**
+ * Plan 077 — the probe reading must SURVIVE the verdict that outranks it.
+ *
+ * Every one of these rungs returns before the `ingress-blocked` rung, and each
+ * one used to drop `deps.ingress` on the floor: `undetermined()` never set the
+ * field, so the key came back ABSENT. That made a reading we took and discarded
+ * indistinguishable from one we never took — and `null` on this field exists
+ * precisely to mean "nobody probed".
+ *
+ * The verdict is deliberately NOT promoted to `ingress-blocked`. "We cannot
+ * determine whether git-ai is installed" stays the answer to the question it
+ * answers, because `ingress-blocked`'s own detail asserts git-ai "is installed
+ * and hooked up" — which is the one thing these rungs could not establish. Two
+ * independent facts, one row, neither stated as the other.
+ */
+describe('plan 077 — a blocked ingress is not lost to a could-not-determine verdict', () => {
+  async function blockedIngress(outcome: ProbeOutcome = 'denied') {
+    const cfs = new FakeCollectorFs();
+    cfs.writeText(SOCKET, '');
+    return readIngress({
+      fs: cfs,
+      probe: new FakeSocketProbe({ [SOCKET]: outcome }),
+      git: new FakeGitAttribution({ trace2Target: `af_unix:stream:${SOCKET}` }),
+      env: { get: () => undefined },
+    });
+  }
+
+  it('carries the reading AND names the blockage when the install is unrecorded', async () => {
+    const fs = new FakeCollectorFs();
+    fs.seedBytes(BINARY, PAYLOAD);
+
+    const result = readCollectorHealth({
+      fs,
+      host: { platform: 'darwin', arch: 'arm64', home: HOME },
+      cwd: REPO,
+      hash: new NodeHash(),
+      manifest: pin(),
+      ingress: await blockedIngress(),
+    });
+
+    // The verdict still answers its own question honestly…
+    expect(result.verdict).toBe('could-not-determine');
+    expect(result.detail).toContain('no record');
+    // …and the evidence is neither dropped nor downgraded to "nobody probed".
+    expect(result.ingress).not.toBeUndefined();
+    expect(result.ingress).not.toBeNull();
+    // …and the operator is TOLD, because this is the actionable half.
+    expect(result.detail).toContain('NO attribution');
+    expect(result.next_action).toContain('harness doctor telemetry-nudge');
+  });
+
+  it('carries the reading when the recorded binary has vanished', async () => {
+    // A RECORDED install with nothing on disk — distinct from "no binary and no
+    // record", which is `not-installed` and is a different rung entirely.
+    const fs = new FakeCollectorFs();
+    fs.writeText(collectorStatePath(REPO), JSON.stringify(stateWith()));
+
+    const result = readCollectorHealth({
+      fs,
+      host: { platform: 'darwin', arch: 'arm64', home: HOME },
+      cwd: REPO,
+      hash: new NodeHash(),
+      manifest: pin(),
+      ingress: await blockedIngress(),
+    });
+
+    expect(result.verdict).toBe('could-not-determine');
+    expect(result.ingress).not.toBeUndefined();
+    expect(result.detail).toContain('NO attribution');
+  });
+
+  it('a REACHABLE ingress adds no warning — the row must not cry wolf', async () => {
+    const fs = new FakeCollectorFs();
+    fs.seedBytes(BINARY, PAYLOAD);
+
+    const result = readCollectorHealth({
+      fs,
+      host: { platform: 'darwin', arch: 'arm64', home: HOME },
+      cwd: REPO,
+      hash: new NodeHash(),
+      manifest: pin(),
+      ingress: await blockedIngress('connected'),
+    });
+
+    expect(result.verdict).toBe('could-not-determine');
+    // Still carried — a clean probe is evidence too…
+    expect(result.ingress).not.toBeUndefined();
+    // …but it is NOT narrated, or the warning stops meaning anything.
+    expect(result.detail).not.toContain('NO attribution');
+    expect(result.next_action).not.toContain('telemetry-nudge');
+  });
+
+  it('an UNPROBED read still reports null, and never invents a blockage', () => {
+    const fs = new FakeCollectorFs();
+    fs.seedBytes(BINARY, PAYLOAD);
+
+    const result = readCollectorHealth({
+      fs,
+      host: { platform: 'darwin', arch: 'arm64', home: HOME },
+      cwd: REPO,
+      hash: new NodeHash(),
+      manifest: pin(),
+    });
+
+    expect(result.verdict).toBe('could-not-determine');
+    expect(result.ingress).toBeNull();
+    expect(result.detail).not.toContain('NO attribution');
   });
 });

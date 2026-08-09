@@ -380,13 +380,31 @@ quiet stays thin until anything touches that repo again.
 ## Capture controls
 
 Harness capture is off when all telemetry environment variables are unset.
-Three controls remain:
+Four controls remain. Note that the last one governs a **different consent** from
+the rest — see the warning below the table:
 
 | Variable | Effect |
 |---|---|
 | `HARNESS_TELEMETRY_CAPTURE=1` | **Opt in to the legacy producer** — enables capture, publishing, and capture housekeeping for this process. |
-| `HARNESS_NO_TELEMETRY=1` | **Hard off** — no capture, sync, ref writes, or capture housekeeping. This wins even when the opt-in is set. |
+| `HARNESS_NO_TELEMETRY=1` | **Hard off** — harness does not **CAPTURE**. No capture, sync, ref writes, or capture housekeeping. This wins even when the opt-in is set. |
 | `HARNESS_NO_TELEMETRY_AUTOSYNC=1` | With legacy capture enabled, suppress unprompted pushes while leaving capture and manual sync available. |
+| `HARNESS_NO_COLLECTOR=1` | Harness does not **INSTALL SOMEONE ELSE'S SOFTWARE** on your machine. A bare `harness doctor` will not download the pinned git-ai binary, will not run `install-hooks`, and will not rewrite any agent config. |
+
+> **`HARNESS_NO_TELEMETRY` and `HARNESS_NO_COLLECTOR` are not aliases**, and setting
+> one does not set the other. They express two different consents:
+>
+> - `HARNESS_NO_TELEMETRY` — *don't collect data about my work.*
+> - `HARNESS_NO_COLLECTOR` — *don't install third-party software on my machine.*
+>
+> A developer may reasonably want the second without the first: happy for
+> attribution to be recorded, unwilling to have `git-ai` installed and their agent
+> configs rewritten by a diagnostic command. Because these are separate switches,
+> that combination is expressible.
+>
+> With `HARNESS_NO_COLLECTOR=1` set, `harness doctor` **still reports the collector
+> row** — and reports it as *skipped by explicit opt-out*, never as
+> `could-not-determine`. An opt-out that made a deliberate choice look identical to
+> a broken machine would send you debugging something you chose.
 
 ```bash
 # Default: harness captures and publishes nothing.

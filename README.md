@@ -167,9 +167,19 @@ The CLI is published to the **public npm registry** as `@ai-substrate/engineerin
 
 ```bash
 npm install -g @ai-substrate/engineering-harness
-harness doctor          # sanity-check the install
+harness doctor          # sanity-check the install — see the note below
 harness update          # later: upgrade to @latest (no-op if current)
 ```
+
+> **`harness doctor` installs the git-ai collector.** As well as reporting, a bare
+> `doctor` run places the **pinned, SHA-256-verified** git-ai binary and installs its
+> agent hooks, so AI attribution works without you configuring anything. It never
+> asks — but it does tell you what it did, it refuses to touch a **pre-existing global
+> git `trace2` config** (the vendor command deletes that section machine-wide), and
+> every failure is warn-only: doctor still completes and exits 0.
+> Set **`HARNESS_NO_COLLECTOR=1`** to opt out entirely — nothing is downloaded,
+> installed, or written. Full detail in
+> [the telemetry docs](docs/how/telemetry/README.md).
 
 Then install the **skills** — the choreography agents drive. The CLI stages the package's baked `skills/` tree locally and wraps [`npx skills`](https://github.com/vercel-labs/skills):
 

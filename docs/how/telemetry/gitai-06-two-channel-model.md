@@ -39,6 +39,40 @@ It also settles which of the two known escapes (§3) is the product and which is
 doc implying "allowlist git and you are fine" is wrong twice over — it is a customisation, and
 `&&` defeats it.
 
+### What we actually ship, as of plan 077 — the requirement is now met by the code
+
+When this section was first written the customer still had to *know to type a flag*
+(`harness doctor --install-collector`), which is a configuration task wearing a different hat.
+That is no longer true. **A bare `harness doctor` installs and manages the collector.**
+
+| behaviour | what happens |
+|---|---|
+| bare `harness doctor` | Places the **pinned, SHA-256-verified** git-ai binary, writes git-ai's config so its auto-updater cannot move off the pin, and installs the agent hooks. **It does not ask; it tells you what it did.** |
+| a **pre-existing global `trace2` config** | **The one warn case.** Harness does NOT install hooks, and says so. `git-ai install-hooks` deletes the whole global `trace2` section machine-wide, and harness will not do that to a setting it did not make. |
+| any failure — network, digest mismatch, `install-hooks` non-zero, daemon absent, an unexpected throw | **Warn-only, exit 0.** Doctor completes and every other row still prints. A telemetry failure must never break a command the developer ran for another reason. |
+| a failed install | Recorded **machine-wide** (`~/.git-ai/harness-autoinstall.json`) and **not retried on every run** — one broken network must not cost a developer with ten repos ten failed downloads. `harness doctor --install-collector` **is** the retry. |
+| `HARNESS_NO_COLLECTOR=1` | **Opt out entirely.** Nothing downloaded, nothing executed, no agent config touched — and the collector row still reports honestly, as *skipped by explicit opt-out* rather than as an undiagnosable machine. |
+
+**On the apparent contradiction**, since the requirement says "without large customisations to
+the machine" and `install-hooks` performs several: what is being eliminated is **the customer
+performing them**, not the customisations themselves. Harness does them once, on their behalf,
+from a pinned and digest-verified artifact, having first **copied the only files the vendor
+command destroys** — the agent configs it rewrites in place, discarding JSONC comments and
+keeping no backup of its own. The alternative on offer was handing a developer a destructive
+command and a warning and calling that consent.
+
+**`HARNESS_NO_COLLECTOR` is a different switch from `HARNESS_NO_TELEMETRY`, deliberately.**
+One declines *collection*; the other declines *having third-party software installed*. A
+developer may reasonably want the second without the first.
+
+> **PLATFORM — do not read parity into this.** On POSIX the ingress is an `af_unix` socket and
+> the buffer+drain recovery above works. **On Windows the ingress is a named pipe**
+> (`\\.\pipe\…`) — a *live* ingress with `drainable: false, replayInto: false` — so **the
+> buffer + nudge recovery does not exist there**: there is nothing to drain and no replay path,
+> and `harness doctor telemetry-nudge` refuses on platform grounds. The auto-install itself is
+> written to be cross-platform, but as of this writing the **Windows install path is
+> EXPECTED-UNVERIFIED**: it has not yet been run on a real Windows machine.
+
 ---
 
 ## 1. THE COMPLETE CHAIN — five links, each able to fail alone

@@ -1,4 +1,6 @@
 import { agentsMissingHooks, detectAgents } from './agents.js';
+import { clearAutoInstallBlock } from './auto-install-block.js';
+import { backupAgentConfigs } from './backup.js';
 import { downloadAndVerify } from './download.js';
 import { GITAI_PIN } from './pin.js';
 import { binaryPathFor, configPathFor, resolveArtifact } from './platform.js';
@@ -296,6 +298,13 @@ export async function installHooks(
   }
 
   // Observed empty, and written down before we act on it.
+  //
+  // LAST MOMENT BEFORE THE ONLY UNRECOVERABLE STEP: `install-hooks` rewrites
+  // each detected agent's config in place and discards JSONC comments, keeping
+  // no backup of its own. Copy them first. Placed AFTER both guards on purpose —
+  // a refused install changes nothing, so backing up ahead of the guards would
+  // litter the disk on exactly the runs that touched nothing.
+  const backup = backupAgentConfigs(deps);
   let result: { code: number; stdout: string; stderr: string };
   try {
     result = await deps.exec.run(binaryPath, ['install-hooks'], {
@@ -383,7 +392,16 @@ export async function installHooks(
     },
   };
   writeCollectorState(deps.fs, deps.cwd, next);
-  return { hooks: 'installed', state: next, warnings: [], manual: [] };
+  // The backup location is reported on the SUCCESS path too — that is the run
+  // where configs were actually rewritten, so it is the run whose operator most
+  // needs to know where the originals went. Reported as a warning-channel line
+  // because it is information, not a problem; doctor never fails on these.
+  return {
+    hooks: 'installed',
+    state: next,
+    warnings: backup.copied.length === 0 && backup.failed.length === 0 ? [] : [backup.detail],
+    manual: [],
+  };
 }
 
 /** The full lifecycle: stage 1 (pinned CLI) then stage 2 (hooks, skippable). */
@@ -402,6 +420,12 @@ export async function installCollector(deps: CollectorDeps): Promise<CollectorIn
     note_schema: { ...state.note_schema, expected: manifest.expect_schema_version },
   };
   const warnings: string[] = [];
+  // Any fresh attempt supersedes the machine-wide "stop retrying" record — an
+  // explicit `--install-collector` IS the retry, and on the automatic path this
+  // is a no-op because a blocked run never reaches here. Cleared BEFORE the
+  // attempt so a second failure writes a current record rather than preserving
+  // a stale timestamp.
+  clearAutoInstallBlock(deps.fs, deps.host);
 
   const resolution = resolveArtifact(deps.host.platform, deps.host.arch, manifest);
   if (!resolution.ok) {

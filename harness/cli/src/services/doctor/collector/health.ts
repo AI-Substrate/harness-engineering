@@ -75,6 +75,11 @@ export interface CollectorHealth {
    * The ingress probe this read stood on, when one was supplied (plan 074 ·
    * ac-0002). `null` means nobody probed — which is NOT the same as a probe that
    * came back clean, and is never rendered as one.
+   *
+   * Set on EVERY verdict since plan 077. It previously went missing on the three
+   * `could-not-determine` rungs and both `not-installed` rungs, which made a
+   * dropped reading indistinguishable from an absent one — the exact confusion
+   * this field's `null` was defined to prevent.
    */
   ingress?: IngressReading | null;
 }
@@ -100,15 +105,48 @@ export interface CollectorHealthDeps {
    * good news and never manufactures a warning.
    */
   ingress?: IngressReading;
+  /**
+   * `HARNESS_NO_COLLECTOR=1` — the operator has explicitly declined the
+   * automatic install. Read by the composition root and passed in (P2).
+   *
+   * It does NOT change what the filesystem says; it changes what the row is
+   * allowed to imply. A deliberate opt-out must never render as
+   * `could-not-determine` or as a broken machine, because "I chose this" and
+   * "something is wrong here" are different facts and only one of them needs
+   * acting on.
+   */
+  optedOut?: boolean;
 }
 
-/** Never `healthy`: a verdict that rests on evidence we did not actually read. */
+/**
+ * Never `healthy`: a verdict that rests on evidence we did not actually read.
+ *
+ * `ingress` is a REQUIRED parameter rather than an optional field on `extra`,
+ * and that is the fix for a real defect (plan 077). Every caller probed, and
+ * every caller then dropped the reading on the floor: `undetermined` never set
+ * `ingress`, so the key was ABSENT from these three verdicts. Absent is not the
+ * same as `null` — `null` is this read's way of saying nobody probed, and the
+ * three could-not-determine paths were emitting something indistinguishable from
+ * it while a probe HAD been taken and thrown away.
+ *
+ * Worse, a blocked ingress is the more urgent fact of the two. These rungs all
+ * precede the `ingress-blocked` rung below, so an operator whose install state
+ * is merely unrecorded was told "run --install-collector" and never told that
+ * commits made from here carry NO attribution. The verdict stays
+ * `could-not-determine` — we genuinely cannot determine the install — but the
+ * evidence travels with it, and {@link withIngressWarning} adds the blocked
+ * ingress to the operator's line so the actionable half is not silently lost.
+ *
+ * Making the parameter required is what stops this recurring: a new
+ * could-not-determine path cannot forget to pass it, because it will not compile.
+ */
 function undetermined(
   detail: string,
   binary: CollectorHealth['binary'],
+  ingress: IngressReading | null,
   extra: Partial<CollectorHealth> = {},
 ): CollectorHealth {
-  return {
+  return withIngressWarning({
     verdict: 'could-not-determine',
     detail,
     next_action:
@@ -119,12 +157,61 @@ function undetermined(
     noteSchema: { expected: GITAI_PIN.expect_schema_version, observed: null, status: 'unknown' },
     trace2: null,
     lastAttempt: null,
+    ingress,
     ...extra,
+  });
+}
+
+/**
+ * Append the blocked-ingress fact to a verdict that is NOT `ingress-blocked`.
+ *
+ * The verdict itself is left alone on purpose. `could-not-determine` is the
+ * honest answer to "is the collector installed and hooked up", and promoting a
+ * blocked ingress over it would claim git-ai *is* installed and hooked up —
+ * which is exactly what this read could not establish. So the verdict keeps
+ * saying what it knows, and the detail carries the second, independent fact
+ * rather than dropping it.
+ *
+ * Two facts, one row: the operator hears both, and neither is asserted as the
+ * other.
+ */
+function withIngressWarning(health: CollectorHealth): CollectorHealth {
+  const reading = health.ingress;
+  if (reading == null || !ingressBlocked(reading)) return health;
+  const socket = reading.target.kind === 'af_unix' ? reading.target.path : '(unknown)';
+  return {
+    ...health,
+    detail: `${health.detail}; SEPARATELY, this process cannot reach the git-ai ingress at ${socket}${markerExplanation(reading)}, so commits made from here carry NO attribution and git-ai may later attest their lines as known-human`,
+    next_action:
+      `${health.next_action ?? ''} Independently of that, commit through \`harness commit "<message>"\` while the ingress is blocked, then run \`harness doctor telemetry-nudge\` from an UNSANDBOXED shell.`.trim(),
+  };
+}
+
+/**
+ * Re-word a "nothing is installed" rung for an operator who DECLINED the install.
+ *
+ * The filesystem facts are identical either way — that is exactly the problem.
+ * Without this, `HARNESS_NO_COLLECTOR=1` produces a row indistinguishable from a
+ * machine where the install silently failed, and a `next_action` telling the
+ * operator to run the very command they opted out of. The verdict is left alone;
+ * only the explanation and the advice change, because what moved is our
+ * knowledge of WHY, not what is on disk.
+ */
+function asOptedOut(health: CollectorHealth, optedOut: boolean): CollectorHealth {
+  if (!optedOut) return health;
+  if (health.verdict === 'healthy') return health;
+  return {
+    ...health,
+    detail: `${health.detail} — and HARNESS_NO_COLLECTOR=1 is set, so harness did not install anything: this is a DELIBERATE opt-out, not a broken machine`,
+    next_action:
+      'Nothing to do unless you want attribution: unset `HARNESS_NO_COLLECTOR`, or run `harness doctor --install-collector` once to install the pinned collector explicitly.',
   };
 }
 
 export function readCollectorHealth(deps: CollectorHealthDeps): CollectorHealth {
   const manifest = deps.manifest ?? GITAI_PIN;
+  const optedOut = deps.optedOut === true;
+  const maybeOptedOut = (health: CollectorHealth): CollectorHealth => asOptedOut(health, optedOut);
   const binaryPath = binaryPathFor(deps.host.home, deps.host.platform);
   const present = deps.fs.exists(binaryPath);
   const state = readCollectorState(deps.fs, deps.cwd);
@@ -142,6 +229,11 @@ export function readCollectorHealth(deps: CollectorHealthDeps): CollectorHealth 
       noteSchema: { expected: manifest.expect_schema_version, observed: null, status: 'unknown' },
       trace2: null,
       lastAttempt: null,
+      // Carried, not warned on. With no binary published for this host there is
+      // nothing collecting, so a blocked ingress is not an independent piece of
+      // bad news here — but the reading still travels, because `null` has to
+      // keep meaning "nobody probed" and nothing else.
+      ingress: deps.ingress ?? null,
     };
   }
 
@@ -166,7 +258,7 @@ export function readCollectorHealth(deps: CollectorHealthDeps): CollectorHealth 
   const binary = { path: binaryPath, present, digest };
 
   if (!present && state === null) {
-    return {
+    return maybeOptedOut({
       verdict: 'not-installed',
       detail: `git-ai is not installed (no binary at ${binaryPath}, no recorded install)`,
       next_action:
@@ -177,18 +269,26 @@ export function readCollectorHealth(deps: CollectorHealthDeps): CollectorHealth 
       noteSchema: { expected: manifest.expect_schema_version, observed: null, status: 'unknown' },
       trace2: null,
       lastAttempt: null,
-    };
+      // Same reasoning as the unsupported-platform rung above: the reading is
+      // preserved, but nothing is installed to be losing attribution, so it is
+      // not surfaced as a second warning.
+      ingress: deps.ingress ?? null,
+    });
   }
   if (state === null) {
-    return undetermined(
-      `a git-ai binary exists at ${binaryPath} but harness has no record of installing it — provenance and hook state are unknown`,
-      binary,
+    return maybeOptedOut(
+      undetermined(
+        `a git-ai binary exists at ${binaryPath} but harness has no record of installing it — provenance and hook state are unknown`,
+        binary,
+        deps.ingress ?? null,
+      ),
     );
   }
   if (!present) {
     return undetermined(
       `harness recorded a git-ai install (${state.cli.status}) but nothing is at ${binaryPath} — the binary has been moved or removed`,
       binary,
+      deps.ingress ?? null,
       { trace2: latestTrace2(state) },
     );
   }
@@ -296,6 +396,7 @@ export function readCollectorHealth(deps: CollectorHealthDeps): CollectorHealth 
     return undetermined(
       `git-ai is present at ${binaryPath} but its digest could not be re-verified on this read`,
       binary,
+      deps.ingress ?? null,
       { hooks: base.hooks, daemon, noteSchema: base.noteSchema, trace2: base.trace2 },
     );
   }
