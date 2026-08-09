@@ -606,3 +606,162 @@ just checks     ->  degraded, exit 0 — arch 2 / markdown 211 / windows 7
 Those three warn-launch counts are **byte-identical to the two previous commits**, so the new act,
 the five new service modules and the seven new test files added **zero** findings. `markdown-lint`
 ignores `docs/plans/**`, so this log and `platform-findings.md` are **unscanned, not proven clean**.
+
+---
+
+## Review repair — F001 (reviewer `pij-vitreous-swordfish`, verdict APPROVE_WITH_NOTES)
+
+### The finding, and why it is the FOURTH instance of one method
+
+Six rows asserted only `outcome.kind === 'silent'`. `gitTry()` tolerates a non-zero git exit, so a
+transition that never ran left HEAD where PRE recorded it, POST returned `silent`/`head-unchanged`,
+and the row went **green for a reason unrelated to what it claims to test**. The reviewer proved it
+rather than arguing it: it replaced the single-commit fast-forward-pull transition with a no-op
+callback and the row still passed.
+
+This plan has now produced the same defect four times, and it is worth reading as **one method, not
+four typos**. Every time, a probe could not distinguish the case it was written for from the case
+where its own premise was absent — so it returned an artifact of itself:
+
+| # | The fabricated thing | What passed | What the real artifact did |
+|---|---|---|---|
+| 1 | A reflog subject `pull: Fast-forward` | the unit test | git writes the whole argv — `pull -q --ff-only origin main: Fast-forward` — so the deny prefix matched **no real pull** |
+| 2 | A JSON-shaped git-ai note | the parser test | the real note is a plain-text block terminated by `---` with JSON after |
+| 3 | An attribution parser understanding only `s_::t_` | the assertion | a **human** note (`h_…`) parsed as ZERO attributions |
+| 4 | A row whose operation never ran | the row | `head-unchanged` is in the same `silent` bucket as the answer being tested |
+
+In (1)–(3) the fabricated version passed and the real one failed. (4) is the same shape with the
+fabrication moved from the *input* to the *premise*: the row never checked that its own setup
+happened.
+
+### The repair — two parts, and only doing the first leaves the hole open
+
+Every row in both silent tables now carries a `verify(prev)` postcondition **and** its expected
+`reason`, asserted in that order (`SilentRow`, `provocation.int.test.ts`).
+
+1. **Postcondition, asserted BEFORE silence.** What must be true of the repository for the row's
+   name to be an honest description of what ran — HEAD advanced by the expected number of commits
+   along its first parent, the expected parent count, the expected subject. A row whose setup
+   silently failed now goes RED **at the cause**, not green at the symptom.
+2. **The expected reason, not just the kind.** `silent` is a bucket, and `head-unchanged` (nothing
+   happened) sits in it right beside the answer the row is testing for. Same distinction as
+   asserting a note's identity rather than a note count.
+
+The seven MEASURED-DEFEATER rows share a postcondition that states their whole claim
+(`indistinguishableFromAuthorship`): HEAD advanced by exactly one commit, with one parent, whose
+reflog subject is `commit: <msg>` — byte-identical to genuine authorship in every field a naive
+guard consults. If that stops being true the row is no longer testing a defeater and must say so.
+
+**Expectations were MEASURED, not reasoned.** Before writing a single assertion, each row's real
+`advance` / `parents` / reflog subject was probed in a throwaway repo — the whole point of instance
+(1) above. Two would have been guessed wrong: a `--no-ff` merge advances **1** along its first
+parent (not 2) while carrying 2 parents, and amending the **root** commit yields **0** parents, not 1.
+
+### PROVING the repair — a fix that makes the row pass differently is not a fix
+
+**Mutation 1 — the reviewer's exact one.** `single-commit fast-forward pull` transition replaced
+with `() => {}`:
+
+```
+ FAIL  provocation.int.test.ts > class (b) > stays SILENT for 'single-commit fast-forward pull'
+AssertionError: expected +0 to be 1 // Object.is equality
+```
+
+It fails on `advanceFrom(prev)` — the **cause** — before it ever reaches the silence assertion.
+
+**Mutations 2 and 3 — same no-op, two more of the six** (`git am`, `a --no-ff merge commit`):
+
+```
+      Tests  2 failed | 30 passed (32)
+ FAIL  … stays SILENT for 'a --no-ff merge commit'   AssertionError: expected +0 to be 1
+ FAIL  … stays SILENT for 'git am'                   AssertionError: expected +0 to be 1
+```
+
+**Mutation 4 — proving part 2 is INDEPENDENTLY load-bearing.** Deleting the `multiple-parents`
+check from the classifier leaves the `--no-ff merge` row **still silent**, because the reflog layer
+silently covers for it. The old assertion would have passed with the row's named mechanism gone.
+Only the reason caught it:
+
+```
+AssertionError: expected { kind: 'silent', …(1) } to deeply equal { kind: 'silent', …(1) }
+-   "reason": "multiple-parents",
++   "reason": "reflog-says-not-authored",
+```
+
+That is the argument for part 2 in one screenful: **a second layer covering for a deleted first
+layer is invisible to an assertion on the bucket.**
+
+### The same defect in THREE MORE rows the review did not flag
+
+Measuring class (a) to write its postconditions surfaced it: `checkout of another branch`,
+`reset --hard backwards` and `a no-op — nothing at all happened` **all** passed on `head-unchanged`.
+The first two return to the recorded SHA (`other` is branched at HEAD; the reset goes back to it),
+so all three rows were byte-identical in what they asserted — a checkout row that could not tell
+itself from nothing happening. They are repaired the same way: the checkout row now proves it is on
+`other` and that `main` moved; the reset row proves the commit was really made and really discarded
+(`b.txt` gone). The no-op row is left asserting `head-unchanged` **deliberately**, so the vacuous
+shape is represented on purpose rather than by accident.
+
+### Disjoint failure sets — RE-MEASURED, because the repair touched the assertions they rest on
+
+The 5 / 7 / 12 claim is the load-bearing result of this phase and I had just changed every
+assertion under it. Re-run rather than assumed:
+
+```
+baseline (no mutation)          :  Tests  32 passed (32)
+MUTATED [command scan removed]  :  Tests   5 failed | 27 passed (32)
+MUTATED [index discriminator]   :  Tests   7 failed | 25 passed (32)
+MUTATED [both removed]          :  Tests  12 failed | 20 passed (32)
+```
+
+Unchanged, and 12 is still the exact union — now with **three independent measurements** (mine, the
+reviewer's, and this one). Neither layer covers for the other.
+
+### The reviewer's softest claim — CONFIRMED, and it is a genuine hole
+
+The reviewer filed, as **INFERRED and deliberately not a finding**, that `FileHookJournal.record()`
+is a read-rewrite-write with no interprocess lock. The question put to me was whether the claim
+marker already excludes the concurrency. **It does not, and the race reproduces.**
+
+*Why the claim does not serialise it.* The `O_EXCL` claim gates **the emit**, not **the record**.
+`CommitIntercept.fire()` journals unconditionally on every path: PRE fires never take a claim at
+all, and claim-losers journal `{kind:'silent', reason:'lost-the-claim'}`. So every racing process
+writes, and the claim serialises none of them.
+
+*Why the existing concurrency row cannot see it.* That row races three POST fires **in one
+process**, where `record()` is fully synchronous and therefore cannot interleave. The race needs
+separate OS processes — which is exactly what the runtime is: one `harness hooks fire` process per
+agent tool call.
+
+*Measured*, with N real concurrent processes against a temp `HOME`, counting journal lines:
+
+```
+processes fired : 24   journal lines : 22
+processes fired :  8   journal lines :  8      <- does not always fire
+processes fired :  8   journal lines :  6
+processes fired :  4   journal lines :  3
+processes fired :  3   journal lines :  2
+```
+
+**It fires at three** — an agent issuing three parallel tool calls, not a stress test. Verdict:
+**CONFIRMED, a genuine hole, and it should be taken in Phase 3.** No fix applied here — the scope
+was assess, not build. Two things make it matter more than a lost log line: the journal is the
+**only** observable for a silent failure (every path exits 0 by design), and G2 accepts that
+constitutional deviation **because of** ac-000b, which reads this journal. The entry most likely to
+be lost is a `failed` one during a burst — precisely the case the journal exists to expose.
+Whatever fixes it should be an `O_APPEND` single-`write` append (atomic under `PIPE_BUF` for the
+line lengths here) rather than a lock, with the 500-line trim moved to the reader or to a separate
+compaction — the trim is what forces the rewrite that loses the entry.
+
+### A KNOWN MISATTRIBUTION this repair deliberately accepts — not a risk we retired
+
+The six real-operation postconditions assert **our** observables (first-parent advance, parent
+count, subject) and deliberately do **not** assert git's exact reflog text. That is the same
+boundary that stopped the live-daemon row flaking: a test asserting someone else's format reports
+their change as our regression.
+
+The residual cost, stated so nobody has to rediscover it: **if git ever rewords a reflog subject,
+those rows go red on the `reason` and the failure will read as ours.** It is not. The tell is that
+the postcondition passes and only the reason differs — the operation ran, and the classifier
+stopped recognising it. Check `NOT_AUTHORED_OPERATIONS` in `classify-head-transition.ts` against
+what git now writes before looking anywhere else.

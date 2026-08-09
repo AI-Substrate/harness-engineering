@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -7,6 +7,7 @@ import { FakeClock } from '../../../src/adapters/clock/fake-clock.js';
 import { NodeFs } from '../../../src/adapters/fs/node-fs.js';
 import { ExecGit } from '../../../src/adapters/git/exec-git.js';
 import { NodeHash } from '../../../src/adapters/hash/node-hash.js';
+import type { TransitionReason } from '../../../src/services/hooks/classify-head-transition.js';
 import {
   type CommitEmitter,
   CommitIntercept,
@@ -56,6 +57,67 @@ const gitTry = (args: string[], cwd = repo): void => {
 
 const write = (name: string, body: string, cwd = repo): void =>
   writeFileSync(join(cwd, name), body);
+
+const headSha = (): string => git(['rev-parse', 'HEAD']).toLowerCase();
+
+/** How many commits HEAD has advanced along its FIRST parent since `prev`. */
+const advanceFrom = (prev: string): number =>
+  Number(git(['rev-list', '--count', '--first-parent', `${prev}..HEAD`]));
+
+const parentCount = (): number =>
+  git(['rev-list', '--parents', '-n1', 'HEAD']).split(/\s+/).length - 1;
+
+const headSubject = (): string => git(['log', '-1', '--format=%s']);
+
+/**
+ * One row of a SILENT table.
+ *
+ * `verify` is the load-bearing addition (review F001). A row that asserted only
+ * `kind === 'silent'` could pass WITHOUT ITS NAMED OPERATION EVER HAPPENING: a
+ * failed or skipped transition leaves HEAD where PRE recorded it, POST returns
+ * `silent`/`head-unchanged`, and the row goes green for a reason that has nothing
+ * to do with what it claims to test. PROVEN, not theorised — a reviewer replaced
+ * the fast-forward-pull transition with a no-op callback and the row still passed.
+ *
+ * So every row now states two things it could previously leave unsaid:
+ *
+ * 1. `verify` — the postcondition. What must be TRUE of the repository for this
+ *    row's name to be an honest description of what ran. Asserted BEFORE silence,
+ *    so a setup that silently failed goes RED at the cause rather than passing at
+ *    the symptom.
+ * 2. `reason` — WHICH check silenced it. `silent` is a bucket, and
+ *    `head-unchanged` (nothing happened) sits in it right beside the answer the
+ *    row is actually testing for. Only the reason tells them apart. Same
+ *    distinction as asserting a note's identity rather than a note count.
+ *
+ * This is the third instance on this plan of one defect: a probe that cannot see
+ * the opposite of what it asserts returns an artifact of itself.
+ */
+interface SilentRow {
+  name: string;
+  /** Runs BEFORE the bracket opens — anything here is invisible to the PRE index. */
+  setup?: () => void;
+  /** Runs INSIDE the bracket, between PRE and POST. */
+  transition: () => void;
+  /** The postcondition: proof the named operation really ran. `prev` is HEAD at PRE. */
+  verify: (prev: string) => void;
+  reason: TransitionReason;
+}
+
+/**
+ * The postcondition every MEASURED-DEFEATER row shares, and its whole claim:
+ * HEAD advanced by exactly ONE commit with ONE parent whose reflog subject is
+ * `commit: <msg>` — byte-identical to a genuine authored commit in every field a
+ * naive guard consults. If that stops being true the row is no longer testing a
+ * defeater, and it must say so by failing.
+ */
+const indistinguishableFromAuthorship =
+  (message: string) =>
+  (prev: string): void => {
+    expect(advanceFrom(prev)).toBe(1);
+    expect(parentCount()).toBe(1);
+    expect(git(['log', '-g', '-1', '--format=%gs'])).toBe(`commit: ${message}`);
+  };
 
 /**
  * PRE, then the transition, then POST — returns POST's outcome.
@@ -120,29 +182,52 @@ describe('provocation — the POSITIVE control (dw-000a)', () => {
 });
 
 describe('provocation — class (a): HEAD did not advance by exactly one (dw-0009)', () => {
-  it.each([
-    [
-      'checkout of another branch',
-      () => {
+  /*
+  Test Doc:
+  - Why: HEAD moved for a reason that is not a commit authored here — or did not
+    move at all. Each row must prove its own operation ran (see {@link SilentRow}).
+  - Contract: every row is silent, FOR ITS OWN NAMED REASON, and nothing is emitted.
+  */
+  const rows: SilentRow[] = [
+    {
+      name: 'checkout of another branch',
+      transition: () => {
         git(['branch', 'other']);
         write('b.txt', 'b\n');
         git(['add', 'b.txt']);
         git(['commit', '-qm', 'on main']);
         git(['checkout', '-q', 'other']);
       },
-    ],
-    [
-      'reset --hard backwards',
-      () => {
+      // MEASURED: `other` was branched at the recorded HEAD, so the SHA is
+      // unchanged even though a commit AND a checkout both happened. Without this
+      // postcondition the row is indistinguishable from the no-op row below —
+      // both would pass on `head-unchanged` alone.
+      verify: (prev) => {
+        expect(git(['rev-parse', '--abbrev-ref', 'HEAD'])).toBe('other');
+        expect(git(['rev-parse', 'main']).toLowerCase()).not.toBe(prev);
+        expect(headSha()).toBe(prev);
+      },
+      reason: 'head-unchanged',
+    },
+    {
+      name: 'reset --hard backwards',
+      transition: () => {
         write('b.txt', 'b\n');
         git(['add', 'b.txt']);
         git(['commit', '-qm', 'second']);
         git(['reset', '-q', '--hard', 'HEAD~1']);
       },
-    ],
-    [
-      'rebase onto a diverged branch',
-      () => {
+      // The commit must have really been made and really been thrown away: the
+      // file it added is gone from the worktree and HEAD is back at PRE's sha.
+      verify: (prev) => {
+        expect(existsSync(join(repo, 'b.txt'))).toBe(false);
+        expect(headSha()).toBe(prev);
+      },
+      reason: 'head-unchanged',
+    },
+    {
+      name: 'rebase onto a diverged branch',
+      transition: () => {
         git(['checkout', '-q', '-b', 'feature']);
         write('f.txt', 'f\n');
         git(['add', 'f.txt']);
@@ -154,13 +239,48 @@ describe('provocation — class (a): HEAD did not advance by exactly one (dw-000
         git(['checkout', '-q', 'feature']);
         gitTry(['rebase', 'main']);
       },
-    ],
-    ['amend', () => git(['commit', '-q', '--amend', '-m', 'amended'])],
-    ['a no-op — nothing at all happened', () => {}],
-    ['detached HEAD', () => git(['checkout', '-q', '--detach', 'HEAD'])],
-    [
-      'a MULTI-COMMIT fast-forward pull — HEAD advances by more than one',
-      () => {
+      // A rebase that conflicted would leave HEAD detached mid-operation with a
+      // different subject — the postcondition is what separates "rebased" from
+      // "tried to rebase".
+      verify: (prev) => {
+        expect(advanceFrom(prev)).toBe(2);
+        expect(parentCount()).toBe(1);
+        expect(headSubject()).toBe('feature work');
+      },
+      reason: 'not-a-child-of-recorded-head',
+    },
+    {
+      name: 'amend',
+      transition: () => git(['commit', '-q', '--amend', '-m', 'amended']),
+      // MEASURED: amending the ROOT commit produces a new root — zero parents,
+      // which is why the classifier rejects it before it ever reads the reflog.
+      verify: (prev) => {
+        expect(headSha()).not.toBe(prev);
+        expect(headSubject()).toBe('amended');
+        expect(parentCount()).toBe(0);
+      },
+      reason: 'not-a-child-of-recorded-head',
+    },
+    {
+      name: 'a no-op — nothing at all happened',
+      transition: () => {},
+      // The one row where "HEAD did not move" IS the claim. It is here so the
+      // vacuous-pass shape is represented deliberately rather than by accident.
+      verify: (prev) => expect(headSha()).toBe(prev),
+      reason: 'head-unchanged',
+    },
+    {
+      name: 'detached HEAD',
+      transition: () => git(['checkout', '-q', '--detach', 'HEAD']),
+      verify: (prev) => {
+        expect(headSha()).toBe(prev);
+        expect(git(['branch', '--show-current'])).toBe('');
+      },
+      reason: 'head-unchanged',
+    },
+    {
+      name: 'a MULTI-COMMIT fast-forward pull — HEAD advances by more than one',
+      transition: () => {
         execFileSync('git', ['clone', '-q', repo, upstream], { env: hermeticGitEnv() });
         write('u1.txt', 'u1\n', upstream);
         git(['add', 'u1.txt'], upstream);
@@ -171,10 +291,24 @@ describe('provocation — class (a): HEAD did not advance by exactly one (dw-000
         git(['remote', 'add', 'up', upstream]);
         gitTry(['pull', '-q', '--ff-only', 'up', 'main']);
       },
-    ],
-  ])('stays SILENT for %s', async (_name, transition) => {
-    const outcome = await bracket(transition);
-    expect(outcome.kind).toBe('silent');
+      // The row's entire point is the TWO. A pull that fetched nothing leaves
+      // HEAD where it was and the row would pass on `head-unchanged` instead.
+      verify: (prev) => {
+        expect(advanceFrom(prev)).toBe(2);
+        expect(parentCount()).toBe(1);
+        expect(headSubject()).toBe('upstream two');
+      },
+      reason: 'not-a-child-of-recorded-head',
+    },
+  ];
+
+  it.each(rows)('stays SILENT for $name', async (row) => {
+    row.setup?.();
+    const prev = headSha();
+    const outcome = await bracket(row.transition);
+
+    row.verify(prev);
+    expect(outcome).toEqual({ kind: 'silent', reason: row.reason });
     expect(emitted).toEqual([]);
   });
 
@@ -198,7 +332,8 @@ describe('provocation — class (b): HEAD advanced by one, authored ELSEWHERE (d
     additionally read `commit: <msg>` in the reflog and have ONE parent — they are
     byte-identical to an authored commit on parent-count AND reflog, so ONLY the
     index recorded at PRE rejects them.
-  - Contract: every row is silent and nothing is emitted.
+  - Contract: every row is silent FOR ITS OWN NAMED REASON, its postcondition
+    proves the named operation really ran, and nothing is emitted.
   */
   const seedSide = (): void => {
     git(['checkout', '-q', '-b', 'side']);
@@ -208,106 +343,165 @@ describe('provocation — class (b): HEAD advanced by one, authored ELSEWHERE (d
     git(['checkout', '-q', 'main']);
   };
 
-  it.each([
-    [
-      'MEASURED DEFEATER — merge --squash then commit',
-      () => {
+  const rows: SilentRow[] = [
+    {
+      name: 'MEASURED DEFEATER — merge --squash then commit',
+      setup: () => {
         seedSide();
         git(['merge', '-q', '--squash', 'side']);
       },
-      () => git(['commit', '-qm', 'squashed in']),
-    ],
-    [
-      'MEASURED DEFEATER — cherry-pick -n then commit',
-      () => {
+      transition: () => git(['commit', '-qm', 'squashed in']),
+      verify: indistinguishableFromAuthorship('squashed in'),
+      reason: 'index-was-not-clean',
+    },
+    {
+      name: 'MEASURED DEFEATER — cherry-pick -n then commit',
+      setup: () => {
         seedSide();
         git(['cherry-pick', '-n', 'side']);
       },
-      () => git(['commit', '-qm', 'cherry picked']),
-    ],
-    [
-      'MEASURED DEFEATER — revert -n then commit',
-      () => {
+      transition: () => git(['commit', '-qm', 'cherry picked']),
+      verify: indistinguishableFromAuthorship('cherry picked'),
+      reason: 'index-was-not-clean',
+    },
+    {
+      name: 'MEASURED DEFEATER — revert -n then commit',
+      setup: () => {
         write('r.txt', 'r\n');
         git(['add', 'r.txt']);
         git(['commit', '-qm', 'to be reverted']);
         git(['revert', '-n', 'HEAD']);
       },
-      () => git(['commit', '-qm', 'reverted']),
-    ],
-    [
-      'MEASURED DEFEATER — git apply --index then commit',
-      () => {
+      transition: () => git(['commit', '-qm', 'reverted']),
+      verify: indistinguishableFromAuthorship('reverted'),
+      reason: 'index-was-not-clean',
+    },
+    {
+      name: 'MEASURED DEFEATER — git apply --index then commit',
+      setup: () => {
         seedSide();
         const patch = join(dir, 'p.patch');
         writeFileSync(patch, git(['format-patch', '--stdout', 'main..side']));
         gitTry(['apply', '--index', patch]);
       },
-      () => git(['commit', '-qm', 'applied a patch']),
-    ],
-    [
-      'MEASURED DEFEATER — checkout REF -- path then commit',
-      () => {
+      transition: () => git(['commit', '-qm', 'applied a patch']),
+      verify: indistinguishableFromAuthorship('applied a patch'),
+      reason: 'index-was-not-clean',
+    },
+    {
+      name: 'MEASURED DEFEATER — checkout REF -- path then commit',
+      setup: () => {
         seedSide();
         git(['checkout', 'side', '--', 's.txt']);
       },
-      () => git(['commit', '-qm', 'took a file from elsewhere']),
-    ],
-    [
-      'MEASURED DEFEATER — restore --source then commit',
-      () => {
+      transition: () => git(['commit', '-qm', 'took a file from elsewhere']),
+      verify: indistinguishableFromAuthorship('took a file from elsewhere'),
+      reason: 'index-was-not-clean',
+    },
+    {
+      name: 'MEASURED DEFEATER — restore --source then commit',
+      setup: () => {
         seedSide();
         git(['restore', '--source', 'side', '--staged', '--worktree', '--', 's.txt']);
       },
-      () => git(['commit', '-qm', 'restored from elsewhere']),
-    ],
-    [
-      'MEASURED DEFEATER — read-tree -m -u then commit (how git subtree works)',
-      () => {
+      transition: () => git(['commit', '-qm', 'restored from elsewhere']),
+      verify: indistinguishableFromAuthorship('restored from elsewhere'),
+      reason: 'index-was-not-clean',
+    },
+    {
+      name: 'MEASURED DEFEATER — read-tree -m -u then commit (how git subtree works)',
+      setup: () => {
         seedSide();
         gitTry(['read-tree', '-m', '-u', 'HEAD', 'side']);
       },
-      () => git(['commit', '-qm', 'read a tree in']),
-    ],
-    [
-      'single-commit fast-forward pull',
-      () => {
+      transition: () => git(['commit', '-qm', 'read a tree in']),
+      verify: indistinguishableFromAuthorship('read a tree in'),
+      reason: 'index-was-not-clean',
+    },
+    {
+      name: 'single-commit fast-forward pull',
+      setup: () => {
         execFileSync('git', ['clone', '-q', repo, upstream], { env: hermeticGitEnv() });
         write('u.txt', 'u\n', upstream);
         git(['add', 'u.txt'], upstream);
         git(['commit', '-qm', 'upstream one'], upstream);
         git(['remote', 'add', 'up', upstream]);
       },
-      () => gitTry(['pull', '-q', '--ff-only', 'up', 'main']),
-    ],
-    [
-      'a --no-ff merge commit',
-      () => seedSide(),
-      () => gitTry(['merge', '-q', '--no-ff', '-m', 'merged side', 'side']),
-    ],
-    ['cherry-pick (committing form)', () => seedSide(), () => gitTry(['cherry-pick', 'side'])],
-    [
-      'revert (committing form)',
-      () => {
+      transition: () => gitTry(['pull', '-q', '--ff-only', 'up', 'main']),
+      // THE row the reviewer defeated with a no-op callback. The index is clean at
+      // PRE here, so `index-was-not-clean` cannot cover for the reflog layer: if
+      // the reflog check stopped recognising a pull this row would EMIT.
+      verify: (prev) => {
+        expect(advanceFrom(prev)).toBe(1);
+        expect(parentCount()).toBe(1);
+        expect(headSubject()).toBe('upstream one');
+      },
+      reason: 'reflog-says-not-authored',
+    },
+    {
+      name: 'a --no-ff merge commit',
+      setup: () => seedSide(),
+      transition: () => gitTry(['merge', '-q', '--no-ff', '-m', 'merged side', 'side']),
+      // TWO parents is the whole row. A merge that fast-forwarded or refused would
+      // leave one parent (or none of it) and must not pass as a merge.
+      verify: (prev) => {
+        expect(advanceFrom(prev)).toBe(1);
+        expect(parentCount()).toBe(2);
+        expect(headSubject()).toBe('merged side');
+      },
+      reason: 'multiple-parents',
+    },
+    {
+      name: 'cherry-pick (committing form)',
+      setup: () => seedSide(),
+      transition: () => gitTry(['cherry-pick', 'side']),
+      verify: (prev) => {
+        expect(advanceFrom(prev)).toBe(1);
+        expect(parentCount()).toBe(1);
+        expect(headSubject()).toBe('side work');
+      },
+      reason: 'reflog-says-not-authored',
+    },
+    {
+      name: 'revert (committing form)',
+      setup: () => {
         write('r.txt', 'r\n');
         git(['add', 'r.txt']);
         git(['commit', '-qm', 'to be reverted']);
       },
-      () => gitTry(['revert', '--no-edit', 'HEAD']),
-    ],
-    [
-      'git am',
-      () => {
+      transition: () => gitTry(['revert', '--no-edit', 'HEAD']),
+      verify: (prev) => {
+        expect(advanceFrom(prev)).toBe(1);
+        expect(parentCount()).toBe(1);
+        expect(headSubject()).toBe('Revert "to be reverted"');
+      },
+      reason: 'reflog-says-not-authored',
+    },
+    {
+      name: 'git am',
+      setup: () => {
         seedSide();
         writeFileSync(join(dir, 'am.patch'), git(['format-patch', '--stdout', 'main..side']));
       },
-      () => gitTry(['am', join(dir, 'am.patch')]),
-    ],
-  ])('stays SILENT for %s', async (_name, setup, transition) => {
-    setup();
-    const outcome = await bracket(transition);
+      transition: () => gitTry(['am', join(dir, 'am.patch')]),
+      verify: (prev) => {
+        expect(advanceFrom(prev)).toBe(1);
+        expect(parentCount()).toBe(1);
+        expect(headSubject()).toBe('side work');
+      },
+      reason: 'reflog-says-not-authored',
+    },
+  ];
 
-    expect(outcome.kind).toBe('silent');
+  it.each(rows)('stays SILENT for $name', async (row) => {
+    row.setup?.();
+    const prev = headSha();
+    const outcome = await bracket(row.transition);
+
+    // Postcondition FIRST: a row whose operation did not run goes red at the
+    // cause, not green at the symptom.
+    row.verify(prev);
+    expect(outcome).toEqual({ kind: 'silent', reason: row.reason });
     expect(emitted).toEqual([]);
     expect(journal.at(-1)?.kind).toBe('silent');
   });
