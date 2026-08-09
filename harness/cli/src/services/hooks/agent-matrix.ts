@@ -76,6 +76,21 @@ export interface AgentSpec {
   configFiles: string[];
   /** The event keys, in this agent's own casing. */
   events: { pre: string; post: string };
+  /**
+   * Extra fields this agent's hook ENTRY needs beyond `command`.
+   *
+   * A FIELD rather than a branch, so "adding an agent is a row" survives contact
+   * with agents whose entry shape differs. MEASURED from the only working copilot
+   * hook file on this machine (git-ai's), whose entries carry `type: "command"`
+   * alongside the command.
+   *
+   * UNRESOLVED and deliberately not guessed: that same file also carries a
+   * `powershell` variant of the command. Copilot parses hook files in NATIVE code,
+   * so the schema is not readable from its JS bundle and requiredness cannot be
+   * established here. Windows is already EXPECTED-UNVERIFIED for this plan; this is
+   * a second reason it stays that way.
+   */
+  entryExtras?: Record<string, unknown>;
   /** The env var that moves the config root, when the agent has one. */
   override?: AgentEnvOverride;
 }
@@ -130,8 +145,17 @@ export const AGENT_MATRIX: AgentSpec[] = [
     agent: 'github-copilot',
     detectId: 'copilot',
     subdir: '.copilot',
-    configFiles: ['hooks/git-ai.json'],
+    // MEASURED, and NOT git-ai's file. `~/.copilot/hooks/` is a DROP-IN DIRECTORY:
+    // the installed CLI resolves `userHooksDir = <config>/hooks` (and `.github/hooks`
+    // per repo) and enumerates it — there is no fixed hooks filename anywhere in its
+    // bundle. The only file present is `git-ai.json`, named for the tool that wrote
+    // it. Merging our entry into THAT file would put our hook in a file we do not
+    // own, which `git-ai uninstall-hooks` deletes — our hook would vanish silently,
+    // this plan's own failure class arriving through a config path. So we write our
+    // OWN file beside it, exactly as git-ai writes its own.
+    configFiles: ['hooks/harness.json'],
     events: { pre: 'PreToolUse', post: 'PostToolUse' },
+    entryExtras: { type: 'command' },
   },
   {
     agent: 'windsurf',

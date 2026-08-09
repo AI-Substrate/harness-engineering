@@ -137,7 +137,7 @@ describe('every Strategy A agent resolves to its measured path', () => {
     ['gemini', '/home/dev/.gemini/settings.json'],
     ['droid', '/home/dev/.factory/settings.json'],
     ['firebender', '/home/dev/.firebender/hooks.json'],
-    ['github-copilot', '/home/dev/.copilot/hooks/git-ai.json'],
+    ['github-copilot', '/home/dev/.copilot/hooks/harness.json'],
   ])('%s -> %s', (agent, expected) => {
     expect(resolveConfigFiles(spec(agent), '/home/dev', noEnv)).toEqual([expected]);
   });

@@ -83,6 +83,12 @@ describe('detection reuses the collector — no second detector (dw-0019)', () =
     for (const spec of AGENT_MATRIX) {
       const marker = byId.get(spec.detectId.toLowerCase());
       if (marker === undefined) continue;
+      // DECLARED DIVERGENCE, not a carve-out. The collector's `configs` answer
+      // "what should be backed up" — i.e. the files git-ai touches. Our matrix
+      // answers "where do WE write". For six agents those coincide; for copilot
+      // they must not, because ~/.copilot/hooks/ is a drop-in directory and
+      // git-ai.json is git-ai's own file. Asserted separately below.
+      if (spec.agent === 'github-copilot') continue;
       const ours = resolveConfigFiles(spec, '/h', () => undefined).map((p) =>
         p.slice('/h/'.length),
       );
@@ -229,5 +235,54 @@ describe('CORROBORATION from a source other than the raid — the live filesyste
     // Detection found agents, so the matrix must locate at least one of their
     // configs. A matrix with broken paths fails here.
     expect(found.length).toBeGreaterThan(0);
+  });
+});
+
+describe('we never write into a file another tool OWNS', () => {
+  it('copilot: we write our OWN file, deliberately NOT git-ai\u2019s', () => {
+    /*
+    Test Doc:
+    - Why: MEASURED — ~/.copilot/hooks/ is a DROP-IN DIRECTORY (the installed CLI
+      resolves `userHooksDir = <config>/hooks` and enumerates it; there is no fixed
+      hooks filename in its bundle), and the only file in it is `git-ai.json`, named
+      for the tool that wrote it. Merging into that file would put our hook where
+      `git-ai uninstall-hooks` deletes it — vanishing SILENTLY, this plan's own
+      failure class arriving through a config path.
+    - Contract: our copilot path is ours, and is NOT the collector's git-ai path.
+    - Quality Contribution: both table checks PASSED on the old row — the drift
+      check because both tables shared the raid, the live-config check because the
+      file genuinely EXISTS. Existence was never the question; OWNERSHIP was, and
+      no row asked it. This one does.
+    */
+    const copilot = AGENT_MATRIX.find((s) => s.agent === 'github-copilot');
+    expect(copilot?.configFiles).toEqual(['hooks/harness.json']);
+
+    const marker = AGENT_MARKERS.find((m) => m.id.toLowerCase() === 'copilot');
+    expect(marker?.configs).toContain('.copilot/hooks/git-ai.json');
+    for (const path of copilot?.configFiles ?? []) {
+      expect(marker?.configs).not.toContain(`.copilot/${path}`);
+    }
+  });
+
+  it('NO matrix row targets a file named for a FOREIGN tool', () => {
+    /*
+    Test Doc:
+    - Why: the generalisation. The raid recorded git-ai's install TARGETS, and for
+      six agents a target is the agent's own shared config — but for copilot it was
+      git-ai's private file, and the transcription flattened that distinction. The
+      tell is a TOOL-NAMED basename: `settings.json` and `hooks.json` belong to the
+      agent, `git-ai.json` belongs to git-ai.
+    - Contract: every basename is generic or ours.
+    - Measured across all seven rows when this was written: only copilot was wrong.
+    */
+    const OURS_OR_GENERIC = /^(settings\.jsonc?|hooks\.json|harness\.json)$/;
+    const offenders: string[] = [];
+    for (const spec of AGENT_MATRIX) {
+      for (const file of spec.configFiles) {
+        const base = file.split('/').pop() ?? file;
+        if (!OURS_OR_GENERIC.test(base)) offenders.push(`${spec.agent}: ${file}`);
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 });

@@ -112,7 +112,8 @@ function installOneFile(fs: FsPort, spec: AgentSpec, path: string, binary: strin
   ] as const) {
     text = appendToArray(text, {
       path: ['hooks', key],
-      entry: { command: hookCommand(binary, spec.agent, phase) },
+      // Extras come from the matrix row, never from a branch on the agent name.
+      entry: { command: hookCommand(binary, spec.agent, phase), ...(spec.entryExtras ?? {}) },
     });
   }
 

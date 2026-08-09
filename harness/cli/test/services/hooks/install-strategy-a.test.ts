@@ -51,7 +51,7 @@ describe('the ABSENT-FILE case — one situation, three consequences (dw-0011, d
     const [outcome] = installStrategyA(fs, spec('github-copilot'), home, env, BINARY);
 
     expect(outcome.created).toBe(true);
-    expect(outcome.path).toBe(join(home, '.copilot/hooks/git-ai.json'));
+    expect(outcome.path).toBe(join(home, '.copilot/hooks/harness.json'));
     expect(existsSync(outcome.path)).toBe(true);
 
     const doc = JSON.parse(readFileSync(outcome.path, 'utf8')) as {

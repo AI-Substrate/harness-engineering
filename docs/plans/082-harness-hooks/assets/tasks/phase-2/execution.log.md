@@ -875,3 +875,95 @@ would pass while the second accumulated an entry per run.
 An empty config has nothing to rearrange, so idempotency is asserted against the fixture that already
 holds git-ai's compound entry — which is where a naive merge reorders — and that entry is asserted to
 survive both runs.
+
+---
+
+## CORRECTION — the copilot row pointed at git-ai's OWN file
+
+Raised by the PM from a directory listing, then resolved from the **Copilot CLI's own bundle**,
+because a listing with one file in it is consistent with two very different worlds: a drop-in
+directory, or a single-slot file that git-ai happened to win.
+
+**The decisive evidence is the NEGATIVE.**
+
+```
+app.js:  userHooksDir: lP(ri(s,"config"),"hooks")        ->  ~/.copilot/hooks
+app.js:  getHooksDir(e) { … lP(e,".github","hooks") }    ->  per-repo .github/hooks
+grep for any hooks FILENAME literal across app.js + index.js  ->  NOTHING
+```
+
+An **absent** filename cannot be a coincidence the way a single present file can. `~/.copilot/hooks/`
+is a drop-in directory; `git-ai.json` is git-ai's own file, named for itself.
+
+**Why it mattered.** Merging our entry into that file would have put our hook in a file we do not own
+— one `git-ai uninstall-hooks` deletes, taking our hook with it **silently**. This plan's own failure
+class, arriving through a config path rather than an exit code. It would also have made the marker
+question incoherent: the file would carry our marker *and* be git-ai's artifact.
+
+**Fixed:** copilot writes `hooks/harness.json`. Same Strategy A mechanism, our own file, so uninstall
+deletes something we created and neither tool can remove the other's hook.
+
+### Why BOTH table checks passed on the broken row
+
+The drift check passed because both tables descend from the same raid and agreed. The live-config
+check passed because the file **genuinely exists**. **Existence was never the question — ownership
+was, and no row asked it.** The shared-blind-spot caution, instantiated as a real defect rather than
+a warning: the raid recorded git-ai's install *targets*, and for six agents a target is the agent's
+shared config, but for copilot it is git-ai's private file. The transcription flattened that
+distinction.
+
+### The BASENAME tell — the real prize, generalised into a guard
+
+`settings.json` / `hooks.json` belong to the **agent**; `git-ai.json` belongs to **git-ai**. That rule
+applies without knowing anything about a new agent, so it is now an assertion: no matrix `configFiles`
+basename may fall outside `{settings.json, settings.jsonc, hooks.json, harness.json}`.
+
+**Proven by refusal** — reverting copilot to `hooks/git-ai.json` turns **2 rows red**. The next
+instance fails at the table rather than in production.
+
+A known property, recorded rather than fixed: the allowlist will fire on a legitimate future agent
+whose config is (say) `config.json`. That is the **correct direction** — it fails closed and forces a
+human to look at the basename, which is exactly the inspection nobody did this time. Frequent firing
+would be data, not a defect.
+
+### All six other rows checked — copilot was the only one
+
+```
+gemini    ~/.gemini/settings.json   general, hooks, ide, security, tools  -> genuinely SHARED
+claude    ~/.claude/settings.json   model, permissions, plugins, hooks    -> genuinely SHARED
+droid     ~/.factory/settings.json  hooks only today, GENERIC name        -> agent's own
+windsurf  ~/.codeium/*hooks.json    hooks only today, GENERIC name        -> agent's own
+firebender  absent (not installed here)
+```
+
+That bounds the finding to one row rather than a rewrite.
+
+### A DECLARED divergence, not a silent carve-out
+
+The drift check now skips copilot **with the reason stated**: the collector's `configs` answer *what
+should be backed up* (git-ai's targets); our matrix answers *where do WE write*. For six agents those
+coincide; for copilot they must not. A carve-out gets deleted in a year; a declared divergence has to
+be argued with.
+
+### `entryExtras` — the entry shape is a FIELD, and one part is UNRESOLVED
+
+git-ai's working copilot entry is richer than ours:
+
+```json
+{ "command": "…", "powershell": "& '…' checkpoint …", "type": "command" }
+```
+
+Entry shape is now a matrix field, so *adding an agent is a row* survives contact with agents whose
+entries differ. Copilot gets `type: "command"` — matching the only working example on this machine
+rather than a guess.
+
+**The `powershell` variant is deliberately NOT guessed.** Copilot parses hook files in **native
+code**, so the schema is unreadable from its JS bundle: a hard wall, not laziness. Inventing a field
+into a file on a user's machine to satisfy a schema we cannot read is how a silently-inert hook gets
+produced. It goes to tk-0010 as a **specific** question — *does copilot require `type`, and is
+`powershell` needed for the hook to fire on Windows* — because a named question gets an answer and a
+general one gets a shrug.
+
+**This is the SECOND independent reason Windows stays EXPECTED-UNVERIFIED.** The first was the
+af_unix tickler refusing to emit on a named-pipe host. Two unrelated reasons pointing the same way is
+a stronger statement than either alone.
