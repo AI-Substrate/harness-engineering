@@ -1,0 +1,43 @@
+docs/plans/081-flow-reachability/friction-log.md
+  s_19f7e253dcd61b::t_d3cedebc882590 62-88
+docs/plans/081-flow-reachability/the-flow.json
+  s_397a51e23fc2cd::t_946eca3134b3a2 6,8,89-125,277,293-303
+docs/plans/081-flow-reachability/the-flow.md
+  s_397a51e23fc2cd::t_f13175ea7efd0f 4,20,36,45-47
+docs/plans/081-flow-reachability/plan.dd.json
+  s_2bef307df718bc::t_7accee1b3ddaa8 308-312
+docs/plans/081-flow-reachability/plan.dd.md
+  s_2bef307df718bc::t_985e4a7022fe59 180
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "6fe5f3fb8e547c588afbafc465b6e1bbcd562c1f",
+  "prompts": {},
+  "sessions": {
+    "s_19f7e253dcd61b": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "df4fe8c9-c893-434b-8f2c-b08b4eb337d3",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_2bef307df718bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb3484ee-e8b4-4f68-89fa-22abb2a7a8c3",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_397a51e23fc2cd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "3fe3c47b-5424-4214-892e-81ef19c49d45",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
