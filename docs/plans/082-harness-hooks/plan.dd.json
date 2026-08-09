@@ -92,6 +92,11 @@
           "id": "ac-000b",
           "claim": "A fire that failed to emit is VISIBLE in `harness hooks status --json` with its cause — proven by a fixture where the socket is unreachable. Exit 0 must never be the only signal; a silent failure is the exact defect this plan exists to fix, and shipping one would reproduce it.",
           "state": "unchecked"
+        },
+        {
+          "id": "ac-000c",
+          "claim": "The root README states plainly that `harness doctor` installs the git-ai collector AND installs our agent hooks on first run — what it writes, where, and how to opt out with HARNESS_NO_HOOKS=1. A reader must not be surprised by a machine change they did not know doctor makes.",
+          "state": "unchecked"
         }
       ]
     },
@@ -118,7 +123,7 @@
         {
           "id": "ph-10a4",
           "title": "Doctor integration, live install on this machine, and docs",
-          "brief": "Doctor installs hooks alongside the pinned git-ai under safeLayer containment, warn-only at exit 0, with an opt-out env var and an evidence-based row. Then INSTALL IT LIVE on this machine into Cursor via our own verb, and ship assets/poc/CURSOR-PROMPT-8.md so Jordan can validate end to end in one paste. Docs to docs/how/ plus a README line, and update sandbox-02-workarounds-proven.md which now understates what we know.",
+          "brief": "Doctor installs hooks alongside the pinned git-ai under safeLayer containment, warn-only at exit 0, honouring HARNESS_NO_HOOKS=1, with an evidence-based row. Then INSTALL IT LIVE on this machine into Cursor via our own verb — backing up ~/.cursor/hooks.json first, since it carries both the POC hook and git-ai's own entries — and ship assets/poc/CURSOR-PROMPT-8.md so Jordan can validate the whole chain in one paste. DOCS: the root README must say plainly that `harness doctor` installs the git-ai collector AND our agent hooks on first run — what it writes, where, and how to opt out. That is a machine change on someone else's computer and a user who is surprised by it has been failed, however good the reason. Also docs/how/ and an update to docs/how/telemetry/sandbox-02-workarounds-proven.md, which now understates what we know.",
           "state": "unchecked",
           "depends_on": [
             "ph-ea21"
@@ -148,8 +153,8 @@
     {
       "name": "documentation_strategy",
       "value": {
-        "location": "docs/how/ plus a README line, and an update to docs/how/telemetry/sandbox-02-workarounds-proven.md.",
-        "rationale": "That doc already held a working answer from 2026-08-07 and an evening was spent rediscovering it. Leaving it stale guarantees a third rediscovery."
+        "location": "Root README (MUST state that `harness doctor` installs the git-ai collector AND the agent hooks on first run, what is written where, and the HARNESS_NO_HOOKS=1 opt-out), docs/how/ for the mechanism, and an update to docs/how/telemetry/sandbox-02-workarounds-proven.md.",
+        "rationale": "Doctor now changes the user's machine in two ways on first run. A README that does not say so leaves the user to discover it from a diff, which is how trust in an installer dies. The sandbox-02 doc already held a working answer from 2026-08-07 and an evening was spent rediscovering it; leaving it stale guarantees a third rediscovery."
       }
     },
     {

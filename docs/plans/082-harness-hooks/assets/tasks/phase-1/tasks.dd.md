@@ -27,7 +27,7 @@
 
 ## Summary
 
-Build `harness hooks fire <agent> --phase pre|post` behind ports, reusing the EXISTING socket port from plan 074. Tasks 1-3 build the sensors BEFORE the feature code, because the backpressure survey rates this Partial with ten BUILD gaps and two of them are tied to named Critical risks. The single most important property: the emit fires ONLY when the agent AUTHORED a new commit here. A fast-forward pull, a --no-ff merge, a cherry-pick and a revert ALL satisfy a naive `HEAD^ == prev` check and would fabricate a note claiming the agent authored someone else's commit. That class is the reason this phase exists in this order.
+Sensors first, then the runtime. The guard is the hard part and TWO mechanisms are already known to be insufficient: a `merge --squash` commit has ONE parent, its first parent IS the recorded HEAD, and its reflog message reads `commit: <msg>` — byte-identical to an authored commit. Measured across eight isolated repos: parent-count catches only `--no-ff` merges; the reflog discriminator catches ff-pull, cherry-pick, revert and amend; NOTHING yet catches squash-merge. Design for that, not for the cases that are easy to reject. Tasks 1-4 build the sensors and the missing ports before any feature code.
 
 <a id="tasks"></a>
 
@@ -35,18 +35,92 @@ Build `harness hooks fire <agent> --phase pre|post` behind ports, reusing the EX
 
 | id | title | domain | phase | state | note | receipt | done | success | notes | satisfies |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| tk-0001 | Reproduce total loss deterministically, without Cursor — a test helper that commits with GIT_TRACE2_EVENT pointed at a discarded path and asserts NO note appears | — | phase-1 | [ ] unchecked | — | — | — | The fixture reproduces the bug on demand and fails if git-ai ever starts writing a note anyway. This is the control: if it cannot show the ABSENCE, nothing downstream proves the presence. | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
-| tk-0002 | Build the HEAD-transition provocation suite — table-driven, BOTH rejection classes plus the authored case | — | phase-1 | [ ] unchecked | — | — | — | Class (a) HEAD did not advance by one: checkout, reset --hard, rebase, amend, no-op, detached HEAD, no prior recorded state. Class (b) HEAD DID advance by one whose first parent is the recorded HEAD but nothing was authored here: fast-forward pull of one commit, --no-ff merge commit, cherry-pick, revert. Plus the positive case (a real authored commit) so the suite can see the opposite. Every class (b) row must assert NO emit — they are the dangerous ones and they PASS a naive guard. | — | [ac-0003](../../../plan.dd.md#acceptance-criteria) |
-| tk-0003 | Build the live-daemon note fixture — emit, then assert note IDENTITY per file | — | phase-1 | [ ] unchecked | — | — | — | Commit with trace2 discarded, emit the six events, assert the note names the expected file and line range. Assert on IDENTITY, never on a note COUNT — any unsandboxed commit in the repo moves the count. | — | [ac-0001](../../../plan.dd.md#acceptance-criteria), [ac-0002](../../../plan.dd.md#acceptance-criteria) |
-| tk-0004 | Implement the commit intercept: PRE records HEAD, POST decides, with a parent-count check and a reflog-source discriminator | — | phase-1 | [ ] unchecked | — | — | — | `rev-list --parents -1 HEAD` rejects a merge commit; the reflog source distinguishes an authored commit from a pull/cherry-pick/revert. `HEAD^ == prev` alone is NOT sufficient and must not be the only test. The provocation suite from task 2 goes green, including every class (b) row. | — | [ac-0003](../../../plan.dd.md#acceptance-criteria) |
-| tk-0005 | Implement the trace2 tickler over the EXISTING socket port (plan 074), extending it only if the emit needs a half-close | — | phase-1 | [ ] unchecked | — | — | — | Six events (version, start, def_repo, cmd_name, exit, atexit) sharing one sid, written through SocketRelayPort — no `node:net` import inside a service. `just checks` passes the no-direct-node-io guard. State whether the port needed extending; that is a finding either way. | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
-| tk-0006 | Wire `harness hooks fire &lt;agent&gt; --phase pre\|post --hook-input stdin` as a core verb, per src/app.ts registration | — | phase-1 | [ ] unchecked | — | — | — | The verb parses the named agent's payload shape from stdin. Registered the way app.ts registers core verbs (telemetry/flow/dd/plan), NOT as a repo extension — hooks are machine-scoped and doctor must call it. | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
-| tk-0007 | Make every failure path exit 0 and silent, and prove it by fault injection | — | phase-1 | [ ] unchecked | — | — | — | Inject a dead socket, an unreadable config, a malformed payload, a repo that is not a git repo, and a thrown exception. Each must exit 0 and write nothing the agent can see. Scope the G2 deviation to `error`/`unconfigured` only — a reachable failure is `degraded`, which already maps to exit 0 and needs no deviation. | — | [ac-0007](../../../plan.dd.md#acceptance-criteria) |
-| tk-0008 | Surface a failed emit in `harness hooks status --json` so exit 0 is never the only signal | — | phase-1 | [ ] unchecked | — | — | — | A fixture with an unreachable socket must show the failure and its cause in status output. This is the compensating control that buys the G2 deviation; without it we ship the silent-exit-0 defect this plan exists to fix. | — | [ac-000b](../../../plan.dd.md#acceptance-criteria) |
-| tk-0009 | Prove the runtime on Linux in the OrbStack VM | — | phase-1 | [ ] unchecked | — | — | — | The Phase 1 fixtures pass inside the VM. Record the result as MEASURED for Linux; Windows stays UNVERIFIED and is handed to the remote agent on #108, never assumed. | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
+| tk-0001 | Add `node:net` to the architecture guard and prove it RED before it is green | — | phase-1 | [ ] unchecked | — | — | [ ] 0/1 [tk-0001](#tk-0001) | `no-direct-node-io.test.ts:23` currently forbids only `node:fs` and `node:child_process` — `grep -rn 'node:net'` across the arch tests returns ZERO, so a service importing node:net passes `just checks` today and the plan's G3 note is false. Add `/from ['\"]node:net['\"]/` to FORBIDDEN, then demonstrate the guard REFUSING a deliberate import and record that refusal in the execution log. A gate is not verified until it has refused. | — | [ac-0007](../../../plan.dd.md#acceptance-criteria) |
+| tk-0002 | Add a reflog read to the git port — it does not exist yet | — | phase-1 | [ ] unchecked | — | — | [ ] 0/1 [tk-0002](#tk-0002) | `grep -rn reflog harness/cli/src` returns NOTHING; `git-read-port.ts` exposes no reflog read. The transition classifier cannot be written without it. Port method + exec adapter + fake + tests. Split out of the classifier task deliberately: it is a hidden prerequisite that would otherwise block every provocation row. | — | [ac-0003](../../../plan.dd.md#acceptance-criteria) |
+| tk-0003 | Build a PURE transition classifier, `classifyHeadTransition(prev, head, parents, reflogSubject, gitDirState) -&gt; 'emit' \| 'silent'` | — | phase-1 | [ ] unchecked | — | — | [ ] 0/2 [tk-0003](#tk-0003) | A pure function with no IO, so the provocation suite has a callable target before any runtime exists. It must reject BOTH classes and it must not rely on parent-count plus reflog alone — those two are measured insufficient against squash-merge. The third discriminator is `.git` state (MERGE_HEAD / SQUASH_MSG presence) or an equivalent that distinguishes content authored elsewhere. | — | [ac-0003](../../../plan.dd.md#acceptance-criteria) |
+| tk-0004 | Build the provocation suite against the pure classifier — every row, including the ones that defeat a naive guard | — | phase-1 | [ ] unchecked | — | — | [ ] 0/5 [tk-0004](#tk-0004) | Class (a), HEAD did not advance by exactly one: checkout, reset --hard, rebase, amend, no-op, detached HEAD, no prior recorded state, AND a MULTI-COMMIT fast-forward pull (HEAD advances by more than one). Class (b), HEAD advanced by one whose first parent is the recorded HEAD but nothing was authored here: single-commit ff pull, --no-ff merge, cherry-pick, revert, `git am`, and **`merge --squash` + commit** — the last is byte-identical to an authored commit under parent-count AND reflog, and is the row that matters most. Plus the positive case (a genuinely authored commit) so the suite can see the opposite, and the CONCURRENT case: two POST fires reading state before either writes. Every class (a) and (b) row asserts SILENT; the positive asserts EMIT. | — | [ac-0003](../../../plan.dd.md#acceptance-criteria) |
+| tk-0005 | Build the live-daemon note fixture in `test/support/hermetic-git.ts` — the ONLY file exempt from the hermetic-git guard — with a PAIRED positive control | — | phase-1 | [ ] unchecked | — | — | [ ] 0/4 [tk-0005](#tk-0005) | `vitest.config.ts:130-133` already sets GIT_TRACE2_EVENT='0' for the whole run, so 'no note appeared' is trivially true and a negative-only fixture proves nothing. `hermetic-git-fixtures.test.ts:52-70` also FAILS any test file other than hermetic-git.ts that mentions GIT_TRACE2_EVENT — so the helper must live there. Assert BOTH: no note when trace2 is discarded, AND the note IS written when the events reach a live daemon. Assert note IDENTITY — the file, the line range, AND the session id — never a note count. With no daemon present the positive records SKIPPED, never PASSED. | — | [ac-0001](../../../plan.dd.md#acceptance-criteria), [ac-0002](../../../plan.dd.md#acceptance-criteria) |
+| tk-0006 | Implement the commit intercept over the classifier: PRE records HEAD, POST decides, with an ATOMIC state write | — | phase-1 | [ ] unchecked | — | — | [ ] 0/1 [tk-0006](#tk-0006) | The POC writes state AFTER emitting, which is the read-then-write window that lets two concurrent fires both emit. Use an exclusive create or lock file so the concurrent provocation row goes green. All class (a) and (b) rows silent, the positive row emits. | — | [ac-0003](../../../plan.dd.md#acceptance-criteria) |
+| tk-0007 | Implement the trace2 tickler over the EXISTING socket port — do not build a second one | — | phase-1 | [ ] unchecked | — | — | [ ] 0/2 [tk-0007](#tk-0007) | `NodeSocketProbe.send()` already does `sock.end(payload, cb)` and resolves {ok, bytes} — the identical call shape the POC uses, half-close included. Only the 750ms default timeout differs from the POC's 5000, and it is constructor-injectable. Six events sharing one sid, written through SocketRelayPort. The node:net guard from task 1 must pass with the rule ADDED. | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
+| tk-0008 | Wire `harness hooks fire &lt;agent&gt; --phase pre\|post --hook-input stdin` as a core verb | — | phase-1 | [ ] unchecked | — | — | [ ] 0/2 [tk-0008](#tk-0008) | `src/app.ts:469-515` registers core verbs as a flat sequence; `registerCommitAct` is the precedent. Update the frozen verb lists in `test/app.test.ts` and `test/index.test.ts`. Core verb, not a repo extension — hooks are machine-scoped and doctor must call it. | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
+| tk-0009 | Make every failure path exit 0 and silent, proven by fault injection | — | phase-1 | [ ] unchecked | — | — | [ ] 0/1 [tk-0009](#tk-0009) | Inject a dead socket, an unreadable config, a malformed payload, a non-git directory, and a thrown exception. Each exits 0 and writes nothing the agent can see. The deviation is scoped to `error`/`unconfigured` only — a reachable failure is `degraded`, which already maps to exit 0 under architecture.md:91 and needs no deviation. | — | [ac-0007](../../../plan.dd.md#acceptance-criteria) |
+| tk-000a | Write every fire outcome to a Phase-1-owned journal file, so a silent failure is visible without waiting for Phase 2 | — | phase-1 | [ ] unchecked | — | — | [ ] 0/2 [tk-000a](#tk-000a) | `harness hooks status` is a PHASE 2 deliverable and Phase 2 depends on Phase 1 — so Phase 1 cannot assert on it. The runtime writes its outcome (emitted / silent-with-reason / failed-with-cause) to a state file; this task asserts on THAT file with an unreachable socket. Phase 2's status verb merely reads it. Without this, the G2 deviation is unpurchased for the whole of Phase 1. | — | [ac-000b](../../../plan.dd.md#acceptance-criteria) |
 
 <a id="done-when"></a>
 
 ## Done when
 
-_No fields._
+### tk-0001
+
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-0001 | The guard REFUSED a deliberate node:net import and the refusal is recorded in the execution log — not merely that the rule was added. | [ ] unchecked | not-applicable |
+
+### tk-0002
+
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-0002 | A fake reflog adapter exists, and the exec adapter is covered by a test that reads a real reflog subject. | [ ] unchecked | not-applicable |
+
+### tk-0003
+
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-0003 | classifyHeadTransition is pure — no IO, no git shell-out. | [ ] unchecked | not-applicable |
+| dw-0004 | It returns 'silent' for a squash-merge whose parent count is 1 and whose reflog subject reads 'commit: &lt;msg&gt;'. | [ ] unchecked | not-applicable |
+
+### tk-0004
+
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-0005 | Every class (a) and class (b) row asserts SILENT and passes. | [ ] unchecked | not-applicable |
+| dw-0006 | The squash-merge row passes — it defeats parent-count AND reflog, measured. | [ ] unchecked | not-applicable |
+| dw-0007 | The multi-commit fast-forward pull row passes. | [ ] unchecked | not-applicable |
+| dw-0008 | The concurrent-fire row passes: two racing POSTs produce at most one emit. | [ ] unchecked | not-applicable |
+| dw-0009 | The positive row EMITS, so the suite can see the opposite. | [ ] unchecked | not-applicable |
+
+### tk-0005
+
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-000a | The helper lives in test/support/hermetic-git.ts and hermetic-git-fixtures.test.ts still passes. | [ ] unchecked | not-applicable |
+| dw-000b | The negative asserts no note when trace2 is discarded. | [ ] unchecked | not-applicable |
+| dw-000c | The positive asserts the note IS written against a live daemon, recorded SKIPPED — never PASSED — when no daemon is present. | [ ] unchecked | not-applicable |
+| dw-000d | Assertions name the file, the line range AND the session id. Nothing counts notes. | [ ] unchecked | not-applicable |
+
+### tk-0006
+
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-000e | The concurrent provocation row is green against the real intercept, not just the pure classifier. | [ ] unchecked | not-applicable |
+
+### tk-0007
+
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-000f | No node:net import in any service; just checks passes WITH the rule added by task 1. | [ ] unchecked | not-applicable |
+| dw-0010 | SocketRelayPort was reused; whether it needed extending is recorded with the reason. | [ ] unchecked | not-applicable |
+
+### tk-0008
+
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-0011 | harness hooks fire cursor --phase post --hook-input stdin runs and exits 0. | [ ] unchecked | not-applicable |
+| dw-0012 | The frozen verb lists in test/app.test.ts and test/index.test.ts are updated and green. | [ ] unchecked | not-applicable |
+
+### tk-0009
+
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-0013 | Each of the five injected faults exits 0 and writes nothing the agent can see. | [ ] unchecked | not-applicable |
+
+### tk-000a
+
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-0014 | With an unreachable socket, the journal records the failure AND its cause. | [ ] unchecked | not-applicable |
+| dw-0015 | The assertion reads the journal file, not harness hooks status — that verb is Phase 2 and cannot be a Phase 1 dependency. | [ ] unchecked | not-applicable |
+
+### tk-0010
+
+_No entries._
