@@ -22,7 +22,7 @@
           "mode": "BUILD",
           "tier": "computational",
           "proof": "phase-1 vitest test (skill-less temp repo, no --schema/--template); paves: cd harness/cli && npx vitest run",
-          "state": "unchecked",
+          "state": "checked",
           "satisfies": [
             "../plan.dd.json#acceptance_criteria/ac-0001"
           ]
@@ -34,7 +34,7 @@
           "mode": "BUILD",
           "tier": "computational",
           "proof": "phase-2 red-first vitest specs against the phase-1 fixtures; paved: just test",
-          "state": "unchecked",
+          "state": "checked",
           "satisfies": [
             "../plan.dd.json#acceptance_criteria/ac-0002"
           ]
@@ -46,7 +46,7 @@
           "mode": "BUILD",
           "tier": "computational",
           "proof": "phase-2 verdict spec (plan-without-flow fixture); paved: just test",
-          "state": "unchecked",
+          "state": "checked",
           "satisfies": [
             "../plan.dd.json#acceptance_criteria/ac-0003"
           ]
@@ -58,7 +58,7 @@
           "mode": "BUILD",
           "tier": "computational",
           "proof": "phase-2 verdict spec (both-good fixture); paved: just test",
-          "state": "unchecked",
+          "state": "checked",
           "satisfies": [
             "../plan.dd.json#acceptance_criteria/ac-0004"
           ]
@@ -70,7 +70,7 @@
           "mode": "BUILD",
           "tier": "computational",
           "proof": "phase-2 envelope-contract specs incl. legacy/malformed/future-version fixtures; paved: just test",
-          "state": "unchecked",
+          "state": "checked",
           "satisfies": [
             "../plan.dd.json#acceptance_criteria/ac-0005"
           ]
@@ -82,7 +82,7 @@
           "mode": "EXTEND",
           "tier": "computational",
           "proof": "add a parity spec to the existing vitest suite (probe matrix vs recorded base envelopes) + git diff --stat vs merge-base over frozen paths; same paved command: just test",
-          "state": "unchecked",
+          "state": "checked",
           "satisfies": [
             "../plan.dd.json#acceptance_criteria/ac-0006"
           ]
@@ -94,7 +94,7 @@
           "mode": "EXISTS",
           "tier": "computational",
           "proof": "node harness/cli/bin/harness.js checks",
-          "state": "unchecked",
+          "state": "checked",
           "satisfies": [
             "../plan.dd.json#acceptance_criteria/ac-0007"
           ]
@@ -106,7 +106,7 @@
           "mode": "ABSENT",
           "tier": "human-judgement",
           "proof": "",
-          "state": "unchecked",
+          "state": "checked",
           "note": "acceptance of a handoff is a human act; deterministic residue = contract file committed + pij spine receipt pointer recorded in the execution log",
           "probe": "no glob can prove a cross-fleet handoff; searched for precedent handoff sensors under .harness/extensions/* and docs/how/* — none exist",
           "satisfies": [
