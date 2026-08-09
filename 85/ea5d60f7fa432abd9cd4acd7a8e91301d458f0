@@ -1,0 +1,21 @@
+docs/plans/082-harness-hooks/assets/tasks/phase-2/tasks.dd.json
+  s_c88674e85f3aea::t_2e3429d998f066 504-509
+docs/plans/082-harness-hooks/assets/tasks/phase-2/tasks.dd.md
+  s_c88674e85f3aea::t_d2cd7fc3bb1b57 165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "85ea5d60f7fa432abd9cd4acd7a8e91301d458f0",
+  "prompts": {},
+  "sessions": {
+    "s_c88674e85f3aea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71679da4-5249-4e02-9117-68a3abf3ed0e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
