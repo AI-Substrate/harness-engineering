@@ -1,0 +1,36 @@
+harness/cli/test/services/dd/render/refresh.test.ts
+  s_e2ef1441ad1dbd::t_5cf2562e811320 185-199
+harness/cli/test/acts/plan.test.ts
+  s_e2ef1441ad1dbd::t_bf996f60b1d562 18
+  s_e2ef1441ad1dbd::t_a1bdc25b8a35d9 277-303
+  s_e2ef1441ad1dbd::t_9f78b6038b639a 1
+harness/cli/test/services/telemetry/capture-reconcile.test.ts
+  s_e2ef1441ad1dbd::t_d28e9d5926ba85 584-594,596
+harness/cli/src/services/dd/render/refresh.ts
+  s_e2ef1441ad1dbd::t_cd4120cd5c3f6a 159
+  s_e2ef1441ad1dbd::t_3675245367d408 144-156,158
+  s_e2ef1441ad1dbd::t_172c495db59976 1
+harness/cli/test/services/dd/links/map-exemplar.test.ts
+  s_e2ef1441ad1dbd::t_6049afc5441e22 12,14-30
+harness/cli/test/adapters/git/exec-remote-telemetry-git.int.test.ts
+  s_e2ef1441ad1dbd::t_7aaece0bf7a06f 886-925
+  s_e2ef1441ad1dbd::t_cd4120cd5c3f6a 926-994
+  s_e2ef1441ad1dbd::t_e23dda8260e267 767-784
+  s_e2ef1441ad1dbd::t_af7d0c85147fa6 995-996
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d0dd1f41d3536466c29de17b63d651f2750e3a69",
+  "prompts": {},
+  "sessions": {
+    "s_e2ef1441ad1dbd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "265d8845-1914-4476-9977-4a05f12f4b06",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
