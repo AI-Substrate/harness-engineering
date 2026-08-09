@@ -1,0 +1,35 @@
+docs/plans/082-harness-hooks/assets/tasks/phase-3/execution.log.md
+  s_ed609d39de2442::t_dbaaaa17cf0818 480-548
+  s_ed609d39de2442::t_2c6166594e73c0 549-678
+  s_ed609d39de2442::t_6edd55a7b6a280 679-799
+docs/plans/082-harness-hooks/assets/tasks/phase-3/tasks.dd.md
+  s_ed609d39de2442::t_bb214569a88e00 42,93-96
+  s_ed609d39de2442::t_d406ce8f9e14ad 41,82-87
+  s_ed609d39de2442::t_947c711eb0afbb 40,72-76
+  s_ed609d39de2442::t_6edd55a7b6a280 43,102-105
+README.md
+  s_ed609d39de2442::t_f3fa0cff25da04 174-225
+docs/plans/082-harness-hooks/assets/poc/CURSOR-PROMPT-8.md
+  s_ed609d39de2442::t_26b7f0628ce883 1,3-4,8-29,31,33-35,37-40,42-43,45,47,49,51-57,59-61,63,65,67-95,99,101-129,132-135,138-144,147-160,163-176
+docs/plans/082-harness-hooks/assets/tasks/phase-3/tasks.dd.json
+  s_ed609d39de2442::t_bb214569a88e00 65,219,225,231,237
+  s_ed609d39de2442::t_947c711eb0afbb 45,149,155,161,167,173
+  s_ed609d39de2442::t_6edd55a7b6a280 75,245,251,257,263
+  s_ed609d39de2442::t_d406ce8f9e14ad 55,181,187,193,199,205-211
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ca505b23d9a8dd459ed3462e41587aa88e320c28",
+  "prompts": {},
+  "sessions": {
+    "s_ed609d39de2442": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "62892a0d-07d6-4784-b490-986f797be544",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
