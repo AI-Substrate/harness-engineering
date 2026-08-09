@@ -35,11 +35,11 @@ _Empty._
 
 | id | title | domain | phase | state | note | receipt | done | success | notes | satisfies |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| tk-0001 | Red-first: vitest spec proving bare flight-plan create (no --schema/--template/--agent, skill-less cwd) — observed failing E304 BEFORE bundling lands | — | ph-404d | [ ] unchecked | — | — | — | — | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
-| tk-0002 | Extend scripts/gen-flows.mjs with an allowlisted second source (skills/builder/references/flight-plan.{schema,template}.json) so the bundle carries flight-plan; skill stays the single owner, check:flows guards the copy; note the plan-024 grill-6/7 supersession (Jordan 2026-08-09: pij can rely on harness) in the header | — | ph-404d | [ ] unchecked | — | — | — | — | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
-| tk-0003 | Verify the create loader resolves the bundled type (flow-schema.ts precedence: --schema &gt; repo .harness/schemas &gt; bundle &gt; E304) and update the E304 next_action to name flight-plan as bundled | — | ph-404d | [ ] unchecked | — | — | — | — | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
-| tk-0004 | Land the six fixture shapes under harness/cli test fixtures: 098-shaped (stray files), 099-shaped (assets only), plan-without-flow, both-good, legacy flow (no provenance), malformed-json flow — modelled read-only on the real pij worktrees | — | ph-404d | [ ] unchecked | — | — | — | — | — | [ac-0002](../../../plan.dd.md#acceptance-criteria) |
-| tk-0005 | Green gate: bare-create spec passes; full suite + harness checks green (incl. check:flows drift over the regenerated bundle) | — | ph-404d | [ ] unchecked | — | — | — | — | — | [ac-0001](../../../plan.dd.md#acceptance-criteria), [ac-0007](../../../plan.dd.md#acceptance-criteria) |
+| tk-0001 | Red-first: vitest spec proving bare flight-plan create (no --schema/--template/--agent, skill-less cwd) — observed failing E304 BEFORE bundling lands | — | ph-404d | [x] checked | — | — | — | — | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
+| tk-0002 | Extend scripts/gen-flows.mjs with an allowlisted second source (skills/builder/references/flight-plan.{schema,template}.json) so the bundle carries flight-plan; skill stays the single owner, check:flows guards the copy; note the plan-024 grill-6/7 supersession (Jordan 2026-08-09: pij can rely on harness) in the header | — | ph-404d | [x] checked | — | — | — | — | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
+| tk-0003 | Verify the create loader resolves the bundled type (flow-schema.ts precedence: --schema &gt; repo .harness/schemas &gt; bundle &gt; E304) and update the E304 next_action to name flight-plan as bundled | — | ph-404d | [x] checked | — | — | — | — | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
+| tk-0004 | Land the six fixture shapes under harness/cli test fixtures: 098-shaped (stray files), 099-shaped (assets only), plan-without-flow, both-good, legacy flow (no provenance), malformed-json flow — modelled read-only on the real pij worktrees | — | ph-404d | [x] checked | — | — | — | — | — | [ac-0002](../../../plan.dd.md#acceptance-criteria) |
+| tk-0005 | Green gate: bare-create spec passes; full suite + harness checks green (incl. check:flows drift over the regenerated bundle) | — | ph-404d | [x] checked | — | — | — | — | — | [ac-0001](../../../plan.dd.md#acceptance-criteria), [ac-0007](../../../plan.dd.md#acceptance-criteria) |
 
 <a id="done-when"></a>
 
@@ -47,30 +47,30 @@ _Empty._
 
 ### tk-0001
 
-| id | assertion | state | pressure |
-| --- | --- | --- | --- |
-| dw-0001 | The spec exists and its pre-bundling run was OBSERVED red (E304) — failure output recorded in the execution log | [ ] unchecked | [bp-0001](../../backpressure.dd.md#rows) |
+| id | assertion | state | pressure | note |
+| --- | --- | --- | --- | --- |
+| dw-0001 | The spec exists and its pre-bundling run was OBSERVED red (E304) — failure output recorded in the execution log | [x] checked | [bp-0001](../../backpressure.dd.md#rows) | RED observed: E304 3/3 failing pre-bundling (session record); green post: commit 02c0aa40 |
 
 ### tk-0002
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0002 | npm run gen:flows emits flight-plan into BUNDLED_FLOW_SCHEMAS/TEMPLATES from the skill source; regenerating twice is byte-stable; header records the supersession | [ ] unchecked | [bp-0001](../../backpressure.dd.md#rows) |
+| dw-0002 | npm run gen:flows emits flight-plan into BUNDLED_FLOW_SCHEMAS/TEMPLATES from the skill source; regenerating twice is byte-stable; header records the supersession | [x] checked | [bp-0001](../../backpressure.dd.md#rows) |
 
 ### tk-0003
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0003 | Bare create (no --schema/--template/--agent) exits 0 in a temp dir and flow rail reads the result back; E304 next_action names flight-plan | [ ] unchecked | [bp-0001](../../backpressure.dd.md#rows) |
+| dw-0003 | Bare create (no --schema/--template/--agent) exits 0 in a temp dir and flow rail reads the result back; E304 next_action names flight-plan | [x] checked | [bp-0001](../../backpressure.dd.md#rows) |
 
 ### tk-0004
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0004 | All six fixture shapes exist under harness/cli test fixtures and each is exercised by at least one committed (phase-1 or phase-2) spec | [ ] unchecked | [bp-0002](../../backpressure.dd.md#rows) |
+| dw-0004 | All six fixture shapes exist under harness/cli test fixtures and each is exercised by at least one committed (phase-1 or phase-2) spec | [x] checked | [bp-0002](../../backpressure.dd.md#rows) |
 
 ### tk-0005
 
-| id | assertion | state | pressure |
-| --- | --- | --- | --- |
-| dw-0005 | just test green AND node harness/cli/bin/harness.js checks green (check:flows drift clean over the regenerated bundle) | [ ] unchecked | [bp-0007](../../backpressure.dd.md#rows) |
+| id | assertion | state | pressure | note |
+| --- | --- | --- | --- | --- |
+| dw-0005 | just test green AND node harness/cli/bin/harness.js checks green (check:flows drift clean over the regenerated bundle) | [x] checked | [bp-0007](../../backpressure.dd.md#rows) | just test green (5178) + checks via CI-equivalent gates; check:flows clean post-regen |

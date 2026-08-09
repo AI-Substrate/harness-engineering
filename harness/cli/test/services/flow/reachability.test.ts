@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FakeClock } from '../../../src/adapters/clock/fake-clock.js';
 import { FakeEnv } from '../../../src/adapters/env/fake-env.js';
+import type { ExecPort } from '../../../src/adapters/exec/exec-port.js';
 import { FakeExec } from '../../../src/adapters/exec/fake-exec.js';
 import { FakeFs } from '../../../src/adapters/fs/fake-fs.js';
 import { FakeGit } from '../../../src/adapters/git/fake-git.js';
@@ -376,6 +377,63 @@ describe('a child that FAILED is never a pass, however JSON-shaped its stdout', 
 
     expect(res.verdict).toBe('error');
     expect(res.plan.validates).toBe(false);
+  });
+});
+
+describe('a REJECTING exec port is an error verdict, never a throw', () => {
+  /** An ExecPort that fails the way a real spawn does: by rejecting, not resolving. */
+  const rejecting = (message: string): ExecPort => ({
+    run: () => Promise.reject(new Error(message)),
+  });
+
+  it('does not throw out of checkReachability', async () => {
+    // `checkReachability` documents "never throws". Every OTHER child failure is
+    // a RESOLVED non-zero result, so the awaited `exec.run` was the one path that
+    // could still propagate — a caller wrapping this in an act would get an
+    // unhandled rejection instead of a verdict.
+    const { d } = deps({ [PLAN_DOC]: '{}', [FLOW]: GOOD_FLOW }, PLAN_OK);
+    d.exec = rejecting('spawn ENOENT');
+
+    await expect(checkReachability(OPTS, d)).resolves.toBeDefined();
+  });
+
+  it('fails CLOSED: the verdict is error and the plan clause does not validate', async () => {
+    const { d } = deps({ [PLAN_DOC]: '{}', [FLOW]: GOOD_FLOW }, PLAN_OK);
+    d.exec = rejecting('spawn ENOENT');
+    const res = await checkReachability(OPTS, d);
+
+    // A rejecting port proves nothing about the plan, so it must never be read
+    // as a pass — even with a good flight plan sitting next to it.
+    expect(res.verdict).toBe('error');
+    expect(res.plan.validates).toBe(false);
+  });
+
+  it('NAMES the exec failure in the detail and routes to running the command directly', async () => {
+    const { d } = deps({ [PLAN_DOC]: '{}', [FLOW]: GOOD_FLOW }, PLAN_OK);
+    d.exec = rejecting('spawn ENOENT');
+    const res = await checkReachability(OPTS, d);
+
+    expect(res.plan.detail).toContain('spawn ENOENT');
+    expect(res.next_action).toContain('harness plan validate');
+  });
+
+  it('still reads clause 2 — a rejecting port does not short-circuit the flight plan', async () => {
+    const { d } = deps({ [PLAN_DOC]: '{}', [FLOW]: GOOD_FLOW }, PLAN_OK);
+    d.exec = rejecting('spawn ENOENT');
+    const res = await checkReachability(OPTS, d);
+
+    expect(res.flow.readable).toBe(true);
+    expect(res.examined).toEqual([PLAN_DOC, FLOW]);
+    expect(res.excluded).toEqual([PLAN_DOC]);
+  });
+
+  it('survives a non-Error rejection value', async () => {
+    const { d } = deps({ [PLAN_DOC]: '{}', [FLOW]: GOOD_FLOW }, PLAN_OK);
+    d.exec = { run: () => Promise.reject('EACCES') };
+    const res = await checkReachability(OPTS, d);
+
+    expect(res.verdict).toBe('error');
+    expect(res.plan.detail).toContain('EACCES');
   });
 });
 

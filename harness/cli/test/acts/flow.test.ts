@@ -11,6 +11,7 @@ import type { Envelope } from '../../src/output/envelope.js';
 import { ErrorCodes } from '../../src/output/error-codes.js';
 import type { CliIo, Writers } from '../../src/output/output-port.js';
 import type { VerbRegistry } from '../../src/services/extensions/registry.js';
+import { BUNDLED_FLOW_SCHEMAS } from '../../src/services/flow/schemas-content.js';
 
 /**
  * T015 act-level — the `harness flow` Envelope + the post-mutation validation
@@ -766,22 +767,49 @@ describe('harness flow act — dangling-edge guard runs regardless of schema res
     expect(fs.readText('/repo/.harness/flows/demo.json')).toBe(before);
   });
 
-  // The the-flow case: a flow created from an OUT-OF-REPO --schema. Mutations
-  // can't re-resolve the overlay, so the act's post-mutation validateFlowDoc is
-  // tolerantly SKIPPED — before the fix a dangling --next was written silently.
-  // The mechanical guard now rejects it even on this skip path.
-  async function seedOutOfRepoSchemaFlow(): Promise<VerbActDeps> {
+  // The tolerant-SKIP case: a flow whose overlay the mutation verbs CANNOT
+  // re-resolve — an out-of-repo `--schema` under a `kind` the CLI does not bundle,
+  // with no repo overlay. `validateMutatedDoc` (acts/flow.ts:1793) returns null on
+  // that branch, so post-mutation validation never runs — before the fix a dangling
+  // `--next` was written silently there. The mechanical guard now rejects it anyway.
+  //
+  // The `kind` is deliberately NOT `flight-plan`: plan 081 bundled that type, so it
+  // re-resolves and its mutations ARE re-validated (pinned in
+  // test/acts/flow-mutation-revalidation.test.ts). This fixture used to say
+  // `flight-plan` and had silently stopped exercising the skip branch at all — it
+  // stayed green only because its values happened to sit inside the bundled
+  // vocabulary. Being on the right branch is now ASSERTED, not assumed: the seed
+  // node carries a type NO overlay declares, so the seed can only succeed via the
+  // skip. If this flow ever became re-resolvable, the seed fails (E300) and every
+  // test below fails loudly rather than quietly testing the wrong branch.
+  const UNBUNDLED_KIND = 'workteam-flight-plan';
+  const EXTERNAL_NODE_TYPES = ['research', 'plan', 'phase', 'review', 'merge'];
+  const UNDECLARED_TYPE = 'no-overlay-declares-this';
+
+  it('fixture guard: the seed node type is declared by NO vocabulary (keeps the branch proof honest)', () => {
+    expect(EXTERNAL_NODE_TYPES).not.toContain(UNDECLARED_TYPE);
+    for (const [key, schema] of Object.entries(BUNDLED_FLOW_SCHEMAS)) {
+      const nodeTypes = (schema as { nodeTypes?: string[] }).nodeTypes ?? [];
+      expect(
+        nodeTypes,
+        `bundled overlay "${key}" must not declare ${UNDECLARED_TYPE}`,
+      ).not.toContain(UNDECLARED_TYPE);
+    }
+    expect(Object.hasOwn(BUNDLED_FLOW_SCHEMAS, UNBUNDLED_KIND)).toBe(false);
+  });
+
+  async function seedUnresolvableSchemaFlow(): Promise<VerbActDeps> {
     const fs = new FakeFs();
     fs.mkdirp('/repo/.harness');
     fs.mkdirp('/external');
     fs.writeText(
-      '/external/flight-plan.schema.json',
+      `/external/${UNBUNDLED_KIND}.schema.json`,
       JSON.stringify({
-        kind: 'flight-plan',
+        kind: UNBUNDLED_KIND,
         extends: 'flow-core',
         schema_version: 1,
         statuses: ['known', 'in_progress', 'done', 'blocked'],
-        nodeTypes: ['research', 'plan', 'phase', 'review', 'merge'],
+        nodeTypes: EXTERNAL_NODE_TYPES,
       }),
     );
     const deps = fakeDeps(fs);
@@ -789,15 +817,17 @@ describe('harness flow act — dangling-edge guard runs regardless of schema res
     const created = await runFlow(deps, [
       'flow',
       'create',
-      'flight-plan',
+      UNBUNDLED_KIND,
       '--slug',
       'fp',
       '--schema',
-      '/external/flight-plan.schema.json',
+      `/external/${UNBUNDLED_KIND}.schema.json`,
       '--bare',
     ]);
     expect(created.code).toBe(0);
-    // one real node to point at (and to prove the skip path writes normally)
+    // One real node to point at — AND the branch assertion: `UNDECLARED_TYPE` is in
+    // no vocabulary at all (not the external overlay's, not any bundled one's), so
+    // this write is only possible if post-mutation validation was SKIPPED.
     const seed = await runFlow(deps, [
       'flow',
       'add-node',
@@ -806,16 +836,26 @@ describe('harness flow act — dangling-edge guard runs regardless of schema res
       '--id',
       'p1',
       '--type',
-      'phase',
+      UNDECLARED_TYPE,
       '--label',
       'P1',
     ]);
-    expect(seed.code).toBe(0);
+    expect(
+      seed.code,
+      'seed must succeed via the SKIP branch — if it fails, the flow re-resolved',
+    ).toBe(0);
     return deps;
   }
 
-  it('add-node --next <ghost> on an out-of-repo-schema flow → E305 (gap closed), file UNCHANGED', async () => {
-    const deps = await seedOutOfRepoSchemaFlow();
+  it('the fixture is genuinely ON the skip branch: an UNDECLARED node type is persisted', async () => {
+    const deps = await seedUnresolvableSchemaFlow();
+    const doc = JSON.parse(deps.fs.readText('/repo/.harness/flows/fp.json') as string);
+    expect(doc.kind).toBe(UNBUNDLED_KIND);
+    expect(doc.nodes.find((n: { id: string }) => n.id === 'p1').type).toBe(UNDECLARED_TYPE);
+  });
+
+  it('add-node --next <ghost> on an unresolvable-schema flow → E305 (gap closed), file UNCHANGED', async () => {
+    const deps = await seedUnresolvableSchemaFlow();
     const before = deps.fs.readText('/repo/.harness/flows/fp.json');
     const bad = await runFlow(deps, [
       'flow',
@@ -836,8 +876,8 @@ describe('harness flow act — dangling-edge guard runs regardless of schema res
     expect(deps.fs.readText('/repo/.harness/flows/fp.json')).toBe(before);
   });
 
-  it('add-node --next <existing> on an out-of-repo-schema flow still succeeds (skip path writes normally)', async () => {
-    const deps = await seedOutOfRepoSchemaFlow();
+  it('add-node --next <existing> on an unresolvable-schema flow still succeeds (skip path writes normally)', async () => {
+    const deps = await seedUnresolvableSchemaFlow();
     const ok = await runFlow(deps, [
       'flow',
       'add-node',

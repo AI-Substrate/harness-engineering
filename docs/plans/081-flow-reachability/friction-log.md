@@ -86,3 +86,29 @@ Two lessons for the workteam feature, both self-demonstrating:
    detour. Repair: pij skill install must carry or verify its engine.
 Remediation in-stream: phase 2+ runs through a real pair (coder pij-missing-leopard live,
 cross-model reviewer at first REVIEW); PM stays out of the code.
+
+### F4 addendum — attribution corrected by prime (2026-08-09)
+
+Half the F4 miss is the governance layer's, per prime's own self-report: Jordan's instruction
+was to brief the PM on firing up a FLEET TEAM; prime forwarded the stand-up doc as reading
+material and briefed the stream, but never made the workteam shape a requirement with a check
+behind it — the same named-the-artifact-omitted-the-obligation shape as ermine's nine briefs.
+This STRENGTHENS the finding: the propagation gap reproduced at the governance layer even
+while both parties were actively studying it. The mechanical-carrier remedy is unchanged and
+now has two independent instances behind it (seat-side F4, governance-side prime).
+
+## F5 — a worktree's existence is not evidence of its occupancy (ermine + prime, on my wrong stop-reason)
+
+I stopped at /private/tmp/wt-cons calling it "another seat's worktree". The stop was correct
+(it is another fleet's repo — propose-never-edit); the stated reason was UNCHECKABLE FROM
+WHERE I STOOD: nothing in a worktree path says whether a seat lives in it. I inferred
+occupancy from existence — the absence-as-evidence move, applied to a directory. The registry
+answers occupancy (`pij list --json` filtered on folder); the filesystem cannot.
+Why it earns an F-row: this time the wrong rule produced the right stop, but pointed at an
+UNOCCUPIED directory inside a fence the same inference waves you straight through — an
+outcome-correct stop built on a wrong rule fails silently later, in the permissive direction.
+
+Corollary recorded for the convergence section: ermine declined a cross-repo PR because a PR
+puts a foreign seat in the commit graph for a docs convergence — the inline-DELTA convention
+exists precisely so provenance travels in the TEXT, not the graph. Pointer-and-land is the
+shape; produce paste-ready blocks.

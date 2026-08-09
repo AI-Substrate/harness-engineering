@@ -1,4 +1,4 @@
-import type { ExecPort } from '../../adapters/exec/exec-port.js';
+import type { ExecPort, ExecResult } from '../../adapters/exec/exec-port.js';
 import { ErrorCodes } from '../../output/error-codes.js';
 import {
   isWithin,
@@ -193,10 +193,12 @@ function basename(path: string): string {
 /**
  * Clause 1. Spawns `<node> <bin> plan validate <planDir> --json` and reads the
  * envelope. Every failure mode maps to `validates: false` with a detail that
- * NAMES what happened — a child that was killed, crashed, or printed something
- * that is not an envelope is an error, never an unexamined pass. In particular
- * the timeout exit code is checked BEFORE stdout is parsed: a killed child's
- * partial output must never be read as a verdict.
+ * NAMES what happened — a child that was killed, crashed, printed something
+ * that is not an envelope, or could not be started at all is an error, never an
+ * unexamined pass. In particular the timeout exit code is checked BEFORE stdout
+ * is parsed: a killed child's partial output must never be read as a verdict.
+ * A REJECTING exec port is caught here rather than propagated, which is what
+ * makes {@link checkReachability}'s never-throws contract true.
  */
 async function validatePlan(
   opts: ReachabilityOptions,
@@ -206,10 +208,29 @@ async function validatePlan(
 ): Promise<{ clause: PlanClause; next_action: string | null }> {
   const args = [opts.binPath, 'plan', 'validate', planDir, '--json'];
   const present = deps.fs.exists(planPath);
-  const result = await deps.exec.run(opts.nodePath, args, {
-    cwd: toPosix(opts.cwd),
-    timeoutMs: opts.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-  });
+  let result: ExecResult;
+  try {
+    result = await deps.exec.run(opts.nodePath, args, {
+      cwd: toPosix(opts.cwd),
+      timeoutMs: opts.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    });
+  } catch (err) {
+    // A port that REJECTS never produced a result to read. Every other child
+    // failure resolves with a non-zero code, so this is the one path that could
+    // escape as a throw and break the never-throws contract. It fails CLOSED:
+    // an unrunnable child proves nothing about the plan, so it is an error, and
+    // the cause is NAMED rather than reported as "no envelope".
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      clause: {
+        present,
+        validates: false,
+        detail: `\`plan validate\` could not be run: ${message} — the plan was not proven either way.`,
+        path: planPath,
+      },
+      next_action: `Run \`harness plan validate ${planDir} --json\` directly — the child process could not be started.`,
+    };
+  }
 
   if (result.code === TIMEOUT_EXIT_CODE) {
     return {
@@ -335,8 +356,8 @@ function readFlow(
 /**
  * Answer both reachability clauses for one plan folder.
  *
- * Never throws: a child that fails to spawn, hangs, or prints garbage becomes an
- * `error` verdict whose `plan.detail` names the cause.
+ * Never throws: a child that fails to spawn, rejects at the port, hangs, or
+ * prints garbage becomes an `error` verdict whose `plan.detail` names the cause.
  */
 export async function checkReachability(
   opts: ReachabilityOptions,

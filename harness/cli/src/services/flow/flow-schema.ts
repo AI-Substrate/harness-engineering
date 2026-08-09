@@ -18,8 +18,11 @@ import { BUNDLED_FLOW_SCHEMAS } from './schemas-content.js';
  *
  * Resolution precedence (AC-11): `--schema <path>` (absolute, OUT-OF-REPO ok,
  * isWithin-EXEMPT — guarded by JSON-only + a size cap) › `.harness/schemas/flows/
- * <type>.schema.json` › the bundled built-in (shared-core + harness-loop only) ›
- * `E304`.
+ * <type>.schema.json` › the bundled built-in (harness-OWNED shared-core +
+ * harness-loop, plus allowlisted GENERATED copies of skill-owned types — today
+ * `flight-plan`, sourced from the builder skill by `scripts/gen-flows.mjs` and
+ * guarded by `check:flows`; plan 081 superseded grill 6/7's "no second copy"
+ * stance so a bare `create` works without the skill installed) › `E304`.
  */
 
 /** The bundle key for the shared-core descriptor (its file stem). */
@@ -150,7 +153,9 @@ function loadOverlay(
     return { descriptor: parsed, source: 'repo' };
   }
 
-  // 3. bundled built-in (shared-core + harness-loop only; the core itself is not a creatable type)
+  // 3. bundled built-in (harness-owned shared-core + harness-loop, plus allowlisted
+  //    generated copies of skill-owned types — today `flight-plan`; the core itself
+  //    is not a creatable type)
   if (opts.type !== SHARED_CORE_KEY && Object.hasOwn(BUNDLED_FLOW_SCHEMAS, opts.type)) {
     return { descriptor: BUNDLED_FLOW_SCHEMAS[opts.type], source: 'bundled' };
   }

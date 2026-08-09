@@ -23,3 +23,23 @@ hand-written, so schema evolution regenerates rather than rots them.
 `future-version-flow/the-flow.json` is a real `flow create flight-plan` output with
 its `schema_version` bumped past this CLI's supported major — the one field a
 current CLI cannot legitimately emit.
+
+## Why there is no `invalid-plan-doc` fixture here
+
+`plan-validate-e400-merge.test.ts` needs a plan folder holding a `plan.dd.json`
+that is **present but not a readable dd document**. That file cannot live in this
+directory, and the reason is worth recording so nobody adds one back:
+
+`dd doctor` sweeps `harness/cli` for every `*.dd.json`. Its exclusion rule —
+`shouldExcludeFromSweep` in `services/dd/core/walk.ts` — skips `sweep_exclude`
+documents and test-fixture paths, but it takes the **parsed document** as an
+argument, so it can only run on a file that parsed. A `*.dd.json` that does not
+parse as a dd document never reaches the exclusion and is reported by the link
+scan as `E436 link-scan-incomplete`, which turns `dd doctor` degraded and fails
+`test/acts/dd.test.ts`'s "sweeps this package clean" pin.
+
+So the invalid plan document is built at **runtime in an OS temp dir** instead —
+outside any corpus scan. Note also that "invalid" has to mean *not a dd document*
+for that test: a plan doc that IS a readable dd document but violates the plan
+schema returns a **different** code (`E407` for a bad `meta.status`), not the
+`E400` the merge is about.

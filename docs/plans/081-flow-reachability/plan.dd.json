@@ -45,37 +45,37 @@
         {
           "id": "ac-0001",
           "claim": "In a repo WITHOUT the builder skill resolvable, `harness flow create flight-plan --slug s --plan-dir <dir> --path <dir>/the-flow.json` (no --schema, no --template) exits 0 and writes a flow the CLI can read back (flow rail succeeds)",
-          "state": "unchecked",
+          "state": "checked",
           "pressure": "assets/backpressure.dd.json#rows/bp-0001"
         },
         {
           "id": "ac-0002",
           "claim": "A vitest test written BEFORE the verb exists runs the new check verb against the 098-shaped fixture (findings.md + SEAT.md, no plan.dd.json, no the-flow.json) AND the 099-shaped fixture (assets/ only) and was observed RED (verb absent/failing) before implementation; after implementation both fixtures assert envelope status=error, exit 1",
-          "state": "unchecked",
+          "state": "checked",
           "pressure": "assets/backpressure.dd.json#rows/bp-0002"
         },
         {
           "id": "ac-0003",
           "claim": "The check verb on a folder whose plan.dd.json validates but which has no the-flow.json returns status=degraded (warning), exit 0, with a reason naming the missing flight plan and a next_action carrying the bare flow create invocation",
-          "state": "unchecked",
+          "state": "checked",
           "pressure": "assets/backpressure.dd.json#rows/bp-0003"
         },
         {
           "id": "ac-0004",
           "claim": "The check verb on a folder with a valid plan.dd.json AND a readable flight plan returns status=ok, exit 0",
-          "state": "unchecked",
+          "state": "checked",
           "pressure": "assets/backpressure.dd.json#rows/bp-0004"
         },
         {
           "id": "ac-0005",
           "claim": "Every check envelope reports counts of artifacts examined and excluded (plan present/absent, flow present/absent/legacy/malformed/future-version), never only survivors; E301 absent, E308 legacy, E300 malformed and E306 future-version flows each carry a distinct reason and all report as the degraded warning class with exit 0 when the plan itself validates",
-          "state": "unchecked",
+          "state": "checked",
           "pressure": "assets/backpressure.dd.json#rows/bp-0005"
         },
         {
           "id": "ac-0006",
           "claim": "plan validate and plan ready envelopes are field-equal excluding timestamp, with equal exit codes, against base ee8f37fb behaviour on the probe matrix (E400 no-plan, ok valid, cant-tell no-flow) — and no edits landed in acts/plan/index.ts, services/dd/**, or acts/dd/**",
-          "state": "unchecked",
+          "state": "checked",
           "pressure": "assets/backpressure.dd.json#rows/bp-0006"
         },
         {
@@ -310,6 +310,126 @@
           "impact": "High",
           "finding": "The exemplar seat itself skipped the workteam pattern for phase 1 until human backpressure (F4) — a reachable-but-optional convention lost to a hurried seat, in the very stream studying that failure",
           "action": "Feed into the ermine handoff: workteam mandate needs a mechanical carrier (brief line + deterministic check), and the pair route engine must ship with the pij skill (F3)"
+        },
+        {
+          "impact": "High",
+          "finding": "SECOND-ORDER, MEASURED: bundling flight-plan silently TURNED ON post-mutation overlay validation for every flight-plan flow. acts/flow.ts:1782 re-resolves the overlay by doc.kind and skips validation only when it cannot resolve — pre-081 flight-plan was unresolvable IN THE EXTERNAL-SCHEMA/NO-REPO-OVERLAY CASE (that IS the E304 this plan fixes) so those mutations took the tolerant-skip branch — QUALIFIED 2026-08-09 after review round 4: a repo overlay at .harness/schemas/flows/flight-plan.schema.json was resolvable pre-081 too (that rung predates this plan), so the unqualified \"every flight-plan mutation skipped\" reading of this row is WRONG and is superseded by this sentence; post-081 it resolves, so mutations now revalidate. Differential control (same custom superset overlay, same mutation, no --schema): UNBUNDLED type = ok (tolerant skip), BUNDLED flight-plan = E300 refused.",
+          "action": "Document it as intended behaviour (stricter, closes a validation hole); pin it with a test; correct 00-routing.md:232 to describe the real split; narrow compat edge = BYO custom flight-plan overlays only (skill users pass a byte-identical schema, guarded by check:flows)"
+        },
+        {
+          "impact": "High",
+          "finding": "CLASS (named by prime, recorded for the fleet): a guard keyed on can-I-resolve-this? converts a CAPABILITY ADDITION into a POLICY CHANGE, and nothing in the diff says so. validateMutatedDoc skips validation when the overlay cannot re-resolve (honest rule: create already validated, do not block what we cannot re-verify) — which makes RESOLVABILITY the on/off switch for a validation gate. Mirror image of the days other defect: elsewhere a control that passes because it examined nothing; here a control that WAS passing by examining nothing, silently switched on. No collision predicate this fleet uses (declared touch sets, diff --name-only, who-else-is-in-this-file) can see it: all of them bound EDITS, and this changed behaviour with no edit.",
+          "action": "Disclose consequence-level changes explicitly at the fence, not just file-level ones; pin BOTH legs (bundled refuses AND unbundled still skips) so the switch is proven to be resolvability"
+        },
+        {
+          "impact": "High",
+          "finding": "OUR CORRECTIONS INTRODUCED NEW FALSE CLAIMS — twice. Round 2s replacement comment asserted chore is not validated by validateFlowDoc (it is — flow-schema.ts:301-318, pinned by flow-chore.test.ts:125-140), and the new guide told operators a custom overlay must stay superset-compatible while our OWN spec proves a strict superset is the failing case. A retracted claim migrating into its own fallback, at the exact moment attention had moved on to the fix.",
+          "action": "Rule adopted for the rest of this stream: every replacement sentence names the file:line that makes it true BEFORE it is written, and the reviewer verifies replacements as hard as originals — a correction is a fresh unevidenced claim, not a settled one"
+        },
+        {
+          "impact": "High",
+          "finding": "TENTH site was a TEST THAT SILENTLY STOPPED TESTING (flow.test.ts:769-839): its fixture calls itself the out-of-repo tolerant-skip case with kind flight-plan, so post-081 it re-resolves to the bundle and never takes the skip branch — still GREEN, but only because its values happen to sit inside the bundled vocabulary. Our capability addition disarmed an existing guard without failing it.",
+          "action": "Repoint the fixture at a genuinely unbundled kind; and treat this as the fleet-level lesson: when a change makes something RESOLVABLE, sweep the tests that depend on it being UNresolvable — a green suite cannot report a test that stopped exercising its branch"
+        },
+        {
+          "impact": "Medium",
+          "finding": "THE SAME FALSE CLAIM HAD THREE COPIES. The omitted-guards assertion (mutations enforce only existence + edge algebra) was corrected in the module header, then found again in badNext, then again in the Plan-039 sectional header at flow-mutations.ts:1046. Correcting the instance you were shown does not correct the claim; a copy-pasted comment propagates like any other convention with no propagation path.",
+          "action": "On every doctrine correction, sweep the repo for the CLAIM in its other phrasings before closing the finding — and record the sweep result (including no-more) so the next reader knows absence was checked, not assumed"
+        },
+        {
+          "impact": "Medium",
+          "finding": "MY OWN PLAN LEDGER carried the unqualified version of a claim the review had already narrowed (row said pre-081 flight-plan was unresolvable, full stop; true only for the external-schema/no-repo-overlay case — the repo rung predates 081). Caught by the reviewer reading the ledger, not the code. A plan ledger is read as CURRENT TRUTH by everyone downstream, so a superseded row there outranks a corrected comment in blast radius.",
+          "action": "Qualified in place with an explicit superseded-by sentence rather than a silent edit, so the narrowing is visible to a reader who saw the original"
+        },
+        {
+          "impact": "Medium",
+          "finding": "THE REMEDIATION LEAVES LEGITIMATE DECOYS. After the 12-site repair the string only mechanical integrity still exists in exactly three places, ALL correct: an attributed grill quotation (flow-mutations.ts:38), archived 024 execution logs (historical record), and this plans own finding rows (which must quote the false claim to describe it). A future grep WILL hit, and hitting is CORRECT — live-claim count is zero.",
+          "action": "Record the residue explicitly with its justification, so the next reader neither fixes a legitimate quotation nor concludes from hits that the correction never happened; the checkable statement is live-claims=0, not grep-hits=0"
+        },
+        {
+          "impact": "Medium",
+          "finding": "A DIAGRAM IS A CLAIM, and our correction did not reach it. After the :110 sentence was fixed, the SAME guide still promised unconditional validation twenty lines above — in the section preamble and in its mermaid, which had only success/refusal branches and no skip branch. The surface a reader hits FIRST was the last to be corrected, and no prose sweep would have caught it because the falsehood was drawn, not written.",
+          "action": "Sweep diagrams/tables/examples as first-class claim surfaces on every doctrine correction, not just prose; and when narrowing a guarantee, state what IS still guaranteed on the narrowed path so the fix does not overcorrect into nothing-is-checked"
+        },
+        {
+          "impact": "Low",
+          "finding": "A REPORTED DEFECT SHRANK UNDER PROBE. The coder reported that flow set-node --field next=... can introduce a cycle neither layer refuses. MEASURED: not reachable from the CLI — set-node exposes no --next flag (E108 unknown option), and the apply set op routes through applyBatch, whose dagIssue refused the cycle with E309 and wrote nothing. The real residue is a latent LIBRARY-seam risk in the exported setNode, guarded today only by the closed CLI flag set.",
+          "action": "Recorded as an insight, not filed as a product defect: escalating it as a live bug would have been an unevidenced claim in the escalating direction. Probe before you escalate, and state reachability, not just mechanism"
+        },
+        {
+          "impact": "Medium",
+          "finding": "WE CARRIED A PRE-EXISTING FALSEHOOD FORWARD BY EDITING AROUND IT. The guide called the sibling render/write warn-only; persistSibling actually returns E302, rolls the source JSON back, and FAILS the operation (acts/flow.ts:213,:277-284, pinned by flow-auto-render.test.ts). Nobody in this stream wrote that claim — but two correction passes rewrote its neighbours and preserved it, because a claim you are editing AROUND reads as settled background.",
+          "action": "When correcting a surface, re-read the WHOLE surface as if unfamiliar, not just the target lines: proximity to your edit is not evidence a claim was checked. Recorded so the next corrector does not inherit the same blind spot"
+        },
+        {
+          "impact": "Medium",
+          "finding": "THE LESSON PROPAGATED WITHOUT BEING RESTATED. Asked for a tripwire, the coder added an unrequested VACUITY GUARD to it — because every load-bearing assertion in that test is NEGATIVE, so a reader returning [] (renamed command, commander shape change) would satisfy them all and the tripwire would sit green having stopped watching. That is precisely the flow.test.ts:769 defect it had fixed two packets earlier, recognised unprompted in its OWN new work.",
+          "action": "Evidence that a lesson encoded as a WORKED FIX transfers where the same lesson as prose did not (cf. F4: the workteam convention was in context and lost). Cite this pairing in the ermine handoff as the argument for mechanical carriers over briefing"
+        },
+        {
+          "impact": "High",
+          "finding": "OUR CORRECTIONS WERE WRONG IN BOTH DIRECTIONS, IN SEQUENCE. The guide first claimed the sibling write was warn-only (too PERMISSIVE — it actually returns E302 and rolls back); our fix replaced it with source restored, neither file changed (too ABSOLUTE — true only when the rollback succeeds; when restoreFlowSource returns false the same E302 says the source may be out of step). Two passes, opposite errors, same root: reaching for an UNCONDITIONAL sentence about a CONDITIONAL behaviour.",
+          "action": "When correcting a claim about branching behaviour, enumerate the outcomes (here: both land / refused+restored / refused+restore-failed) BEFORE writing a sentence. A correction that reads cleaner than the code is usually a new claim, not a better one"
+        },
+        {
+          "impact": "High",
+          "finding": "WHY THE LESSON TRANSFERRED, mechanism named by the coder: the vacuity-guard principle moved between packets because it was written as a PROPERTY OF TESTS (an outcome-only test cannot notice being rerouted) rather than as a fact about one line (flow.test.ts:769 was wrong). The incident-phrased version would not have carried; the property-phrased one did, and it arrived with a concrete handle (pin positive facts about the same reader alongside the negatives) because the abstraction alone is not actionable.",
+          "action": "THIS IS THE HANDOFF ARGUMENT MADE OPERATIONAL: a mechanical carrier for the workteam mandate must state a PROPERTY plus a HANDLE, not an incident. Put this in the ermine contract as the how, beside F4 as the why"
+        },
+        {
+          "impact": "Medium",
+          "finding": "A SIMPLIFICATION IS ONLY LEGITIMATE WHEN IT OMITS DETAIL; WHEN IT OMITS A REFUSAL IT IS A FALSE CLAIM WEARING A SIMPLIFICATIONS CLOTHES (coder, on why warn-only and the event->doc edge both survived every earlier read). Both described a path the code refuses to take, and both read as GENEROUS — a shortcut, a mere warning — which is exactly why neither triggered suspicion. A falsehood that makes the system sound MORE PERMISSIVE than it is gets filed as harmless simplification.",
+          "action": "The tell to apply on review: would a reader acting on the simplified version be SURPRISED BY AN ERROR? If yes it is not a simplification. Now pinned by a test rather than an intuition (flow-auto-render.test.ts:230)"
+        },
+        {
+          "impact": "High",
+          "finding": "I FILED A HARNESS GAP THAT DOES NOT EXIST. I captured the coders caveat (mermaid not machine-validated, confidence rests on precedent not a gate) as a magic-wand observation without probing it. MEASURED refutation: harness markdown-lint runs a headless mermaid.parse() subprocess — 14 fences parsed, 0 invalid. The coder caught its own error and retracted; I had already propagated it one layer up as a finding. A CAVEAT IS A CLAIM, and I applied scepticism to every artifact under review while inheriting my own reports unexamined.",
+          "action": "Retraction filed to the observe buffer so the drain carries both. Rule: probe a subordinates NEGATIVE claims (X does not exist, no gate covers this) as hard as its positive ones — an absence relayed upward becomes a work item nobody re-checks"
+        },
+        {
+          "impact": "Medium",
+          "finding": "THE ABSOLUTE KEEPS SURVIVING IN THE LEAD-IN SENTENCE. Four times on one claim, the correction landed in the DETAIL — the list, the diagram, the enumeration — while an unconditional statement survived in the sentence ONE LINE ABOVE it introducing that detail. Round 8s finding is a single word (is rolled back vs attempts to roll back) sitting directly on top of the list that correctly admits restoration can fail.",
+          "action": "The eye that fixes a list does not re-read the sentence introducing the list. On any doctrine correction, re-read the whole paragraph AND its heading as a stranger would — the summary sentence above a correct enumeration is the highest-risk unchecked surface, because it reads as already-covered by the thing beneath it"
+        },
+        {
+          "impact": "High",
+          "finding": "CORRECTION TO MY OWN ESCALATION — the E400 conflation is NARROWER than I reported upward. I told prime (and thus koala, which recorded it as DL-005) that plan validate returns E400 for both no-plan-document and present-but-invalid. MEASURED, three probes against the real binary: absent = E400; present-but-unreadable-as-dd = E400; a READABLE dd document that fails the plan schema (meta.status outside the enum) = E407, a distinct code. So the conflation is nothing-to-read vs unreadable — NOT nothing-to-read vs everything-that-fails-validation. Blast radius of any future split is smaller than recorded, and E407 already proves the codebase can be specific here.",
+          "action": "Relayed upward for koalas DL-005 to be narrowed. Second self-correction this stream, same root as the first: I characterised a behaviour from its shape rather than probing its boundary — the boundary is where the claim was wrong, not the centre"
+        },
+        {
+          "impact": "Critical",
+          "finding": "A VERIFIED STAMP OUTLIVES THE HAZARD IT WAS TESTED AGAINST — the deepest method finding of this stream, self-reported by the coder. The half-mutated sentence was reviewed and DELIBERATELY KEPT three packets earlier, with a correct verification: it survives both branches (clone + temp-rename). That check was sound and would be signed again. It was also irrelevant to why the sentence was wrong: the falsifying hazard (the NON-ATOMIC rollback in restoreFlowSource) was out of scope, unknown at the time, and only described correctly two packets later. So the claim was checked against ONE hazard and thereafter carried a verified stamp against ALL hazards — I already verified this line is what stopped anyone looking again, and the stamp did not record WHAT it had been verified against.",
+          "action": "MECHANICAL FORM: a verification record must name the HAZARD it tested, not just the claim it cleared. survives the SKIP path would have flagged itself on re-read; survives BOTH branches silently meant both branches I was looking at that day. Predicts the population too: any claim cleared during an earlier phase was cleared against that phases hazard only — audit that set with the NEW hazard named, and never let the auditor be the seat that issued the stamp"
+        },
+        {
+          "impact": "Critical",
+          "finding": "THE HAZARD-SCOPED RE-AUDIT WORKED, AND ITS FIRST CASUALTY WAS A FIX I GRANTED. Predicted population: claims cleared in phases 1-2 were cleared against the reachability hazard only. The reviewer re-audited with three new hazards named and falsified the whole-verb ATOMIC claims across 6 sites — including a mutation is never persisted half-applied, which I had personally approved two packets earlier as the scoped-and-safe replacement. It is still false: the rollback rewrites THE SOURCE with a plain fs.writeText, so a partial restore leaves it neither-old-nor-new, which IS a half-applied persisted mutation. And it was PROVEN not argued — injected sibling failure + a rollback writer emitting half the bytes and throwing; final source matched neither previous nor mutated.",
+          "action": "Three conclusions. (1) The stamp-scope method is validated: predict the population by the hazard that was in play, then re-audit with the new hazards NAMED. (2) The auditor must not be the seat that issued the stamp — and the PM is not exempt, my ruling was inside the audited population. (3) A claim wrong in both directions AND at two scopes needs an enumeration, never a better adjective"
+        },
+        {
+          "impact": "High",
+          "finding": "THE HANDED-OVER ARTIFACT WENT STALE WHILE IN FLIGHT. My acts/flow.ts rider was accepted by another stream and queued for their commit; three packets later my own re-audit found a third outcome the rider text did not describe (non-atomic rollback leaving the source matching neither version). It was not false, but it implied two outcomes where there are three — and it was already out of my hands. Prime caught it and asked rather than deciding over the finding.",
+          "action": "A cross-stream artifact must be re-checked against every finding made AFTER it was handed over, not just at handover — its correctness is frozen at send time while the world is not. Amendment sent as a one-sentence diff against their copy; correctness half filed as its own issue #142 rather than folded into this plan, where nobody triaging acts/flow.ts would find it"
+        },
+        {
+          "impact": "Critical",
+          "finding": "AUDITOR MODE AND AUTHOR MODE DID NOT CONSULT EACH OTHER — the coder corrected my framing DOWNWARD, and its version is sharper. I said it scoped against the hazard it knew. It had the hazard IN HAND: its own report named the non-atomic rollback (writes plain fs.writeText, a restore failing partway leaves bytes that are neither old nor new) and FOUR LINES LATER proposed a mutation is never persisted half-applied — falsified by the mechanism it had just written down. I then granted it. The verification and the claim were in the SAME DOCUMENT, minutes apart, and still did not meet.",
+          "action": "RULE (coders): when proposing replacement wording, re-read your OWN caveats as if they were someone elses review of your draft — they are the closest available reviewer and they are already written down. Nothing in either of our processes forced that read. This is the stamp-scope finding at its shortest possible distance, which is why it generalises: proximity is not consultation"
+        },
+        {
+          "impact": "High",
+          "finding": "A CLAIM WHOSE TRUTH LIVES OUTSIDE YOUR REPO IS UNMAINTAINABLE BY CONSTRUCTION. My rider comment cited dds writeDocumentWithSibling as the contract flow.ts matches. Measured by koala: dd has the SAME non-atomic-rollback hole and a WEAKER mitigation (no read-back — restored:true means only that nothing threw). So the comparison was wrong in the FLATTERING direction, borrowing authority from a weaker implementation while describing a stronger one. It went stale twice for reasons that had nothing to do with acts/flow.ts changing, and no test or sweep in THIS repo could ever have caught it.",
+          "action": "Dropped the comparison rather than softening it (rider v3). General rule: a comment or doc may cite another systems contract only where a check here can fail when that contract moves — otherwise state what THIS code does and let the cross-reference live in an issue. Also: the same artifact went stale THREE times in flight, twice from findings I made after sending it — the handed-over-artifact rule is now measured, not theorised"
+        },
+        {
+          "impact": "High",
+          "finding": "I FIXED THE ECHO AND LEFT THE ORIGIN SPEAKING. flight-plan-ops.md:45 carried one atomic write or none — I granted that fix and the coders sweep then came back CLEAN, the first empty sweep of the stream. The reviewers independent sweep found the SOURCE of that string still live at acts/flow.ts:958-966, and worse: its .description() is emitted VERBATIM by harness flow apply --help. MEASURED. So the highest-traffic copy of the false claim — the text an agent reads WHILE composing an apply call — survived a sweep that reported the family closed, because the sweep ran over docs and skills while the origin lives in source.",
+          "action": "A sweep is bounded by the SURFACES it searches, not by the claim it is chasing: a doc sweep cannot close a claim that originates in code, and generated/derived surfaces (--help, bundled docs) inherit the falsehood invisibly. Enumerate the surface classes (source comments, help strings, bundled docs, skills, tests, diagrams) before declaring a family closed — and treat the FIRST clean sweep as the least trustworthy, not the most"
+        },
+        {
+          "impact": "Critical",
+          "finding": "THE CLASS, NAMED: a FUNCTION-scope truth stated as an ACT-scope persistence claim — true at the scope the author was thinking in, false at the scope the reader is standing in. Crispest instance: applyBatch IS a no-op at function scope (no event, no mutation) and its docblock promoted that to no write, contradicted by the acts own inline comment 155 lines below. Nothing caught it because NO INSTRUMENT WE OWN COMPARES PROSE TO PROSE: tests compare code to behaviour, drift guards compare generated files to sources, lint compares text to style. Two true-at-different-scopes statements in one file, both shipped.",
+          "action": "Enumeration AND stop recorded together in assets/scope-promotion-enumeration.md — five located instances with dispositions, why the sweep ended (primes termination ruling: neither a correctness defect in changed code nor a control that fails to fail), and where new instances go (#142). The enumeration alone invites a resumed hunt; the stop alone reads as abandonment"
         }
       ]
     },
@@ -407,6 +527,12 @@
           "likelihood": "Medium",
           "impact": "High",
           "mitigation": "Prime brokers a window or fold before phase 2 touches it; fallback: register the check verb as its own act module IF prime clears the one-line app.ts registration, keeping flow.ts untouched"
+        },
+        {
+          "risk": "FAILS CLOSED, NOT OPEN (read this first): a consumer with a BYO custom flight-plan overlay (superset statuses/nodeTypes) finds later mutations REFUSED with E300 where they previously passed. The new behaviour never allows an invalid write — it refuses a legitimate-but-unverifiable one, which is the good direction for a triager to know.",
+          "likelihood": "Low",
+          "impact": "Medium",
+          "mitigation": "Skill-shipped schemas are byte-identical to the bundle by construction (gen-flows + check:flows), so the edge is BYO overlays only; --schema on create still pins a custom overlay (only later mutations re-resolve); documented in docs/how/harness-flow.md + 00-routing.md:232 and pinned by a two-leg test (bundled=refuse AND unbundled=skip, so the switch is proven to be RESOLVABILITY)."
         }
       ]
     },
@@ -418,7 +544,14 @@
         "Explicit pathspecs only, never git add -A; just fix before pushing; tell prime before push/PR",
         "Red-first discipline: each fixtures failing test is committed/observed BEFORE the code that turns it green; label claims MEASURED or REASONED in reports",
         "Real streams under ~/pi-hacking/pij-worktrees/ are READ-ONLY references — never write there; local fixtures live in harness/cli test fixtures",
-        "CORRECTED FENCE (source: prime message 2026-08-09, quoting koala s080 declared touch set — NOT my memory of it): acts/flow.ts and the app.ts verb-registration line are OFF LIMITS — three claimants (koala rewire ph1-2, #137 --no-dd-link fix, this verb). Phase 2 opens acts/flow.ts ONLY after prime brokers a window/fold; never route to koala directly. A scope statement is a SNAPSHOT — re-verify with prime at phase-2 entry."
+        "CORRECTED FENCE (source: prime message 2026-08-09, quoting koala s080 declared touch set — NOT my memory of it): acts/flow.ts and the app.ts verb-registration line are OFF LIMITS — three claimants (koala rewire ph1-2, #137 --no-dd-link fix, this verb). Phase 2 opens acts/flow.ts ONLY after prime brokers a window/fold; never route to koala directly. A scope statement is a SNAPSHOT — re-verify with prime at phase-2 entry.",
+        "CORRECTED BOUNDARY REASON (prime, 2026-08-09): /private/tmp/wt-cons is a worktree of AI-Substrate/pij — the operative fence is ANOTHER FLEETS REPO (propose-never-edit, per the stream brief), not another seats worktree (no seat lives there). The stop was right, the stated reason was wrong; a fence reason that does not match the real boundary lets you through somewhere it should not. Convergence edits to that repo route through prime/ermine even under the DELTA grant.",
+        "GENERALISED (prime, 2026-08-09): ANY change making a previously-ABSENT thing PRESENT disarms every test exercising the absent path — resolvability is one instance, availability and presence are others. Operational handle: sweep by grepping for the FALLBACK BRANCH BY NAME, never for the feature; and prefer tests that assert WHICH BRANCH they took over tests that assert only an outcome — an outcome-only test cannot notice being rerouted.",
+        "A REVIEWED RANGE IS A MEASUREMENT IN FLIGHT (prime, on koala sequencing my rider): adding a free hunk to a pinned range under review is not free for the person measuring — it shifts what they are measuring mid-measurement. Land riders in the post-verdict fixes commit, or as their own commit after a clean approve. Same class as not editing a tree while a reviewer is reading it.",
+        "DOCTRINE (prime, generalising my two self-corrections): A CLAIMS CENTRE IS WHAT YOU OBSERVED AND ITS BOUNDARY IS WHAT YOU ASSUMED — AND ESCALATION CARRIES THE BOUNDARY AS THOUGH IT WERE OBSERVED. Both my wrong reports had correct centres (E400 does conflate two states; mermaid fences were the thing in question) and wrong edges. Probe the boundary of any set you are about to describe upward, not just an instance inside it.",
+        "AN INSTRUCTION ABOUT AN EVENT IS A CLAIM THAT THE EVENT HAS NOT HAPPENED (prime, self-reported): it issued a HOLD on a commit that had already landed 30 minutes earlier, never having read the state — in the same hour it ruled that a sequencing order must be re-opened once its premise expires. Before issuing a hold/sequence instruction, READ the state it presumes. Sibling of the stale-artifact class: the hold went stale between forming and sending.",
+        "THE REVIEWER YOU ALREADY HAVE IS YOUR OWN CAVEATS SECTION (coder) — it costs nothing, it is already written, and it is the part of a draft its author is least likely to re-read. Paired with: proximity is not consultation. The stamp-scope failure occurred at 200 lines and at 4 lines apart, so distance was never the variable — the fix is a MODE SWITCH (re-enter the document as a reader who did not write it), because that is the only thing that differs between the two registers.",
+        "THE TEXT FIX MUST NOT WAIT ON THE CODE FIX (prime, on #142): a misleading GUARANTEE is being read by agents today, while the repair may sit unstaffed indefinitely. Where a doc/help string is wrong BECAUSE of a tracked defect, file them together for cause-and-symptom — but write in that the text correction gets lifted out and landed alone if the repair stalls. Otherwise correctness work becomes a hostage-taker for accuracy work."
       ]
     }
   ]
