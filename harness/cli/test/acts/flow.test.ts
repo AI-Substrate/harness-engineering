@@ -655,6 +655,83 @@ describe('harness flow act — chore + command surface (Phase 4 T005/T006)', () 
     expect(r.code).toBe(0);
     expect(nodeById(deps, 'boot')?.command).toBe('/eng-harness-flow --hook session-start');
   });
+
+  it('set-node --dd-link writes a gate without hand-writing an op batch (#135 item 4)', async () => {
+    const deps = await seedDemo();
+    const r = await runFlow(deps, [
+      'flow',
+      'set-node',
+      '--slug',
+      'demo',
+      '--node',
+      'boot',
+      '--dd-link',
+      '{"address":"docs/tasks.dd.json#tasks"}',
+    ]);
+    expect(r.code).toBe(0);
+    expect(nodeById(deps, 'boot')?.dd_link).toEqual({ address: 'docs/tasks.dd.json#tasks' });
+  });
+
+  it('set-node --dd-link REFUSES an unknown key rather than reducing the link', async () => {
+    const deps = await seedDemo();
+    const r = await runFlow(deps, [
+      'flow',
+      'set-node',
+      '--slug',
+      'demo',
+      '--node',
+      'boot',
+      '--dd-link',
+      '{"kind":"plan-complete","address":"docs/tasks.dd.json"}',
+    ]);
+    expect(r.code).toBe(1);
+    expect(r.env.error?.message).toContain('"kind"');
+    expect(nodeById(deps, 'boot')?.dd_link).toBeUndefined();
+  });
+
+  it('set-node --no-dd-link refuses and NAMES the issue, rather than silently doing nothing', async () => {
+    // Clearing is part of this flag's contract but not part of this change (#137).
+    // A missing flag or a silent no-op would both teach a user that clearing is their
+    // mistake rather than our gap.
+    const deps = await seedDemo();
+    const r = await runFlow(deps, [
+      'flow',
+      'set-node',
+      '--slug',
+      'demo',
+      '--node',
+      'boot',
+      '--no-dd-link',
+    ]);
+    expect(r.code).toBe(1);
+    expect(r.env.error?.message).toContain('#137');
+    expect(r.env.next_action).toContain('gate');
+  });
+
+  it('insert-node --dd-link gates the node it creates', async () => {
+    const deps = await seedDemo();
+    const r = await runFlow(deps, [
+      'flow',
+      'insert-node',
+      '--slug',
+      'demo',
+      '--id',
+      'gated',
+      '--type',
+      'backpressure',
+      '--label',
+      'Gated',
+      '--after',
+      'boot',
+      '--dd-link',
+      '{"address":"docs/tasks.dd.json#tasks","check":"plan-validate"}',
+    ]);
+    expect(r.code).toBe(0);
+    expect(nodeById(deps, 'gated')?.dd_link).toEqual({
+      address: 'docs/tasks.dd.json#tasks',
+      check: 'plan-validate',
+    });
+  });
 });
 
 describe('harness flow act — dangling-edge guard runs regardless of schema resolution', () => {

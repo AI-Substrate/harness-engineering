@@ -25,6 +25,7 @@ export const BUNDLED_FLOW_SCHEMAS: Record<string, unknown> = {
         'chore',
         'note',
         'artifacts',
+        'instructions',
         'phase',
         'reconstructed',
         'zone',
