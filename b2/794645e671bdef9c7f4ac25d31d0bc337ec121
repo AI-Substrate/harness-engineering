@@ -1,0 +1,31 @@
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-2/tasks.dd.md
+  s_e3460fd42f286c::t_b30faadd068c9c 36-43,49-88
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-2/tasks.dd.json
+  s_c88674e85f3aea::t_adaa996d8e103d 21-83,87-167,169
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-2/context.md
+  s_c88674e85f3aea::t_86cfb9e4cbbd7c 1-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b2794645e671bdef9c7f4ac25d31d0bc337ec121",
+  "prompts": {},
+  "sessions": {
+    "s_c88674e85f3aea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71679da4-5249-4e02-9117-68a3abf3ed0e",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_e3460fd42f286c": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "b007eb76-365c-4da0-8164-519fdee51c00",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
