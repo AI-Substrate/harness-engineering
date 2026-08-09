@@ -1,0 +1,31 @@
+docs/plans/080-dd-consume-upgrade/the-flow.json
+  s_dfbe7bea3d1b7e::t_ea040e3db83572 814-840,1112,1126-1136
+docs/plans/080-dd-consume-upgrade/the-flow.md
+  s_dfbe7bea3d1b7e::t_b701c94b2e16b4 4,27,65-67
+.harness/records/retro/2026-08-09/004-080-post-flight.md
+  s_397a51e23fc2cd::t_13d1249d1c0939 1-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c2679f14cabaa74537e3259b11d5312bb04b04bb",
+  "prompts": {},
+  "sessions": {
+    "s_397a51e23fc2cd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "3fe3c47b-5424-4214-892e-81ef19c49d45",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_dfbe7bea3d1b7e": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "d854c5fd-5185-4f9c-99f4-40038b3158a0",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
