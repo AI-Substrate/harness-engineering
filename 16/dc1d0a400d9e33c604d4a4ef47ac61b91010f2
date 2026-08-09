@@ -1,0 +1,184 @@
+harness/cli/test/acts/flow-set-node-containment.test.ts
+  s_cd998e7882a3c3::t_ef38219a78d3c6 88
+  s_19a84a88383f5b::t_30873587f8b247 89
+  s_19a84a88383f5b::t_bf12b5a5ad8c39 1-87,90-97
+harness/cli/src/services/flow/reachability.ts
+  s_cd998e7882a3c3::t_a41fc8d2fed7cd 218-232
+  s_19a84a88383f5b::t_065c4eeed48649 1,196-201,211-217,233,359-360
+harness/cli/src/services/flow/flow-schema.ts
+  s_19a84a88383f5b::t_5014b359939ba9 21-25,156-158
+harness/cli/test/services/flow/flow-apply.test.ts
+  s_19a84a88383f5b::t_35ec16de04defe 13-18
+harness/cli/src/services/flow/schemas-content.ts
+  s_19a84a88383f5b::t_50491ec11b1a66 70
+harness/cli/test/services/flow/reachability.test.ts
+  s_19a84a88383f5b::t_8518a216f168da 4
+  s_19a84a88383f5b::t_38001d12ef8397 383-437
+  s_19a84a88383f5b::t_4e2ba0203f4e25 438-439
+docs/how/harness-flow.md
+  s_19a84a88383f5b::t_92c861808ab202 97-98
+  s_19a84a88383f5b::t_a118e5c8286747 137-145,156-160,167,169
+  s_19a84a88383f5b::t_7bd7f1a9d2d971 174-176
+  s_19a84a88383f5b::t_6f2dfd75045866 121-123
+  s_19a84a88383f5b::t_8b641ea709396c 146-155,161-166,168
+  s_19a84a88383f5b::t_fc189997e2deb6 89-90,112-114,116,119-120,124-125,170-173
+  s_19a84a88383f5b::t_57a4c4638b2297 99-107,115,117
+  s_19a84a88383f5b::t_0e5351065fd191 129-130
+  s_19a84a88383f5b::t_16594cedf63107 91-96
+  s_19a84a88383f5b::t_1ea6f7bbe13b7c 177-197
+  s_19a84a88383f5b::t_9339513dcea4fb 201-202
+  s_19a84a88383f5b::t_60b53d03cb5230 715-727
+  s_19a84a88383f5b::t_b21b5b9cbb1c0a 132-135
+  s_19a84a88383f5b::t_4e0c1a5453eea0 203-204
+  s_19a84a88383f5b::t_196763c295f3d6 4
+  s_a6b77772852964::t_bb7506c6ee1056 136
+harness/cli/test/services/flow/fixtures/reachability/README.md
+  s_19a84a88383f5b::t_847ee089c62d5e 27-45
+  s_19a84a88383f5b::t_30f876d57d2409 26
+harness/cli/test/services/flow/plan-validate-e400-merge.test.ts
+  s_19a84a88383f5b::t_645c2b3635679e 1-192
+docs/plans/081-flow-reachability/plan.dd.md
+  s_19a84a88383f5b::t_2633cbc6baba00 185-186
+  s_19a84a88383f5b::t_0cada62c05281a 200-204,232,244-248
+  s_19a84a88383f5b::t_9c3fd6f9352353 182-184
+  s_19a84a88383f5b::t_1a80bbb0fa7ef1 187-189,197-199
+  s_19a84a88383f5b::t_7f39b00a1adf31 249-250
+  s_2bef307df718bc::t_4a8fd4c14bc465 58-63,181,190-196
+harness/cli/test/acts/flow.test.ts
+  s_19a84a88383f5b::t_284ee23f5e0e36 793-796,843-846
+  s_cd998e7882a3c3::t_516c996b8b0642 785
+  s_19a84a88383f5b::t_fff409541e4d0b 14
+  s_19a84a88383f5b::t_59b1f90801f420 879-880
+  s_19a84a88383f5b::t_39b9bac1944779 770-784,786-792,797-801,806,808,812,820,824,828-830,839,850-858
+skills/builder/references/00-routing.md
+  s_19a84a88383f5b::t_d208f93dba16fa 35
+  s_19a84a88383f5b::t_f8dd48c9a7c88a 200
+  s_19a84a88383f5b::t_aa49d075fcd133 202
+  s_19a84a88383f5b::t_12b1149050be9e 232
+  s_19a84a88383f5b::t_6ff94ec5683913 122
+harness/cli/src/services/docs/docs-content.ts
+  s_19a84a88383f5b::t_ae8f75e5a752ff 112
+skills/builder/references/flight-plan.schema.json
+  s_19a84a88383f5b::t_482bebea7a64a9 5
+harness/cli/src/services/flow/flow-mutations.ts
+  s_19a84a88383f5b::t_a5a7ef2c0aa841 30-38,731-736
+  s_19a84a88383f5b::t_32d7ac6c851c8e 1479-1481
+  s_19a84a88383f5b::t_eeb93db2107d57 806
+  s_19a84a88383f5b::t_0553e2930cd747 807-819
+  s_19a84a88383f5b::t_5f3d46ce6ce69d 1051-1065
+  s_19a84a88383f5b::t_24dfba5bc86219 1465-1477
+docs/plans/081-flow-reachability/plan.dd.json
+  s_19a84a88383f5b::t_2633cbc6baba00 316-342,345,350,360,365,380,390,552
+  s_19a84a88383f5b::t_0cada62c05281a 313-315,343-344,348-349,353-354,358-359,363-364,368-370,373-375,378-379,383-385,388-389,393-395,398-400,403-405,408-425
+  s_19a84a88383f5b::t_e44281966d6b62 346-347
+  s_19a84a88383f5b::t_51bbede88799ee 351-352
+  s_19a84a88383f5b::t_96c2788639a9dd 355-357
+  s_19a84a88383f5b::t_7ff933214b8176 361-362
+  s_19a84a88383f5b::t_8c7d5fb96a7990 366-367
+  s_19a84a88383f5b::t_d066c7cedc86e5 371-372
+  s_19a84a88383f5b::t_c85cdc9caee5ae 376-377
+  s_19a84a88383f5b::t_e9d68a20c4749e 381-382
+  s_19a84a88383f5b::t_bde374a1ecf8f9 386-387
+  s_19a84a88383f5b::t_f2488274c36772 391-392
+  s_19a84a88383f5b::t_68d624a910b12c 396-397
+  s_19a84a88383f5b::t_0c4d638164a444 401-402
+  s_19a84a88383f5b::t_e0a4a162361011 406-407
+  s_19a84a88383f5b::t_0413b4149d2bb8 426-428
+  s_19a84a88383f5b::t_9f1d2197b616a6 549-551
+  s_19a84a88383f5b::t_679039010d3aac 553-554
+  s_2bef307df718bc::t_9a77bcb94d64d3 48,54,60,66,72,78,429-432,530-535,547-548
+skills/builder/references/flight-plan-ops.md
+  s_19a84a88383f5b::t_ad113975a7ea0d 44-45
+harness/cli/test/acts/flow-mutation-revalidation.test.ts
+  s_19a84a88383f5b::t_73e0a60f0cfa23 205-206
+  s_19a84a88383f5b::t_719f137cadb13d 243-246
+  s_19a84a88383f5b::t_932683b9711724 167-173,187-192,197-202
+  s_19a84a88383f5b::t_0dbbb63fb4122a 1-13,15-19,28-30,35-166,174-185,193-196,203-204,207-234,267
+  s_19a84a88383f5b::t_60c02ff8170d6a 14,186
+  s_19a84a88383f5b::t_52a1505acdaefb 20-27,31-34
+  s_19a84a88383f5b::t_b907dd121cf1bb 235-242,247-266
+docs/how/flow-reachability.md
+  s_19a84a88383f5b::t_62c39bae23abc3 146-148,196-198
+  s_19a84a88383f5b::t_065f3da1d1ff18 13-15,27-30,62,112-114
+  s_19a84a88383f5b::t_72d80a759e388d 1-12,16-26,31-61,63-111,115-145,149-195,199-244
+skills/builder/SKILL.md
+  s_19a84a88383f5b::t_a57e62cffb3947 115
+docs/plans/081-flow-reachability/assets/execution.log.md
+  s_397a51e23fc2cd::t_c00750ee0d958f 1-194
+docs/plans/081-flow-reachability/assets/pij-contract.md
+  s_a6b77772852964::t_cb9cb60ba7c2ac 1-87
+docs/plans/081-flow-reachability/assets/reviews/p2-review-1-fix-required.md
+  s_a6b77772852964::t_2fda52721256ca 1-76
+docs/plans/081-flow-reachability/assets/reviews/p2-review-2-approve.md
+  s_a6b77772852964::t_d43c0e73a1c712 1-13
+docs/plans/081-flow-reachability/assets/standup-deltas.md
+  s_a6b77772852964::t_1cfa8b5b6ef5ad 1-67
+docs/plans/081-flow-reachability/assets/tasks/phase-1/tasks.dd.json
+  s_a6b77772852964::t_8d5ff786559733 26,35,44,53,62,77-79,86,94,102,110-112
+docs/plans/081-flow-reachability/assets/tasks/phase-1/tasks.dd.md
+  s_a6b77772852964::t_dd195aad45a565 38-42,50-52,58,64,70,74-76
+docs/plans/081-flow-reachability/friction-log.md
+  s_19f7e253dcd61b::t_4754451e76854b 89-114
+docs/plans/081-flow-reachability/the-flow.json
+  s_a6b77772852964::t_cce28b282b557f 6,8,126-438,483,489-497,508-510,519,533-534,633,650-660,666,680-690,711-956
+docs/plans/081-flow-reachability/the-flow.md
+  s_a6b77772852964::t_a06e0350f641fe 4,6,12,14-17,21,24-26,30,35-36,44,56-76
+docs/plans/081-flow-reachability/assets/scope-promotion-enumeration.md
+  s_2bef307df718bc::t_7429976f7c3ec8 1-89
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "16dc1d0a400d9e33c604d4a4ef47ac61b91010f2",
+  "prompts": {},
+  "sessions": {
+    "s_19a84a88383f5b": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "e9a11817-53a3-42b6-a41f-25dcffefd677",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_19f7e253dcd61b": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "df4fe8c9-c893-434b-8f2c-b08b4eb337d3",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_2bef307df718bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb3484ee-e8b4-4f68-89fa-22abb2a7a8c3",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_397a51e23fc2cd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "3fe3c47b-5424-4214-892e-81ef19c49d45",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_a6b77772852964": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "c800c9ff-86e7-4a5f-bdc3-f63517243af6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_cd998e7882a3c3": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "622101c7-ba88-4803-8ca5-9e6de8edbc6f",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
