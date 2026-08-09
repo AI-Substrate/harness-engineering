@@ -1,0 +1,30 @@
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-3/tasks.dd.md
+  s_397a51e23fc2cd::t_df7160d344f69d 40,71
+  s_397a51e23fc2cd::t_d51e2973fac8d8 42
+harness/cli/test/architecture/plan-semantics-boundary.test.ts
+  s_397a51e23fc2cd::t_ddab785473af90 28-43
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-3/tasks.dd.json
+  s_397a51e23fc2cd::t_d51e2973fac8d8 68-69
+  s_397a51e23fc2cd::t_df7160d344f69d 47,151
+.dependency-cruiser.cjs
+  s_397a51e23fc2cd::t_5a02f05c646a0a 85
+  s_397a51e23fc2cd::t_5486b1693674ab 67-84,86-89
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-3/execution.log.md
+  s_397a51e23fc2cd::t_cad1ef608d9290 320-368
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "cd7907f65ed31a928587da899aa3e4e2e682094f",
+  "prompts": {},
+  "sessions": {
+    "s_397a51e23fc2cd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "3fe3c47b-5424-4214-892e-81ef19c49d45",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
