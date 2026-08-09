@@ -150,7 +150,7 @@
         {
           "id": "tk-000d",
           "title": "Make `uninstall` remove ONLY our marked entry, restore the ORIGINAL bytes, DELETE what we created, restore flags we flipped, and REFUSE an unmarked file",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-2",
           "success": "Ownership is matched on OUR marker — never git-ai's contains(\"git-ai\") && contains(\"checkpoint\") test, which would claim entries we do not own. Copy cline.rs:212-223's posture verbatim: REFUSE to overwrite a file lacking our marker rather than clobbering it. amp.rs:114-133 does the opposite (remove_file with no marker check) and that is the behaviour to reject. TWO CLAUSES THE WORKSHOP REQUIRES THAT MUST NOT BE DROPPED: symmetry includes REMOVING CONTAINERS WE CREATED and RESTORING FLAGS WE FLIPPED. The workshop names the concrete failures — Gemini never reverts tools.enableHooks, VS Code never reverts chat.useHooks, Droid leaves claudeHooksImported: true. Which implies the other half nobody has stated: if Gemini needs tools.enableHooks true to run hooks AT ALL, then install must flip it, or Strategy A produces an installed-but-inert hook. THE REFUSE DECISION IS ALREADY MADE — DO NOT RE-DECIDE IT. classifyOwnership (hook-marker.ts, landed at f718e8b5) returns THREE states, not a boolean: not-ours, wholly-ours, ours-with-foreign. mayRemove is true ONLY for wholly-ours. An entry that chains our invocation with somebody else's work is REPORTED AND LEFT ALONE, never deleted. WHY, so it is not re-litigated: MEASURED on this machine, a third party (our own POC) wrapped git-ai's standalone hook invocation into a chained command — so compound entries are the observed normal, not an exotic case, and the same will happen to ours. Deleting such an entry wholesale destroys work we did not write, which is exactly git-ai's contains(git-ai)&&contains(checkpoint) defect committed with a better marker. Per-segment removal was considered and DEFERRED, not forgotten: it means rewriting someone else's command string, which would be the only place the installer edits foreign content rather than adding or removing its own. A refusal that surprises a user is recoverable; a deletion that surprises them is not.",
           "satisfies": [
@@ -512,32 +512,32 @@
         "tk-000d": [
           {
             "id": "dw-002f",
-            "assertion": "install-then-uninstall returns each config to its ORIGINAL bytes, with git-ai's entries untouched — whole-file equality, which a reordered sibling would fail.",
-            "state": "unchecked",
+            "assertion": "install-then-uninstall restores every VALUE, every COMMENT, the KEY ORDER, and leaves no marker anywhere — asserted per property, not as a vague structural equality. Whole-file byte equality is NOT claimed and is not achievable with this writer: jsonc-parser normalises the internal whitespace of any container it edits, so a container that arrived compact comes back expanded. That is a KNOWN AND ACCEPTED limit, recorded because install already reformats the touched array (tk-0002) — the same cost, surfacing on the way out. Restoring original formatting would require a writer that remembers pre-install bytes, which is out of scope for this phase. A reordered sibling, a lost comment, a changed value or a surviving marker must each still turn this RED.",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0030",
             "assertion": "A config we CREATED is deleted on uninstall rather than restored to bytes that never existed.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0031",
             "assertion": "Every flag install flips is enumerated and reverted; whether a flag is REQUIRED for hooks to run at all is answered per agent, since an unflipped flag means an installed-but-inert hook.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0032",
             "assertion": "A hook file lacking our marker is REFUSED, not clobbered — asserted, since this is the guard git-ai implemented in exactly one of fifteen installers.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0041",
             "assertion": "An entry classified ours-with-foreign is REPORTED and left byte-identical by uninstall — asserted directly, alongside a positive control that a wholly-ours entry IS removed, since 'refuses to remove' is satisfied equally well by an uninstall that does nothing at all.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],

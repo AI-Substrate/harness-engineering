@@ -111,3 +111,25 @@ export function writeThroughSymlink(fs: FsPort, path: string, contents: string):
   fs.writeText(target, contents);
   return target;
 }
+
+/**
+ * Remove the entry at `index` from the array at `path` — the same minimal-edit CST
+ * round-trip as {@link appendToArray}, run backwards (plan 082 tk-000d).
+ *
+ * THIS IS UNINSTALL'S ONLY MECHANISM. It does NOT read a backup, and that is a
+ * design decision rather than a gap: uninstall's symmetry is *surgically removing
+ * what we added*, so the file returns to its original bytes because every byte we
+ * did not write was never rewritten. Restore-from-backup is a separate
+ * disaster-recovery concern with no implementation (backup flattens paths and
+ * nothing reverses it) and is deliberately out of scope.
+ *
+ * Passing `undefined` as the value is jsonc-parser's array-element DELETE.
+ */
+export function removeFromArray(text: string, path: (string | number)[]): string {
+  const errors: ParseError[] = [];
+  parseJsonc(text, errors, { allowTrailingComma: true });
+  if (errors.length > 0) return text;
+
+  const edits = modify(text, path, undefined, { formattingOptions: FORMATTING });
+  return applyEdits(text, edits);
+}

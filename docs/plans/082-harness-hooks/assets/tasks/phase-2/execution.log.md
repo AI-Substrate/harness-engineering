@@ -1218,3 +1218,76 @@ scratch path turns 2 rows red.
 `fire` is bound by exit-0-and-silent because it runs inside an agent's tool loop. `list`, `status` and
 `install` are **operator-facing** — read by a human at a terminal, where swallowing an error is the
 defect rather than the contract. Recorded so nobody generalises the `fire` contract across the family.
+
+---
+
+## tk-000d — uninstall: surgical removal, and an AC weakened on evidence
+
+### dw-002f could not be met as written, and the row was changed rather than the claim
+
+*"Returns each config to its ORIGINAL bytes, whole-file equality"* holds **only** when the containers
+we touch were already in the writer's expanded form. `jsonc-parser` **normalises the internal
+whitespace of any container it edits**, and removal does not put the compact form back:
+
+```
+droid entries are written on ONE line:  { "command": "echo droid-pre" }
+install re-indents that array; uninstall removes our entry and leaves it expanded
+original `"hooks": {}` comes back as `"hooks": {\n  }` once we empty it
+```
+
+Brought back to the PM rather than absorbed, because it bounds an acceptance criterion. **Ruling: weaken
+the row, do not build the writer** — whole-file byte equality would need a writer that remembers
+pre-install bytes, i.e. persisted state or restore-from-backup, and restore-from-backup was ruled out
+of this phase. Disproportionate to what the criterion is *for*: do not damage the user's config, do not
+touch other tools' work.
+
+**No detection power is lost.** Byte-equality was worth having because it catches a silently
+**reordered sibling** — git-ai's actual defect. Key order is still asserted, explicitly. So are
+comments, values, and the absence of any marker.
+
+### FOUR NAMED PROPERTIES, not "structurally equal"
+
+*"Structurally equal"* is the kind of phrase a real regression hides inside. Each is asserted
+separately, and **each refuses on its own**:
+
+| property mutated | rows red |
+| --- | --- |
+| values changed | 1 |
+| comments dropped | 1 |
+| keys re-sorted (git-ai's BTreeMap shape) | **3** |
+| marker left on disk (write suppressed) | **7** |
+
+*(A fifth attempt — count the removal without performing it — was abandoned: it makes the production
+loop spin forever, which is a flaw in the mutation, not evidence about the test. Recorded so the gap
+in that table is deliberate.)*
+
+### The asymmetry: install created a key uninstall left behind
+
+When a config exists but **lacks** the events key — a `settings.json` carrying only `model` and
+`permissions`, which is the common shape — install **creates** it. Removing only our entry left
+`"PreToolUse": []` behind: **install and uninstall disagreeing about what install did**, cruft that
+accumulates and is visible to the user. The emptied key is now removed too.
+
+**The over-reach, with its reasoning on the record**: a user with a *pre-existing* empty events array
+loses that key. An empty events array and an absent key are **identical for hook loading**, so there
+is no functional harm — and the alternative requires knowing whether *we* created the key, which needs
+persisted state we deliberately do not keep. Narrower error, no functional consequence, asserted rather
+than hidden. It then **fired in the gemini flags row exactly as predicted**, which makes it a
+measurement rather than a caveat.
+
+### A TEST BUG THAT EXPOSED A PRODUCTION ONE — its own shape
+
+I was driving the **droid** spec (Pascal keys) at a **cursor-shaped** JSONC fixture (lowerCamel), so
+`appendToArray` was *creating* keys rather than appending. Most fixture errors waste an hour; this one
+behaved like a fuzzer — it manufactured the absent-key case by accident and surfaced a real asymmetry
+nobody had asked about.
+
+### dw-0031 — an honest negative, and a question that stays open
+
+Our installer flips **no flags**: it writes one entry into an events array and nothing else, so there
+is nothing to revert. That is an honest negative, not a gap.
+
+Whether gemini **requires** `tools.enableHooks` true for hooks to fire at all is **unverified and stays
+unverified**. Writing a flag into a user's settings to satisfy a requirement we have not observed is
+exactly how a config gets silently changed — the same discipline as refusing to guess copilot's
+`powershell` field. Both go to tk-0010 as **specific named questions**.
