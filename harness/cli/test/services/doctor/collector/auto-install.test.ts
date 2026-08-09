@@ -14,7 +14,7 @@ import {
   autoInstallBlockPath,
   readAutoInstallBlock,
 } from '../../../../src/services/doctor/collector/auto-install-block.js';
-import { backupDirFor } from '../../../../src/services/doctor/collector/backup.js';
+import { backupDirFor, storedPathFor } from '../../../../src/services/doctor/collector/backup.js';
 import { readCollectorHealth } from '../../../../src/services/doctor/collector/health.js';
 import { recheckCollector } from '../../../../src/services/doctor/collector/install.js';
 import { GITAI_PIN } from '../../../../src/services/doctor/collector/pin.js';
@@ -607,7 +607,13 @@ describe('P1-C — a backup we could not take blocks the step it protects', () =
     fs.mkdirp(`${HOME}/.claude`);
     fs.writeText(`${HOME}/.claude/settings.json`, '{ /* keep me */ }');
     // The copy DESTINATION is unwritable — a full disk or a read-only mount.
-    fs.failWrites.add(`${backupDirFor(HOME, NOW)}/.claude__settings.json`);
+    // Resolved through `storedPathFor` rather than restated: the layout stopped
+    // flattening in phase 3 tk-0001 (the `__` substitution is not invertible), and
+    // a literal here would have silently stopped injecting the failure the moment
+    // it changed — leaving a green row that no longer probes anything.
+    fs.failWrites.add(
+      `${backupDirFor(HOME, NOW)}/${storedPathFor(`${HOME}/.claude/settings.json`, HOME)}`,
+    );
     fs.writeText(collectorStatePath(REPO), JSON.stringify(skippedByTrace2()));
     const exec = new FakeSequencedExec({ [TRACE2_READ]: { code: 1 } });
 

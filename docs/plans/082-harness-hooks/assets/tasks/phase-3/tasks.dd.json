@@ -22,7 +22,7 @@
         {
           "id": "tk-0001",
           "title": "Prove a restore point RESTORES before anything writes to the real home",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-3",
           "success": "backupAgentConfigs is write-only — measured. It flattens <rel> into <rel with / replaced by __> in a single directory and no code anywhere reverses that mapping, so the backup directory today is a pile of files a human could put back by hand and nothing more. Before the live install runs, there must be a restore path that has been DEMONSTRATED to return a config to its exact prior bytes — either by implementing the reverse mapping, or by using a plain copy-tree snapshot that preserves relative paths. Either is acceptable; an unproven one is not. This is first because every other task in this phase writes to files a customer would care about, and because 'correct and destructive are independent' — an install can be perfectly correct and still leave someone unable to get back.",
           "satisfies": [
@@ -88,25 +88,25 @@
           {
             "id": "dw-0001",
             "assertion": "A restore is DEMONSTRATED end to end on a scratch copy: capture, mutate the file, restore, assert byte-identical to the capture.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0002",
             "assertion": "The demonstration runs against the REAL filesystem, not a fake — this is the path whose whole purpose is to work when something has gone wrong.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0003",
             "assertion": "If the reverse mapping is implemented, a path containing the __ sequence in its own name is asserted, since that is where a flatten/unflatten round-trip breaks.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0004",
             "assertion": "The restore path is exercised for a file that did NOT exist before install, where restoring means deleting rather than rewriting.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],

@@ -178,9 +178,13 @@ describe('what backup REPORTS is what it actually copied (dw-0025, dw-0026)', ()
     - Why: dw-0026. A detected agent with no config file yet is created-not-backed-up.
       `backupAgentConfigs` skips a non-existent source, so it appears in neither
       `copied` nor `failed` — and that silence must not read as coverage.
-    - Contract: detected, nothing copied, and the file is absent — so the installer's
-      `created: true` is the only thing that can distinguish it, which is why that
-      flag exists.
+    - Contract: detected, nothing copied, and the file is absent.
+    - UPDATED phase 3 tk-0001: at the time this was written, the installer's
+      `created: true` was the ONLY thing that could distinguish this case. It is no
+      longer — the backup now records the absence in its manifest, because a file we
+      CREATE is restored by DELETING it. `copied` and `failed` stay silent exactly as
+      asserted below; the absence surfaces in the new `absent` list instead, so this
+      row's contract is unchanged and the new fact is asserted beside it.
     */
     const { backupAgentConfigs } = await import('../../../src/services/doctor/collector/backup.js');
     const fs = new FakeFs();
@@ -194,6 +198,7 @@ describe('what backup REPORTS is what it actually copied (dw-0025, dw-0026)', ()
 
     expect(backup.copied).toEqual([]);
     expect(backup.failed).toEqual([]);
+    expect(backup.absent).toContain('.cursor/hooks.json');
     expect(fs.exists('/home/dev/.cursor/hooks.json')).toBe(false);
   });
 
