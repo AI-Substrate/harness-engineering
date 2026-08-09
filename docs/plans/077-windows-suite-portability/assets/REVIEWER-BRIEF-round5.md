@@ -96,3 +96,9 @@ evidence. Not polish. If it is clean, say so plainly.
 
 Append to `assets/reviews/phase-5-review.md`, then `pij send pij-respectable-clam`
 **APPROVE** or **CHANGES** with findings ranked, and say which coder each finding belongs to.
+
+> ⚠️ **BASELINE CORRECTION (2026-08-09):** the `markdown-lint 210` above is stale — the
+> branch measured **211** (195 lint / 15 links / 1 mermaid) even on the three-check gate, and
+> `6a43fd4d` on main adds a fourth check that will move it again at merge. **Derive it, do not
+> quote it:** `harness markdown-lint --json | jq '.data.checks[] | {name, outcome, findings, examined}'`.
+> Full reasoning and the three-state attribution table: [`BASELINE-CORRECTION-markdown-lint.md`](./BASELINE-CORRECTION-markdown-lint.md)

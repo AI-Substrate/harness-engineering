@@ -81,3 +81,9 @@ Commit `HARNESS_NO_TELEMETRY=1 timeout 30 git commit --no-verify`, explicit path
 `windows-check` 6.
 
 Report the mechanism before you write a fix. Name your own softest claim.
+
+> ⚠️ **BASELINE CORRECTION (2026-08-09):** the `markdown-lint 210` above is stale — the
+> branch measured **211** (195 lint / 15 links / 1 mermaid) even on the three-check gate, and
+> `6a43fd4d` on main adds a fourth check that will move it again at merge. **Derive it, do not
+> quote it:** `harness markdown-lint --json | jq '.data.checks[] | {name, outcome, findings, examined}'`.
+> Full reasoning and the three-state attribution table: [`BASELINE-CORRECTION-markdown-lint.md`](./BASELINE-CORRECTION-markdown-lint.md)
