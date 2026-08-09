@@ -1,0 +1,37 @@
+harness/cli/test/services/hooks/backup-widening.test.ts
+  s_ed609d39de2442::t_22265c1546f6b7 1-45,47-73,75-111,113-134,136-152,154-168
+  s_ed609d39de2442::t_e73fe1fc327b7d 46,74,112,135,153
+docs/plans/082-harness-hooks/assets/tasks/phase-2/tasks.dd.json
+  s_ed609d39de2442::t_071b4b26511814 121,432,438,444,450
+docs/plans/082-harness-hooks/assets/tasks/phase-2/tasks.dd.md
+  s_ed609d39de2442::t_071b4b26511814 47,143-146
+harness/cli/src/services/doctor/collector/types.ts
+  s_ed609d39de2442::t_7b0256d34e90c7 48-64
+harness/cli/src/services/doctor/collector/backup.ts
+  s_ed609d39de2442::t_7b0256d34e90c7 1,81-82,86-87,116-140
+  s_ed609d39de2442::t_7bc8e27f5a2dac 141-142
+harness/cli/src/acts/doctor.ts
+  s_ed609d39de2442::t_6d9d35ee234f29 35,60-61
+docs/plans/082-harness-hooks/assets/tasks/phase-2/execution.log.md
+  s_ed609d39de2442::t_071b4b26511814 970-1023
+harness/cli/src/app.ts
+  s_ed609d39de2442::t_6d9d35ee234f29 64,358-359
+harness/cli/src/services/hooks/agent-matrix.ts
+  s_ed609d39de2442::t_a0b8f98f7e86ec 212-235
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f44f455a711a64aa5c616626c859e65d7480ac0a",
+  "prompts": {},
+  "sessions": {
+    "s_ed609d39de2442": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "62892a0d-07d6-4784-b490-986f797be544",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
