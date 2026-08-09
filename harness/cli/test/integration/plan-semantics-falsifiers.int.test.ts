@@ -413,7 +413,7 @@ describe('OQ-2 falsifier · #9 readPlanCheck', () => {
    */
   it('reads plan 080 own documents non-vacuously (structural invariants, fork retired)', async () => {
     const subject = await loadSubject();
-    const planPath = join(REPO_ROOT, 'docs/plans/080-dd-consume-upgrade/plan.dd.json');
+    const planPath = join(REPO_ROOT, 'docs/plans/archive/080-dd-consume-upgrade/plan.dd.json');
     const deps = realDeps();
     const options = { repoRoot: REPO_ROOT, complete: true, depth: 3 };
 
