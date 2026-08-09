@@ -664,7 +664,12 @@ none of them are mine — checked, not assumed: `arch-check`'s 2 warnings are bo
 > **untracked** markdown — files the other three never received, because their file list
 > comes from `git ls-files`. **The total above will not reproduce after a rebase onto main,
 > and that delta is not a regression**: it is the new check counting documents nobody had
-> linted. The claim this figure supports — that none of the findings are phase-2's — is
+> linted. *Precisely which number moves:* `211` is the **aggregate** (`totals.findings`),
+> and `6a43fd4d` changed only the new check and that aggregate — the **per-check** figures
+> are byte-for-byte unaffected. A reviewer re-running this will still see `markdownlint 195`,
+> `links 15`, `mermaid 1`; only their sum grows, by a fourth row. So the aggregate is the
+> one figure here that needs this note, and the per-check figures quoted elsewhere in these
+> logs need none. The claim this figure supports — that none of the findings are phase-2's — is
 > unaffected and still holds. Recorded here so a future reviewer of this commit reads the
 > number with the gate it was taken against, rather than reconstructing it without context.
 >
