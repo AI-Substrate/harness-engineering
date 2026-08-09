@@ -58,3 +58,32 @@ which composes it — picks it up for free. Keep gates **read-only** (no `--writ
 - **Don't duplicate this into `boot`.** `boot` composes `harness checks`; the gate
   has exactly one definition here.
 - Trust the **envelope + exit code**, never scraped prose.
+
+## `--ref <ref>` — gate another commit without touching your tree
+
+`harness checks --ref <ref> [--keep]` runs the whole gate against any ref inside a
+throwaway `git worktree` that installs its own dependencies, and returns the same
+envelope with `ref`, the resolved `sha`, `scope` and `isolated: true` attached, so
+the verdict carries its own basis. ~55s cold; `--keep` leaves the tree to inspect.
+
+It exists because measuring against another ref used to mean `git stash`, and
+**this repo's stash stack is shared across every worktree** — a `pop` can silently
+pull another seat's uncommitted work into the tree you are about to commit from.
+Three seats reached for it in one day, all while *measuring*. See #145.
+
+Two invariants, both load-bearing:
+
+- **No gate runs in the caller's tree.** The `--ref` branch returns before any
+  gate executes, because the gates WRITE tracked files (`gen:docs` and friends
+  regenerate) — a `--ref` that changed what was measured while still running in
+  your tree would remove the stash and keep the mutation.
+- **The isolated tree installs its own deps.** Measured: vitest writes
+  `node_modules/.vite/vitest/<hash>/results.json`, so a shared or symlinked
+  `node_modules` leaks writes back into the caller's checkout — untracked, and
+  invisible to `git status`. No dependency-sharing scheme, however clever.
+
+Test scope defaults to `all` here (a ref verdict should mean the whole gate),
+overridden by `HARNESS_TEST_SCOPE`. Cleanup is unconditional: the failure mode is
+a *stale worktree*, which `git worktree list` shows and `git worktree prune`
+clears — visible, unlike the one it replaces. `.harness/extensions/checks/ref-isolation.test.ts`
+asserts the negative (nothing gate-like runs in the caller's cwd).

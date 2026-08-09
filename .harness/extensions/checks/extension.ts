@@ -106,6 +106,148 @@ async function runVerbGate(
   }
 }
 
+/**
+ * Run the gate against a REF, in a throwaway worktree that owns everything it
+ * touches (#145).
+ *
+ * WHY THIS EXISTS. Measuring a gate against another ref used to mean making the
+ * working tree look like that ref — and the cheapest way to do that is
+ * `git stash`. In this repo the stash stack is SHARED across every worktree, so
+ * a stash/pop pair races every other seat, and the loser silently inherits
+ * someone else's uncommitted work into a tree they are about to commit from.
+ * Three seats reached for it in one day, each while MEASURING rather than
+ * delivering. The missing thing was never the warning; it was this verb.
+ *
+ * WHAT IT GUARANTEES, and how. The isolation is STRUCTURAL, not instructed:
+ * nothing here runs in the caller's tree, so there is no advice to follow and no
+ * care to take.
+ *
+ *  - The tree is a fresh `git worktree --detach` at the resolved sha.
+ *  - It installs its OWN dependencies. This is not caution, it is a measured
+ *    requirement: vitest writes `node_modules/.vite/vitest/<hash>/results.json`
+ *    on an ordinary run, so a shared or symlinked `node_modules` would leak
+ *    writes back into the caller's checkout — an UNTRACKED write, into a
+ *    gitignored dir, invisible to `git status`. No dependency-sharing scheme is
+ *    used, however clever: every one either shares a writable path or requires
+ *    proving a negative about what the toolchain writes, and one unpredicted
+ *    write has already been found.
+ *  - Cleanup is unconditional (`finally`). The failure mode this verb REPLACES
+ *    fails by silent acquisition; this one fails by leaving a stale worktree,
+ *    which is listable and prunable. Trading an invisible failure for a visible
+ *    one is most of the point — so the visible one must not be swallowed.
+ *
+ * There is deliberately NO platform-divergent fast path (e.g. an APFS
+ * copy-on-write clone of `node_modules`). It would mean the isolated tree is
+ * built differently on each platform — two implementations of this function's
+ * central guarantee, with the constantly-exercised one on the platform where
+ * nothing goes wrong. Least-tested exactly where it is least-correct.
+ */
+async function runAgainstRef(
+  ctx: Parameters<HarnessVerb['run']>[0],
+  ref: string,
+  keep: boolean,
+): Promise<ReturnType<HarnessVerb['run']>> {
+  if (!ctx.fsWrite) {
+    return ctx.unconfigured(
+      'checks --ref needs the fs-write port to create a temp worktree, and it is not available here.',
+    );
+  }
+
+  // Resolve BEFORE building anything: a bad ref should cost nothing, and the
+  // answer must be pinned to a sha rather than a moving name — a result
+  // attributed to `main` is not reproducible once main moves.
+  const rev = await ctx.exec('git', ['rev-parse', '--verify', `${ref}^{commit}`], { cwd: ctx.cwd });
+  if (!rev.ok) {
+    return ctx.error('E_CHECKS_BAD_REF', `Not a commit: ${ref}`, {
+      details: rev.stderr.trim(),
+      next_action: `Check the ref exists (\`git rev-parse ${ref}\`), then re-run \`harness checks --ref ${ref}\`.`,
+    });
+  }
+  const sha = rev.stdout.trim();
+
+  const dir = ctx.fsWrite.mkdtemp('harness-checks-ref-');
+  let added = false;
+  try {
+    const add = await ctx.exec('git', ['worktree', 'add', '--detach', dir, sha], { cwd: ctx.cwd });
+    if (!add.ok) {
+      return ctx.error('E_CHECKS_WORKTREE', `Could not create an isolated worktree for ${ref}.`, {
+        details: add.stderr.trim(),
+        next_action: 'Run `git worktree prune` (a previous run may have left a stale entry), then retry.',
+      });
+    }
+    added = true;
+
+    // The isolated tree installs and builds for itself — see the note above on
+    // why nothing is shared. `npm ci` is the honest price of the guarantee.
+    for (const [label, cmd, args] of [
+      ['install', 'npm', ['ci']],
+      ['build', 'npm', ['run', 'build']],
+    ] as const) {
+      const r = await ctx.exec(cmd, [...args], { cwd: dir, timeoutMs: 15 * 60_000 });
+      if (!r.ok) {
+        return ctx.error('E_CHECKS_REF_PREPARE', `Could not ${label} ${ref} in isolation.`, {
+          details: (r.stderr || r.stdout).trimEnd().split('\n').slice(-5).join('\n'),
+          next_action: `The ref itself may not build. Reproduce with: git worktree add --detach /tmp/x ${sha} && cd /tmp/x && npm ci && npm run build`,
+        });
+      }
+    }
+
+    // The inner call carries NO `--ref`, which is what terminates the recursion.
+    // Scope defaults to `all` here even though the inner default is `fast`: a
+    // ref-scoped run is a deliberate verdict about a commit, not an inner-loop
+    // iteration, so it should mean the whole gate unless the caller has said
+    // otherwise. Telemetry is off — a measurement should not emit events.
+    const scope = ctx.env.get('HARNESS_TEST_SCOPE') ?? 'all';
+    const run = await ctx.exec('node', [`${CLI_DIR}/bin/harness.js`, 'checks', '--json'], {
+      cwd: dir,
+      timeoutMs: 60 * 60_000,
+      env: { HARNESS_TEST_SCOPE: scope, HARNESS_NO_TELEMETRY: '1' },
+    });
+
+    let inner: { status?: GateStatus; data?: { durationMs?: number; summary?: string; gates?: GateResult[] } };
+    try {
+      inner = JSON.parse(run.stdout);
+    } catch {
+      return ctx.error('E_CHECKS_REF_UNREADABLE', `The isolated gate for ${ref} produced no readable envelope.`, {
+        details: (run.stderr || run.stdout).trimEnd().split('\n').slice(-10).join('\n'),
+        next_action: `Re-run with --keep to inspect the isolated tree, then run \`harness checks\` inside it by hand.`,
+      });
+    }
+
+    // Provenance travels WITH the verdict: a number that cannot name its basis
+    // is the stale-number problem this verb also exists to close.
+    const data = {
+      ref,
+      sha,
+      scope,
+      isolated: true,
+      durationMs: inner.data?.durationMs,
+      summary: inner.data?.summary ?? '',
+      gates: inner.data?.gates ?? [],
+    };
+    const status = inner.status ?? (run.ok ? 'ok' : 'error');
+    const basis = `Gate run against ${ref} (${sha.slice(0, 12)}), test scope "${scope}", in an isolated worktree — your tree was not touched.`;
+
+    if (status === 'error') {
+      return ctx.error('E_CHECKS_FAILED', `Quality gate failed at ${ref} (${sha.slice(0, 12)}).`, {
+        details: data,
+        next_action: `${basis} Fix at that ref, or re-run \`harness checks\` in your own tree to compare.`,
+      });
+    }
+    if (status === 'degraded' || status === 'unconfigured') {
+      return ctx.degraded(data, `${basis} ${inner.data?.summary ?? ''}`);
+    }
+    return ctx.ok(data, { next_action: `${basis} All gates green at that ref.` });
+  } finally {
+    // Unconditional: a stale worktree is the failure mode this design ACCEPTS in
+    // exchange for killing the silent one, and it only stays benign if it is
+    // actually cleaned up. `--keep` is the one exception and it is explicit.
+    if (added && !keep) {
+      await ctx.exec('git', ['worktree', 'remove', '--force', dir], { cwd: ctx.cwd });
+    }
+  }
+}
+
 const checks: HarnessVerb = {
   name: 'checks',
   summary:
@@ -118,12 +260,30 @@ const checks: HarnessVerb = {
     'checks error/exit 1; otherwise any degraded/unconfigured gate => checks degraded/exit 0; all clean => ok/exit 0. ' +
     'PREREQUISITE: `npm run build` first (the bin + drift guards need `dist/`). `harness boot` composes this; CI ' +
     'calls it. Extend the gate by adding a line here as the team grows. See `harness instructions checks`.',
+  options: [
+    {
+      flags: '--ref <ref>',
+      description:
+        'run the gate against REF in a throwaway worktree that installs its own deps — your working tree is never touched (use instead of stashing to measure)',
+    },
+    { flags: '--keep', description: 'keep the isolated worktree for inspection (implies --ref)' },
+  ],
   async run(ctx) {
     try {
       if (!ctx.fs.exists(`${ctx.cwd}/${CLI_DIR}/vitest.config.ts`)) {
         return ctx.unconfigured(
           `No ${CLI_DIR}/vitest.config.ts at ${ctx.cwd} \u2014 run \`harness checks\` from the repo root.`,
         );
+      }
+
+      // FIRST, before any gate can touch this tree: a `--ref` run must not
+      // execute a single check here. The gates write tracked files (`gen:docs`
+      // and friends regenerate artifacts), so a `--ref` that merely changed what
+      // was MEASURED while still running HERE would remove the stash and keep
+      // the mutation — the same hazard wearing a safer name.
+      const refOpt = ctx.options.ref;
+      if (typeof refOpt === 'string' && refOpt !== '') {
+        return await runAgainstRef(ctx, refOpt, ctx.options.keep === true);
       }
 
       const gates: GateResult[] = [];

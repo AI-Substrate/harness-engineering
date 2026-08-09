@@ -43,6 +43,16 @@ This repo HAS its own governance doc at `.harness/engineering-harness.md` (hand-
 
 - Run the composite gate **`harness checks`** yourself before declaring work done — tests+coverage, biome, typecheck, the docs/flows/telemetry drift guards, and arch/skills/markdown/windows-check, in one envelope. (`just checks` builds first, then runs it.) **CI + branch protection are the authoritative gate.**
 
+### Never `git stash` in this repo — measure against a ref instead
+
+**The stash stack is SHARED across every worktree** (34 of them, 13 concurrent seats, one `refs/stash`). A `stash`/`pop` pair races every other seat, and the loser silently inherits someone else's uncommitted work into a tree they are about to commit from. **A bad pop is indistinguishable from legitimate work in progress** — no error, no marker, just modified tracked files beside your own edits.
+
+- **Do not** `git stash`, `stash pop` or `stash apply`, **for any reason — including "just to measure."** Three seats reached for it in one day, every one of them while *measuring* rather than delivering.
+- Checking `git stash list` first is **not** a control. It answers *whose is this?* when the question is *what will `pop` restore into my tree?* — and one seat read a foreign stash, correctly noted it wasn't theirs, and filed that as reassurance.
+- To compare against another ref: **`harness checks --ref <ref>`** (below), or `git show <ref>:<path>` / `git grep <pat> <ref> -- <path>` for a single file, or a throwaway `git worktree add`.
+
+**`harness checks --ref <ref> [--keep]`** runs the whole gate against any ref in a throwaway worktree that installs its own dependencies, and returns a verdict pinned to the resolved sha. Your tree is never touched — the isolation is structural, so there is nothing to be careful about. ~55s cold. The isolated tree **must** own its `node_modules`: vitest writes `node_modules/.vite/vitest/<hash>/results.json` on an ordinary run, so sharing or symlinking deps would leak writes back into your checkout — an untracked write, invisible to `git status`.
+
 ### Test scope: the suite runs FAST by default, and says so
 
 The test suite defaults to a **fast scope** that skips the 12 slowest files — **5% of the tests, ~81% of the runtime, 1,363 of 1,617 process spawns** (measured: `just test` 22.5s → 8.9s; `harness checks` 31.5s → 19.6s). The list is `SLOW_TESTS` in `harness/cli/vitest.config.ts`, each entry carrying its measured median.
