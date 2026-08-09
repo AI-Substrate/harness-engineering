@@ -73,18 +73,24 @@ than pretend otherwise.
 
 ## Where you must run it from
 
-**Run it from the root of a repo that has `.harness/extensions/`, and point `--repo` at the
-repository under test.** Extensions are discovered only in `<cwd>/.harness/extensions/`, and that
-directory is **not searched upward**. Running from anywhere else gives you:
+**You run this verb FROM the harness tree and point it AT the repo under test.**
+
+That is the opposite of what most people expect, and the expectation is reasonable: you are
+validating a repository, so you assume you stand *in* it. You do not. Extensions are discovered only
+in `<cwd>/.harness/extensions/`, and that directory is **not searched upward** — so standing in the
+repo under test means standing somewhere with no extensions, and you get:
 
 ```text
 E149  No extensions are loadable from /private/tmp/whatever …
 ```
 
-So this, not the other way round:
-
 ```bash
-cd /path/to/harness-engineering            # a repo whose .harness/extensions/ has this verb
+# WRONG — the natural reading, and it fails with E149
+cd ~/temp/my-probe-repo
+harness validate-attribution --begin
+
+# RIGHT — stand in the harness tree, point at the repo under test
+cd /path/to/harness-engineering
 harness validate-attribution --begin --repo ~/temp/my-probe-repo
 ```
 
