@@ -242,6 +242,14 @@ export function nextActionFor(issues: readonly DdReportedIssue[], address: strin
  * silently suppressing the untracked-target WARN. A non-repo (or a failing git)
  * yields null, meaning "this host has no tracking concept", not "everything
  * happens to be tracked".
+ *
+ * That distinction is carried in the RESULT as well as the input (dd's A-2, drained
+ * into this fork by plan 080 phase 1). Until then the paragraph above described an
+ * intent the code did not keep: a null snapshot produced `tracked: true`, so a
+ * consumer on a non-repo host was handed a confident wrong answer instead of an
+ * absence — one boolean carrying both "tracked" and "unknowable". The walk reads
+ * the difference with `=== false`, never `!tracked`, because "unknowable" is not
+ * an untracked target and must not raise the WARN.
  */
 export class FsDocLoader implements DocLoader {
   constructor(
@@ -269,7 +277,7 @@ export class FsDocLoader implements DocLoader {
       path,
       doc,
       sha: this.hash.sha256Hex(text),
-      tracked: this.tracked === null ? true : this.tracked.has(path),
+      tracked: this.tracked === null ? null : this.tracked.has(path),
     };
   }
 }

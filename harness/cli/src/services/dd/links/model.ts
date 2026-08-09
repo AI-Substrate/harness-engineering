@@ -69,7 +69,12 @@ export interface DdLinkTarget {
   value: unknown;
   /** Content digest of the target document, as the basis ledger records it. */
   sha: string;
-  tracked: boolean;
+  /**
+   * Whether the target is tracked by the host's VCS — `null` when the host has no
+   * tracking concept at all (a non-repo, or a failing git). Read it with `=== false`;
+   * `!tracked` collapses "unknowable" into "untracked" (dd's A-2).
+   */
+  tracked: boolean | null;
 }
 
 export type DdLinkResolution =
@@ -103,7 +108,8 @@ export interface DdGraphNode {
   path: string;
   schema: string;
   sha: string;
-  tracked: boolean;
+  /** As {@link DdLinkTarget.tracked} — `null` means the host has no tracking concept. */
+  tracked: boolean | null;
   /** True when this document was reached by a link but is not itself a scan seed. */
   external: boolean;
 }

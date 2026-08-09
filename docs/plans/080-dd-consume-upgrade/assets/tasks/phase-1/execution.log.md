@@ -235,3 +235,134 @@ Lines        : 92.22% ( 16608/18008 )
 
 (The "423-test flow/plan suite" bar in the brief names the dd/flow/plan slice; the whole
 repo suite is 5148 and it is green in full.)
+
+---
+
+## tk-0003 — Rewire acts/flow.ts and acts/plan/fence.ts
+
+### The rewire
+
+`acts/flow.ts` — three fork imports collapse into one package import:
+
+```diff
+-import { MemoizingDocLoader } from '../services/dd/links/index.js';
+-import { ConventionSchemaResolver } from '../services/dd/schema/index.js';
+-import { FsDocLoader } from './dd/shared.js';        // line 80, the relative one
++import { ConventionSchemaResolver, FsDocLoader, MemoizingDocLoader } from '@ai-substrate/dd';
+```
+
+All three come from the BARREL (round-2 pattern), not a subpath. `ddGateDeps()` is
+otherwise untouched — same composition, same injected `FsPort`, same deliberate
+`null` tracking argument.
+
+`acts/plan/fence.ts` — one type import:
+
+```diff
+-import type { DdDoc } from '../../services/dd/core/model.js';
++import type { DdDoc } from '@ai-substrate/dd';
+```
+
+### THE FINDING — the fork never received dd's A-2 `tracked` fix
+
+The rewire did not compile. Verbatim:
+
+```
+harness/cli/src/acts/flow.ts:124:5 - error TS2322: Type 'MemoizingDocLoader' is not assignable to type 'DocLoader'.
+  The types returned by 'load(...)' are incompatible between these types.
+    Type 'import(".../node_modules/@ai-substrate/dd/dist/core/walk").DocLoadResult' is not assignable to type 'import(".../harness/cli/src/services/dd/core/walk").DocLoadResult'.
+      Type '{ ok: true; path: string; doc: DdDoc; sha: string; tracked: boolean | null; }' is not assignable to type '{ ok: true; path: string; doc: DdDoc; sha: string; tracked: boolean; }'.
+          Types of property 'tracked' are incompatible.
+            Type 'boolean | null' is not assignable to type 'boolean'.
+
+Found 1 error in harness/cli/src/acts/flow.ts:124
+```
+
+This is the plan's thesis arriving as a compiler error: **the two implementations
+disagree about what `tracked` means.** Measured on both sides rather than inferred —
+
+| | fork @ `5b32d451` | package @ `a37a20ec` |
+|---|---|---|
+| `FsDocLoader` null snapshot | `tracked: … ? true : …` (`acts/dd/shared.ts:272`) | `tracked: … ? null : …` (`dist/links/loader.js:82`) |
+| `DocLoadResult.tracked` | `boolean` (`core/walk.ts:13`) | `boolean \| null` (`dist/core/walk.d.ts`) |
+| walk's WARN branch | `if (!loaded.tracked)` (`core/walk.ts:108`) | `if (loaded.tracked === false)` (`dist/core/walk.js:69`) |
+| `DdLinkTarget` / `DdGraphNode` | `tracked: boolean` (`links/model.ts:72,106`) | `boolean \| null` (`dist/links/model.d.ts:60,97`) |
+
+The fork's own `FsDocLoader` docstring already promised the fixed behaviour —
+"A non-repo (or a failing git) yields null, meaning 'this host has no tracking
+concept', not 'everything happens to be tracked'" — while the code three lines below
+returned `true`. **The doc was right and the code was wrong**, and nothing caught it.
+
+**Options considered, and why the others are wrong:**
+
+1. Map `null`→`true` (or `?? true`) at the composition root — this is the A-2 lie
+   reintroduced, and phase-1 hard rule 6 forbids it in as many words (`tracked`
+   branches on `=== false`, never `!tracked`; `null` flows through `acts/flow.ts`
+   *deliberately*). A shim, refused.
+2. Rewire `services/flow/flow-dd-gate.ts` fully onto the package — does not resolve
+   it. The gate calls the fork's `readPlanCheck`, whose `PlanCheckDeps.docLoader`
+   is fork-typed (`services/dd/plan/check.ts:232-237`), and plan semantics stay on
+   the fork this phase by ratified decision. The mismatch would just move.
+3. **Drain dd's A-2 fix into the fork** — taken. It is the direction phase 3 goes
+   anyway, it makes the fork agree with its own docstring, and it is what hard
+   rule 6 describes.
+
+**Materiality (ledger threshold, checked against all four triggers):** inside the
+declared touch set — it names "the two dd trees" explicitly; 5 changed lines, no new
+public surface; first harness-side remediation this phase; needs no dd-side
+ratification because dd already ratified AND shipped it. Below all four → fix,
+ledger, cite here. Ledger entry **#3, CLOSED**.
+
+The fix, 5 lines:
+
+```
+services/dd/core/walk.ts:13    tracked: boolean  ->  boolean | null
+services/dd/core/walk.ts:108   if (!loaded.tracked)  ->  if (loaded.tracked === false)
+services/dd/links/model.ts:72  DdLinkTarget.tracked  ->  boolean | null
+services/dd/links/model.ts:106 DdGraphNode.tracked   ->  boolean | null
+acts/dd/shared.ts:272          ? true  ->  ? null
+```
+
+plus why-comments at each site so the next reader does not "simplify" the `=== false`
+back into a negation.
+
+**Coverage discovery, and it is the uncomfortable kind:** the suite passed 5148/5148
+BOTH before and after the behaviour changed. Nothing anywhere pinned `tracked` on a
+null snapshot, so a consumer on a non-repo host had been handed a confident wrong
+answer with the whole test estate green over it. The package's behaviour is now
+pinned by `dd-package-boundary.int.test.ts` (A-2 assertion + positive control); the
+fork's is deliberately left unpinned because phase 3 deletes it.
+
+### dw-0005 — zero fork imports in the two rewired files
+
+```
+$ git grep -nE "services/dd|acts/dd|\./dd/" -- harness/cli/src/acts/flow.ts harness/cli/src/acts/plan/fence.ts
+$ echo $?
+1
+```
+
+No output, exit 1 — zero matches, including the relative `./dd/shared.js` import that
+used to sit at `flow.ts:80`.
+
+### dw-0006 — just build && just test green after the rewire
+
+```
+$ just build
+> tsc -p harness/cli/tsconfig.json          # exit 0
+
+$ just test
+ Test Files  348 passed (348)
+      Tests  5148 passed (5148)
+
+Statements   : 89.85% ( 18677/20785 )
+Branches     : 81.16% ( 14138/17418 )
+Functions    : 92.14% ( 3145/3413 )
+Lines        : 92.22% ( 16608/18008 )
+```
+
+Live smoke on the rewired act (the gate composes the package's loader for real):
+
+```
+$ node harness/cli/bin/harness.js flow orient --path docs/plans/080-dd-consume-upgrade/the-flow.json
+[pij-related-koala] ◆─◆─[ ◐─◇─◇ ]─◇  ◆ Research · ◆ Plan · [ ◐ P1: Implementation · ◇ Review: P1 · ◇ Ship ] · ◇ Post-flight
+  ⚑ gate: P1: Implementation ⛨ 2/5
+```

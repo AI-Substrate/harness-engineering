@@ -10,7 +10,7 @@ import {
 } from './validate.js';
 
 export type DocLoadResult =
-  | { ok: true; path: string; doc: DdDoc; sha: string; tracked: boolean }
+  | { ok: true; path: string; doc: DdDoc; sha: string; tracked: boolean | null }
   | { ok: false; path: string; reason: 'missing'; message: string };
 
 /** P4 and doctor implement this over their filesystem/repository ports. */
@@ -105,7 +105,11 @@ export function validateWalk(
         );
         continue;
       }
-      if (!loaded.tracked) {
+      // `=== false`, never `!loaded.tracked`: `null` means the host has no
+      // tracking concept, so there is no such thing as an untracked target to
+      // warn about (dd's A-2, drained into this fork by plan 080 phase 1). The
+      // negation would have turned "unknowable" into a confident WARN.
+      if (loaded.tracked === false) {
         issues.push(
           finding(
             {

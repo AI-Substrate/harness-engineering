@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { ConventionSchemaResolver, FsDocLoader, MemoizingDocLoader } from '@ai-substrate/dd';
 import type { Command } from 'commander';
 import type { Clock } from '../adapters/clock/clock-port.js';
 import type { EnvPort } from '../adapters/env/env-port.js';
@@ -10,8 +11,6 @@ import { type Envelope, formatDegraded, formatError, formatOk } from '../output/
 import { ErrorCodes } from '../output/error-codes.js';
 import { emitRawAndExit, exitWithEnvelope } from '../output/exit.js';
 import { type CliIo, createOutputPort, type OutputPort } from '../output/output-port.js';
-import { MemoizingDocLoader } from '../services/dd/links/index.js';
-import { ConventionSchemaResolver } from '../services/dd/schema/index.js';
 import {
   type DdGateDeps,
   type DdGateDrift,
@@ -77,7 +76,6 @@ import {
   resolveInRepo,
   toPosix,
 } from '../services/shared/posix-path.js';
-import { FsDocLoader } from './dd/shared.js';
 
 /** The ports the `flow` act injects into the flow service (a subset of VerbActDeps). */
 export interface FlowActDeps {
