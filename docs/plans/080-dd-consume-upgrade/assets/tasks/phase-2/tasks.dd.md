@@ -33,10 +33,56 @@ _Empty._
 
 ## Tasks
 
-_No entries._
+| id | title | domain | phase | state | note | receipt | done | success | notes | satisfies | satisfies_toward |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| tk-0006 | Dated prediction committed BEFORE any trial work (koala's, not the coder's): assets/tasks/phase-2/prediction.md at 51558dbc - per-primitive calls over the 9 plan-semantics symbols, each with its falsifier, scoring rules (vocabulary-vs-algorithm line) pre-committed | — | ph-1633 | [x] checked | — | — | — | — | — | — | [ac-0004](../../../plan.dd.md#acceptance-criteria) |
+| tk-0007 | Falsifier tests FIRST (TDD, ratified): author the prediction's per-primitive falsifier cases as tests against the INSTALLED package before any re-implementation - itemKey grammar agreement with public indexDocument/addressableAt, rollup state derivation, non-builtin-rel effective behaviour (live case: satisfies-toward), readiness verdict fixtures (ready/not-ready/cant-tell), findings-set equality driving plan 080's own documents | — | ph-1633 | [ ] unchecked | — | — | — | — | — | — | [ac-0003](../../../plan.dd.md#acceptance-criteria), [ac-0004](../../../plan.dd.md#acceptance-criteria) |
+| tk-0008 | Re-implement plan semantics package-side in a NEW harness module using ONLY @ai-substrate/dd public subpaths at the pin - never edit fork services/dd/plan/semantics.ts (FROZEN_DIGEST byte-pin); any missing public surface or dd-owned vocabulary (BUILTIN_RELS/CLAIMING_RELS/terminal-state sets) = STOP and route a D-3 packet through koala to crab, never a shim, never a re-declared vocabulary | — | ph-1633 | [ ] unchecked | — | — | — | — | — | — | [ac-0002](../../../plan.dd.md#acceptance-criteria), [ac-0003](../../../plan.dd.md#acceptance-criteria) |
+| tk-0009 | Rewire acts/plan/index.ts and acts/plan/pr-body.ts off services/dd/plan onto the new package-side implementation - completes the full-zero import proof for all four survivors (ac-0002) | — | ph-1633 | [ ] unchecked | — | — | — | — | — | [ac-0002](../../../plan.dd.md#acceptance-criteria) | [ac-0003](../../../plan.dd.md#acceptance-criteria) |
+| tk-000a | OQ-2 verdict packet: trial report with every primitive carrying sufficient + named falsifier + RAN, or insufficient + exact gap, or UNPROVEN; contradictions with the dated prediction stated loudly, never reworded; delivered to dd on the crab channel; on insufficiency the dependent tasks BLOCK per ratified D-3 (dd exports, we re-pin) | — | ph-1633 | [ ] unchecked | — | — | — | — | — | [ac-0004](../../../plan.dd.md#acceptance-criteria), [ac-0005](../../../plan.dd.md#acceptance-criteria) | — |
+| tk-000b | Dogfood proof at the phase boundary: flow orient/rail and plan validate green against plan 080's own documents on the rewired build; any new dd-implementation or builder-flow defect gets a dogfood-ledger row, zero silent workarounds | — | ph-1633 | [ ] unchecked | — | — | — | — | — | — | [ac-000b](../../../plan.dd.md#acceptance-criteria), [ac-000c](../../../plan.dd.md#acceptance-criteria) |
 
 <a id="done-when"></a>
 
 ## Done when
 
-_No fields._
+### tk-0006
+
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-000b | prediction.md is in-tree at a commit (51558dbc) that predates every other phase-2 commit in git log order, is dated, and carries per-primitive falsifiers plus the pre-committed scoring rules | [x] checked | [bp-0004](../../backpressure.dd.md#rows) |
+
+### tk-0007
+
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-000c | every SUFFICIENT-predicted primitive has a runnable falsifier test, and the execution log evidences each ran RED (against a deliberately-broken control or the absent surface) BEFORE the implementation commit that turns it green - commit order is the proof | [ ] unchecked | [bp-000d](../../backpressure.dd.md#rows) |
+| dw-000d | just build && just test green with the falsifier suite in the tree | [ ] unchecked | [bp-0003](../../backpressure.dd.md#rows) |
+
+### tk-0008
+
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-000e | the new module imports ONLY @ai-substrate/dd public subpaths (git grep proves zero services/dd, acts/dd, or node_modules deep-dist imports in it) AND the fork's semantics.ts byte-pin (dd-plan-semantics-frozen.test.ts) stays green | [ ] unchecked | [bp-000d](../../backpressure.dd.md#rows) |
+| dw-000f | git grep for re-declared dd vocabulary (BUILTIN_RELS, CLAIMING_RELS, DEFAULT_GATE_TERMINAL_STATES, COMPLETION_STATES value lists) in the new module returns zero - any vocabulary need is evidenced in the execution log as a dd export + re-pin, or the task is BLOCKED per D-3 | [ ] unchecked | [bp-000d](../../backpressure.dd.md#rows) |
+
+### tk-0009
+
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-0010 | git grep -nE "services/dd\|acts/dd\|\./dd/" across acts/flow.ts, acts/plan/fence.ts, acts/plan/index.ts, acts/plan/pr-body.ts returns ZERO matches - the full-zero proof, superseding phase-1's bounded bp-000f | [ ] unchecked | [bp-0002](../../backpressure.dd.md#rows) |
+| dw-0011 | just build && just test green after the rewire | [ ] unchecked | [bp-0003](../../backpressure.dd.md#rows) |
+
+### tk-000a
+
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-0012 | the trial report exists beside the prediction, every one of the 9 primitives carries exactly one of {sufficient + named falsifier + RAN, insufficient + exact missing surface, UNPROVEN}, and any contradiction with prediction.md is stated in its own words | [ ] unchecked | [bp-0004](../../backpressure.dd.md#rows) |
+| dw-0013 | verdict delivered to pij-certain-crab with a send receipt; if any primitive is insufficient, the blocked tasks are marked and NO shim or local fork exists in the tree | [ ] unchecked | [bp-0005](../../backpressure.dd.md#rows) |
+
+### tk-000b
+
+| id | assertion | state | pressure | note |
+| --- | --- | --- | --- | --- |
+| dw-0014 | node harness/cli/bin/harness.js flow orient + rail against the-flow.json AND plan validate against plan.dd.json all return ok on the rewired build | [ ] unchecked | [bp-000b](../../backpressure.dd.md#rows) | — |
+| dw-0015 | any dd-implementation defect surfaced during this phase has a dogfood-ledger row (grep the ledger; zero silent workarounds) | [ ] unchecked | not-applicable | human review of assets/dogfood-ledger.md - the ledger judgement row bp-000c is deliberately human-tier |
