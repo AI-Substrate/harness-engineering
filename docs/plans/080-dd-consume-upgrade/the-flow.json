@@ -811,6 +811,33 @@
         "from": "review-3",
         "to": "ship"
       }
+    },
+    {
+      "id": "UPD-025",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-09T08:51:11.787Z",
+      "details": {
+        "node": "retro-harvest",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-023",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-09T08:51:12.144Z",
+      "details": {
+        "node": "retro-harvest",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
     }
   ],
   "nodes": [
@@ -1082,7 +1109,7 @@
       "id": "retro-harvest",
       "type": "harness-retro",
       "label": "Retro: post-flight (harvest)",
-      "status": "known",
+      "status": "done",
       "branch_of": "post-flight",
       "next": [
         "post-flight"
@@ -1096,7 +1123,17 @@
         "Post-flight seam: the terminal long-horizon harvest — fold this flight's learnings into durable memory at the pre-ship close-out, BEFORE the plan folder archives (so it runs even on work that never ships).",
         "Run /eng-harness-flow --hook post-flight --json — a REAL invocation; narrate its envelope verbatim.",
         "On done, receipt first, status second: harness flow comment --path <flow-path> --node retro-harvest --kind validation --source agent --text \"verdict:<…> time:<…>\" (router missing / envelope noop/UNAVAILABLE → text \"decision:unavailable reason:<…> time:<…>\" — a completed attempt, not a skip) THEN harness flow status --path <flow-path> --node retro-harvest --to done. Mandatory unless the human declines — a decline is: harness flow comment --path <flow-path> --node retro-harvest --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node retro-harvest --to skipped."
-      ]
+      ],
+      "comments": [
+        {
+          "at": "2026-08-09T08:51:11.787Z",
+          "text": "decision:done reason:harvest-ran time:2026-08-09T08:52Z - /eng-harness-flow --hook post-flight ran; harness retro insights --plan 080-dd-consume-upgrade = 3 records / 16 entries / 8 open / 6 suggested / 2 encoded / 0 stale; top cluster difficulty/harness-itself n=4 proof_gap=true. 3 post-drain captures drained to .harness/records/retro/2026-08-09/004-080-post-flight.md; buffer cleared. Highest-leverage improvement named and OFFERED (not assumed): every gate reports its EXAMINED denominator - six same-day instances tabulated in the record; markdown-lint's shipped unexamined check is the exemplar",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "modified_at": "2026-08-09T08:51:12.144Z",
+      "ran_at": "2026-08-09T08:51:12.144Z"
     },
     {
       "id": "workshop-001",
