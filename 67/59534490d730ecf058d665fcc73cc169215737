@@ -1,0 +1,41 @@
+harness/cli/src/adapters/git/exec-remote-telemetry-git.ts
+  s_4a535ecc2bd8e1::t_e43b88341e18de 97-122,140-143
+  s_4a535ecc2bd8e1::t_27c2fd2f8b7a8a 154
+  s_4a535ecc2bd8e1::t_89d059e23ea8c8 132
+harness/cli/test/adapters/git/exec-remote-telemetry-git.int.test.ts
+  s_4a535ecc2bd8e1::t_5ee91c8265bda6 18-21
+  s_4a535ecc2bd8e1::t_1ab28e122951c9 1494-1496
+harness/cli/test/adapters/git/exec-remote-telemetry-git-null-device.test.ts
+  s_4a535ecc2bd8e1::t_497501365b82dc 78
+  s_4a535ecc2bd8e1::t_03298d43d40e73 1-77,79-116
+harness/cli/test/services/flow/archive-move.test.ts
+  s_4a535ecc2bd8e1::t_def42a4fc66994 65-69
+harness/cli/test/adapters/git/exec-git-write.int.test.ts
+  s_4a535ecc2bd8e1::t_68a2bad29924ac 165-170,172
+docs/plans/077-windows-suite-portability/assets/CODER-BRIEF-round4-nulldevice.md
+  s_a6b77772852964::t_fa95857838201f 1-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "6759534490d730ecf058d665fcc73cc169215737",
+  "prompts": {},
+  "sessions": {
+    "s_4a535ecc2bd8e1": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "83b07111-2f0f-4341-9d2b-05b2a8d5deff",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_a6b77772852964": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "c800c9ff-86e7-4a5f-bdc3-f63517243af6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
