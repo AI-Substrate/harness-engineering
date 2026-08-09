@@ -1,0 +1,33 @@
+.harness/extensions/markdown-lint/extension.test.ts
+  s_19a84a88383f5b::t_6856ae70c34946 140
+  s_19a84a88383f5b::t_e04603da63af8e 141-143
+  s_19a84a88383f5b::t_e5ba4b0599977e 144-146,153,155-159
+.harness/extensions/markdown-lint/lib/untracked.ts
+  s_19a84a88383f5b::t_c6e9860bbc0c31 79-81
+  s_19a84a88383f5b::t_f618225c81ce54 75
+  s_421ed3db0f41a5::t_595199ccf8f1cb 76-78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ccee659867a085b6de5a28193f08441d75147825",
+  "prompts": {},
+  "sessions": {
+    "s_19a84a88383f5b": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "e9a11817-53a3-42b6-a41f-25dcffefd677",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_421ed3db0f41a5": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "8af3eb43-5dda-47e8-9e43-c7398f16c595",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
