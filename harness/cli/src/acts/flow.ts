@@ -232,11 +232,13 @@ function restoreFlowSource(fs: FsPort, path: string, previous: string | null): b
  * hides the failure in a warning line nobody greps for.
  *
  * So the sibling is not optional decoration; it is half of the write. If the render
- * throws, or the `.md` cannot be written, the source is put back the way it was
- * (deleted, if the operation created it) and the operation REFUSES — the same
- * either-both-or-neither contract `writeDocumentWithSibling` gives dd's mutating
- * verbs, and the same phase-1 law: validate/render before write, failure = refusal
- * with the source untouched.
+ * throws, or the `.md` cannot be written, the source write is rolled back (deleted, if
+ * the operation created it) and the operation REFUSES — the same either-both-or-neither
+ * contract `writeDocumentWithSibling` gives dd's mutating verbs, and the same phase-1
+ * law: validate/render before write, failure = refusal. The rollback is attempted and
+ * VERIFIED, not guaranteed: when it fails, `refuse()` says so louder in `next_action`
+ * rather than claiming the source is clean, so E302 covers both outcomes and a caller
+ * must read `next_action`, not switch on the code alone.
  *
  * `previousSource` is the bytes at `sourcePath` BEFORE the operation wrote it, or
  * `null` when the file did not exist. It is the only thing that makes the refusal

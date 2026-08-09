@@ -15,6 +15,7 @@ import {
   type ReadyReading as ForkReadyReading,
   itemKey as forkItemKey,
   readPlanCheck as forkReadPlanCheck,
+  type readPlanReadiness as forkReadPlanReadiness,
 } from '../../src/services/dd/plan/index.js';
 import {
   checkDeps,

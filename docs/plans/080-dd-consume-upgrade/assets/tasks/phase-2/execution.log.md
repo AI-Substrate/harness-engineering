@@ -520,3 +520,109 @@ module living in `src/` and being consumed by `acts/plan/*` — both inside the 
 typechecked project. It is NOT enforced by the test file: no test in this repo is
 typechecked (`tsconfig` `include: ["src"]`; `harness checks` typechecks exactly that).
 Recorded as `harness observe` DL-003.
+
+---
+
+## Fixes round — terra REJECT on the round-3 trial (2026-08-09)
+
+Review: `assets/tasks/phase-2/reviews/review.round-3-trial.md` (0C/1H/0M/1L).
+F001 (dd-doc state) was koala's and landed at `622f0840`. Two items were mine, in one
+commit.
+
+### FT-002 / F002 (HIGH) — `forkReadPlanReadiness` used but never imported
+
+`plan-semantics-falsifiers.int.test.ts:99` declared `readPlanReadiness: typeof
+forkReadPlanReadiness` on the `Subject` interface, but no import ever bound that name.
+
+**This is DL-003 biting for real, not a typo.** The last paragraph of the section above,
+written before the review, says no test in this repo is typechecked (`tsconfig` has
+`include: ["src"]`). F002 is the first measured consequence: an undefined type-query
+identifier in a test file is invisible to every gate the repo runs. `just test` was green
+with the bug present, and stayed green after the fix — 5180/5180 both sides. **The suite
+cannot see this class of defect at all**, so "tests pass" is not evidence here and the
+fix needed a different instrument.
+
+Fix (the review's second option — a valid type import; also what biome independently
+demanded, see below):
+
+```
+  itemKey as forkItemKey,
+  readPlanCheck as forkReadPlanCheck,
++ type readPlanReadiness as forkReadPlanReadiness,
+} from '../../src/services/dd/plan/index.js';
+```
+
+`type` on the specifier is correct and deliberate: the name appears ONLY in a `typeof`
+type query, never at runtime, and TypeScript permits type-query use of a type-only
+binding. The first attempt used a plain value import; biome rejected it
+(`Checked 2 files … Found 1 warning`, pointing at the missing `type` modifier), which is
+the linter arriving at the review's own alternative. The sibling `readPlanCheck` above it
+stays a VALUE import because it is called at line 388 — the two are not interchangeable.
+
+**Proof — an ad-hoc typecheck that actually covers the file**, since `npx tsc --noEmit`
+does not (it typechecks `src` only, and returned `exit 0` with the bug present — recorded
+here precisely because the required gate is silent on the required finding):
+
+```
+$ cat > harness/cli/tsconfig.f002-probe.json <<'EOF'
+{ "extends": "./tsconfig.json",
+  "compilerOptions": { "noEmit": true, "rootDir": ".", "types": ["node"] },
+  "include": ["test/integration/plan-semantics-falsifiers.int.test.ts"] }
+EOF
+$ npx tsc -p tsconfig.f002-probe.json
+probe_exit=0
+```
+
+Green alone proves nothing — an instrument that cannot fail is not a measurement. So the
+probe was run against a NEGATIVE CONTROL: delete the one added line, re-run, and confirm
+it reproduces the reviewer's finding at the reviewer's line, verbatim:
+
+```
+$ sed -i '' '/type readPlanReadiness as forkReadPlanReadiness,/d' \
+    test/integration/plan-semantics-falsifiers.int.test.ts
+$ npx tsc -p tsconfig.f002-probe.json
+test/integration/plan-semantics-falsifiers.int.test.ts:99:29 - error TS2304: Cannot find name 'forkReadPlanReadiness'.
+
+99   readPlanReadiness: typeof forkReadPlanReadiness;
+                               ~~~~~~~~~~~~~~~~~~~~~
+```
+
+RED without the fix at 99:29, GREEN with it. That pair is the evidence; the passing suite
+is not.
+
+The probe config was NOT committed — it is a one-file instrument, and a committed
+half-measure covering one test file would read as coverage the repo does not have. The
+recipe is recorded above verbatim so it is reproducible, and the general fix (bring
+`test/**` into a typechecked project) stays where it belongs: DL-003 in the observation
+buffer for the phase-2 drain, sharpened by this incident from "a gap" to "a gap that has
+now shipped one HIGH finding".
+
+### RIDER (LOW, from prime) — `acts/flow.ts:236-241` doc comment overpromises rollback
+
+Packet: `s065-deterministic-documents/scratch/dd-080-acts-flow-236-rider.md`.
+Comment-only, applied as the exact old/new text in the packet, verified against the live
+text before replacing (the "source untouched" clause was present as quoted).
+
+The claim being corrected: `persistSibling`'s comment asserted failure leaves "the source
+untouched", which holds only on the SUCCESSFUL-rollback branch. `refuse()` verifies the
+restore and can return false; that path still emits E302 but with a `next_action` warning
+that the source may be out of step. New text says the rollback is "attempted and
+VERIFIED, not guaranteed" and tells callers to read `next_action` rather than switch on
+the code alone. No behaviour change; no doc regen (not a bundled doc — confirmed by
+`just build` leaving the tree clean apart from the two edited files).
+
+### Gates (final state, both changes in tree)
+
+```
+$ npx tsc --noEmit                    → tsc_exit=0
+$ just build                          → build_exit=0
+$ just test                           → Test Files 351 passed (351)
+                                        Tests     5180 passed (5180)
+$ npx biome check <both changed files> → Checked 2 files in 18ms. No fixes applied.
+$ git status --short                  → only the two intended files (+ untracked reviews/)
+```
+
+Test count unchanged at 5180 on both sides of the fix, as expected and as noted above:
+neither change is behavioural. `just checks` still carries the one PRE-EXISTING biome
+format error in `test/services/dd/schema/builder-rels.test.ts` (prime's `8e641add`,
+untouched by me).
