@@ -1,0 +1,30 @@
+harness/cli/src/services/doctor/collector/types.ts
+  s_6b8a25b7716dd8::t_91a6cfccaf21cf 79
+harness/cli/test/support/collector-fakes.ts
+  s_6b8a25b7716dd8::t_91a6cfccaf21cf 32-33,88-104,107-113,115,248-254
+  s_6b8a25b7716dd8::t_e26ad96f53b1fc 114
+  s_6b8a25b7716dd8::t_2b915e8c15c316 255
+harness/cli/test/services/doctor/collector/download.test.ts
+  s_6b8a25b7716dd8::t_e26ad96f53b1fc 59-61,105-107
+  s_6b8a25b7716dd8::t_91a6cfccaf21cf 57-58,64,128,149,161,207,225,238,261-281,291-315
+  s_6b8a25b7716dd8::t_59a7f37e7e4ae7 282-290
+  s_6b8a25b7716dd8::t_19fdbaaba2ba5e 316
+harness/cli/src/services/doctor/collector/download.ts
+  s_6b8a25b7716dd8::t_91a6cfccaf21cf 123-147,186-188
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "001dddb2e5d651f585d1ad63f729be4ef9210781",
+  "prompts": {},
+  "sessions": {
+    "s_6b8a25b7716dd8": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "0566e436-a7a0-4359-99b4-8a2dc8a4c21d",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
