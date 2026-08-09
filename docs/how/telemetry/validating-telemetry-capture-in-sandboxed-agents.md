@@ -160,6 +160,21 @@ come back `h_`, something else added it, and that is a finding.
 Corroboration: **none of this repo's 186 notes contains a single `h_`** — consistent with a
 history where every commit carried AI attestation, so the terminal stage never fired.
 
+> ⚠️ **FALSIFIED BY MEASUREMENT, 2026-08-09.** The prediction above was run twice in live
+> Cursor (`~/temp/gitai-mixed-20260809`, commits `df4d45c` and `b3a18af`) and the human lines
+> came back **neither absent nor `h_`** — they were **absorbed into the agent session as
+> `s_`**, via commit-time recovery (edge extension plus a larger recovery claim; two of the
+> note's three trace ids exist in no checkpoint log). The edit mechanism was irrelevant —
+> shell heredoc and python file IO behaved identically. The reasoning above was sound about
+> the *blanket-`h_`* stage (it did not fire) and blind to the *recovery* stages that claim
+> unattributed lines **for the AI**.
+>
+> **A runner of this scenario should now EXPECT absorption** in the same-file mixed commit and
+> verify against it, not rediscover it. Full mechanism, scorecard, and the two still-untested
+> cases (cross-file mixed; the `known_human` lever): `gitai-06-two-channel-model.md` §7a.
+> Verification move that generalises: a trace id in the note that is absent from
+> `.git/ai/working_logs/old-<parent>/checkpoints.jsonl` was minted by recovery, not observed.
+
 ### 3.1.2 Edge extension — why the human block must be 12+ lines
 
 An earlier stage, `recover_adjacent_edges` (`attribution_recovery.rs:1170`), extends AI
@@ -484,8 +499,20 @@ git notes --ref=ai list | wc -l           # notes in the repo, for context
 
   **So without a seed commit, step 1 produces no note whether or not the sandbox is engaged** —
   and the run would read the collector working as designed as a capture failure, most likely
-  blaming the sandbox. The seed commit is what gives the daemon its cursor; it is expected to be
-  noteless itself, and that noteless seed is a *pass*, not a finding.
+  blaming the sandbox. The seed commit is what gives the daemon its cursor.
+
+  **The seed's own note goes through TWO states, and BOTH are a PASS** (`MEASURED` 2026-08-09,
+  corrected from an earlier draft of this precondition that predicted only the first):
+
+  | when | what `git notes --ref=ai show <seed>` says |
+  |---|---|
+  | immediately | `error: no note found` — the exactness fail-closed, as described above |
+  | ~40 min later | a **blanket `h_…` known-human note** covering the whole commit, naming the commit's real git author |
+
+  **Neither is a capture failure.** Anyone checking immediately sees one thing and anyone
+  checking later sees another — both readings were available within the same hour on the same
+  commit. A validation run must not record either as a finding, and must not treat "a note
+  appeared later" as evidence that something was fixed in between.
 - A **real** remote configured for stage 3 (§7.2).
 - Record the baseline note count before starting.
 - Restart the agent fully after any sandbox-config edit — policy is read at session start.
@@ -517,10 +544,12 @@ and **what the note says** — tool, model, session, and which line ranges it as
 
 For the **mixed commit** (§2 step 4), record the split explicitly: which lines you know the agent
 wrote, which lines you know the script wrote, and which way the note actually assigned each —
-including whether the human lines were **absent** or **`h_`-attested**, which §3.1.1 predicts in
-advance. Note the **length of the human block** you built and whether its middle survived while its
-first/last 3 lines were claimed (§3.1.2). That row is the
-product claim; a summary verdict on it is not usable evidence.
+including whether the human lines were **absent**, **`h_`-attested**, or **absorbed as `s_`** —
+the measured outcome is absorption (§3.1.1's falsification note), so score against that and treat
+a *different* result as the finding. Note the **length of the human block** you built and whether
+its middle survived while its first/last 3 lines were claimed (§3.1.2), and check each note trace
+id against the archived working log — recovery-minted ids are the absorption signature. That row
+is the product claim; a summary verdict on it is not usable evidence.
 
 For the **blocked run** (§3.2), record the one answer that matters: **did the agent's lines come
 back as `h_`?** — and which trigger the run actually exercised (sandbox, daemon restart, unhooked

@@ -162,6 +162,37 @@ fail-closed behaviour of the collector.
 - **Fail-closed means a missing note is not evidence of a broken socket.** The two produce the
   same observable, and only one of them is a fault.
 
+### The fail-closed state is TRANSIENT — and here is the control the corpus never had
+
+`MEASURED` 2026-08-09, in a throwaway repo, on a seed commit made by **a plain shell script
+with no agent anywhere near it**:
+
+| when | `git notes --ref=ai show <seed>` |
+|---|---|
+| t+0 | `error: no note found` — the exactness fail-closed of §2 |
+| t+~40 min | a **blanket `h_…` known-human note** over the whole commit, naming the commit's real git author |
+
+Two things follow, and the second is the important one.
+
+**1. "No note" is not a terminal state.** A later stage attests the commit as blanket
+known-human. So *when* you look changes what you see, and both readings were available within
+one hour on one commit. Any check that treats "no note" as a verdict — ours included — is
+reading a race. This is why `git-ai await` belongs at step 0 of every verification (§4), and
+why a run must not conclude "a note appeared later, so something fixed itself".
+
+**2. This is the first time we have observed the blanket-human path on a GENUINELY human
+commit.** Every "outside the agent" commit in the historical runs was another AI in a
+terminal, so the corpus had no control for real human authorship. Here there was no agent at
+all, and git-ai produced a **correct** `h_` attestation naming the right author.
+
+> **And that is exactly what makes the wrong case dangerous.** The same machinery that
+> correctly stamps a real human commit as human will stamp an AI commit as human when the
+> event never arrived — with the same confidence, the same shape, and no signal that it
+> guessed. A correct fabrication and an incorrect one are indistinguishable from the note. It
+> is the missing half of the F-03 story: we had only ever seen this path get it wrong, and now
+> we have seen it get it right, which tells us the mechanism is not broken — it is
+> *underdetermined by its inputs*.
+
 ---
 
 ## 3. THE SANDBOX FAILURE MODE, AND ITS TWO ESCAPES
@@ -286,6 +317,67 @@ These were checked against the Rust, not inherited:
   **Padding between human and AI lines does NOT help.** The padding is itself unattributed, so
   it joins the same run rather than separating anything. Only run **length** creates an
   unclaimed middle.
+
+---
+
+## 7a. The mixed-commit boundary — MEASURED 2026-08-09, live Cursor, `networkPolicy` absent
+
+The plain scorecard. Evidence repo: `~/temp/gitai-mixed-20260809` (four commits, notes read
+directly; historical `c835cd97` in `~/temp/gitai-allowlist-test`).
+
+| case | result |
+|---|---|
+| AI-only commit | **works** — exact agent lines (`9f2d574`: 4-11 claimed, human 1-3 not) |
+| human-only commit | **works** — blanket `h_`, correct (`5acdaec`, `09f4ec6`; note arrives late, ~40 min) |
+| two AGENTS, one commit | **works** — separated per session (`c835cd97`, cursor vs claude) |
+| human + AI, ONE commit | **BROKEN** — human lines absorbed into the agent session. Measured twice (`df4d45c` heredoc, `b3a18af` python) — the edit mechanism is irrelevant |
+
+In plain words: **if people commit their own work separately, the numbers are trustworthy.
+When a human edits alongside an agent and the agent commits it all together, the AI gets
+credit for the human's lines — silently, in the AI-inflating direction.**
+
+### The mechanism — the checkpoint layer is CORRECT; absorption happens at commit-time recovery
+
+Run 3's archived working log (`.git/ai/working_logs/old-df4d45c…/checkpoints.jsonl`) holds
+exactly two checkpoints: `Human t_04c9…` (the pre-Write baseline — it **did** capture the
+human lines) and `AiAgent t_da7b…` (Cursor's diff — `halve()` only, lines 50-54). Cursor
+claimed only its own work. The note's other two trace ids (`t_98cc…` 35-46, `t_52c3…` 47-49)
+appear in **no checkpoint log** — they were minted by the recovery ladder at commit (47-49 is
+exactly the 3-line edge extension; 35-46 a larger recovery claim, solver unidentified).
+
+Why recovery is allowed to do this: a plain `Human` checkpoint is a **diff base, not an
+attestation** — `post_commit.rs:50` excludes Human checkpoints from projection
+(`VERIFIED-AT-SOURCE`). Only two claims are durable: `s_` (agent) and `h_` (**KnownHuman** —
+defined upstream as *observed being typed in an IDE with the git-ai extension installed*,
+carrying `{editor, editor_version, extension_version}`). Everything else is unknown, and in a
+mixed commit unknown lines are recovery fodder — asymmetric toward AI by design (§7).
+
+Diagnostic that generalises: **a trace id present in the note but absent from the archived
+working log was minted by recovery, not observed by any checkpoint.**
+
+Also `VERIFIED-AT-SOURCE`: Cursor's `beforeSubmitPrompt` human hook is **legacy and rejected
+outright** (`checkpoint_agent/presets/cursor.rs:55-60`) — only `preToolUse`/`postToolUse`
+exist now. git-ai's own docs: no heuristics, no filewatchers — explicit checkpoints only.
+
+### Why an earlier test "worked" — two different architectures
+
+The remembered success (`scratch/cursor-attribution-kit/human-edit.py`, 93.4%/6.6%, ground
+truth to the line) was **harness telemetry, not git-ai**. Harness never claims unobserved
+lines — human share is the *residual* (total − agent). git-ai actively *recovers* unknown
+lines. Same probe, opposite architectures, opposite results. "But it worked before" compares
+two different systems.
+
+### UNTESTED — named so nobody reports them as findings
+
+- **Cross-file mixed commit** (human edits file X, agent edits file Y, committed together):
+  predicted mostly-OK — edge extension is per-file and cannot reach a file the AI never
+  touched; expected result is the human file **absent** from the note. Caveat: one recovery
+  stage keys on file mtime inside the agent's shell-command windows and could claim a whole
+  human file on a timestamp coincidence. Never observed.
+- **The `known_human` lever**: `git-ai checkpoint known_human` (or the IDE extension) is the
+  only durable human claim, so bracketing a human edit with it is the candidate fix for the
+  broken row. If it yields an `h_` + `s_` mixed note, the gap is closable; if not, the
+  limitation stands and must be disclosed to the customer.
 
 ---
 
