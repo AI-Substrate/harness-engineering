@@ -131,12 +131,68 @@ describe('NodeFs — bounded no-follow text reads (P063 T003)', () => {
     });
   });
 
-  it('fails closed when the platform has no no-follow open flag', () => {
+  it('reads without the flag when the platform has no no-follow open flag', () => {
+    // CONTRACT CHANGED BY DECISION (plan 077 · #108), not by accident.
+    //
+    // This case previously asserted the opposite: with no `O_NOFOLLOW` the read
+    // failed closed with `io-error`, refusing to open anything. That was
+    // deliberate — but `fs.constants.O_NOFOLLOW` does not exist on Windows, so the
+    // consequence was that this primitive could never read ANY file there, and
+    // every consumer of it (`claude-adapter`, `copilot-adapter`,
+    // `copilot-vscode-adapter`) was silently blind on that platform: null
+    // capabilities, empty file lists, three red suites on the Windows runner.
+    //
+    // The fail-closed was consciously RELAXED, because the alternative was not a
+    // stronger guarantee — it was a feature that did not work at all. What carries
+    // the protection instead is the `dev`/`ino` cross-check, and the two controls
+    // below are what make that claim checkable rather than asserted.
     withTempDir((dir) => {
       const path = join(dir, 'session.jsonl');
       writeFileSync(path, '{}\n', 'utf8');
 
       expect(new NodeFs(null).readTextFileNoFollow(dir, path, 16)).toEqual({
+        status: 'ok',
+        bytes: 3,
+        text: '{}\n',
+      });
+    });
+  });
+
+  it('WITHOUT the flag, still refuses a symlink swapped in before the open', () => {
+    // THE LOAD-BEARING CONTROL for the relaxation above. `O_NOFOLLOW` is what used
+    // to make this impossible; with no flag the open FOLLOWS the symlink, so the
+    // only thing standing between us and reading an attacker's target is the
+    // post-open re-`lstat`. This proves that check actually fires — without it we
+    // would have swapped a kernel-enforced guard for an assumed one.
+    withTempDir((dir) => {
+      const path = join(dir, 'session.jsonl');
+      const target = join(dir, 'target.jsonl');
+      writeFileSync(path, 'safe\n', 'utf8');
+      writeFileSync(target, 'attacker\n', 'utf8');
+      const fs = new NodeFs(null, () => {
+        rmSync(path);
+        symlinkSync(target, path);
+      });
+
+      const result = fs.readTextFileNoFollow(dir, path, 32);
+      expect(result).toEqual({ status: 'unavailable', reason: 'symlink' });
+      // Belt and braces: the attacker's bytes are not in the answer by any route.
+      expect(JSON.stringify(result)).not.toContain('attacker');
+    });
+  });
+
+  it('WITHOUT the flag, still refuses a regular file swapped in before the open', () => {
+    // The sibling swap: not a symlink, a different REGULAR file. `O_NOFOLLOW` never
+    // caught this one — `dev`/`ino` always did — so this pins that the identity
+    // check is independent of the flag rather than incidental to it.
+    withTempDir((dir) => {
+      const path = join(dir, 'session.jsonl');
+      const replacement = join(dir, 'replacement.jsonl');
+      writeFileSync(path, 'safe\n', 'utf8');
+      writeFileSync(replacement, 'replacement\n', 'utf8');
+      const fs = new NodeFs(null, () => renameSync(replacement, path));
+
+      expect(fs.readTextFileNoFollow(dir, path, 32)).toEqual({
         status: 'unavailable',
         reason: 'io-error',
       });
