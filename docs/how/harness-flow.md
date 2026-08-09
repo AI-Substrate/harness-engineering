@@ -1,7 +1,7 @@
 # The `harness flow` verb family
 
 Deterministic **flow mechanics** on the command line: create a flow, mutate it with
-small atomic verbs, append a timestamped event/comment log, and render it to
+small single-purpose verbs, append a timestamped event/comment log, and render it to
 markdown — so an agent (or a human) never hand-edits a flow's JSON or re-computes
 its diagram by hand.
 
@@ -86,36 +86,122 @@ supplied by the caller, **and they resolve differently on purpose**:
 ## The verb pipeline
 
 Every **structural** mutation runs the same deterministic loop: read → mutate a
-**deep clone** → validate the result against the resolved schema → write atomically.
-A mutation that would make the flow invalid (a bad status, an unknown node type, a
-cycle) is **refused with nothing written** — so the persisted flow is never left
-half-mutated.
+**deep clone** (the mutation-layer guards run inside that step) → validate the
+result against the re-resolved schema → write the source atomically → refresh the
+sibling `.md`. The clone-and-atomic-write half is unconditional — it does not
+depend on the overlay resolving. But **atomic** names one step, not the verb: the
+forward source write stages a temp file and renames it, so *that* write alone
+never leaves a partial document. The sibling refresh runs after it and can still
+refuse the whole operation; the rollback that follows is an ordinary rewrite, and
+the three outcomes are set out below. The schema half is *not* unconditional — it
+runs **whenever the overlay re-resolves from the document's own `kind`**, and on
+that path a mutation
+that would make the flow invalid (a bad status, an unknown node type) is **refused
+with nothing written** (`E300`). When the overlay cannot be re-resolved that step is
+tolerantly **skipped** and the mutation is written — checked, but by less: the
+mutation-layer guards run regardless, so a missing node or a dangling `--next`
+target is still refused (`E305`), `insert-node`'s DAG re-check still refuses a cycle
+(`E309`), and the `zone` / `chore` / `dd_link` / unknown-field guards still refuse
+(`E108`). What the skip drops is the schema's *vocabulary* check — status and node
+type — which is precisely the class of value that can then reach the file. Both
+branches are spelled out below.
 
 ```mermaid
 flowchart LR
     create(["create"]) --> doc[("the-flow.json")]
-    doc --> mutate["structural mutation<br/>nav · status · add-node<br/>insert-node · set-node · comment"]
-    mutate --> validate{"validate vs<br/>resolved schema"}
-    validate -->|ok| write["atomic write<br/>(temp + rename)"]
+    doc --> mutate{"structural mutation + its guards<br/>nav · status · add-node<br/>insert-node · set-node · comment"}
+    mutate -->|"guard issue"| guardFail["E305 · E309 · E108<br/>nothing written"]
+    mutate -->|ok| resolve{"overlay re-resolves<br/>by kind?"}
+    resolve -->|yes| validate{"validate vs<br/>resolved schema"}
+    resolve -->|"no — tolerant skip"| write["atomic source write<br/>(temp + rename)"]
+    validate -->|ok| write
     validate -->|issue| reject["E300<br/>nothing written"]
-    write --> doc
-    write --> render["auto-render sibling .md<br/>(warn-only on failure)"]
-    doc -. "event (append-only;<br/>no node re-validation)" .-> append["append to events[]<br/>→ atomic write"]
-    append --> doc
+    write --> sibling{"sibling .md<br/>(staged + renamed)"}
+    sibling -->|ok| doc
+    sibling -->|"cannot render or write"| undo{"roll the source<br/>write back"}
+    undo -->|"restored"| rollback["E302 — nothing changed<br/>source exactly as it was"]
+    undo -->|"restore ALSO failed"| stranded["E302 + louder next_action<br/>may be out of step — inspect"]
+    doc -. "event (append-only;<br/>no node re-validation)" .-> append["append to events[]<br/>→ atomic source write"]
+    append --> sibling
 ```
 
 > **`event` is the one exception.** `harness flow event` is an *append-only* write
-> to the `events[]` log — it appends the event and writes atomically, but it does
+> to the `events[]` log — it appends the event and writes the **source** atomically,
+> but it does
 > **not** re-validate node/status/type shape (there's nothing structural to check).
-> Every *other* mutation runs the full validate-before-write loop above.
+> Every *other* mutation runs the full validate-before-write loop above **whenever
+> the overlay re-resolves**; when it cannot, the post-mutation validation step is
+> tolerantly skipped rather than refused (next paragraph). `event`'s exemption is
+> unconditional and structural; that skip is conditional on resolution.
 
-After the JSON write succeeds, `create`, `event`, and every mutation verb refresh
-the sibling `.md` with the same bytes as `harness flow render`. A render-write
-failure prints a warning but does not undo or fail the successful JSON mutation.
+**Which schema a mutation validates against — and when it skips.** The mutation
+verbs take no `--schema`. They re-resolve the overlay from the document's own
+`kind`, by the usual precedence minus the flag: the repo overlay at
+`.harness/schemas/flows/<kind>.schema.json`, else the CLI's bundled copy. If
+neither resolves, post-mutation validation is **skipped** — `create` already
+validated the document, and the CLI will not refuse a mutation it cannot
+re-verify.
+
+**Plan 081 changed which side of that branch `flight-plan` falls on.** Bundling
+the overlay made it *always* re-resolvable, so every **structural** flight-plan
+mutation is now re-validated; before, a flight-plan created behind an external
+`--schema`, in a repo carrying no `flight-plan` repo overlay, had nothing left to
+re-resolve — so the same mutation took the tolerant skip. Whether the skill that
+*owns* that schema was installed never entered into it: the mutation path reads
+only the repo overlay and the bundle, never a skills directory. The switch is
+**resolvability and nothing else** — the identical overlay under an unbundled
+`kind` still skips today (both legs are pinned in
+`test/acts/flow-mutation-revalidation.test.ts`, where the *difference* is the
+assertion).
+
+This **fails closed**, and that is the good direction: the mutations newly
+refused are ones that would previously have been written **unchecked**, not ones
+now silently accepted — nothing became more permissive. The cost falls on a
+**BYO `--schema` overlay**: since mutations re-resolve the *bundled* vocabulary
+rather than the file passed to `create`, every status and node type a mutation
+uses must stay **inside** the bundled vocabulary. A superset does not buy you
+room — the extra vocabulary is precisely what fails. Any status or node type only
+*your* file declares is refused with `E300`, nothing written, on the first
+mutation that uses it — a legitimate-looking mutation, newly rejected. If that
+vocabulary must survive mutation, pin it as a repo overlay at
+`.harness/schemas/flows/flight-plan.schema.json`, which the mutation path *does*
+re-resolve; that is the remedy, not a wider `--schema` file.
+
+After the JSON write succeeds, `create`, `event`, `relocate`, and every mutation
+verb refresh the sibling `.md` with the same bytes as `harness flow render`. The
+sibling is **half of the operation, not decoration**: it is staged (`.md.tmp` then
+rename), and if it cannot be rendered or written the whole operation is **refused**
+(`E302`) and the CLI **attempts to** roll the source write back. A best-effort
+refresh would be a drift factory, reporting success with the `.json` moved and the
+`.md` stale.
+
+There are **three** outcomes, and the third is why the promise is not simply
+"either both files land or neither changes":
+
+1. **Both land.** The staged `.md` renames into place and the verb succeeds.
+2. **Refused, and the rollback worked.** `E302`, and the source JSON is put back
+   exactly as it was — deleted, if the operation had just created it. `next_action`
+   says nothing was changed; fix the cause and retry. This is the ordinary failure.
+3. **Refused, and the rollback itself failed.** Still `E302`, but `next_action`
+   changes to a warning that the source may now be out of step with its sibling
+   and must be **inspected before retrying**.
+
+Restoration is attempted on *every* refusal, and it is verified rather than
+assumed — the source is read back after being rewritten (or checked gone, when it
+is being deleted), so outcome 3 is a fact the CLI establishes, not a possibility it
+shrugs at. But attempting is not the same as succeeding, which is the whole reason
+outcome 3 has its own sentence.
+
+Note the shape when triaging: the error **code is the same** in (2) and (3). What
+separates the clean refusal from the one that needs eyes is `next_action`, so read
+that rather than switching on the code.
 
 All verbs live under the nested `harness flow` group. Each resolves its flow by
 `--path <file>` **or** `--slug <name>` (→ `.harness/flows/<slug>.json`), mutates,
-re-validates against the resolved schema, and writes atomically (temp + rename).
+re-validates against the overlay **when it re-resolves** (§ The verb pipeline —
+`event` never re-validates; an unresolvable overlay is tolerantly skipped), and
+writes the **source** atomically (temp + rename). The sibling `.md` refresh that
+follows is not part of that atomic step, and can still refuse the operation.
 
 | Verb | What it does |
 |------|--------------|
@@ -626,12 +712,19 @@ harness flow create my-flow --slug demo     # instantiate it
 
 **Schema resolution precedence** (AC-11): `--schema <path>` (absolute, out-of-repo
 allowed) › `.harness/schemas/flows/<type>.schema.json` › the bundled built-in
-(`harness-loop` — the shared core is not itself creatable) › `E304`.
+(harness-owned `harness-loop` — the shared core is not itself creatable — plus
+allowlisted **generated copies** of skill-owned types, today exactly
+`flight-plan`) › `E304`.
 
-A consumer that owns its own schema **passes `--schema`** pointing at its copy
-rather than bundling a second one — single owner per schema, no drift. (`the-flow`
-does exactly this for its flight-plan schema; the harness-loop schema is the
-CLI-bundled built-in.)
+A consumer that owns its own schema stays its single **source**, and the CLI may
+carry an allowlisted **generated copy** bundled by
+[`scripts/gen-flows.mjs`](../../scripts/gen-flows.mjs) and guarded against drift
+by `npm run check:flows` — so a bare `harness flow create <type>` works without
+the skill installed, while an explicit `--schema` remains the override that pins
+the source file. (`the-flow` is exactly this shape for its flight-plan schema:
+skill-owned source, CLI-bundled generated copy — plan 081, superseding plan 024's
+`--schema`-only stance. The harness-loop schema is harness-owned and bundled
+outright.)
 
 > **Chore statuses are overlay-declared.** `todo`/`skipped` aren't hard-coded — a
 > flow type opts into the chore lifecycle by listing them in its overlay's

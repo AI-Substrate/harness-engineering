@@ -27,10 +27,15 @@ import { type FlowFailure, fail } from './flow-service.js';
  * mutation — e.g. an `insert-node` that fails the DAG re-check — leaves the
  * caller's doc untouched and NOTHING is written). Every mutation auto-fires its
  * built-in event + stamps `modified_at` (and `ran_at` on →done/→blocked). The
- * status VALUE's validity vs the overlay vocabulary is enforced by the act's
- * post-mutation `validateFlowDoc`; mutations only enforce node existence (E305)
- * and the edge algebra — matching grill decision (2): no external enforcement of
- * "good" usage, only mechanical integrity.
+ * status / node-type VALUE's validity vs the OVERLAY vocabulary is enforced by the
+ * act's post-mutation `validateFlowDoc`, never here. What this module enforces is
+ * MECHANICAL integrity, scope-limited to the operation performed — NOT every guard
+ * on every mutation: node existence and the dangling-edge check (E305), the edge
+ * algebra (E108/E305) and the post-splice DAG re-check (E309), the shared-core
+ * `zone` and `chore` vocabularies, the `dd_link` shape and the closed node-field
+ * set (E108), the D5 terminal protections on remove/mv/apply (E108), and the dd
+ * departure gate when one is wired (its own `DD_GATE_*` codes). Matching grill
+ * decision (2): no external enforcement of "good" usage, only mechanical integrity.
  */
 
 export interface MutationDeps {
@@ -723,9 +728,12 @@ function badChore(spec: NodeSpec): FlowFailure | null {
  * Reject any `next[]` target that names a node not present in `doc` — the
  * dangling-edge guard. Like the nav setters' E305 check, this is a MECHANICAL
  * integrity guard that runs REGARDLESS of schema resolution, so a forward /
- * dangling `--next` is refused even on out-of-repo-schema flows (e.g. the-flow
- * flight plans) where the act's post-mutation `validateFlowDoc` — which also flags
- * dangling refs — is tolerantly skipped. Returns the E305 failure (nothing
+ * dangling `--next` is refused even on flows whose overlay CANNOT be re-resolved
+ * — a `kind` the CLI does not bundle, created behind an out-of-repo `--schema`
+ * that the mutation verbs never re-pass — where the act's post-mutation
+ * `validateFlowDoc` — which also flags dangling refs — is tolerantly skipped.
+ * (`flight-plan` stopped being such a flow when plan 081 bundled it: it now
+ * re-resolves and IS re-validated.) Returns the E305 failure (nothing
  * written) or null. Callers run it once `doc`'s node set reflects what the edge
  * may legitimately point at (add-node: before the new node is pushed, so a forward
  * / self ref is rejected; insert-node: after, so a self-rejoin resolves and is
@@ -795,11 +803,20 @@ export function setNode(
   const next = clone(doc);
   const node = findNode(next, nodeId);
   if (node === undefined) return nodeNotFound(nodeId);
-  // Validate chore/zone when set here (mirrors add-node's pre-write guards). This
-  // matters for the R-1 path — flagging an existing the-flow seam node as a chore —
-  // because the-flow flight plans resolve an out-of-repo schema, so the act's
-  // post-mutation validateFlowDoc is tolerantly skipped; without this a bad value
-  // would slip through. (A no-op for the field editor's other keys.)
+  // Validate chore/zone when set here (mirrors add-node's pre-write guards). The
+  // act's post-mutation validateFlowDoc (acts/flow.ts `validateMutatedDoc`) is NOT
+  // a substitute, for three SEPARATE reasons:
+  //   (a) it is SKIPPED whenever the overlay can't be re-resolved by `kind` (a
+  //       custom type behind an out-of-repo `--schema`, which mutation verbs never
+  //       re-pass) — on that path NEITHER zone nor chore is checked at all;
+  //   (b) `zone` is never validated there even when the overlay DOES resolve —
+  //       flow-schema.ts's validateFlowDoc carries no zone rule, so this guard is
+  //       the ONLY zone validation in the system;
+  //   (c) `chore` IS validated there (against the shared-core choreKinds /
+  //       choreImportances), but only as a whole-document E300 AFTER the mutation
+  //       — this guard preserves the direct, pre-write E108 that names the flag
+  //       and the bad value the caller actually passed.
+  // (A no-op for the field editor's other keys.)
   const zoneErr = badZone({ zone: fields.zone } as NodeSpec);
   if (fields.zone !== undefined && zoneErr !== null) return zoneErr;
   const choreErr = badChore({ chore: fields.chore } as NodeSpec);
@@ -1031,9 +1048,21 @@ export function insertNode(
 
 // ---------------------------------------------------------------------------
 // Plan 039 — generic transactional node primitives: applyPlacement (the shared
-// edge algebra), remove-node, mv-node, and the batch `apply`. All PURE
-// (doc → MutationResult on a clone) + roster-blind — they only enforce mechanical
-// integrity (existence, the edge algebra, the DAG, and the D5 terminal guard).
+// edge algebra), remove-node, mv-node, and the batch `apply`. The EXPORTED entries
+// (removeNode/mvNode/applyBatch) are PURE — each works on a deep CLONE and returns
+// a MutationResult, so a refusal leaves the caller's doc untouched; `applyPlacement`
+// is an internal helper that rewires an ALREADY-CLONED array in place and returns
+// edge events, not a MutationResult. Roster-blind: the caller computes the ops.
+// Their guards are SCOPE-LIMITED to the operation performed, NOT uniform across the
+// four. `applyPlacement`: the edge algebra alone (E108 placement count / E305 missing
+// target). remove/mv: node existence (E305), the D5 terminal protection (E108), and a
+// dangling-edge + DAG re-check before the write (remove folds a dangling ref into its
+// E309 refusal; mv names it E305 via `badNext`). `applyBatch`: all of the above plus —
+// as the only primitive here that carries node SPECS — the `dd_link` shape and the
+// closed node-field set (both in `parseOp`, so no op is normalized with one unchecked)
+// and the shared-core `zone` / `chore` vocabularies, all E108.
+// What NONE of them enforce: the overlay status/node-type vocabulary (that is the
+// act's post-mutation `validateFlowDoc`) and the dd departure gate (`cursor` only).
 // ---------------------------------------------------------------------------
 
 /** The two terminal statuses the D5 guard protects: a `done`/`skipped` node is
@@ -1433,11 +1462,23 @@ function mergeInto(node: FlowNode, fields: Record<string, unknown>, now: string)
  * `flow apply` — apply a transactional batch of generic node ops. **Two-phase**:
  * (phase 0) splice out `remove`s, (phase 1) materialize `add`/`upsert`/`insert`
  * nodes, (phase 2) position edges + merge `set`s, then validate the **final** DAG
- * **once** and (the act) write **once or not at all**. Forward refs resolve at the
- * end (order within a batch is irrelevant). The **batch-wide D5 guard** refuses any
+ * **once**. Forward refs resolve at the
+ * end (order within a batch is irrelevant).
+ *
+ * **"Transactional" is scoped to THIS function** — the batch applies to one
+ * in-memory document or not at all, and nothing here touches the filesystem.
+ * Persistence belongs to the act, and there it is NOT "one write or not at all":
+ * `runMutation` commits the document with a single atomic source write (temp +
+ * rename), after which `persistSibling` can still refuse the whole operation
+ * (`E302`) and attempt an ordinary, non-atomic restore via `restoreFlowSource` —
+ * a restore that can itself fail partway. The three outcomes are set out in
+ * `docs/how/harness-flow.md`.
+ *
+ * The **batch-wide D5 guard** refuses any
  * resurrection of a base-terminal node — including a `remove`-then-re-`add` of the
- * same terminal id. A fully-no-op batch fires no event and returns the doc
- * **byte-identical** (no write). Invalid op / cycle / orphan / dangling → nothing
+ * same terminal id. A fully-no-op batch fires no event and returns the ORIGINAL
+ * doc, so the act's write is **byte-identical** (the write still happens — it is
+ * the bytes that do not change). Invalid op / cycle / orphan / dangling → nothing
  * written (`E108`/`E309`/`E305`).
  */
 export function applyBatch(doc: FlowDoc, rawOps: unknown, deps: MutationDeps): MutationResult {

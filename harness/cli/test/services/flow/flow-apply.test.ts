@@ -10,9 +10,12 @@ import { applyBatch, mvNode, removeNode } from '../../../src/services/flow/flow-
  *   T004 D5 terminal guard (batch-wide) · T005 remove rewire · T006 mv re-parent.
  *
  * Fakes only (FakeClock); pure-fn imports; reuses the flow-mutations harness.
- * The pure functions enforce mechanical integrity only (existence + edge algebra +
- * DAG + the D5 terminal guard) — schema validity is the act's concern, so the docs
- * here use arbitrary types/statuses.
+ * Their guards are SCOPE-LIMITED to the operation, not a uniform "mechanical integrity
+ * only": remove/mv enforce existence + the dangling-edge/DAG re-check + the D5 terminal
+ * guard, and `applyBatch` adds the `dd_link` shape and the closed node-field set (via
+ * `parseOp`) plus the shared-core `zone`/`chore` vocabularies. What stays the act's
+ * concern is the OVERLAY status/node-type vocabulary — which is why the docs here use
+ * arbitrary types/statuses, and carry no zone/chore.
  */
 
 const deps = () => ({ clock: new FakeClock('2026-06-28T05:00:00.000Z') });
