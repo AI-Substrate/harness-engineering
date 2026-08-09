@@ -125,10 +125,10 @@
           },
           {
             "id": "dw-001a",
-            "assertion": "the dd-fork-divergence detector definition now compares the four dd-mechanisms copies against dd's sources at the current pin (4 files, per the corrected ledger enumeration); a run at the boundary shows the comparison executing - and a NOT-PROBEABLE result is reported, never silently passed",
+            "assertion": "SPLIT RESPONSIBILITY (coder's premise-gap finding, koala's ruling): the dd-fork-divergence detector is a SEAT-SIDE pij chore on koala's seat, not repo code - the research dossier's present-tense H-03 made an aspiration read as a repo fact. KOALA'S half (DONE 2026-08-09, before deletion): the chore is re-aimed to watch dd movement beyond pin a37a20ec on the four copied mechanism files (src/core/{constants,derive,rel,value}.ts vs origin/s002/sdk-build), with an explicit NOT-PROBEABLE arm when the dd clone is absent; first run = empty diff = clean baseline, acked. CODER'S half: record in the execution log the in-repo not-probeable evidence (the greps proving no such detector exists as repo code) - the in-repo casualty is the dd-doctor SENSOR, which is dw-0023's row, not this one",
             "state": "unchecked",
             "pressure": "not-applicable",
-            "note": "seat-detector re-aim - ledger drift-surface trigger 2; proof is the detector run output at the boundary"
+            "note": "materiality ruling: option (a) CREATE-in-repo was rejected - the detector was never repo code, so no new surface and no touch-set growth; thresholds not tripped. Sibling seat chore dd-consumed-surface-wip (probes fork plan files in the win-path-family worktree) also retires/re-aims at deletion - koala's, noted here so the boundary sweep checks it"
           },
           {
             "id": "dw-0022",
