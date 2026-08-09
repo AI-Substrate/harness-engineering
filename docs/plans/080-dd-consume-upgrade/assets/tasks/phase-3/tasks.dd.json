@@ -18,12 +18,164 @@
     },
     {
       "name": "tasks",
-      "value": []
+      "value": [
+        {
+          "id": "tk-000c",
+          "title": "BIDIRECTIONAL fork-drain checklist BEFORE any deletion (prime's rule, ledger: both directions): enumerate (a) every harness-main commit touching services/dd or acts/dd since the dd fork point - sha + adjudication (ported upstream / deferred / dies-with-fork), and (b) every dd-side fix the fork never took (known live entry: dd's shouldExcludeFromSweep E436 reorder, crab in-flight) - committed as assets/tasks/phase-3/fork-drain-checklist.md",
+          "phase": "ph-08e2",
+          "state": "unchecked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0006"
+          ]
+        },
+        {
+          "id": "tk-000d",
+          "title": "Delete services/dd + acts/dd (pre-licensed by prime; advance notice with ancestry proof sent as courtesy) and remove harness dd * verb registration; convert the goldens machinery for a fork-less world: gen test + FROZEN_DIGEST pin retire WITH the fork, live-corpus test converts to structural invariants (dw-0016 note), falsifier suite stays green against golden literals; re-aim the dd-fork-divergence seat detector at the four dd-mechanisms copies (ledger drift-surface trigger 2 - a detector watching a deleted tree is silence, not health)",
+          "phase": "ph-08e2",
+          "state": "unchecked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0007"
+          ],
+          "satisfies_toward": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0008"
+          ]
+        },
+        {
+          "id": "tk-000e",
+          "title": "D-2 riders: harness doctor emits a NON-FATAL warning when the standalone dd CLI is absent (and stays silent when present - control both ways); AGENTS.md documents installing the dd CLI",
+          "phase": "ph-08e2",
+          "state": "unchecked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0008"
+          ]
+        },
+        {
+          "id": "tk-000f",
+          "title": "docs/how/consuming-dd.md: the consume route end to end - full-40-char-sha pinning (dd main NOT pinnable, work branch is), the re-pin procedure (report -> dd fixes on branch -> push -> re-pin -> 12s reinstall), the npm-git sandbox caveat, the re-verify trio (pack shape / foreign-port injection / A-2 tracked===null), the CJS no-require caveat on the barrel, and the mechanism-copy drift triggers + sunset (ledger drift-surface section)",
+          "phase": "ph-08e2",
+          "state": "unchecked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0009"
+          ]
+        },
+        {
+          "id": "tk-0010",
+          "title": "D-4: document the retired flow-to-dd boundary at each guard site that goes blind (comment naming the retirement, or remove the blind guard) plus the plan note - and build NO new package-aware guard",
+          "phase": "ph-08e2",
+          "state": "unchecked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-000a"
+          ]
+        },
+        {
+          "id": "tk-0011",
+          "title": "plan-new fixes bundle (ledger #1 harness-fallback + #2): plan new seeds ALL declared sections (closes the E450 authoring workaround harness-side) and gains --ordinal (or ordinal-aware slug resolution) so a bare slug no longer mints a second folder with a prefixed meta.slug. SEQUENCING GATE: touches acts/plan/scaffold.ts, which the standing ruling ordered BEHIND #119 - #119 has NOT landed (verified against origin/main at phase-3 open); prime re-rules the order before this task starts",
+          "phase": "ph-08e2",
+          "state": "unchecked",
+          "satisfies_toward": [
+            "../../../plan.dd.json#acceptance_criteria/ac-000c"
+          ]
+        },
+        {
+          "id": "tk-0012",
+          "title": "Close-out at the final boundary: dogfood pair green on the fork-less build against plan 080's own documents; dogfood ledger closes to ZERO silent workarounds (every row CLOSED by working fix or explicitly Jordan-ruled); tsc + full suite green - the three every-phase-boundary ACs (ac-0003, ac-000b, ac-000c) earn their genuine satisfies HERE, resolving their standing orphans",
+          "phase": "ph-08e2",
+          "state": "unchecked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0003",
+            "../../../plan.dd.json#acceptance_criteria/ac-000b",
+            "../../../plan.dd.json#acceptance_criteria/ac-000c"
+          ]
+        }
+      ]
     },
     {
       "name": "done_when",
-      "value": {}
+      "value": {
+        "tk-000c": [
+          {
+            "id": "dw-0017",
+            "assertion": "assets/tasks/phase-3/fork-drain-checklist.md is committed BEFORE the deletion commit (git order is the proof), enumerates BOTH directions with shas and a per-row adjudication (ported / deferred / dies-with-fork), and carries the walk.ts E436 row (dd fix in-flight, package-consumed, verify-at-re-pin)",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0006"
+          }
+        ],
+        "tk-000d": [
+          {
+            "id": "dw-0018",
+            "assertion": "test ! -d harness/cli/src/services/dd AND test ! -d harness/cli/src/acts/dd; repo-wide grep for their import paths returns zero matches across src/ and test/; harness dd <verb> no longer resolves (unknown-command error, control run captured); just build && just test green",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0007"
+          },
+          {
+            "id": "dw-0019",
+            "assertion": "the goldens gen test and the FROZEN_DIGEST pin are retired IN THE SAME COMMIT as the fork deletion (never before); the live-corpus test now asserts structural invariants (non-vacuity, shape) instead of fork-equality; the falsifier suite still passes against the golden LITERALS",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-000d"
+          },
+          {
+            "id": "dw-001a",
+            "assertion": "the dd-fork-divergence detector definition now compares the four dd-mechanisms copies against dd's sources at the current pin (4 files, per the corrected ledger enumeration); a run at the boundary shows the comparison executing - and a NOT-PROBEABLE result is reported, never silently passed",
+            "state": "unchecked",
+            "pressure": "not-applicable",
+            "note": "seat-detector re-aim - ledger drift-surface trigger 2; proof is the detector run output at the boundary"
+          }
+        ],
+        "tk-000e": [
+          {
+            "id": "dw-001b",
+            "assertion": "harness doctor with the dd CLI absent from PATH emits exactly one non-fatal warning naming the install route; with dd present it emits none - BOTH control runs captured in the execution log; AGENTS.md carries the install documentation",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0008"
+          }
+        ],
+        "tk-000f": [
+          {
+            "id": "dw-001c",
+            "assertion": "docs/how/consuming-dd.md exists, passes markdown lint, and carries all six named contents: sha pinning + branch-not-main, re-pin procedure, sandbox caveat, re-verify trio, CJS no-require caveat, drift triggers + sunset",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0009"
+          }
+        ],
+        "tk-0010": [
+          {
+            "id": "dw-001d",
+            "assertion": "each guard site that goes blind carries the D-4 retirement comment (or the blind guard is removed) - grep proves; the plan note exists; git diff shows NO new guard was added",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-000a"
+          }
+        ],
+        "tk-0011": [
+          {
+            "id": "dw-001e",
+            "assertion": "prime's sequencing ruling on #119-vs-this-bundle is recorded in the execution log BEFORE the first scaffold.ts commit; a bare 'plan new dd-consume-upgrade --ordinal 80' (or the ruled equivalent) reproduces this plan's folder shape with a CLEAN meta.slug (ledger #2's pre-agreed acceptance test)",
+            "state": "unchecked",
+            "pressure": "not-applicable",
+            "note": "sequencing-gated on prime; ledger #2's acceptance test was pre-agreed at entry time"
+          },
+          {
+            "id": "dw-001f",
+            "assertion": "plan new seeds ALL sections the resolved schema declares (dd validate on a fresh scaffold shows zero declared-but-absent sections); the E450 seed-then-validate workaround is thereby retired harness-side and ledger #1's harness half moves to CLOSED",
+            "state": "unchecked",
+            "pressure": "not-applicable",
+            "note": "ledger #1 fallback - dd's implicit-create remains dd-side and closes by re-pin whenever it ships"
+          }
+        ],
+        "tk-0012": [
+          {
+            "id": "dw-0020",
+            "assertion": "every dogfood-ledger row reads CLOSED (working fix) or carries Jordan's explicit ruling - zero silent workarounds; human-tier review of the ledger is recorded",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-000c"
+          },
+          {
+            "id": "dw-0021",
+            "assertion": "at the final boundary on the fork-less build: tsc --noEmit exit 0, full vitest suite green, and node harness/cli/bin/harness.js flow orient + rail + plan validate all ok against plan 080's own documents",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-000b"
+          }
+        ]
+      }
     }
-  ],
-  "references": []
+  ]
 }
