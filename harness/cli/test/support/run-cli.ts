@@ -121,11 +121,22 @@ async function run(argv: string[], mode: 'json' | 'human', verbDeps: VerbActDeps
  * an address, or sweep a corpus. Deleting the verb does not delete that need, so
  * this routes it to dd's own bin instead of quietly dropping the assertion.
  *
- * The bin is resolved from `node_modules/.bin/dd`, never as bare `dd`: on a POSIX
- * host bare `dd` is coreutils' disk-dump utility (`which dd` → `/bin/dd`), so a
- * PATH-spelled invocation would run the WRONG program and — worse — one that
- * happily reads stdin and writes files. Any doc or script prescribing this route
- * must spell it the same way.
+ * The bin is resolved from `node_modules/.bin/dd`, never as bare `dd`, and never
+ * via `npx dd`. THREE different programs answer to that name and only one is ours:
+ *
+ *   `dd`               -> coreutils' disk-dump utility (`which dd` -> /bin/dd) —
+ *                         loud and harmless here, it just fails on our verbs.
+ *   `npx dd`           -> an UNSCOPED `dd` package that really exists on npm
+ *                         (v0.26.0, a stranger's devops tool). In a repo without
+ *                         ours installed this FETCHES AND RUNS REMOTE CODE. It is
+ *                         the dangerous spelling precisely because it looks like
+ *                         the careful one — it trades a visible failure for a
+ *                         silent supply-chain path.
+ *   `npx @ai-substrate/dd` -> ours, and the only safe PATH-independent spelling.
+ *
+ * So: this helper resolves the local bin directly, and any doc, script, or skill
+ * prescribing the standalone CLI must use `npx @ai-substrate/dd <verb>` or
+ * `node_modules/.bin/dd` — never the bare or unscoped forms.
  */
 export async function runDd(argv: string[], cwd?: string): Promise<CliRun> {
   const { execFile } = await import('node:child_process');
