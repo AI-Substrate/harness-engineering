@@ -61,6 +61,14 @@ which composes it — picks it up for free. Keep gates **read-only** (no `--writ
 
 ## `--ref <ref>` — gate another commit without touching your tree
 
+**What it measures, stated positively:** `--ref` answers **"is this ref sound?"**, not
+"does my tree work right now". Those are different questions and it only answers
+the first. The isolation that makes it safe is the same property that bounds it —
+because it builds fresh from the ref, it **cannot see local breakage** (a stale
+`dist/`, a half-applied rebase, an uninstalled dependency). That class is real and
+common, and a plain `harness checks` is what reports it. Use `--ref` to ask about
+a commit; use the ordinary gate to ask about your working tree.
+
 `harness checks --ref <ref> [--keep]` runs the whole gate against any ref inside a
 throwaway `git worktree` that installs its own dependencies, and returns the same
 envelope with `ref`, the resolved `sha`, `scope` and `isolated: true` attached, so

@@ -138,6 +138,16 @@ async function findStaleRefWorktrees(
  * Run the gate against a REF, in a throwaway worktree that owns everything it
  * touches (#145).
  *
+ * WHAT IT MEASURES, STATED POSITIVELY RATHER THAN AS A CAVEAT. `--ref` answers
+ * "IS THIS REF SOUND?" — not "does my tree work right now". They are different
+ * questions and this only answers the first. The isolation that makes it safe is
+ * the same property that bounds it: because it builds fresh from the ref, it
+ * CANNOT see local breakage — a stale `dist/`, a half-applied rebase, an
+ * uninstalled dependency. That class is real and common (it bit this verb's own
+ * landing), and a plain `harness checks` is what reports it. Adopting `--ref` as
+ * a habitual replacement for the ordinary gate would silently retire an entire
+ * category of finding.
+ *
  * WHY THIS EXISTS. Measuring a gate against another ref used to mean making the
  * working tree look like that ref — and the cheapest way to do that is
  * `git stash`. In this repo the stash stack is SHARED across every worktree, so
@@ -315,7 +325,7 @@ const checks: HarnessVerb = {
     {
       flags: '--ref <ref>',
       description:
-        'run the gate against REF in a throwaway worktree that installs its own deps — your working tree is never touched (use instead of stashing to measure)',
+        'answer "is REF sound?" — runs the gate against REF in a throwaway worktree that builds and installs for itself, so your working tree is never touched (use instead of stashing to measure). It measures the REF, not your tree: because it builds fresh from REF it cannot see local breakage such as a stale dist/, which a plain `harness checks` does report',
     },
     { flags: '--keep', description: 'keep the isolated worktree for inspection (implies --ref)' },
   ],
