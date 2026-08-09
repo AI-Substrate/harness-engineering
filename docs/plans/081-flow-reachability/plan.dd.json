@@ -1,0 +1,404 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Flow reachability: a deterministic stream-owes-a-flow verb",
+        "slug": "081-flow-reachability",
+        "status": "ready",
+        "summary": "Deterministic verb surface for pij workteam: bundled flight-plan flow type + a two-clause flow/plan check verb, red-first, handed off to ermine.",
+        "mode": "Full",
+        "complexity": "CS-3"
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Build the deterministic harness surface pij workteam verbs will call to detect a stream that never produced a flight plan or a valid plan document: bundle flight-plan as a first-class flow type (so harness flow create flight-plan works bare, without the builder skill installed), then add a flow-family check verb that answers two clauses in one envelope — the plan validates (error when absent or invalid) and a flight plan exists and is readable (warning when missing, per Jordan's ruling). Built red-first against fixtures shaped like pij wave streams 098/099 (the real measured failure: 0/9 flight plans, 2/9 no plan document, 9/9 merged green — #140, AI-Substrate/pij#227), and closed with a pij-facing contract plus a handoff and collaboration offer to ermine, whose team wires it into pij workteam."
+    },
+    {
+      "name": "goals",
+      "value": [
+        "pij workteam verbs can detect a stream with no flight plan or an invalid/missing plan document by calling one deterministic harness verb, per-stream, post-hoc, on any worktree",
+        "harness flow create flight-plan works bare (no --schema/--template, no builder skill installed) — flight-plan becomes a bundled first-class flow type (fixes the E304 friction, F-15)",
+        "missing flight plan reports as a WARNING (degraded, exit 0) by default; missing/invalid plan document reports as an ERROR (exit 1) — Jordans ruled polarity",
+        "the verb counts what was examined and excluded, never only what survived",
+        "a written pij-facing contract plus a handoff and collaboration offer delivered to ermine (who wires pij using their own workteam)"
+      ]
+    },
+    {
+      "name": "non_goals",
+      "value": [
+        "no wiring into harness checks — ruled out: builder is one SDD flavour among several (OpenSpec etc.)",
+        "no nudge mechanism — explicitly deferred until the prompting-in-skills experiment runs",
+        "no changes to plan validate / plan ready semantics or envelopes (plan 072 polarity preserved; s080 parity AC) and no edits to acts/plan/index.ts, services/dd/**, acts/dd/**",
+        "no pij-repo edits EXCEPT the granted convergence path: DELTA blocks into docs/how/fleet/stand-up.md on branch docs/fleet-live-findings (grant: prime + ermine convergence rule, 2026-08-09 — divergences go back to that file as edits, never a second doc here); all other pij surfaces are propose-and-hand-off only and ~/pi-hacking/pij-worktrees/ stays read-only",
+        "no enforcement of builder outside workteam context"
+      ]
+    },
+    {
+      "name": "acceptance_criteria",
+      "value": [
+        {
+          "id": "ac-0001",
+          "claim": "In a repo WITHOUT the builder skill resolvable, `harness flow create flight-plan --slug s --plan-dir <dir> --path <dir>/the-flow.json` (no --schema, no --template) exits 0 and writes a flow the CLI can read back (flow rail succeeds)",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-0002",
+          "claim": "A vitest test written BEFORE the verb exists runs the new check verb against the 098-shaped fixture (findings.md + SEAT.md, no plan.dd.json, no the-flow.json) AND the 099-shaped fixture (assets/ only) and was observed RED (verb absent/failing) before implementation; after implementation both fixtures assert envelope status=error, exit 1",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-0003",
+          "claim": "The check verb on a folder whose plan.dd.json validates but which has no the-flow.json returns status=degraded (warning), exit 0, with a reason naming the missing flight plan and a next_action carrying the bare flow create invocation",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-0004",
+          "claim": "The check verb on a folder with a valid plan.dd.json AND a readable flight plan returns status=ok, exit 0",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-0005",
+          "claim": "Every check envelope reports counts of artifacts examined and excluded (plan present/absent, flow present/absent/legacy/malformed/future-version), never only survivors; E301 absent, E308 legacy, E300 malformed and E306 future-version flows each carry a distinct reason and all report as the degraded warning class with exit 0 when the plan itself validates",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-0006",
+          "claim": "plan validate and plan ready envelopes are field-equal excluding timestamp, with equal exit codes, against base ee8f37fb behaviour on the probe matrix (E400 no-plan, ok valid, cant-tell no-flow) — and no edits landed in acts/plan/index.ts, services/dd/**, or acts/dd/**",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-0007",
+          "claim": "docs/how guide for the bundled flow type + check verb exists; harness checks passes including generated-docs drift",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-0008",
+          "claim": "A pij-facing contract document (verb name, invocation, envelope fields, exit codes, warning-vs-error semantics, caching via basis fields where applicable) exists in the plan folder and the handoff + collaboration offer has been sent to ermine via prime, recorded with a pointer",
+          "state": "unchecked"
+        }
+      ]
+    },
+    {
+      "name": "phases",
+      "value": [
+        {
+          "id": "ph-404d",
+          "title": "Bundle flight-plan as a first-class flow type + red fixtures",
+          "brief": "Make harness flow create flight-plan work bare: bake the builder skills flight-plan.schema.json and flight-plan.template.json into the CLI as a bundled type (baked-content pattern), resolve bundled types when --schema/--template are omitted (explicit flags still win), and land the four fixture shapes (098-shaped, 099-shaped, plan-without-flow, both-good) plus a legacy E308 flow. TDD: the bare-create test is observed red before the bundling lands.",
+          "state": "unchecked",
+          "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
+        },
+        {
+          "id": "ph-1bca",
+          "title": "The flow check verb, red-first",
+          "brief": "Add the check verb to the flow act family (acts/flow.ts; one registration line in app.ts if a new act module is cleaner). Working invocation: harness flow check --plan-dir <dir> [--flow <path>] — clause 2 resolves the flight plan at <dir>/the-flow.json by default, --flow overrides (same convention as plan ready). Red-first against the phase-1 fixtures, including the 099-shaped one. Clause 1: plan validity via the plan validate --json envelope of this same binary (CLI-is-the-API; child process, precedent validate-harness-flow). Clause 2: flight-plan existence/readability via readFlowDoc; E301 absent, E308 legacy, E300 malformed and E306 future-version each get a DISTINCT reported reason and ALL compose as the warning class (ruled polarity: only a missing/unusable-plan-document is an error; an unusable flow warns). Verdicts: plan-invalid-or-missing=error(exit 1); plan-ok-but-flow-absent-or-unusable(E301/E308/E300/E306)=degraded warning(exit 0); both-good=ok(0). Envelope counts examined and excluded artifacts; next_action carries the bare create invocation from phase 1.",
+          "state": "unchecked",
+          "depends_on": [
+            "ph-404d"
+          ],
+          "tasks": "assets/tasks/phase-2/tasks.dd.json#tasks"
+        },
+        {
+          "id": "ph-291b",
+          "title": "Docs, pij-facing contract, ermine handoff",
+          "brief": "Ship the knowledge: docs/how guide for the bundled type + verb; the pij-facing contract in the plan folder (working invocation harness flow check --plan-dir <dir>, envelope fields, exit codes, warning-vs-error semantics, ratifiable verb name); DELTA blocks written into ermines stand-up.md on branch docs/fleet-live-findings in ~/pi-hacking/pij — the ONE granted pij write path (prime+ermine convergence rule; worktrees stay read-only); the handoff + collaboration offer routed via prime; a correcting comment on #140 (the E304 one-liner). harness checks green; just fix; ship via the flow.",
+          "state": "unchecked",
+          "depends_on": [
+            "ph-1bca"
+          ],
+          "tasks": "assets/tasks/phase-3/tasks.dd.json#tasks"
+        }
+      ]
+    },
+    {
+      "name": "research_context",
+      "value": "Incorporates findings from assets/research-dossier.md (15 findings, 4 historical learnings). Keys: both clauses already have deterministic primitives — plan validate goes E400/exit 1 on the 098/099 shape today, and readFlowDoc (services/flow/flow-service.ts:100-134) distinguishes E301 missing / E300 malformed / E308 legacy / E306 future-version flows. plan ready is 80% of the wanted verb but plan 072 AC-06 deliberately made absent-flow cant-tell, so the new verb diverges by design while plan ready stays untouched. The verb must be CORE: the npm package ships bin/dist/skills only, extension discovery is cwd-only, and flow/plan are reserved extension names. Registration is one act module plus one app.ts line; exit mapping is status-only (ok/degraded 0, error 1, unconfigured 2). No flow validate/check verb exists today. Pre-plan rulings and s080 coordination: assets/design-constraints.md. Dogfood friction with repros: friction-log.md (F1 E304 bare create; F2 dd section asymmetry)."
+    },
+    {
+      "name": "testing_strategy",
+      "value": {
+        "approach": "Full TDD",
+        "rationale": "Red-first is a ruled constraint, not a preference: the verb must be observed failing against the known-bad fixtures before it passes — a guard that has only seen good input is demonstrated, not tested. vitest in harness/cli.",
+        "focus_areas": "Verdict composition (error/degraded/ok) across the four fixture shapes; bundled flow-type resolution when --schema/--template are omitted; envelope contract (examined/excluded counts, next_action, exit codes); E308 legacy flow reported distinctly from E301 absent.",
+        "excluded": "Performance/load testing; pij-side integration (ermines to build).",
+        "mock_usage": "None — real on-disk fixtures and real CLI envelopes only."
+      }
+    },
+    {
+      "name": "documentation_strategy",
+      "value": {
+        "location": "docs/how/",
+        "rationale": "Detailed guide beside the repos existing harness docs; generated CLI docs cover verb help; the pij-facing contract lives in the plan folder and travels with the handoff."
+      }
+    },
+    {
+      "name": "risks_assumptions",
+      "value": "Assumes s080 preserves plan validate/ready envelope parity across its phases (their AC; drift is a defect report they want). Assumes the 098/099 shapes reproduced as local fixtures are faithful to the real streams (verified read-only against ~/pi-hacking/pij-worktrees/s098-*, s099-*). Assumes acts/flow.ts stays outside s080s frozen set. Risk: self-invoking the CLI for the plan-validate clause adds a child-process hop; precedent exists (validate-harness-flow spawns workers) and koala offered an in-process seam after their phase 2 if shelling proves too slow."
+    },
+    {
+      "name": "open_questions",
+      "value": [
+        {
+          "question": "Final verb name — check is the working name (harness flow check); ratify with ermine during handoff so the pij skill and our docs use one word",
+          "state": "unchecked"
+        },
+        {
+          "question": "Should the verb accept a sweep form (all folders under docs/plans) or stay single-target with pij iterating?",
+          "state": "unchecked",
+          "note": "leaning single-target first; sweep is additive later"
+        }
+      ]
+    },
+    {
+      "name": "workshop_opportunities",
+      "value": []
+    },
+    {
+      "name": "clarifications",
+      "value": [
+        {
+          "session": "2026-08-09",
+          "question": "Put plan validate into harness checks?",
+          "answer": "No — ruled out; users may choose other SDD flows (e.g. OpenSpec); enforcement lives in pij workteam verbs+skill, which call harness verbs"
+        },
+        {
+          "session": "2026-08-09",
+          "question": "Who builds what?",
+          "answer": "Harness owns the deterministic verbs; pij consumes them (pij will use harness verbs please); s081 delivers verb + red-first proof + contract + handoff/collaboration offer to ermine"
+        },
+        {
+          "session": "2026-08-09",
+          "question": "Nudge mechanism in scope?",
+          "answer": "No — leave nudge out for now, no good solution yet; see how prompting in skills goes first"
+        },
+        {
+          "session": "2026-08-09",
+          "question": "Bundle flight-plan as a first-class harness flow type?",
+          "answer": "Yes — that is fine, pij can rely on harness"
+        },
+        {
+          "session": "2026-08-09",
+          "question": "Missing flight plan: hard failure?",
+          "answer": "No its a warning still — advisory by default, teeth opt-in; plan 072 polarity preserved in plan ready"
+        },
+        {
+          "session": "2026-08-09",
+          "question": "Workflow mode / testing / mocks / docs?",
+          "answer": "Full mode; Full TDD; no mocks (real fixtures); docs/how — all four confirmed via Round 1"
+        }
+      ]
+    },
+    {
+      "name": "planning_seam",
+      "value": [
+        {
+          "artifact": "assets/research-dossier.md",
+          "present": "yes",
+          "effect": "informs Key Findings, risks, and the phase touch set; behavioural claims measured against the built CLI, architecture claims cited path:line"
+        },
+        {
+          "artifact": "assets/design-constraints.md",
+          "present": "yes",
+          "effect": "carries Jordans pre-amble rulings verbatim and the s080 coordination agreement — the authority for polarity, seam, and scope decisions"
+        },
+        {
+          "artifact": "friction-log.md",
+          "present": "yes",
+          "effect": "F1 (E304 bare create) motivates phase 1; F2 (dd section asymmetry) is a candidate finding for the dd/builder teams"
+        },
+        {
+          "artifact": "assets/workshops/*.md",
+          "present": "no",
+          "effect": "no workshops run; open decisions were resolved in the pre-amble Q&A instead"
+        }
+      ]
+    },
+    {
+      "name": "gate_matrix",
+      "value": [
+        {
+          "gate": "G1",
+          "check": "Clarify",
+          "status": "PASS",
+          "notes": "6 clarification rows recorded from the pre-amble + Round 1; no NEEDS CLARIFICATION markers"
+        },
+        {
+          "gate": "G2",
+          "check": "Constitution",
+          "status": "PASS",
+          "notes": "CLI-is-the-API (P4) and honest-envelope/exit principles are load-bearing FOR this design; warning-by-default matches the advisory posture"
+        },
+        {
+          "gate": "G3",
+          "check": "Architecture",
+          "status": "PASS",
+          "notes": "core act seam per app.ts pattern; no frozen s080 surface touched; guardrails pin the exclusions"
+        },
+        {
+          "gate": "G4",
+          "check": "ADR Compliance",
+          "status": "N/A",
+          "notes": "no docs/adr directory in this repo"
+        },
+        {
+          "gate": "G5",
+          "check": "Structure",
+          "status": "PASS",
+          "notes": "all builder/plan sections populated; ACs testable; coverage map complete over ac-0001..0008"
+        },
+        {
+          "gate": "G6",
+          "check": "Testing Alignment",
+          "status": "PASS",
+          "notes": "Full TDD: red-first tasks precede implementation in both build phases; no mocks"
+        },
+        {
+          "gate": "G7",
+          "check": "Domain Completeness",
+          "status": "N/A",
+          "notes": "domain mode off"
+        }
+      ]
+    },
+    {
+      "name": "implementation_summary",
+      "value": "Three phases. Phase 1 bakes the builder flight-plan schema+template into the CLI as a bundled flow type (pattern: existing baked-content modules) and teaches flow create to resolve bundled types when --schema/--template are omitted; it also lands the known-bad fixtures (098-shaped: stray files only; 099-shaped: assets only; plan-without-flow; both-good) with a failing-first test for bare create. Phase 2 adds the check verb to the flow act family (acts/flow.ts, NOT the frozen acts/plan/index.ts), TDD red-first against those fixtures: clause 1 obtains plan validity via the plan validate --json envelope (CLI-is-the-API, s080 seam), clause 2 reads the flight plan via readFlowDoc; verdicts compose as plan-invalid=error(1), flow-missing-or-legacy=degraded(0) warning, both-good=ok(0); the envelope counts examined and excluded artifacts and its next_action carries the bare create invocation. Phase 3 writes the docs/how guide and the pij-facing contract, converges DELTA blocks into ermines stand-up.md branch, sends the handoff + collaboration offer via prime, and corrects the E304 one-liner on #140."
+    },
+    {
+      "name": "key_findings",
+      "value": [
+        {
+          "impact": "Critical",
+          "finding": "plan validate already fails E400/exit 1 on the exact 098/099 shape — clause 1 exists; the gap is composition and the flow clause (dossier F-01/F-02)",
+          "action": "Phase 2 composes rather than reinvents: shell plan validate --json for clause 1, readFlowDoc for clause 2"
+        },
+        {
+          "impact": "Critical",
+          "finding": "Plan 072 AC-06 deliberately made absent-flow cant-tell in plan ready, and s080 freezes acts/plan/index.ts — the new polarity cannot land inside plan ready (dossier H-01)",
+          "action": "New verb in the flow act family; plan ready untouched; divergence documented in the contract"
+        },
+        {
+          "impact": "Critical",
+          "finding": "The npm package ships no extensions and extension discovery is cwd-only — a pij-callable verb must be core (dossier F-10/F-11/F-12)",
+          "action": "New subverb registered in acts/flow.ts; fence tell-first for harness/cli/src already flagged to prime (spine 54204)"
+        },
+        {
+          "impact": "High",
+          "finding": "flight-plan is not a bundled flow type — the one-liner #140 proposes for stream briefs fails E304 (friction F1)",
+          "action": "Phase 1 bakes schema+template into the CLI; Jordan ruled pij can rely on harness"
+        },
+        {
+          "impact": "High",
+          "finding": "E308 legacy flows read as errors distinct from absent flows — a hand-written the-flow.json must not count as a flow that exists",
+          "action": "Fixture + test for the legacy shape; envelope reports it distinctly"
+        }
+      ]
+    },
+    {
+      "name": "acceptance_coverage",
+      "value": [
+        {
+          "ac": "ac-0001",
+          "covered_by": [
+            "ph-404d"
+          ],
+          "verified_in": "phase-1 tests: bare create in a skill-less temp repo"
+        },
+        {
+          "ac": "ac-0002",
+          "covered_by": [
+            "ph-404d",
+            "ph-1bca"
+          ],
+          "verified_in": "phase-2 red-first test record in the execution log"
+        },
+        {
+          "ac": "ac-0003",
+          "covered_by": [
+            "ph-1bca"
+          ],
+          "verified_in": "phase-2 verdict tests (plan-ok flow-missing fixture)"
+        },
+        {
+          "ac": "ac-0004",
+          "covered_by": [
+            "ph-1bca"
+          ],
+          "verified_in": "phase-2 verdict tests (both-good fixture)"
+        },
+        {
+          "ac": "ac-0005",
+          "covered_by": [
+            "ph-1bca"
+          ],
+          "verified_in": "phase-2 envelope-contract tests incl. E308-vs-E301 distinction"
+        },
+        {
+          "ac": "ac-0006",
+          "covered_by": [
+            "ph-1bca"
+          ],
+          "verified_in": "phase-2 review: probe matrix re-run + git diff scope check on frozen surfaces"
+        },
+        {
+          "ac": "ac-0007",
+          "covered_by": [
+            "ph-291b"
+          ],
+          "verified_in": "phase-3: harness checks green incl. docs drift"
+        },
+        {
+          "ac": "ac-0008",
+          "covered_by": [
+            "ph-291b"
+          ],
+          "verified_in": "phase-3: contract doc committed + send receipt/spine pointer recorded"
+        }
+      ]
+    },
+    {
+      "name": "risks",
+      "value": [
+        {
+          "risk": "s080 lands a plan-validate behaviour change mid-build and the shelled envelope drifts",
+          "likelihood": "Low",
+          "impact": "Medium",
+          "mitigation": "Parity is s080s own AC; AC-06 pins the probe matrix at base behaviour; drift becomes a defect report koala has asked for"
+        },
+        {
+          "risk": "Self-shelling the CLI for clause 1 is slow or fragile in pij call sites",
+          "likelihood": "Low",
+          "impact": "Medium",
+          "mitigation": "Precedent exists (validate-harness-flow spawns workers); koala offered an in-process seam after their phase 2 if measured slow"
+        },
+        {
+          "risk": "Local fixtures drift from the real 098/099 streams they model",
+          "likelihood": "Low",
+          "impact": "High",
+          "mitigation": "Fixture shapes copied from the real worktrees read-only and documented in-fixture; the real streams remain the validation reference"
+        },
+        {
+          "risk": "Verb name or envelope bikeshedding stalls the ermine handoff",
+          "likelihood": "Medium",
+          "impact": "Low",
+          "mitigation": "Contract doc names the working name and marks it ratifiable; semantics, not naming, are the load-bearing surface"
+        }
+      ]
+    },
+    {
+      "name": "execution_guardrails",
+      "value": [
+        "Never edit acts/plan/index.ts, services/dd/**, or acts/dd/** (s080 frozen surfaces); any plan-family surface change routes through koala or prime first",
+        "Always invoke THIS worktrees CLI (node harness/cli/bin/harness.js) — bare harness resolves to the root checkouts dist; rebuild with just build after src edits",
+        "Explicit pathspecs only, never git add -A; just fix before pushing; tell prime before push/PR",
+        "Red-first discipline: each fixtures failing test is committed/observed BEFORE the code that turns it green; label claims MEASURED or REASONED in reports",
+        "Real streams under ~/pi-hacking/pij-worktrees/ are READ-ONLY references — never write there; local fixtures live in harness/cli test fixtures"
+      ]
+    }
+  ]
+}
