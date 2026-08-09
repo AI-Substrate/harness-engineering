@@ -82,7 +82,15 @@ jobs:
       # nondeterministically across npm majors). Warn-launch: degraded (warn-only
       # findings) exits 0 and surfaces a ::warning::; a hard-gate error exits 1 and
       # fails the step. For a failing gate's detail, reproduce locally with `harness checks`.
+      #
+      # HARNESS_TEST_SCOPE=all is LOAD-BEARING, not tidiness. Local runs default to the
+      # FAST scope, which skips the 12 slowest test files — and those files are the git
+      # adapters, the pre/post-commit hooks and the telemetry push path, i.e. the code
+      # most likely to break on Windows. Without this line they would run NOWHERE, and
+      # the gate would report green over a suite 5% smaller than the one it claims.
       - name: Quality gate (harness checks)
+        env:
+          HARNESS_TEST_SCOPE: all
         run: |
           set +e
           out=$(node harness/cli/bin/harness.js checks --json); code=$?
