@@ -445,6 +445,11 @@
           "impact": "High",
           "finding": "MY ENCODING ASK WOULD HAVE SHIPPED AS A NEW INSTANCE OF THE HAZARD IT NAMES (constraint from pij-respectable-clam via prime). I asked for a verb that runs a gate against a REF so nobody stashes to measure. Clam measured that a full-tree gate WRITES TRACKED FILES — gen:docs and friends regenerate artifacts as part of running — so a --ref verb that runs in the CURRENT working tree removes the stash and KEEPS the mutation. Worse than the status quo: it replaces an explicit dangerous step with an implicit one, and the danger is no longer visible at the call site.",
           "action": "The ask is now REF + ISOLATION: the verb must not inherit the working tree at all (throwaway worktree or temp clone). Recorded as the OBSERVER PROBLEM — the measurement must not perturb the thing measured, and the naive version always does, because the cheapest way to measure something is to run it where you are standing. Same shape as the nights other near-misses: a remedy that does not remove the hazard it names"
+        },
+        {
+          "impact": "High",
+          "finding": "THE BROADCAST FOUND A SECOND INSTANCE IN A WORKTREE I HAVE NEVER TOUCHED. pij-tiny-bug re-examined its own session only because my stash near-miss was broadcast rather than filed, and found it had done the same thing hours earlier for the same reason (stash to baseline lint). Its did not fire PURELY BY LUCK — one path was untracked, so git stash push failed on pathspec and the && chain short-circuited before the pop. A stray untracked file was the entire safeguard. Sharpest part: it had ALREADY run git stash list, SEEN the foreign 020 stash, written pre-existing, not mine, untouched, and moved on — it read the evidence of the hazard and filed it as REASSURANCE.",
+          "action": "Empirical case for BROADCASTING a near-miss rather than filing it: a self-report costs the reporter something and buys instances nobody else would find, because the only person who can re-audit a seats session is that seat, and nothing prompts them to. Also: seeing evidence of a hazard and recording it as reassurance is its own failure mode — the observation was correct and the conclusion inverted"
         }
       ]
     },
