@@ -1021,3 +1021,36 @@ exists and why uninstall's symmetry there is delete-not-restore.
 
 A **positive control** asserts a config that does exist is copied and named; without it, every row
 above is satisfied by a backup that never copies anything at all.
+
+### `backupAgentConfigs` HAD NO REGRESSION COVERAGE AT ALL until this commit
+
+Measured, not assumed:
+
+```
+git grep -l backupAgentConfigs 2401cb31~1 -- harness/cli/test   ->  NONE
+```
+
+No test file referenced it before this plan. It shipped in the #108 doctor work untested, and we only
+found out because we widened it.
+
+**Why that matters here specifically**: this module **writes into a user's home directory**, and it is
+the **restore path uninstall depends on**. So `just test-all passes` could not have been evidence that
+a user with no overrides set still gets the same backup as before — **nothing anywhere was asserting
+it**.
+
+**The honest answer to "does an existing row already cover the no-override path?" was NO.** The
+positive-control row uses `cursor`, which has no override at all, so it exercised the fallback while
+proving nothing about the agents whose resolution the widening could actually change. Incidental
+coverage, of the wrong agent.
+
+Now deliberate: a row asserts that with nothing set, `claude-code` and `gemini` — **the only two rows
+with an override** — resolve to `<home>/.claude/settings.json` and `<home>/.gemini/settings.json`, and
+a second row asserts backup itself copies that plain home path (the resolver and backup could agree in
+one and diverge in the other). Proven by refusal: breaking the fallback for override-bearing agents
+turns it red.
+
+**The general shape is a harness finding, not a plan finding**: a shipped feature can carry zero
+regression coverage and nothing anywhere says so — you only discover it when you touch the file.
+
+**A caution carried forward to tk-000d**: uninstall's restore path depends on this module, and
+*"restore returns the original bytes"* has never been tested end to end against a real backup.

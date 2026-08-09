@@ -58,6 +58,56 @@ describe('the override table is read from the MATRIX, not restated (dw-0023, dw-
   });
 });
 
+describe('the NO-OVERRIDE path is unchanged — asserted DELIBERATELY, not incidentally', () => {
+  it('with no overrides set, the override-bearing agents resolve to PLAIN HOME paths', async () => {
+    /*
+    Test Doc:
+    - Why: `backupAgentConfigs` had ZERO regression coverage before this plan
+      (measured: no test file referenced it at 2401cb31~1). So "test-all passes"
+      could not have been evidence that a user with no overrides set still gets the
+      same backup as before — nothing was asserting it. This row asserts it.
+    - Contract: unset, claude-code and gemini resolve to <home>/.claude/... and
+      <home>/.gemini/... — the pre-widening behaviour, pinned.
+    - WHY THESE TWO AGENTS SPECIFICALLY: they are the only rows with an override, so
+      they are the only ones whose resolution the widening could have changed. A row
+      using cursor would exercise the no-override path while proving nothing about
+      the fallback, which is what this file had before — incidental coverage of the
+      wrong agent.
+    - Quality Contribution: deliberate rather than incidental, so tidying the file
+      cannot silently remove the guard.
+    */
+    const { resolveConfigFiles } = await import('../../../src/services/hooks/agent-matrix.js');
+    const home = '/home/dev';
+    const noOverrides = () => undefined;
+
+    for (const [agent, expected] of [
+      ['claude-code', `${home}/.claude/settings.json`],
+      ['gemini', `${home}/.gemini/settings.json`],
+    ] as const) {
+      const spec = AGENT_MATRIX.find((s) => s.agent === agent);
+      if (spec === undefined) throw new Error(`${agent} missing from the matrix`);
+      expect(resolveConfigFiles(spec, home, noOverrides)).toEqual([expected]);
+    }
+  });
+
+  it('and backup COPIES that plain home path when no override is set', async () => {
+    // The same property through backup itself, not only through the resolver — the
+    // two could agree in the resolver and still diverge in how backup composes.
+    const { backupAgentConfigs } = await import('../../../src/services/doctor/collector/backup.js');
+    const fs = new FakeFs();
+    fs.mkdirp('/home/dev/.claude');
+    fs.writeText('/home/dev/.claude/settings.json', '{"hooks":{}}\n');
+
+    const backup = backupAgentConfigs({
+      fs,
+      clock: { nowIso: () => '2026-08-10T00:00:00.000Z', now: () => 0 },
+      host: { platform: 'darwin', arch: 'arm64', home: '/home/dev' },
+    } as never);
+
+    expect(backup.copied).toContain('.claude/settings.json');
+  });
+});
+
 describe('the backed-up file is the one that gets MODIFIED (dw-0023)', () => {
   it('with CLAUDE_CONFIG_DIR set, both resolve to the override — not the home', async () => {
     /*
