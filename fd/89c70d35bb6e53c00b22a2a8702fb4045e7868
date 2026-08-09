@@ -1,0 +1,29 @@
+docs/plans/081-flow-reachability/the-flow.json
+  s_2bef307df718bc::t_a42c32eaaef3d9 439-545,803,817-827,970,975,985-986,992,997,1006-1015,1050,1055,1065-1074,1080,1085,1092-1101
+docs/plans/081-flow-reachability/the-flow.md
+  s_2bef307df718bc::t_77de0bd08e77c1 4,6,16-17,26-27,62-64,77-79,82-87
+docs/plans/081-flow-reachability/assets/backpressure.dd.json
+  s_2bef307df718bc::t_ffe01b1790945f 25,37,49,61,73,85,97,109
+docs/plans/081-flow-reachability/assets/backpressure.dd.md
+  s_2bef307df718bc::t_2e3e7b47196353 23-30
+docs/plans/081-flow-reachability/plan.dd.json
+  s_2bef307df718bc::t_4f5580741b5b15 84,90,433-447,569-570
+docs/plans/081-flow-reachability/plan.dd.md
+  s_2bef307df718bc::t_ab3977f0ab0597 64-65,205-207,254
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "fd89c70d35bb6e53c00b22a2a8702fb4045e7868",
+  "prompts": {},
+  "sessions": {
+    "s_2bef307df718bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb3484ee-e8b4-4f68-89fa-22abb2a7a8c3",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
