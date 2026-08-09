@@ -52,6 +52,7 @@
     "fix": "biome check --write harness/cli"
   },
   "dependencies": {
+    "@ai-substrate/dd": "github:AI-Substrate/dd#a37a20ecf12342275a9d81b4cf8835302de8e9e0",
     "commander": "^15.0.0",
     "jiti": "2.7.0",
     "picomatch": "^4.0.5"

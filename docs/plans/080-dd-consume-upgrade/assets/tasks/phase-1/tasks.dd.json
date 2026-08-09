@@ -23,7 +23,7 @@
           "id": "tk-0001",
           "title": "Pin the dependency: add @ai-substrate/dd to the ROOT package.json (the repo single manifest - harness/cli has none) as github:AI-Substrate/dd#<full 40-char sha> at current dd branch head (ancestry-checked from floor f712ded; name the sha in the execution log), npm install unsandboxed, root package-lock.json committed",
           "phase": "ph-1d68",
-          "state": "unchecked",
+          "state": "checked",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0001"
           ]
@@ -76,13 +76,13 @@
           {
             "id": "dw-0001",
             "assertion": "npm ls @ai-substrate/dd (repo root) resolves git+ssh://...#<full 40-char sha> AND git merge-base --is-ancestor f712ded <that sha> exits 0 in a dd clone; sha named in the execution log",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0001"
           },
           {
             "id": "dw-0002",
             "assertion": "npm install completes with the registry proxy untouched for dd (only commander/jiti from registry) and the committed lockfile pins the same sha",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0001"
           }
         ],

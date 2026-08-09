@@ -35,7 +35,7 @@ _Empty._
 
 | id | title | domain | phase | state | note | receipt | done | success | notes | satisfies |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| tk-0001 | Pin the dependency: add @ai-substrate/dd to the ROOT package.json (the repo single manifest - harness/cli has none) as github:AI-Substrate/dd#&lt;full 40-char sha&gt; at current dd branch head (ancestry-checked from floor f712ded; name the sha in the execution log), npm install unsandboxed, root package-lock.json committed | — | ph-1d68 | [ ] unchecked | — | — | — | — | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
+| tk-0001 | Pin the dependency: add @ai-substrate/dd to the ROOT package.json (the repo single manifest - harness/cli has none) as github:AI-Substrate/dd#&lt;full 40-char sha&gt; at current dd branch head (ancestry-checked from floor f712ded; name the sha in the execution log), npm install unsandboxed, root package-lock.json committed | — | ph-1d68 | [x] checked | — | — | — | — | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
 | tk-0002 | Promote the POC probe trio into a vitest integration spec against the INSTALLED package: pack shape (no src/), injection with fixture-owned foreign ports (typed: const fs: SchemaFs = ...), tracked===null on null tracking set, D7 drive-rooted address resolution | — | ph-1d68 | [ ] unchecked | — | — | — | — | — | [ac-0003](../../../plan.dd.md#acceptance-criteria) |
 | tk-0003 | Rewire acts/flow.ts and acts/plan/fence.ts onto @ai-substrate/dd public subpaths (round-2 pattern: ConventionSchemaResolver+MemoizingDocLoader+FsDocLoader from the barrel, DdDoc type from the barrel) | — | ph-1d68 | [ ] unchecked | — | — | — | — | — | [ac-0002](../../../plan.dd.md#acceptance-criteria), [ac-0003](../../../plan.dd.md#acceptance-criteria) |
 | tk-0004 | Rewire acts/plan/pr-body.ts (escapeCell/headingSlug from ./render/renderer; PlanEdge/PlanIndex/PlanItem types REMAIN on the fork until phase 2) and acts/plan/index.ts non-plan imports onto the package: core address/model/parse/validate/walk, links resolveMapSeed/traverseCorpus, schema model SchemaIssue AND schema resolve ConventionSchemaResolver | — | ph-1d68 | [ ] unchecked | — | — | — | — | — | [ac-0002](../../../plan.dd.md#acceptance-criteria), [ac-0003](../../../plan.dd.md#acceptance-criteria) |
@@ -49,8 +49,8 @@ _Empty._
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0001 | npm ls @ai-substrate/dd (repo root) resolves git+ssh://...#&lt;full 40-char sha&gt; AND git merge-base --is-ancestor f712ded &lt;that sha&gt; exits 0 in a dd clone; sha named in the execution log | [ ] unchecked | [bp-0001](../../backpressure.dd.md#rows) |
-| dw-0002 | npm install completes with the registry proxy untouched for dd (only commander/jiti from registry) and the committed lockfile pins the same sha | [ ] unchecked | [bp-0001](../../backpressure.dd.md#rows) |
+| dw-0001 | npm ls @ai-substrate/dd (repo root) resolves git+ssh://...#&lt;full 40-char sha&gt; AND git merge-base --is-ancestor f712ded &lt;that sha&gt; exits 0 in a dd clone; sha named in the execution log | [x] checked | [bp-0001](../../backpressure.dd.md#rows) |
+| dw-0002 | npm install completes with the registry proxy untouched for dd (only commander/jiti from registry) and the committed lockfile pins the same sha | [x] checked | [bp-0001](../../backpressure.dd.md#rows) |
 
 ### tk-0002
 
