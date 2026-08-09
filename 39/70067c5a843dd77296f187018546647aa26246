@@ -1,0 +1,19 @@
+skills/builder/references/flight-plan-ops.md
+  s_3fcdc055efffb7::t_75d98c3412ab5a 75,79,90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3970067c5a843dd77296f187018546647aa26246",
+  "prompts": {},
+  "sessions": {
+    "s_3fcdc055efffb7": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "f1575938-81cb-4506-9f3d-756db2229628",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
