@@ -1,0 +1,40 @@
+docs/plans/082-harness-hooks/assets/tasks/phase-3/execution.log.md
+  s_ed609d39de2442::t_e8b0bfb2c58caf 154-222
+  s_ed609d39de2442::t_8c8dfe22b77608 230-232
+  s_ed609d39de2442::t_e924aa27a6fef7 223
+docs/plans/082-harness-hooks/assets/tasks/phase-3/tasks.dd.md
+  s_ed609d39de2442::t_d2f29f631d6eb6 57
+docs/plans/082-harness-hooks/assets/tasks/phase-3/tasks.dd.json
+  s_ed609d39de2442::t_d2f29f631d6eb6 111-116
+harness/cli/test/app.test.ts
+  s_ed609d39de2442::t_805afb32158ca7 155-161
+harness/cli/src/acts/hooks.ts
+  s_ed609d39de2442::t_0e986abb1411aa 86-88,96-98,104-106
+  s_ed609d39de2442::t_b3b8f478a761c1 139-143,147,153
+  s_ed609d39de2442::t_5b119cfb6eda77 107-122
+  s_ed609d39de2442::t_5017e1882d75a1 25-26
+harness/cli/src/services/hooks/hooks-verbs.ts
+  s_ed609d39de2442::t_ba861a3a694c5c 347
+  s_ed609d39de2442::t_0298f295b9c86b 284-346,348-360,362
+  s_ed609d39de2442::t_8c8dfe22b77608 4
+  s_ed609d39de2442::t_fc01fc8ca96926 361
+harness/cli/test/services/hooks/verbs-e2e.int.test.ts
+  s_ed609d39de2442::t_6c6461481610fb 1-2,7-8,140-240
+  s_ed609d39de2442::t_abad4eb36c0704 241
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8aaeed584b2862b0b5ef4b50615d0894da43f444",
+  "prompts": {},
+  "sessions": {
+    "s_ed609d39de2442": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "62892a0d-07d6-4784-b490-986f797be544",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
