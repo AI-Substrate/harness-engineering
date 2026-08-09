@@ -38,7 +38,7 @@ function deps(over: {
     fs,
     probe,
     git: new FakeGitAttribution({ trace2Target: over.target ?? null }),
-    env: { get: (name: string) => (over.env ?? {})[name] },
+    env: { get: (name: string) => over.env?.[name] },
   };
 }
 

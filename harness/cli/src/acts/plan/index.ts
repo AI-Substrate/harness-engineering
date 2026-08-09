@@ -25,11 +25,7 @@ import {
   type DdIssue,
   resolveAddressFile,
 } from '../../services/dd/core/validate.js';
-import { validateWalk } from '../../services/dd/core/walk.js';
-import { resolveMapSeed, traverseCorpus } from '../../services/dd/links/index.js';
 import {
-  buildPlanIndex,
-  itemKey,
   type PlanDocument,
   type ReadyReading,
   readPlanCheck,
@@ -320,7 +316,7 @@ function registerNewCommand(plan: Command, io: CliIo, deps: DdActDeps): void {
  * an ERROR, and inventing item-level opinions about a document nobody can shape
  * would be a second, quieter wrong answer.
  */
-function loadPlanDocuments(
+function _loadPlanDocuments(
   ctx: PlanContext,
   documents: readonly string[],
 ): { entries: PlanDocument[]; loader: FsDocLoader } {
@@ -368,7 +364,10 @@ function registerValidateCommand(plan: Command, io: CliIo, deps: DdActDeps): voi
           );
         }
 
-        const { doc } = readPlan(ctx, 'plan validate', path);
+        // Called for its side effect: `readPlan` validates and reports on the
+        // plan. The returned doc is unused here (biome noUnusedVariables) — the
+        // loader below re-reads from disk — but the validation must still run.
+        readPlan(ctx, 'plan validate', path);
         const loader = new FsDocLoader(
           ctx.fs,
           new NodeHash(),
