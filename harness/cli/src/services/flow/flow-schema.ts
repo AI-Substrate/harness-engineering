@@ -156,11 +156,15 @@ function loadOverlay(
   }
 
   // 4. exhausted → E304
+  const bundledTypes = Object.keys(BUNDLED_FLOW_SCHEMAS)
+    .filter((k) => k !== SHARED_CORE_KEY)
+    .sort()
+    .join(', ');
   return {
     ok: false,
     code: ErrorCodes.FLOW_TYPE_UNKNOWN,
     message: `No schema found for flow type "${opts.type}".`,
-    next_action: `Pass --schema <path>, add .harness/schemas/flows/${opts.type}.schema.json, or use a bundled type (harness-loop).`,
+    next_action: `Pass --schema <path>, add .harness/schemas/flows/${opts.type}.schema.json, or use a bundled type (${bundledTypes}).`,
   };
 }
 
