@@ -78,4 +78,4 @@ _Empty._
 | id | assertion | state | pressure | note |
 | --- | --- | --- | --- | --- |
 | dw-0009 | node harness/cli/bin/harness.js flow orient + rail against the-flow.json AND plan validate against plan.dd.json all return ok on the rewired build | [x] checked | [bp-000b](../../backpressure.dd.md#rows) | — |
-| dw-000a | any dd-implementation defect surfaced during this phase has a dogfood-ledger row (grep the ledger; zero silent workarounds) | [ ] unchecked | not-applicable | human review of assets/dogfood-ledger.md - the ledger judgement row bp-000c is deliberately human-tier |
+| dw-000a | any dd-implementation defect surfaced during this phase has a dogfood-ledger row (grep the ledger; zero silent workarounds) | [x] checked | not-applicable | human review of assets/dogfood-ledger.md - the ledger judgement row bp-000c is deliberately human-tier |

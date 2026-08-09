@@ -138,7 +138,7 @@
           {
             "id": "dw-000a",
             "assertion": "any dd-implementation defect surfaced during this phase has a dogfood-ledger row (grep the ledger; zero silent workarounds)",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable",
             "note": "human review of assets/dogfood-ledger.md - the ledger judgement row bp-000c is deliberately human-tier"
           }

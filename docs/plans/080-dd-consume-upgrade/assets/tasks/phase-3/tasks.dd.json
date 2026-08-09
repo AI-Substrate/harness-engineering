@@ -81,7 +81,7 @@
           "id": "tk-0012",
           "title": "Close-out at the final boundary: dogfood pair green on the fork-less build against plan 080's own documents; dogfood ledger closes to ZERO silent workarounds (every row CLOSED by working fix or explicitly Jordan-ruled); tsc + full suite green - the three every-phase-boundary ACs (ac-0003, ac-000b, ac-000c) earn their genuine satisfies HERE, resolving their standing orphans",
           "phase": "ph-08e2",
-          "state": "unchecked",
+          "state": "checked",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0003",
             "../../../plan.dd.json#acceptance_criteria/ac-000b",
@@ -188,8 +188,9 @@
           {
             "id": "dw-0020",
             "assertion": "every dogfood-ledger row reads CLOSED (working fix) or carries Jordan's explicit ruling - zero silent workarounds; human-tier review of the ledger is recorded",
-            "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-000c"
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-000c",
+            "note": "koala's human-tier judgment 2026-08-09 + Jordan's in-session rulings: rows 1(harness)/2/3/4/5 CLOSED (working fixes, the ontology ruling, and Jordan's 'not tracked is fine'); row 6 OPEN-RULED (ships with a one-line PR note; closer = the dd-team CLI naming decision Jordan routed). ZERO silent workarounds - every row is a working fix or an explicit ruling"
           },
           {
             "id": "dw-0021",

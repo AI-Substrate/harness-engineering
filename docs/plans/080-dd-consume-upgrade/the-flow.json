@@ -664,6 +664,33 @@
         "from": "review-2",
         "to": "phase-3"
       }
+    },
+    {
+      "id": "UPD-020",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-09T05:26:32.148Z",
+      "details": {
+        "node": "boot-3",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-018",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-09T05:26:32.509Z",
+      "details": {
+        "node": "boot-3",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
     }
   ],
   "nodes": [
@@ -1169,10 +1196,10 @@
       "id": "boot-3",
       "type": "harness-boot",
       "label": "Boot check",
-      "status": "known",
+      "status": "done",
       "next": [],
       "created_at": "2026-08-09T03:10:52.507Z",
-      "modified_at": "2026-08-09T03:10:52.507Z",
+      "modified_at": "2026-08-09T05:26:32.509Z",
       "branch_of": "phase-3",
       "instructions": [
         "Pre-flight seam: confirm the harness is healthy before you start coding this phase.",
@@ -1185,7 +1212,16 @@
       "chore": {
         "kind": "command",
         "importance": "recommended"
-      }
+      },
+      "comments": [
+        {
+          "at": "2026-08-09T05:26:32.148Z",
+          "text": "decision:done verdict:healthy-boot-checks-degraded time:2026-08-09T05:25Z - harness boot: boot healthy 47.6s, no services (CLI/library), checks degraded on the pre-existing warn-launch trio (arch-check services-ports-type-only x2 in services/telemetry, markdown-lint 211, windows-check 6) - all verified NOT phase-introduced (coder's just-checks run + boot envelope agree)",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-09T05:26:32.509Z"
     },
     {
       "id": "observe-3",

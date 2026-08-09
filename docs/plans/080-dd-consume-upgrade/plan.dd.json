@@ -61,7 +61,7 @@
         {
           "id": "ac-0003",
           "claim": "tsc --noEmit exits 0 and the full harness/cli vitest suite is green at every phase boundary",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "ac-0004",
@@ -76,37 +76,37 @@
         {
           "id": "ac-0006",
           "claim": "Fork-drain checklist complete before any deletion: every harness-main commit touching services/dd or acts/dd since the dd fork point is enumerated with its sha and confirmed present in dd (merge-base ancestry checked, not assumed)",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "ac-0007",
           "claim": "services/dd and acts/dd are deleted; grep for their import paths returns zero matches across src/ and test/",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "ac-0008",
           "claim": "harness dd * verb registration is removed; harness doctor emits a non-fatal warning when the standalone dd CLI is absent; AGENTS.md documents installing it",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "ac-0009",
           "claim": "docs/how/consuming-dd.md documents the consume route: full-sha pinning, re-pin procedure, the sandbox caveat, and the re-verify trio (pack shape / injection / A-2)",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "ac-000a",
           "claim": "The retired flow-to-dd boundary is documented per D-4: a comment at each guard site that goes blind (or its removal), plus the plan note - and no new guard is built",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "ac-000b",
           "claim": "Dogfood: node harness/cli/bin/harness.js flow orient/rail and harness plan validate run green against plan 080 own documents on the rewired build at each phase boundary",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "ac-000c",
           "claim": "Every dd-implementation or builder-flow defect found while dogfooding this plan is remediated to a working solution (fixed in harness, or fixed in dd and consumed via re-pin) or explicitly ruled by Jordan - the dogfood-findings ledger shows zero silent workarounds; the E450 section-create gap is entry one",
-          "state": "unchecked"
+          "state": "checked"
         }
       ]
     },
@@ -153,7 +153,7 @@
           "id": "ph-08e2",
           "title": "Fork drain, deletion, and surface cleanup",
           "brief": "Drain the fork against harness-main history (deferred-fix class), then delete services/dd + acts/dd, retire the harness dd verbs, land D-2 riders (AGENTS.md + doctor warning), docs, and the D-4 boundary notes. Remediation ledger closes to zero silent workarounds.",
-          "state": "unchecked",
+          "state": "checked",
           "depends_on": [
             "ph-1633"
           ],
