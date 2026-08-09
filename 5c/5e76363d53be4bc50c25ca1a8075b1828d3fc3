@@ -1,0 +1,38 @@
+harness/cli/test/acts/doctor.test.ts
+  s_ed609d39de2442::t_6289f77e005b9f 2,14
+  s_ed609d39de2442::t_691c5061882846 294-352
+  s_ed609d39de2442::t_ecb9daa891055b 353-354
+harness/cli/src/acts/hooks.ts
+  s_ed609d39de2442::t_f0fca2438d59d5 147-171,173,175
+harness/cli/src/services/doctor/collector/types.ts
+  s_ed609d39de2442::t_75b77019283c3f 100-107
+harness/cli/src/services/hooks/hooks-verbs.ts
+  s_ed609d39de2442::t_5a14d39ec667dd 506-515
+harness/cli/test/services/hooks/verbs-e2e.int.test.ts
+  s_ed609d39de2442::t_a10c1ad758cd91 439-481
+docs/plans/082-harness-hooks/assets/tasks/phase-3/execution.log.md
+  s_ed609d39de2442::t_366cbbc8a4e6ae 362-479
+harness/cli/test/support/collector-fakes.ts
+  s_ed609d39de2442::t_75b77019283c3f 25-41
+harness/cli/src/acts/doctor.ts
+  s_ed609d39de2442::t_6289f77e005b9f 253-255,298-300
+  s_ed609d39de2442::t_ae96b1581e8008 41
+  s_ed609d39de2442::t_6aa360e6ccc2e2 250-252,257,260,274-297
+  s_ed609d39de2442::t_f0fca2438d59d5 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "5c5e76363d53be4bc50c25ca1a8075b1828d3fc3",
+  "prompts": {},
+  "sessions": {
+    "s_ed609d39de2442": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "62892a0d-07d6-4784-b490-986f797be544",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
