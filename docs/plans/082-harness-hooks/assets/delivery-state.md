@@ -163,6 +163,38 @@ one. Only error mode is a false negative — the direction the doctrine demands.
 **A human committing inside the PRE/POST bracket is indistinguishable and always will be.**
 Nothing in git records who typed. It is an asserted KNOWN-BLIND row, not a gap to close.
 
+### THE SECOND LAYER — added 2026-08-09, and it exists because a premise was wrong
+
+Index-at-PRE only separates the seven defeaters from authorship **if the defeater ran BEFORE the
+PRE that brackets the commit**. If a defeater and its commit happen inside ONE bracket, PRE sees
+a clean index and the guard emits.
+
+That was assumed rare on the grounds that each git command is its own tool call. **Measured
+false.** Parsing `/tmp/cursor-hook-pre.jsonl` (76 records) on this machine, Cursor issues, as a
+single `Shell` tool call:
+
+```
+git add -A && git commit --trailer "Co-authored-by: Cursor <cursoragent@cursor.com>" -m "…"
+```
+
+Chained with `&&`. So defeater-inside-one-bracket is the **normal shape**, not an edge case.
+
+**The fix is in the payload we already receive.** The PRE record carries `tool_name` and
+`tool_input.command`. `tk-000d` scans that command **per segment** (split on `&&`, `;`, `||`,
+newline — the defeater and the commit are different segments, so a first-token scan misses it
+every time) and refuses to emit when a segment names a content-importing operation.
+
+It **narrows, it does not close**: a script, alias, shell function, Makefile target or heredoc
+hides the operation. Those rows are asserted as **EMIT** and labelled KNOWN-BLIND. It is a
+**second layer over** index-at-PRE, never a replacement — mutate each layer separately **and**
+both together, or a single-layer negation passes while the other layer silently covers for it.
+
+**Do not claim an over-emit fabricates authorship.** That is an inference nobody has measured.
+Our six events tell the daemon a commit happened; the line-level split is git-ai's own, computed
+from its checkpoint records. Whether an over-emitted squash-merge yields a wrong note, a note
+with no agent lines, or a closed failure is **unmeasured**, and `tk-000d` records it rather than
+asserting it.
+
 ## The loop — how to keep it going
 
 1. **Coder reports per task** (not only at the end). On each report: read it, check the claim

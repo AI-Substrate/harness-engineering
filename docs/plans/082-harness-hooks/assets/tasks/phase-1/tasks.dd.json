@@ -46,22 +46,24 @@
         {
           "id": "tk-0003",
           "title": "Extend the PRE hook to record the INDEX STATE alongside HEAD — the measured discriminator",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-1",
           "success": "PRE records whether the index is clean or already-staged, plus HEAD. This is the ONLY mechanism that separates the seven defeaters from a genuine agent commit, and unlike .git state it is captured before the commit can erase it. Store it atomically (exclusive create or lock file) so two racing fires cannot both read a stale value.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0003"
-          ]
+          ],
+          "receipt": "GitPort.indexState() + FsPort.createExclusive() + HookStateStore (atomic temp+rename PRE write, O_EXCL claim, bounded claim prune CLAIM_KEEP=50). 14 tests incl. REAL-git survival proof and a real-filesystem prune bound; 6 mutation checks all caught."
         },
         {
           "id": "tk-0004",
           "title": "Build a PURE transition classifier over (prev, head, parents, reflogSubject, indexStateAtPre)",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-1",
           "success": "Pure — no IO, no git shell-out — so the provocation suite has a callable target. `.git` state is NOT a parameter: it does not exist at decision time and including it would let a fabricated input make a broken system look green.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0003"
-          ]
+          ],
+          "receipt": "classifyHeadTransition(inputs) in src/services/hooks/classify-head-transition.ts — pure, type-only import. 29 tests. Purity + no-.git-state guards each PROVEN RED against a planted violation. 3 mutation checks caught."
         },
         {
           "id": "tk-0005",
@@ -143,6 +145,16 @@
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0001"
           ]
+        },
+        {
+          "id": "tk-000d",
+          "title": "Add a SECOND guard layer: scan the PRE payload's tool_input.command for content-importing operations",
+          "state": "unchecked",
+          "phase": "phase-1",
+          "success": "MEASURED 2026-08-09 from /tmp/cursor-hook-pre.jsonl (76 records): Cursor issues chained git commands in ONE Shell tool call — the captured line is `git add -A && git commit --trailer ... -m ...`. So defeater-inside-one-bracket is the NORMAL shape, not an exotic case, and index-at-PRE alone does not catch it: PRE sees a clean index because the defeater has not run yet. The same PRE record carries tool_name and tool_input.command, so interrogate the bracket directly. Refuse to emit when the command names merge (with or without --squash), cherry-pick, revert, am, apply, rebase, read-tree, checkout/restore with a source ref or pathspec, reset, stash pop/apply, or subtree. PARSE PER SEGMENT split on && ; || and newline — the defeater and the commit are different segments of one line, so a scan of the first token misses it every time. This NARROWS, it does not close: a script, alias, shell function, Makefile target or heredoc hides the operation, and those rows are asserted as EMIT and labelled KNOWN-BLIND alongside the human-in-the-bracket row. It is a SECOND layer over index-at-PRE, never a replacement — mutate each layer separately AND both together, because a single-layer negation passes while the other layer silently covers for it. Like every other check it may only move the answer TOWARD silence, adding no new false-positive path.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0003"
+          ]
         }
       ]
     },
@@ -169,13 +181,13 @@
           {
             "id": "dw-0003",
             "assertion": "PRE records index-clean vs already-staged, and the value survives the commit that follows.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0004",
             "assertion": "The write is atomic: two racing PRE fires cannot both read a stale value.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],
@@ -183,13 +195,13 @@
           {
             "id": "dw-0005",
             "assertion": "classifyHeadTransition is pure — no IO, no git shell-out.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0006",
             "assertion": "`.git` state is NOT among its parameters; it does not exist at decision time.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],
@@ -343,6 +355,32 @@
           {
             "id": "dw-001d",
             "assertion": "Windows is written into the findings doc for the remote agent in the same action — a promise to escalate needs an artifact.",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          }
+        ],
+        "tk-000d": [
+          {
+            "id": "dw-001e",
+            "assertion": "The scan splits the command on && ; || and newline and inspects EVERY segment — proven by a row where `git merge --squash X && git commit -m msg` is refused, which a first-token scan would pass.",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-001f",
+            "assertion": "Each layer is mutated SEPARATELY and both together: disabling the command scan alone must go RED on the defeater-inside-bracket rows, and disabling index-at-PRE alone must go RED on the defeater-before-bracket rows. A defence-in-depth guard that only passes a both-layers negation has not tested either layer.",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-0020",
+            "assertion": "Obfuscated defeaters (wrapped in a script or alias) are asserted as EMIT and labelled KNOWN-BLIND in the test name — documenting the limit rather than hiding it, exactly as the human-in-the-bracket row does.",
+            "state": "unchecked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-0021",
+            "assertion": "The downstream consequence of an over-emit is RECORDED, not asserted: a row observes what a live daemon actually does with an over-emitted squash-merge and records SKIPPED without one. We have never measured whether it writes a wrong note, a note with no agent lines, or fails closed — so neither the plan nor the code claims it fabricates authorship.",
             "state": "unchecked",
             "pressure": "not-applicable"
           }
