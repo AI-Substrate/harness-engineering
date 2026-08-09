@@ -37,6 +37,21 @@ describe('fast-scope guard', () => {
     expect(dupes, `SLOW_TESTS contains duplicate entries: ${dupes.join(', ')}`).toEqual([]);
   });
 
+  it('every entry is a file the default include would actually have collected', () => {
+    // The banner reports SLOW_TESTS.length as "12 slow file(s) SKIPPED", so the
+    // list IS the denominator shown to a human. An entry that exists but was
+    // never in the suite's population (wrong dir, wrong suffix) would be counted
+    // as "skipped" while excluding nothing — a denominator that counts the wrong
+    // population, which is a more confident way of being wrong than saying
+    // nothing. Ties the list to `include: ['test/**/*.test.ts', …]`.
+    const stray = SLOW_TESTS.filter((p) => !(p.startsWith('test/') && p.endsWith('.test.ts')));
+    expect(
+      stray,
+      `SLOW_TESTS entries that the default include would never have collected, so excluding them ` +
+        `skips nothing while still being counted in the banner: ${stray.join(', ')}`,
+    ).toEqual([]);
+  });
+
   it('does not exclude this guard itself', () => {
     // In the slow set, the guard would stop running in the fast scope — i.e.
     // exactly the scope it exists to protect.
