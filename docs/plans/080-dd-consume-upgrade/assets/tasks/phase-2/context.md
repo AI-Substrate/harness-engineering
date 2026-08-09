@@ -43,6 +43,34 @@ so the trial cannot be quietly shaped to agree with it.
 8. Harness commands run **in-tree**: `node harness/cli/bin/harness.js …`; worktree cwd
    resets between tool calls — `cd` per command; npm installs need the sandbox OFF.
 
+## RESHAPE ADDENDUM (2026-08-09, post-ruling — supersedes the "rebuild" framing below)
+
+Jordan ruled **semantic ontology leaves dd** (dd government `d8950eb`): dd keeps
+MECHANISMS (claiming-vs-referencing, typed relations, minted ids, state machinery),
+consumers bring VOCABULARY. Consequences, ratified by Jordan for this plan
+("keep-and-promote", 2026-08-09):
+
+- **tk-0008 is now a PROMOTION BY COPY, not a rebuild**: the fork's plan layer (which
+  harness originated — dd's copy is the port of ours) becomes a harness-owned module.
+  The fork stays byte-untouched until phase-3 deletion; no fence edits in phase 2.
+- **Sanction inversion on vocabulary**: copying `core/constants` values
+  (BUILTIN_RELS / states / prefixes) into the promoted module is now LEGITIMATE —
+  builder-owned by the ruling. Hard rule 3's D-3 STOP now applies only to dd
+  MECHANISMS that have a public home (import, never copy) — the temporary mechanism
+  copies (constants/derive/rel/value/posix-path) are enumerated and pointed at dd's
+  seam scoping (`6aaef35`), which is scoped but UNSCHEDULED upstream.
+- **Authority during the overlap**: the promoted module is authoritative for consumers
+  from the moment tk-0009 rewires them; the fork is inert-but-present (goldens oracle
+  only). Two copies exist deliberately and briefly.
+- **Goldens are the behavioural pin** (captured `5f8cfa44`, precondition met): the
+  falsifier suite measures against golden literals, not the live fork. Live-corpus
+  exception: plan 080's own docs keep the fork as oracle (they churn), assert
+  non-vacuity, and convert to structural invariants at fork deletion — carry into
+  phase 3.
+- The prediction's rebuild framing is superseded, not silently rewritten — the trial
+  report states this loudly, with the shared-cause record fault (dd's "does-not-ship"
+  label + the prediction not questioning it) named on both sides.
+
 ## Known tripwires
 
 - **s081 interaction (prime's notify, 2026-08-09, no file overlap)**: s081 bundled the

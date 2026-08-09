@@ -40,7 +40,7 @@
         },
         {
           "id": "tk-0008",
-          "title": "Re-implement plan semantics package-side in a NEW harness module using ONLY @ai-substrate/dd public subpaths at the pin - never edit fork services/dd/plan/semantics.ts (FROZEN_DIGEST byte-pin); any missing public surface or dd-owned vocabulary (BUILTIN_RELS/CLAIMING_RELS/terminal-state sets) = STOP and route a D-3 packet through koala to crab, never a shim, never a re-declared vocabulary",
+          "title": "RESHAPED (Jordan's ruling 2026-08-09, semantic ontology leaves dd - dd government d8950eb): PROMOTE the fork's plan layer to a harness-owned module BY COPY (fork stays byte-frozen and untouched until phase-3 deletion; no edit to the fenced trees). PRECONDITION met at 5f8cfa44: golden values captured from the LIVE fork before any promotion commit. Cut the promoted module's imports over to @ai-substrate/dd public subpaths wherever a public home exists; the mechanism internals it still needs (core/constants, core/derive, core/rel, core/value, shared/posix-path) move with it as enumerated temporary copies pending dd's mechanism-vocabulary seam (dd 6aaef35). Copying the vocabulary values in core/constants is SANCTIONED - builder-owned by the ruling, not a D-3 block. During the copy/fork overlap the PROMOTED module is authoritative for consumers from the moment tk-0009 rewires them; the fork is inert-but-present (goldens oracle only) until phase 3 deletes it",
           "phase": "ph-1633",
           "state": "unchecked",
           "satisfies_toward": [
@@ -50,7 +50,7 @@
         },
         {
           "id": "tk-0009",
-          "title": "Rewire acts/plan/index.ts and acts/plan/pr-body.ts off services/dd/plan onto the new package-side implementation - completes the full-zero import proof for all four survivors (ac-0002)",
+          "title": "Rewire acts/plan/index.ts and acts/plan/pr-body.ts onto the PROMOTED module - completes the full-zero import proof for all four survivors (ac-0002): zero imports from services/dd or acts/dd anywhere in them",
           "phase": "ph-1633",
           "state": "unchecked",
           "satisfies": [
@@ -62,7 +62,7 @@
         },
         {
           "id": "tk-000a",
-          "title": "OQ-2 verdict packet: trial report with every primitive carrying sufficient + named falsifier + RAN, or insufficient + exact gap, or UNPROVEN; contradictions with the dated prediction stated loudly, never reworded; delivered to dd on the crab channel; on insufficiency the dependent tasks BLOCK per ratified D-3 (dd exports, we re-pin)",
+          "title": "OQ-2 verdict packet: trial report with every primitive carrying sufficient + named falsifier + RAN, or insufficient + exact gap, or UNPROVEN; contradictions with the dated prediction stated loudly (including the shared-cause framing fault: dd's does-not-ship record + my unquestioning prediction); resolution recorded as Jordan's ontology ruling (layer is builder's, keep-and-promote) superseding the D-3 export premise; delivered to dd on the crab channel",
           "phase": "ph-1633",
           "state": "unchecked",
           "satisfies": [
@@ -110,15 +110,22 @@
         "tk-0008": [
           {
             "id": "dw-000e",
-            "assertion": "the new module imports ONLY @ai-substrate/dd public subpaths (git grep proves zero services/dd, acts/dd, or node_modules deep-dist imports in it) AND the fork's semantics.ts byte-pin (dd-plan-semantics-frozen.test.ts) stays green",
+            "assertion": "the PROMOTED module's dd imports are exclusively @ai-substrate/dd public subpaths (git grep proves zero services/dd, acts/dd, or node_modules deep-dist imports in it) AND the fork stays byte-untouched through phase 2: semantics.ts FROZEN_DIGEST pin green, git diff over services/dd + acts/dd empty (promotion is BY COPY)",
             "state": "unchecked",
             "pressure": "../../backpressure.dd.json#rows/bp-000d"
           },
           {
             "id": "dw-000f",
-            "assertion": "a deterministic vocabulary probe runs and is logged on EVERY outcome (sufficient or not): grep over the new implementation's transitive LOCAL file closure for the dd vocabulary VALUE tuples (the builtin-rel list pressure/proven_by/satisfies/derives/ref, the gate-terminal list checked/human-skipped/na, the completion-state list) as well as the constant names - zero local declarations or copies; imports from @ai-substrate/dd public subpaths are the only sanctioned source; any hit is a D-3 BLOCK, never a shim",
+            "assertion": "every temporarily-copied mechanism internal in the promoted module (core/constants, core/derive, core/rel, core/value, shared/posix-path) is enumerated in a header comment pointing at dd's mechanism-vocabulary seam scoping (dd 6aaef35) as the planned replacement; vocabulary constants (rels/states/prefixes) carry a builder-owned-per-ruling comment (2026-08-09) - copying them is sanctioned, not a D-3 block; and a deterministic grep proves the promoted module COPIES no symbol that has a public @ai-substrate/dd home - public-home symbols are imported, never copied",
             "state": "unchecked",
             "pressure": "../../backpressure.dd.json#rows/bp-000d"
+          },
+          {
+            "id": "dw-0016",
+            "assertion": "golden values captured from the LIVE fork at 5f8cfa44 BEFORE the promotion commit (commit order is the proof): fixtures shared by generator AND suite, 39KB literals (findings/counts/item shapes/edges/readiness triples), capture-as-test re-verifying against the fork until phase-3 deletion; the falsifier suite measures against GOLDENS and the wrong-stub control fails all 13 on behaviour against that bar",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-000d",
+            "note": "DELIBERATE EXCEPTION (carry into phase 3): the live-corpus test over plan 080 own docs keeps the fork as oracle and gets NO literal golden - those docs churn as tasks close and a pinned set would train re-baselining; it asserts non-vacuity (items>100) and CONVERTS to structural invariants at fork deletion"
           }
         ],
         "tk-0009": [
@@ -144,7 +151,7 @@
           },
           {
             "id": "dw-0013",
-            "assertion": "verdict delivered to pij-certain-crab with a send receipt; if any primitive is insufficient, the dependent tasks are marked blocked per D-3; the dw-000f vocabulary-probe result (which runs on every outcome) is cited in the packet as the no-shim/no-local-fork evidence",
+            "assertion": "verdict delivered to pij-certain-crab with a send receipt; the packet records Jordan's ontology ruling as the resolution superseding D-3's export premise, and enumerates which mechanism internals harness temporarily copies (reciprocal rule: dd knows exactly which copies their seam work will replace)",
             "state": "unchecked",
             "pressure": "../../backpressure.dd.json#rows/bp-0005"
           }
