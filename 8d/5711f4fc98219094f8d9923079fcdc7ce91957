@@ -1,0 +1,79 @@
+docs/plans/080-dd-consume-upgrade/assets/research-dossier.md
+  s_98b295093ee4b1::t_7d5c31a995aaae 1-93
+docs/plans/080-dd-consume-upgrade/assets/workshops/001-consume-shape-four-decisions.md
+  s_d29d5684ac2d30::t_cf8acaf840d0b5 1-119
+docs/plans/080-dd-consume-upgrade/assets/backpressure-coverage.md
+  s_2bef307df718bc::t_36cbaeae87baae 1-128
+docs/plans/080-dd-consume-upgrade/assets/backpressure.dd.json
+  s_c88674e85f3aea::t_c2e64151fcb7b7 1-50
+docs/plans/080-dd-consume-upgrade/assets/backpressure.dd.md
+  s_c88674e85f3aea::t_5c596d7ebf9941 1-53
+docs/plans/080-dd-consume-upgrade/assets/dogfood-ledger.md
+  s_c88674e85f3aea::t_016fc373d60434 1-31
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-1/tasks.dd.json
+  s_c88674e85f3aea::t_efaecc4be59af7 1-149
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-1/tasks.dd.md
+  s_c88674e85f3aea::t_c3f101c4f9ef2b 1-81
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-2/tasks.dd.json
+  s_c88674e85f3aea::t_4d31e4ef9b5a34 1-29
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-2/tasks.dd.md
+  s_c88674e85f3aea::t_a1e38bfacc8aeb 1-42
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-3/tasks.dd.json
+  s_c88674e85f3aea::t_dee0e0c6612798 1-29
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-3/tasks.dd.md
+  s_c88674e85f3aea::t_d16ead2670b314 1-42
+docs/plans/080-dd-consume-upgrade/original-ask.md
+  s_c88674e85f3aea::t_53d4938077bd54 1-45
+docs/plans/080-dd-consume-upgrade/plan.dd.json
+  s_c88674e85f3aea::t_cb4cedf3c768d0 1-518
+docs/plans/080-dd-consume-upgrade/plan.dd.md
+  s_c88674e85f3aea::t_4327ea42189539 1-234
+docs/plans/080-dd-consume-upgrade/the-flow.json
+  s_c88674e85f3aea::t_daa63ee23fc05d 1-408
+docs/plans/080-dd-consume-upgrade/the-flow.md
+  s_c88674e85f3aea::t_a3cb61780173c5 1-44
+docs/plans/080-dd-consume-upgrade/validations/plan.dd-validation.md
+  s_c88674e85f3aea::t_0be30216385bae 1-20
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-1/context.md
+  s_c88674e85f3aea::t_3d1c73f0b51013 1-68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8d5711f4fc98219094f8d9923079fcdc7ce91957",
+  "prompts": {},
+  "sessions": {
+    "s_2bef307df718bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb3484ee-e8b4-4f68-89fa-22abb2a7a8c3",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_98b295093ee4b1": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "496195c8-3a85-4520-b107-450e5fef9c82",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_c88674e85f3aea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71679da4-5249-4e02-9117-68a3abf3ed0e",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_d29d5684ac2d30": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "85595c65-81a4-43a2-9ccd-a8318d59a80a",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
