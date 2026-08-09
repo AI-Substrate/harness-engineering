@@ -162,7 +162,14 @@ describe('ExecGitWrite — real orphan-ref plumbing', () => {
     try {
       // Disable global+system config for every git child in this test → the repo
       // genuinely has no identity, so fallbackIdentityEnv() injects the fallback.
+      //
+      // The POSIX literal is DELIBERATE — do NOT "modernise" these two lines to
+      // `os.devNull`. On win32 '/dev/null' is just a missing file, which git treats as no
+      // config; `os.devNull` would instead resolve to the device path '\\.\nul' that git
+      // is reported to reject, introducing the defect fixed at the GIT_CONFIG_GLOBAL sites
+      // in src/adapters/git/exec-remote-telemetry-git.ts (see nullDeviceForPlatform).
       process.env.GIT_CONFIG_GLOBAL = '/dev/null';
+      // Same rule as the line above: literal, never `os.devNull`.
       process.env.GIT_CONFIG_SYSTEM = '/dev/null';
       const ng = (...args: string[]): string =>
         execFileSync('git', args, { cwd: noIdRepo, encoding: 'utf8' }).trim();

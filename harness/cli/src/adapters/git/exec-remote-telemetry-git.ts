@@ -94,7 +94,32 @@ const SAFE_CREDENTIAL_CONFIG_ENV = [
   'XDG_CONFIG_HOME',
 ] as const;
 
-function safeGitEnvironment(credentialConfigPath?: string): NodeJS.ProcessEnv {
+/**
+ * The null-device spelling handed to `GIT_CONFIG_GLOBAL`.
+ *
+ * `os.devNull` is `/dev/null` on POSIX but `\\.\nul` on win32 — a DEVICE path rather than
+ * an absent file. The downstream consumer reports that git rejects `\\.\nul` as a config
+ * path with `Invalid argument`, and that `NUL` is the spelling it accepts. That mechanism
+ * is THEIRS: undated, not traced to a changelog, and NOT measured here — nobody on this
+ * side has a Windows host, so the win32 branch below is expected, never verified. The
+ * honest claim is only that we now emit the spelling git is reported to accept.
+ *
+ * It matters more than a spelling because `GIT_CONFIG_GLOBAL` is the isolation boundary
+ * for this whole adapter: it is what stops a fixture git run from reading the operator's
+ * real global config. If the value errors instead of resolving to an empty config, the
+ * isolation we intend is not the isolation we get.
+ *
+ * `platform` is injected (defaulting to the host) so the win32 branch is reachable from a
+ * POSIX test — the same shape as `NodeBackground`/`resolveSpawn`.
+ */
+export function nullDeviceForPlatform(platform: NodeJS.Platform = process.platform): string {
+  return platform === 'win32' ? 'NUL' : devNull;
+}
+
+export function safeGitEnvironment(
+  credentialConfigPath?: string,
+  platform: NodeJS.Platform = process.platform,
+): NodeJS.ProcessEnv {
   const inherited: NodeJS.ProcessEnv = {};
   for (const name of SAFE_INHERITED_ENV) {
     const value = process.env[name];
@@ -104,7 +129,7 @@ function safeGitEnvironment(credentialConfigPath?: string): NodeJS.ProcessEnv {
     ...inherited,
     GIT_TERMINAL_PROMPT: '0',
     GIT_CONFIG_NOSYSTEM: '1',
-    GIT_CONFIG_GLOBAL: credentialConfigPath ?? devNull,
+    GIT_CONFIG_GLOBAL: credentialConfigPath ?? nullDeviceForPlatform(platform),
     GIT_OPTIONAL_LOCKS: '0',
     GIT_PROTOCOL_FROM_USER: '0',
     GIT_ALLOW_PROTOCOL: 'https:ssh:git',
@@ -112,7 +137,10 @@ function safeGitEnvironment(credentialConfigPath?: string): NodeJS.ProcessEnv {
   };
 }
 
-function safeCredentialConfigEnvironment(materializing = false): NodeJS.ProcessEnv {
+export function safeCredentialConfigEnvironment(
+  materializing = false,
+  platform: NodeJS.Platform = process.platform,
+): NodeJS.ProcessEnv {
   const inherited: NodeJS.ProcessEnv = {};
   for (const name of SAFE_CREDENTIAL_CONFIG_ENV) {
     const value = process.env[name];
@@ -123,7 +151,7 @@ function safeCredentialConfigEnvironment(materializing = false): NodeJS.ProcessE
     GIT_CONFIG_NOSYSTEM: '1',
     GIT_TERMINAL_PROMPT: '0',
     GCM_INTERACTIVE: 'never',
-    ...(materializing ? { GIT_CONFIG_GLOBAL: devNull } : {}),
+    ...(materializing ? { GIT_CONFIG_GLOBAL: nullDeviceForPlatform(platform) } : {}),
   };
 }
 

@@ -15,7 +15,10 @@ import { devNull, tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { FakeFs } from '../../../src/adapters/fs/fake-fs.js';
-import { ExecRemoteTelemetryGit } from '../../../src/adapters/git/exec-remote-telemetry-git.js';
+import {
+  ExecRemoteTelemetryGit,
+  nullDeviceForPlatform,
+} from '../../../src/adapters/git/exec-remote-telemetry-git.js';
 import type { RemoteRepository } from '../../../src/adapters/git/remote-telemetry-git-port.js';
 import { FakeHash } from '../../../src/adapters/hash/fake-hash.js';
 import { listPublishedTelemetry } from '../../../src/services/telemetry/remote-telemetry-service.js';
@@ -1488,7 +1491,9 @@ describe('ExecRemoteTelemetryGit — HTTPS credential lease RED cluster B', () =
         },
       }).advertiseTelemetryRefs(repository);
       expect(network?.args).not.toContain('credential.interactive=false');
-      expect(network?.env?.GIT_CONFIG_GLOBAL).toBe(devNull);
+      // Host-correct on BOTH platforms: `devNull` here would be right on POSIX and wrong
+      // on win32, which is exactly the blindness that let #108 through.
+      expect(network?.env?.GIT_CONFIG_GLOBAL).toBe(nullDeviceForPlatform());
     }
     expect(queries).toBe(0);
     assertNoCredentialLeak(beforeTemps);
