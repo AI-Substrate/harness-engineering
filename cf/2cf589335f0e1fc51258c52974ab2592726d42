@@ -1,0 +1,39 @@
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-1/tasks.dd.json
+  s_397a51e23fc2cd::t_ceabc3c6fd78e8 26,79,85
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-1/execution.log.md
+  s_397a51e23fc2cd::t_610da715e79572 1-123
+package.json
+  s_397a51e23fc2cd::t_cc05b08d8408a9 55
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-1/tasks.dd.md
+  s_397a51e23fc2cd::t_ceabc3c6fd78e8 38,52-53
+docs/plans/080-dd-consume-upgrade/the-flow.json
+  s_e2ef1441ad1dbd::t_e9074907199bcd 6-7,157-204,251,268-269,359,375-385
+docs/plans/080-dd-consume-upgrade/the-flow.md
+  s_e2ef1441ad1dbd::t_8e0dbeb80e111f 4,6,12,20,32,36,45-47
+package-lock.json
+  s_397a51e23fc2cd::t_2144d489cc3430 11,34-36,40-51,1941,1948,3277,3282,3425,3432,6667-6676,6737,6747
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "cf2cf589335f0e1fc51258c52974ab2592726d42",
+  "prompts": {},
+  "sessions": {
+    "s_397a51e23fc2cd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "3fe3c47b-5424-4214-892e-81ef19c49d45",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_e2ef1441ad1dbd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "265d8845-1914-4476-9977-4a05f12f4b06",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
