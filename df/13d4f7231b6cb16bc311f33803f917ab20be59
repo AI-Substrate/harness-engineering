@@ -1,0 +1,38 @@
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-1/tasks.dd.json
+  s_397a51e23fc2cd::t_c7af66ca7c96dd 54,121,127
+harness/cli/src/acts/plan/index.ts
+  s_397a51e23fc2cd::t_8f67e9d98b6a21 3
+  s_397a51e23fc2cd::t_13735dadfaa50c 1-2,4-21
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-1/execution.log.md
+  s_397a51e23fc2cd::t_c4ea40d6467941 369-450
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-1/tasks.dd.md
+  s_397a51e23fc2cd::t_c7af66ca7c96dd 41,73-74
+harness/cli/src/acts/plan/pr-body.ts
+  s_397a51e23fc2cd::t_fcfe0dc0837465 1
+docs/plans/080-dd-consume-upgrade/assets/dogfood-ledger.md
+  s_c88674e85f3aea::t_27f4ebef8eba20 17-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "df13d4f7231b6cb16bc311f33803f917ab20be59",
+  "prompts": {},
+  "sessions": {
+    "s_397a51e23fc2cd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "3fe3c47b-5424-4214-892e-81ef19c49d45",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_c88674e85f3aea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71679da4-5249-4e02-9117-68a3abf3ed0e",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
