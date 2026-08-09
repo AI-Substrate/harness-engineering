@@ -1,0 +1,149 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Take the dependency and rewire the four consumers",
+        "slug": "phase-1",
+        "status": "draft",
+        "summary": ""
+      }
+    },
+    {
+      "name": "summary",
+      "value": ""
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-0001",
+          "title": "Pin the dependency: add @ai-substrate/dd to harness/cli package.json as github:AI-Substrate/dd#<full 40-char sha> at current dd branch head (floor f712ded; take latest green, name the sha in the execution log), npm install unsandboxed, lockfile committed",
+          "phase": "ph-1d68",
+          "state": "unchecked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001"
+          ]
+        },
+        {
+          "id": "tk-0002",
+          "title": "Promote the POC probe trio into a vitest integration spec against the INSTALLED package: pack shape (no src/), injection with fixture-owned foreign ports (typed: const fs: SchemaFs = ...), tracked===null on null tracking set, D7 drive-rooted address resolution",
+          "phase": "ph-1d68",
+          "state": "unchecked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0003"
+          ]
+        },
+        {
+          "id": "tk-0003",
+          "title": "Rewire acts/flow.ts and acts/plan/fence.ts onto @ai-substrate/dd public subpaths (round-2 pattern: ConventionSchemaResolver+MemoizingDocLoader+FsDocLoader from the barrel, DdDoc type from the barrel)",
+          "phase": "ph-1d68",
+          "state": "unchecked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0002",
+            "../../../plan.dd.json#acceptance_criteria/ac-0003"
+          ]
+        },
+        {
+          "id": "tk-0004",
+          "title": "Rewire acts/plan/pr-body.ts (escapeCell/headingSlug from ./render/renderer; PlanEdge/PlanIndex/PlanItem types REMAIN on the fork until phase 2) and acts/plan/index.ts non-plan imports (core address/model/parse/validate/walk, links resolveMapSeed/traverseCorpus, schema model) onto the package",
+          "phase": "ph-1d68",
+          "state": "unchecked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0002",
+            "../../../plan.dd.json#acceptance_criteria/ac-0003"
+          ]
+        },
+        {
+          "id": "tk-0005",
+          "title": "Dogfood proof at the phase boundary: flow orient/rail and plan validate run green against plan 080 documents on the rewired build; any new dd-implementation defect goes to the dogfood ledger",
+          "phase": "ph-1d68",
+          "state": "unchecked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-000b",
+            "../../../plan.dd.json#acceptance_criteria/ac-000c"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "done_when",
+      "value": {
+        "tk-0001": [
+          {
+            "id": "dw-0001",
+            "assertion": "(cd harness/cli && npm ls @ai-substrate/dd) resolves git+ssh://...#<full 40-char sha>, sha >= f712ded, named in the execution log",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0001"
+          },
+          {
+            "id": "dw-0002",
+            "assertion": "npm install completes with the registry proxy untouched for dd (only commander/jiti from registry) and the committed lockfile pins the same sha",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0001"
+          }
+        ],
+        "tk-0002": [
+          {
+            "id": "dw-0003",
+            "assertion": "the new integration spec fails when pointed at a package missing a public export (negative control) and passes at the pinned sha: pack shape, typed foreign-port injection, tracked===null, D7 drive-rooted resolution",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-000e"
+          },
+          {
+            "id": "dw-0004",
+            "assertion": "just build && just test green with the new spec in the suite",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0003"
+          }
+        ],
+        "tk-0003": [
+          {
+            "id": "dw-0005",
+            "assertion": "git grep of services/dd and acts/dd across acts/flow.ts and acts/plan/fence.ts returns zero matches",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0002"
+          },
+          {
+            "id": "dw-0006",
+            "assertion": "just build && just test green after the rewire (423-suite bar)",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0003"
+          }
+        ],
+        "tk-0004": [
+          {
+            "id": "dw-0007",
+            "assertion": "git grep of services/dd across pr-body.ts and index.ts returns ONLY services/dd/plan imports (the bounded phase-2 remainder); acts/dd zero",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0002"
+          },
+          {
+            "id": "dw-0008",
+            "assertion": "just build && just test green after the rewire",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0003"
+          }
+        ],
+        "tk-0005": [
+          {
+            "id": "dw-0009",
+            "assertion": "node harness/cli/bin/harness.js flow orient + rail against the-flow.json AND plan validate against plan.dd.json all return ok on the rewired build",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-000b"
+          },
+          {
+            "id": "dw-000a",
+            "assertion": "any dd-implementation defect surfaced during this phase has a dogfood-ledger row (grep the ledger; zero silent workarounds)",
+            "state": "unchecked",
+            "pressure": "not-applicable",
+            "note": "human review of assets/dogfood-ledger.md - the ledger judgement row bp-000c is deliberately human-tier"
+          }
+        ]
+      }
+    }
+  ]
+}
