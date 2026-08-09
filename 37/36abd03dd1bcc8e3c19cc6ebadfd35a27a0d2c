@@ -1,0 +1,33 @@
+docs/how/telemetry/README.md
+  s_e2ef1441ad1dbd::t_4115d9d7865732 3-29
+  s_e2ef1441ad1dbd::t_f4107313e86e1f 987-993,995
+docs/plans/073-gitai-collector-v1/assets/research-dossier.md
+  s_e2ef1441ad1dbd::t_50229d77fd4cc2 115,117
+docs/how/gitai-collector.md
+  s_e2ef1441ad1dbd::t_3615d708dcbb1e 352-368,597-606
+harness/cli/src/services/docs/docs-content.ts
+  s_e2ef1441ad1dbd::t_d4e178b8f759ab 85
+docs/plans/074-sandbox-attribution/assets/research/03-scratch-cursor-sandbox-investigation.md
+  s_e2ef1441ad1dbd::t_345fba22ffb35b 78-93
+docs/how/telemetry/sandbox-04-config-reference.md
+  s_e2ef1441ad1dbd::t_a7fef2435277a8 79,81,87,89-106
+  s_e2ef1441ad1dbd::t_ac6cf39ee0b2e1 123-131
+docs/how/telemetry/sandbox-03-validation-playbook.md
+  s_e2ef1441ad1dbd::t_50c462520fef1b 55-110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3736abd03dd1bcc8e3c19cc6ebadfd35a27a0d2c",
+  "prompts": {},
+  "sessions": {
+    "s_e2ef1441ad1dbd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "265d8845-1914-4476-9977-4a05f12f4b06",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
