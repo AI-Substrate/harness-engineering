@@ -266,6 +266,13 @@ async function runAgainstRef(
       ...(stale.length > 0 ? { staleWorktrees: stale } : {}),
     };
     const status = inner.status ?? (run.ok ? 'ok' : 'error');
+    // Stale trees are NAMED, never reaped. Nothing in the name distinguishes a
+    // crashed tree from a live one, and a concurrent seat may be mid-gate — so
+    // auto-removing by prefix would make this verb a fresh instance of the
+    // shared-state mutation it exists to end. The recovery command is spelled
+    // out because `git worktree prune` does NOT reclaim these (measured: prune
+    // only drops entries whose directory is gone) and because prune is itself
+    // repo-global, so it can take another seat's entry with it.
     const staleNote =
       stale.length > 0
         ? ` NOTE: ${stale.length} stale --ref worktree(s) from an interrupted run — \`git worktree prune\` will NOT reclaim these (the directory still exists); use \`git worktree remove --force <path>\`: ${stale.join(', ')}`
