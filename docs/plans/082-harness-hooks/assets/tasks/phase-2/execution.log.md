@@ -1175,3 +1175,46 @@ service layer and asserted against it, but only `fire` was ever registered on th
 They carry a distinction worth stating: unlike `fire`, these are **operator-facing** — they run at a
 terminal, not inside an agent's tool loop, so the exit-0-and-silent contract does **not** apply to
 them. `fire` remains the only verb bound by it.
+
+---
+
+## THE DELIVERABLE-VS-LAYER SWEEP — the answer was NOT clean
+
+Asked of every checked Phase 2 task: *do its assertions test the deliverable, or the layer beneath
+it?* Found by accident once (the unregistered verbs), so the sweep was the mechanism rather than the
+luck.
+
+**Three tasks failed the question**, all the same shape:
+
+| task | title claims | what was asserted |
+| --- | --- | --- |
+| tk-0005 | *"Implement Strategy A"* | `installStrategyA` called directly |
+| tk-0008 | *"**Wire** harness hooks install\|status\|uninstall\|list"* | the service functions called directly — **and the subcommands were not registered at all** |
+| tk-0006 | *"Resolve the binary path… ALWAYS quote it"* | the pure functions; but `hooksDeps` composes the binary from `process.argv[1]` and **that expression was asserted nowhere** |
+
+The third is the sharpest: **the path actually written into a user's config file had no test at all.**
+tk-0006 proved `embedBinaryPath`/`extractBinaryPath` as pure functions — it never proved the verb
+feeds them the right input. A hook naming a path that does not exist is inert, and because hooks exit
+0 by design nothing would report it.
+
+### Two guards, one for each failure mode
+
+**Registration** (`app.test.ts`): the hooks group's **subcommand names** are asserted. The existing row
+asserts the *group* exists and passed the whole time the children were missing — the guard sat one
+level above the gap. Proven by refusal: removing the `status` registration gives
+`expected ['fire','list','install'] to deeply equal ['fire','list','status','install']`.
+
+`uninstall` is deliberately **absent** from that list until tk-000d — an unimplemented verb that
+exists is worse than one that does not.
+
+**Delivery** (`verbs-e2e.int.test.ts`): `install`, `list` and `status` driven through the real bin as
+a user runs them, in a home directory whose name **contains spaces**, so the quoting is exercised end
+to end rather than in isolation. The install row reads the config the real bin wrote and asserts the
+binary it named **exists on disk**. Proven by refusal: pointing the resolution at a nonexistent
+scratch path turns 2 rows red.
+
+### The distinction that survives
+
+`fire` is bound by exit-0-and-silent because it runs inside an agent's tool loop. `list`, `status` and
+`install` are **operator-facing** — read by a human at a terminal, where swallowing an error is the
+defect rather than the contract. Recorded so nobody generalises the `fire` contract across the family.

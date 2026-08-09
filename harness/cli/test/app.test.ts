@@ -132,6 +132,29 @@ describe('loadRegistry', () => {
 });
 
 describe('buildProgram — composition root wiring', () => {
+  it('registers every hooks SUBCOMMAND — a service built and never wired must fail here', () => {
+    /*
+    Test Doc:
+    - Why: MEASURED GAP. tk-0008's title was "Wire harness hooks
+      install|status|uninstall|list". The service layer was built and asserted
+      against directly, the task was checked — and NONE of those subcommands were
+      registered. `harness hooks status` did not exist. The existing row above asserts
+      the hooks GROUP exists, and it passed the entire time, because the group was
+      registered and only its children were missing. So the guard sat one level above
+      the gap.
+    - Contract: the hooks group's subcommand names, exactly.
+    - Quality Contribution: a test that exercises the layer BENEATH a deliverable
+      proves the layer, never the delivery. This asserts the delivery.
+    - `uninstall` is deliberately ABSENT until tk-000d — an unimplemented verb that
+      EXISTS is worse than one that does not, so this list is the honest current
+      surface rather than the intended one.
+    */
+    const program = buildProgram('1.2.3', io, deps(), { verbs: [], records: [] });
+    const hooks = program.commands.find((c) => c.name() === 'hooks');
+    expect(hooks).toBeDefined();
+    expect(hooks?.commands.map((c) => c.name())).toEqual(['fire', 'list', 'status', 'install']);
+  });
+
   it('registers core commands including sensors, registry verbs, and --no-extensions', () => {
     const registry = { verbs: [mkVerb('hello'), mkVerb('build')], records: [] };
     const program = buildProgram('1.2.3', io, deps(), registry);
