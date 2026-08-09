@@ -102,3 +102,25 @@ and P8 wrap-don't-rebuild.
 - **Claude Code's Bash-class tool calls record nothing** on an unsandboxed machine while
   Write-class works. Unexplained, separate, and possibly the real cause of the original
   complaint. Out of scope, recorded in dossier §7.5.
+
+---
+
+## 8. Open threads inherited from closed seats
+
+**From `pij-exuberant-skaffen` (#144, closed 2026-08-09):**
+
+- **UNMEASURED and most likely to be wrong**: whether Cursor *inherits or resets* a per-repo
+  `<workspace>/.cursor/sandbox.json` that states no `default`. The #144 row chose the reading
+  that assumes least and says so at the code. It is a choice, not a finding.
+- **Every #144 case is a FAKE.** The `sandbox.json` parsing has never met a real Cursor file,
+  and doctor was never re-run against Jordan's actual config to watch the row fire.
+- **Jordan's Mac is short nine skill symlinks and `~/.git-ai/skills`**, removed by a git-ai
+  `uninstall-hooks` run. Unrestored, and it is his call. Note `--skills` is **not sticky** —
+  any future `install-hooks` without it removes them again (`install_hooks.rs:710-714`).
+
+**From the plan-082 validation (`/validate-v2`, applied at `112cfa20`):** every finding was
+applied, but one rests on an unverified premise worth re-testing during Phase 1 — that git-ai's
+daemon would in fact *claim* a fast-forward/cherry-pick/revert transition rather than fail closed
+under ownership rule 1. If the daemon rejects them, the class-(b) guard work is a documentation
+gap rather than a correctness bug. **Design for the dangerous reading; measure it when the
+live-daemon fixture exists.**
