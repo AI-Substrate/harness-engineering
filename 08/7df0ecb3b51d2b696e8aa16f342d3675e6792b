@@ -1,0 +1,28 @@
+harness/cli/test/services/flow/flow-node-fields-drift.test.ts
+  s_6b8a25b7716dd8::t_5f75c12b3ef1ba 2
+harness/cli/test/services/doctor/collector/ingress.test.ts
+  s_6b8a25b7716dd8::t_5f75c12b3ef1ba 41
+harness/cli/src/acts/plan/index.ts
+  s_6b8a25b7716dd8::t_5f75c12b3ef1ba 319
+  s_6b8a25b7716dd8::t_ab3b9637fc1914 367-370
+harness/cli/src/acts/plan/pr-body.ts
+  s_6b8a25b7716dd8::t_5f75c12b3ef1ba 109
+harness/cli/test/services/telemetry/fx001-ref-fallback.test.ts
+  s_6b8a25b7716dd8::t_5f75c12b3ef1ba 784
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "087df0ecb3b51d2b696e8aa16f342d3675e6792b",
+  "prompts": {},
+  "sessions": {
+    "s_6b8a25b7716dd8": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "0566e436-a7a0-4359-99b4-8a2dc8a4c21d",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
