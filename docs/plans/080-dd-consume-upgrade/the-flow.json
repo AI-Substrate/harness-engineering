@@ -3,7 +3,7 @@
   "kind": "flight-plan",
   "slug": "080-dd-consume-upgrade",
   "nav": {
-    "now": "review-3",
+    "now": "ship",
     "next": "review-2",
     "intent": "Upgrade harness to consume standalone @ai-substrate/dd (git-sha route) in place of the in-repo dd implementation; round-3 primitive-sufficiency trial decides OQ-2"
   },
@@ -778,6 +778,39 @@
           "comments"
         ]
       }
+    },
+    {
+      "id": "UPD-024",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-08-09T08:48:39.625Z",
+      "details": {
+        "node": "review-3",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-022",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-08-09T08:48:40.192Z",
+      "details": {
+        "node": "review-3",
+        "from": "known",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-008",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-08-09T08:48:58.163Z",
+      "details": {
+        "from": "review-3",
+        "to": "ship"
+      }
     }
   ],
   "nodes": [
@@ -1260,12 +1293,12 @@
       "id": "review-3",
       "type": "review",
       "label": "Review: P3",
-      "status": "known",
+      "status": "done",
       "next": [
         "post-flight"
       ],
       "created_at": "2026-08-09T03:10:52.507Z",
-      "modified_at": "2026-08-09T03:13:16.026Z",
+      "modified_at": "2026-08-09T08:48:40.192Z",
       "instructions": [
         "Review exactly ONE phase's diff against its acceptance criteria — confirm the tests prove behaviour and nothing risky slipped in.",
         "Run /builder 7 review — it inspects the newest assets/reviews/*.md and surfaces a verdict; REQUEST_CHANGES loops back to fix, clean continues to the next phase or post-flight.",
@@ -1277,8 +1310,25 @@
       "zone": "flight",
       "dd_link": {
         "address": "docs/plans/080-dd-consume-upgrade/plan.dd.json",
-        "check": "plan-validate"
-      }
+        "check": "plan-validate",
+        "basis_sha": "35b93cb17bde45806c25b9f4efcda06cf0fe8fe242d9d53a1fae9fc804216eb9",
+        "reading": {
+          "status": "complete",
+          "terminal": 1,
+          "total": 1,
+          "incomplete": [],
+          "at": "2026-08-09T08:48:58.163Z"
+        }
+      },
+      "comments": [
+        {
+          "at": "2026-08-09T08:48:39.625Z",
+          "text": "decision:done reason:external-review-approve time:2026-08-09T08:50Z - terra (pij-modern-caribou, copilot gpt-5.6-terra high) r1 REJECT 0/2/0/0 (F001 consuming-dd.md inverted the retired vs current CLI surface; F002 ruled disclosures absent from generated PR-body output) -> fixes 1e9414b4 (coder, 3 casualties + 1 reverse-direction site their finding could not reach) and 63df292d (koala, composed pr-body.md artifact) -> r2 APPROVE 0/0/0/0, with the F002 remedy RELOCATION explicitly judged and ratified ('the tracked composed PR body is the right durable, plan-specific home'). Artifact: assets/tasks/phase-3/reviews/review.fork-drain-deletion-cleanup.md",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-08-09T08:48:40.192Z"
     },
     {
       "id": "boot-3",

@@ -8,73 +8,71 @@
 
 ## A) Verdict
 
-**REJECT**
+**APPROVE**
 
-The deletion and runtime migration are sound, but the new consumer guide contradicts
-the shipped command surface twice, and the required deletion-provenance mapping does
-not reach the generated PR body.
+Round-two remediation at `1e9414b4` resolves both release-facing findings. The consumer
+guide now names only the retired `harness dd *` surface as removed, while the live
+standalone command validates the plan successfully. The required provenance disclosure
+is present in the tracked, committed composed PR body rather than in the generic
+criteria-table fragment; that is the correct plan-specific home.
 
 ## B) Summary
 
-The fork trees are absent after `just build`; no legacy relative imports remain in
-production or tests apart from explicitly historical/commentary references. The
-checklist precedes the physical deletion (`8e9d1ecf` is an ancestor of `7d112d26`), the
-22/10 generated-markdown split is represented by `237ab2e1` and `430f1511`, and the
-golden/falsifier conversion remains literal-backed. The final plan gate is clean
-(`error: 0`, `warn: 0`, `open: 0`, `orphans: 0`, `contradictions: 0`), and the full suite
-passed on the final retry (294 files / 4,493 tests). The two findings are release-facing
-documentation and disclosure failures, not a reason to revisit the accepted provenance
-ruling or the two Jordan-ruled degradations.
+The original deletion, migration, and goldens controls remain sound. Re-review confirms
+the standalone `dd` route returns `status: ok` with zero errors and warnings; the
+removed `harness dd` route returns E108. `assets/pr-body.md` is tracked and carries the
+criteria fragment, both accepted degradations, the full physical-to-logical deletion
+mapping (`7d112d26`, `2b5a07af`, `237ab2e1`, `430f1511`), and the preserved checklist
+ancestry proof. The full suite passes: 294 files / 4,493 tests.
 
 ## C) Checklist
 
 - [x] Deletion fence, legacy-import, temporal-verb, and golden-conversion controls inspected
 - [x] `just build`, final `just test`, typecheck, targeted behavior tests, and `biome ci` run
 - [x] Doctor/dd-CLI, plan-new, D-4, command-surface, and complete-plan controls inspected
-- [ ] Consumer command documentation is internally consistent
-- [ ] Required deletion-provenance mapping reaches generated PR-body output
+- [x] Consumer command documentation is internally consistent
+- [x] Required deletion-provenance mapping reaches the committed composed PR body
 - [x] Domain compliance: N/A (domains off)
 
 ## D) Findings Table
 
-| ID | Severity | File:Lines | Category | Summary | Recommendation |
-| --- | --- | --- | --- | --- | --- |
-| F001 | HIGH | `docs/how/consuming-dd.md:8-10,124-127` | correctness/docs | The guide says the working standalone `node_modules/.bin/dd` verb family was removed and that its `validate` command is gone. | Say that **`harness dd *`** was removed; retain `node_modules/.bin/dd <verb>` as the current standalone route. |
-| F002 | HIGH | `docs/plans/080-dd-consume-upgrade/assets/dogfood-ledger.md:86-98`; generated `plan pr-body` output | traceability | The accepted physical-to-logical deletion mapping is recorded in the ledger and execution log but is absent from the generated PR body. | Wire a tested provenance/disclosure section into the PR-body source so it names `7d112d26`, `2b5a07af`, and logical commit `237ab2e1`. |
+No open findings.
 
 ## E) Detailed Findings
 
-### E.1) F001 - standalone CLI described as deleted
+### E.1) F001 remediated - retired and working CLI surfaces distinguished
 
-The introduction claims Plan 080 removed the "`node_modules/.bin/dd *` verb family" and
-that `node_modules/.bin/dd validate` is gone. The CLI section repeats the same false
-claim. Both conflict with the next paragraph's own prescription and with the live
-control:
+`1e9414b4` corrects all three casualties: two statements in
+`docs/how/consuming-dd.md` now say `harness dd *` was removed, and
+`docs/how/dd/README.md` correctly calls its reference the complete `dd` command family.
+The CLI anchor remains stable. Live controls confirm both directions:
 
 ```bash
 node_modules/.bin/dd validate docs/plans/080-dd-consume-upgrade/plan.dd.json --json
 # status: ok; error: 0; warn: 0
+
+node harness/cli/bin/harness.js dd validate docs/plans/080-dd-consume-upgrade/plan.dd.json
+# E108
 ```
 
-This reverses the intended migration: a reader is told that the only currently safe,
-runnable command no longer exists. Replace both statements with the retired
-`harness dd *` surface; no behavior change is needed.
+### E.2) F002 remediated - provenance reaches a committed composed PR body
 
-### E.2) F002 - provenance does not reach the PR body
-
-The ruled mapping is correctly present in the ledger: 261 deletions in `7d112d26`, two
-scripts in `2b5a07af`, and logical deletion commit `237ab2e1`. The requirement is that
-this mapping also reaches the PR body. A direct render:
+`63df292d` adds the tracked `assets/pr-body.md` as the plan's composed PR body. It
+includes the generic acceptance-criteria fragment plus both accepted degradations and
+the required provenance mapping: 261 deletions in `7d112d26`, two generator scripts in
+`2b5a07af`, logical deletion commit `237ab2e1`, the 22/10 split's `430f1511`, and
+checklist ancestry `8e9d1ecf -> 7d112d26`.
 
 ```bash
 node harness/cli/bin/harness.js plan pr-body \
-  docs/plans/080-dd-consume-upgrade/plan.dd.json --json
+  docs/plans/080-dd-consume-upgrade/plan.dd.json --heading "Acceptance criteria" --json
 ```
 
-produces only the generic acceptance-criteria table. It contains none of those commit
-identifiers or the provenance disclosure. Add the disclosure to an input the PR-body
-renderer consumes and pin it with a renderer-output test; do not rewrite the accepted
-commit history.
+still correctly emits only that reusable criteria-table fragment. Its own `--heading`
+composition contract makes a generic, plan-specific disclosure feature the wrong
+abstraction and a needless new public surface. The committed composed body is durable:
+shipping reads a named, tracked file rather than relying on PM memory, while the generic
+renderer retains its documented scope. No history was rewritten.
 
 ## F) Coverage Map
 
@@ -86,8 +84,8 @@ commit history.
 | Goldens conversion | deletion-range inspection; literal-backed falsifier suite | High |
 | Doctor and plan-new riders | targeted tests plus source/control inspection | High |
 | Complete plan and dogfood | `flow orient`, `flow rail`, `plan validate --complete` all ok | High |
-| Consumer CLI guide | contradicted by live standalone validation | Blocked by F001 |
-| Provenance disclosure | ledger exists; generated PR body omits required mapping | Blocked by F002 |
+| Consumer CLI guide | corrected guide plus live working/removed command controls | High |
+| Provenance disclosure | tracked composed PR body carries full accepted mapping | High |
 
 ## G) Commands Executed
 
@@ -100,15 +98,15 @@ node harness/cli/bin/harness.js flow orient --path docs/plans/080-dd-consume-upg
 node harness/cli/bin/harness.js flow rail --path docs/plans/080-dd-consume-upgrade/the-flow.json
 node harness/cli/bin/harness.js plan validate docs/plans/080-dd-consume-upgrade/plan.dd.json --complete
 node_modules/.bin/dd validate docs/plans/080-dd-consume-upgrade/plan.dd.json --json
-node harness/cli/bin/harness.js plan pr-body docs/plans/080-dd-consume-upgrade/plan.dd.json --json
+node harness/cli/bin/harness.js dd validate docs/plans/080-dd-consume-upgrade/plan.dd.json
+node harness/cli/bin/harness.js plan pr-body docs/plans/080-dd-consume-upgrade/plan.dd.json --heading "Acceptance criteria" --json
+just test
 ```
 
 ## H) Handover Brief
 
-**Review result**: REJECT  
+**Review result**: APPROVE
 **Review file**: `/Users/jordanknight/substrate/harness-engineering-worktrees/s080-dd-consume-upgrade/docs/plans/080-dd-consume-upgrade/assets/tasks/phase-3/reviews/review.fork-drain-deletion-cleanup.md`
 
-Fix F001 by correcting the two mistaken command-surface statements in
-`docs/how/consuming-dd.md`. Fix F002 by making the accepted deletion-provenance mapping
-a tested part of the generated PR body. Re-run this phase review after both fixes; do not
-rewrite commit history or alter the shared unowned ledger edit.
+The Phase 3 deletion cleanup is approved. The committed composed PR body carries the
+accepted provenance disclosure without broadening the generic `plan pr-body` fragment.
