@@ -1,0 +1,31 @@
+.harness/extensions/checks/extension.ts
+  s_dfbe7bea3d1b7e::t_16ede2969c8430 266,269-273
+  s_dfbe7bea3d1b7e::t_7102e9c8476a1c 207
+  s_dfbe7bea3d1b7e::t_4256903165e897 163-175
+  s_dfbe7bea3d1b7e::t_3724643ce54ceb 110-136
+  s_dfbe7bea3d1b7e::t_6160486b50815e 109
+REPORT.md
+  s_dfbe7bea3d1b7e::t_b0a63d867b1b50 898-907
+AGENTS.md
+  s_dfbe7bea3d1b7e::t_d57487722044d5 56-57
+.harness/extensions/checks/ref-isolation.test.ts
+  s_dfbe7bea3d1b7e::t_205b2bc5bfe54a 109-129
+.harness/extensions/checks/instructions.md
+  s_dfbe7bea3d1b7e::t_eb5400a305e785 86-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3399e31ca70be78a76bb543d67d7d8c6a8d900f2",
+  "prompts": {},
+  "sessions": {
+    "s_dfbe7bea3d1b7e": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "d854c5fd-5185-4f9c-99f4-40038b3158a0",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
