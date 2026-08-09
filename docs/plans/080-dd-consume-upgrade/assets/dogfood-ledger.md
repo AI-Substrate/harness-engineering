@@ -37,7 +37,10 @@ the fork (or dd) fix that the other never took.
 
 Keep-and-promote (Jordan's ontology ruling) creates a **permanent second copy of dd's
 mechanisms**: after phase 3 deletes the fork, the promoted module's copied internals
-(`core/constants`, `core/derive`, `core/rel`, `core/value`, `shared/posix-path`) and
+(**FOUR files — `core/constants`, `core/derive`, `core/rel`, `core/value`; corrected at
+tk-0008 completion, coder's catch: `shared/posix-path` is harness's OWN module outside
+the fence, imported not copied — a phantom 5th diff target would show permanent
+meaningless divergence**) and
 dd's originals diverge from the same ancestor with nobody structurally forced to
 notice — the byte-identical-fork class arriving **by design**, both directions of which
 bit this plan in its first two days. So the copy is born with an owner and a trigger:

@@ -49,7 +49,9 @@ describe('builder/* schemas — declared relations (dw-0154)', () => {
     // non-builtin rel NOT in this register is still a red — that is the guard
     // against both accidental conventions and near-miss builtin misspellings.
     const INTENTIONAL_NON_BUILTIN = new Set(['satisfies-toward']);
-    expect(rels.every((entry) => entry.builtin || INTENTIONAL_NON_BUILTIN.has(entry.rel))).toBe(true);
+    expect(rels.every((entry) => entry.builtin || INTENTIONAL_NON_BUILTIN.has(entry.rel))).toBe(
+      true,
+    );
   });
 
   it('declares a rel on every link field of builder/backpressure and builder/execution-log', () => {
