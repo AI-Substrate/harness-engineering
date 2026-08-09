@@ -46,7 +46,8 @@ plan-new bundle). **Order is load-bearing**: checklist (tk-000c) BEFORE deletion
   checklist as a dies-with-fork row for the fork's copy, and gets verified at the next
   re-pin.
 - `harness checks` has three pre-existing warn-launch degraded legs (arch-check
-  services-ports-type-only ×2, markdown-lint 211, windows-check 6) — not yours, not
+  services-ports-type-only ×2, markdown-lint **211 — see the basis note below**,
+  windows-check 6) — not yours, not
   this phase's; the blocking legs must stay green.
 - The s081 overlay-revalidation tripwire (phase-2 brief) still applies to any flow
   mutation.
@@ -66,3 +67,20 @@ plan-new bundle). **Order is load-bearing**: checklist (tk-000c) BEFORE deletion
 | `docs/how/consuming-dd.md` | new |
 | guard sites (2 tests) | D-4 comments |
 | `acts/plan/scaffold.ts` | plan-new bundle — GATED on prime's #119 ruling |
+
+## Basis note on the `211` figure above (added 2026-08-09, post-hoc)
+
+That total was measured against the **three-check** markdown-lint gate and **will not
+reproduce** after this branch takes main's `6a43fd4d` (PR #146), which adds a fourth
+check, `unexamined`, reporting in-scope untracked markdown. The delta is not a
+regression: the other three checks are unmoved (attribution run at head: markdownlint
+195 / links 15 / mermaid 1 = 211, identical to the phase-2 baseline — nothing in 080
+moved a markdown check).
+
+**And the figure should not have been here at all** (prime's ruling, 2026-08-09): a
+brief is read by a coder who has been *told to compare and report*, so a stale absolute
+total misdirects someone **acting**, not merely someone reasoning. Briefs must carry a
+**derive-instruction** — "run the gate against your merge-base and compare" — never a
+copied number, which rots silently in the direction of false confidence. The number is
+deliberately **left as measured** rather than corrected: `6a43fd4d` is about to
+invalidate any correction, so re-stating it would only re-stale it.
