@@ -23,6 +23,36 @@ function withTempDir(run: (dir: string) => void): void {
   }
 }
 
+/**
+ * Can this host actually STAGE a symlink swap? Probed once, by doing it.
+ *
+ * Not inferred from `platform()`: the question is not "is this Windows" but "does
+ * this process hold symlink privilege", and those differ — an elevated Windows box
+ * or one with Developer Mode on can stage the swap, an ordinary user account cannot
+ * (EPERM). Probing the capability keeps the answer true for the host we are actually
+ * on rather than for the one we assumed.
+ *
+ * This drives the TEST NAME, so which property was proven travels into the JSON
+ * reporter and any CI summary. Two greens that prove different things must not look
+ * identical to someone scanning a run — that indistinguishability is the defect this
+ * whole case exists to correct (plan 077 · #108).
+ */
+function canStageSymlinkSwap(): boolean {
+  const dir = mkdtempSync(join(tmpdir(), 'harness-symlink-probe-'));
+  try {
+    const target = join(dir, 'target');
+    writeFileSync(target, 'x', 'utf8');
+    symlinkSync(target, join(dir, 'link'));
+    return true;
+  } catch {
+    return false;
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+const SYMLINK_SWAP_STAGEABLE = canStageSymlinkSwap();
+
 describe('NodeFs — bounded no-follow text reads (P063 T003)', () => {
   it('probes and reads a regular file using its UTF-8 byte length', () => {
     withTempDir((dir) => {
@@ -158,76 +188,90 @@ describe('NodeFs — bounded no-follow text reads (P063 T003)', () => {
     });
   });
 
-  it('WITHOUT the flag, still refuses a symlink swapped in before the open', () => {
-    // THE LOAD-BEARING CONTROL for the relaxation above — and it is only load-bearing
-    // WHERE IT CAN ACTUALLY STAGE THE SWAP. That caveat is the whole reason this case
-    // is shaped the way it is (plan 077 · #108, found by the downstream consumer on an
-    // unelevated Windows box with Developer Mode disabled).
-    //
-    // `symlinkSync` REQUIRES PRIVILEGE ON WINDOWS. Unelevated it throws EPERM, so the
-    // hook below never creates a symlink and there is nothing to follow. Previously the
-    // hook let that EPERM escape, which the adapter caught and mapped to `io-error` —
-    // so the case failed on the staging step while LOOKING like a failure of the
-    // property under test, and vitest's truncation printed `unavailable` against
-    // `unavailable`, disguising it further.
-    //
-    // The trap that matters is the other direction: on a PRIVILEGED box — our CI runner
-    // — the swap stages, the case passes, and nothing anywhere reports that the same
-    // case is incapable of running on the machines the relaxation was made for. A
-    // control that depends on privilege passes where privilege exists and cannot run
-    // where it does not, which makes the runner blindest exactly where this security
-    // relaxation needs the most proof. A `skipIf` would have bought the same silence in
-    // a different coat: green here, mute there.
-    //
-    // So the case DETECTS whether it could stage, and reports what it actually proved:
-    // the full property where the swap is real, and the weaker property that still
-    // holds where it is not. `reason` is never the only signal — **the attacker's bytes
-    // being absent is the property that matters**, and that is asserted on every path.
-    withTempDir((dir) => {
-      const path = join(dir, 'session.jsonl');
-      const target = join(dir, 'target.jsonl');
-      writeFileSync(path, 'safe\n', 'utf8');
-      writeFileSync(target, 'attacker\n', 'utf8');
+  it(
+    SYMLINK_SWAP_STAGEABLE
+      ? 'WITHOUT the flag, refuses a FOLLOWED symlink swapped in before the open [FULL PROPERTY — swap staged, symlink privilege present]'
+      : 'WITHOUT the flag, refuses the read when a symlink swap CANNOT BE STAGED [WEAKER PROPERTY ONLY — no symlink privilege; the followed-symlink property is NOT proven on this host]',
+    () => {
+      // THE LOAD-BEARING CONTROL for the relaxation above — and it is only load-bearing
+      // WHERE IT CAN ACTUALLY STAGE THE SWAP. That caveat is the whole reason this case
+      // is shaped the way it is (plan 077 · #108, found by the downstream consumer on an
+      // unelevated Windows box with Developer Mode disabled).
+      //
+      // `symlinkSync` REQUIRES PRIVILEGE ON WINDOWS. Unelevated it throws EPERM, so the
+      // hook below never creates a symlink and there is nothing to follow. Previously the
+      // hook let that EPERM escape, which the adapter caught and mapped to `io-error` —
+      // so the case failed on the staging step while LOOKING like a failure of the
+      // property under test, and vitest's truncation printed `unavailable` against
+      // `unavailable`, disguising it further.
+      //
+      // The trap that matters is the other direction: on a PRIVILEGED box — our CI runner
+      // — the swap stages, the case passes, and nothing anywhere reports that the same
+      // case is incapable of running on the machines the relaxation was made for. A
+      // control that depends on privilege passes where privilege exists and cannot run
+      // where it does not, which makes the runner blindest exactly where this security
+      // relaxation needs the most proof. A `skipIf` would have bought the same silence in
+      // a different coat: green here, mute there.
+      //
+      // So the case DETECTS whether it could stage, and reports what it actually proved:
+      // the full property where the swap is real, and the weaker property that still
+      // holds where it is not. `reason` is never the only signal — **the attacker's bytes
+      // being absent is the property that matters**, and that is asserted on every path.
+      withTempDir((dir) => {
+        const path = join(dir, 'session.jsonl');
+        const target = join(dir, 'target.jsonl');
+        writeFileSync(path, 'safe\n', 'utf8');
+        writeFileSync(target, 'attacker\n', 'utf8');
 
-      let staged = false;
-      let stagingRefusal = '';
-      const fs = new NodeFs(null, () => {
-        rmSync(path);
-        try {
-          symlinkSync(target, path);
-          staged = true;
-        } catch (error) {
-          // SWALLOWED DELIBERATELY. Letting it escape would surface as `io-error`
-          // from the adapter's catch and be indistinguishable from a real refusal.
-          stagingRefusal = (error as NodeJS.ErrnoException).code ?? String(error);
+        let staged = false;
+        let stagingRefusal = '';
+        const fs = new NodeFs(null, () => {
+          rmSync(path);
+          try {
+            symlinkSync(target, path);
+            staged = true;
+          } catch (error) {
+            // SWALLOWED DELIBERATELY. Letting it escape would surface as `io-error`
+            // from the adapter's catch and be indistinguishable from a real refusal.
+            stagingRefusal = (error as NodeJS.ErrnoException).code ?? String(error);
+          }
+        });
+
+        const result = fs.readTextFileNoFollow(dir, path, 32);
+
+        // The NAME above came from the capability probe; `staged` is what actually
+        // happened. If those ever disagree the row is MISLABELLED — a green whose name
+        // claims a property it did not prove, which is precisely the failure this case
+        // exists to correct. Assert they agree rather than let a lying name pass.
+        expect(
+          staged,
+          'the symlink capability probe and the actual staging disagree — the test name is lying about which property was proven',
+        ).toBe(SYMLINK_SWAP_STAGEABLE);
+
+        // TRUE ON EVERY PLATFORM, staged or not, and the one that actually matters.
+        expect(result.status, 'the read must be refused, however the swap resolved').toBe(
+          'unavailable',
+        );
+        expect(
+          JSON.stringify(result),
+          "the attacker's bytes must never reach the caller",
+        ).not.toContain('attacker');
+
+        if (staged) {
+          // The swap was real: the open FOLLOWED the symlink, so only the post-open
+          // re-`lstat` refused it. This is the branch that proves the relaxation.
+          expect(result).toEqual({ status: 'unavailable', reason: 'symlink' });
+        } else {
+          // Could not stage. Say so loudly rather than pass quietly: this row proved
+          // only "a vanished path is refused", NOT that a followed symlink is caught.
+          expect(
+            { proved: 'refusal-only', symlinkPrivilege: false, stagingRefusal },
+            `SYMLINK SWAP NOT STAGED (${stagingRefusal}) — no symlink privilege on this host, so this row does NOT prove the post-open re-lstat catches a followed symlink. It proves only that the read is refused and no foreign bytes are returned. On such a host the sibling case ('refuses a regular file swapped in before the open', which needs no privilege) is the ONLY half of the O_NOFOLLOW relaxation actually proven.`,
+          ).toMatchObject({ proved: 'refusal-only' });
         }
       });
-
-      const result = fs.readTextFileNoFollow(dir, path, 32);
-
-      // TRUE ON EVERY PLATFORM, staged or not, and the one that actually matters.
-      expect(result.status, 'the read must be refused, however the swap resolved').toBe(
-        'unavailable',
-      );
-      expect(
-        JSON.stringify(result),
-        "the attacker's bytes must never reach the caller",
-      ).not.toContain('attacker');
-
-      if (staged) {
-        // The swap was real: the open FOLLOWED the symlink, so only the post-open
-        // re-`lstat` refused it. This is the branch that proves the relaxation.
-        expect(result).toEqual({ status: 'unavailable', reason: 'symlink' });
-      } else {
-        // Could not stage. Say so loudly rather than pass quietly: this row proved
-        // only "a vanished path is refused", NOT that a followed symlink is caught.
-        expect(
-          { proved: 'refusal-only', symlinkPrivilege: false, stagingRefusal },
-          `SYMLINK SWAP NOT STAGED (${stagingRefusal}) — no symlink privilege on this host, so this row does NOT prove the post-open re-lstat catches a followed symlink. It proves only that the read is refused and no foreign bytes are returned. On such a host the sibling case ('refuses a regular file swapped in before the open', which needs no privilege) is the ONLY half of the O_NOFOLLOW relaxation actually proven.`,
-        ).toMatchObject({ proved: 'refusal-only' });
-      }
-    });
-  });
+    },
+  );
 
   it('WITHOUT the flag, still refuses a regular file swapped in before the open', () => {
     // The sibling swap: not a symlink, a different REGULAR file. `O_NOFOLLOW` never
