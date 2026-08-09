@@ -83,6 +83,23 @@ instead of riding as a ledgered diff — when ANY of:
 Below all four: fix, ledger, cite in the phase execution log. The threshold does not have
 to be right; it has to be written (prime, 2026-08-09).
 
+### Commit-provenance defect — the fork deletion rides the WRONG commits (owned: koala)
+
+**2026-08-09, DL-001 third instance, largest of the plan.** The coder's `git rm` staged
+261 fork deletions into the SHARED index; koala's ledger commits then ran
+`git add <file> && git commit` — pathspec-disciplined on the ADD, **unlimited on the
+COMMIT** — and swept them: the fork's deletion physically lives in **`7d112d26`**
+("ledger #5 — FX014", 261 deletions) and **`2b5a07af`** (2 generator scripts), while
+**`237ab2e1`** (the logical deletion commit) describes a deletion its diff no longer
+contains. **Ruled: ACCEPT, do not rewrite** — nothing is pushed, but rebuilding seven
+commits under an active coder risks the evidence chain for a provenance nicety that
+squash-merge collapses anyway. What survives intact: dw-0017's ordering proof
+(`merge-base --is-ancestor 8e9d1ecf 7d112d26` = YES — checklist still precedes the
+deletion). **This mapping is the record**: cited in the execution log and carried into
+the PR body so `git log` archaeology lands here, not in confusion. **Practice adopted
+from this instance: in a shared worktree, commit with a pathspec too —
+`git commit -- <paths>` — staging discipline alone does not protect the commit.**
+
 ### Materiality adjudications (trigger fired → ruled, not smuggled)
 
 - **2026-08-09, trigger 1 (32 files outside the touch set), phase-3 deletion**: every
