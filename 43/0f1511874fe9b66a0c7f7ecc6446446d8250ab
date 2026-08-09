@@ -1,0 +1,37 @@
+docs/plans/073-gitai-collector-v1/assets/tasks/phase-1/tasks.dd.md
+  s_397a51e23fc2cd::t_b1ffea8310cc26 1,36-53
+docs/plans/archive/071-dd-native-builder/assets/tasks/phase-1/tasks.dd.md
+  s_397a51e23fc2cd::t_b1ffea8310cc26 1,38-52
+docs/plans/archive/071-dd-native-builder/assets/tasks/phase-3/tasks.dd.md
+  s_397a51e23fc2cd::t_b1ffea8310cc26 1,38-53
+docs/how/dd/exemplar/tasks/phase-2/tasks.dd.md
+  s_397a51e23fc2cd::t_b1ffea8310cc26 1,36-46
+docs/plans/078-collector-install-host-pin/assets/tasks/phase-1/tasks.dd.md
+  s_397a51e23fc2cd::t_b1ffea8310cc26 1,36-42
+docs/plans/076-commit-guidance-convergence/assets/tasks/phase-1/tasks.dd.md
+  s_397a51e23fc2cd::t_b1ffea8310cc26 1,36-43
+docs/plans/fx009-cursor-write-strreplace/assets/tasks/phase-1/tasks.dd.md
+  s_397a51e23fc2cd::t_b1ffea8310cc26 1,36-49
+docs/plans/074-sandbox-attribution/assets/tasks/phase-1/tasks.dd.md
+  s_397a51e23fc2cd::t_b1ffea8310cc26 1,36-49
+docs/plans/archive/071-dd-native-builder/assets/tasks/phase-2/tasks.dd.md
+  s_397a51e23fc2cd::t_b1ffea8310cc26 1,38-52
+docs/plans/075-windows-nudge-honesty/assets/tasks/phase-1/tasks.dd.md
+  s_397a51e23fc2cd::t_b1ffea8310cc26 1,36-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "430f1511874fe9b66a0c7f7ecc6446446d8250ab",
+  "prompts": {},
+  "sessions": {
+    "s_397a51e23fc2cd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "3fe3c47b-5424-4214-892e-81ef19c49d45",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
