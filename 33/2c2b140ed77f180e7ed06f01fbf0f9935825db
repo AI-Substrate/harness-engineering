@@ -1,0 +1,19 @@
+docs/plans/080-dd-consume-upgrade/assets/dogfood-ledger.md
+  s_c88674e85f3aea::t_9e4247c00315a5 34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "332c2b140ed77f180e7ed06f01fbf0f9935825db",
+  "prompts": {},
+  "sessions": {
+    "s_c88674e85f3aea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71679da4-5249-4e02-9117-68a3abf3ed0e",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
