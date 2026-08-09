@@ -8,6 +8,17 @@ Everything below is either something that worked or something that cost us hours
 harness* are attributed correctly — and who may be on a different OS from the one this was
 written on.
 
+> **This playbook is now executable.** `harness validate-attribution --begin` / `--end`
+> (plan 082, phase 4) performs the procedure below and scores it, refusing to certify a run whose
+> sandbox precondition or relay census does not hold. It runs **from the harness tree**, pointing
+> **at** the repo under test — standing in the target repo gives `E149`.
+> Walkthrough: [`.harness/extensions/validate-attribution/README.md`](../../../.harness/extensions/validate-attribution/README.md).
+>
+> **If you are on a platform this was not written on** — which its audience explicitly is — the verb
+> is the better instrument, because it reports the *reason* it refuses rather than leaving you to
+> infer whether a null result was a defect or an unengaged sandbox. Its own Windows path carried two
+> defects until 2026-08-10, caught by this repo's warn-launch gate before anyone ran it there.
+
 ## Scope — this is a GENERAL procedure, with Cursor as the worked example
 
 The thing under test is not Cursor. It is any **sandboxed agent harness**: a tool that runs

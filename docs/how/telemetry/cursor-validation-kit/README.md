@@ -15,6 +15,50 @@ lives in [the two-channel model](../gitai-06-two-channel-model.md). **This file 
 
 ---
 
+## THERE IS NOW A VERB THAT DOES THIS — use it instead of the manual sequence
+
+**`harness validate-attribution`** (plan 082, phase 4) is this runbook, executable. It captures the
+baseline, censuses the relays, emits the in-sandbox probe, hands you the prompt, and then scores
+the result — so the procedure is a measurement rather than a careful reading.
+
+```bash
+# from the harness tree, pointing AT the repo under test
+harness validate-attribution --begin --repo /path/to/probe-repo
+#   ... paste the prompt it prints into your agent ...
+harness validate-attribution --end   --repo /path/to/probe-repo
+```
+
+**It runs FROM the harness tree and points AT the repo under test.** That is the opposite of what
+most people expect — you are validating a repository, so you assume you stand in it. You do not.
+Standing in the target repo gives `E149: no extensions are loadable`.
+
+**Why prefer it over the sequence below.** Three separate runs on 2026-08-09/10 produced results
+that *looked* conclusive and were not, and the verb refuses each of them by construction:
+
+| what went wrong | how it looked | what the verb does |
+|---|---|---|
+| The hook could not parse its own arguments and had never fired | a correct note appeared — from git-ai's own channel | reads our journal; an absent fire is not a pass |
+| **Two** relays could send the commit signal | a correct note appeared | censuses relays; refuses to certify with more than one |
+| The sandbox precondition was measured once and carried forward | everything else was measured | requires the shell-side probe for **this** run |
+
+The last one is the sharpest: the sandbox was genuinely engaged, the measurement was genuinely
+correct — it just belonged to the *previous* run. A verdict resting on a precondition nobody
+re-took is the failure this verb exists to make impossible.
+
+**What it still cannot do**, stated so nobody over-reads a PASS: it cannot see a broken runtime,
+cannot prove your agent actually invoked the hook, and cannot classify a stranger's script — an
+unrecognised hook entry counts as a *possible* commit-signal relay until you declare otherwise with
+`--acknowledge <substring>`, and that declaration is recorded in the evidence rather than inferred.
+
+Full operator walkthrough, verdict meanings and limits:
+[`../../../../.harness/extensions/validate-attribution/README.md`](../../../../.harness/extensions/validate-attribution/README.md).
+
+**The manual sequence below remains authoritative for *why* each step exists**, and is the fallback
+when the verb is unavailable — it lives in `.harness/extensions/`, so a consumer who installed the
+harness without this repo's extension tree does not have it.
+
+---
+
 ## 0. Preconditions
 
 ```bash

@@ -11,10 +11,24 @@ source. An inherited mechanism is a hypothesis; treat the two differently.
 
 ---
 
+> **Want to RUN it rather than read it?** The procedure in this document is now a verb:
+> **`harness validate-attribution --begin` / `--end`** (plan 082, phase 4). It captures the
+> baseline, censuses the relays, emits the in-sandbox probe, and scores the result — and it
+> **refuses to certify** a run whose preconditions are not met, which is the part a careful
+> reader of this document can still get wrong. Walkthrough:
+> [`.harness/extensions/validate-attribution/README.md`](../../../.harness/extensions/validate-attribution/README.md).
+>
 > **Want the artifacts rather than the reasoning?** The paste-ready prompts, the seed and
 > human-step scripts, the verification script, and the measured results from the run of
 > 2026-08-09 are in **[`./cursor-validation-kit/`](./cursor-validation-kit/README.md)**.
 > This document explains *why* the scenario is shaped the way it is; the kit is the runbook.
+>
+> **Read § 5.1 anyway before trusting a verdict.** The verb encodes the procedure; it does not
+> encode the judgement. On 2026-08-10 a verdict was published resting on a sandbox probe taken in
+> the *previous* run — the measurement was correct and belonged to a different run. § 5.1 already
+> forbade that ("a stale assumption from earlier in the same session is not evidence"); it was not
+> re-read. The verb now refuses without a probe for *this* run, which is that rule with a
+> mechanism behind it rather than a reader's memory.
 
 ## 1. What this validates, and what it does not
 
@@ -373,6 +387,27 @@ not evidence.
 
 **Have the agent label every command sandboxed / not-sandboxed.** That labelling is half the
 experiment; without it a null result cannot be told from an unengaged sandbox.
+
+#### 5.1.1 The probe must run in the AGENT'S SHELL — a hook-side probe measures a different thing
+
+**This voided two readings on 2026-08-10 and it is the easiest mistake in the whole procedure.**
+
+There are two contexts and only one of them is under test:
+
+| context | what runs there | expected result | what it tells you |
+|---|---|---|---|
+| **agent shell** | the agent's commands, including `git commit` | `denied` / `EPERM` | **this is the measurement** |
+| **hook runner** | entries in `~/.cursor/hooks.json` | `connected` | the relay is *possible* — the premise of the design |
+
+A hook-side probe reporting `control=OK trace2=OK sandbox=unset` is **not evidence the sandbox was
+off**. It is the condition that makes an out-of-band relay work at all: if that side were denied,
+nothing could reach the daemon from anywhere. Reading it as absence-of-sandbox inverts the entire
+result — a reviewer did exactly that, from 130 correct log lines, and concluded a proven run was
+confounded.
+
+So: label every probe artifact with the context it was taken in, on its own face. The verb's probe
+prints `"context": "shell"` for this reason. If you cannot tell from an artifact which side produced
+it, it is not evidence for either.
 
 ## 6. The demonstrated asymmetry — what a good run looks like
 

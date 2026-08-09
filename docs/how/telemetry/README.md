@@ -22,6 +22,13 @@ was reaching for the config before reading the record.** So, in order:
 at config instead. If you are about to run an experiment, check first whether you are about to
 re-measure something the vendor already specified.
 
+**Start here to RUN it:** the validation procedure in these docs is a verb —
+`harness validate-attribution --begin` / `--end`
+([walkthrough](../../../.harness/extensions/validate-attribution/README.md)). It censuses the
+relays, requires an in-sandbox probe for *this* run, and **refuses to certify** when the
+preconditions are not met. Three runs on 2026-08-09/10 looked conclusive and were not; the verb
+refuses each of them by construction.
+
 **Start here for mechanism:**
 [git-ai's two channels — and why a reachable socket is not enough](./gitai-06-two-channel-model.md).
 
