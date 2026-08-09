@@ -1,0 +1,20 @@
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-2/reviews/review.round-3-trial.md
+  s_421ed3db0f41a5::t_45935be3767ec0 1-6,8-10,12,17-19,25,29,31,40-41,49,51,61-64,70-73,78-80,85-86,91,93,97
+  s_421ed3db0f41a5::t_e625414ded9af1 7,11,13-16,20-24,26-28,30,32-39,42-48,50,52-60,65-69,74-77,81-84,87-90,92,94-96,98-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3dff33ab9c32aa20200db10acd2feaff1b954e0b",
+  "prompts": {},
+  "sessions": {
+    "s_421ed3db0f41a5": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "8af3eb43-5dda-47e8-9e43-c7398f16c595",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
