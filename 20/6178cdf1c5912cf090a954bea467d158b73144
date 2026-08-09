@@ -1,0 +1,46 @@
+docs/plans/082-harness-hooks/assets/tasks/phase-2/tasks.dd.md
+  s_ed609d39de2442::t_3bbd0f3b343a9a 43,109-112
+  s_ed609d39de2442::t_3adb0aa7b9ce7c 41-42,94,100-103
+  s_ed609d39de2442::t_6739a6191a908c 44,118-120
+harness/cli/src/services/hooks/install-strategy-a.ts
+  s_ed609d39de2442::t_489fe079929377 85,88
+  s_ed609d39de2442::t_53fa04b28c0850 1-84,86-87,89-147
+harness/cli/test/services/hooks/binary-path.test.ts
+  s_ed609d39de2442::t_11c310e22f8e4a 1,160-169,171-175,202
+  s_ed609d39de2442::t_196853e876e2a0 2-159,170,176-201,203-213
+harness/cli/test/services/hooks/install-strategy-a.test.ts
+  s_ed609d39de2442::t_530b99dc1e5111 1-265
+docs/plans/082-harness-hooks/assets/tasks/phase-2/tasks.dd.json
+  s_ed609d39de2442::t_3adb0aa7b9ce7c 58,69,306,314,320,326,332
+  s_ed609d39de2442::t_3bbd0f3b343a9a 80,340,346,352,358
+  s_ed609d39de2442::t_6739a6191a908c 90,366,372,378
+harness/cli/test/services/hooks/agent-detection.test.ts
+  s_ed609d39de2442::t_5ec74ab40088fa 11,46,49-56,59-91
+  s_ed609d39de2442::t_3d8fbb8bdab533 1-10,12-45,47-48,57-58,92-111,113-168
+  s_ed609d39de2442::t_80af2936e7dfb4 112
+harness/cli/src/services/hooks/binary-path.ts
+  s_ed609d39de2442::t_e798b94d1ee08f 1-55,57-114
+  s_ed609d39de2442::t_11c310e22f8e4a 56
+harness/cli/src/services/hooks/agent-matrix.ts
+  s_ed609d39de2442::t_b65dc96fdab88a 48,50-66,92,101,108,117,124,131,138
+docs/plans/082-harness-hooks/assets/tasks/phase-2/execution.log.md
+  s_ed609d39de2442::t_d38f03f5f2b503 648-706
+  s_ed609d39de2442::t_2b060d666ee4fb 526-591
+  s_ed609d39de2442::t_a087fab9680c7b 592-647
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "206178cdf1c5912cf090a954bea467d158b73144",
+  "prompts": {},
+  "sessions": {
+    "s_ed609d39de2442": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "62892a0d-07d6-4784-b490-986f797be544",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
