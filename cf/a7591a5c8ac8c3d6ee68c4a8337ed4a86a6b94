@@ -1,0 +1,27 @@
+harness/cli/test/support/external-binary.ts
+  s_e2ef1441ad1dbd::t_7c33d88b5f067f 25-26,28-32,41-43,46-50,52-57,72
+.harness/extensions/repo-sensors/extension.ts
+  s_e2ef1441ad1dbd::t_36ea2ad346c153 440
+AGENTS.md
+  s_e2ef1441ad1dbd::t_bb63f9cdd261d7 80-107
+docs/how/telemetry.md
+  s_e2ef1441ad1dbd::t_cc3fe7423017a5 665-689
+harness/cli/src/services/docs/docs-content.ts
+  s_e2ef1441ad1dbd::t_67dbf82be8b50a 85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "cfa7591a5c8ac8c3d6ee68c4a8337ed4a86a6b94",
+  "prompts": {},
+  "sessions": {
+    "s_e2ef1441ad1dbd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "265d8845-1914-4476-9977-4a05f12f4b06",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
