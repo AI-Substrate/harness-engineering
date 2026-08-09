@@ -166,3 +166,52 @@ chain had walked past — one of them a verb that did not exist while its task s
 `uninstall` verb, argued over at length before it was built, performed a real recovery on a real
 machine four hours later, deleting a file it had created and leaving git-ai's entries untouched.
 It is the only thing in this plan that was exercised on damage it did not manufacture.
+
+---
+
+## Addendum — the verification exchange, and the rule that came out of it
+
+The `done` on this work was challenged, and the challenge was right: a done is a claim until
+verified. What followed is the most useful thing in this record.
+
+**The platform refused self-verification twice, on two different grounds.** `pij report verify`
+refused me (`cannot verify its own done claim`) and refused the PA that gathered the evidence
+(`state-verify is not available to a PA — it is testimony`). Two gates, one principle, both
+enforced mechanically rather than by anyone remembering to behave well.
+
+**Six of my measuring instruments failed across the session, and the verifier's five failed too.**
+Mine were the dangerous kind: one instrument, one confident number, nothing to contradict it —
+a digest comparison that lost `cut` from PATH and reported all seven files moved; a baseline
+parser that mis-read its own input; a mutation harness that printed `!!! SURVIVED !!!` with
+"Tests 2 failed" directly beneath. Each was caught only because the *shape* was implausible.
+
+The verifier's five failed differently: they disagreed with each other, which is self-refuting in
+a way one wrong answer never is. It stopped and asked for the predicate instead of reporting a
+26-versus-36 discrepancy that was never real.
+
+**Then both of us got the cause wrong.** I claimed the rendered markdown omits rows whose titles
+wrap. It omits nothing. The verifier claimed its line anchor was at fault. All 36 rows are
+line-anchored. The actual cause was one character class: `tk-\d+` against **hex** ids, so
+`tk-000a` onward were invisible — which predicts 9 + 11 + 6 = 26 exactly, including phase-2
+recovering to 11 because `tk-0010`/`tk-0011` are all-digits again.
+
+> A true cause does not merely fit the observation, it **regenerates** it — including the parts
+> you were not trying to explain.
+
+### The rule worth keeping
+
+The verifier's protection was luck, and it said so: five probes disagreed because they were five
+guesses at a schema it did not know. Somebody who knew the format would have written one probe,
+got 26, and shipped it.
+
+> **Running the same instrument twice is not a second measurement.** When a count matters, derive
+> it two different ways *on purpose* — from the source and from the render, by id and by state —
+> and treat agreement as informative only because the routes were chosen to fail differently.
+
+That is the same lesson as the drift-versus-corroboration correction earlier in this plan (two
+tables descending from one source raid agreeing proves they have not drifted, not that either is
+right), arriving at the level of the instruments rather than the data.
+
+**And the outcome that mattered:** the false claim reached nothing durable, because the predicate
+was handed over rather than the conclusion. It was refutable in one command. Both of us were wrong
+about the cause and neither error survived the hour.
