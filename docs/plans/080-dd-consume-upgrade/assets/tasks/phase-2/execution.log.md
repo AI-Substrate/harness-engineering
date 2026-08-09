@@ -215,3 +215,106 @@ output above; commit order is the proof). **`dw-000d` is NOT earned and stays un
 it wants `just build && just test` green with the suite in the tree, and the suite is red
 by design until tk-0008 — which is D-3 blocked. `tsc --noEmit -p harness/cli/tsconfig.json`
 exits 0 and biome is clean on the new file.
+
+---
+
+## Goldens — captured from the fork while it is still alive (koala's precondition)
+
+**Why this exists.** Under the ratified reshape (dd keeps mechanisms, consumers bring
+vocabulary — dd governance `d8950eb`) the plan layer becomes harness-owned, most likely by
+promoting *this very fork*. At that instant my falsifier suite's subject and oracle are the
+same code: every comparison passes trivially and the suite is blind to any bug the two
+share. Phase 3 then deletes the fork and the oracle disappears entirely. So the suite
+degrades from independent pin to move-refactor net **unless the goldens exist first** —
+which is why koala cut them as a PRECONDITION of the reshape rather than a follow-up.
+
+**Files**
+
+| file | role |
+|---|---|
+| `test/integration/fixtures/plan-semantics-corpora.ts` | the corpora, shared by generator and suite so neither can drift and silently re-baseline the other |
+| `test/integration/fixtures/plan-semantics-goldens.json` | 39 KB of recorded fork behaviour: findings, counts, full item shapes, edges, readiness triples |
+| `test/integration/plan-semantics-goldens.gen.test.ts` | the capture — a TEST, so it re-verifies the goldens against the fork on every run; `GOLDEN_UPDATE=1` rewrites them |
+
+Regeneration is deliberately an explicit act with a reviewable diff, never a side effect of
+a passing run:
+
+```
+$ GOLDEN_UPDATE=1 npx vitest run test/integration/plan-semantics-goldens.gen.test.ts
+ ✓ test/integration/plan-semantics-goldens.gen.test.ts (2 tests)
+```
+
+**What got recorded** (all non-vacuous — asserted, not hoped):
+
+```
+check.contradiction  findings 1  {"items":12,"completable":2,"open":1,"contradictions":1,"orphans":0}
+check.nonBuiltinRel  findings 0  {"items":12,"completable":2,"open":1,"contradictions":0,"orphans":1}
+check.orphan         findings 3  {"items":11,"completable":2,"open":2,"contradictions":0,"orphans":1}
+check.rollup         findings 2  {"items":18,"completable":4,"open":1,"contradictions":0,"orphans":1}
+index.contradiction  items 12  edges 1 (satisfies       → RESOLVED)  derived 3
+index.nonBuiltinRel  items 12  edges 1 (satisfies-toward → RESOLVED)  derived 3
+readiness.ready/notReady/cantTell = ready / not-ready / cant-tell   (three DISTINCT verdicts)
+```
+
+### A third vacuity trap, caught the same way as the first two
+
+The first capture recorded **`edges 0` on every corpus**. The `check` half looked perfect —
+the contradiction was there — because `readPlanCheck` builds its own edges internally. But
+my `edgesFor` helper seeded `traverseCorpus` with a single path string plus a `depth`,
+where the production call in `check.ts` passes an **array** of seeds with
+`mode: 'direct', follow: false`. Wrong seed shape ⇒ zero edges ⇒ silently.
+
+Had that shipped, every edge assertion in falsifiers #2–#5 and #8b would have been an
+empty-set-versus-empty-set comparison — the exact failure I had already caught once in this
+phase on the contradiction falsifier. Same class, third occurrence, and again it was
+visible only by reading the captured VALUES rather than the pass/fail.
+
+It is now pinned so it cannot come back:
+
+```ts
+expect(index.contradiction.edges.map((e) => e.rel)).toStrictEqual(['satisfies']);
+expect(index.nonBuiltinRel.edges.map((e) => e.rel)).toStrictEqual(['satisfies-toward']);
+expect(index[name].edges[0]?.to, `${name} edge must RESOLVE to an item`).not.toBeNull();
+```
+
+That pair is the sharpest thing in the suite: the **same document**, differing only in the
+relation, resolving an edge either way — but producing a contradiction under `satisfies`
+and none under `satisfies-toward`. A subject carrying a hand-copied `BUILTIN_RELS` cannot
+track a relation added after the copy, and fails exactly there.
+
+### The suite now measures against the goldens, not against a live fork
+
+Re-ran the wrong-stub control against the NEW bar to prove the goldens catch a bad subject
+on their own:
+
+```
+AssertionError: expected 'C:\repo\docs\p.dd.json#tasks/tk-0001' to be 'C:/repo/…'   # #1
+AssertionError: expected { verdict: 'ready', …(2) } to strictly equal { verdict: 'not-ready', …(2) }
+AssertionError: expected { verdict: 'ready', …(2) } to strictly equal { verdict: 'cant-tell', …(2) }
+AssertionError: expected [] to strictly equal [ { …(14) }, { …(14) }, …(10) ]        # #2-#5
+AssertionError: expected [] to strictly equal [ { …(4) } ]                          # #8a
+      Tests  13 failed | 2 passed (15)
+```
+
+Two tests are always green by design and are structural guards, not falsifiers: *"the three
+goldens are three DIFFERENT verdicts, or this suite pins nothing"* and *"the subject module
+is absent"*.
+
+**One deliberate exception.** The live-corpus test (plan 080's own documents) keeps the
+fork as its oracle and gets NO literal golden: those documents change every time a task
+closes, so a pinned findings set would churn and train everyone to re-baseline it. It
+asserts non-vacuity instead (`items > 100`), and at fork deletion it converts to structural
+invariants rather than literals. Recorded here so phase 3 does not discover it by surprise.
+
+### Full-suite state
+
+```
+$ npx tsc --noEmit -p harness/cli/tsconfig.json      → exit 0
+$ npx vitest run
+ Test Files  1 failed | 349 passed (350)
+      Tests  13 failed | 5152 passed (5165)
+```
+
+The ONLY red is the 13 deliberate falsifiers. Blast radius is clean: no existing test
+changed behaviour. `dw-000d` stays unchecked per koala's ruling — it wants a green suite,
+and the suite is red by design while the reshape is parked.

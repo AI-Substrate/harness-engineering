@@ -2,25 +2,35 @@ import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { NodeHash } from '../../src/adapters/hash/node-hash.js';
-import type { DdDoc, ResolvedDdSchema } from '../../src/services/dd/core/model.js';
-import type { SchemaResolveResult, SchemaResolver } from '../../src/services/dd/core/validate.js';
-import type { DocLoader, DocLoadResult } from '../../src/services/dd/core/walk.js';
+import type { DdDoc } from '../../src/services/dd/core/model.js';
 import { indexDocument } from '../../src/services/dd/links/map.js';
 import type { DdLinkEdge } from '../../src/services/dd/links/model.js';
-import { traverseCorpus } from '../../src/services/dd/links/traverse.js';
 import {
   type PlanDocument as ForkPlanDocument,
-  type PlanEdge as ForkPlanEdge,
   type PlanIndex as ForkPlanIndex,
   type PlanItem as ForkPlanItem,
   type ReadyReading as ForkReadyReading,
-  buildPlanIndex as forkBuildPlanIndex,
   itemKey as forkItemKey,
   readPlanCheck as forkReadPlanCheck,
-  readPlanReadiness as forkReadPlanReadiness,
-  type SurveyDimension,
 } from '../../src/services/dd/plan/index.js';
+import {
+  checkDeps,
+  contradictionCorpus,
+  edgeShape,
+  edgesFor,
+  findingKeys,
+  itemShape,
+  nonBuiltinRelCorpus,
+  orphanCorpus,
+  PLAN_PATH,
+  planDocuments,
+  ROOT,
+  rollupCorpus,
+  SCHEMA,
+  SURVEY_OK,
+  SURVEY_UNKNOWN,
+} from './fixtures/plan-semantics-corpora.js';
+import GOLDENS from './fixtures/plan-semantics-goldens.json' with { type: 'json' };
 
 /*
 Test Doc:
@@ -107,261 +117,30 @@ function subjectPresent(): boolean {
 async function loadSubject(): Promise<Subject> {
   return (await import(/* @vite-ignore */ SUBJECT_SPECIFIER)) as Subject;
 }
-
-// ---------------------------------------------------------------------------
-// Fixtures — consumer-owned fakes (constitution P3: fakes over mocks, no
-// `vi.mock`/`spyOn`). Both sides of every comparison are handed the SAME ones.
-// ---------------------------------------------------------------------------
-
-/**
- * A plan-shaped schema carrying a builtin `satisfies` relation AND a
- * deliberately NON-builtin `satisfies-toward` one.
- *
- * `satisfies-toward` is not invented for this test — it is live in this very
- * plan (prime's `57d8bd1f` moved phase-1's cross-phase edges onto it to clear
- * contradiction noise). dd's namespace is open by design: an unknown relation is
- * legal and behaves as `ref`, which means it must NOT produce a contradiction.
- * Reproducing that without re-declaring dd's frozen five is exactly the
- * prediction's #5(b) falsifier.
- */
-const SCHEMA: ResolvedDdSchema = {
-  name: 'trial/plan',
-  sections: {
-    criteria: {
-      shape: {
-        type: 'array',
-        items: {
-          type: 'object',
-          fields: { id: { type: 'string' }, title: { type: 'string' }, state: { type: 'state' } },
-        },
-      },
-    },
-    tasks: {
-      shape: {
-        type: 'array',
-        items: {
-          type: 'object',
-          fields: {
-            id: { type: 'string' },
-            title: { type: 'string' },
-            state: { type: 'state' },
-            satisfies: { type: 'link', rel: 'satisfies', target: 'trial/plan/section/criteria' },
-            satisfies_toward: {
-              type: 'link',
-              rel: 'satisfies-toward',
-              target: 'trial/plan/section/criteria',
-            },
-          },
-        },
-      },
-    },
-    done_when: {
-      shape: {
-        type: 'array',
-        items: {
-          type: 'object',
-          fields: { id: { type: 'string' }, state: { type: 'state' } },
-        },
-      },
-    },
-  },
-};
-
-function doc(sections: DdDoc['sections']): DdDoc {
-  return { dd: { schema: SCHEMA.name }, sections, references: [] };
-}
-
-class FixtureDocLoader implements DocLoader {
-  constructor(private readonly docs: ReadonlyMap<string, DdDoc>) {}
-  load(path: string): DocLoadResult {
-    const found = this.docs.get(path);
-    return found
-      ? { ok: true, path, doc: found, sha: `sha-${path}`, tracked: null }
-      : { ok: false, path, reason: 'missing', message: `missing: ${path}` };
-  }
-}
-
-class FixtureSchemaResolver implements SchemaResolver {
-  resolve(schemaRef: string): SchemaResolveResult {
-    return schemaRef === SCHEMA.name
-      ? { ok: true, schema: SCHEMA }
-      : { ok: false, message: `no schema: ${schemaRef}` };
-  }
-}
-
-const ROOT = '/repo';
-const PLAN_PATH = `${ROOT}/docs/plans/trial/plan.dd.json`;
-
-/** A plan whose only task is CHECKED while the criterion it satisfies is OPEN. */
-function contradictionCorpus(): Map<string, DdDoc> {
-  return new Map([
-    [
-      PLAN_PATH,
-      doc([
-        {
-          name: 'criteria',
-          value: [{ id: 'ac-0001', title: 'the criterion', state: 'unchecked' }],
-        },
-        {
-          name: 'tasks',
-          value: [
-            {
-              id: 'tk-0001',
-              title: 'the task',
-              state: 'checked',
-              satisfies: '#criteria/ac-0001',
-            },
-          ],
-        },
-      ]),
-    ],
-  ]);
-}
-
-/** The same plan, with the edge moved onto the NON-builtin relation. */
-function nonBuiltinRelCorpus(): Map<string, DdDoc> {
-  return new Map([
-    [
-      PLAN_PATH,
-      doc([
-        {
-          name: 'criteria',
-          value: [{ id: 'ac-0001', title: 'the criterion', state: 'unchecked' }],
-        },
-        {
-          name: 'tasks',
-          value: [
-            {
-              id: 'tk-0001',
-              title: 'the task',
-              state: 'checked',
-              satisfies_toward: '#criteria/ac-0001',
-            },
-          ],
-        },
-      ]),
-    ],
-  ]);
-}
-
-/** A criterion nothing satisfies — the `--complete` orphan-claim case. */
-function orphanCorpus(): Map<string, DdDoc> {
-  return new Map([
-    [
-      PLAN_PATH,
-      doc([
-        {
-          name: 'criteria',
-          value: [{ id: 'ac-0001', title: 'unaccounted for', state: 'unchecked' }],
-        },
-        { name: 'tasks', value: [{ id: 'tk-0001', title: 'claims nothing', state: 'unchecked' }] },
-      ]),
-    ],
-  ]);
-}
-
-/**
- * A container whose doneness is DERIVED from its members — no state of its own.
- *
- * This is the prediction's #5(a) falsifier: `deriveItems`/`deriveRollup` live in
- * dd's non-public `core/derive`, so a re-implementation must reproduce the
- * rollup from public surface or report insufficient.
- */
-function rollupCorpus(): Map<string, DdDoc> {
-  return new Map([
-    [
-      PLAN_PATH,
-      doc([
-        { name: 'criteria', value: [{ id: 'ac-0001', title: 'the criterion', state: 'checked' }] },
-        { name: 'tasks', value: [{ id: 'tk-0001', title: 'the task', state: 'checked' }] },
-        {
-          name: 'done_when',
-          value: [
-            { id: 'dw-0001', state: 'checked' },
-            { id: 'dw-0002', state: 'unchecked' },
-          ],
-        },
-      ]),
-    ],
-  ]);
-}
-
-function planDocuments(corpus: ReadonlyMap<string, DdDoc>): ForkPlanDocument[] {
-  return [...corpus].map(([path, value]) => ({ path, doc: value, schema: SCHEMA }));
-}
-
-function edgesFor(corpus: ReadonlyMap<string, DdDoc>) {
-  const loader = new FixtureDocLoader(corpus);
-  const resolver = new FixtureSchemaResolver();
-  return traverseCorpus(
-    PLAN_PATH,
-    { docLoader: loader, schemaResolver: resolver },
-    {
-      repoRoot: ROOT,
-      depth: 3,
-    },
-  ).edges;
-}
-
-/** Item fields compared verbatim — every field the model declares. */
-function itemShape(item: ForkPlanItem) {
-  return {
-    key: item.key,
-    path: item.path,
-    interior: item.interior,
-    address: item.address,
-    location: item.location,
-    kind: item.kind,
-    state: item.state,
-    terminal: item.terminal,
-    completable: item.completable,
-    derived: item.derived,
-    checkable: item.checkable,
-    done: item.done,
-    label: item.label,
-    claim: item.claim,
-  };
-}
-
-function edgeShape(edge: ForkPlanEdge) {
-  return { from: edge.from, to: edge.to, rel: edge.rel, address: edge.address };
-}
-
-function findingKeys(findings: readonly { class: string; address: string }[]): string[] {
-  return findings.map((f) => `${f.class}::${f.address}`).sort();
-}
-
-const SURVEY_UNKNOWN: SurveyDimension = {
-  satisfied: null,
-  reason: 'no-flight-plan',
-  node: null,
-  status: null,
-  basis: null,
-  expected_basis: 'sha-expected',
-};
-
-const SURVEY_OK: SurveyDimension = { ...SURVEY_UNKNOWN, satisfied: true, reason: 'survey-done' };
-
-function checkDeps(corpus: ReadonlyMap<string, DdDoc>) {
-  const resolver = new FixtureSchemaResolver();
-  return {
-    docLoader: new FixtureDocLoader(corpus),
-    schemaResolver: {
-      resolve: (ref: string) => resolver.resolve(ref),
-      resolveDetailed: (ref: string) => ({
-        record:
-          ref === SCHEMA.name
-            ? { schema: SCHEMA, path: `${ROOT}/.dd/schemas/trial.json` }
-            : undefined,
-        issues: [],
-      }),
-    },
-  } as unknown as Parameters<typeof forkReadPlanCheck>[1];
-}
-
 // ---------------------------------------------------------------------------
 // The falsifiers. One `describe` per primitive so a RED run names the primitive.
+//
+// The bar is the GOLDENS, not a live fork. Under the ratified reshape the plan
+// layer becomes harness-owned — most likely by promoting this very fork — at
+// which point a subject-versus-fork comparison is the same code on both sides:
+// trivially green and blind to any shared bug. Phase 3 then deletes the fork
+// outright. The goldens were captured from the fork while it was still alive
+// (plan-semantics-goldens.gen.test.ts) precisely so this suite stays a real pin
+// across both events. The ONE exception is the live-corpus test at the bottom,
+// which cannot have literal goldens because plan 080's own documents change
+// every time a task closes.
 // ---------------------------------------------------------------------------
+
+const GOLDEN_ITEMS = (name: keyof typeof GOLDENS.index) => GOLDENS.index[name].items;
+const GOLDEN_EDGES = (name: keyof typeof GOLDENS.index) => GOLDENS.index[name].edges;
+
+function sortedItems(items: readonly ForkPlanItem[]) {
+  return items.map(itemShape).sort((a, b) => a.key.localeCompare(b.key));
+}
+
+function sortedEdges(edges: ForkPlanIndex['edges']) {
+  return edges.map(edgeShape).sort((a, b) => a.from.localeCompare(b.from));
+}
 
 describe('OQ-2 falsifier · #1 itemKey', () => {
   /**
@@ -379,22 +158,29 @@ describe('OQ-2 falsifier · #1 itemKey', () => {
     expect(subject.itemKey(windows, ['tasks', 'tk-0001'])).toBe(
       subject.itemKey(posix, ['tasks', 'tk-0001']),
     );
-    expect(subject.itemKey(windows, ['tasks', 'tk-0001'])).toBe(
-      forkItemKey(windows, ['tasks', 'tk-0001']),
+    expect(subject.itemKey(posix, ['tasks', 'tk-0001'])).toBe(
+      'C:/repo/docs/p.dd.json#tasks/tk-0001',
     );
   });
 
-  it('agrees with the public indexDocument addressing for every indexed node', async () => {
+  it('reproduces every key the goldens recorded, and agrees with public indexDocument', async () => {
     const subject = await loadSubject();
     const corpus = contradictionCorpus();
     const index = indexDocument(PLAN_PATH, corpus.get(PLAN_PATH) as DdDoc, SCHEMA);
 
-    for (const entry of index.entries) {
-      expect(subject.itemKey(PLAN_PATH, entry.interior)).toBe(
-        forkItemKey(PLAN_PATH, entry.interior),
-      );
-    }
-    expect(index.entries.length).toBeGreaterThan(0);
+    // Agreement with dd's PUBLIC addressing — the half that must hold whatever
+    // the route, because it is dd that owns the address grammar.
+    const fromPublic = index.entries.map((entry) => subject.itemKey(PLAN_PATH, entry.interior));
+    expect(fromPublic).toStrictEqual(
+      index.entries.map((entry) => forkItemKey(PLAN_PATH, entry.interior)),
+    );
+
+    // Agreement with the recorded behaviour — the half that survives the fork.
+    expect([...fromPublic].sort()).toStrictEqual(
+      GOLDEN_ITEMS('contradiction')
+        .map((item) => item.key)
+        .sort(),
+    );
   });
 });
 
@@ -404,19 +190,29 @@ describe('OQ-2 falsifier · #2 PlanDocument / #3 PlanItem / #4 PlanEdge / #5 Pla
    * Falsifier: a value built ENTIRELY from public loader/resolver outputs must
    * populate every field. A field only obtainable from `core/derive` internals
    * refutes it and converts the row into #8's gap.
+   *
+   * NOTE for the trial report: the prediction also names "strict `tsc` of the
+   * re-declared type". That half CANNOT live here — the repo's only tsconfig is
+   * `include: ["src"]` and `harness checks` typechecks exactly that, so a
+   * type-level assertion in a test file is inert. It lands when the subject
+   * module reaches `src/` and `acts/plan/*` consumes it. What this test carries
+   * is the RUNTIME half: every field, compared value-by-value.
    */
-  it('fills every PlanItem and PlanEdge field from the same public inputs as the fork', async () => {
+  it('fills every PlanItem and PlanEdge field exactly as the goldens recorded', async () => {
     const subject = await loadSubject();
     const corpus = contradictionCorpus();
-    const documents = planDocuments(corpus);
-    const edges = edgesFor(corpus);
+    const documents: ForkPlanDocument[] = planDocuments(corpus);
+    const edges: DdLinkEdge[] = edgesFor(corpus);
 
     const mine = subject.buildPlanIndex(documents, edges, ROOT);
-    const theirs: ForkPlanIndex = forkBuildPlanIndex(documents, edges, ROOT);
 
-    expect(mine.items.map(itemShape)).toStrictEqual(theirs.items.map(itemShape));
-    expect(mine.edges.map(edgeShape)).toStrictEqual(theirs.edges.map(edgeShape));
-    expect([...mine.byKey.keys()].sort()).toStrictEqual([...theirs.byKey.keys()].sort());
+    expect(sortedItems(mine.items)).toStrictEqual(GOLDEN_ITEMS('contradiction'));
+    expect(sortedEdges(mine.edges)).toStrictEqual(GOLDEN_EDGES('contradiction'));
+    expect([...mine.byKey.keys()].sort()).toStrictEqual(
+      GOLDEN_ITEMS('contradiction')
+        .map((item) => item.key)
+        .sort(),
+    );
   });
 });
 
@@ -424,58 +220,51 @@ describe('OQ-2 falsifier · #6 ReadyReading / #7 readPlanReadiness', () => {
   /**
    * Prediction: SUFFICIENT (pure function over `PlanCheckResult` + survey).
    * Falsifier: three fixtures — ready, not-ready (unclaimed criterion),
-   * cant-tell. Any verdict flip refutes.
+   * cant-tell. Any verdict flip refutes. The three goldens are DISTINCT
+   * verdicts, so a subject that hard-codes one answer fails two of them.
    */
-  const cases: {
-    name: string;
-    corpus: () => Map<string, DdDoc>;
-    survey: SurveyDimension;
-    /** Pinned so a fixture that drifted into producing one verdict three times fails HERE. */
-    oracle: { verdict: string; reason: string; decided_by: string | null };
-  }[] = [
-    {
-      name: 'ready',
-      corpus: contradictionCorpus,
-      survey: SURVEY_OK,
-      oracle: { verdict: 'ready', reason: 'ready', decided_by: null },
-    },
+  const cases = [
+    { name: 'ready', corpus: contradictionCorpus, survey: SURVEY_OK, golden: 'ready' },
     {
       name: 'not-ready (unclaimed criterion)',
       corpus: orphanCorpus,
       survey: SURVEY_OK,
-      oracle: { verdict: 'not-ready', reason: 'unclaimed-criteria', decided_by: 'criteria' },
+      golden: 'notReady',
     },
     {
       name: 'cant-tell (survey unreadable)',
       corpus: contradictionCorpus,
       survey: SURVEY_UNKNOWN,
-      oracle: { verdict: 'cant-tell', reason: 'no-flight-plan', decided_by: 'survey' },
+      golden: 'cantTell',
     },
-  ];
+  ] as const;
+
+  it('the three goldens are three DIFFERENT verdicts, or this suite pins nothing', () => {
+    const verdicts = cases.map((c) => GOLDENS.readiness[c.golden].verdict);
+    expect(new Set(verdicts).size).toBe(3);
+  });
 
   for (const scenario of cases) {
-    it(`reproduces the fork verdict: ${scenario.name}`, async () => {
+    it(`reproduces the recorded verdict: ${scenario.name}`, async () => {
       const subject = await loadSubject();
       const corpus = scenario.corpus();
-      const options = { repoRoot: ROOT, complete: true };
+      const check = subject.readPlanCheck(PLAN_PATH, checkDeps(corpus), {
+        repoRoot: ROOT,
+        complete: true,
+      });
+      const mine: ForkReadyReading = subject.readPlanReadiness(check, scenario.survey);
+      const golden = GOLDENS.readiness[scenario.golden];
 
-      const mineCheck = subject.readPlanCheck(PLAN_PATH, checkDeps(corpus), options);
-      const theirsCheck = forkReadPlanCheck(PLAN_PATH, checkDeps(corpus), options);
-
-      const mine: ForkReadyReading = subject.readPlanReadiness(mineCheck, scenario.survey);
-      const theirs: ForkReadyReading = forkReadPlanReadiness(theirsCheck, scenario.survey);
-
-      // The oracle must still say what this fixture was built to make it say.
       expect({
-        verdict: theirs.verdict,
-        reason: theirs.reason,
-        decided_by: theirs.decided_by,
-      }).toStrictEqual(scenario.oracle);
-
-      expect(mine.verdict).toBe(theirs.verdict);
-      expect(mine.reason).toBe(theirs.reason);
-      expect(mine.decided_by).toBe(theirs.decided_by);
-      expect(mine.criteria).toStrictEqual(theirs.criteria);
+        verdict: mine.verdict,
+        reason: mine.reason,
+        decided_by: mine.decided_by,
+      }).toStrictEqual({
+        verdict: golden.verdict,
+        reason: golden.reason,
+        decided_by: golden.decided_by,
+      });
+      expect(mine.criteria).toStrictEqual(golden.criteria);
     });
   }
 });
@@ -490,40 +279,34 @@ describe('OQ-2 falsifier · #8 buildPlanIndex', () => {
   it('(a) reproduces derived rollup state for a container with no state of its own', async () => {
     const subject = await loadSubject();
     const corpus = rollupCorpus();
-    const documents = planDocuments(corpus);
-    const edges = edgesFor(corpus);
+    const mine = subject.buildPlanIndex(planDocuments(corpus), edgesFor(corpus), ROOT);
 
-    const mine = subject.buildPlanIndex(documents, edges, ROOT);
-    const theirs = forkBuildPlanIndex(documents, edges, ROOT);
+    const goldenRollups = GOLDEN_ITEMS('rollup').filter((item) => item.derived);
+    expect(goldenRollups.length, 'goldens must contain a derived item').toBeGreaterThan(0);
 
-    const rollups = theirs.items.filter((item) => item.derived);
-    expect(rollups.length).toBeGreaterThan(0);
-
-    for (const expected of rollups) {
-      const actual = mine.byKey.get(expected.key);
-      expect(actual, `no rollup item at ${expected.key}`).toBeDefined();
-      expect(itemShape(actual as ForkPlanItem)).toStrictEqual(itemShape(expected));
-    }
+    expect(sortedItems(mine.items).filter((item) => item.derived)).toStrictEqual(goldenRollups);
   });
 
   /**
    * Falsifier (b): a schema declaring a NON-builtin relation — the live
    * `satisfies-toward`. dd's namespace is open, so it must behave as `ref` and
    * attach no extra meaning. Reproducing that WITHOUT re-declaring
-   * `BUILTIN_RELS` is the vocabulary test; if it cannot be done, insufficient
-   * per the prediction's pre-committed scoring rule.
+   * `BUILTIN_RELS` is the vocabulary test.
    */
-  it('(b) treats a non-builtin relation exactly as the fork does, without a local vocabulary', async () => {
+  it('(b) treats a non-builtin relation exactly as recorded, without a local vocabulary', async () => {
     const subject = await loadSubject();
     const corpus = nonBuiltinRelCorpus();
-    const documents = planDocuments(corpus);
-    const edges = edgesFor(corpus);
+    const mine = subject.buildPlanIndex(planDocuments(corpus), edgesFor(corpus), ROOT);
 
-    const mine = subject.buildPlanIndex(documents, edges, ROOT);
-    const theirs = forkBuildPlanIndex(documents, edges, ROOT);
-
-    expect(mine.edges.map(edgeShape)).toStrictEqual(theirs.edges.map(edgeShape));
-    expect(mine.items.map(itemShape)).toStrictEqual(theirs.items.map(itemShape));
+    expect(sortedEdges(mine.edges)).toStrictEqual(GOLDEN_EDGES('nonBuiltinRel'));
+    expect(sortedItems(mine.items)).toStrictEqual(GOLDEN_ITEMS('nonBuiltinRel'));
+    // The control: the SAME document under a builtin relation produces a
+    // contradiction, and under this one it must not.
+    expect(GOLDEN_EDGES('nonBuiltinRel')[0]?.rel).toBe('satisfies-toward');
+    expect(GOLDENS.check.nonBuiltinRel.findings).toStrictEqual([]);
+    expect(GOLDENS.check.contradiction.findings.map((f) => f.class)).toStrictEqual([
+      'contradiction',
+    ]);
   });
 });
 
@@ -532,81 +315,66 @@ describe('OQ-2 falsifier · #9 readPlanCheck', () => {
    * Prediction: AT RISK — inherits #8, plus `readPlanSemantics` needs
    * `CLAIMING_RELS` + `effectiveRel` (vocabulary again; the fork's
    * `semantics.ts` is FROZEN and must not be edited).
-   * Falsifier: the findings SET must equal the fork's on the same input —
-   * including a constructed contradiction and a `--complete` orphan-claim.
-   * Any finding-set diff refutes SUFFICIENT.
+   * Falsifier: the findings SET and the counts must equal what the fork
+   * produced, on a constructed contradiction, a non-builtin relation, a
+   * `--complete` orphan-claim, and a rollup corpus.
    */
-  const scenarios: {
-    name: string;
-    corpus: () => Map<string, DdDoc>;
-    complete: boolean;
-    /**
-     * The finding classes the ORACLE must produce. Pinned because a falsifier
-     * that compares two empty sets proves nothing: scenarios 1 and 2 are the
-     * same document with only the RELATION changed, so the contradiction
-     * appearing in one and not the other is the control that makes the
-     * vocabulary question testable at all.
-     */
-    oracleClasses: string[];
-  }[] = [
+  const scenarios = [
     {
       name: 'constructed contradiction (checked task, open criterion)',
       corpus: contradictionCorpus,
       complete: false,
-      oracleClasses: ['contradiction'],
+      golden: 'contradiction',
     },
     {
       name: 'non-builtin relation makes NO contradiction',
       corpus: nonBuiltinRelCorpus,
       complete: false,
-      oracleClasses: [],
+      golden: 'nonBuiltinRel',
     },
     {
       name: 'orphan-claim under --complete',
       corpus: orphanCorpus,
       complete: true,
-      oracleClasses: ['open-completable', 'open-completable', 'orphan-claim'],
+      golden: 'orphan',
     },
     {
       name: 'rollup corpus, per-row accounting',
       corpus: rollupCorpus,
       complete: true,
-      oracleClasses: ['open-completable', 'orphan-claim'],
+      golden: 'rollup',
     },
-  ];
+  ] as const;
 
   for (const scenario of scenarios) {
-    it(`produces a findings set equal to the fork: ${scenario.name}`, async () => {
+    it(`produces the recorded findings set: ${scenario.name}`, async () => {
       const subject = await loadSubject();
       const corpus = scenario.corpus();
-      const options = { repoRoot: ROOT, complete: scenario.complete };
+      const golden = GOLDENS.check[scenario.golden];
 
-      const mine = subject.readPlanCheck(PLAN_PATH, checkDeps(corpus), options);
-      const theirs = forkReadPlanCheck(PLAN_PATH, checkDeps(corpus), options);
+      const mine = subject.readPlanCheck(PLAN_PATH, checkDeps(corpus), {
+        repoRoot: ROOT,
+        complete: scenario.complete,
+      });
 
-      expect(theirs.ok, 'oracle must load the fixture cleanly').toBe(true);
-      if (!theirs.ok) return;
-      // Non-vacuity: the oracle produced the finding shape this fixture exists
-      // to produce, so an equal-but-empty comparison cannot pass for agreement.
-      expect(theirs.findings.map((f) => f.class).sort()).toStrictEqual(
-        [...scenario.oracleClasses].sort(),
-      );
-
-      expect(mine.ok).toBe(theirs.ok);
+      expect(mine.ok).toBe(golden.ok);
       if (!mine.ok) return;
 
-      expect(findingKeys(mine.findings)).toStrictEqual(findingKeys(theirs.findings));
-      expect(mine.counts).toStrictEqual(theirs.counts);
+      expect(findingKeys(mine.findings)).toStrictEqual(findingKeys(golden.findings));
+      expect(mine.counts).toStrictEqual(golden.counts);
       expect(mine.findings.map((f) => f.message).sort()).toStrictEqual(
-        theirs.findings.map((f) => f.message).sort(),
+        golden.findings.map((f) => f.message).sort(),
       );
     });
   }
 
   /**
    * The corpus-level bar the prediction names explicitly: drive THIS plan's own
-   * documents. A synthetic fixture cannot catch a disagreement that only appears
-   * at real scale (436 items, 11 orphans, a live non-builtin relation).
+   * documents. It has no literal golden ON PURPOSE — plan 080's documents change
+   * every time a task closes, so a pinned findings set would churn and teach
+   * everyone to re-baseline it. While the fork exists it is the oracle; when
+   * phase 3 deletes it, this converts to structural invariants (zero errors,
+   * non-vacuous item count) rather than a literal.
    */
   it('agrees with the fork on plan 080 own documents', async () => {
     const subject = await loadSubject();
@@ -614,11 +382,14 @@ describe('OQ-2 falsifier · #9 readPlanCheck', () => {
     const deps = realDeps();
     const options = { repoRoot: REPO_ROOT, complete: true, depth: 3 };
 
-    const mine = subject.readPlanCheck(planPath, deps, options);
     const theirs = forkReadPlanCheck(planPath, deps, options);
+    expect(theirs.ok, 'the live plan must load, or this proves nothing').toBe(true);
+    if (!theirs.ok) return;
+    expect(theirs.counts.semantic?.items ?? 0).toBeGreaterThan(100);
 
-    expect(mine.ok).toBe(theirs.ok);
-    if (!mine.ok || !theirs.ok) return;
+    const mine = subject.readPlanCheck(planPath, deps, options);
+    expect(mine.ok).toBe(true);
+    if (!mine.ok) return;
     expect(findingKeys(mine.findings)).toStrictEqual(findingKeys(theirs.findings));
     expect(mine.counts).toStrictEqual(theirs.counts);
   });
@@ -630,9 +401,9 @@ describe('OQ-2 falsifier · #9 readPlanCheck', () => {
  * product never performs.
  */
 function realDeps(): Parameters<typeof forkReadPlanCheck>[1] {
-  // Imported lazily so the synthetic falsifiers above stay filesystem-free.
   const { ConventionSchemaResolver, FsDocLoader } = require_('@ai-substrate/dd');
   const { NodeSchemaFs } = require_('@ai-substrate/dd/node');
+  const { NodeHash } = require_('../../src/adapters/hash/node-hash.js');
   const fs = new NodeSchemaFs();
   return {
     schemaResolver: new ConventionSchemaResolver({ fs, repoRoot: REPO_ROOT }),
@@ -642,12 +413,12 @@ function realDeps(): Parameters<typeof forkReadPlanCheck>[1] {
 
 describe('OQ-2 trial · the subject module', () => {
   /**
-   * Always runs. While the D-3 export gap is open this is the one assertion that
+   * Always runs. While the reshape is parked this is the one assertion that
    * states, in the suite itself, that the trial has not been run to green — so
    * "the falsifiers are in the tree" can never be mistaken for "the falsifiers
    * pass".
    */
-  it('is absent until tk-0008 lands, and tk-0008 is blocked on the dd export gap', () => {
+  it('is absent until the reshape lands, and the reshape is parked on the route ruling', () => {
     expect(subjectPresent()).toBe(false);
   });
 });
