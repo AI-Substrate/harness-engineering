@@ -39,7 +39,7 @@ _Empty._
 | tk-0002 | Promote the POC probe trio into a vitest integration spec against the INSTALLED package: pack shape (no src/), injection with fixture-owned foreign ports (typed: const fs: SchemaFs = ...), tracked===null on null tracking set, D7 drive-rooted address resolution | — | ph-1d68 | [x] checked | — | — | — | — | — | [ac-0003](../../../plan.dd.md#acceptance-criteria) |
 | tk-0003 | Rewire acts/flow.ts and acts/plan/fence.ts onto @ai-substrate/dd public subpaths (round-2 pattern: ConventionSchemaResolver+MemoizingDocLoader+FsDocLoader from the barrel, DdDoc type from the barrel) | — | ph-1d68 | [x] checked | — | — | — | — | — | [ac-0002](../../../plan.dd.md#acceptance-criteria), [ac-0003](../../../plan.dd.md#acceptance-criteria) |
 | tk-0004 | Rewire acts/plan/pr-body.ts (escapeCell/headingSlug from ./render/renderer; PlanEdge/PlanIndex/PlanItem types REMAIN on the fork until phase 2) and acts/plan/index.ts non-plan imports onto the package: core address/model/parse/validate/walk, links resolveMapSeed/traverseCorpus, schema model SchemaIssue AND schema resolve ConventionSchemaResolver | — | ph-1d68 | [x] checked | — | — | — | — | — | [ac-0002](../../../plan.dd.md#acceptance-criteria), [ac-0003](../../../plan.dd.md#acceptance-criteria) |
-| tk-0005 | Dogfood proof at the phase boundary: flow orient/rail and plan validate run green against plan 080 documents on the rewired build; any new dd-implementation defect goes to the dogfood ledger | — | ph-1d68 | [ ] unchecked | — | — | — | — | — | [ac-000b](../../../plan.dd.md#acceptance-criteria), [ac-000c](../../../plan.dd.md#acceptance-criteria) |
+| tk-0005 | Dogfood proof at the phase boundary: flow orient/rail and plan validate run green against plan 080 documents on the rewired build; any new dd-implementation defect goes to the dogfood ledger | — | ph-1d68 | [x] checked | — | — | — | — | — | [ac-000b](../../../plan.dd.md#acceptance-criteria), [ac-000c](../../../plan.dd.md#acceptance-criteria) |
 
 <a id="done-when"></a>
 
@@ -77,5 +77,5 @@ _Empty._
 
 | id | assertion | state | pressure | note |
 | --- | --- | --- | --- | --- |
-| dw-0009 | node harness/cli/bin/harness.js flow orient + rail against the-flow.json AND plan validate against plan.dd.json all return ok on the rewired build | [ ] unchecked | [bp-000b](../../backpressure.dd.md#rows) | — |
+| dw-0009 | node harness/cli/bin/harness.js flow orient + rail against the-flow.json AND plan validate against plan.dd.json all return ok on the rewired build | [x] checked | [bp-000b](../../backpressure.dd.md#rows) | — |
 | dw-000a | any dd-implementation defect surfaced during this phase has a dogfood-ledger row (grep the ledger; zero silent workarounds) | [ ] unchecked | not-applicable | human review of assets/dogfood-ledger.md - the ledger judgement row bp-000c is deliberately human-tier |

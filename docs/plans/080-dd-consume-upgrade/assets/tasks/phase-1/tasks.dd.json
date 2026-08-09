@@ -61,7 +61,7 @@
           "id": "tk-0005",
           "title": "Dogfood proof at the phase boundary: flow orient/rail and plan validate run green against plan 080 documents on the rewired build; any new dd-implementation defect goes to the dogfood ledger",
           "phase": "ph-1d68",
-          "state": "unchecked",
+          "state": "checked",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-000b",
             "../../../plan.dd.json#acceptance_criteria/ac-000c"
@@ -132,7 +132,7 @@
           {
             "id": "dw-0009",
             "assertion": "node harness/cli/bin/harness.js flow orient + rail against the-flow.json AND plan validate against plan.dd.json all return ok on the rewired build",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-000b"
           },
           {

@@ -51,7 +51,7 @@
         {
           "id": "ac-0001",
           "claim": "harness/cli package.json depends on @ai-substrate/dd pinned as github:AI-Substrate/dd#<full 40-char sha>; npm install resolves dd without touching the npm registry proxy for dd itself",
-          "state": "unchecked"
+          "state": "checked"
         },
         {
           "id": "ac-0002",

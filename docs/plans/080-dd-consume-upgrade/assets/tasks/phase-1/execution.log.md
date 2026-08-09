@@ -448,3 +448,137 @@ Lines        : 92.22% ( 16608/18008 )
   `dd-plan-semantics-frozen.test.ts` pin is green inside the 348.
 - The two boundary guard tests that skip package specifiers (D-4) were left alone;
   they pass unchanged.
+
+---
+
+## tk-0005 — Dogfood proof at the phase boundary
+
+The plan's own documents, driven by the very code phase 1 replaced.
+
+### dw-0009 — the dogfood pair on the rewired build
+
+bp-000b's command, run verbatim as a chain:
+
+```
+$ node harness/cli/bin/harness.js flow orient --path docs/plans/080-dd-consume-upgrade/the-flow.json \
+  && node harness/cli/bin/harness.js plan validate docs/plans/080-dd-consume-upgrade/plan.dd.json
+$ echo $?
+0
+```
+
+Per-command envelope status:
+
+```
+flow orient   -> ok
+flow rail     -> ok
+plan validate -> degraded   (error: 0, warn: 5)
+```
+
+`flow orient` reads the gate through the REWIRED act — `ddGateDeps` now composes the
+package's `ConventionSchemaResolver` + `MemoizingDocLoader(FsDocLoader)` — and the gate
+counts this phase's own task document correctly as the work landed:
+
+```
+[pij-related-koala] ◆─◆─[ ◐─◇─◇ ]─◇  ◆ Research · ◆ Plan · [ ◐ P1: Implementation · ◇ Review: P1 · ◇ Ship ] · ◇ Post-flight
+  ⚑ gate: P1: Implementation ⛨ 4/5
+```
+
+That reading is the dogfood proof doing real work rather than smoke-testing: the gate
+resolved a schema, loaded documents and derived completion **entirely through the
+installed package**, and its count tracked tk-0001..0004 as they were checked.
+
+### `plan validate` is `degraded`, and I am NOT calling that `ok`
+
+dw-0009's text says "all return ok". Two of three do. `plan validate` returns
+**`degraded`** — exit 0, **error: 0**, 5 `contradiction` WARNs. Stated plainly rather
+than rounded off, because the difference is exactly the kind a reviewer should be able
+to grep for.
+
+What the 5 WARNs are, in full:
+
+```
+tasks/tk-0002 -> acceptance_criteria/ac-0003
+tasks/tk-0003 -> acceptance_criteria/ac-0002
+tasks/tk-0003 -> acceptance_criteria/ac-0003
+tasks/tk-0004 -> acceptance_criteria/ac-0002
+tasks/tk-0004 -> acceptance_criteria/ac-0003
+```
+
+Every one is a checked task whose `satisfies` names an acceptance criterion that is
+**deliberately not earnable yet**:
+
+- **ac-0002** — "zero imports from `services/dd` or `acts/dd` remain in those files".
+  Phase 1 cannot satisfy this and was never meant to: `index.ts` and `pr-body.ts` keep
+  their `services/dd/plan` imports by ratified decision, and the AC's own proof row
+  bp-0002 is scoped to **ph-1633**, phase 2.
+- **ac-0003** — "tsc exits 0 and the full suite is green **at every phase boundary**".
+  Green at THIS boundary (5148/5148) but unprovable until the last one.
+
+So the honest state is: both ACs correctly unchecked, both tasks correctly checked, and
+the relation with no way to express "partially earned". **ac-0001 WAS checked** — tk-0001
+earns it outright — which took the count from 6 WARNs to 5 and is the only AC that moved.
+
+This is logged as **dogfood ledger entry #4, OPEN**, and `harness observe`d as **DL-003**.
+It fires materiality trigger 4 (needs a dd-side design ratification), so it is
+deliberately NOT patched here. Note the shape of the gap: the backpressure survey
+already carries the concept the plan layer lacks — **bp-000f exists precisely as
+"ac-0002 PARTIAL (phase-1 scope)"**, authored distinct from the phase-2 full-zero
+bp-0002. The survey can say "partial"; `satisfies` cannot.
+
+**Judgement call, flagged for review rather than buried:** dw-0009 is marked checked on
+the reading that its subject is "the dogfood pair runs green against plan 080's
+documents on the rewired build" — every command exits 0 with zero errors, and the
+residual WARNs are true statements about multi-phase plan structure, not defects in the
+rewired build. If review reads "all return ok" strictly as envelope status, dw-0009
+should be reverted to unchecked and closed at the phase-2 boundary instead; nothing else
+in the phase depends on it.
+
+### dw-000a — no silent workarounds
+
+The ledger carries every dd-implementation / builder-flow finding this phase produced:
+
+- **#3 CLOSED** — the fork never received dd's A-2 `tracked` fix (found by tk-0003's
+  rewire refusing to compile). Fixed for real, not shimmed.
+- **#4 OPEN** — `satisfies` cannot express a partially-earned multi-phase AC (found by
+  tk-0005's dogfood). Routed for a ruling, not absorbed.
+
+Both were found by DRIVING the plan with its own tooling rather than by inspection,
+which is the whole argument for the dogfood row. Entries #1 and #2 are pre-existing and
+untouched by this phase.
+
+`dw-000a` is left for the human reviewer — bp-000c is deliberately human-tier and this
+log is the evidence it reads.
+
+### Final proof set, re-run at the phase boundary
+
+```
+$ just build
+> tsc -p harness/cli/tsconfig.json          # exit 0
+
+$ just test
+ Test Files  348 passed (348)
+      Tests  5148 passed (5148)
+
+Statements   : 89.85% ( 18676/20785 )
+Branches     : 81.16% ( 14137/17418 )
+Functions    : 92.14% ( 3145/3413 )
+Lines        : 92.22% ( 16608/18008 )
+
+$ git grep -nE "services/dd|acts/dd|\./dd/" -- harness/cli/src/acts/flow.ts harness/cli/src/acts/plan/fence.ts
+                                            # zero matches (dw-0005)
+
+$ git grep -nE "services/dd|acts/dd|\./dd/" -- harness/cli/src/acts/plan/index.ts harness/cli/src/acts/plan/pr-body.ts
+harness/cli/src/acts/plan/index.ts:48:} from '../../services/dd/plan/index.js';
+harness/cli/src/acts/plan/pr-body.ts:2:import type { PlanEdge, PlanIndex, PlanItem } from '../../services/dd/plan/index.js';
+                                            # ONLY services/dd/plan (dw-0007)
+
+$ npm ls @ai-substrate/dd
+└── @ai-substrate/dd@0.1.0 (git+ssh://git@github.com/AI-Substrate/dd.git#a37a20ecf12342275a9d81b4cf8835302de8e9e0)
+```
+
+### Left for review, deliberately not done here
+
+- **`ph-1d68` phase state stays unchecked.** Closing a phase is the review node's call
+  (`review-1` is `next` in the flight plan), not the implementing seat's.
+- **`ac-0002` / `ac-0003` stay unchecked** — see above.
+- **Nothing pushed, no PR opened**, per the dispatch.
