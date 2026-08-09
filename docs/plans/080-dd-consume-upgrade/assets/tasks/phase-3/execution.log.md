@@ -366,3 +366,34 @@ Zero architecture files added across the whole phase, so "no new guard" is prove
 diff rather than asserted. `arch-check` still reports its two pre-existing
 `services-ports-type-only` warnings — unchanged, not mine. Architecture suite 5 files /
 12 tests green.
+
+## tk-000f — `docs/how/consuming-dd.md`
+
+All six named contents present, each grounded in something in the repo rather than in
+prose: the sha-pin rule (with `main` NOT pinnable and ancestry-not-string-compare), the
+re-pin procedure, the npm-git sandbox caveat, the re-verify trio, the CJS no-`require`
+caveat, and the mechanism-copy drift triggers + sunset.
+
+Claims verified against the tree before writing, not recalled:
+
+```
+$ grep -n "…" harness/cli/test/integration/dd-package-boundary.int.test.ts
+  → pack shape (dist/lib.js), foreign-port injection (SchemaFs), A-2 tracked===null
+$ ls harness/cli/src/services/plan-semantics/dd-mechanisms/*.ts | wc -l   → 4
+```
+
+Two judgements worth naming:
+
+1. **The A-2 row explains why it is asserted twice** (`=== null` *and* `not.toBe(false)`).
+   Those fail differently: a regression mapping unknown→false passes a lax `!== true`
+   check. A doc that only said "assert tracked is null" would let someone weaken it.
+2. **The CLI table carries a time axis.** Three spellings are wrong and one of the wrong
+   ones is *unpublished-ours*. Writing the scoped form as if usable today would be the
+   sharpest failure available here, because a prescription that 404s is exactly how a
+   reader talks themselves back into `npx dd` — the spelling that fetches and runs a
+   stranger's package. The doc says which spelling runs **today**.
+
+The known-accepted-degradations section carries ledger #5 (FX014) and #6 (banner) so the
+PR-body material and this page cannot drift apart.
+
+`markdown-lint`: **0 findings** for the new file.
