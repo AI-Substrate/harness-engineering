@@ -1,0 +1,39 @@
+harness/cli/test/integration/fixtures/plan-semantics-goldens.json
+  s_397a51e23fc2cd::t_0ec2e5214db065 373-380,631-638
+  s_397a51e23fc2cd::t_c11f3b82a5ec5e 1-372,381-630,639-1292
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-2/execution.log.md
+  s_397a51e23fc2cd::t_99efd079da2418 218-320
+harness/cli/test/integration/plan-semantics-goldens.gen.test.ts
+  s_397a51e23fc2cd::t_7c0504147f5031 1-200,202-218
+  s_19a84a88383f5b::t_86effa20a8c525 201
+harness/cli/test/integration/fixtures/plan-semantics-corpora.ts
+  s_397a51e23fc2cd::t_0ec2e5214db065 7,193-206
+  s_397a51e23fc2cd::t_40074e3c2381fd 1-6,8-192,207-235,237-244,246-266
+  s_397a51e23fc2cd::t_c11f3b82a5ec5e 236,245
+harness/cli/test/integration/plan-semantics-falsifiers.int.test.ts
+  s_19a84a88383f5b::t_8f21e55ea193d9 5,16-33,121-131,134-135,137-138,141-142,161-162,166,171-183,193-199,201,204-205,209-215,223-224,226-227,232,238,240-245,248,251-256,259-267,282,284-285,287,294,296,299-309,318-320,322,327,333,339,345,347,350,353,355-358,360,363-364,366,373-377,386-388,390-392,406,416,421
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "5f8cfa44e8b6d248de0b34adb5fc15e271120331",
+  "prompts": {},
+  "sessions": {
+    "s_19a84a88383f5b": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "e9a11817-53a3-42b6-a41f-25dcffefd677",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_397a51e23fc2cd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "3fe3c47b-5424-4214-892e-81ef19c49d45",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
