@@ -1,0 +1,22 @@
+.harness/extensions/checks/extension.ts
+  s_a76964380084ef::t_07c9b2ab6da448 361-366,370,374
+harness/cli/vitest.config.ts
+  s_a76964380084ef::t_5de214ae041e9f 6-7,13-21
+  s_a76964380084ef::t_59dbb519080466 72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c188f6acc11ce07c2fcf4625051c202c43ec20fa",
+  "prompts": {},
+  "sessions": {
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
