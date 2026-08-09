@@ -1,0 +1,29 @@
+docs/plans/077-windows-suite-portability/assets/reviews/phase-5-review.md
+  s_9507215fe12731::t_d6fd4748f1632f 1-40
+docs/plans/077-windows-suite-portability/assets/REVIEWER-BRIEF-round5.md
+  s_a76964380084ef::t_bc7b5375c82c72 1-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "209d1e3b2b4b55b44dcedf01bb212dfdf92ca28e",
+  "prompts": {},
+  "sessions": {
+    "s_9507215fe12731": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "68998526-c700-450f-bffb-9b544697c1fe",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
