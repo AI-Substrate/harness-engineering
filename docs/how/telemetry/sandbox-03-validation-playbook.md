@@ -193,6 +193,73 @@ grep 'op="commit"' ~/.git-ai/internal/daemon/logs/*.log | grep <repo-name>
 
 ---
 
+## 2a. INSTRUMENT THE HOOK ITSELF — the hook runner discards stderr
+
+**The single highest-value debugging technique we have for agent telemetry hooks**, and it
+generalises to every agent whose hooks we install — not just Cursor.
+
+An agent's hook runner invokes your hook command and **throws away its stderr**. So when
+`git-ai checkpoint` declines a payload, you see nothing at all: no note, no error, no output.
+**That is byte-for-byte indistinguishable from a hook that never fired**, and those are opposite
+diagnoses with opposite fixes.
+
+Wrap the hook command so it reports on itself. In `~/.cursor/hooks.json`, replace the bare
+command with:
+
+```
+tee -a /tmp/cursor-hook-pre.jsonl  | <the real hook command> 2>>/tmp/cursor-hook-err.log
+tee -a /tmp/cursor-hook-post.jsonl | <the real hook command> 2>>/tmp/cursor-hook-err.log
+```
+
+Two independent probes answering different questions:
+
+| probe | answers |
+|---|---|
+| `tee -a <file>` | **what the agent sent** — the raw payload, before the collector sees it |
+| `2>>` | **what the collector said about it** — otherwise swallowed by the hook runner |
+
+**Baseline first.** Delete all three files before a run, so anything present afterwards is from
+that run:
+
+```sh
+rm -f /tmp/cursor-hook-{pre,post}.jsonl /tmp/cursor-hook-err.log
+```
+
+Then the reading is unambiguous:
+
+- **all three absent** → the agent never invoked the hook
+- **payloads present, no note** → the checkpoint arrived and the *commit* event did not (a
+  Channel A / Channel B split — see [the two-channel model](./gitai-06-two-channel-model.md))
+- **stderr populated** → the collector ran and had something to say
+
+### It paid for itself immediately
+
+Measured 2026-08-09. The stderr log read, eight times:
+
+```
+cursor preset error: Skipping Cursor hook for unsupported tool_name 'Read'.
+```
+
+So the hooks **were** firing, git-ai **was** invoked, and it declined every one because `Read`
+is not a supported `tool_name` (confirmed at source — `presets/cursor.rs` classifies tools and
+returns `ToolClass::Skip` for unsupported ones). Without the wrapper that is invisible, and the
+obvious conclusion — *"Cursor attribution is not working"* — would have been wrong. The true
+statement is *"Cursor attribution is working and declining this tool."*
+
+### An anomaly we have NOT explained
+
+In that same run the two payload files were **0 lines** while the stderr log had **8** — same
+pipeline, same invocations. So `tee` produced nothing while the command downstream of it
+demonstrably ran. **We do not know why**, and the technique is documented here as useful rather
+than as fully understood. If you reproduce it, say so; if you explain it, correct this section.
+
+### One operational warning
+
+**`git-ai install-hooks` overwrites `hooks.json` with the vanilla command**, silently destroying
+this wrapper. It was restored on 2026-08-09 only because the snapshot captured file **values**,
+not merely their presence. If you instrument your hooks, **snapshot the file before running any
+installer**, and expect to reapply the wrapper afterwards.
+
 ## 3. Pitfalls that cost us real time
 
 | Pitfall | What happened | Guard |
