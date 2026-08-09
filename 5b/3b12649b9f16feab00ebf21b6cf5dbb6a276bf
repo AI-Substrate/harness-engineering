@@ -1,0 +1,70 @@
+harness/cli/test/services/hooks/live-daemon-note.int.test.ts
+  s_ed609d39de2442::t_5e6eaebbdb71b8 34-35,39-41,44,49-54,56-58,68-78,89-90,94-96,100,110,113,126,226,230-232
+  s_ed609d39de2442::t_a734ae364b093d 1-16,18-33,42-43,115-125,127-143,145-215,241-244,291
+  s_ed609d39de2442::t_b511617df9fba9 17
+  s_ed609d39de2442::t_5283d850db93e2 36-38,45-48,55,59-67,79-88,91-93,97-99,101-109,111-112,114,216-225,227-229,233-240
+  s_ed609d39de2442::t_f2c643b297842a 144
+  s_ed609d39de2442::t_24c219ab225c74 245-290
+harness/cli/src/services/hooks/hook-journal.ts
+  s_ed609d39de2442::t_3ade34488db95f 1-74
+harness/cli/test/services/hooks/hooks-verb.int.test.ts
+  s_ed609d39de2442::t_43430d38487eae 1-24,26-126,131,134-163
+  s_ed609d39de2442::t_bdfd0a6dec876a 127-130,132-133
+  s_ed609d39de2442::t_b6fe4790133603 25
+harness/cli/src/services/hooks/trace2-tickler.ts
+  s_ed609d39de2442::t_7f3d3bf3308289 1-78,87-131
+  s_ed609d39de2442::t_6aa26c78553b74 79-86
+harness/cli/test/app.test.ts
+  s_ed609d39de2442::t_427ad8ee1d1d61 144,177
+harness/cli/test/index.test.ts
+  s_ed609d39de2442::t_427ad8ee1d1d61 67
+harness/cli/test/support/hermetic-git.ts
+  s_ed609d39de2442::t_02d48605442e64 1-2,91-141
+harness/cli/src/services/extensions/registry.ts
+  s_ed609d39de2442::t_ac68abff574921 97-99
+docs/plans/082-harness-hooks/assets/tasks/phase-1/execution.log.md
+  s_ed609d39de2442::t_0eb51d1aa961e9 418-504
+  s_ed609d39de2442::t_ced4f53c2986aa 505-595
+  s_ed609d39de2442::t_be674847f80848 596-608
+harness/cli/test/services/hooks/hook-journal.test.ts
+  s_ed609d39de2442::t_6f4f6cb5d89948 1-55,60-113,127
+  s_ed609d39de2442::t_b6fe4790133603 56-59,114-126
+docs/plans/082-harness-hooks/assets/tasks/phase-1/tasks.dd.json
+  s_ed609d39de2442::t_b98f263116d789 82,88,105,110,116,121-122,127,132-133,138,143-144,149,154-155,259,265,271,277,299,305,313,319,325,333,339,347,353,361,367
+  s_ed609d39de2442::t_a642fa74742992 89,111
+harness/cli/src/app.ts
+  s_ed609d39de2442::t_b6fe4790133603 8
+  s_ed609d39de2442::t_ac68abff574921 483-486
+harness/cli/src/services/hooks/hook-payload.ts
+  s_ed609d39de2442::t_9ac9ee002b3b59 1-98
+docs/plans/082-harness-hooks/assets/tasks/phase-1/tasks.dd.md
+  s_ed609d39de2442::t_b98f263116d789 46-49,97-100,113-114,120-122,128-129,135-136,142-143
+  s_ed609d39de2442::t_f04d53c20bc287 43,45
+docs/plans/082-harness-hooks/assets/platform-findings.md
+  s_ed609d39de2442::t_4c51832f25b1cd 89-129
+  s_ed609d39de2442::t_7fcebda613299b 1-88,130-164
+harness/cli/test/services/hooks/trace2-tickler.test.ts
+  s_ed609d39de2442::t_e9dfa9fe88ecf1 1-15,17-21,23-58,60-112,119-142
+  s_ed609d39de2442::t_6aa26c78553b74 16,22,59,113-118
+harness/cli/vitest.config.ts
+  s_ed609d39de2442::t_6aa26c78553b74 31
+harness/cli/src/acts/hooks.ts
+  s_ed609d39de2442::t_b6fe4790133603 87
+  s_ed609d39de2442::t_c6c9c91d84478d 1-86,88-133
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "5b3b12649b9f16feab00ebf21b6cf5dbb6a276bf",
+  "prompts": {},
+  "sessions": {
+    "s_ed609d39de2442": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "62892a0d-07d6-4784-b490-986f797be544",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
