@@ -1,0 +1,19 @@
+harness/cli/test/adapters/fs/node-fs.test.ts
+  s_e2ef1441ad1dbd::t_dd89ab9f9b2220 56-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "cc0214b0be9f37b00e726108b77f402f571a1c46",
+  "prompts": {},
+  "sessions": {
+    "s_e2ef1441ad1dbd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "265d8845-1914-4476-9977-4a05f12f4b06",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
