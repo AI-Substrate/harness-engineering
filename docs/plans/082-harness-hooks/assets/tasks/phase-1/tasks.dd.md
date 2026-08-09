@@ -27,7 +27,7 @@
 
 ## Summary
 
-Sensors first, then the runtime. The guard is the hard part and TWO mechanisms are already known to be insufficient: a `merge --squash` commit has ONE parent, its first parent IS the recorded HEAD, and its reflog message reads `commit: <msg>` — byte-identical to an authored commit. Measured across eight isolated repos: parent-count catches only `--no-ff` merges; the reflog discriminator catches ff-pull, cherry-pick, revert and amend; NOTHING yet catches squash-merge. Design for that, not for the cases that are easy to reject. Tasks 1-4 build the sensors and the missing ports before any feature code.
+Sensors first. THE DISCRIMINATOR IS THE INDEX STATE RECORDED AT PRE — measured, and it is the only mechanism that works. Three earlier candidates are measured DEAD: parent-count catches only --no-ff merges; the reflog subject catches ff-pull, cherry-pick, revert and amend; and `.git` state (MERGE_HEAD/SQUASH_MSG) DOES NOT EXIST when our hook runs — MERGE_HEAD is never written by --squash at all, and SQUASH_MSG is unlinked by git before even git's own post-commit hook fires. SEVEN transitions are byte-identical to a real authored commit on all three: merge --squash, cherry-pick -n, revert -n, git apply, checkout REF -- path, restore --source, and read-tree -m -u (which is how git subtree works). At PRE, every one of those has an ALREADY-STAGED index while a genuine agent edit has a CLEAN one. Its only error mode is a false NEGATIVE, which is the direction our doctrine demands. It does not solve a HUMAN committing inside the PRE/POST bracket — nothing does, because nothing in git records who typed. That case is known and accepted, not mitigated.
 
 <a id="tasks"></a>
 
@@ -37,14 +37,16 @@ Sensors first, then the runtime. The guard is the hard part and TWO mechanisms a
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | tk-0001 | Add `node:net` to the architecture guard and prove it RED before it is green | — | phase-1 | [ ] unchecked | — | — | [ ] 0/1 [tk-0001](#tk-0001) | `no-direct-node-io.test.ts:23` currently forbids only `node:fs` and `node:child_process` — `grep -rn 'node:net'` across the arch tests returns ZERO, so a service importing node:net passes `just checks` today and the plan's G3 note is false. Add `/from ['\"]node:net['\"]/` to FORBIDDEN, then demonstrate the guard REFUSING a deliberate import and record that refusal in the execution log. A gate is not verified until it has refused. | — | [ac-0007](../../../plan.dd.md#acceptance-criteria) |
 | tk-0002 | Add a reflog read to the git port — it does not exist yet | — | phase-1 | [ ] unchecked | — | — | [ ] 0/1 [tk-0002](#tk-0002) | `grep -rn reflog harness/cli/src` returns NOTHING; `git-read-port.ts` exposes no reflog read. The transition classifier cannot be written without it. Port method + exec adapter + fake + tests. Split out of the classifier task deliberately: it is a hidden prerequisite that would otherwise block every provocation row. | — | [ac-0003](../../../plan.dd.md#acceptance-criteria) |
-| tk-0003 | Build a PURE transition classifier, `classifyHeadTransition(prev, head, parents, reflogSubject, gitDirState) -&gt; 'emit' \| 'silent'` | — | phase-1 | [ ] unchecked | — | — | [ ] 0/2 [tk-0003](#tk-0003) | A pure function with no IO, so the provocation suite has a callable target before any runtime exists. It must reject BOTH classes and it must not rely on parent-count plus reflog alone — those two are measured insufficient against squash-merge. The third discriminator is `.git` state (MERGE_HEAD / SQUASH_MSG presence) or an equivalent that distinguishes content authored elsewhere. | — | [ac-0003](../../../plan.dd.md#acceptance-criteria) |
-| tk-0004 | Build the provocation suite against the pure classifier — every row, including the ones that defeat a naive guard | — | phase-1 | [ ] unchecked | — | — | [ ] 0/5 [tk-0004](#tk-0004) | Class (a), HEAD did not advance by exactly one: checkout, reset --hard, rebase, amend, no-op, detached HEAD, no prior recorded state, AND a MULTI-COMMIT fast-forward pull (HEAD advances by more than one). Class (b), HEAD advanced by one whose first parent is the recorded HEAD but nothing was authored here: single-commit ff pull, --no-ff merge, cherry-pick, revert, `git am`, and **`merge --squash` + commit** — the last is byte-identical to an authored commit under parent-count AND reflog, and is the row that matters most. Plus the positive case (a genuinely authored commit) so the suite can see the opposite, and the CONCURRENT case: two POST fires reading state before either writes. Every class (a) and (b) row asserts SILENT; the positive asserts EMIT. | — | [ac-0003](../../../plan.dd.md#acceptance-criteria) |
-| tk-0005 | Build the live-daemon note fixture in `test/support/hermetic-git.ts` — the ONLY file exempt from the hermetic-git guard — with a PAIRED positive control | — | phase-1 | [ ] unchecked | — | — | [ ] 0/4 [tk-0005](#tk-0005) | `vitest.config.ts:130-133` already sets GIT_TRACE2_EVENT='0' for the whole run, so 'no note appeared' is trivially true and a negative-only fixture proves nothing. `hermetic-git-fixtures.test.ts:52-70` also FAILS any test file other than hermetic-git.ts that mentions GIT_TRACE2_EVENT — so the helper must live there. Assert BOTH: no note when trace2 is discarded, AND the note IS written when the events reach a live daemon. Assert note IDENTITY — the file, the line range, AND the session id — never a note count. With no daemon present the positive records SKIPPED, never PASSED. | — | [ac-0001](../../../plan.dd.md#acceptance-criteria), [ac-0002](../../../plan.dd.md#acceptance-criteria) |
-| tk-0006 | Implement the commit intercept over the classifier: PRE records HEAD, POST decides, with an ATOMIC state write | — | phase-1 | [ ] unchecked | — | — | [ ] 0/1 [tk-0006](#tk-0006) | The POC writes state AFTER emitting, which is the read-then-write window that lets two concurrent fires both emit. Use an exclusive create or lock file so the concurrent provocation row goes green. All class (a) and (b) rows silent, the positive row emits. | — | [ac-0003](../../../plan.dd.md#acceptance-criteria) |
-| tk-0007 | Implement the trace2 tickler over the EXISTING socket port — do not build a second one | — | phase-1 | [ ] unchecked | — | — | [ ] 0/2 [tk-0007](#tk-0007) | `NodeSocketProbe.send()` already does `sock.end(payload, cb)` and resolves {ok, bytes} — the identical call shape the POC uses, half-close included. Only the 750ms default timeout differs from the POC's 5000, and it is constructor-injectable. Six events sharing one sid, written through SocketRelayPort. The node:net guard from task 1 must pass with the rule ADDED. | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
-| tk-0008 | Wire `harness hooks fire &lt;agent&gt; --phase pre\|post --hook-input stdin` as a core verb | — | phase-1 | [ ] unchecked | — | — | [ ] 0/2 [tk-0008](#tk-0008) | `src/app.ts:469-515` registers core verbs as a flat sequence; `registerCommitAct` is the precedent. Update the frozen verb lists in `test/app.test.ts` and `test/index.test.ts`. Core verb, not a repo extension — hooks are machine-scoped and doctor must call it. | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
-| tk-0009 | Make every failure path exit 0 and silent, proven by fault injection | — | phase-1 | [ ] unchecked | — | — | [ ] 0/1 [tk-0009](#tk-0009) | Inject a dead socket, an unreadable config, a malformed payload, a non-git directory, and a thrown exception. Each exits 0 and writes nothing the agent can see. The deviation is scoped to `error`/`unconfigured` only — a reachable failure is `degraded`, which already maps to exit 0 under architecture.md:91 and needs no deviation. | — | [ac-0007](../../../plan.dd.md#acceptance-criteria) |
-| tk-000a | Write every fire outcome to a Phase-1-owned journal file, so a silent failure is visible without waiting for Phase 2 | — | phase-1 | [ ] unchecked | — | — | [ ] 0/2 [tk-000a](#tk-000a) | `harness hooks status` is a PHASE 2 deliverable and Phase 2 depends on Phase 1 — so Phase 1 cannot assert on it. The runtime writes its outcome (emitted / silent-with-reason / failed-with-cause) to a state file; this task asserts on THAT file with an unreachable socket. Phase 2's status verb merely reads it. Without this, the G2 deviation is unpurchased for the whole of Phase 1. | — | [ac-000b](../../../plan.dd.md#acceptance-criteria) |
+| tk-0003 | Extend the PRE hook to record the INDEX STATE alongside HEAD — the measured discriminator | — | phase-1 | [ ] unchecked | — | — | — | PRE records whether the index is clean or already-staged, plus HEAD. This is the ONLY mechanism that separates the seven defeaters from a genuine agent commit, and unlike .git state it is captured before the commit can erase it. Store it atomically (exclusive create or lock file) so two racing fires cannot both read a stale value. | — | [ac-0003](../../../plan.dd.md#acceptance-criteria) |
+| tk-0004 | Build a PURE transition classifier over (prev, head, parents, reflogSubject, indexStateAtPre) | — | phase-1 | [ ] unchecked | — | — | — | Pure — no IO, no git shell-out — so the provocation suite has a callable target. `.git` state is NOT a parameter: it does not exist at decision time and including it would let a fabricated input make a broken system look green. | — | [ac-0003](../../../plan.dd.md#acceptance-criteria) |
+| tk-0005 | Build the provocation suite AGAINST REAL GIT REPOSITORIES, not against the pure classifier | — | phase-1 | [ ] unchecked | — | — | — | Every row drives real git in an isolated repo and asserts on the RUNTIME's decision. A suite that feeds the pure function a fabricated state proves only that the implementation matches itself. Class (a) HEAD did not advance by exactly one: checkout, reset --hard, rebase, amend, no-op, detached HEAD, no prior state, multi-commit ff pull. Class (b) HEAD advanced by one, first parent == recorded HEAD, nothing authored here — ALL SEVEN MEASURED DEFEATERS: merge --squash, cherry-pick -n, revert -n, git apply, checkout REF -- path, restore --source, read-tree -m -u. Plus single-commit ff pull, --no-ff merge, cherry-pick, revert, git am. Plus the positive control (a genuine agent edit then commit) so the suite can see the opposite, and the CONCURRENT case: two POSTs racing produce at most one emit. Plus the KNOWN-BLIND row: a human committing inside the bracket is indistinguishable and MUST be asserted as emitting — documenting the limitation, not hiding it. | — | [ac-0003](../../../plan.dd.md#acceptance-criteria) |
+| tk-0006 | Build the live-daemon note fixture in test/support/hermetic-git.ts with a PAIRED positive control | — | phase-1 | [ ] unchecked | — | — | — | vitest.config.ts:132 sets GIT_TRACE2_EVENT='0' run-wide, so a negative-only fixture is trivially true. hermetic-git-fixtures.test.ts walks EVERY .ts under test/ and allows only this exact path. Assert BOTH directions. Assert note IDENTITY — file, line range AND session id — never a count. Without a live daemon the positive records SKIPPED, never PASSED. IF NO DAEMON IS AVAILABLE IN CI, say so in the execution log: ac-0001 and ac-0002 then end Phase 1 UNPROVEN and that must be visible, not discovered later. | — | [ac-0001](../../../plan.dd.md#acceptance-criteria), [ac-0002](../../../plan.dd.md#acceptance-criteria) |
+| tk-0007 | Implement the commit intercept over the classifier, with an atomic PRE state write | — | phase-1 | [ ] unchecked | — | — | — | The POC writes state after emitting — the read-then-write window that lets two concurrent fires both emit. Exclusive create or lock file. Every class (a) and (b) row silent against REAL git; the positive row emits. | — | [ac-0003](../../../plan.dd.md#acceptance-criteria) |
+| tk-0008 | Implement the trace2 tickler as ONE send() carrying all six newline-joined events | — | phase-1 | [ ] unchecked | — | — | — | SocketRelayPort.send(path, payload) opens a connection and half-closes per call — six calls would give the daemon six sessions, not one. Join the six events with newlines into a single payload, as the POC does. No node:net in any service; `just checks` passes WITH the rule added by tk-0001. | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
+| tk-0009 | Wire `harness hooks fire &lt;agent&gt; --phase pre\|post --hook-input stdin` as a core verb | — | phase-1 | [ ] unchecked | — | — | — | src/app.ts:469-515 registers core verbs flatly; registerCommitAct is the precedent. Update BOTH frozen lists in test/app.test.ts (two blocks) and test/index.test.ts, AND add the verb to RESERVED_NAMES in src/services/extensions/registry.ts — without it a repo extension can shadow a core verb. | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
+| tk-000a | Make every failure path exit 0 and silent, proven by fault injection | — | phase-1 | [ ] unchecked | — | — | — | Dead socket, unreadable config, malformed payload, non-git directory, thrown exception — each exits 0 and writes nothing the agent can see. Because exit 0 is unconditional, NO assertion anywhere may rest on the exit code alone: it carries no information by design. Assert on the journal. | — | [ac-0007](../../../plan.dd.md#acceptance-criteria) |
+| tk-000b | Write every fire outcome to a Phase-1-owned journal, so a silent failure is visible without Phase 2 | — | phase-1 | [ ] unchecked | — | — | — | `harness hooks status` is a Phase 2 deliverable and Phase 2 depends on Phase 1, so Phase 1 cannot assert on it. The runtime journals emitted / silent-with-reason / failed-with-cause; this task asserts on THAT file with an unreachable socket. Phase 2's status verb merely reads it. Coverage of ac-000b is therefore PARTIAL by design, and Phase 1 must not close claiming that AC. | — | [ac-000b](../../../plan.dd.md#acceptance-criteria) |
+| tk-000c | Prove the runtime on Linux in the OrbStack VM — the assumption everything rests on | — | phase-1 | [ ] unchecked | — | — | — | The plan's own Key Finding says the unsandboxed-hook-runner premise is measured on macOS ONLY and 'the entire design rests on this'. Run the provocation suite and the live-daemon fixture inside the VM. Record the result as MEASURED for Linux with the invocation pasted. Windows stays UNVERIFIED and is written into the findings doc for the remote agent on #108 — a promise to escalate needs an artifact in the same action. | — | [ac-0001](../../../plan.dd.md#acceptance-criteria) |
 
 <a id="done-when"></a>
 
@@ -66,61 +68,75 @@ Sensors first, then the runtime. The guard is the hard part and TWO mechanisms a
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0003 | classifyHeadTransition is pure — no IO, no git shell-out. | [ ] unchecked | not-applicable |
-| dw-0004 | It returns 'silent' for a squash-merge whose parent count is 1 and whose reflog subject reads 'commit: &lt;msg&gt;'. | [ ] unchecked | not-applicable |
+| dw-0003 | PRE records index-clean vs already-staged, and the value survives the commit that follows. | [ ] unchecked | not-applicable |
+| dw-0004 | The write is atomic: two racing PRE fires cannot both read a stale value. | [ ] unchecked | not-applicable |
 
 ### tk-0004
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0005 | Every class (a) and class (b) row asserts SILENT and passes. | [ ] unchecked | not-applicable |
-| dw-0006 | The squash-merge row passes — it defeats parent-count AND reflog, measured. | [ ] unchecked | not-applicable |
-| dw-0007 | The multi-commit fast-forward pull row passes. | [ ] unchecked | not-applicable |
-| dw-0008 | The concurrent-fire row passes: two racing POSTs produce at most one emit. | [ ] unchecked | not-applicable |
-| dw-0009 | The positive row EMITS, so the suite can see the opposite. | [ ] unchecked | not-applicable |
+| dw-0005 | classifyHeadTransition is pure — no IO, no git shell-out. | [ ] unchecked | not-applicable |
+| dw-0006 | `.git` state is NOT among its parameters; it does not exist at decision time. | [ ] unchecked | not-applicable |
 
 ### tk-0005
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-000a | The helper lives in test/support/hermetic-git.ts and hermetic-git-fixtures.test.ts still passes. | [ ] unchecked | not-applicable |
-| dw-000b | The negative asserts no note when trace2 is discarded. | [ ] unchecked | not-applicable |
-| dw-000c | The positive asserts the note IS written against a live daemon, recorded SKIPPED — never PASSED — when no daemon is present. | [ ] unchecked | not-applicable |
-| dw-000d | Assertions name the file, the line range AND the session id. Nothing counts notes. | [ ] unchecked | not-applicable |
+| dw-0007 | Every row drives real git in an isolated repo and asserts on the RUNTIME's decision, not on the pure function. | [ ] unchecked | not-applicable |
+| dw-0008 | All SEVEN measured defeaters assert SILENT: merge --squash, cherry-pick -n, revert -n, git apply, checkout REF -- path, restore --source, read-tree -m -u. | [ ] unchecked | not-applicable |
+| dw-0009 | Every class (a) row asserts SILENT, including the multi-commit fast-forward pull. | [ ] unchecked | not-applicable |
+| dw-000a | The positive control EMITS, so the suite can see the opposite. | [ ] unchecked | not-applicable |
+| dw-000b | The concurrent row passes: two racing POSTs produce at most one emit. | [ ] unchecked | not-applicable |
+| dw-000c | The human-in-bracket row asserts EMIT and is labelled KNOWN-BLIND — the limitation is documented, not hidden. | [ ] unchecked | not-applicable |
 
 ### tk-0006
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-000e | The concurrent provocation row is green against the real intercept, not just the pure classifier. | [ ] unchecked | not-applicable |
+| dw-000d | The helper lives in test/support/hermetic-git.ts and hermetic-git-fixtures.test.ts still passes. | [ ] unchecked | not-applicable |
+| dw-000e | The negative asserts no note when trace2 is discarded; the positive asserts the note IS written against a live daemon. | [ ] unchecked | not-applicable |
+| dw-000f | Assertions name the file, the line range AND the session id. Nothing counts notes. | [ ] unchecked | not-applicable |
+| dw-0010 | Without a daemon the positive records SKIPPED, never PASSED, and the execution log states that ac-0001 and ac-0002 end Phase 1 unproven. | [ ] unchecked | not-applicable |
 
 ### tk-0007
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-000f | No node:net import in any service; just checks passes WITH the rule added by task 1. | [ ] unchecked | not-applicable |
-| dw-0010 | SocketRelayPort was reused; whether it needed extending is recorded with the reason. | [ ] unchecked | not-applicable |
+| dw-0011 | Every class (a) and (b) row is silent against REAL git, not against the pure classifier. | [ ] unchecked | not-applicable |
+| dw-0012 | The concurrent row is green against the real intercept. | [ ] unchecked | not-applicable |
 
 ### tk-0008
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0011 | harness hooks fire cursor --phase post --hook-input stdin runs and exits 0. | [ ] unchecked | not-applicable |
-| dw-0012 | The frozen verb lists in test/app.test.ts and test/index.test.ts are updated and green. | [ ] unchecked | not-applicable |
+| dw-0013 | Exactly ONE send() call carries all six newline-joined events — the daemon sees one session, not six. | [ ] unchecked | not-applicable |
+| dw-0014 | No node:net import in any service; just checks passes WITH the rule added by tk-0001. | [ ] unchecked | not-applicable |
 
 ### tk-0009
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0013 | Each of the five injected faults exits 0 and writes nothing the agent can see. | [ ] unchecked | not-applicable |
+| dw-0015 | Both frozen verb-list blocks in test/app.test.ts and the one in test/index.test.ts are updated and green. | [ ] unchecked | not-applicable |
+| dw-0016 | The verb appears in RESERVED_NAMES in src/services/extensions/registry.ts so a repo extension cannot shadow it. | [ ] unchecked | not-applicable |
+| dw-0017 | The journal records a successful fire — the assertion does NOT rest on exit code, which is unconditional by design. | [ ] unchecked | not-applicable |
 
 ### tk-000a
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-0014 | With an unreachable socket, the journal records the failure AND its cause. | [ ] unchecked | not-applicable |
-| dw-0015 | The assertion reads the journal file, not harness hooks status — that verb is Phase 2 and cannot be a Phase 1 dependency. | [ ] unchecked | not-applicable |
+| dw-0018 | Each of the five injected faults exits 0 and writes nothing the agent can see. | [ ] unchecked | not-applicable |
+| dw-0019 | No assertion in this task rests on the exit code alone. | [ ] unchecked | not-applicable |
 
-### tk-0010
+### tk-000b
 
-_No entries._
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-001a | With an unreachable socket, the journal records the failure AND its cause. | [ ] unchecked | not-applicable |
+| dw-001b | The assertion reads the journal file, not harness hooks status — that verb is Phase 2 and cannot be a Phase 1 dependency. | [ ] unchecked | not-applicable |
+
+### tk-000c
+
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-001c | The provocation suite and the live-daemon fixture both run inside the VM, with the invocation pasted into the execution log. | [ ] unchecked | not-applicable |
+| dw-001d | Windows is written into the findings doc for the remote agent in the same action — a promise to escalate needs an artifact. | [ ] unchecked | not-applicable |

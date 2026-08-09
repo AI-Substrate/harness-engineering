@@ -362,7 +362,7 @@
     {
       "name": "execution_guardrails",
       "value": [
-        "Never emit a synthetic commit event unless HEAD advanced by exactly one commit whose first parent is the previously recorded HEAD. When in doubt, stay silent — a missing note is recoverable, a false one is not.",
+        "Never emit unless the agent AUTHORED the commit here. HEAD advancing by one whose first parent is the recorded HEAD is NOT sufficient — SEVEN transitions satisfy it byte-identically (merge --squash, cherry-pick -n, revert -n, git apply, checkout REF -- path, restore --source, read-tree -m -u). The discriminator is the INDEX STATE recorded at PRE: a genuine agent edit leaves a CLEAN index, every defeater leaves an ALREADY-STAGED one. `.git` state does not exist at decision time — SQUASH_MSG is unlinked before even git's own post-commit hook runs. A human committing inside the PRE/POST bracket is indistinguishable and is a KNOWN, ACCEPTED blind spot. When in doubt, stay silent.",
         "Every hook code path exits 0 and writes nothing the agent can see. A broken harness must never break the customer's editor session. This is a DELIBERATE deviation from the exit-code anti-pattern (gate G2) and failures must surface through `harness hooks status` instead.",
         "Back up any config file before our first write to it, and name the backup in the output. git-ai takes none; that is the gap we are closing.",
         "Preserve comments and key order in every file we touch. Never re-serialize a user's config wholesale.",
