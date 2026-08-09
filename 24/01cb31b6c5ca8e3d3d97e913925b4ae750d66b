@@ -1,0 +1,48 @@
+docs/plans/082-harness-hooks/assets/tasks/phase-1/tasks.dd.json
+  s_ed609d39de2442::t_7165e2aa87e75f 25,31-32,37,43-44
+  s_ed609d39de2442::t_326ba1ed12d5d5 156,164
+docs/plans/082-harness-hooks/assets/tasks/phase-1/tasks.dd.md
+  s_ed609d39de2442::t_326ba1ed12d5d5 59,65
+  s_ed609d39de2442::t_7165e2aa87e75f 38-39
+harness/cli/src/adapters/git/fake-git.ts
+  s_ed609d39de2442::t_3daf91a2551351 57-75
+  s_ed609d39de2442::t_ba58754a9c22a8 1
+  s_ed609d39de2442::t_026a1476eb5b88 18-21
+  s_ed609d39de2442::t_e0c46d0d6641b9 76
+harness/cli/test/adapters/git/exec-git.test.ts
+  s_ed609d39de2442::t_ab3c6aa3d1bde1 2-5,104-109
+  s_ed609d39de2442::t_f270fb48378462 54-103,110-142
+  s_ed609d39de2442::t_2e28b08b426481 143
+harness/cli/src/adapters/git/exec-git.ts
+  s_ed609d39de2442::t_099fb6500fc1c3 51-96,98-107
+  s_ed609d39de2442::t_f9f3b4a28e0fdc 2-3
+  s_ed609d39de2442::t_ee03c833d26d16 161-184
+  s_ed609d39de2442::t_c82dce81cb7dd2 185
+docs/plans/082-harness-hooks/assets/tasks/phase-1/execution.log.md
+  s_ed609d39de2442::t_7955bafd3e085d 1-184
+  s_ed609d39de2442::t_7f4150a6562a46 185-215
+harness/cli/test/adapters/git/fake-git.test.ts
+  s_ed609d39de2442::t_f0a8bf5eb2fe63 140-165,176-269
+  s_ed609d39de2442::t_ab3c6aa3d1bde1 166-175
+harness/cli/test/architecture/no-direct-node-io.test.ts
+  s_ed609d39de2442::t_71ca1dfd03a4d3 23-32,35-38
+harness/cli/src/adapters/git/git-port.ts
+  s_ed609d39de2442::t_a58cfc36feabc1 88-99
+  s_ed609d39de2442::t_1b4f3667b80d03 7-63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2401cb31b6c5ca8e3d3d97e913925b4ae750d66b",
+  "prompts": {},
+  "sessions": {
+    "s_ed609d39de2442": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "62892a0d-07d6-4784-b490-986f797be544",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
