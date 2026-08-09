@@ -1,0 +1,19 @@
+harness/cli/test/services/dd/schema/builder-rels.test.ts
+  s_cd998e7882a3c3::t_5224a114a4fd76 35-38,45-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8e641addc21341c8c3e5aee12acbc79f32bfa1f5",
+  "prompts": {},
+  "sessions": {
+    "s_cd998e7882a3c3": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "622101c7-ba88-4803-8ca5-9e6de8edbc6f",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
