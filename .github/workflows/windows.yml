@@ -278,22 +278,44 @@ jobs:
           $sum += ""
 
           # ---- The skip column, stated as an anti-goal rather than a stat. ----
+          #
+          # The delta is computed OUTSIDE any `skipped -gt 0` gate, deliberately.
+          # A previous version nested the comparison inside it, so a fall to ZERO
+          # skipped the check entirely and printed "No tests were skipped on this
+          # run" — the largest possible loss of coverage rendered as good news.
+          $skipDelta = $skipped - $EXPECTED_SKIPS
           $sum += "### Skips — a green here must never mean ""we stopped looking"""
           $sum += ""
           if ($skipped -gt 0) {
-            $sum += "**$skipped test(s) did not run on this platform.** This round deliberately skipped the real-``git daemon`` cluster and the URL-scope credential case, so a non-zero number is expected — but it is reported here, as a number, so that it CANNOT rise quietly. If this figure grows, something stopped being measured; find out what before reading the pass count as progress."
+            $sum += "**$skipped test(s) did not run on this platform.** Deliberate skips exist here (the real-``git daemon`` cluster, the URL-scope credential case, the cleanup fault-injection cases), so a non-zero number is expected — it is reported as a number so that it cannot CHANGE quietly in either direction."
             $sum += ""
-            if ($skipped -gt $EXPECTED_SKIPS) {
-              $sum += "> **:rotating_light: SKIPS HAVE RISEN by $($skipped - $EXPECTED_SKIPS)** — $skipped now versus **$EXPECTED_SKIPS, the last MEASURED pin**. Something stopped being measured since then."
-              $sum += ">"
-              $sum += "> Do NOT re-baseline this in the same change that caused it. Name what stopped being proven, say what still proves it, and move the pin as its own deliberate edit — a skip added and a baseline bumped together is ""we stopped looking"" wearing a green."
-            } elseif ($skipped -lt $EXPECTED_SKIPS) {
-              $sum += "> Skips have FALLEN by $($EXPECTED_SKIPS - $skipped) — $skipped versus the day-one baseline of $EXPECTED_SKIPS. Something started being measured again; move the pin DOWN so the new, better floor is the one being defended."
-            } else {
-              $sum += "Matches the pinned baseline of **$EXPECTED_SKIPS** — **measured** (day one 56 on run 31293261626; re-pinned to 58 on run 31297297873 when two new fault-injection proofs were added that cannot run on win32), not chosen. Of these, $EXPECTED_SKIPPED_FILES are whole FILES skipped rather than individual cases; a file-level skip and a case-level skip read very differently when scanning this number."
-            }
+          } elseif ($EXPECTED_SKIPS -gt 0) {
+            $sum += "**ZERO tests were skipped, against a pin of $EXPECTED_SKIPS.** That is not a clean run — it is a fall of $EXPECTED_SKIPS, and it is the single largest coverage change this job can report. Every deliberate skip this suite had has stopped being reported. Find out whether those tests now RUN or no longer EXIST before reading anything else on this page."
+            $sum += ""
           } else {
-            $sum += "No tests were skipped on this run."
+            $sum += "No tests were skipped, and none were expected."
+            $sum += ""
+          }
+
+          if ($skipDelta -gt 0) {
+            $sum += "> **:rotating_light: SKIPS HAVE RISEN by $skipDelta** — $skipped now versus **$EXPECTED_SKIPS, the last MEASURED pin**. Something stopped being measured since then."
+            $sum += ">"
+            $sum += "> Do NOT re-baseline this in the same change that caused it. Name what stopped being proven, say what still proves it, and move the pin as its own deliberate edit — a skip added and a baseline bumped together is ""we stopped looking"" wearing a green."
+          } elseif ($skipDelta -lt 0) {
+            # Symmetric with the rise ON PURPOSE. An earlier version framed a fall
+            # as unambiguously good ("the new, better floor"), which would have
+            # congratulated a suite for DELETING the tests that used to skip.
+            $sum += "> **:rotating_light: SKIPS HAVE FALLEN by $(-$skipDelta)** — $skipped now versus **$EXPECTED_SKIPS, the last MEASURED pin**."
+            $sum += ">"
+            $sum += "> **A fall is not automatically good news, and it is not automatically bad news either.** It means one of three things, and the number cannot tell you which:"
+            $sum += ">"
+            $sum += "> 1. **Coverage RESTORED** — a case that used to decline now runs here. Good."
+            $sum += "> 2. **Coverage DELETED while its subject remains** — the tests went, the code they guarded did not. **This is the dangerous one**, and it is the reading that never gets assumed."
+            $sum += "> 3. **Subject and tests removed together** — nothing stopped being proven, because the thing being proven no longer exists. Legitimate, and the commonest cause of a large fall."
+            $sum += ">"
+            $sum += "> Case 3 is why this is a WARNING and not a failure: a guard that screams at every legitimate deletion gets ignored, and an ignored guard cannot catch case 2 — which is the only one it exists for. So attribute the fall source by source, name WHICH case each part is, and only then move the pin, in its OWN commit."
+          } else {
+            $sum += "Matches the pinned baseline of **$EXPECTED_SKIPS** — **measured** (day one 56 on run 31293261626; re-pinned to 58 on run 31297297873 when two new fault-injection proofs were added that cannot run on win32), not chosen. Of these, $EXPECTED_SKIPPED_FILES are whole FILES skipped rather than individual cases; a file-level skip and a case-level skip read very differently when scanning this number."
           }
           $sum += ""
 
@@ -337,8 +359,14 @@ jobs:
 
           # Annotations, so the three numbers are visible without opening the run.
           Write-Output "::notice title=windows-suite::passed=$passed failed=$failed skipped=$skipped of $total collected ($filesBad/$filesTot files failed)"
-          if ($skipped -gt 0) {
-            Write-Output "::warning title=windows-suite skips::$skipped test(s) did not run on win32 — a green suite with a rising skip count means we stopped looking, not that we got better"
+          # Direction-aware, and fired on ANY deviation from the pin — including a
+          # fall to zero, which the previous version could not announce at all
+          # because it only ran when `skipped -gt 0`.
+          if ($skipDelta -ne 0) {
+            $dir = if ($skipDelta -gt 0) { "ROSE by $skipDelta" } else { "FELL by $(-$skipDelta)" }
+            Write-Output "::warning title=windows-suite skips::skip count $dir — $skipped versus the pinned $EXPECTED_SKIPS. A RISE means something stopped being measured; a FALL can mean coverage was DELETED rather than restored. The number cannot tell you which — attribute it before moving the pin."
+          } elseif ($skipped -gt 0) {
+            Write-Output "::warning title=windows-suite skips::$skipped test(s) did not run on win32 (matching the pinned baseline) — a green suite whose skip count CHANGES in either direction means what it is looking at changed, not that it got better"
           }
           if ($undercollected) {
             Write-Output "::error title=windows-suite undercollected::only $total tests collected, expected at least $MIN_TOTAL — SUSPECT THE JOB, not the suite. A Windows collection failure shrinks the totals and reads as 'hardly anything failed'."
