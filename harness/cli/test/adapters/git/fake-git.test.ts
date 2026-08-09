@@ -137,3 +137,133 @@ describe('ExecGit', () => {
     expect(url === null || typeof url === 'string').toBe(true);
   });
 });
+
+describe('FakeGit — the reflog read (plan 082 tk-0002)', () => {
+  const SHA = 'a'.repeat(40);
+
+  it('returns the seeded entries newest-first, bounded by `limit`, and records the query', () => {
+    const git = new FakeGit({
+      reflog: [
+        { sha: SHA, selector: 'HEAD@{0}', subject: 'commit: newest' },
+        { sha: 'b'.repeat(40), selector: 'HEAD@{1}', subject: 'pull: Fast-forward' },
+      ],
+    });
+
+    expect(git.readReflog('HEAD', 1)).toEqual({
+      status: 'ok',
+      entries: [{ sha: SHA, selector: 'HEAD@{0}', subject: 'commit: newest' }],
+    });
+    expect(git.calls).toEqual(['readReflog:HEAD:1']);
+  });
+
+  it('models an existing ref with NO reflog as ok-and-empty, not as a failure', () => {
+    // The unseeded default has to be the honest case: git exits 0 with empty
+    // output there, and a guard that read this as a failure would refuse to act
+    // on a repository that is merely young.
+    expect(new FakeGit().readReflog('HEAD', 5)).toEqual({ status: 'ok', entries: [] });
+  });
+
+  it.each([
+    'unreadable',
+    'malformed',
+    'bad-limit',
+  ] as const)('models a %s read as a typed unavailable result', (reason) => {
+    expect(new FakeGit({ reflogFailure: reason }).readReflog('HEAD', 5)).toEqual({
+      status: 'unavailable',
+      reason,
+    });
+  });
+
+  it('rejects a non-positive limit ahead of any seeded failure', () => {
+    expect(new FakeGit({ reflog: [] }).readReflog('HEAD', 0)).toEqual({
+      status: 'unavailable',
+      reason: 'bad-limit',
+    });
+  });
+});
+
+describe('ExecGit — the reflog read against REAL git (plan 082 tk-0002)', () => {
+  it('reads real reflog subjects, including the squash-merge that reads as an authored commit', () => {
+    /*
+    Test Doc:
+    - Why: the commit guard has to tell "authored here" from "HEAD moved for another
+      reason", and the reflog SUBJECT is the discriminator that separates a
+      fast-forward pull, cherry-pick, revert and amend from a real commit. A fake
+      alone would only prove we can echo strings we invented; this proves the
+      adapter reads what git actually writes.
+    - Contract: readReflog(ref, limit) returns the newest `limit` entries, newest
+      first, each carrying the FULL `%gs` subject.
+    - Worked Example: after `merge --squash` + commit, HEAD@{0} reads `commit: <msg>`.
+    - Quality Contribution: pins the ONE measured fact the guard must be designed
+      around — a squash-merge is BYTE-IDENTICAL to an authored commit on subject
+      (and on parent count), so the subject is a hard limit, not a total answer.
+    */
+    const dir = mkdtempSync(join(tmpdir(), 'harness-reflog-'));
+    const git = (args: string[]): string =>
+      execFileSync('git', args, { cwd: dir, encoding: 'utf8', env: hermeticGitEnv() }).trim();
+    try {
+      // Not a repository yet → a failed read, distinct from an empty one.
+      expect(new ExecGit(dir).readReflog('HEAD', 1)).toEqual({
+        status: 'unavailable',
+        reason: 'unreadable',
+      });
+
+      git(['init', '-q', '-b', 'main']);
+      // An unborn HEAD cannot be read either — also `unreadable`, never `ok: []`.
+      expect(new ExecGit(dir).readReflog('HEAD', 1)).toEqual({
+        status: 'unavailable',
+        reason: 'unreadable',
+      });
+
+      writeFileSync(join(dir, 'a.txt'), 'a\n');
+      git(['add', 'a.txt']);
+      git(['commit', '-qm', 'seed: the first thing']);
+
+      const authored = new ExecGit(dir).readReflog('HEAD', 1);
+      expect(authored.status).toBe('ok');
+      if (authored.status !== 'ok') throw new Error('unreachable');
+      // The subject is whole — a whitespace split would have cut this to `commit`.
+      expect(authored.entries[0].subject).toBe('commit (initial): seed: the first thing');
+      expect(authored.entries[0].selector).toBe('HEAD@{0}');
+      expect(authored.entries[0].sha).toBe(git(['rev-parse', 'HEAD']).toLowerCase());
+
+      // A squash-merge: one parent, first parent IS the previous HEAD, and — the
+      // measured point — a reflog subject byte-identical to an authored commit.
+      git(['checkout', '-q', '-b', 'side']);
+      writeFileSync(join(dir, 'b.txt'), 'b\n');
+      git(['add', 'b.txt']);
+      git(['commit', '-qm', 'side work']);
+      git(['checkout', '-q', 'main']);
+      git(['merge', '-q', '--squash', 'side']);
+      git(['commit', '-qm', 'squashed in']);
+
+      const squashed = new ExecGit(dir).readReflog('HEAD', 3);
+      expect(squashed.status).toBe('ok');
+      if (squashed.status !== 'ok') throw new Error('unreachable');
+      expect(squashed.entries).toHaveLength(3);
+      expect(squashed.entries[0].subject).toBe('commit: squashed in');
+      // One parent, exactly like an authored commit — so parent-count cannot
+      // separate them either. Recorded here so the guard is never designed as if
+      // it could.
+      expect(git(['rev-list', '--parents', '-1', 'HEAD']).split(' ')).toHaveLength(2);
+
+      // `-n` is honoured: newest-first, bounded.
+      const one = new ExecGit(dir).readReflog('HEAD', 1);
+      expect(one).toEqual({
+        status: 'ok',
+        entries: [squashed.entries[0]],
+      });
+
+      expect(new ExecGit(dir).readReflog('refs/heads/nope', 1)).toEqual({
+        status: 'unavailable',
+        reason: 'unreadable',
+      });
+      expect(new ExecGit(dir).readReflog('HEAD', 0)).toEqual({
+        status: 'unavailable',
+        reason: 'bad-limit',
+      });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});

@@ -22,24 +22,26 @@
         {
           "id": "tk-0001",
           "title": "Add `node:net` to the architecture guard and prove it RED before it is green",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-1",
           "success": "`no-direct-node-io.test.ts:23` currently forbids only `node:fs` and `node:child_process` — `grep -rn 'node:net'` across the arch tests returns ZERO, so a service importing node:net passes `just checks` today and the plan's G3 note is false. Add `/from ['\\\"]node:net['\\\"]/` to FORBIDDEN, then demonstrate the guard REFUSING a deliberate import and record that refusal in the execution log. A gate is not verified until it has refused.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0007"
           ],
-          "done": "#done_when/tk-0001"
+          "done": "#done_when/tk-0001",
+          "receipt": "npx vitest run test/architecture/no-direct-node-io.test.ts — REFUSED the planted src/services import (1 failed), green after removal (189 files, 0 offenders). Refusal verbatim in execution.log.md."
         },
         {
           "id": "tk-0002",
           "title": "Add a reflog read to the git port — it does not exist yet",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-1",
           "success": "`grep -rn reflog harness/cli/src` returns NOTHING; `git-read-port.ts` exposes no reflog read. The transition classifier cannot be written without it. Port method + exec adapter + fake + tests. Split out of the classifier task deliberately: it is a hidden prerequisite that would otherwise block every provocation row.",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0003"
           ],
-          "done": "#done_when/tk-0002"
+          "done": "#done_when/tk-0002",
+          "receipt": "npx vitest run test/adapters/git/{fake-git,exec-git}.test.ts — 39 passed; real-git test reads 'commit (initial): seed: the first thing' and 'commit: squashed in'. Mutation check (subject truncation) went red."
         },
         {
           "id": "tk-0003",
@@ -151,7 +153,7 @@
           {
             "id": "dw-0001",
             "assertion": "The guard REFUSED a deliberate node:net import and the refusal is recorded in the execution log — not merely that the rule was added.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],
@@ -159,7 +161,7 @@
           {
             "id": "dw-0002",
             "assertion": "A fake reflog adapter exists, and the exec adapter is covered by a test that reads a real reflog subject.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],
