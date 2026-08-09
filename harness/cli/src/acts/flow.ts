@@ -233,14 +233,14 @@ function restoreFlowSource(fs: FsPort, path: string, previous: string | null): b
  *
  * So the sibling is not optional decoration; it is half of the write. If the render
  * throws, or the `.md` cannot be written, the source write is rolled back (deleted, if
- * the operation created it) and the operation REFUSES — the same either-both-or-neither
- * contract `writeDocumentWithSibling` gives dd's mutating verbs, and the same phase-1
- * law: validate/render before write, failure = refusal. The rollback is attempted and
- * VERIFIED, not guaranteed — and unlike the forward write it is NOT atomic (plain
- * `writeText`, not `writeFlowAtomic`), so a failed restore can leave the source matching
- * neither the previous nor the mutated bytes. That is why `refuse()` warns and names the
- * file rather than reporting a clean source: E302 covers all of these outcomes, so a
- * caller must read `next_action`, not switch on the code alone.
+ * the operation created it) and the operation REFUSES — the phase-1 law: validate and
+ * render before write, failure = refusal. The rollback is attempted and VERIFIED (the
+ * restore is read back and compared), but it is not guaranteed and — unlike the forward
+ * write — it is NOT atomic (plain `writeText`, not `writeFlowAtomic`), so a failed
+ * restore can leave the source matching neither the previous nor the mutated bytes.
+ * That is why `refuse()` warns and names the file rather than reporting a clean source:
+ * E302 covers all of these outcomes, so a caller must read `next_action`, not switch on
+ * the code alone. (The non-atomic restore is tracked as #142.)
  *
  * `previousSource` is the bytes at `sourcePath` BEFORE the operation wrote it, or
  * `null` when the file did not exist. It is the only thing that makes the refusal
