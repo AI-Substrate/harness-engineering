@@ -701,6 +701,28 @@ none of them are mine — checked, not assumed: `arch-check`'s 2 warnings are bo
 > not sufficient — **the denominator has to be the population the claim covers**, or it is a
 > more confident way of being wrong. Phase 3's figures do not inherit this defect: that
 > phase touched `AGENTS.md` and `docs/how/consuming-dd.md`, both genuinely in scope.
+>
+> **Third annotation — the place axis (fleet notice 7), and it is the half that misleads
+> the more likely reader.** Both notes above correct this figure along **time**: it predates
+> `6a43fd4d`, so the total will not reproduce after a rebase. It is also branch-dependent.
+> The three checks derive their scope from `git ls-files`, so the population counted is
+> *whatever markdown that branch tracks* — two branches can measure 194 and 195 at the same
+> instant with **nobody having drifted**, because they track different file sets. The reader
+> this actually catches is not a future rebaser; it is someone standing on `main` **today**
+> who re-runs the gate, sees a different number, and concludes something regressed. Prime's
+> formulation is the one to carry:
+>
+> > **An absolute total is not even wrong in a single place, because it has no single true
+> > value.**
+>
+> So the `211` above is scoped to **this branch's tracked set at this sha** and is not a
+> constant anyone can check themselves into agreement with. The durable form: **derive the
+> baseline from your own merge-base at the moment you use it** — not merely tidier than
+> copying a number, but the only formulation that is well-defined at all. A copied total is
+> a claim whose truth depends on where the reader is standing, stated as though it were a
+> constant. (The honest short form for any pre-`6a43fd4d` branch is likewise **"three checks
+> unchanged; fourth not available here"** — never "identical to baseline", which reports a
+> three-row result as a complete answer.)
 
 **The failure mode worth keeping.** The biome red was a REAL observation — when I first
 made it. I then carried it forward across several commits and restated it as current fact

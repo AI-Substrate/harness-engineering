@@ -438,7 +438,9 @@ PR-body material and this page cannot drift apart.
 > *Attribution for the wider gate*, by the fleet's own discriminator
 > (`harness markdown-lint --json | jq '.data.checks[] | {name, outcome, findings, examined}'`):
 > `markdownlint 195/133`, `links 15/133`, `mermaid 1/31` = **211**, identical to the
-> phase-2 baseline. No check moved under this phase. There is no `unexamined` check on this
+> phase-2 baseline **as measured on this branch** — see the place-axis note at the end of
+> this annotation before comparing that figure to one taken anywhere else. No check moved
+> under this phase. There is no `unexamined` check on this
 > branch at all — `git merge-base --is-ancestor 6a43fd4d HEAD` exits **1**, so this tree has
 > not taken the new gate; and `git status --porcelain` is **empty**, so it would have no
 > input here regardless. Every markdown-lint figure quoted in this plan's committed
@@ -464,6 +466,28 @@ PR-body material and this page cannot drift apart.
 > earned by a check. The tk-000f claim above is the exception and survives on its merits:
 > `docs/how/consuming-dd.md` is genuinely IN-SCOPE (verified with the real `inScope()`
 > predicate alongside an in-scope control, `AGENTS.md`), so its `0 of 211` is a result.
+>
+> **Place axis, added last (fleet notice 7): a total is branch-dependent as well as
+> time-dependent.** The three checks derive their scope from `git ls-files`, so the
+> population they count is *whatever markdown that branch tracks*. Two branches can measure
+> 194 and 195 at the same instant with nobody having drifted — they simply track different
+> file sets. Everything above corrects the **time** axis (this figure predates `6a43fd4d`);
+> this corrects the **place** axis, and it is the half that misleads the more likely reader:
+> not a future rebaser, but someone standing on `main` **today** who re-runs the gate,
+> gets a different number, and concludes something regressed. Prime's formulation is the
+> one to carry:
+>
+> > **An absolute total is not even wrong in a single place, because it has no single true
+> > value.**
+>
+> So every `211` in this file — `:426`, the discriminator line, and the `0 of 211` above —
+> is scoped to **this branch's tracked set at this sha**, and none of them is a constant
+> anyone else can check themselves into agreement with. The durable form is the one the
+> brief now uses: **derive the baseline from your own merge-base at the moment you use it**.
+> That is not merely tidier than copying a number; it is the only formulation that is
+> well-defined at all. The per-file conclusions are unaffected — `consuming-dd.md`
+> contributing **0** was measured directly against that file with its own denominator
+> (`Linting: 1 file(s)`), which is a claim about a document, not about a repo total.
 
 ## tk-0013 — command-surface migration
 
