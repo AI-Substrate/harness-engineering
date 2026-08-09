@@ -83,9 +83,28 @@ function dirname(path: string): string {
   return boundary <= 0 ? (normalized.startsWith('/') ? '/' : '.') : normalized.slice(0, boundary);
 }
 
+/**
+ * Root-anchored: a leading `/` (incl. UNC `//`) **or** a drive root (`C:/`, `c:\`).
+ *
+ * `startsWith('/')` alone is not an absoluteness test. A Windows drive path does
+ * not start with `/`, so it was read as RELATIVE and appended to the citing
+ * document's directory — `resolveAddressFile('C:/repo/docs/plan.dd.json',
+ * 'C:/repo/docs/other.dd.json')` produced `C:/repo/docs/C:/repo/docs/other.dd.json`
+ * (plan 108 · D7). This is the same defect class as D1/D2/D3 and it is NOT a
+ * separator bug: it fires on a forward-slashed drive path too, so normalising
+ * separators does not fix it.
+ *
+ * Deliberately expressed here rather than imported from `services/shared`:
+ * `dd/core` imports nothing outside itself, and this repo already carries three
+ * path grammars whose relationship is an open question (#110). The identical
+ * predicate is already used nine lines below in `validateAddressShape` — this
+ * converges on it rather than inventing a fourth spelling.
+ */
+const ROOT_ANCHORED = /^([A-Za-z]:)?[\\/]/;
+
 export function resolveAddressFile(fromPath: string, target: string): string {
   const posixTarget = target.replaceAll('\\', '/');
-  if (posixTarget.startsWith('/')) return normalizeFilePath(posixTarget);
+  if (ROOT_ANCHORED.test(posixTarget)) return normalizeFilePath(posixTarget);
   return normalizeFilePath(`${dirname(fromPath)}/${posixTarget}`);
 }
 

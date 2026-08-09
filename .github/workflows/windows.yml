@@ -1,0 +1,293 @@
+# The `windows-latest` suite leg — ON DEMAND, REPORT-ONLY (plan 077 · #108).
+#
+# WHY THIS EXISTS
+# ---------------
+# `windows-check` found ZERO of the four Windows defects fixed in `5a8e8f5b`, and
+# cleared zero. Every one was a logical-vs-native path-shape mismatch at a
+# comparison, which no per-line lint can see. Until this job existed, the only
+# instrument that could see that class was a person in another organisation
+# volunteering to run our suite on their laptop — a favour, not a supply chain,
+# and the reason the Windows failure count drifted to 134 before anyone noticed.
+#
+# WHY IT IS WARN-LAUNCH, AND WHY THAT IS NOT APATHY
+# -------------------------------------------------
+# The suite is NOT green on Windows today, so a blocking job would break every PR
+# on day one. This ships in the same warn-launch posture as `windows-check`,
+# `arch-check` and `markdown-lint`: it runs, it reports, it blocks nothing.
+# `non-blocking` here means "we are not yet entitled to gate on it", NOT "nobody
+# cared" — promotion to a required check is a separate, evidenced decision that
+# belongs to whoever owns this once it is actually green. Do not wire it into
+# `ci-required` or branch protection before then.
+#
+# THE ONE RULE: IT MUST NOT BE ABLE TO GO GREEN BY SKIPPING
+# ---------------------------------------------------------
+# This round deliberately added win32 skips (the real-`git daemon` cluster, the
+# URL-scope credential case). A Windows job that goes green BECAUSE the hard
+# things are switched off is a control that cannot fail, which is the exact shape
+# this plan has spent five rounds removing from the codebase. So the summary
+# reports passed / failed / SKIPPED as three numbers, and any skip at all raises
+# a visible annotation. This job's job is to tell the truth, not to be green.
+#
+# WHAT A GREEN RUN HERE DOES *NOT* MEAN — read before quoting this job
+# --------------------------------------------------------------------
+# A hosted runner is CURATED and is not a proxy for a user's machine. This is
+# measured, not assumed (ac-0005): `jq` 1.8.1 is present on the runner and ABSENT
+# on the consumer's box, so a green leg would have said nothing about the failure
+# they actually hit. Two defects from this very round make the gap concrete:
+#
+#   * `acts/plan` failed on their box only because an UNELEVATED process cannot
+#     create `C:\out`. A runner with more privilege goes GREEN while happily
+#     creating a directory at the drive root — the defect is invisible to CI BY
+#     CONSTRUCTION, not by accident.
+#   * the timeout class is contention-dependent. A quiet runner can finish in 12s
+#     what takes a loaded laptop 30s, so this leg systematically under-reports
+#     exactly the failures that are about load.
+#
+# Therefore: a green run means THE PATH-SHAPE CLASS IS COVERED. It never means
+# "Windows is fine". That sentence is reproduced in the job summary so it travels
+# with the result instead of living only here.
+#
+# This file is deliberately dispatch-only and self-contained. GitHub only exposes
+# `workflow_dispatch` for workflows present on the DEFAULT branch, so it has to
+# land on `main` before it can be run at all; it then takes the ref to test as an
+# input, which is what lets it be pointed at a feature branch.
+name: windows
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Branch, tag or SHA to test (blank = this workflow ref)'
+        required: false
+        type: string
+        default: ''
+      node:
+        description: 'Node major version'
+        required: false
+        type: choice
+        options: ['22', '24']
+        default: '22'
+
+permissions:
+  contents: read
+
+concurrency:
+  # Deliberately NOT cancel-in-progress: this is a long, on-demand, manually
+  # requested measurement. Cancelling one halfway produces no numbers at all.
+  group: windows-${{ github.workflow }}-${{ inputs.ref }}
+  cancel-in-progress: false
+
+jobs:
+  windows-suite:
+    name: windows-suite (report-only)
+    runs-on: windows-latest
+    # Their box measures ~1s per child process and this suite spawns constantly,
+    # so it is expected to be SLOW. If it approaches this ceiling, raise the
+    # ceiling or make the suite faster — do NOT buy time by skipping tests, which
+    # would corrupt the one number this job exists to produce.
+    timeout-minutes: 120
+    defaults:
+      run:
+        # Pinned explicitly rather than relying on the runner default, so the
+        # scripts below cannot change meaning if that default ever moves.
+        shell: pwsh
+
+    steps:
+      - name: Checkout the ref under test
+        uses: actions/checkout@v7
+        with:
+          # The workflow FILE comes from wherever it was dispatched (it must be on
+          # the default branch to be dispatchable at all); the CODE under test is
+          # whatever ref the operator names. Keeping those two separate is what
+          # lets a workflow living on `main` measure a feature branch.
+          ref: ${{ inputs.ref || github.ref }}
+          persist-credentials: false
+
+      - name: Set up Node ${{ inputs.node }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ inputs.node }}
+          cache: npm
+
+      # INFRASTRUCTURE STEPS — these MUST fail the job.
+      # A job that cannot install or build has not measured anything, and must
+      # never be allowed to report "0 failures" and look like good news.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build (tsc emit + generators)
+        run: npm run build
+
+      - name: Report the environment actually measured
+        run: |
+          $ErrorActionPreference = 'Continue'
+          # Recorded because the runner's toolset is PART OF THE RESULT: ac-0005
+          # showed a binary present here and absent on the consumer's box, which
+          # is precisely how a green leg can be silent about a real failure.
+          "OS            : $([System.Environment]::OSVersion.VersionString)"
+          "node          : $(node --version)"
+          "npm           : $(npm --version)"
+          "git           : $(git --version)"
+          "ref requested : '$env:INPUT_REF'"
+          "commit        : $(git rev-parse HEAD)"
+          $jq = Get-Command jq -ErrorAction SilentlyContinue
+          if ($jq) { "jq            : PRESENT ($(jq --version)) - NOTE: absent on the consumer's box (ac-0005)" }
+          else     { "jq            : absent" }
+          exit 0
+        env:
+          INPUT_REF: ${{ inputs.ref }}
+
+      # THE MEASUREMENT — this step must NOT fail the job.
+      # Test failures are the expected output on day one; they are reported, not
+      # thrown. Anything that stops us from producing numbers at all is caught by
+      # the summarise step below, which DOES fail.
+      - name: Run the suite (report-only)
+        working-directory: harness/cli
+        run: |
+          $ErrorActionPreference = 'Continue'
+          # Two reporters on purpose: `default` puts human-readable failures in
+          # the log for triage, `json` gives the summary step exact counts rather
+          # than something scraped out of console text.
+          #
+          # Coverage is deliberately NOT collected here. That is not a way of
+          # doing less work: coverage is already proven on every push by the
+          # ubuntu leg, it does not vary by platform, and instrumenting adds time
+          # to a job that is already slow for real reasons.
+          npx --no-install vitest run `
+            --reporter=default `
+            --reporter=json `
+            --outputFile.json=vitest-windows.json
+          $code = $LASTEXITCODE
+          "vitest exit code: $code (non-zero is EXPECTED while the suite is red on Windows)"
+          # Warn-launch: the measurement's own exit status never fails this job.
+          exit 0
+
+      - name: Summarise — passed / failed / SKIPPED, and what this does not cover
+        working-directory: harness/cli
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $path = 'vitest-windows.json'
+
+          # ---- GUARD 1: no numbers at all is a BROKEN JOB, and must be loud. ----
+          # A missing report means the runner never produced a measurement. The
+          # failure mode this prevents is the worst one available to us: a job
+          # that quietly reports nothing and reads as "no failures".
+          if (-not (Test-Path -LiteralPath $path)) {
+            Write-Output "::error title=windows-suite::vitest produced no JSON report — the job did not measure anything. Treat this as a BROKEN JOB, not as a clean suite."
+            exit 1
+          }
+
+          # Parsed with PowerShell's own ConvertFrom-Json rather than `jq`.
+          # `jq` IS installed on this runner, but ac-0005 established it is
+          # absent on the consumer's machine, and quietly depending on
+          # runner-only tooling is the same class of mistake this whole job
+          # exists to expose.
+          $r = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json
+
+          $passed   = [int]$r.numPassedTests
+          $failed   = [int]$r.numFailedTests
+          $skipped  = [int]$r.numPendingTests
+          $todo     = [int]$r.numTodoTests
+          $total    = [int]$r.numTotalTests
+          $filesTot = [int]$r.numTotalTestSuites
+          $filesBad = [int]$r.numFailedTestSuites
+
+          # ---- GUARD 2: a suspiciously LOW total is a suspect JOB. ----
+          # Verified locally: when a file fails to COLLECT, vitest reports
+          # numTotalTests=0 and numFailedTests=0 for it while still marking the
+          # suite failed. So a Windows-specific collection break — precisely the
+          # path-shape class this job hunts — can SHRINK the totals and read as
+          # "hardly anything failed".
+          #
+          # Skips do NOT reduce this number (a skipped case is still collected
+          # and counted in the total), so this floor tests one thing only:
+          # did we collect roughly the whole suite? The consumer's pristine
+          # measurement was 5121 total and this branch collects 5132 locally, so
+          # 4800 tolerates real drift while catching any material shortfall.
+          $MIN_TOTAL = 4800
+          $undercollected = $total -lt $MIN_TOTAL
+
+          # Failing files, for triage and to make the count attributable.
+          $failedFiles = @($r.testResults | Where-Object { $_.status -ne 'passed' } | ForEach-Object { $_.name })
+
+          $sum = @()
+          $sum += "## windows-latest suite — REPORT ONLY"
+          $sum += ""
+          $sum += "**This job blocks nothing.** Warn-launch, same posture as ``windows-check`` / ``arch-check`` / ``markdown-lint``."
+          $sum += ""
+          $sum += "| result | count |"
+          $sum += "| --- | ---: |"
+          $sum += "| passed | $passed |"
+          $sum += "| **failed** | **$failed** |"
+          $sum += "| **skipped** | **$skipped** |"
+          $sum += "| todo | $todo |"
+          $sum += "| total collected | $total |"
+          $sum += "| test files failed | $filesBad of $filesTot |"
+          $sum += ""
+          $sum += "Ref measured: ``$(git rev-parse HEAD)``  ·  node ``$(node --version)``"
+          $sum += ""
+
+          # ---- The skip column, stated as an anti-goal rather than a stat. ----
+          $sum += "### Skips — a green here must never mean ""we stopped looking"""
+          $sum += ""
+          if ($skipped -gt 0) {
+            $sum += "**$skipped test(s) did not run on this platform.** This round deliberately skipped the real-``git daemon`` cluster and the URL-scope credential case, so a non-zero number is expected — but it is reported here, as a number, so that it CANNOT rise quietly. If this figure grows, something stopped being measured; find out what before reading the pass count as progress."
+            $sum += ""
+            $sum += "Once day one's figure is known it should be pinned as the expected baseline, so any increase is an explicit change rather than a thing someone has to notice."
+          } else {
+            $sum += "No tests were skipped on this run."
+          }
+          $sum += ""
+
+          # ---- The honesty column (ac-0005): travels WITH the result. ----
+          $sum += "### What this job does NOT cover"
+          $sum += ""
+          $sum += "A hosted runner is **curated** and is not a proxy for a user's machine — measured, not assumed. ``jq`` is present here and **absent** on the consumer's box, so a green leg can be entirely silent about the failure they actually hit."
+          $sum += ""
+          $sum += "* ``acts/plan`` failed on their machine only because an **unelevated** process cannot create ``C:\out``. A runner with more privilege goes green while creating a directory at the drive root — that defect is invisible to CI **by construction**."
+          $sum += "* The **timeout** class is contention-dependent. A quiet runner finishes in 12s what a loaded laptop takes 30s to do, so this leg systematically under-reports load-sensitive failures."
+          $sum += ""
+          $sum += "**A green run means the path-shape class is covered. It does not mean Windows is fine.**"
+          $sum += ""
+
+          # ---- Comparison against the last pristine downstream measurement. ----
+          $sum += "### Compare before believing"
+          $sum += ""
+          $sum += "Consumer's last pristine measurement (``f19bf0d1``): **12 files / 27 tests failing of 5121**, minus whatever ``5a8e8f5b`` fixed."
+          $sum += ""
+          $sum += "This run: **$filesBad files / $failed tests failing of $total**."
+          $sum += ""
+          $sum += "A count *dramatically lower* than the baseline is a **suspect job before it is a suspect suite** — check that the whole suite was collected before reporting the number as an improvement."
+          $sum += ""
+
+          if ($failedFiles.Count -gt 0) {
+            $sum += "<details><summary>Failing test files ($($failedFiles.Count))</summary>"
+            $sum += ""
+            foreach ($f in $failedFiles) { $sum += "- ``$f``" }
+            $sum += ""
+            $sum += "</details>"
+            $sum += ""
+          }
+
+          $sum -join "`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Encoding utf8NoBOM -Append
+
+          # Annotations, so the three numbers are visible without opening the run.
+          Write-Output "::notice title=windows-suite::passed=$passed failed=$failed skipped=$skipped of $total collected ($filesBad/$filesTot files failed)"
+          if ($skipped -gt 0) {
+            Write-Output "::warning title=windows-suite skips::$skipped test(s) did not run on win32 — a green suite with a rising skip count means we stopped looking, not that we got better"
+          }
+          if ($undercollected) {
+            Write-Output "::error title=windows-suite undercollected::only $total tests collected, expected at least $MIN_TOTAL — SUSPECT THE JOB, not the suite. A Windows collection failure shrinks the totals and reads as 'hardly anything failed'."
+            exit 1
+          }
+
+          # Test failures themselves are the expected day-one output: reported, never thrown.
+          exit 0
+
+      - name: Upload the raw result (the evidence behind the summary)
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: vitest-windows-${{ inputs.node }}
+          path: harness/cli/vitest-windows.json
+          if-no-files-found: warn

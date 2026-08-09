@@ -14,7 +14,9 @@ import {
   type FlowDoc,
   type FlowNode,
   type Nav,
+  NODE_FIELDS,
   sanitizeDdLink,
+  unknownDdLinkKeys,
 } from './flow-events.js';
 import { type FlowFailure, fail } from './flow-service.js';
 
@@ -628,10 +630,59 @@ function badZone(spec: NodeSpec): FlowFailure | null {
 function badDdLink(value: unknown): FlowFailure | null {
   if (value === undefined) return null;
   if (sanitizeDdLink(value) !== null) return null;
+  // An unrecognised key is NAMED. "invalid dd_link" alone sends the author back to
+  // the three keys they spelled correctly, and the whole defect this guard closes is
+  // that the wrong key looks right (#135). `null` is deliberately NOT special-cased
+  // here: clearing a dd_link is issue #137's contract, and this guard leaves that
+  // path exactly as it found it.
+  const unknown = unknownDdLinkKeys(value);
+  if (unknown.length > 0) {
+    return fail(
+      ErrorCodes.INVALID_ARGS,
+      `invalid dd_link — unknown key(s) ${unknown.map((k) => `"${k}"`).join(', ')}. A dd_link carries only: address, check, gate, basis_sha, reading.`,
+      `Did you mean "check"? Write {"address": "<path>.dd.json#<section>", "check": "${PLAN_CHECK_KINDS[0]}"} for the semantic gate, or {"address": "<path>.dd.json#<section>"} for the completion one. An unrecognised key is refused rather than dropped, because dropping it silently substitutes a DIFFERENT gate for the one you wrote.`,
+    );
+  }
   return fail(
     ErrorCodes.INVALID_ARGS,
     `invalid dd_link — it needs a non-empty string "address", "gate" (if present) must be a boolean, and "check" (if present) must be one of: ${PLAN_CHECK_KINDS.join(', ')}.`,
     'Write {"address": "<path>.dd.json#<section>", "gate": true|false} for a completion gate, or add {"check": "plan-validate"} for the semantic one. `basis_sha` and `reading` are recorded BY the gate — do not author them.',
+  );
+}
+
+/**
+ * Refuse any op field the node schema does not declare (#135, dd fr-0011).
+ *
+ * The defect this closes: `mergeInto` wrote EVERY key an op carried straight onto the
+ * node, so `{"op":"set","id":"x","path":"dd_link","value":null}` — the shape our own
+ * doctrine shipped — added two junk keys and reported `ok`. That is not "reports
+ * success while broken"; it is a real write of the wrong thing, which is why nothing
+ * downstream noticed. A misspelled field must be a REFUSAL: neither a silent no-op
+ * (which loses the author's intent) nor a silent write (which invents a schema).
+ *
+ * Control keys are allowed alongside node fields because they are how an op expresses
+ * placement, not content. `branch_of` is deliberately in both sets — it is a real node
+ * field AND a placement key, and stripping it as a control key before this runs is the
+ * pre-existing behaviour, unchanged here.
+ */
+function badNodeFields(raw: Record<string, unknown>, i: number, id: string): FlowFailure | null {
+  const unknown = Object.keys(raw).filter(
+    (key) => !OP_CONTROL_KEYS.has(key) && !NODE_FIELDS.has(key),
+  );
+  if (unknown.length === 0) return null;
+  // The nested-`node` shape gets its own sentence because it is a whole malformed
+  // DIALECT rather than a typo — an op that looks entirely reasonable and writes a
+  // `node` key onto the node. It was shipped in our own worked example, so it is in
+  // real flows in the wild, and telling its author "unknown field" without saying
+  // where the fields actually go leaves them to guess the same way twice.
+  const nested = unknown.includes('node') && isObject(raw.node);
+  const hint = nested
+    ? 'A node\'s fields go at the TOP LEVEL of the op, not nested under "node" — write {"op":"upsert","id":"x","type":"…","label":"…"}, not {"op":"upsert","node":{…}}.'
+    : `A node carries only: ${[...NODE_FIELDS].join(', ')}.`;
+  return fail(
+    ErrorCodes.INVALID_ARGS,
+    `op #${i} ("${String(raw.op)}" ${id}) carries unknown node field(s) ${unknown.map((k) => `"${k}"`).join(', ')}.`,
+    `${hint} Nothing was written — the batch is transactional, so fix the op and re-run the whole batch.`,
   );
 }
 
@@ -758,6 +809,19 @@ export function setNode(
   // reaches the file even when the authored half is well-formed.
   const linkErr = badDdLink(fields.dd_link);
   if (linkErr !== null) return linkErr;
+  // The THIRD writer of `node[key] = value` (#135). `apply`'s ops are guarded in
+  // `parseOp`, but `setNode` is an exported seam that writes its `fields` map just as
+  // directly, so guarding only the batch surface would leave the same corruption one
+  // call away. The act's flags are a closed set today; this keeps that true by
+  // mechanism rather than by the caller's good manners.
+  const unknownFields = Object.keys(fields).filter((key) => key !== 'id' && !NODE_FIELDS.has(key));
+  if (unknownFields.length > 0) {
+    return fail(
+      ErrorCodes.INVALID_ARGS,
+      `unknown node field(s) ${unknownFields.map((k) => `"${k}"`).join(', ')}.`,
+      `A node carries only: ${[...NODE_FIELDS].join(', ')}. Nothing was written.`,
+    );
+  }
   const safeFields =
     fields.dd_link === undefined ? fields : { ...fields, dd_link: sanitizeDdLink(fields.dd_link) };
   // Idempotent no-op (AC-07): if every requested field already equals the node's
@@ -1293,6 +1357,17 @@ function parseOp(raw: unknown, i: number): NormOp | FlowFailure {
     );
   }
   if (typeof raw.id !== 'string' || raw.id.length === 0) {
+    // The nested-`node` dialect is diagnosed HERE as well as in `badNodeFields`,
+    // because the shape our own doctrine shipped carries no top-level `id` at all
+    // and so never reaches the field guard. "Every op needs an id" is true and
+    // useless to its author: they wrote an id, one level down. Say that instead.
+    if (isObject(raw.node) && typeof raw.node.id === 'string') {
+      return fail(
+        ErrorCodes.INVALID_ARGS,
+        `op #${i} nests its fields under "node" — an op reads "id" and the node spec from the TOP LEVEL.`,
+        `Write {"op":"${String(raw.op)}","id":"${raw.node.id}", …} with the node's fields alongside "id", not {"op":"${String(raw.op)}","node":{…}}.`,
+      );
+    }
     return fail(
       ErrorCodes.INVALID_ARGS,
       `op #${i} is missing a string "id".`,
@@ -1305,6 +1380,10 @@ function parseOp(raw: unknown, i: number): NormOp | FlowFailure {
   // an unvalidated one.
   const linkErr = badDdLink(raw.dd_link);
   if (linkErr !== null) return linkErr;
+  // Refuse an undeclared field before the op is normalized, so no write path can be
+  // reached with one. This is the outer twin of `badDdLink`: same rule, one level up.
+  const fieldErr = badNodeFields(raw, i, id);
+  if (fieldErr !== null) return fieldErr;
   switch (raw.op) {
     case 'add':
     case 'insert': {

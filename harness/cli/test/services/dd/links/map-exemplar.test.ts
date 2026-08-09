@@ -16,13 +16,22 @@ import { toPosix } from '../../../../src/services/shared/posix-path.js';
  * boundary — exactly what production does with `toPosix(proc.cwd())`.
  *
  * `fileURLToPath` returns a NATIVE path, so on win32 this constant used to be
- * `C:\…\repo\`: the trailing-separator strip missed a back-slash, and every
- * address built from it was native-shaped. `scanCorpus` builds its paths with
- * `posixJoin`, so `linksFor`'s `edge.from === path` compared a native key
- * against POSIX-logical edges, matched nothing, and reported `outbound: []`
- * (plan 077 · #108). On POSIX `toPosix` is the identity, so this changes
- * nothing here and everything there — EXPECTED, UNVERIFIED: nobody on this
- * plan has a Windows box.
+ * `C:\\…\\repo\\`: the trailing-separator strip missed a back-slash, and every
+ * address built from it was native-shaped. It is not merely passed to
+ * `readFileSync` (which tolerates mixed separators) — it is handed to
+ * `scanCorpus` and `traverseCorpus` as `repoRoot`, where containment checks and
+ * address resolution compare it against POSIX-shaped paths. `scanCorpus` builds
+ * its paths with `posixJoin`, so `linksFor`'s `edge.from === path` compared a
+ * native key against POSIX-logical edges, matched nothing, and reported
+ * `outbound: []` (plan 077 · #108, and plan 108 · C2 — the same defect was found
+ * twice, independently, from both ends).
+ *
+ * `toPosix` rather than an inline `replaceAll('\\', '/')`: it ALSO upper-cases the
+ * drive letter, and `edge.from === path` is an exact string compare — so `c:` vs
+ * `C:` would still mismatch after a separator-only fix.
+ *
+ * On POSIX `toPosix` is the identity, so this changes nothing here and everything
+ * there — EXPECTED, UNVERIFIED: nobody on this plan has a Windows box.
  */
 const REPO_ROOT = toPosix(fileURLToPath(new URL('../../../../../../', import.meta.url))).replace(
   /\/$/,

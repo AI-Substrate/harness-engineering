@@ -35,12 +35,43 @@ function classifyTarget(target: string): string | null {
   return null;
 }
 
+/**
+ * What the walk actually looked at, so a PASS can say so.
+ *
+ * `violations` alone cannot distinguish "examined 400 specifiers and found no
+ * boundary crossing" from "examined nothing". Both render as `[]`. Plan 108's
+ * D6 was exactly that: a filter discarded every candidate and the guard reported
+ * PASS. So the funnel is counted, and the counts are asserted at the stage that
+ * can silently empty — not at the walk, which was never the fragile part.
+ *
+ * `packageSpecifiers` is the one that matters and the one no assertion can
+ * usefully bound. `importTarget` resolves ONLY relative specifiers, so a package
+ * import is not a miss — it is deliberately out of scope, and correct while `dd`
+ * is in-tree. The moment `dd` is consumed AS A PACKAGE the same line silently
+ * retires this entire boundary, and every assertion here still passes. Counting
+ * exclusions rather than survivors is what puts that on the record: a survivor
+ * count stays healthy on the strength of the remaining in-tree imports and says
+ * nothing about the category it never considered.
+ */
+interface IsolationReading {
+  violations: string[];
+  entryFiles: number;
+  specifiers: number;
+  /** Specifiers deliberately NOT resolved because they name a package, not a path. */
+  packageSpecifiers: number;
+  /** Relative specifiers resolved to a target — the last narrowing stage before the verdict. */
+  resolvedTargets: number;
+}
+
 function isolationViolations(
   entryFiles: readonly string[],
   sources: ReadonlyMap<string, string>,
-): string[] {
+): IsolationReading {
   const violations: string[] = [];
   const visited = new Set<string>();
+  let specifiers = 0;
+  let packageSpecifiers = 0;
+  let resolvedTargets = 0;
 
   const visit = (file: string, trace: readonly string[]): void => {
     if (visited.has(file)) return;
@@ -49,12 +80,17 @@ function isolationViolations(
     if (source === undefined) return;
 
     for (const specifier of importSpecifiers(source)) {
+      specifiers += 1;
       if (specifier.startsWith('node:')) {
         violations.push(`node builtin: ${[...trace, specifier].join(' -> ')}`);
         continue;
       }
       const target = importTarget(file, specifier);
-      if (target === null) continue;
+      if (target === null) {
+        packageSpecifiers += 1;
+        continue;
+      }
+      resolvedTargets += 1;
       const kind = classifyTarget(target);
       const targetLabel = relative(SRC, target).replaceAll('\\', '/');
       if (kind) {
@@ -68,7 +104,13 @@ function isolationViolations(
   for (const entry of entryFiles) {
     visit(entry, [relative(SRC, entry).replaceAll('\\', '/')]);
   }
-  return violations;
+  return {
+    violations,
+    entryFiles: entryFiles.length,
+    specifiers,
+    packageSpecifiers,
+    resolvedTargets,
+  };
 }
 
 describe('architecture — dd-core isolation', () => {
@@ -88,7 +130,7 @@ describe('architecture — dd-core isolation', () => {
       [transitive, `import '../../sensors/snapshot.js';`],
       [intermediary, `import '../../output/envelope.js';`],
     ]);
-    expect(isolationViolations([direct, transitive], sources)).toEqual([
+    expect(isolationViolations([direct, transitive], sources).violations).toEqual([
       'output: services/dd/core/direct-violation.ts -> output/envelope.ts',
       'acts: services/dd/core/direct-violation.ts -> acts/flow.ts',
       'adapters: services/dd/core/direct-violation.ts -> adapters/fs/node-fs.ts',
@@ -112,6 +154,36 @@ describe('architecture — dd-core isolation', () => {
   it('keeps production dd-core transitively free of output, acts, adapters, and node builtins', () => {
     const files = tsFiles(SRC);
     const sources = new Map(files.map((file) => [file, readFileSync(file, 'utf8')]));
-    expect(isolationViolations(tsFiles(CORE), sources)).toEqual([]);
+    const entries = tsFiles(CORE);
+    const reading = isolationViolations(entries, sources);
+
+    // The corpus, and then the stage that can silently empty. `entryFiles > 0`
+    // alone would not have caught plan 108's D6 shape — there the WALK was fine
+    // and the FILTER discarded everything, so the guard passed having classified
+    // nothing. Assert at the last narrowing stage before the predicate whose
+    // emptiness means PASS, which here is "relative specifiers resolved to a
+    // target", not "violations" (violations going to zero IS the green state).
+    expect(reading.entryFiles).toBeGreaterThan(0);
+    expect(reading.resolvedTargets).toBeGreaterThan(0);
+
+    // PRINTED, never asserted. An asserted denominator churns on every file added
+    // and a floor is a threshold nobody maintains — both rot. Printing makes a
+    // silent success legible without pretending to be a control: it catches the
+    // 3-of-300 case that no non-zero assertion can express, at the cost of
+    // needing a human to read it. That limit is real and is the point of saying
+    // so here rather than letting a green tick imply coverage.
+    //
+    // `packages` is the number to watch. It is deliberately unasserted: package
+    // specifiers are correctly out of scope while `dd` is in-tree, and the day
+    // `dd` is consumed as a package that count carries the whole boundary — every
+    // assertion above still passes.
+    console.error(
+      `dd-core isolation — examined ${reading.entryFiles} entry file(s), ` +
+        `${reading.specifiers} specifier(s): ${reading.resolvedTargets} resolved, ` +
+        `${reading.packageSpecifiers} package(s) NOT resolved (out of scope while dd is in-tree), ` +
+        `${reading.violations.length} violation(s)`,
+    );
+
+    expect(reading.violations).toEqual([]);
   });
 });

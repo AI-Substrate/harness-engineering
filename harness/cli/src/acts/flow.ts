@@ -801,6 +801,11 @@ export function registerFlowAct(
       '--importance <level>',
       'chore strength: strongly-recommended | recommended | optional | informational',
     )
+    .option(
+      '--dd-link <json>',
+      'set the dd gate link, e.g. \'{"address":"docs/plan.dd.json#tasks"}\' (add "check":"plan-validate" for the semantic gate, "gate":false to disarm)',
+    )
+    .option('--no-dd-link', 'remove the dd gate link (NOT yet implemented — see issue #137)')
     .action(
       (opts: {
         path?: string;
@@ -817,6 +822,7 @@ export function registerFlowAct(
         zone?: string;
         choreKind?: string;
         importance?: string;
+        ddLink?: string | boolean;
       }) => {
         const fields: Record<string, unknown> = {};
         if (opts.label !== undefined) fields.label = opts.label;
@@ -827,6 +833,26 @@ export function registerFlowAct(
         if (opts.zone !== undefined) fields.zone = opts.zone;
         const chore = choreFromFlags(opts.choreKind, opts.importance);
         if (chore !== undefined) fields.chore = chore;
+        const link = ddLinkFromFlags(
+          typeof opts.ddLink === 'string' ? opts.ddLink : undefined,
+          opts.ddLink === false,
+        );
+        if (!link.ok) {
+          return emit(
+            io,
+            failureEnvelope(
+              {
+                ok: false,
+                status: 'error',
+                code: ErrorCodes.INVALID_ARGS,
+                message: link.message,
+                next_action: link.next_action,
+              },
+              deps.clock,
+            ),
+          );
+        }
+        if (link.link !== undefined) fields.dd_link = link.link;
         runMutation(io, deps, opts, (doc) => {
           // `--add-instruction` appends, so the new list is resolved against the
           // node's CURRENT instructions[] (read from the doc here, not pre-parse).
@@ -861,6 +887,11 @@ export function registerFlowAct(
       '--importance <level>',
       'chore strength: strongly-recommended | recommended | optional | informational',
     )
+    .option(
+      '--dd-link <json>',
+      'set the dd gate link, e.g. \'{"address":"docs/plan.dd.json#tasks"}\' (add "check":"plan-validate" for the semantic gate, "gate":false to disarm)',
+    )
+    .option('--no-dd-link', 'remove the dd gate link (NOT yet implemented — see issue #137)')
     .action(
       (opts: {
         path?: string;
@@ -877,7 +908,27 @@ export function registerFlowAct(
         command?: string;
         choreKind?: string;
         importance?: string;
+        ddLink?: string | boolean;
       }) => {
+        const link = ddLinkFromFlags(
+          typeof opts.ddLink === 'string' ? opts.ddLink : undefined,
+          opts.ddLink === false,
+        );
+        if (!link.ok) {
+          return emit(
+            io,
+            failureEnvelope(
+              {
+                ok: false,
+                status: 'error',
+                code: ErrorCodes.INVALID_ARGS,
+                message: link.message,
+                next_action: link.next_action,
+              },
+              deps.clock,
+            ),
+          );
+        }
         runMutation(io, deps, opts, (doc) =>
           insertNode(
             doc,
@@ -889,6 +940,7 @@ export function registerFlowAct(
               zone: opts.zone,
               command: opts.command,
               chore: choreFromFlags(opts.choreKind, opts.importance),
+              ...(link.link !== undefined && { dd_link: link.link as DdLink }),
             },
             {
               after: opts.after,
@@ -1388,6 +1440,52 @@ function resolveInstructions(
 function choreFromFlags(kind?: string, importance?: string): Chore | undefined {
   if (kind === undefined && importance === undefined) return undefined;
   return { kind: kind ?? '', importance: importance ?? '' };
+}
+
+/**
+ * The `--dd-link` / `--no-dd-link` pair (#135 item 4).
+ *
+ * SETTING a gate had to go through the raw `apply` op surface, which is why a repair
+ * meant hand-writing JSON. This is the ergonomic route. The VALUE is still the link's
+ * own JSON object, deliberately: a gate is `{address, check?, gate?}`, and inventing
+ * three sibling flags for it would be a second grammar for a shape `apply`, the
+ * template and the schema all already spell one way.
+ *
+ * CLEARING gets its own flag rather than an overloaded `--dd-link null`. That is not
+ * tidiness — it is the one design constraint that keeps this surface out of the trap
+ * the whole issue is about: a setter that has to tell "null-as-clear" from
+ * "null-as-malformed" needs a guard that must be right forever, and `fieldsFrom`'s
+ * fenced-off `delete` is what that trap looks like once it has been sprung. Two forms,
+ * no ambiguity, no guard needed. Do not consolidate them later.
+ *
+ * `--no-dd-link` is present and REFUSES: clearing is part of this flag's contract, but
+ * the underlying mutation does not exist yet (issue #137). A flag that silently did
+ * nothing, or one that was missing entirely, would both teach a user that clearing is
+ * their mistake rather than our gap — so the refusal names the issue.
+ */
+function ddLinkFromFlags(
+  raw: string | undefined,
+  clear: boolean | undefined,
+): { ok: true; link?: unknown } | { ok: false; message: string; next_action: string } {
+  if (clear === true) {
+    return {
+      ok: false,
+      message: 'clearing a dd_link is not implemented yet (issue #137).',
+      next_action:
+        'To stop a gate refusing without removing it, DISARM it: re-set the same link with "gate": false. The link (and its badge) survives — the stored `gate` field is the only way to tell a disarmed gate from a satisfied one.',
+    };
+  }
+  if (raw === undefined) return { ok: true };
+  try {
+    return { ok: true, link: JSON.parse(raw) };
+  } catch {
+    return {
+      ok: false,
+      message: '--dd-link is not valid JSON.',
+      next_action:
+        'Pass the link object, e.g. --dd-link \'{"address":"docs/plan.dd.json#tasks"}\' for a completion gate or \'{"address":"docs/plan.dd.json","check":"plan-validate"}\' for the semantic one.',
+    };
+  }
 }
 
 /**

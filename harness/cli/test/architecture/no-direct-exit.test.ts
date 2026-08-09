@@ -24,10 +24,22 @@ describe('architecture — single exit point', () => {
   it('only output/exit.ts calls process.exit in production source', () => {
     // exit.ts is the sole place the process terminates; everything else must
     // route through exitWithEnvelope (companion F006).
-    const offenders = tsFiles(join(CLI_ROOT, 'src'))
+    const examined = tsFiles(join(CLI_ROOT, 'src'));
+    const offenders = examined
       .filter((f) => !f.endsWith(join('output', 'exit.ts')))
       .filter((f) => /process\.exit\s*\(/.test(readFileSync(f, 'utf8')))
       .map((f) => relative(CLI_ROOT, f));
+
+    // The WALK is the only stage here that can silently empty — the exclusion is
+    // a single file and the regex is the verdict — so the corpus assertion is
+    // the right place for this guard. That is NOT true of every guard in this
+    // directory (see dd-core-isolation, where two narrowing stages sit after the
+    // walk), which is why these are adjudicated per-guard rather than uniformly.
+    expect(examined.length).toBeGreaterThan(0);
+    console.error(
+      `no-direct-exit — examined ${examined.length} file(s), ${offenders.length} offender(s)`,
+    );
+
     expect(offenders).toEqual([]);
   });
 });
