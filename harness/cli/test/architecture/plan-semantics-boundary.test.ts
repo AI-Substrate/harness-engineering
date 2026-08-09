@@ -25,6 +25,22 @@ Test Doc:
   behavioural pin is the goldens suite. It reads real files under `src/` and the
   real `node_modules/@ai-substrate/dd`; it fakes nothing, because a fake would
   defeat the only question it asks.
+
+  D-4 (plan 080 tk-0010) — WHAT THIS TEST IS NOT. It is the last architecture
+  guard standing near the harness→dd seam, so read its scope precisely before
+  assuming it covers the retired one. The flow→dd boundary had two enforcers and
+  BOTH are gone: `flow-dd-sdk-seam.test.ts` (which skipped package specifiers by
+  construction — `if (!spec.startsWith('.')) continue`) and the
+  `flow-consumes-dd-sdk-only` dependency-cruiser rule. They policed reaches into
+  `src/services/dd`, a tree that no longer exists.
+
+  Nothing replaced them, deliberately. dd's `exports` map is now the enforcer,
+  and it is stronger than either: Node REFUSES an unpublished subpath at runtime
+  (`ERR_PACKAGE_PATH_NOT_EXPORTED`) rather than warning about it. This test
+  MEASURES that refusal for the copied mechanisms — it does not re-implement the
+  boundary, and it must not grow into a package-aware successor to those guards.
+  If you find yourself adding a rule here about what `services/flow` may import
+  from the package, stop: that is the guard D-4 ruled out.
 - Quality Contribution: the failure mode is silent and slow — someone copies one
   more dd symbol because a copy already sits next door, and the "temporary" set
   quietly becomes a second implementation of dd. This fails on the first such

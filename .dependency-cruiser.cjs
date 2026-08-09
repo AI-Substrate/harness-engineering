@@ -64,6 +64,29 @@ module.exports = {
       from: { path: '^harness/cli/src/services' },
       to: { path: '^harness/cli/src/adapters/.*-port\\.ts$', dependencyTypesNot: ['type-only'] },
     },
+    // ─────────────────────────────────────────────────────────────────────────
+    // D-4: the flow→dd boundary rules USED to live here, and are deliberately
+    // gone (plan 080 tk-000d/tk-0010).
+    //
+    // Eighteen rules were removed: seventeen `dd-*-never-imports-*` layering
+    // rules, plus `flow-consumes-dd-sdk-only`, which required the flow spine to
+    // reach dd only through `services/dd/{links,schema,plan}/index.ts`. All of
+    // them addressed `^harness/cli/src/services/dd`, a path that no longer
+    // exists — dd is an installed PACKAGE now.
+    //
+    // They are not replaced, and that is the ruling, not an omission. A
+    // package-aware successor would have to police `node_modules/@ai-substrate/dd`,
+    // which is (a) not ours to lay out, and (b) already constrained by something
+    // stronger than a lint rule: dd's own `exports` map. Node REFUSES a reach
+    // past it at runtime with ERR_PACKAGE_PATH_NOT_EXPORTED — a real barrier
+    // rather than a warning someone can promote, demote, or waive.
+    //
+    // So the boundary did not weaken; its ENFORCER changed from a rule we own to
+    // a mechanism the package owns. What we lost is the **naming**: this file no
+    // longer tells a reader the boundary exists. That is what this comment is
+    // for. Do not rebuild the rules against `node_modules` — see D-4 in
+    // docs/plans/080-dd-consume-upgrade.
+    // ─────────────────────────────────────────────────────────────────────────
     {
       name: 'adapters-stay-leaf',
       comment: 'Adapters are leaves — they never import services, acts, or output.',

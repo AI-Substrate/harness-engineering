@@ -44,7 +44,7 @@
           "id": "tk-000e",
           "title": "D-2 riders: harness doctor emits a NON-FATAL warning when the standalone dd CLI is absent (and stays silent when present - control both ways); AGENTS.md documents installing the dd CLI",
           "phase": "ph-08e2",
-          "state": "unchecked",
+          "state": "checked",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0008"
           ]
@@ -65,7 +65,8 @@
           "state": "unchecked",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-000a"
-          ]
+          ],
+          "note": "D-4 ruling recorded at both retired sites, not centrally: .dependency-cruiser.cjs (where the 18 rules were, incl. flow-consumes-dd-sdk-only) and test/architecture/plan-semantics-boundary.test.ts (the last guard near the seam, told explicitly what it is NOT). Both blind guards were REMOVED rather than commented, per dw-001d's second arm - the seam test could not survive, it imported the deleted barrels. No replacement built: dd's exports map is now the enforcer and refuses at RUNTIME (ERR_PACKAGE_PATH_NOT_EXPORTED), which is stronger than a waivable lint rule. What was lost is the NAMING of the boundary, which is what the comments restore."
         },
         {
           "id": "tk-0011",
@@ -147,7 +148,7 @@
           {
             "id": "dw-001b",
             "assertion": "harness doctor with the dd CLI absent from PATH emits exactly one non-fatal warning naming the install route; with dd present it emits none - BOTH control runs captured in the execution log; AGENTS.md carries the install documentation",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0008"
           }
         ],

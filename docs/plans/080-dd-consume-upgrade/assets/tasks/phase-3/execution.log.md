@@ -317,3 +317,52 @@ AGENTS.md gains a `dd` CLI section with the four-spelling table and the publish 
 **Green**: `just build` exit 0; **294 files / 4487 tests** (+5: four new `dd-cli` cases and
 the layer-list contract row). `test/acts/doctor.test.ts` caught the new layer via its
 layer-name list — a contract test doing exactly its job.
+
+## tk-0010 — D-4: the retired flow→dd boundary, named where it was enforced
+
+The boundary had **two** enforcers and both are gone:
+
+| enforcer | what it did | why it could not survive |
+|---|---|---|
+| `test/services/flow/flow-dd-sdk-seam.test.ts` | required every flow→dd import to name a fork barrel; **skipped package specifiers by construction** (`if (!spec.startsWith('.')) continue; // a package, not a path into this tree`) | it imported the fork barrels themselves — it could not even load once the tree was deleted |
+| `flow-consumes-dd-sdk-only` (dependency-cruiser) | same rule, path-based, `^harness/cli/src/services/dd` | addresses a path that no longer exists |
+
+Both were **removed**, which is dw-001d's second arm ("or the blind guard is removed").
+The first arm was not available for the seam test: a comment cannot rescue a file whose
+imports are gone.
+
+**No replacement was built, and that is the ruling rather than an omission.** The
+substantive point, now recorded at both sites: the boundary did not weaken — its
+ENFORCER changed owner. dd's `exports` map refuses an unpublished subpath at **runtime**
+with `ERR_PACKAGE_PATH_NOT_EXPORTED`, which is strictly stronger than a lint rule someone
+can demote, waive, or quietly stop running. What was actually lost is the **naming**: the
+config and the test suite no longer *tell* a reader the boundary exists. That is what
+D-4's comments restore, and it is the whole of what was missing.
+
+Recorded at both retired sites rather than centrally, so the reader asking "why is there
+no dd rule here?" finds the answer where they are already standing:
+
+- `.dependency-cruiser.cjs` — at the exact position the 18 rules occupied.
+- `test/architecture/plan-semantics-boundary.test.ts` — the last guard near the seam,
+  told explicitly what it is NOT, with a stop instruction if someone starts growing it
+  into a package-aware successor.
+
+### dw-001d proof
+
+```
+$ grep -c "D-4" .dependency-cruiser.cjs test/architecture/plan-semantics-boundary.test.ts
+.dependency-cruiser.cjs:2
+…/plan-semantics-boundary.test.ts:2
+
+$ git diff --name-status d7daf94c HEAD -- test/architecture .dependency-cruiser.cjs
+M  .dependency-cruiser.cjs
+D  harness/cli/test/architecture/dd-core-isolation.test.ts
+D  harness/cli/test/architecture/dd-plan-semantics-frozen.test.ts        ← no ADDED file
+
+$ dependency-cruiser rule count   before d7daf94c: 25    now: 7   (18 removed, 0 added)
+```
+
+Zero architecture files added across the whole phase, so "no new guard" is proven by the
+diff rather than asserted. `arch-check` still reports its two pre-existing
+`services-ports-type-only` warnings — unchanged, not mine. Architecture suite 5 files /
+12 tests green.
