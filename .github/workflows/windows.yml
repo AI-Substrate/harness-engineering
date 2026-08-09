@@ -240,21 +240,35 @@ jobs:
           # move it, move it in its own change and say why the new number is
           # legitimate.
           #
-          # Day one measured 56 (run 31293261626). Now 58, measured on run
-          # 31297297873, and the +2 is ATTRIBUTED rather than absorbed:
-          # `discardProbeRoot`'s two fault-injection cases in
-          # test/support/external-binary.test.ts decline on win32, because they
-          # make removal fail by clearing write on a parent directory and Windows
-          # does not honour that the way POSIX does. Nothing stopped being
-          # measured — two NEW proofs were added that cannot run here, and the
-          # property they prove (a refused cleanup is survived and announced) is
-          # still proven on every push by the POSIX legs.
+          # The skip count MEASURED on run 31298610502 — not invented, not derived.
           #
-          # This pin moved in its OWN commit, not folded into the change that
-          # caused the rise. That sequencing is the point: a baseline bumped
-          # inside an unrelated edit is how a number stops meaning anything.
-          $EXPECTED_SKIPS = 58
-          $EXPECTED_SKIPPED_FILES = 2
+          # History, so the number has provenance rather than drifting anonymously:
+          #   56  day one          (run 31293261626)
+          #   58  +2               (run 31297297873) two discardProbeRoot cases added
+          #   28  -30              (run 31298610502) the capture-hook removal
+          #
+          # The -30 is attributed source by source, all CASE 3 (subject and tests
+          # removed together), no case 2:
+          #   pre-commit-hook.test.ts   15 skips  file deleted with the hooks
+          #   external-binary.test.ts   15 skips  13 pre-existing POSIX-only + the 2
+          #                                       discardProbeRoot cases; probeShell
+          #                                       has no callers left
+          #   post-commit-hook.test.ts   0 skips  see below — it was never skipping
+          #
+          # `post-commit-hook.test.ts` contributed ZERO to the fall, and that is the
+          # clearest single illustration of what this job cannot see. It guarded on
+          # `describe.skipIf(!BASH.capable)`, and THIS RUNNER'S bash IS capable — so
+          # its 4 cases RAN here, green, in the very file the consumer lost outright
+          # to a WSL bash that is not capable. Green-and-running for us, dead for
+          # them, same file, same commit.
+          #
+          # This pin moved in its OWN commit, against a measured number. A baseline
+          # bumped inside the change that caused the move is how a number stops
+          # meaning anything.
+          $EXPECTED_SKIPS = 28
+          # Both remaining fully-skipped files were deleted by the capture-hook
+          # removal; the 28 that remain are case-level skips.
+          $EXPECTED_SKIPPED_FILES = 0
 
           # Failing files are derived above, from the same source as the table.
 
