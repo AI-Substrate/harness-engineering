@@ -477,3 +477,46 @@ cross-phase contradictions. dw-0014's strict "all return ok" reading is satisfia
 so unlike phase 1's dw-0009 it needed no interpretation.
 
 `dw-0015` stays unchecked: it is deliberately human-tier (ledger judgement, `bp-000c`).
+
+---
+
+## Per-primitive evidence table (input to tk-000a — koala rules, I supply evidence)
+
+RED sha `45928d24` (falsifier suite authored, all 13 run RED against the absent subject).
+Goldens sha `5f8cfa44`. Green sha `964640f8` (promotion + rewire).
+Proof command for every row below:
+
+```
+npx vitest run test/integration/plan-semantics-falsifiers.int.test.ts     # 15 passed
+npx vitest run test/architecture/plan-semantics-boundary.test.ts          #  5 passed
+```
+
+| # | primitive | falsifier (test id) | RED | result | candidate verdict |
+|---|---|---|---|---|---|
+| 1 | `itemKey` | #1 ×2 — native/POSIX collapse; agreement with public `indexDocument` + golden keys | `45928d24` | PASS | **sufficient** — public `./links` addressing agrees; algorithm-class as predicted |
+| 2 | `PlanDocument` | #2-#5 — every field filled from public loader/resolver outputs | `45928d24` | PASS | **sufficient** (runtime half; type half enforced in `src/`, see note) |
+| 3 | `PlanItem` | #2-#5 — 14 fields compared value-by-value against goldens | `45928d24` | PASS | **sufficient** |
+| 4 | `PlanEdge` | #2-#5 + #8b — edge shape, resolved target, relation | `45928d24` | PASS | **sufficient** |
+| 5 | `PlanIndex` | #2-#5 — items, edges, `byKey` | `45928d24` | PASS | **sufficient** |
+| 6 | `ReadyReading` | #6/#7 ×3 — three distinct verdicts | `45928d24` | PASS | **sufficient** |
+| 7 | `readPlanReadiness` | #6/#7 ×3 — ready / not-ready / cant-tell | `45928d24` | PASS | **sufficient** |
+| 8 | `buildPlanIndex` | #8a rollup, #8b non-builtin relation | `45928d24` | PASS **only with copied mechanisms** | **insufficient on PUBLIC surface** — needs `core/derive` + `core/rel` + `core/constants`, all `ERR_PACKAGE_PATH_NOT_EXPORTED` |
+| 9 | `readPlanCheck` | #9 ×4 synthetic + live 541-item corpus | `45928d24` | PASS **only with copied mechanisms** | **insufficient on PUBLIC surface** — inherits #8 plus `effectiveRel` for `readPlanSemantics` |
+
+### Two honesty notes the verdict must carry
+
+1. **#1–#7 are sufficient on public surface; #8–#9 are not.** That split is exactly what
+   `prediction.md` called, and it was called BEFORE the trial. The prediction's *framing*
+   was still wrong in a way its own scoring rules could not catch — it asked whether the
+   layer could be REBUILT from primitives and never considered that dd already shipped the
+   finished layer unexported, which recon found in the first ten minutes. Superseded by
+   Jordan's ruling, and stated rather than reworded (hard rule 6).
+2. **"PASS" for #8/#9 means the promoted module reproduces the fork exactly, not that the
+   public surface sufficed.** The mechanisms are the four enumerated copies. Reading those
+   rows as SUFFICIENT would be the one misreading this table exists to prevent.
+
+The type half of #2–#5 ("strict `tsc` against package types") is enforced by the promoted
+module living in `src/` and being consumed by `acts/plan/*` — both inside the only
+typechecked project. It is NOT enforced by the test file: no test in this repo is
+typechecked (`tsconfig` `include: ["src"]`; `harness checks` typechecks exactly that).
+Recorded as `harness observe` DL-003.
