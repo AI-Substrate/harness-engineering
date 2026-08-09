@@ -1,0 +1,40 @@
+docs/how/gitai-collector.md
+  s_e2ef1441ad1dbd::t_3615d708dcbb1e 352-368,597-606
+docs/how/telemetry/gitai-06-two-channel-model.md
+  s_e2ef1441ad1dbd::t_0dcffd5e3222be 1,4-14,17-20,22-25,27-29,31,33-41,44,46-56,58,60-61,63-65,68-69,71,73-74,76-78,80-84,86-103
+  s_e2ef1441ad1dbd::t_abcb61f5b642ce 167,169-244,272,292
+  s_e2ef1441ad1dbd::t_f78eb4ba35c1e9 2-3,15-16,21,26,30,32,42-43,45,57,59,62,66-67,70,72,75,79,85,104-166,168,245-271,273-291,293-310
+harness/cli/src/services/docs/docs-content.ts
+  s_e2ef1441ad1dbd::t_d4e178b8f759ab 85
+docs/how/telemetry/validating-telemetry-capture-in-sandboxed-agents.md
+  s_e2ef1441ad1dbd::t_6df3ec347c2525 475-488
+  s_e2ef1441ad1dbd::t_485720600f468c 1-474,489-550
+docs/how/telemetry/sandbox-03-validation-playbook.md
+  s_e2ef1441ad1dbd::t_50c462520fef1b 55-110
+docs/plans/073-gitai-collector-v1/assets/research-dossier.md
+  s_e2ef1441ad1dbd::t_50229d77fd4cc2 115,117
+docs/plans/074-sandbox-attribution/assets/research/03-scratch-cursor-sandbox-investigation.md
+  s_e2ef1441ad1dbd::t_345fba22ffb35b 78-93
+docs/how/telemetry/README.md
+  s_e2ef1441ad1dbd::t_4115d9d7865732 3-29
+  s_e2ef1441ad1dbd::t_f4107313e86e1f 987-993,995
+docs/how/telemetry/sandbox-04-config-reference.md
+  s_e2ef1441ad1dbd::t_a7fef2435277a8 79,81,87,89-106
+  s_e2ef1441ad1dbd::t_ac6cf39ee0b2e1 123-131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2fbbfba7428c4bfa0c73823482b48eee5b01a38e",
+  "prompts": {},
+  "sessions": {
+    "s_e2ef1441ad1dbd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "265d8845-1914-4476-9977-4a05f12f4b06",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
