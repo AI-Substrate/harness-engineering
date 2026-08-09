@@ -1,0 +1,104 @@
+docs/plans/080-dd-consume-upgrade/the-flow.json
+  s_397a51e23fc2cd::t_0345654790933b 205-206,209,211,214-216,219,221,224-226,229,231,234-240,243,245,248-254,257,259,262-268,271,273,276-278,281,283,286-288,291,293,296-302,305,307,310-316,319,321,324-330,332-333,335,337,339-342,344-345,347,349-354,356-357,359,361-396,398-399,401,403,405-408,410-411,413,417,421,438-439,458-459,661,685-686,761-763,784-786,804-806,826-827,846-847,867-869,890-892,910
+  s_397a51e23fc2cd::t_cc56537d96745c 207-208
+  s_397a51e23fc2cd::t_f4bfb3711df279 210
+  s_397a51e23fc2cd::t_7822a7beb82cd9 212-213
+  s_397a51e23fc2cd::t_8d722c7e8ac61a 217-218
+  s_397a51e23fc2cd::t_c0f8fee683c344 220
+  s_397a51e23fc2cd::t_0dc37f0040288b 222-223
+  s_397a51e23fc2cd::t_5541190d61b1cb 227-228
+  s_397a51e23fc2cd::t_123203596f84d8 230
+  s_397a51e23fc2cd::t_baec8433ac25b9 232-233
+  s_397a51e23fc2cd::t_9a135687e59dfa 241-242
+  s_397a51e23fc2cd::t_43eef4ed997490 244
+  s_397a51e23fc2cd::t_73d7238b0f815e 246-247
+  s_397a51e23fc2cd::t_a2ee325a61e5b9 255-256
+  s_397a51e23fc2cd::t_04fe356c741c13 258
+  s_397a51e23fc2cd::t_7a86b4e5560c40 260-261
+  s_397a51e23fc2cd::t_8f8325b11e85c3 269-270
+  s_397a51e23fc2cd::t_bbe5f3e5cf2b2d 272
+  s_397a51e23fc2cd::t_04aa4b3736b43e 274-275
+  s_397a51e23fc2cd::t_9fa5072010cb4a 279-280
+  s_397a51e23fc2cd::t_37625a88e2fb57 282
+  s_397a51e23fc2cd::t_7240dc0e6dc43f 284-285
+  s_397a51e23fc2cd::t_155a7c601b7499 289-290
+  s_397a51e23fc2cd::t_2d7f9cdcfbfd7b 292
+  s_397a51e23fc2cd::t_68cffa02314156 294-295
+  s_397a51e23fc2cd::t_d1b1a3c9ce4f83 303-304
+  s_397a51e23fc2cd::t_9c0996994cb9ad 306
+  s_397a51e23fc2cd::t_cf350999563b9d 308-309
+  s_397a51e23fc2cd::t_eb6ecf082ad0e5 317-318
+  s_397a51e23fc2cd::t_66d5a301646fa5 320
+  s_397a51e23fc2cd::t_a9842bc047a170 322-323
+  s_397a51e23fc2cd::t_cc428094d36408 331
+  s_397a51e23fc2cd::t_b40602c4e41672 334
+  s_397a51e23fc2cd::t_222c048340afc6 336
+  s_397a51e23fc2cd::t_9d649d307f7db9 338
+  s_397a51e23fc2cd::t_bae0ddd90adc82 343
+  s_397a51e23fc2cd::t_caec519a551e91 346
+  s_397a51e23fc2cd::t_a3c8a9d19dc800 348
+  s_397a51e23fc2cd::t_6b07aa197084a9 355
+  s_397a51e23fc2cd::t_44c89dbdd88af1 358
+  s_397a51e23fc2cd::t_727c92b048d0ea 360
+  s_397a51e23fc2cd::t_a685aa774a70b5 397
+  s_397a51e23fc2cd::t_8965992c4704a3 400
+  s_397a51e23fc2cd::t_52468bf4935cdd 402
+  s_397a51e23fc2cd::t_d7d251169c2eb2 404
+  s_397a51e23fc2cd::t_ecf1838f0a66ff 409
+  s_397a51e23fc2cd::t_aedaa92722a2aa 412
+  s_397a51e23fc2cd::t_748fc25e540d68 414-416
+  s_397a51e23fc2cd::t_50e74b2bd1aba5 418-420
+  s_397a51e23fc2cd::t_2e4df8a5e87c74 422-424,435-437
+  s_397a51e23fc2cd::t_46fec57c0d762a 440-442,455-457
+  s_397a51e23fc2cd::t_da4f84f15e1303 460-461
+  s_397a51e23fc2cd::t_7f2069f1215ad9 682-684
+  s_397a51e23fc2cd::t_714e3ec68df38d 687-688
+  s_397a51e23fc2cd::t_5d644bfe3c0f2a 758-760
+  s_397a51e23fc2cd::t_031bf24147c1fb 764-766,781-783
+  s_397a51e23fc2cd::t_76b7125d240c32 787-789,801-803
+  s_397a51e23fc2cd::t_fc3fef5bfac695 807-809,823-825
+  s_397a51e23fc2cd::t_692c68f87a2638 828-830,843-845
+  s_397a51e23fc2cd::t_385afacff87fed 848-850,864-866
+  s_397a51e23fc2cd::t_3223f44715acb5 870-872,887-889
+  s_397a51e23fc2cd::t_a21fed0d201b0d 893-895,907-909
+  s_397a51e23fc2cd::t_d56c2b60908f4c 911-913
+  s_19a84a88383f5b::t_093a64c3725744 6,425-434,443-454,508,514-522,534-536,542,545,559-562,678-681,694,708-718,753-757,767-780,790-800,810-822,831-842,851-863,873-886,896-906,914-964
+docs/plans/080-dd-consume-upgrade/the-flow.md
+  s_397a51e23fc2cd::t_0345654790933b 24-26,30,35-36,41,45,57-61
+  s_397a51e23fc2cd::t_4d055a7fd3c5a4 62
+  s_19a84a88383f5b::t_730d57d6ca2457 4,6,12-17,21
+.harness/records/retro/2026-08-09/001-080-phase-1.md
+  s_a6b77772852964::t_092f04dbb325f9 1-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "95de461bf6f2db771be1bf5f8ec2f640abde46a1",
+  "prompts": {},
+  "sessions": {
+    "s_19a84a88383f5b": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "e9a11817-53a3-42b6-a41f-25dcffefd677",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_397a51e23fc2cd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "3fe3c47b-5424-4214-892e-81ef19c49d45",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_a6b77772852964": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "c800c9ff-86e7-4a5f-bdc3-f63517243af6",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
