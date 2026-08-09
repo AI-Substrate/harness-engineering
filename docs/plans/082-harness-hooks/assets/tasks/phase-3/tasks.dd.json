@@ -42,7 +42,7 @@
         {
           "id": "tk-0003",
           "title": "Run the LIVE install on this machine, against recorded pre-install bytes",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-3",
           "success": "The fence comes down. Record the pre-install bytes and digest of every config the installer will touch, run `harness hooks install` for real, then compare. THE COMPARISON BASELINE IS THE RECORDED BYTES, not an idealised config: this machine's ~/.cursor/hooks.json contains the POC's chained command with git-ai's checkpoint as a pipeline stage, and that chain must survive byte-identical because phase 1's only end-to-end measurement depends on it. Then run `harness hooks status --json` and show the installed entry resolves. This is also the first time the whole chain runs as a user experiences it rather than as a fixture.",
           "satisfies": [
@@ -52,7 +52,7 @@
         {
           "id": "tk-0004",
           "title": "Write CURSOR-PROMPT-8.md so Jordan can paste it and get a verdict without reading the plan",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-3",
           "success": "The artifact he actually asked for. A prompt he pastes into Cursor that drives the end-to-end validation: make a change, commit it from inside Cursor's sandbox, and establish whether a line-level note landed. IT MUST BE SELF-CONTAINED — someone running it should not need this plan, the workshop, or any of tonight's context. ASSERT NOTE IDENTITY, NEVER A NOTE COUNT: any unsandboxed commit in the repo moves a count, so the check is the note's own body — the commit sha, the file, the line range, and which actor kind it names. Include the MEASURED caveat that this machine's daemon writes agent (s_x::t_y) AND human (h_x) notes for the same commit shape, observed 1 agent to 4 human across five runs, so the honest instruction is to record which kind appeared rather than to expect one. Carry a stated expectation and a stated failure signature, so a null result is legible as a null result rather than as confusion.",
           "satisfies": [
@@ -62,7 +62,7 @@
         {
           "id": "tk-0005",
           "title": "State in the root README what doctor writes, where, and how to decline it",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-3",
           "success": "The README states plainly that `harness doctor` installs the git-ai collector AND our agent hooks on first run: what it writes, where it writes it, and that HARNESS_NO_HOOKS=1 declines it. A tool that writes into a user's editor configuration and does not say so in its README is doing something the user did not ask for, however good the reason. Name the backup location too — and say honestly what the backup is and is not, since it is write-only today.",
           "satisfies": [
@@ -72,7 +72,7 @@
         {
           "id": "tk-0006",
           "title": "Close the phase: what shipped, what did not, and the three questions still open",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-3",
           "success": "One place stating the whole plan's delivered surface and its gaps, the way phase 2 closed. Carry forward rather than restate: the four unsupported agents by name, Strategy B deferred, Windows EXPECTED-UNVERIFIED with the three specific named questions (copilot's `type` and `powershell` fields; whether gemini REQUIRES tools.enableHooks for hooks to fire at all), the write-only backup unless task one changed it, and the two proofs that live outside the default test scope. A reader deciding whether to trust this feature should be able to find its limits in one place rather than assembling them from twenty commits.",
           "satisfies": [
@@ -146,31 +146,31 @@
           {
             "id": "dw-0009",
             "assertion": "Pre-install bytes and digests are recorded for every touched config BEFORE the install runs, and pasted into the execution log.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-000a",
             "assertion": "The POC's chained command carrying git-ai's checkpoint invocation is byte-identical after install — asserted specifically, not as part of a whole-file claim.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-000b",
             "assertion": "Every pre-existing entry in every touched config survives; the diff shows ONLY our added entry.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-000c",
             "assertion": "`harness hooks status --json` reports our entry present and its binary RESOLVES, run against the real installed binary rather than a dev path.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-000d",
             "assertion": "An uninstall is run afterwards on at least one agent and the config returns to the recorded pre-install state under the four named properties — the phase 2 uninstall assertion, exercised live.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],
@@ -178,31 +178,37 @@
           {
             "id": "dw-000e",
             "assertion": "The prompt is self-contained: no reference to plan 082, the workshop, or any file outside the repo is required to run it.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-000f",
             "assertion": "It asserts note IDENTITY — sha, file, line range, actor kind read from the note body — and never a note count.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0010",
             "assertion": "It states the expected outcome AND the failure signature before the run, so an absent note is legible rather than ambiguous.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0011",
             "assertion": "The measured agent-vs-human attribution split is stated as an observation with its numbers, not as an expectation.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0012",
             "assertion": "An operator-only scoring section states what a PASS and a FAIL each look like, including the case where a note appears with human attribution.",
-            "state": "unchecked",
+            "state": "checked",
+            "pressure": "not-applicable"
+          },
+          {
+            "id": "dw-001c",
+            "assertion": "The prompt states the TEMPORARY-WORKTREE state in plain words BEFORE the instructions, not in a footer — that the hook points at a worktree, that removing it stops the hook SILENTLY, and that `harness hooks status --json` reports `unresolvable`. It carries an explicit `harness hooks uninstall` cleanup step. The cleanup is a STEP with this row, not an intention to remember.",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],
@@ -210,25 +216,25 @@
           {
             "id": "dw-0013",
             "assertion": "The README names the config paths written, per agent or by rule, rather than saying 'agent configs'.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0014",
             "assertion": "HARNESS_NO_HOOKS=1 is documented as the decline, with the same value semantics the code enforces.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0015",
             "assertion": "The backup location is named, and its limits are stated rather than implied.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0016",
             "assertion": "A reader who has never seen this plan can tell, from the README alone, what will change on their machine when they run doctor.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],
@@ -236,25 +242,25 @@
           {
             "id": "dw-0017",
             "assertion": "The three open Windows questions are stated as SPECIFIC questions for the remote agent, not as a general 'Windows unverified'.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0018",
             "assertion": "Every claim in the closing summary is labelled MEASURED or EXPECTED-UNVERIFIED, with the machine and invocation for each measured one.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0019",
             "assertion": "The gaps are in ONE place, not distributed across commits.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-001a",
             "assertion": "Anything task one changed about the backup's restore capability is reflected here rather than left as the phase 2 statement.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ]

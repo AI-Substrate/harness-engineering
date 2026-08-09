@@ -171,15 +171,58 @@ harness doctor          # sanity-check the install — see the note below
 harness update          # later: upgrade to @latest (no-op if current)
 ```
 
-> **`harness doctor` installs the git-ai collector.** As well as reporting, a bare
-> `doctor` run places the **pinned, SHA-256-verified** git-ai binary and installs its
-> agent hooks, so AI attribution works without you configuring anything. It never
-> asks — but it does tell you what it did, it refuses to touch a **pre-existing global
-> git `trace2` config** (the vendor command deletes that section machine-wide), and
-> every failure is warn-only: doctor still completes and exits 0.
-> Set **`HARNESS_NO_COLLECTOR=1`** to opt out entirely — nothing is downloaded,
-> installed, or written. Full detail in
-> [the telemetry docs](docs/how/telemetry/README.md).
+> **`harness doctor` writes to your machine on first run.** It installs **two** things, and
+> they are separate, with separate opt-outs. It never asks — but it always tells you what it
+> did, and every failure is warn-only: doctor still completes, still prints every other row,
+> and still exits 0.
+>
+> **1. The git-ai collector** — the **pinned, SHA-256-verified** git-ai binary plus its own
+> agent hooks, so AI attribution works without you configuring anything. It refuses to touch a
+> **pre-existing global git `trace2` config** (the vendor command deletes that section
+> machine-wide). Opt out with **`HARNESS_NO_COLLECTOR=1`**: nothing is downloaded, installed or
+> written.
+>
+> **2. Our agent hooks** — one entry per detected agent, so a commit made inside an agent's
+> sandbox is still attributed to that agent. Every entry carries the marker
+> `ai-substrate-harness-hook-v1`, which is how `harness hooks uninstall` finds its own work and
+> nothing else. Opt out with **`HARNESS_NO_HOOKS`** (see the value rule below).
+>
+> These are the exact files we write, and we write **only** these:
+>
+> | agent | file(s) |
+> |---|---|
+> | claude-code | `~/.claude/settings.json` — or `$CLAUDE_CONFIG_DIR/settings.json`, used **verbatim as the directory** |
+> | cursor | `~/.cursor/hooks.json` |
+> | gemini | `~/.gemini/settings.json` — or `$GEMINI_CLI_HOME/.gemini/settings.json`, where the variable is the **home root** and `.gemini` is appended |
+> | droid | `~/.factory/settings.json` |
+> | firebender | `~/.firebender/hooks.json` |
+> | github-copilot | `~/.copilot/hooks/harness.json` — **created** if absent; it is ours, not git-ai's `git-ai.json` |
+> | windsurf | `~/.codeium/hooks.json` **and** `~/.codeium/windsurf/hooks.json` |
+>
+> A file is touched only if the agent is **detected** (its directory exists). We append one entry
+> per event array; we do not reorder, reformat other containers, or change any setting of yours.
+> `amp`, `opencode`, `pi` and `cline` are **not supported** — `harness hooks list` reports them by
+> name with a reason rather than skipping them silently.
+>
+> **`HARNESS_NO_HOOKS` — any non-empty value declines**, including `0`, `false` and `no`. To
+> re-enable, **unset it**; setting it to `0` still declines, and the command says so when you use
+> one of those values. Unset or empty means proceed.
+>
+> **Check and undo:** `harness hooks status --json` shows, per agent, whether our entry is present
+> and whether the program it names still **resolves** — an entry pointing at a deleted binary
+> reports `unresolvable`, which is the only way to notice a hook that has silently stopped working,
+> since hooks exit 0 by design. `harness hooks uninstall` removes only our marked entries and
+> deletes only a file we created.
+>
+> **About the backup, honestly:** before the collector's installer rewrites your agent configs,
+> we copy them to `~/.git-ai/harness-backups/<timestamp>/` with a `manifest.json`. `harness hooks
+> restore` puts them back — the round trip is tested, including deleting a file that did not exist
+> before. Two limits worth knowing: it covers only the agents we **detect**, and the record of what
+> an install created lives in `~/.harness/hooks/install-record.json`, which nothing garbage-collects
+> — a stale entry there can only ever make an uninstall remove a key we **did** create, never one of
+> yours.
+>
+> Full detail in [the telemetry docs](docs/how/telemetry/README.md).
 
 Then install the **skills** — the choreography agents drive. The CLI stages the package's baked `skills/` tree locally and wraps [`npx skills`](https://github.com/vercel-labs/skills):
 
