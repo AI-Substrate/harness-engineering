@@ -1,0 +1,23 @@
+docs/how/telemetry/cursor-validation-kit/README.md
+  s_a76964380084ef::t_4a505cb150b13c 124-135
+docs/how/telemetry/gitai-05-attribution-algorithm.md
+  s_a76964380084ef::t_a2f4b95cf8cc78 236-261
+docs/how/telemetry/validating-telemetry-capture-in-sandboxed-agents.md
+  s_a76964380084ef::t_000b2087f83e65 112-131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2a3cd6e67324b9e67b92d6c5453e851cc01deab4",
+  "prompts": {},
+  "sessions": {
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
