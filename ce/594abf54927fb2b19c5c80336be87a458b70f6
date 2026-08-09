@@ -1,0 +1,67 @@
+harness/cli/test/services/hooks/journal-race.int.test.ts
+  s_ed609d39de2442::t_0425af8d9498cc 1
+  s_ed609d39de2442::t_6e52a9dd6af8a6 89,91-99,101,107-118,120-129
+  s_ed609d39de2442::t_df8a5222fba8d6 2-49,63-88,90,100,102-106,119,130-148,150-161,163-171,173-181,183-193
+  s_ed609d39de2442::t_c6910769c0388f 50-62
+  s_ed609d39de2442::t_5a85279579bbaa 149,162,172,182
+harness/cli/test/services/hooks/hook-journal.test.ts
+  s_ed609d39de2442::t_95754b91f35e69 99-104,117-158
+  s_ed609d39de2442::t_7655512a12e2db 4-6,8
+  s_ed609d39de2442::t_8ea296547c2960 7
+  s_ed609d39de2442::t_332201b1b00bdf 31,35-36,38-41,54-62,64,71-90,201-229
+  s_ed609d39de2442::t_a159b6b82884e2 182,194,200
+  s_ed609d39de2442::t_dc9ff7abbb1d67 91-98,105-116,159-181,183-193,195-199,230
+  s_ed609d39de2442::t_49e40414170de8 3
+  s_ed609d39de2442::t_e81a217ae83fd5 231
+harness/cli/test/adapters/fs/append-text-parity.test.ts
+  s_ed609d39de2442::t_35fa7066b49451 2-127,129,131,133-135
+  s_ed609d39de2442::t_b33a306dd66ed8 1,128,130,132
+docs/plans/082-harness-hooks/assets/tasks/phase-2/tasks.dd.md
+  s_ed609d39de2442::t_8d2921d2491012 54,203-206
+  s_ed609d39de2442::t_816761e6b28c45 202
+harness/cli/src/adapters/fs/fake-fs.ts
+  s_ed609d39de2442::t_2843d590745162 14-15
+  s_ed609d39de2442::t_fcd0b041e18df8 218-233
+  s_ed609d39de2442::t_1bdfd446781f1a 213-217,234-235
+  s_ed609d39de2442::t_ecfef21ca5460c 236-238
+  s_ed609d39de2442::t_48f8b38bc89f80 239
+docs/plans/082-harness-hooks/assets/tasks/phase-2/tasks.dd.json
+  s_ed609d39de2442::t_8d2921d2491012 194,596,602,608,614
+  s_ed609d39de2442::t_816761e6b28c45 590
+harness/cli/src/adapters/fs/node-fs.ts
+  s_ed609d39de2442::t_e078f42c677bb3 21
+  s_ed609d39de2442::t_cce06d685e8e66 289-294,303-304,306
+  s_ed609d39de2442::t_a01eb22ed616c2 295-302,305,307
+  s_ed609d39de2442::t_763d268a6ef326 308-310
+  s_ed609d39de2442::t_21b522db421203 311-314
+harness/cli/src/adapters/fs/fs-port.ts
+  s_ed609d39de2442::t_2467672a856a4e 76-97,114-115
+  s_ed609d39de2442::t_8504b124426c5b 98-113
+docs/plans/082-harness-hooks/assets/tasks/phase-2/execution.log.md
+  s_ed609d39de2442::t_c2f385720db615 1-112,183-186,189-216
+  s_ed609d39de2442::t_1404c276e4fe40 113-182,187-188
+harness/cli/src/services/hooks/hook-journal.ts
+  s_ed609d39de2442::t_ecbda30bf211ec 133-155,161-165,167-171,176-191
+  s_ed609d39de2442::t_e9eb706e32b580 104
+  s_ed609d39de2442::t_bc10a6862217e1 15-44,47,50-57,84-88,90-96,101-103,110-115,117-132,156-160,172-175,192-195,203
+  s_ed609d39de2442::t_d8853b29fc8c79 58-68
+  s_ed609d39de2442::t_e3544b3d7a9f5f 166
+harness/cli/test/services/hooks/provocation.int.test.ts
+  s_ed609d39de2442::t_4774bb54b97ec3 585-591
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ce594abf54927fb2b19c5c80336be87a458b70f6",
+  "prompts": {},
+  "sessions": {
+    "s_ed609d39de2442": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "62892a0d-07d6-4784-b490-986f797be544",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
