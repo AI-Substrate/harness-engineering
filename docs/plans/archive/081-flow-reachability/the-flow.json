@@ -615,7 +615,7 @@
         "review-1"
       ],
       "dd_link": {
-        "address": "docs/plans/081-flow-reachability/assets/tasks/phase-1/tasks.dd.json#tasks",
+        "address": "docs/plans/archive/081-flow-reachability/assets/tasks/phase-1/tasks.dd.json#tasks",
         "basis_sha": "3dc5e5f7363a346c02da2f60822d249271814b169e310c6299b03963c8215d0b",
         "reading": {
           "status": "complete",
@@ -649,7 +649,7 @@
       ],
       "zone": "flight",
       "dd_link": {
-        "address": "docs/plans/081-flow-reachability/plan.dd.json",
+        "address": "docs/plans/archive/081-flow-reachability/plan.dd.json",
         "check": "plan-validate"
       },
       "instructions": [
@@ -1127,6 +1127,6 @@
       "ran_at": "2026-08-09T08:07:23.088Z"
     }
   ],
-  "plan_dir": "docs/plans/081-flow-reachability",
+  "plan_dir": "docs/plans/archive/081-flow-reachability",
   "title": "Flow reachability: deterministic stream-owes-a-flow verb"
 }
