@@ -56,7 +56,7 @@ _Empty._
 
 | id | assertion | state | pressure |
 | --- | --- | --- | --- |
-| dw-000c | ALL NINE primitives (not just the SUFFICIENT-predicted ones) have a runnable falsifier test authored and run RED - against a deliberately-broken control or the absent surface - BEFORE the implementation commit that turns each green; the execution log records the RED run per primitive and commit order is the proof (a primitive whose final verdict flips from the prediction gets no exemption) | [ ] unchecked | [bp-000d](../../backpressure.dd.md#rows) |
+| dw-000c | ALL NINE primitives (not just the SUFFICIENT-predicted ones) have a runnable falsifier test authored and run RED - against a deliberately-broken control or the absent surface - BEFORE the implementation commit that turns each green; the execution log records the RED run per primitive and commit order is the proof (a primitive whose final verdict flips from the prediction gets no exemption) | [x] checked | [bp-000d](../../backpressure.dd.md#rows) |
 | dw-000d | just build && just test green with the falsifier suite in the tree | [ ] unchecked | [bp-0003](../../backpressure.dd.md#rows) |
 
 ### tk-0008
