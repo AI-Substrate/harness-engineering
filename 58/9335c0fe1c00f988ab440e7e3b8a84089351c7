@@ -1,0 +1,23 @@
+docs/plans/082-harness-hooks/assets/tasks/phase-3/execution.log.md
+  s_ed609d39de2442::t_e19586270f219e 459-482
+  s_ed609d39de2442::t_1136df8edc1686 1171-1173,1175-1198,1200,1204,1206,1259-1264,1266-1267
+  s_ed609d39de2442::t_c4933660bf50ac 1174
+  s_ed609d39de2442::t_c13ebee6825cba 808-809
+  s_ed609d39de2442::t_10cfe9332e24a2 810-812,831,1199,1201-1203,1205,1207-1258,1265,1268-1275
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "589335c0fe1c00f988ab440e7e3b8a84089351c7",
+  "prompts": {},
+  "sessions": {
+    "s_ed609d39de2442": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "62892a0d-07d6-4784-b490-986f797be544",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
