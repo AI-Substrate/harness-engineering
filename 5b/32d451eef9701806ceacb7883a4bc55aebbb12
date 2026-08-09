@@ -1,0 +1,27 @@
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-1/tasks.dd.json
+  s_397a51e23fc2cd::t_664a4932d9f56a 35,93,99
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-1/tasks.dd.md
+  s_397a51e23fc2cd::t_664a4932d9f56a 39,59-60
+docs/plans/080-dd-consume-upgrade/assets/tasks/phase-1/execution.log.md
+  s_397a51e23fc2cd::t_2733c788c783c8 124-237
+harness/cli/test/integration/dd-package-boundary.int.test.ts
+  s_397a51e23fc2cd::t_07d903df86a859 184-186,270-278
+  s_397a51e23fc2cd::t_c64cd78dafd902 1-94,96-97,105,117-183,187-269,279-383
+  s_397a51e23fc2cd::t_681ec5e9f1269c 95,98-104,106-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "5b32d451eef9701806ceacb7883a4bc55aebbb12",
+  "prompts": {},
+  "sessions": {
+    "s_397a51e23fc2cd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "3fe3c47b-5424-4214-892e-81ef19c49d45",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
