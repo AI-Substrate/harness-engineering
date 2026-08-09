@@ -189,8 +189,27 @@ jobs:
           $skipped  = [int]$r.numPendingTests
           $todo     = [int]$r.numTodoTests
           $total    = [int]$r.numTotalTests
-          $filesTot = [int]$r.numTotalTestSuites
-          $filesBad = [int]$r.numFailedTestSuites
+
+          # FILE counts come from testResults[], NOT from num*TestSuites.
+          #
+          # `numTotalTestSuites` counts DESCRIBE BLOCKS, not files, and
+          # `numFailedTestSuites` inflates the numerator to match. Measured: three
+          # files containing nine describes report numTotalTestSuites=9 and, with
+          # ONE file failing, numFailedTestSuites=3. Day one printed "6/1378 files"
+          # for what was really 3/349.
+          #
+          # This is not a cosmetic slip. The consumer reports in FILES ("12 files /
+          # 27 tests"), and ac-0011 requires comparing our number against theirs, so
+          # a suite count under a file label makes the two sides of that comparison
+          # different denominators — the exact error class this plan keeps hitting.
+          # `testResults[]` has one entry per FILE, so it is the honest source, and
+          # it is the same source as the failing-file list below: the table and the
+          # list cannot disagree.
+          $fileResults = @($r.testResults)
+          $failedFileResults = @($fileResults | Where-Object { $_.status -eq 'failed' })
+          $filesTot = $fileResults.Count
+          $filesBad = $failedFileResults.Count
+          $failedFiles = @($failedFileResults | ForEach-Object { $_.name })
 
           # ---- GUARD 2: a suspiciously LOW total is a suspect JOB. ----
           # Verified locally: when a file fails to COLLECT, vitest reports
@@ -207,8 +226,25 @@ jobs:
           $MIN_TOTAL = 4800
           $undercollected = $total -lt $MIN_TOTAL
 
-          # Failing files, for triage and to make the count attributable.
-          $failedFiles = @($r.testResults | Where-Object { $_.status -ne 'passed' } | ForEach-Object { $_.name })
+          # The skip count MEASURED on day one (run 31293261626) — not invented.
+          #
+          # That distinction is the reason this pin is legitimate and it must stay
+          # readable here: before day one there was no honest number to pin, so
+          # none was written down. This is what the platform actually reported the
+          # first time it was asked, and it is a FLOOR to be defended rather than a
+          # constant to be adjusted.
+          #
+          # The failure mode this guards is someone adding a skip and bumping this
+          # number in the SAME commit — "we stopped looking" wearing a green. So a
+          # rise WARNS and states the delta; it never silently re-baselines. If you
+          # move it, move it in its own change and say why the new number is
+          # legitimate.
+          #
+          # Day one's 56 case-level skips include 2 fully-skipped FILES.
+          $EXPECTED_SKIPS = 56
+          $EXPECTED_SKIPPED_FILES = 2
+
+          # Failing files are derived above, from the same source as the table.
 
           $sum = @()
           $sum += "## windows-latest suite — REPORT ONLY"
@@ -226,6 +262,8 @@ jobs:
           $sum += ""
           $sum += "Ref measured: ``$(git rev-parse HEAD)``  ·  node ``$(node --version)``"
           $sum += ""
+          $sum += "> **This is THE RUNNER's result, not Windows'.** A green here says the runner is green. What that does and does not license is quantified under *What this job does NOT cover*."
+          $sum += ""
 
           # ---- The skip column, stated as an anti-goal rather than a stat. ----
           $sum += "### Skips — a green here must never mean ""we stopped looking"""
@@ -233,7 +271,15 @@ jobs:
           if ($skipped -gt 0) {
             $sum += "**$skipped test(s) did not run on this platform.** This round deliberately skipped the real-``git daemon`` cluster and the URL-scope credential case, so a non-zero number is expected — but it is reported here, as a number, so that it CANNOT rise quietly. If this figure grows, something stopped being measured; find out what before reading the pass count as progress."
             $sum += ""
-            $sum += "Once day one's figure is known it should be pinned as the expected baseline, so any increase is an explicit change rather than a thing someone has to notice."
+            if ($skipped -gt $EXPECTED_SKIPS) {
+              $sum += "> **:rotating_light: SKIPS HAVE RISEN by $($skipped - $EXPECTED_SKIPS)** — $skipped now versus **$EXPECTED_SKIPS measured on day one** (run 31293261626). Something stopped being measured since then."
+              $sum += ">"
+              $sum += "> Do NOT re-baseline this in the same change that caused it. Name what stopped being proven, say what still proves it, and move the pin as its own deliberate edit — a skip added and a baseline bumped together is ""we stopped looking"" wearing a green."
+            } elseif ($skipped -lt $EXPECTED_SKIPS) {
+              $sum += "> Skips have FALLEN by $($EXPECTED_SKIPS - $skipped) — $skipped versus the day-one baseline of $EXPECTED_SKIPS. Something started being measured again; move the pin DOWN so the new, better floor is the one being defended."
+            } else {
+              $sum += "Matches the day-one baseline of **$EXPECTED_SKIPS** — a number **measured** on run 31293261626, not chosen. Of these, $EXPECTED_SKIPPED_FILES are whole FILES skipped rather than individual cases; a file-level skip and a case-level skip read very differently when scanning this number."
+            }
           } else {
             $sum += "No tests were skipped on this run."
           }
@@ -242,12 +288,16 @@ jobs:
           # ---- The honesty column (ac-0005): travels WITH the result. ----
           $sum += "### What this job does NOT cover"
           $sum += ""
-          $sum += "A hosted runner is **curated** and is not a proxy for a user's machine — measured, not assumed. ``jq`` is present here and **absent** on the consumer's box, so a green leg can be entirely silent about the failure they actually hit."
+          $sum += "A hosted runner is **curated** and is not a proxy for a user's machine. This is no longer an argument — it is **measured**:"
+          $sum += ""
+          $sum += "> **Day one: this runner reported 3 failing tests. The consumer's box reported 27.** Same suite, same commit family — a **9x gap**."
+          $sum += ""
+          $sum += "Everything in that gap is real breakage this leg cannot see. ``jq`` is present here and **absent** on their box, so a green leg can be entirely silent about the failure they actually hit. Two defects from this round show the shape of what is missing:"
           $sum += ""
           $sum += "* ``acts/plan`` failed on their machine only because an **unelevated** process cannot create ``C:\out``. A runner with more privilege goes green while creating a directory at the drive root — that defect is invisible to CI **by construction**."
           $sum += "* The **timeout** class is contention-dependent. A quiet runner finishes in 12s what a loaded laptop takes 30s to do, so this leg systematically under-reports load-sensitive failures."
           $sum += ""
-          $sum += "**A green run means the path-shape class is covered. It does not mean Windows is fine.**"
+          $sum += "**A green run means the path-shape class is covered. It does not mean Windows is fine — the 9x gap is the measurement of exactly how much it does not mean that.**"
           $sum += ""
 
           # ---- Comparison against the last pristine downstream measurement. ----
@@ -255,7 +305,9 @@ jobs:
           $sum += ""
           $sum += "Consumer's last pristine measurement (``f19bf0d1``): **12 files / 27 tests failing of 5121**, minus whatever ``5a8e8f5b`` fixed."
           $sum += ""
-          $sum += "This run: **$filesBad files / $failed tests failing of $total**."
+          $sum += "This run: **$filesBad files / $failed tests failing of $total collected**, across $filesTot test files."
+          $sum += ""
+          $sum += "Day one on this runner (31293261626): **3 files / 3 tests failing of 5164**, across 349 files. Both sides of that comparison are now in FILES — a suite count is not a file count, and mixing them is how two numbers get compared that were never the same measurement."
           $sum += ""
           $sum += "A count *dramatically lower* than the baseline is a **suspect job before it is a suspect suite** — check that the whole suite was collected before reporting the number as an improvement."
           $sum += ""
