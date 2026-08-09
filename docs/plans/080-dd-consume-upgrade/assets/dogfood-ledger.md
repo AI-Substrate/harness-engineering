@@ -14,6 +14,23 @@ ruling — never by a workaround alone.
 | 2 | **fr-0007 ordinal gap**: `plan new` has no `--ordinal` while the folder contract is `<ordinal>-<slug>` — a bare slug silently creates a second folder and stamps `meta.slug` from it | harness @ `ee8f37fb` | harness: `plan new --ordinal` (or ordinal-aware slug resolution reusing an existing `NNN-slug` folder) — same verb as entry 1's fallback, bundle the fix | **OPEN** — accepted INTO 080 (2026-08-09, prime's flag, koala's call under Jordan's ruling). **Best evidence is the live workaround** (prime's point, adopted): 080 itself passed the ordinal-embedded slug `080-dd-consume-upgrade`, so this very plan's `meta.slug` carries the prefix — the fix's acceptance test is that a bare `plan new dd-consume-upgrade --ordinal 80` reproduces this folder with a clean slug |
 | 3 | **Fork never received dd's A-2 `tracked` fix**: the fork's `FsDocLoader` returned `tracked: true` for a null tracking snapshot (`acts/dd/shared.ts:272`) — one boolean carrying both "tracked" and "unknowable" — while its OWN docstring promised `null`; `DocLoadResult.tracked` was typed `boolean` (`services/dd/core/walk.ts:13`), the walk branched `!loaded.tracked` (`:108`), and `DdLinkTarget`/`DdGraphNode.tracked` were `boolean` (`links/model.ts:72,106`). Surfaced as a hard `TS2322` the moment `acts/flow.ts` composed the PACKAGE's loader (`boolean \| null`) into the fork-typed `DdGateDeps` — the two implementations disagreed about what `tracked` means, which is the drift this plan exists to end | harness fork @ `5b32d451`; dd @ `a37a20ec` (A-2 fixed there: `dist/links/loader.js:82`, `dist/core/walk.js:69` branches `=== false`) | harness fork — drained dd's A-2 into `services/dd/core/walk.ts`, `services/dd/links/model.ts`, `acts/dd/shared.ts` (phase 3 deletes all three) | **CLOSED** by working fix, plan 080 phase 1 tk-0003. 5 changed lines + comments; `tsc` exit 0; 348 files / 5148 tests green. Below all four materiality triggers (inside the declared touch set — "the two dd trees"; <150 lines; 1st harness-side fix this phase; no dd-side ratification needed, dd had already ratified and shipped it). **Not a workaround**: the alternative was mapping `null`→`true` at the composition root, which is the A-2 lie reintroduced and is forbidden by phase-1 hard rule 6. **Coverage note**: the defect was invisible to the suite — nothing pinned `tracked` on a null snapshot, and all 5148 tests passed both before and after the behaviour changed. The package's behaviour is now pinned by `test/integration/dd-package-boundary.int.test.ts`; the fork's is deliberately left unpinned because phase 3 deletes it |
 
+### Entry 3 stated dependency (prime's ruling, 2026-08-09 — not an assumption)
+
+Entry 3 leaves the FORK's behaviour deliberately unpinned **because phase 3 deletes it**.
+That is a dependency, not a fact: **if phase 3 slips or is descoped, an unpinned lie-fix
+sits in the tree with nothing asserting it** — any descope of phase 3 must first either
+pin the fork's `tracked` behaviour or re-argue this entry. (Expiry-ownership: this line
+is the owner.)
+
+### Fork-drain checklists are BIDIRECTIONAL (prime, 2026-08-09 — binds phase 3's ac-0006)
+
+Entry 3 is the second deferred-fix-fork sighting in two days, mirrored: earlier, a port
+covered what upstream *changed* but not what it *deferred*; here, the fork never received
+a fix upstream *shipped*. Both directions share one property — **the fork looks fine on
+its own; only composition with its origin reveals the gap**. The phase-3 drain checklist
+must therefore ask BOTH: what did harness-main fix that the fork never took, AND what did
+the fork (or dd) fix that the other never took.
+
 ## Materiality threshold (defined 2026-08-09, before any contest — prime's ask)
 
 Remediation growth is **MATERIAL** — triggering a re-plan at the next phase boundary

@@ -51,7 +51,7 @@
           "id": "tk-0004",
           "title": "Rewire acts/plan/pr-body.ts (escapeCell/headingSlug from ./render/renderer; PlanEdge/PlanIndex/PlanItem types REMAIN on the fork until phase 2) and acts/plan/index.ts non-plan imports onto the package: core address/model/parse/validate/walk, links resolveMapSeed/traverseCorpus, schema model SchemaIssue AND schema resolve ConventionSchemaResolver",
           "phase": "ph-1d68",
-          "state": "unchecked",
+          "state": "checked",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0002",
             "../../../plan.dd.json#acceptance_criteria/ac-0003"
@@ -118,13 +118,13 @@
           {
             "id": "dw-0007",
             "assertion": "git grep -nE \"services/dd|acts/dd|\\./dd/\" across pr-body.ts and index.ts returns ONLY services/dd/plan imports (the bounded phase-2 remainder) - phase-1-scoped proof bp-000f, distinct from the phase-2 full-zero bp-0002",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-000f"
           },
           {
             "id": "dw-0008",
             "assertion": "just build && just test green after the rewire",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "../../backpressure.dd.json#rows/bp-0003"
           }
         ],

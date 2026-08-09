@@ -1,3 +1,24 @@
+import {
+  ConventionSchemaResolver,
+  collectLinkCells,
+  type DdDoc,
+  type DdIssue,
+  FsDocLoader,
+  isAddressFailure,
+  parse,
+  parseAddress,
+  resolveAddressFile,
+  validateWalk,
+} from '@ai-substrate/dd';
+import { resolveMapSeed, traverseCorpus } from '@ai-substrate/dd/links';
+import {
+  DD_ISSUE_CODES,
+  type DdActDeps,
+  NodeSchemaFs,
+  renderDocument,
+  trackedPaths,
+} from '@ai-substrate/dd/node';
+import type { SchemaIssue } from '@ai-substrate/dd/schema/model';
 import type { Command } from 'commander';
 import type { Clock } from '../../adapters/clock/clock-port.js';
 import { SystemClock } from '../../adapters/clock/system-clock.js';
@@ -17,16 +38,6 @@ import {
 import { ErrorCodes } from '../../output/error-codes.js';
 import { exitWithEnvelope } from '../../output/exit.js';
 import { type CliIo, createOutputPort } from '../../output/output-port.js';
-import { isAddressFailure, parseAddress } from '../../services/dd/core/address.js';
-import type { DdDoc } from '../../services/dd/core/model.js';
-import { parse } from '../../services/dd/core/parse.js';
-import {
-  collectLinkCells,
-  type DdIssue,
-  resolveAddressFile,
-} from '../../services/dd/core/validate.js';
-import { validateWalk } from '../../services/dd/core/walk.js';
-import { resolveMapSeed, traverseCorpus } from '../../services/dd/links/index.js';
 import {
   buildPlanIndex,
   itemKey,
@@ -35,8 +46,6 @@ import {
   readPlanCheck,
   readPlanReadiness,
 } from '../../services/dd/plan/index.js';
-import type { SchemaIssue } from '../../services/dd/schema/model.js';
-import { ConventionSchemaResolver } from '../../services/dd/schema/resolve.js';
 import { readBackpressureSurvey } from '../../services/flow/chores-read.js';
 import {
   isWithin,
@@ -45,9 +54,6 @@ import {
   resolveInRepo,
   toPosix,
 } from '../../services/shared/posix-path.js';
-import { renderDocument } from '../dd/build.js';
-import { NodeSchemaFs } from '../dd/schema-fs.js';
-import { DD_ISSUE_CODES, type DdActDeps, FsDocLoader, trackedPaths } from '../dd/shared.js';
 import { checkFence, readFenceRows } from './fence.js';
 import { renderPrBody } from './pr-body.js';
 import { buildPlanScaffold } from './scaffold.js';

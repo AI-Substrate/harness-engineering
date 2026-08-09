@@ -366,3 +366,85 @@ $ node harness/cli/bin/harness.js flow orient --path docs/plans/080-dd-consume-u
 [pij-related-koala] ◆─◆─[ ◐─◇─◇ ]─◇  ◆ Research · ◆ Plan · [ ◐ P1: Implementation · ◇ Review: P1 · ◇ Ship ] · ◇ Post-flight
   ⚑ gate: P1: Implementation ⛨ 2/5
 ```
+
+---
+
+## tk-0004 — Rewire acts/plan/pr-body.ts and acts/plan/index.ts
+
+### pr-body.ts
+
+One line moves, one line deliberately does not:
+
+```diff
+-import { escapeCell, headingSlug } from '../../services/dd/render/renderer.js';
++import { escapeCell, headingSlug } from '@ai-substrate/dd/render/renderer';
+ import type { PlanEdge, PlanIndex, PlanItem } from '../../services/dd/plan/index.js';   // STAYS — phase 2
+```
+
+### index.ts — nine fork imports become three package imports
+
+Eleven import statements collapsed. The non-plan symbols by their new home:
+
+| home | symbols |
+|---|---|
+| `@ai-substrate/dd` (barrel) | `collectLinkCells`, `ConventionSchemaResolver`, `DdDoc`, `DdIssue`, `FsDocLoader`, `isAddressFailure`, `parse`, `parseAddress`, `resolveAddressFile`, `validateWalk` |
+| `@ai-substrate/dd/links` | `resolveMapSeed`, `traverseCorpus` |
+| `@ai-substrate/dd/node` | `DD_ISSUE_CODES`, `DdActDeps`, `NodeSchemaFs`, `renderDocument`, `trackedPaths` |
+| `@ai-substrate/dd/schema/model` | `SchemaIssue` |
+| `../../services/dd/plan/index.js` — **UNCHANGED** | `buildPlanIndex`, `itemKey`, `PlanDocument`, `ReadyReading`, `readPlanCheck`, `readPlanReadiness` |
+
+Both schema imports are named per the task and the validation fix: `SchemaIssue` from
+`./schema/model` (it is not on the barrel) and `ConventionSchemaResolver` from the
+barrel — the same home `acts/flow.ts` uses, so the two composition roots cannot drift
+about which resolver they mean.
+
+**The `./node` tier is what made dw-0007 reachable, and it is worth naming why.**
+`renderDocument`, `NodeSchemaFs`, `DD_ISSUE_CODES`, `DdActDeps` and `trackedPaths`
+came from relative `../dd/*` modules — which bp-000f's grep counts as fork matches
+just as hard as a `services/dd` path. Had they lacked a public home this task would
+have STOPPED under hard rule 4 (no shims; a missing surface is a dd matter). They did
+not: dd ships exactly those five from `@ai-substrate/dd/node`, its host-bound tier,
+so nothing had to be relocated, re-implemented or worked around. dd's own
+`node/index.d.ts` records that two of them landed there by ratified amendment A-1
+after `./core/validate` and `./render/renderer` were measured impossible for them.
+
+`tsc` accepted the swap on the FIRST pass — no adaptation, no cast, no widening at any
+call site. The ported symbols are signature-identical to the act-layer originals
+(`renderDocument(documentPath, repoRoot, {text?}) => Promise<BuildResult>`,
+`trackedPaths(exec, repoRoot) => Promise<ReadonlySet<string> | null>`), which is the
+claim the round-2 pattern makes and it held.
+
+### dw-0007 — ONLY the bounded phase-2 remainder (phase-1-scoped proof bp-000f)
+
+```
+$ git grep -nE "services/dd|acts/dd|\./dd/" -- harness/cli/src/acts/plan/index.ts harness/cli/src/acts/plan/pr-body.ts
+harness/cli/src/acts/plan/index.ts:48:} from '../../services/dd/plan/index.js';
+harness/cli/src/acts/plan/pr-body.ts:2:import type { PlanEdge, PlanIndex, PlanItem } from '../../services/dd/plan/index.js';
+```
+
+Two matches, both `services/dd/plan` — the deliberate remainder ratified for phase 2.
+Zero `acts/dd` matches and zero relative `./dd/` matches, which is the half of bp-000f
+the widened grep exists to catch.
+
+### dw-0008 — just build && just test green after the rewire
+
+```
+$ just build
+> tsc -p harness/cli/tsconfig.json          # exit 0, clean on the first pass
+
+$ just test
+ Test Files  348 passed (348)
+      Tests  5148 passed (5148)
+
+Statements   : 89.85% ( 18676/20785 )
+Branches     : 81.16% ( 14137/17418 )
+Functions    : 92.14% ( 3145/3413 )
+Lines        : 92.22% ( 16608/18008 )
+```
+
+### Tripwires checked, not assumed
+
+- `services/dd/plan/semantics.ts` is byte-untouched — the arch suite's
+  `dd-plan-semantics-frozen.test.ts` pin is green inside the 348.
+- The two boundary guard tests that skip package specifiers (D-4) were left alone;
+  they pass unchanged.
