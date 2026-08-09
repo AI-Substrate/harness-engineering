@@ -1,0 +1,22 @@
+docs/how/dd/README.md
+  s_397a51e23fc2cd::t_afe27993f6cd8d 307
+docs/how/consuming-dd.md
+  s_397a51e23fc2cd::t_0dc329e3c840df 9
+  s_397a51e23fc2cd::t_033d32cd66dff0 126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "1e9414b484772a2b0038e17cd844e3746279faea",
+  "prompts": {},
+  "sessions": {
+    "s_397a51e23fc2cd": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "3fe3c47b-5424-4214-892e-81ef19c49d45",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
