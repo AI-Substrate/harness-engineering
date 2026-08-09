@@ -8,7 +8,9 @@ import { extractBinaryPath } from './binary-path.js';
 import { FileHookJournal } from './hook-journal.js';
 import { isOwnedByUs } from './hook-marker.js';
 import { hookJournalPath, hookStateDir } from './hook-payload.js';
+import { forgetInstalled, readInstallRecord, recordInstall } from './install-record.js';
 import { installStrategyA } from './install-strategy-a.js';
+import { uninstallStrategyA } from './uninstall-strategy-a.js';
 
 /**
  * THE HOOKS VERB FAMILY — install / status / uninstall / list (plan 082 tk-0008).
@@ -110,17 +112,32 @@ export interface InstallReport {
   installed: { agent: string; path: string; created: boolean }[];
   /** Agents refused BY NAME, never silently skipped. */
   refused: { agent: string; reason: string }[];
+  /**
+   * Agents whose write THREW, with the reason — distinct from `refused`.
+   *
+   * The two are different diagnoses and collapsing them would hide the one that
+   * means something is wrong with the machine: `refused` is *we have no writer for
+   * this agent*, a stated design limit; `failed` is *we have a writer and it did
+   * not work* — an unwritable path, a config that is a directory, a full disk.
+   *
+   * FAILURE IS PER AGENT, NOT FATAL (plan 082 tk-0002). `installStrategyA` throws on
+   * a write failure, so one agent with a broken config path used to abort every
+   * agent after it in the loop. Doctor calls this on first run, where that would
+   * mean one damaged config silently costing a user every other install.
+   */
+  failed: { agent: string; reason: string }[];
 }
 
 /** Install into every DETECTED, SUPPORTED agent. */
 export function installHooks(deps: HooksDeps): InstallReport {
   if (hooksDisabled(deps.env)) {
-    return { optedOut: true, installed: [], refused: [] };
+    return { optedOut: true, installed: [], refused: [], failed: [] };
   }
 
   const reports = listAgents(deps);
   const installed: InstallReport['installed'] = [];
   const refused: InstallReport['refused'] = [];
+  const failed: InstallReport['failed'] = [];
 
   for (const report of reports) {
     if (!report.detected) continue;
@@ -133,11 +150,23 @@ export function installHooks(deps: HooksDeps): InstallReport {
     }
     const spec = AGENT_MATRIX.find((s) => s.agent === report.agent);
     if (spec === undefined) continue;
-    for (const outcome of installStrategyA(deps.fs, spec, deps.home, deps.env, deps.binary)) {
-      installed.push({ agent: outcome.agent, path: outcome.path, created: outcome.created });
+    try {
+      const outcomes = installStrategyA(deps.fs, spec, deps.home, deps.env, deps.binary);
+      // Provenance FIRST, before anything can fail afterwards: a config we wrote and
+      // did not record is one uninstall will under-remove, which is the safe
+      // direction but still a divergence between the disk and what we know.
+      recordInstall(deps.fs, hookStateDir(deps.home), outcomes);
+      for (const outcome of outcomes) {
+        installed.push({ agent: outcome.agent, path: outcome.path, created: outcome.created });
+      }
+    } catch (err) {
+      failed.push({
+        agent: report.agent,
+        reason: err instanceof Error ? err.message : String(err),
+      });
     }
   }
-  return { optedOut: false, installed, refused };
+  return { optedOut: false, installed, refused, failed };
 }
 
 /** How a configured binary reads, as three states rather than a boolean. */
@@ -359,4 +388,103 @@ export function restoreHooks(deps: HooksDeps, from?: string): RestoreReport {
     ok: outcome.failed.length === 0,
     detail: outcome.detail,
   };
+}
+
+/** What `harness hooks uninstall` reports. */
+export interface UninstallReport {
+  /** Per agent, per file — never collapsed, so a half-uninstall is visible. */
+  removed: { agent: string; path: string; entries: number; deleted: boolean }[];
+  /** Files carrying no marker of ours: left untouched, reported by name. */
+  untouched: { agent: string; path: string }[];
+  /** Entries we own but did not remove because they carry foreign work. */
+  refused: { agent: string; path: string; command: string; reason: string }[];
+  /** Agents whose uninstall THREW, with the reason. Per agent, never fatal. */
+  failed: { agent: string; reason: string }[];
+  /**
+   * Detected agents we have NO writer for, named rather than skipped.
+   *
+   * The same seam `install` carries, and it matters more on the way out: an operator
+   * removing our hook needs to know which detected agents this verb did not touch,
+   * or they will believe a machine is clean that is not. A silent skip here is the
+   * cut becoming an omission.
+   */
+  unsupported: { agent: string; reason: string }[];
+}
+
+/**
+ * Remove our hook from every detected, supported agent (plan 082 tk-000d; wired by
+ * the phase-2 review's F001).
+ *
+ * WHY THIS EXISTS SEPARATELY FROM `uninstallStrategyA`. It did not, and that was the
+ * finding: the strategy function had no caller outside its own unit test, so the
+ * delivered binary answered `unknown command 'uninstall'` while the task that named
+ * the verb was checked. THE TENTH INSTANCE of one shape in this plan, and the most
+ * instructive, because the guard built to prevent it — the subcommand-name assertion
+ * in `app.test.ts` — carried a deliberate exclusion for `uninstall` ("absent until
+ * tk-000d"). tk-000d landed; the exclusion did not move. **The exception outlived its
+ * reason and the guard then certified the exact gap it was written to catch.**
+ *
+ * IT READS PROVENANCE, NEVER GUESSES IT. The keys it may remove come from the install
+ * record; see `install-record.ts`.
+ */
+export function uninstallHooks(deps: HooksDeps): UninstallReport {
+  const stateDir = hookStateDir(deps.home);
+  const record = readInstallRecord(deps.fs, stateDir);
+  const createdFiles = new Set(record.entries.filter((e) => e.createdFile).map((e) => e.path));
+  const createdKeys = new Map<string, ReadonlySet<string>>(
+    record.entries.map((e) => [e.path, new Set(e.createdKeys)]),
+  );
+
+  const removed: UninstallReport['removed'] = [];
+  const untouched: UninstallReport['untouched'] = [];
+  const refused: UninstallReport['refused'] = [];
+  const failed: UninstallReport['failed'] = [];
+  const unsupported: UninstallReport['unsupported'] = [];
+  const done: string[] = [];
+
+  for (const report of listAgents(deps)) {
+    if (!report.detected) continue;
+    if (!report.supported) {
+      unsupported.push({
+        agent: report.agent,
+        reason: report.unsupportedReason ?? 'no writer for this agent',
+      });
+      continue;
+    }
+    const spec = AGENT_MATRIX.find((s) => s.agent === report.agent);
+    if (spec === undefined) continue;
+    try {
+      for (const outcome of uninstallStrategyA(
+        { fs: deps.fs, home: deps.home, env: deps.env, createdFiles, createdKeys },
+        spec,
+      )) {
+        for (const r of outcome.refused) {
+          refused.push({ agent: outcome.agent, path: outcome.path, ...r });
+        }
+        if (outcome.unmarked) {
+          untouched.push({ agent: outcome.agent, path: outcome.path });
+          continue;
+        }
+        if (outcome.removed > 0 || outcome.deleted) {
+          removed.push({
+            agent: outcome.agent,
+            path: outcome.path,
+            entries: outcome.removed,
+            deleted: outcome.deleted,
+          });
+          // Only when nothing was refused: a file still carrying an entry of ours is
+          // a file whose provenance we still need.
+          if (outcome.refused.length === 0) done.push(outcome.path);
+        }
+      }
+    } catch (err) {
+      failed.push({
+        agent: report.agent,
+        reason: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  forgetInstalled(deps.fs, stateDir, done);
+  return { removed, untouched, refused, failed, unsupported };
 }

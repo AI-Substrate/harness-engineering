@@ -1,5 +1,5 @@
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -237,5 +237,202 @@ describe('`harness hooks restore` — the recovery verb, through the real bin', 
     expect(report.ok).toBe(false);
     expect(report.from).toBeNull();
     expect(report.detail).toContain('harness-backups');
+  });
+});
+
+describe('`harness hooks status` carries a REAL failed fire (phase-2 review F002)', () => {
+  /*
+   * WHY THIS ROW EXISTS, and it is the sharpest finding of the phase-2 review.
+   *
+   * The reviewer replaced `fires: fireSummary(d)` in the status command with a
+   * constant healthy summary — anchored, so the patch demonstrably applied — rebuilt,
+   * and ran all 71 target tests. EVERY ONE STAYED GREEN. The test that creates a real
+   * failed fire called `fireSummary()` directly rather than driving
+   * `harness hooks status --json`.
+   *
+   * So the compensating control that the plan's G2 gate granted the exit-0-and-silent
+   * deviation FOR could be deleted from the delivered payload and nothing noticed —
+   * in the one task whose entire purpose is to be the thing that notices. Because a
+   * fire exits 0 and prints nothing by design, this surface is the ONLY way a failing
+   * runtime is distinguishable from a working one.
+   *
+   * It is also a fourth instance of the deliverable-vs-layer shape that my own sweep
+   * of the checked tasks did not reach — which is worth knowing about the sweep as
+   * much as about the code: the sweep asked whether a task's rows called an internal
+   * function, and this row DOES drive the real bin (for the fire) while reading the
+   * result through the layer beneath (for the status).
+   */
+  it('a real failed fire is visible in the DELIVERED status payload, with its cause', () => {
+    /*
+    Test Doc:
+    - Why: F002. Asserted through `harness hooks status --json` from the real bin, so
+      deleting the `fires` mapping from the delivered command turns it red.
+    - Contract: failed >= 1 AND the cause the RUNTIME wrote — never a cause this test
+      supplied, and never a fabricated journal entry.
+    */
+    const repo = join(home, 'repo');
+    const git = (args: string[]) =>
+      execFileSync('git', args, { cwd: repo, env: { ...hermeticGitEnv(), HOME: home } });
+
+    mkdirSync(repo, { recursive: true });
+    execFileSync('git', ['init', '-q', '-b', 'main', repo], { env: hermeticGitEnv() });
+    writeFileSync(join(repo, 'a.txt'), 'a\n');
+    git(['add', 'a.txt']);
+    git(['commit', '-qm', 'base']);
+
+    const payload = JSON.stringify({
+      tool_name: 'Shell',
+      tool_input: { cwd: repo, command: 'git commit -am x' },
+    });
+    const fire = (phase: string) =>
+      execFileSync(
+        process.execPath,
+        [CLI, 'hooks', 'fire', 'cursor', '--phase', phase, '--hook-input', 'stdin'],
+        { cwd: repo, input: payload, env: { ...hermeticGitEnv(), HOME: home, USERPROFILE: home } },
+      );
+
+    // A REAL agent-authored commit between the two fires: without it the post fire is
+    // silent (head-unchanged) and never reaches the emit that fails.
+    fire('pre');
+    writeFileSync(join(repo, 'a.txt'), 'b\n');
+    git(['commit', '-qam', 'x']);
+    fire('post');
+
+    const payloadOut = JSON.parse(run(['status', '--json'])) as {
+      fires: { recorded: boolean; total: number; failed: number; failures: { cause: string }[] };
+    };
+
+    expect(payloadOut.fires.recorded).toBe(true);
+    expect(payloadOut.fires.failed).toBeGreaterThanOrEqual(1);
+    expect(payloadOut.fires.failures.map((f) => f.cause).join(' ')).toContain('af_unix');
+  });
+});
+
+describe('`harness hooks uninstall` — the verb the review found missing (F001)', () => {
+  /*
+   * The registration guard in `app.test.ts` proves the subcommand EXISTS. That is not
+   * the same claim as "it works", and the distinction is the whole of this plan's
+   * tenth instance: the guard that was supposed to catch this carried a deliberate
+   * exclusion for `uninstall`, the exception outlived its reason, and the guard then
+   * certified the exact gap it was built to catch.
+   *
+   * These rows drive install and uninstall as separate OS PROCESSES, which is also
+   * the only place the F003 provenance record is exercised the way it really runs:
+   * one process writes `install-record.json`, a different one reads it. An in-process
+   * test passes a Map and proves nothing about that hand-off.
+   */
+  const cursorConfig = () => join(home, '.cursor', 'hooks.json');
+
+  it('install then uninstall, as separate processes, leaves a PRE-EXISTING file clean', () => {
+    /*
+    Test Doc:
+    - Why: F001 asks for the verb through the real bin. This is the round trip a user
+      performs, across two invocations, with the provenance crossing between them on
+      disk rather than in a variable.
+    - Contract: our marker is gone, the user's own entry survives byte-identical, and
+      the empty array the USER had is still there — the F003 property, proven through
+      the delivered surface rather than through the strategy function.
+    */
+    mkdirSync(join(home, '.cursor'), { recursive: true });
+    const before = `${JSON.stringify(
+      {
+        version: 1,
+        hooks: { beforeShellExecution: [{ command: 'their-tool run' }], afterFileEdit: [] },
+      },
+      null,
+      2,
+    )}\n`;
+    writeFileSync(cursorConfig(), before);
+
+    run(['install', '--json']);
+    expect(readFileSync(cursorConfig(), 'utf8')).toContain(HOOK_MARKER);
+
+    const report = JSON.parse(run(['uninstall', '--json'])) as {
+      removed: { agent: string; entries: number }[];
+      failed: unknown[];
+    };
+    expect(report.failed).toEqual([]);
+    expect(report.removed.some((r) => r.agent === 'cursor' && r.entries > 0)).toBe(true);
+
+    const after = readFileSync(cursorConfig(), 'utf8');
+    expect(after).not.toContain(HOOK_MARKER);
+    const doc = JSON.parse(after) as { version: number; hooks: Record<string, unknown[]> };
+    expect(doc.version).toBe(1);
+    expect(doc.hooks.beforeShellExecution).toEqual([{ command: 'their-tool run' }]);
+    // The user's own empty array — never ours to remove.
+    expect(doc.hooks.afterFileEdit).toEqual([]);
+  });
+
+  it('names a DETECTED but UNSUPPORTED agent rather than skipping it (FT-001)', () => {
+    /*
+    Test Doc:
+    - Why: the review's fix task asks uninstall to report unsupported strategies
+      explicitly. It matters more on the way out than on the way in: an operator
+      removing our hook and seeing no mention of `pi` will believe the machine is
+      clean. A silent skip is the declared Strategy C/D cut turning into an omission.
+    - Contract: the agent is named with its reason, through the delivered payload.
+    */
+    mkdirSync(join(home, '.pi'), { recursive: true }); // detected, strategy C — not built
+    mkdirSync(join(home, '.cursor'), { recursive: true });
+
+    const report = JSON.parse(run(['uninstall', '--json'])) as {
+      unsupported: { agent: string; reason: string }[];
+    };
+    const pi = report.unsupported.find((u) => u.agent === 'pi');
+    expect(pi).toBeDefined();
+    expect(pi?.reason).toContain('strategy C');
+  });
+
+  it('a file WE created is DELETED by uninstall — provenance crossing two processes', () => {
+    /*
+    Test Doc:
+    - Why: the created-file branch reads `createdFile` from the install record, so it
+      is the one that cannot work unless the record survives the process boundary. In
+      phase 2 this was proven only by handing `createdFiles` to the strategy in the
+      same process, which asserts the branch and not the hand-off.
+    - Contract: the file install created is gone, asserted on the filesystem.
+    */
+    mkdirSync(join(home, '.cursor'), { recursive: true }); // detected, no config yet
+    expect(existsSync(cursorConfig())).toBe(false);
+
+    run(['install', '--json']);
+    expect(existsSync(cursorConfig())).toBe(true);
+
+    const report = JSON.parse(run(['uninstall', '--json'])) as {
+      removed: { agent: string; deleted: boolean }[];
+    };
+    expect(report.removed.some((r) => r.agent === 'cursor' && r.deleted)).toBe(true);
+    expect(existsSync(cursorConfig())).toBe(false);
+  });
+});
+
+describe('one broken agent config does not cost you the others', () => {
+  it('reports the failure BY NAME and still installs for every other agent', () => {
+    /*
+    Test Doc:
+    - Why: `installStrategyA` throws on a write failure, so before this a single
+      agent with an unwritable config path aborted every agent after it in the loop —
+      silently, since the loop order is the matrix order and nobody would know which
+      agents never got their turn. Doctor calls install on first run (tk-0002), where
+      that would mean one damaged config quietly costing a user everything else.
+    - How the failure is forced: `~/.cursor/hooks.json` is made a DIRECTORY. That
+      fails the write on every platform including Windows, and unlike a chmod it is
+      not bypassed by running as root — which CI containers do.
+    - Contract: cursor is named in `failed` with a reason, AND claude-code is still
+      installed. Both halves: naming the failure without continuing is the old
+      behaviour with better reporting, and continuing without naming it is worse.
+    */
+    mkdirSync(join(home, '.cursor', 'hooks.json'), { recursive: true });
+    mkdirSync(join(home, '.claude'), { recursive: true });
+
+    const report = JSON.parse(run(['install', '--json'])) as {
+      installed: { agent: string }[];
+      failed: { agent: string; reason: string }[];
+    };
+
+    expect(report.failed.map((f) => f.agent)).toContain('cursor');
+    expect(report.failed.find((f) => f.agent === 'cursor')?.reason).not.toBe('');
+    expect(report.installed.map((i) => i.agent)).toContain('claude-code');
+    expect(existsSync(join(home, '.claude', 'settings.json'))).toBe(true);
   });
 });

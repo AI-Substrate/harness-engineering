@@ -1427,3 +1427,142 @@ Linux being **measured rather than assumed** is what stops the whole guard being
 Strategy A for seven agents, a marker with three ownership states, a comment- and order-preserving
 writer, idempotent install, uninstall by surgical removal, backup widened to share the matrix, and the
 verb family reaching the CLI — with `install`/`list`/`status` driven end-to-end through the real bin.
+
+---
+
+## PHASE 2 REVIEW FIXES — F001, F002, F003 (cross-model review `pij-causal-sturgeon`)
+
+Verdict was **REQUEST_CHANGES**, three confirmed HIGH. All three are fixed here, each proven by
+re-running the mutation that exposed it. Landed after phase 3 had begun, because two of them gate
+the live install.
+
+### F001 — `harness hooks uninstall` did not exist, and MY OWN GUARD certified the gap
+
+`uninstallStrategyA` had no caller outside its unit test. The delivered binary answered
+`unknown command 'uninstall'`. Reproduced before fixing:
+
+```
+$ node harness/cli/bin/harness.js hooks uninstall --json
+error: unknown command 'uninstall'
+(Did you mean install?)
+```
+
+**This is the tenth instance of one shape in this plan, and the most instructive, because I built
+the guard that was supposed to prevent it.** After finding in phase 2 that `install`/`status`/`list`
+had been built and never registered, I wrote a row in `app.test.ts` asserting the hooks group's
+subcommand names exactly — and gave it a deliberate carve-out:
+
+> `uninstall` is deliberately ABSENT until tk-000d — an unimplemented verb that EXISTS is worse
+> than one that does not, so this list is the honest current surface rather than the intended one.
+
+That was **true when written**. tk-000d landed, the verb was built, and nobody moved the exclusion.
+**The exception outlived its reason, and the guard then certified the exact gap it was written to
+catch.** A guard with a carve-out is a guard with a hole on a timer.
+
+Two things fixed, not one:
+
+1. The verb is registered, with a service-layer `uninstallHooks` that also names **detected but
+   unsupported** agents (FT-001) — on the way out that matters more than on the way in, because an
+   operator who sees no mention of `pi` will believe a machine is clean that is not.
+2. **The carve-out rule is now in the guard's own doc**: no deliberate exclusions are permitted in
+   that list. If a verb is not ready to be listed, it is not ready to be merged.
+
+The PM also recorded walking past this twenty minutes earlier: they ran `hooks --help` to verify the
+`restore` verb, saw `restore`, and reported it verified — with uninstall's absence four lines up in
+the same output. A confirmed sibling laundering the one nobody asked about. Worth recording because
+it is the same failure as the carve-out: **checking for the item you expect is not auditing the
+list.**
+
+### F002 — the compensating control could be deleted from the delivered payload undetected
+
+The sharpest finding, and it lands on ac-000b. The reviewer replaced `fires: fireSummary(d)` in the
+status command with a constant healthy summary — anchored, so the patch demonstrably applied — and
+**all 71 target tests stayed green.** The row that creates a real failed fire called `fireSummary()`
+directly rather than driving `harness hooks status --json`.
+
+So the control that the plan's G2 gate granted the exit-0-and-silent deviation *for* could be removed
+from the delivered surface and nothing noticed — **in the one task whose entire purpose is to be the
+thing that notices.** Because a fire exits 0 and prints nothing by design, that payload is the only
+way a failing runtime is distinguishable from a working one.
+
+Fixed with a row that drives a **real failed fire** and reads it back through the **delivered**
+command. Producing a genuine failure was measured rather than assumed: a `pre` fire, a real
+agent-authored commit, then a `post` fire in a hermetic environment with no trace2 ingress
+configured yields
+
+```
+{"phase":"post","outcome":{"kind":"failed","cause":"no af_unix trace2 ingress configured"}}
+```
+
+and the row asserts `fires.failed >= 1` plus that cause **through `harness hooks status --json`**.
+
+**This is a fourth instance of the deliverable-vs-layer shape, and my own sweep did not reach it.**
+The sweep asked of each checked task whether its rows called an internal function. This row *does*
+drive the real bin — for the fire — while reading the result through the layer beneath, for the
+status. Half the chain being end-to-end is what made it look done. That is worth knowing about the
+sweep as much as about the code: the question needs to be asked of the ASSERTION, not of the test.
+
+### F003 — uninstall deleted a user's pre-existing empty array, and the argument for it was mine
+
+The PM had accepted my reasoning that removing a pre-existing empty events array is harmless because
+empty and absent are identical for hook loading. **My own softest claim at the time said that was
+reasoned, never measured**, and the reviewer is right that it is not a basis for deleting state we
+did not create. The promise is surgical removal of what WE added.
+
+Fixed with **provenance recorded at the only instant it is knowable** — before the first write:
+
+- `installOneFile` samples which event keys are absent BEFORE writing and returns them as
+  `createdKeys`. **Present-but-empty counts as present**, which is the whole distinction.
+- `install-record.ts` persists that per config path to `~/.harness/hooks/install-record.json`,
+  merging rather than replacing (installing twice must not forget that the FIRST install created
+  the key).
+- Uninstall removes an emptied array **only if the record says we created it**. Emptiness is now
+  necessary but no longer sufficient.
+- **Absent provenance means "not ours".** An older install, or a deleted record, leaves the key
+  behind. That is recoverable cruft; deleting a user's key is not. The direction of the error is
+  asserted by its own row rather than left to whichever branch happens to run.
+
+The over-reach test is **inverted, not patched** — it now asserts the pre-existing empty arrays
+survive — and one consequence is worth noting: the gemini flags row can now compare **whole
+documents**, which it previously could not, because the over-reach fired on its fixture.
+
+### Proven by refusal — six mutations, six RED
+
+Each is the reviewer's own mutant or the defect it found, reapplied. Anchor mismatch aborts loudly.
+
+| mutation | result |
+| --- | --- |
+| **F002 — the reviewer's exact mutant**: status returns a constant healthy summary | RED — 1 failed \| 63 passed |
+| F001 — the uninstall verb unregistered again | RED — 4 failed \| 60 passed |
+| F001/F003 — install stops PERSISTING provenance (the cross-process hand-off) | RED — 1 failed \| 63 passed |
+| F001 — uninstall ignores the persisted record | RED — 1 failed \| 63 passed |
+| F003 — uninstall removes ANY emptied array again | RED — 3 failed \| 61 passed |
+| F003 — install claims it created a key that was present-but-empty | RED — 1 failed \| 63 passed |
+| per-agent install failure fatal again (one bad config costs the rest) | RED — 1 failed \| 63 passed |
+
+**The registration guard alone was not accepted as the fix for F001.** It proves the subcommand
+EXISTS, which is not the claim "it works" — the same distinction that produced the finding. So
+install→uninstall is also driven as **two separate OS processes**, which is the only place the new
+provenance record is exercised the way it really runs: one process writes the record, a different
+one reads it. An in-process test passes a `Map` and proves nothing about that hand-off — and the two
+mutations above confirm those rows see it break.
+
+### One change that is not a review finding, made because F001's fix exposed it
+
+`installStrategyA` **throws** on a write failure, so one agent with an unwritable config aborted
+every agent after it in the loop — silently, since nobody would know which agents never got their
+turn. That is fine for a verb someone ran deliberately and much less fine for tk-0002, where doctor
+calls install on first run. Failures are now captured **per agent** into `failed`, install continues,
+and the e2e row forces it by making `~/.cursor/hooks.json` a DIRECTORY — which fails the write on
+every platform including Windows and, unlike a chmod, is not bypassed by running as root.
+
+### The three clean controls the review confirmed
+
+Recorded because the review was not one-directional: the unsupported-strategy refusal, the
+`ours-with-foreign` refusal, and the real-bin binary-path check all have guards that bite under
+mutation. The reviewer also classified the copilot `type: "command"` claim as **soft rather than a
+defect**, which is the correct disposition for something we deliberately declined to guess.
+
+### Verification
+
+`HARNESS_TEST_SCOPE=all npx vitest run` over the whole suite: **383 files, 5734 tests, all passing.**

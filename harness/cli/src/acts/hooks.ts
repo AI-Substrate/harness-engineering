@@ -25,6 +25,7 @@ import {
   type RestoreReport,
   restoreHooks,
   statusHooks,
+  uninstallHooks,
 } from '../services/hooks/hooks-verbs.js';
 import { Trace2Tickler } from '../services/hooks/trace2-tickler.js';
 
@@ -106,6 +107,14 @@ export function registerHooksAct(program: Command, deps: HooksActDeps): void {
     });
 
   hooks
+    .command('uninstall')
+    .description('Remove our hook from every detected, supported agent.')
+    .option('--json', 'machine-readable output')
+    .action((opts: { json?: boolean }) => {
+      emit(deps, opts.json, (d) => uninstallHooks(d));
+    });
+
+  hooks
     .command('restore')
     .description('Put agent configs back from a backup taken before an install.')
     .option('--from <dir>', 'the backup directory to restore from; defaults to the newest')
@@ -122,8 +131,17 @@ export function registerHooksAct(program: Command, deps: HooksActDeps): void {
     });
 }
 
-/** Build the verb deps from the act deps, or `null` when there is no home. */
-function hooksDeps(deps: HooksActDeps): HooksDeps | null {
+/**
+ * Build the verb deps from the act deps, or `null` when there is no home.
+ *
+ * EXPORTED so `harness doctor` composes hooks the SAME way this act does (plan 082
+ * tk-0002). Doctor building its own would be free to resolve a different binary
+ * path or a different home, and the config it wrote on first run would then differ
+ * from the one `harness hooks status` reads back — a divergence between two answers
+ * to the same question, which is the class that produced `detectId` and
+ * `configPathsFor`.
+ */
+export function hooksDeps(deps: HooksActDeps): HooksDeps | null {
   const home = deps.env.home();
   if (home === undefined || home.trim() === '') return null;
   return {

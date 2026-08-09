@@ -145,9 +145,14 @@ describe('buildProgram — composition root wiring', () => {
     - Contract: the hooks group's subcommand names, exactly.
     - Quality Contribution: a test that exercises the layer BENEATH a deliverable
       proves the layer, never the delivery. This asserts the delivery.
-    - `uninstall` is deliberately ABSENT until tk-000d — an unimplemented verb that
-      EXISTS is worse than one that does not, so this list is the honest current
-      surface rather than the intended one.
+    - NO DELIBERATE EXCLUSIONS ARE PERMITTED IN THIS LIST, and that rule was bought
+      the hard way. This row once carried one — "`uninstall` is deliberately ABSENT
+      until tk-000d" — which was true when written. tk-000d landed, the verb was
+      built, and nobody moved the exclusion. THE EXCEPTION OUTLIVED ITS REASON, so the
+      guard went on certifying the exact gap it was built to catch, and the delivered
+      binary answered `unknown command 'uninstall'` until a cross-model review found
+      it (phase-2 F001). A guard with a carve-out is a guard with a hole on a timer.
+      If a verb is not ready to be listed here, it is not ready to be merged.
     */
     const program = buildProgram('1.2.3', io, deps(), { verbs: [], records: [] });
     const hooks = program.commands.find((c) => c.name() === 'hooks');
@@ -157,6 +162,7 @@ describe('buildProgram — composition root wiring', () => {
       'list',
       'status',
       'install',
+      'uninstall',
       'restore',
     ]);
   });

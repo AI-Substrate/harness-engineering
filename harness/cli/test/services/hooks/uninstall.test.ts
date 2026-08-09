@@ -120,7 +120,11 @@ describe('install then uninstall returns the ORIGINAL BYTES (dw-002f)', () => {
   });
 });
 
-describe('an events key WE CREATED is removed too', () => {
+describe('an events key we created is removed; one we did NOT is preserved (F003)', () => {
+  /** Provenance as the strategy consumes it, derived from what install reported. */
+  const keysFrom = (outcomes: readonly { path: string; createdKeys: string[] }[]) =>
+    new Map<string, ReadonlySet<string>>(outcomes.map((o) => [o.path, new Set(o.createdKeys)]));
+
   it('a config lacking the events key round-trips to its ORIGINAL bytes', () => {
     /*
     Test Doc:
@@ -130,16 +134,21 @@ describe('an events key WE CREATED is removed too', () => {
       `"PreToolUse": []` behind, so the file was not the bytes it started as:
       install created something uninstall did not remove.
     - Contract: whole-file byte equality for that shape.
+    - CHANGED by phase-2 review F003: the key is removed because install RECORDED
+      creating it, not because the array ended up empty. The provenance is threaded
+      from install's own return value, so this row now also proves the two halves
+      agree — a `createdKeys` install stopped reporting would turn it red.
     */
     const path = join(home, '.claude/settings.json');
     mkdirSync(join(home, '.claude'), { recursive: true });
     writeFileSync(path, `${JSON.stringify({ model: 'opus', hooks: {} }, null, 2)}\n`);
     const before = readFileSync(path, 'utf8');
 
-    installStrategyA(fs, spec('claude-code'), home, env, BINARY);
+    const outcomes = installStrategyA(fs, spec('claude-code'), home, env, BINARY);
     expect(readFileSync(path, 'utf8')).toContain('PreToolUse');
+    expect(outcomes[0].createdKeys).toEqual(['PreToolUse', 'PostToolUse']);
 
-    uninstallStrategyA({ fs, home, env }, spec('claude-code'));
+    uninstallStrategyA({ fs, home, env, createdKeys: keysFrom(outcomes) }, spec('claude-code'));
     const after = readFileSync(path, 'utf8');
 
     // The KEYS we created are gone — that is the asymmetry this row exists for.
@@ -152,10 +161,20 @@ describe('an events key WE CREATED is removed too', () => {
     expect(after.replace(/\s+/g, '')).toBe(before.replace(/\s+/g, ''));
   });
 
-  it('a PRE-EXISTING empty array is removed too — the over-reach, asserted not hidden', () => {
-    // The narrower error than leaving a key we created, and semantically identical
-    // to absent for hook loading — but it IS a change to something we did not add,
-    // so it is written down as a row rather than left to be discovered.
+  it('a PRE-EXISTING empty array SURVIVES — the over-reach, now a defect and fixed', () => {
+    /*
+    Test Doc:
+    - Why: phase-2 review F003, CONFIRMED. This row previously asserted the opposite
+      and called it an accepted over-reach: a user whose config already carried
+      `PreToolUse: []` lost that key, on the argument that empty and absent are
+      identical for hook loading. That argument was REASONED, never measured against
+      any agent's loader — my own softest claim at the time — and the reviewer is
+      right that it is not a basis for deleting state we did not create. The promise
+      is surgical removal of what WE added.
+    - Contract: our entries go, the user's keys stay. Install reports creating
+      NEITHER key here, which is the discriminator: emptiness is necessary but no
+      longer sufficient.
+    */
     const path = join(home, '.claude/settings.json');
     mkdirSync(join(home, '.claude'), { recursive: true });
     writeFileSync(
@@ -163,11 +182,41 @@ describe('an events key WE CREATED is removed too', () => {
       `${JSON.stringify({ model: 'opus', hooks: { PreToolUse: [], PostToolUse: [] } }, null, 2)}\n`,
     );
 
-    installStrategyA(fs, spec('claude-code'), home, env, BINARY);
-    uninstallStrategyA({ fs, home, env }, spec('claude-code'));
+    const outcomes = installStrategyA(fs, spec('claude-code'), home, env, BINARY);
+    // The provenance that makes the difference: present-but-empty is PRESENT.
+    expect(outcomes[0].createdKeys).toEqual([]);
 
-    const after = JSON.parse(readFileSync(path, 'utf8')) as { hooks: Record<string, unknown> };
-    expect(Object.keys(after.hooks)).toEqual([]);
+    uninstallStrategyA({ fs, home, env, createdKeys: keysFrom(outcomes) }, spec('claude-code'));
+
+    const text = readFileSync(path, 'utf8');
+    const after = JSON.parse(text) as { hooks: Record<string, unknown> };
+    expect(Object.keys(after.hooks)).toEqual(['PreToolUse', 'PostToolUse']);
+    expect(after.hooks.PreToolUse).toEqual([]);
+    expect(after.hooks.PostToolUse).toEqual([]);
+    expect(text).not.toContain('ai-substrate-harness-hook-v1');
+  });
+
+  it('NO provenance removes NO key — an older install leaves cruft, never damage', () => {
+    /*
+    Test Doc:
+    - Why: the fallback has to be chosen deliberately, because it is what runs on
+      every machine that installed before this commit and on any machine whose record
+      was deleted. Absent provenance is read as "we created nothing", so uninstall
+      under-removes.
+    - Contract: our entry is gone and the key we DID create is left behind. That is
+      recoverable cruft; deleting a user's key is not, and this asserts the direction
+      of the error rather than leaving it to whichever branch happens to run.
+    */
+    const path = join(home, '.claude/settings.json');
+    mkdirSync(join(home, '.claude'), { recursive: true });
+    writeFileSync(path, `${JSON.stringify({ model: 'opus', hooks: {} }, null, 2)}\n`);
+
+    installStrategyA(fs, spec('claude-code'), home, env, BINARY);
+    uninstallStrategyA({ fs, home, env }, spec('claude-code')); // no createdKeys
+
+    const text = readFileSync(path, 'utf8');
+    expect(text).not.toContain('ai-substrate-harness-hook-v1');
+    expect(JSON.parse(text)).toEqual({ model: 'opus', hooks: { PreToolUse: [], PostToolUse: [] } });
   });
 });
 
@@ -340,15 +389,16 @@ describe('flags install flips (dw-0031)', () => {
       hooks: Record<string, unknown>;
     };
     // THE FLAG is what this row is about: untouched by install, untouched by
-    // uninstall. Asserted on the flag itself rather than on the whole document,
-    // because this fixture seeds PRE-EXISTING empty event arrays and uninstall
-    // removes an array it emptied — the documented over-reach, firing exactly where
-    // the row above says it does. Comparing whole documents here would conflate two
-    // properties and fail for a reason that has nothing to do with flags.
+    // uninstall.
+    //
+    // The whole document is now comparable, and that is a CONSEQUENCE OF THE F003
+    // FIX rather than a tidy-up. This fixture seeds pre-existing empty event arrays,
+    // and uninstall used to remove any array it emptied — so the document could not
+    // be compared without conflating the flag question with that over-reach. With
+    // provenance, the user's empty arrays survive and the file returns to its
+    // original values, so the flag claim can be made against the whole thing.
     expect(after.tools.enableHooks).toBe(false);
-    expect((JSON.parse(before) as { tools: { enableHooks: boolean } }).tools.enableHooks).toBe(
-      false,
-    );
-    expect(Object.keys(after.hooks)).toEqual([]);
+    expect(JSON.parse(readFileSync(path, 'utf8'))).toEqual(JSON.parse(before));
+    expect(Object.keys(after.hooks)).toEqual(['BeforeTool', 'AfterTool']);
   });
 });

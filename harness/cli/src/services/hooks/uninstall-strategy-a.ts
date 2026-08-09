@@ -61,6 +61,15 @@ export interface UninstallDeps {
    * than editing them — see the module doc.
    */
   createdFiles?: ReadonlySet<string>;
+  /**
+   * Event-array keys THIS INSTALL CREATED, per absolute config path — the only
+   * keys uninstall may remove (phase-2 review F003).
+   *
+   * ABSENT MEANS WE CREATED NOTHING. A missing entry is not "unknown, so guess"; it
+   * is "no provenance, so not ours". See `install-record.ts` for why that direction
+   * is the safe one.
+   */
+  createdKeys?: ReadonlyMap<string, ReadonlySet<string>>;
 }
 
 export function uninstallStrategyA(deps: UninstallDeps, spec: AgentSpec): UninstallOutcome[] {
@@ -147,21 +156,27 @@ function uninstallOneFile(deps: UninstallDeps, spec: AgentSpec, path: string): U
     }
   }
 
-  // AN ARRAY WE EMPTIED IS AN ARRAY WE CREATED — remove the key too.
+  // AN ARRAY WE EMPTIED IS REMOVED ONLY IF WE CREATED IT — and we know which,
+  // because install wrote it down (phase-2 review F003).
   //
-  // MEASURED asymmetry, found by the round-trip row: when an agent's config exists
-  // but lacks the events key (a `settings.json` carrying only `model` and
-  // `permissions`, say), `appendToArray` CREATES that key. Removing only our entry
-  // then leaves `"PreToolUse": []` behind, and the file is not the bytes it started
-  // as — install created something uninstall did not remove.
+  // THE ASYMMETRY IS REAL AND STILL HANDLED: when an agent's config exists but lacks
+  // the events key (a `settings.json` carrying only `model` and `permissions`),
+  // `appendToArray` CREATES that key, and leaving `"PreToolUse": []` behind would
+  // mean install created something uninstall did not remove.
   //
-  // THE ONE CASE THIS OVER-REACHES, stated rather than hidden: a user who already
-  // had an EMPTY events array loses that empty key. It is semantically identical to
-  // absent for hook loading, and it is the narrower error than leaving a key we
-  // created — but it is a change to something we did not add, so it is asserted
-  // rather than assumed.
+  // WHAT CHANGED IS THE TEST FOR "OURS". It used to be *this array is now empty*,
+  // which answers a different question — a user who already had an empty
+  // `PreToolUse: []` lost it. The cross-model review confirmed that as a contract
+  // violation independent of whether any loader treats absent and empty alike: the
+  // promise is surgical removal of what WE added. Emptiness is now necessary but no
+  // longer sufficient; the key must ALSO appear in this install's provenance.
+  //
+  // NO PROVENANCE MEANS NO REMOVAL. An older install, or a deleted record, leaves a
+  // key behind — recoverable cruft — rather than deleting a user's key, which is not.
   if (removed > 0) {
+    const ourKeys = deps.createdKeys?.get(path);
     for (const key of [spec.events.pre, spec.events.post]) {
+      if (ourKeys?.has(key) !== true) continue;
       try {
         const parsed = JSON.parse(stripComments(current)) as {
           hooks?: Record<string, unknown[]>;

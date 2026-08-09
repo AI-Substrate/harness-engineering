@@ -49,6 +49,21 @@ export interface InstallOutcome {
   created: boolean;
   /** TRUE when our entry was already present, so nothing was written (idempotency). */
   alreadyPresent: boolean;
+  /**
+   * Event-array keys that did NOT exist in this file before we wrote — i.e. keys
+   * `appendToArray` created (plan 082, phase-2 review F003).
+   *
+   * PROVENANCE, RECORDED AT THE ONLY MOMENT IT IS KNOWABLE. Uninstall used to infer
+   * "we created this key" from "this array is now empty", which is not the same
+   * question: a user who already had an empty `PreToolUse: []` lost it. The cross-model
+   * review confirmed that as a contract violation independent of whether any loader
+   * treats absent and empty alike — the promise is surgical removal of what WE added,
+   * and an empty array we did not add is not ours to remove.
+   *
+   * By the time uninstall runs, the difference is unrecoverable from the file itself.
+   * So it is captured here and persisted (`install-record.ts`).
+   */
+  createdKeys: string[];
 }
 
 /** The command we install for one agent and phase. */
@@ -97,12 +112,16 @@ function installOneFile(fs: FsPort, spec: AgentSpec, path: string, binary: strin
   }
 
   const before = existing ?? `${JSON.stringify(skeletonFor(spec), null, 2)}\n`;
+  // Sampled BEFORE the first write, because afterwards every key exists.
+  const createdKeys = [spec.events.pre, spec.events.post].filter(
+    (key) => !hasEventKey(before, key),
+  );
 
   // Idempotency: our entry is FOUND by the marker, never by string equality with
   // what we would write — the binary path can legitimately differ between installs.
   if (containsOurEntry(before, spec)) {
     if (created) writeThroughSymlink(fs, path, before);
-    return { agent: spec.agent, path, created, alreadyPresent: true };
+    return { agent: spec.agent, path, created, alreadyPresent: true, createdKeys };
   }
 
   let text = before;
@@ -118,7 +137,22 @@ function installOneFile(fs: FsPort, spec: AgentSpec, path: string, binary: strin
   }
 
   writeThroughSymlink(fs, path, text);
-  return { agent: spec.agent, path, created, alreadyPresent: false };
+  return { agent: spec.agent, path, created, alreadyPresent: false, createdKeys };
+}
+
+/**
+ * Does this document already carry this event array?
+ *
+ * PRESENT-BUT-EMPTY COUNTS AS PRESENT — that is the whole distinction F003 turns on.
+ * A key holding `[]` is a key the user has, and we did not create it.
+ */
+function hasEventKey(text: string, key: string): boolean {
+  try {
+    const doc = JSON.parse(stripComments(text)) as { hooks?: Record<string, unknown> };
+    return doc.hooks !== undefined && Object.hasOwn(doc.hooks, key);
+  } catch {
+    return false;
+  }
 }
 
 /** Is our marked entry already in either event array? */
