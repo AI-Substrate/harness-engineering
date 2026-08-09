@@ -98,16 +98,24 @@ const SAFE_CREDENTIAL_CONFIG_ENV = [
  * The null-device spelling handed to `GIT_CONFIG_GLOBAL`.
  *
  * `os.devNull` is `/dev/null` on POSIX but `\\.\nul` on win32 — a DEVICE path rather than
- * an absent file. The downstream consumer reports that git rejects `\\.\nul` as a config
- * path with `Invalid argument`, and that `NUL` is the spelling it accepts. That mechanism
- * is THEIRS: undated, not traced to a changelog, and NOT measured here — nobody on this
- * side has a Windows host, so the win32 branch below is expected, never verified. The
- * honest claim is only that we now emit the spelling git is reported to accept.
+ * an absent file. MEASURED on a real Windows host by the downstream consumer of #108,
+ * with a positive control (a global config carrying a detectable `user.name`, proven
+ * detectable before each case):
  *
- * It matters more than a spelling because `GIT_CONFIG_GLOBAL` is the isolation boundary
- * for this whole adapter: it is what stops a fixture git run from reading the operator's
- * real global config. If the value errors instead of resolving to an empty config, the
- * isolation we intend is not the isolation we get.
+ *   GIT_CONFIG_GLOBAL=NUL        exit 0    ISOLATED
+ *   GIT_CONFIG_GLOBAL=\\.\nul    exit 128  fatal: unable to access '\\.\nul': Invalid argument
+ *   GIT_CONFIG_GLOBAL=/dev/null  exit 0    ISOLATED (an absent file, so: no config)
+ *
+ * The control is what makes "no leak" mean something — without it, "nothing leaked" is
+ * indistinguishable from "the probe cannot see a leak".
+ *
+ * THE FAILURE MODE IS FAIL-CLOSED, NOT A LEAK. This comment previously implied the
+ * operator's real config would be read instead; that was wrong. Under `\\.\nul` git
+ * refuses to run at all — `add`, `status`, `rev-parse` all return 128 — so on Windows
+ * this adapter was INOPERATIVE, never leaky. Nothing was ever exposed.
+ *
+ * Which also means this is NOT a member of the silent-wrong-answer family that A1/A2 and
+ * the `skills` failures belong to, and it was mis-filed there. It fails loud.
  *
  * `platform` is injected (defaulting to the host) so the win32 branch is reachable from a
  * POSIX test — the same shape as `NodeBackground`/`resolveSpawn`.
