@@ -1,6 +1,6 @@
 {
   "dd_schema": 1,
-  "description": "A builder plan: goals, acceptance criteria, phases, tasks, and one assertion list per task. Assertion lists live in `done_when`, where `pressure` is MANDATORY (a backpressure row, or the literal `not-applicable`), and `tasks[].done` is target-pinned at it so a task's state is derived from assertions and can be derived from nothing else. The deprecated `evidence` alias was dropped in tk-7161 (plan 071, ph-7103) — the same commit that migrated the exemplar — after serving its one purpose: letting frozen corpora keep validating while they moved.",
+  "description": "A builder plan: goals, acceptance criteria, phases, tasks, and one assertion list per task. Assertion lists live in `done_when`, where `pressure` is MANDATORY (a backpressure row, or the literal `not-applicable`), and `tasks[].done` is target-pinned at it so a task's state is derived from assertions and can be derived from nothing else. The deprecated `evidence` alias was dropped in tk-7161 (plan 071, ph-7103) \u2014 the same commit that migrated the exemplar \u2014 after serving its one purpose: letting frozen corpora keep validating while they moved.",
   "enums": {
     "plan_status": {
       "values": [
@@ -269,6 +269,14 @@
                 "type": "link",
                 "target": "builder/plan/section/acceptance_criteria",
                 "rel": "satisfies"
+              }
+            },
+            "satisfies_toward": {
+              "type": "array",
+              "items": {
+                "type": "link",
+                "target": "builder/plan/section/acceptance_criteria",
+                "rel": "satisfies-toward"
               }
             }
           }

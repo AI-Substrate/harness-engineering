@@ -33,7 +33,7 @@
           "title": "Promote the POC probe trio into a vitest integration spec against the INSTALLED package: pack shape (no src/), injection with fixture-owned foreign ports (typed: const fs: SchemaFs = ...), tracked===null on null tracking set, D7 drive-rooted address resolution",
           "phase": "ph-1d68",
           "state": "checked",
-          "satisfies": [
+          "satisfies_toward": [
             "../../../plan.dd.json#acceptance_criteria/ac-0003"
           ]
         },
@@ -42,7 +42,7 @@
           "title": "Rewire acts/flow.ts and acts/plan/fence.ts onto @ai-substrate/dd public subpaths (round-2 pattern: ConventionSchemaResolver+MemoizingDocLoader+FsDocLoader from the barrel, DdDoc type from the barrel)",
           "phase": "ph-1d68",
           "state": "checked",
-          "satisfies": [
+          "satisfies_toward": [
             "../../../plan.dd.json#acceptance_criteria/ac-0002",
             "../../../plan.dd.json#acceptance_criteria/ac-0003"
           ]
@@ -52,7 +52,7 @@
           "title": "Rewire acts/plan/pr-body.ts (escapeCell/headingSlug from ./render/renderer; PlanEdge/PlanIndex/PlanItem types REMAIN on the fork until phase 2) and acts/plan/index.ts non-plan imports onto the package: core address/model/parse/validate/walk, links resolveMapSeed/traverseCorpus, schema model SchemaIssue AND schema resolve ConventionSchemaResolver",
           "phase": "ph-1d68",
           "state": "checked",
-          "satisfies": [
+          "satisfies_toward": [
             "../../../plan.dd.json#acceptance_criteria/ac-0002",
             "../../../plan.dd.json#acceptance_criteria/ac-0003"
           ]
@@ -62,7 +62,7 @@
           "title": "Dogfood proof at the phase boundary: flow orient/rail and plan validate run green against plan 080 documents on the rewired build; any new dd-implementation defect goes to the dogfood ledger",
           "phase": "ph-1d68",
           "state": "checked",
-          "satisfies": [
+          "satisfies_toward": [
             "../../../plan.dd.json#acceptance_criteria/ac-000b",
             "../../../plan.dd.json#acceptance_criteria/ac-000c"
           ]
