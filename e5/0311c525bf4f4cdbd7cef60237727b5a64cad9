@@ -1,0 +1,19 @@
+docs/plans/082-harness-hooks/assets/delivery-state.md
+  s_a76964380084ef::t_440287203f48fd 127-221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e50311c525bf4f4cdbd7cef60237727b5a64cad9",
+  "prompts": {},
+  "sessions": {
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
