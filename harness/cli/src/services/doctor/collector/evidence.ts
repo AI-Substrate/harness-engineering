@@ -1,4 +1,4 @@
-import { AGENT_MARKERS, detectAgents, MEASURED_AGAINST_PIN } from './agents.js';
+import { AGENT_MARKERS, configPathsFor, detectAgents, MEASURED_AGAINST_PIN } from './agents.js';
 import { GITAI_PIN } from './pin.js';
 import type { CollectorDeps } from './types.js';
 
@@ -61,7 +61,7 @@ export interface AgentConfigSnapshot {
 export function snapshotAgentConfigs(deps: CollectorDeps): AgentConfigSnapshot {
   const home = deps.host.home.replace(/\/+$/, '');
   const digests = new Map<string, string | null>();
-  let detected: readonly { configs: readonly string[] }[];
+  let detected: readonly { id: string; configs: readonly string[] }[];
   try {
     detected = detectAgents(deps.fs, home);
   } catch {
@@ -70,9 +70,11 @@ export function snapshotAgentConfigs(deps: CollectorDeps): AgentConfigSnapshot {
     return { digests };
   }
   for (const agent of detected) {
-    for (const rel of agent.configs) {
+    // The SAME resolver backup uses, so a digest cannot be taken of a different
+    // file from the one that gets written (plan 082 tk-000b).
+    for (const rel of configPathsFor(agent, home, deps.host.envOverrides ?? {})) {
       if (digests.has(rel)) continue;
-      digests.set(rel, digestOf(deps, `${home}/${rel}`));
+      digests.set(rel, digestOf(deps, rel.startsWith('/') ? rel : `${home}/${rel}`));
     }
   }
   return { digests };

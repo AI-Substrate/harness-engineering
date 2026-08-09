@@ -1,3 +1,4 @@
+import { AGENT_MATRIX, resolveConfigFiles } from '../../hooks/agent-matrix.js';
 import type { CollectorFsPort } from './types.js';
 
 /**
@@ -219,4 +220,32 @@ export function agentsMissingHooks(
 ): AgentMarker[] {
   const covered = new Set(installedFor.map((id) => id.toLowerCase()));
   return detected.filter((agent) => !covered.has(agent.id.toLowerCase()));
+}
+
+/**
+ * Every home-relative config path that must be considered for one detected agent —
+ * the UNION of what git-ai rewrites and what OUR installer writes (plan 082).
+ *
+ * ONE resolver, shared by `backupAgentConfigs` and `snapshotAgentConfigs`, because
+ * two collector functions answering "which files does this agent have" differently
+ * is the same divergence class that produced `detectId` and the
+ * back-up-the-wrong-file defect. Widening one and not the other would have created
+ * a fresh instance of it inside the same directory.
+ *
+ * Matrix paths resolve through the installer's own function, so an env override
+ * moves the backup, the digest and the write TOGETHER.
+ */
+export function configPathsFor(
+  agent: { id: string; configs: readonly string[] },
+  home: string,
+  envOverrides: Readonly<Record<string, string>> = {},
+): string[] {
+  const spec = AGENT_MATRIX.find((s) => s.detectId.toLowerCase() === agent.id.toLowerCase());
+  const ours =
+    spec === undefined
+      ? []
+      : resolveConfigFiles(spec, home, (name) => envOverrides[name]).map((abs) =>
+          abs.startsWith(`${home}/`) ? abs.slice(home.length + 1) : abs,
+        );
+  return [...new Set([...agent.configs, ...ours])];
 }

@@ -4,7 +4,9 @@ import { detectAgents, UNDETECTED_INSTALLERS } from '../doctor/collector/agents.
 import type { AgentSpec } from './agent-matrix.js';
 import { AGENT_MATRIX, resolveConfigFiles } from './agent-matrix.js';
 import { extractBinaryPath } from './binary-path.js';
+import { FileHookJournal } from './hook-journal.js';
 import { isOwnedByUs } from './hook-marker.js';
+import { hookJournalPath, hookStateDir } from './hook-payload.js';
 import { installStrategyA } from './install-strategy-a.js';
 
 /**
@@ -137,6 +139,31 @@ export function installHooks(deps: HooksDeps): InstallReport {
   return { optedOut: false, installed, refused };
 }
 
+/** How a configured binary reads, as three states rather than a boolean. */
+export type BinaryState =
+  /** No entry of ours, so there is no binary to judge. */
+  | 'absent'
+  /** Our entry names a path that exists. */
+  | 'resolves'
+  /** Our entry names a path that does NOT exist — installed but inert. */
+  | 'unresolvable';
+
+/** What the journal says about recent fires (plan 082 tk-000c). */
+export interface FireSummary {
+  /**
+   * `false` when the journal has no entries at all.
+   *
+   * DISTINCT from "all fires succeeded", and the distinction is the point: a repo
+   * where the hook has never fired and a repo where every fire worked are different
+   * facts, and collapsing them makes an inert install look healthy.
+   */
+  recorded: boolean;
+  total: number;
+  failed: number;
+  /** Newest failures, with the cause the journal recorded. */
+  failures: { at: string; cause: string }[];
+}
+
 export interface StatusReport extends AgentReport {
   /** Config files we would write, and whether each exists. */
   files: { path: string; exists: boolean }[];
@@ -149,24 +176,33 @@ export interface StatusReport extends AgentReport {
    */
   binaryResolves?: boolean;
   configuredBinary?: string;
+  /**
+   * Three states, never a boolean (dw-0027). `absent` and `unresolvable` are
+   * different diagnoses — "we never installed" versus "we installed and the target
+   * is gone" — and a boolean forces the reader to infer which, from a field that
+   * cannot express it.
+   */
+  binaryState: BinaryState;
 }
 
 export function statusHooks(deps: HooksDeps): StatusReport[] {
   return listAgents(deps).map((report) => {
     const spec = AGENT_MATRIX.find((s) => s.agent === report.agent);
-    if (spec === undefined) return { ...report, files: [] };
+    if (spec === undefined) return { ...report, files: [], binaryState: 'absent' };
 
     const files = resolveConfigFiles(spec, deps.home, deps.env).map((path) => ({
       path,
       exists: deps.fs.exists(path),
     }));
     const configured = configuredBinaryFor(deps, spec);
+    if (configured === null) return { ...report, files, binaryState: 'absent' };
+    const resolves = deps.fs.exists(configured);
     return {
       ...report,
       files,
-      ...(configured === null
-        ? {}
-        : { configuredBinary: configured, binaryResolves: deps.fs.exists(configured) }),
+      configuredBinary: configured,
+      binaryResolves: resolves,
+      binaryState: resolves ? 'resolves' : 'unresolvable',
     };
   });
 }
@@ -208,3 +244,39 @@ const stripComments = (text: string): string =>
     .split('\n')
     .filter((line) => !/^\s*\/\//.test(line))
     .join('\n');
+
+/**
+ * What the fire journal says — the compensating control (plan 082 tk-000c).
+ *
+ * ac-000b is why the exit-0 constitutional deviation was granted: every hook path
+ * exits 0 and prints nothing by design, so **the exit code carries no information**
+ * and a runtime failing on every fire is indistinguishable from one working
+ * perfectly. The journal is the only observable, and this is the surface that
+ * exposes it. Nothing here may assert on, or derive anything from, an exit code.
+ *
+ * IT ALSO COMPACTS. `status` is the FIRST real caller of {@link FileHookJournal.compact},
+ * so it is where the rotation fix stops being a unit property and becomes a live
+ * one — the doubled-rotation defect reduced 2001 records to 1 before it was fixed
+ * with an exclusive claim PLUS a re-check after taking it.
+ */
+export function fireSummary(deps: HooksDeps): FireSummary {
+  const journal = new FileHookJournal(deps.fs, hookJournalPath(deps.home), hookStateDir(deps.home));
+  // Bound the disk here, on a reader, never on the fire path.
+  journal.compact();
+
+  const entries = journal.read();
+  const failures = entries
+    .filter((entry) => entry.outcome.kind === 'failed')
+    .map((entry) => ({
+      at: entry.at,
+      cause: entry.outcome.kind === 'failed' ? entry.outcome.cause : '',
+    }));
+
+  return {
+    // `recorded: false` is NOT "everything succeeded" — see the field doc.
+    recorded: entries.length > 0,
+    total: entries.length,
+    failed: failures.length,
+    failures: failures.slice(-10),
+  };
+}

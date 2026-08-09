@@ -1,5 +1,4 @@
-import { AGENT_MATRIX, resolveConfigFiles } from '../../hooks/agent-matrix.js';
-import { AGENT_MARKERS, detectAgents, UNDETECTED_INSTALLERS } from './agents.js';
+import { AGENT_MARKERS, configPathsFor, detectAgents, UNDETECTED_INSTALLERS } from './agents.js';
 import type { CollectorDeps } from './types.js';
 
 /**
@@ -78,7 +77,7 @@ export function backupAgentConfigs(deps: CollectorDeps): ConfigBackup {
   }
 
   for (const agent of detected) {
-    const sources = sourcesFor(agent, home, deps.host.envOverrides ?? {});
+    const sources = configPathsFor(agent, home, deps.host.envOverrides ?? {});
     if (sources.length === 0) {
       undeclared.push(agent.id);
       continue;
@@ -111,33 +110,6 @@ export function backupAgentConfigs(deps: CollectorDeps): ConfigBackup {
     undeclared,
     detail: describe(dir, copied, failed, undeclared),
   };
-}
-
-/**
- * Every path that must be copied for one detected agent — the UNION of what git-ai
- * rewrites and what OUR installer writes.
- *
- * A union rather than a replacement, because the two answer different questions and
- * both destroy content. The collector's `configs` are git-ai's install targets; the
- * matrix is where we write. For six agents they coincide, and for copilot they
- * deliberately do not.
- *
- * Matrix paths are resolved through the SAME function the installer uses, so an env
- * override moves the backup and the write together rather than apart.
- */
-function sourcesFor(
-  agent: { id: string; configs: readonly string[] },
-  home: string,
-  envOverrides: Readonly<Record<string, string>>,
-): string[] {
-  const spec = AGENT_MATRIX.find((s) => s.detectId.toLowerCase() === agent.id.toLowerCase());
-  const ours =
-    spec === undefined
-      ? []
-      : resolveConfigFiles(spec, home, (name) => envOverrides[name]).map((abs) =>
-          abs.startsWith(`${home}/`) ? abs.slice(home.length + 1) : abs,
-        );
-  return [...new Set([...agent.configs, ...ours])];
 }
 
 function describe(dir: string, copied: string[], failed: string[], undeclared: string[]): string {

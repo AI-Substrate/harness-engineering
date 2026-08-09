@@ -128,7 +128,7 @@
         {
           "id": "tk-000b",
           "title": "Make `status` prove its target RESOLVES — by REUSING snapshotAgentConfigs, not rebuilding it",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-2",
           "success": "status reports per-agent state from a file we can show we changed, and additionally STATS the configured binary path. collector/evidence.ts ALREADY does the first half — snapshotAgentConfigs() takes per-agent config digests before and after, and its doc comment carries the exact rationale ('a file that did not exist and now does, or existed and now differs, is a per-agent fact about THIS machine that we can hold in our hand'). Reuse it. MEASURED ON THIS MACHINE: the live Cursor hook points into untracked scratch/, so a config entry can exist while its target does not — and because hook failures exit 0 by design, that is indistinguishable from a working hook. A status that only confirms an entry exists reintroduces this plan's own silent-failure class from the installer side.",
           "satisfies": [
@@ -139,7 +139,7 @@
         {
           "id": "tk-000c",
           "title": "Surface a FAILED FIRE in `harness hooks status --json` — the compensating control the exit-0 deviation was granted for",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-2",
           "success": "THIS IS THE PHASE'S CRITICAL GAP AND IT WAS UNASSIGNED. ac-000b is covered only by Phase 1's journal writer; Phase 1's own task text says so explicitly — 'harness hooks status is a Phase 2 deliverable... Phase 2's status verb merely reads it. Coverage of ac-000b is therefore PARTIAL by design.' The word 'journal' did not appear anywhere in the Phase 2 task list. WHY IT IS CRITICAL RATHER THAN MERELY MISSING: the plan's G2 gate records the exit-0 constitutional deviation as acceptable BECAUSE of this AC — 'the compensating control is now an acceptance criterion rather than a promise: a failed emit must be visible in harness hooks status --json'. Ship Phase 2 without it and the deviation loses the thing that justified it, and the plan ships the exact silent-failure class it exists to close. Read Phase 1's FileHookJournal and surface the newest fire outcomes, including kind:'failed' with its cause.",
           "satisfies": [
@@ -455,25 +455,25 @@
           {
             "id": "dw-0027",
             "assertion": "An entry whose binary path does not exist is reported UNRESOLVABLE, distinctly from ABSENT — asserted explicitly, not left to the happy path.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0028",
             "assertion": "The evidence half reuses snapshotAgentConfigs(); no second digest mechanism is introduced.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0029",
             "assertion": "An agent with no evidence is reported NOT EVIDENCED rather than NOT INSTALLED, preserving the distinction evidence.ts already draws.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-002a",
             "assertion": "The stat uses the path parsed back out of the command string, so a quoted space-bearing path is asserted to stat TRUE rather than falsely broken.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],
@@ -481,31 +481,31 @@
           {
             "id": "dw-002b",
             "assertion": "status --json surfaces the newest fire outcomes from the journal, including kind:'failed' and its cause.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-002c",
             "assertion": "Proven against Phase 1's unreachable-socket fixture: a fire that failed to emit is VISIBLE in status output, asserted on the journal-derived field and never on an exit code.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-002d",
             "assertion": "A repo with no journal yet is reported as no-fires-recorded, distinctly from all-fires-succeeded.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-002e",
             "assertion": "Mutating the journal read away turns the fixture RED — the assertion cannot be satisfied by status merely reporting the config entry exists.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-0040",
             "assertion": "status is the FIRST real caller of compact(), so it is where the rotation fix stops being a unit property and becomes a live one. The doubled-rotation defect was measured at ce594abf (2001 live records reduced to 1 by two rotations racing) and fixed with an exclusive claim PLUS a re-check after taking it — the claim alone is insufficient, since the second rotator's guard was passed before the first rename. This task asserts the fix holds when status drives it: concurrent status invocations over a journal past the rotate threshold lose no records, measured on the real filesystem rather than modelled.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ],

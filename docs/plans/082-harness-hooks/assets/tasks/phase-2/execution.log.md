@@ -1054,3 +1054,124 @@ regression coverage and nothing anywhere says so — you only discover it when y
 
 **A caution carried forward to tk-000d**: uninstall's restore path depends on this module, and
 *"restore returns the original bytes"* has never been tested end to end against a real backup.
+
+### `backupAgentConfigs` IS WRITE-ONLY — the finding, not a fix
+
+Two mechanisms had been collapsed into one phrase ("restore the original bytes"). They are separate:
+
+1. **Uninstall's symmetry** — install then uninstall returns the config to its original bytes, by
+   **surgically removing our entry** through the comment-preserving writer: the same writer that added
+   it, run backwards. It never reads a backup. For a file we *created*, the symmetry is deleting it,
+   which likewise touches no backup. This is ac-000a / tk-000d, and it is in Phase 2.
+2. **Restore from backup** — a disaster-recovery path. **This has no implementation.**
+
+`backupAgentConfigs` flattens each home-relative path into a single directory
+(`rel.replace(/\//g, '__')`) and **nothing anywhere reverses that mapping**. So the backup directory is
+currently a set of files a **human** could restore by hand, and nothing more. Phase 2 deliberately does
+**not** build the reverse; recorded so nobody assumes it exists.
+
+**Why it matters, and where it lands.** Phase 3 does the live install on this machine — against the
+config holding the git-ai checkpoint pipeline that phase 1's only end-to-end measurement depends on.
+*"We take a backup first"* is exactly the reassurance that would have been **doing no work**: you can
+take the backup and still have no way to put it back. That belongs in Phase 3's task text as a real
+precondition rather than an assumption. (The PM has independently taken a byte-for-byte snapshot of all
+five live agent configs outside the repo, with digests, covering the immediate risk regardless.)
+
+**Second restore-shaped assumption tonight with no implementation behind it** — worth naming as a
+pattern rather than two incidents.
+
+---
+
+## tk-000b + tk-000c — status proves its target, and surfaces a failed fire
+
+### One shared resolver, because widening only half would have been a NEW divergence
+
+`snapshotAgentConfigs` carried the **same** home-composed blindness `backupAgentConfigs` did. Reusing
+it as-is (dw-0028) while backup was override-aware would have left two collector functions answering
+*"which files does this agent have"* differently — the same divergence class that produced `detectId`
+and the back-up-the-wrong-file defect, freshly instantiated inside one directory.
+
+So the resolution was extracted once, as `configPathsFor` in `agents.ts`, and both call it. No second
+digest mechanism, and no second answer.
+
+### Three states, not a boolean (dw-0027)
+
+`absent` / `resolves` / `unresolvable`. *"Never installed"* and *"installed and inert"* are different
+diagnoses; a boolean cannot express which, so the reader infers — and because hooks exit 0 by design,
+nothing would correct them. The unresolvable row **deletes the binary after installing**, which is the
+measured shape on this machine: the live Cursor hook points into untracked `scratch/`.
+
+The space-bearing row (dw-002a) stats the path parsed back **out** of the command string, so a quoted
+path resolves TRUE rather than being reported falsely broken — the naive `split(' ')[0]` returns a
+leading quote and condemns every healthy install on a machine whose paths contain spaces.
+
+### The compensating control, asserted on the journal and never on an exit code
+
+ac-000b is why the exit-0 constitutional deviation was granted. The real-fire row drives the actual
+bin so the journal entry is one **the runtime wrote**, not one the test fabricated — the
+fabricated-shape mistake this plan has now made three times.
+
+`recorded: false` is deliberately **not** "everything succeeded" (dw-002d). A repo where the hook
+never fired and one where every fire worked are different facts, and collapsing them makes an inert
+install look healthy — the exact class this control exists to expose. A discriminator row asserts
+all-succeeded reports differently from no-fires.
+
+### Proven by refusal — three mutations, anchors asserted first
+
+| mutation | rows red |
+| --- | --- |
+| journal never read | **5** (dw-002e) |
+| `compact()` removed from status | 1 |
+| the three binary states collapsed | 3 |
+
+dw-002e is satisfied precisely: with the journal read removed, five rows fail — so these assertions
+cannot be met by status merely reporting that a config entry exists.
+
+### dw-0040 — A NINTH INSTANCE, CAUGHT IN REVIEW, AND THE MEASUREMENT THAT FOLLOWED
+
+The first version of this row was titled *"CONCURRENT status invocations"* and its body was a
+**sequential `for` loop**. The PM walked the pre-fix code through it and predicted it would pass;
+verified rather than taken, and **it passed — 10/10 green against the pre-fix `compact()`**. Identical
+under negation of the fix it existed to verify. The title was the claim, and the body did not support
+it.
+
+**Then the repair turned into a measurement.** Real OS processes are the instrument that worked for
+the writer path, so I pointed them at the reader path. All of the following are against the **pre-fix**
+implementation:
+
+```
+sequential in-process loop        -> GREEN   (the two calls cannot interleave in one process)
+6 concurrent status processes     -> GREEN   3 trials, total 2001 intact
+30 concurrent status processes    -> GREEN   3 trials, total 2001 intact
+8 readers + 8 writers concurrent  -> GREEN   3 trials, total 2009 intact
+```
+
+**Why it cannot be reached.** The window is a parse plus a rename — microseconds — against ~150 ms of
+node startup, so two compactors essentially never overlap. And **pure readers cannot do it at all**:
+after the first rename the live file is *absent*, so the second reader measures 0 and declines. The
+clobber requires a **fire to recreate the live file between two rotations**, and even mixing writers in
+did not hit it.
+
+**So the real-concurrency instrument does not transfer from the writer path to the reader path.**
+Saying that is better than a row that cannot fail.
+
+**Resolution — two rows, each labelled as what it is:**
+
+- a **smoke test** driving real concurrent `harness hooks status` processes, which proves the live
+  surface compacts without loss but is explicitly documented as *not* the probe that refuses;
+- a **modelled** row that triggers the other rotation from inside the claim window — the only way to
+  reach the ordering at these timings — driven through `fireSummary`, the status surface itself.
+
+The modelled row **refuses**: with the re-check removed it fails `expected 1 to be 500`, which is the
+2001-records-reduced-to-1 signature reproduced through status. The smoke row stays green either way,
+exactly as its doc says.
+
+### The verbs were never wired to the CLI — found while building this
+
+`tk-0008`'s title says *"Wire `harness hooks install|status|uninstall|list`"*, and I had built the
+service layer and asserted against it, but only `fire` was ever registered on the command. `list`,
+`status` and `install` are now registered with `--json`.
+
+They carry a distinction worth stating: unlike `fire`, these are **operator-facing** — they run at a
+terminal, not inside an agent's tool loop, so the exit-0-and-silent contract does **not** apply to
+them. `fire` remains the only verb bound by it.

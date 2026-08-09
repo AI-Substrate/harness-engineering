@@ -6,6 +6,7 @@ import { ExecGit } from '../adapters/git/exec-git.js';
 import { ExecGitAttribution } from '../adapters/git/exec-git-attribution.js';
 import { NodeHash } from '../adapters/hash/node-hash.js';
 import { NodeSocketProbe } from '../adapters/net/node-socket-probe.js';
+import { embedBinaryPath } from '../services/hooks/binary-path.js';
 import { CommitIntercept, type HookPhase } from '../services/hooks/commit-intercept.js';
 import { FileHookJournal } from '../services/hooks/hook-journal.js';
 import {
@@ -16,6 +17,13 @@ import {
   parseHookPayload,
 } from '../services/hooks/hook-payload.js';
 import { HookStateStore } from '../services/hooks/hook-state.js';
+import {
+  fireSummary,
+  type HooksDeps,
+  installHooks,
+  listAgents,
+  statusHooks,
+} from '../services/hooks/hooks-verbs.js';
 import { Trace2Tickler } from '../services/hooks/trace2-tickler.js';
 
 /** The ports the `hooks` act injects. A subset of VerbActDeps. */
@@ -61,6 +69,61 @@ export function registerHooksAct(program: Command, deps: HooksActDeps): void {
     .action(async (agent: string, opts: FireOpts): Promise<void> => {
       await fire(deps, agent, opts);
     });
+
+  /*
+   * THE READ/WRITE VERBS.
+   *
+   * Unlike `fire`, these are operator-facing: they run at a terminal, not inside an
+   * agent's tool loop, so the exit-0-and-silent contract does NOT apply to them and
+   * they may print and may exit non-zero. `fire` remains the only verb bound by it.
+   */
+  hooks
+    .command('list')
+    .description('Every known agent: detected, supported, installed.')
+    .option('--json', 'machine-readable output')
+    .action((opts: { json?: boolean }) => emit(deps, opts.json, (d) => listAgents(d)));
+
+  hooks
+    .command('status')
+    .description(
+      'Per-agent install state, whether the configured binary resolves, and recent fires.',
+    )
+    .option('--json', 'machine-readable output')
+    .action((opts: { json?: boolean }) =>
+      emit(deps, opts.json, (d) => ({ agents: statusHooks(d), fires: fireSummary(d) })),
+    );
+
+  hooks
+    .command('install')
+    .description('Install the hook into every detected, supported agent.')
+    .option('--json', 'machine-readable output')
+    .action((opts: { json?: boolean }) => emit(deps, opts.json, (d) => installHooks(d)));
+}
+
+/** Build the verb deps from the act deps, or `null` when there is no home. */
+function hooksDeps(deps: HooksActDeps): HooksDeps | null {
+  const home = deps.env.home();
+  if (home === undefined || home.trim() === '') return null;
+  return {
+    fs: deps.fs,
+    home: home.replace(/\\/g, '/').replace(/\/+$/, ''),
+    env: (name) => deps.env.get(name),
+    // The binary the hook command names — resolved, normalised and ALWAYS quoted.
+    binary: embedBinaryPath(process.argv[1] ?? 'harness'),
+  };
+}
+
+/** Run one read/write verb and print it. Never throws out of the action. */
+function emit(deps: HooksActDeps, json: boolean | undefined, run: (d: HooksDeps) => unknown): void {
+  const resolved = hooksDeps(deps);
+  if (resolved === null) {
+    process.stdout.write(`${JSON.stringify({ error: 'no home directory' })}\n`);
+    return;
+  }
+  const result = run(resolved);
+  // JSON is the only shaped output for now; a human renderer is Phase 3's problem.
+  void json;
+  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }
 
 async function fire(deps: HooksActDeps, agent: string, opts: FireOpts): Promise<void> {
