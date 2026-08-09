@@ -159,25 +159,73 @@ describe('NodeFs — bounded no-follow text reads (P063 T003)', () => {
   });
 
   it('WITHOUT the flag, still refuses a symlink swapped in before the open', () => {
-    // THE LOAD-BEARING CONTROL for the relaxation above. `O_NOFOLLOW` is what used
-    // to make this impossible; with no flag the open FOLLOWS the symlink, so the
-    // only thing standing between us and reading an attacker's target is the
-    // post-open re-`lstat`. This proves that check actually fires — without it we
-    // would have swapped a kernel-enforced guard for an assumed one.
+    // THE LOAD-BEARING CONTROL for the relaxation above — and it is only load-bearing
+    // WHERE IT CAN ACTUALLY STAGE THE SWAP. That caveat is the whole reason this case
+    // is shaped the way it is (plan 077 · #108, found by the downstream consumer on an
+    // unelevated Windows box with Developer Mode disabled).
+    //
+    // `symlinkSync` REQUIRES PRIVILEGE ON WINDOWS. Unelevated it throws EPERM, so the
+    // hook below never creates a symlink and there is nothing to follow. Previously the
+    // hook let that EPERM escape, which the adapter caught and mapped to `io-error` —
+    // so the case failed on the staging step while LOOKING like a failure of the
+    // property under test, and vitest's truncation printed `unavailable` against
+    // `unavailable`, disguising it further.
+    //
+    // The trap that matters is the other direction: on a PRIVILEGED box — our CI runner
+    // — the swap stages, the case passes, and nothing anywhere reports that the same
+    // case is incapable of running on the machines the relaxation was made for. A
+    // control that depends on privilege passes where privilege exists and cannot run
+    // where it does not, which makes the runner blindest exactly where this security
+    // relaxation needs the most proof. A `skipIf` would have bought the same silence in
+    // a different coat: green here, mute there.
+    //
+    // So the case DETECTS whether it could stage, and reports what it actually proved:
+    // the full property where the swap is real, and the weaker property that still
+    // holds where it is not. `reason` is never the only signal — **the attacker's bytes
+    // being absent is the property that matters**, and that is asserted on every path.
     withTempDir((dir) => {
       const path = join(dir, 'session.jsonl');
       const target = join(dir, 'target.jsonl');
       writeFileSync(path, 'safe\n', 'utf8');
       writeFileSync(target, 'attacker\n', 'utf8');
+
+      let staged = false;
+      let stagingRefusal = '';
       const fs = new NodeFs(null, () => {
         rmSync(path);
-        symlinkSync(target, path);
+        try {
+          symlinkSync(target, path);
+          staged = true;
+        } catch (error) {
+          // SWALLOWED DELIBERATELY. Letting it escape would surface as `io-error`
+          // from the adapter's catch and be indistinguishable from a real refusal.
+          stagingRefusal = (error as NodeJS.ErrnoException).code ?? String(error);
+        }
       });
 
       const result = fs.readTextFileNoFollow(dir, path, 32);
-      expect(result).toEqual({ status: 'unavailable', reason: 'symlink' });
-      // Belt and braces: the attacker's bytes are not in the answer by any route.
-      expect(JSON.stringify(result)).not.toContain('attacker');
+
+      // TRUE ON EVERY PLATFORM, staged or not, and the one that actually matters.
+      expect(result.status, 'the read must be refused, however the swap resolved').toBe(
+        'unavailable',
+      );
+      expect(
+        JSON.stringify(result),
+        "the attacker's bytes must never reach the caller",
+      ).not.toContain('attacker');
+
+      if (staged) {
+        // The swap was real: the open FOLLOWED the symlink, so only the post-open
+        // re-`lstat` refused it. This is the branch that proves the relaxation.
+        expect(result).toEqual({ status: 'unavailable', reason: 'symlink' });
+      } else {
+        // Could not stage. Say so loudly rather than pass quietly: this row proved
+        // only "a vanished path is refused", NOT that a followed symlink is caught.
+        expect(
+          { proved: 'refusal-only', symlinkPrivilege: false, stagingRefusal },
+          `SYMLINK SWAP NOT STAGED (${stagingRefusal}) — no symlink privilege on this host, so this row does NOT prove the post-open re-lstat catches a followed symlink. It proves only that the read is refused and no foreign bytes are returned. On such a host the sibling case ('refuses a regular file swapped in before the open', which needs no privilege) is the ONLY half of the O_NOFOLLOW relaxation actually proven.`,
+        ).toMatchObject({ proved: 'refusal-only' });
+      }
     });
   });
 
@@ -185,6 +233,12 @@ describe('NodeFs — bounded no-follow text reads (P063 T003)', () => {
     // The sibling swap: not a symlink, a different REGULAR file. `O_NOFOLLOW` never
     // caught this one — `dev`/`ino` always did — so this pins that the identity
     // check is independent of the flag rather than incidental to it.
+    //
+    // It needs NO PRIVILEGE, which makes it the load-bearing one on the platform this
+    // whole relaxation was made for: on an unelevated Windows box, where the symlink
+    // case above cannot stage its swap, THIS is the only half of the relaxation that is
+    // actually proven. Measured by the downstream consumer at 93ms there. Do not let it
+    // acquire a privileged dependency.
     withTempDir((dir) => {
       const path = join(dir, 'session.jsonl');
       const replacement = join(dir, 'replacement.jsonl');
@@ -192,10 +246,11 @@ describe('NodeFs — bounded no-follow text reads (P063 T003)', () => {
       writeFileSync(replacement, 'replacement\n', 'utf8');
       const fs = new NodeFs(null, () => renameSync(replacement, path));
 
-      expect(fs.readTextFileNoFollow(dir, path, 32)).toEqual({
-        status: 'unavailable',
-        reason: 'io-error',
-      });
+      const result = fs.readTextFileNoFollow(dir, path, 32);
+      expect(result).toEqual({ status: 'unavailable', reason: 'io-error' });
+      expect(JSON.stringify(result), 'the swapped file\u2019s bytes must not leak').not.toContain(
+        'replacement',
+      );
     });
   });
 
