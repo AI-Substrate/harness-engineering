@@ -45,12 +45,12 @@
         },
         {
           "id": "ac-0002",
-          "claim": "A commit made by a sandboxed agent produces a note whose per-file line ranges match each author — agent lines to the agent session, human lines to a humans entry.",
+          "claim": "A commit made by a sandboxed agent produces a note whose AGENT-authored line ranges map to the correct agent session. Any `humans` entry is produced by git-ai's own pre-hook, not by us — it is OBSERVED and reported, never asserted as a pass condition. A missing or wrong `humans` entry is recorded as a finding against the declared non-goal, never as a blocker on this plan.",
           "state": "unchecked"
         },
         {
           "id": "ac-0003",
-          "claim": "No event is emitted when HEAD did not advance by exactly one commit — checkout, reset, rebase, amend and a no-op all emit nothing.",
+          "claim": "No event is emitted unless the agent AUTHORED the commit here. The guard must reject both classes: (a) HEAD did not advance by one — checkout, reset, rebase, amend, no-op, detached HEAD, no prior recorded state; and (b) HEAD DID advance by one whose first parent is the recorded HEAD but nothing was authored — a fast-forward `git pull`/`git merge` of one commit, a `--no-ff` merge commit, `cherry-pick`, and `revert`. Class (b) SATISFIES a naive first-parent check and is the dangerous one: it fabricates a note claiming the agent authored someone else's commit.",
           "state": "unchecked"
         },
         {
@@ -80,12 +80,17 @@
         },
         {
           "id": "ac-0009",
-          "claim": "A documented opt-out environment variable skips hook installation entirely.",
+          "claim": "`HARNESS_NO_HOOKS=1` skips hook installation entirely — honoured by `harness hooks install` ITSELF (Phase 2), not only by doctor's call site, so the opt-out cannot be bypassed by invoking the verb directly.",
           "state": "unchecked"
         },
         {
           "id": "ac-000a",
           "claim": "harness hooks uninstall removes only entries we own and leaves other tools entries intact.",
+          "state": "unchecked"
+        },
+        {
+          "id": "ac-000b",
+          "claim": "A fire that failed to emit is VISIBLE in `harness hooks status --json` with its cause — proven by a fixture where the socket is unreachable. Exit 0 must never be the only signal; a silent failure is the exact defect this plan exists to fix, and shipping one would reproduce it.",
           "state": "unchecked"
         }
       ]
@@ -96,14 +101,14 @@
         {
           "id": "ph-5fde",
           "title": "The hook runtime — `harness hooks fire`, the commit intercept, and the trace2 tickler",
-          "brief": "Build the mechanism that is already proven, behind ports. `harness hooks fire <agent> --phase pre|post` reads the agent's payload on stdin, records HEAD on pre, and on post emits six synthetic trace2 events ONLY when HEAD advanced by exactly one commit whose first parent is the recorded one. REUSE the EXISTING socket port src/adapters/net/socket-probe-port.ts (plan 074: SocketRelayPort.send, NodeSocketProbe, FakeSocketRelay) — do NOT build a second one; extend it if the emit needs a half-close. Services must never import node:net directly. Every path exits 0 and writes nothing the agent can see. BUILD THE SENSORS FIRST (backpressure survey rates this Partial, 10 BUILD gaps): the HEAD-transition provocation suite and the live-daemon note fixture come before feature code, because both are tied to named plan Risks. Attack the false-positive cases deliberately — checkout, reset, rebase, amend, double-commit, no-op, detached HEAD — because a false note is worse than a missing one. Prove on macOS AND Linux.",
+          "brief": "Build the mechanism that is already proven, behind ports. `harness hooks fire <agent> --phase pre|post` reads the agent's payload on stdin, records HEAD on pre, and on post emits six synthetic trace2 events ONLY when the agent AUTHORED a new commit here. REUSE the EXISTING socket port src/adapters/net/socket-probe-port.ts (plan 074) — do NOT build a second one; extend it if the emit needs a half-close. Services must never import node:net directly. Every path exits 0 and writes nothing the agent can see. THE GUARD IS THE HARD PART AND A FIRST-PARENT CHECK IS NOT ENOUGH. Two classes must be rejected: (a) HEAD did not advance by one — checkout, reset, rebase, amend, no-op, detached HEAD, no prior state; (b) HEAD DID advance by one whose first parent is the recorded HEAD but nothing was authored here — fast-forward pull/merge, a --no-ff merge commit, cherry-pick, revert. Class (b) PASSES a naive guard and is the dangerous one. Design against it with a parent-count check (`rev-list --parents -1 HEAD`) and a reflog-source discriminator, not just `HEAD^`. ALSO unresolved and in scope: CONCURRENCY — two tool calls firing POST at once both read state before either writes, and both emit; a per-invocation guard cannot see that. BUILD THE SENSORS FIRST: the provocation suite (both classes, plus concurrent fire) and the live-daemon note fixture come before feature code. Prove on macOS AND Linux.",
           "state": "unchecked",
           "tasks": "assets/tasks/phase-1/tasks.dd.json#tasks"
         },
         {
           "id": "ph-ea21",
           "title": "The installer — one declarative matrix, four write strategies",
-          "brief": "`harness hooks install|status|uninstall|list`, driven by ONE matrix over four strategies (JSON merge, plugin file, script file; TOML/Codex deferred). Authoritative design in assets/workshops/hooks-installing.md. Fix the four things git-ai gets wrong: take backups, preserve comments and key order, match only an owned marker, and always quote plus normalise the binary path. Uninstall must restore the original bytes. Fixture tests per agent, including a config that already holds git-ai's own hooks.",
+          "brief": "`harness hooks install|status|uninstall|list`, all with `--json`, driven by ONE matrix over four write strategies (JSON merge, plugin file, script file; TOML/Codex deferred). Authoritative design in assets/workshops/hooks-installing.md. `HARNESS_NO_HOOKS=1` is honoured HERE, in the verb itself, so it cannot be bypassed by calling install directly. Fix the four things git-ai gets wrong: take backups, preserve comments and key order, match only an owned marker, and always quote plus normalise the binary path. Uninstall must restore the ORIGINAL bytes. Fixture tests per agent, including a config that already holds git-ai's own hooks.",
           "state": "unchecked",
           "depends_on": [
             "ph-5fde"
@@ -128,7 +133,7 @@
     },
     {
       "name": "summary",
-      "value": "Cursor's sandbox refuses AF_UNIX connect(), so a sandboxed `git commit` never reaches the git-ai daemon and NO note is written at all — total attribution loss, not misattribution. The hook runner is not sandboxed. This plan makes harness own agent-harness hooks end to end: a `harness hooks` verb family that is BOTH the installer and the runtime the installed hooks call back into, a git intercept that detects a real new commit from HEAD, and a trace2 tickler that tells the daemon a commit happened so it writes the note it would otherwise miss. Nothing on the customer machine changes — no trace2 redirection, no sandbox setting, no security trade."
+      "value": "Cursor's sandbox refuses AF_UNIX connect(), so a sandboxed `git commit` never reaches the git-ai daemon and NO note is written at all — total attribution loss, not misattribution. The hook runner is not sandboxed — MEASURED on macOS; ASSUMED and unverified on Linux and Windows, and the whole design rests on it. This plan makes harness own agent-harness hooks end to end: a `harness hooks` verb family that is BOTH the installer and the runtime the installed hooks call back into, a git intercept that detects a real new commit from HEAD, and a trace2 tickler that tells the daemon a commit happened so it writes the note it would otherwise miss. THE TICKLER changes nothing on the customer machine — no trace2 redirection, no sandbox setting, no security trade. The INSTALLER does write, deliberately: the single hook entry we own, backed up first."
     },
     {
       "name": "testing_strategy",
@@ -153,7 +158,20 @@
     },
     {
       "name": "open_questions",
-      "value": []
+      "value": [
+        {
+          "question": "Idempotency of the emit (dossier 9.1): the POC writes state AFTER emitting so a repeat POST returns early — mitigated in code, unproven by a test. Does a double fire for one commit double-write or corrupt the note?",
+          "state": "unchecked"
+        },
+        {
+          "question": "Staleness ceiling (dossier 9.2): the daemon's reflog cursor must predate the commit. Proven at ~2s. How old can it get before rule 1 stops resolving, and does it fail closed as the spec claims?",
+          "state": "unchecked"
+        },
+        {
+          "question": "Concurrency (dossier 9.6): two tool calls firing POST at once both read HEAD state before either writes, and both emit. A per-invocation guard cannot see this.",
+          "state": "unchecked"
+        }
+      ]
     },
     {
       "name": "workshop_opportunities",
@@ -204,7 +222,7 @@
           "gate": "G2",
           "check": "Constitution",
           "status": "PASS",
-          "notes": "Passes WITH a deviation: the anti-pattern list forbids exit 0 on a failed path, but a hook runtime MUST always exit 0 because its exit code is consumed by the customer's agent and a non-zero breaks their editor. Deviation recorded in execution_guardrails; failures surface through hooks status instead of through the exit code."
+          "notes": "Passes with a NARROW deviation, restated against the rule as written. architecture.md:137 forbids exit 0 for an UNCONFIGURED/UNBUILT verb; constitution P5 maps unconfigured->2, P6 maps error->1. architecture.md:91 ALREADY maps degraded->0, so a fire that reaches the socket and fails is `degraded` and needs NO deviation at all. The deviation is therefore scoped to `error` and `unconfigured` only, where a hook runtime must still exit 0 because its exit code is consumed by the customer's agent and a non-zero breaks their editor. The compensating control is now an acceptance criterion rather than a promise: a failed emit must be visible in `harness hooks status --json`."
         },
         {
           "gate": "G3",
@@ -246,7 +264,7 @@
         {
           "impact": "Critical",
           "finding": "A real git commit trace2 stream carries NO sha; the daemon resolves the transition from a reflog cursor it already holds (ingestion spec ownership rule 1). It does not need the real stream — only to be told a commit command ran in repo X.",
-          "action": "Six synthetic events suffice. Proven three times, including a controlled A/B."
+          "action": "Six synthetic events suffice against the v1.6.21 pin on macOS — THREE RUNS OF THE SAME PAYLOAD on one machine, one daemon, one pin, of which one carried a paired negative control. Independent invocations, not independent implementations."
         },
         {
           "impact": "High",

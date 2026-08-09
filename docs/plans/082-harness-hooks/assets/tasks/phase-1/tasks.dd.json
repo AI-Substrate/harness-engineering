@@ -6,24 +6,115 @@
     {
       "name": "meta",
       "value": {
-        "title": "Prove the unknowns and harden the hook runtime",
+        "title": "Phase 1 — the hook runtime",
         "slug": "phase-1",
         "status": "draft",
-        "summary": ""
+        "summary": "Sensors first, then the runtime. The guard is the hard part and a first-parent check is not enough."
       }
     },
     {
       "name": "summary",
-      "value": ""
+      "value": "Build `harness hooks fire <agent> --phase pre|post` behind ports, reusing the EXISTING socket port from plan 074. Tasks 1-3 build the sensors BEFORE the feature code, because the backpressure survey rates this Partial with ten BUILD gaps and two of them are tied to named Critical risks. The single most important property: the emit fires ONLY when the agent AUTHORED a new commit here. A fast-forward pull, a --no-ff merge, a cherry-pick and a revert ALL satisfy a naive `HEAD^ == prev` check and would fabricate a note claiming the agent authored someone else's commit. That class is the reason this phase exists in this order."
     },
     {
       "name": "tasks",
-      "value": []
+      "value": [
+        {
+          "id": "tk-0001",
+          "title": "Reproduce total loss deterministically, without Cursor — a test helper that commits with GIT_TRACE2_EVENT pointed at a discarded path and asserts NO note appears",
+          "state": "unchecked",
+          "phase": "phase-1",
+          "success": "The fixture reproduces the bug on demand and fails if git-ai ever starts writing a note anyway. This is the control: if it cannot show the ABSENCE, nothing downstream proves the presence.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001"
+          ]
+        },
+        {
+          "id": "tk-0002",
+          "title": "Build the HEAD-transition provocation suite — table-driven, BOTH rejection classes plus the authored case",
+          "state": "unchecked",
+          "phase": "phase-1",
+          "success": "Class (a) HEAD did not advance by one: checkout, reset --hard, rebase, amend, no-op, detached HEAD, no prior recorded state. Class (b) HEAD DID advance by one whose first parent is the recorded HEAD but nothing was authored here: fast-forward pull of one commit, --no-ff merge commit, cherry-pick, revert. Plus the positive case (a real authored commit) so the suite can see the opposite. Every class (b) row must assert NO emit — they are the dangerous ones and they PASS a naive guard.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0003"
+          ]
+        },
+        {
+          "id": "tk-0003",
+          "title": "Build the live-daemon note fixture — emit, then assert note IDENTITY per file",
+          "state": "unchecked",
+          "phase": "phase-1",
+          "success": "Commit with trace2 discarded, emit the six events, assert the note names the expected file and line range. Assert on IDENTITY, never on a note COUNT — any unsandboxed commit in the repo moves the count.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001",
+            "../../../plan.dd.json#acceptance_criteria/ac-0002"
+          ]
+        },
+        {
+          "id": "tk-0004",
+          "title": "Implement the commit intercept: PRE records HEAD, POST decides, with a parent-count check and a reflog-source discriminator",
+          "state": "unchecked",
+          "phase": "phase-1",
+          "success": "`rev-list --parents -1 HEAD` rejects a merge commit; the reflog source distinguishes an authored commit from a pull/cherry-pick/revert. `HEAD^ == prev` alone is NOT sufficient and must not be the only test. The provocation suite from task 2 goes green, including every class (b) row.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0003"
+          ]
+        },
+        {
+          "id": "tk-0005",
+          "title": "Implement the trace2 tickler over the EXISTING socket port (plan 074), extending it only if the emit needs a half-close",
+          "state": "unchecked",
+          "phase": "phase-1",
+          "success": "Six events (version, start, def_repo, cmd_name, exit, atexit) sharing one sid, written through SocketRelayPort — no `node:net` import inside a service. `just checks` passes the no-direct-node-io guard. State whether the port needed extending; that is a finding either way.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001"
+          ]
+        },
+        {
+          "id": "tk-0006",
+          "title": "Wire `harness hooks fire <agent> --phase pre|post --hook-input stdin` as a core verb, per src/app.ts registration",
+          "state": "unchecked",
+          "phase": "phase-1",
+          "success": "The verb parses the named agent's payload shape from stdin. Registered the way app.ts registers core verbs (telemetry/flow/dd/plan), NOT as a repo extension — hooks are machine-scoped and doctor must call it.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001"
+          ]
+        },
+        {
+          "id": "tk-0007",
+          "title": "Make every failure path exit 0 and silent, and prove it by fault injection",
+          "state": "unchecked",
+          "phase": "phase-1",
+          "success": "Inject a dead socket, an unreadable config, a malformed payload, a repo that is not a git repo, and a thrown exception. Each must exit 0 and write nothing the agent can see. Scope the G2 deviation to `error`/`unconfigured` only — a reachable failure is `degraded`, which already maps to exit 0 and needs no deviation.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0007"
+          ]
+        },
+        {
+          "id": "tk-0008",
+          "title": "Surface a failed emit in `harness hooks status --json` so exit 0 is never the only signal",
+          "state": "unchecked",
+          "phase": "phase-1",
+          "success": "A fixture with an unreachable socket must show the failure and its cause in status output. This is the compensating control that buys the G2 deviation; without it we ship the silent-exit-0 defect this plan exists to fix.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-000b"
+          ]
+        },
+        {
+          "id": "tk-0009",
+          "title": "Prove the runtime on Linux in the OrbStack VM",
+          "state": "unchecked",
+          "phase": "phase-1",
+          "success": "The Phase 1 fixtures pass inside the VM. Record the result as MEASURED for Linux; Windows stays UNVERIFIED and is handed to the remote agent on #108, never assumed.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001"
+          ]
+        }
+      ]
     },
     {
       "name": "done_when",
       "value": {}
     }
-  ],
-  "references": []
+  ]
 }
