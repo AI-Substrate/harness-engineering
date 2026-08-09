@@ -191,7 +191,7 @@
         {
           "id": "tk-0011",
           "title": "Make the hook journal LOSS-FREE before anything reads it — it drops entries at THREE concurrent processes",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "phase-2",
           "success": "MEASURED, not inferred. FileHookJournal.record() is a read-rewrite-write with no interprocess lock, and N real concurrent `harness hooks fire` processes against a temp HOME lose entries: 24 recorded 22, 8 recorded 6, 4 recorded 3, and it fires at THREE. Three parallel tool calls is ordinary agent behaviour, not a stress test. The existing concurrency test cannot see this — it races three POSTs IN ONE PROCESS, where record() is synchronous and cannot interleave; the real runtime is one process per tool call. WHY THIS BLOCKS THE STATUS VERB RATHER THAN FOLLOWING IT: the journal is the ONLY observable for a failure that exits 0 by design, and ac-000b — the compensating control G2 granted the exit-0 deviation for — is a READ of this journal. The entry most likely lost in a burst is a 'failed' one, which is precisely what the control exists to expose. Build the reader first and we ship a compensating control that silently drops what it was built to catch, with green tests, because a lossy journal reads exactly like a quiet one. SHAPE: a single O_APPEND write per record, with the 500-line trim moved to the reader or to a separate compaction step — the trim is what forces the whole-file rewrite that loses the entry. Do this BEFORE the status-surfaces-a-failed-fire task, which depends on it.",
           "satisfies": [
@@ -587,31 +587,31 @@
           {
             "id": "dw-003b",
             "assertion": "A fixture spawning N real concurrent `harness hooks fire` OS PROCESSES against a temp HOME records exactly N journal lines, for N at least 8.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-003c",
             "assertion": "The fixture is proven able to see the opposite: run against the current read-rewrite-write implementation it goes RED, reproducing the measured loss.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-003d",
             "assertion": "Each record is a single append; no code path rewrites the whole journal file during a fire.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-003e",
             "assertion": "The 500-line bound still holds, enforced by the reader or a separate compaction rather than by a rewrite inside record().",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           },
           {
             "id": "dw-003f",
             "assertion": "The in-process concurrency test is kept AND labelled as unable to detect this class, so its green is never read as covering interprocess loss.",
-            "state": "unchecked",
+            "state": "checked",
             "pressure": "not-applicable"
           }
         ]

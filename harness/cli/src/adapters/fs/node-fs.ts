@@ -18,6 +18,7 @@ import {
   statSync,
   unlinkSync,
   writeFileSync,
+  writeSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
@@ -278,6 +279,32 @@ export class NodeFs implements FsPort, FileSystemWritePort {
       descriptor = openSync(path, 'wx');
       writeFileSync(descriptor, contents);
       return true;
+    } catch {
+      return false;
+    } finally {
+      if (descriptor !== null) closeSync(descriptor);
+    }
+  }
+
+  appendText(path: string, contents: string): boolean {
+    // 'a' is open(O_CREAT|O_WRONLY|O_APPEND). Under O_APPEND the kernel makes the
+    // seek-to-end and the write ONE atomic operation, so two processes appending
+    // concurrently both survive — which a read-modify-write pair cannot do.
+    // ONE writeSync call, deliberately: the atomicity is per write(), so a record
+    // split across two calls could be interleaved by another process mid-record.
+    //
+    // A SHORT WRITE IS A FAILURE, NOT SOMETHING TO RETRY. Looping to write the
+    // remainder would be a SECOND write() — which is precisely the split this
+    // method exists to avoid, and another process could land a whole record
+    // between the halves, corrupting both. So a short write returns false and the
+    // caller treats the record as unwritten. Reporting a truncated line as
+    // success would put a corrupt entry in a file whose whole job is to be
+    // trustworthy when something has gone wrong.
+    let descriptor: number | null = null;
+    try {
+      const payload = Buffer.from(contents, 'utf8');
+      descriptor = openSync(path, 'a');
+      return writeSync(descriptor, payload) === payload.length;
     } catch {
       return false;
     } finally {

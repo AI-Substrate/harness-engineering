@@ -582,6 +582,13 @@ describe('provocation — concurrency (dw-000b)', () => {
     - Contract: the exclusive claim authorises the emit, so exactly one wins.
     - Quality Contribution: races the REAL runtime against a REAL filesystem, not
       a simulated interleaving.
+    - WHAT THIS ROW CANNOT SEE (dw-003f): it races three fires IN ONE PROCESS, so
+      it proves nothing about INTERPROCESS races. Anything synchronous — the
+      journal's `record()`, for instance — cannot interleave here no matter how
+      broken it is, because a single JS thread runs it to completion. This row was
+      green throughout the period the journal was losing records across processes.
+      The out-of-process proof is `journal-race.int.test.ts`, which spawns real
+      `harness hooks fire` processes; do not read this row's green as covering it.
     */
     await intercept.fire('pre', repo);
     write('a.txt', 'the agent edited this\n');

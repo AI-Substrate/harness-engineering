@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { FakeFs } from '../../../src/adapters/fs/fake-fs.js';
-import { FileHookJournal, JOURNAL_KEEP } from '../../../src/services/hooks/hook-journal.js';
+import {
+  FileHookJournal,
+  JOURNAL_KEEP,
+  JOURNAL_ROTATE_AT,
+  ROTATE_CLAIM_STALE_MS,
+} from '../../../src/services/hooks/hook-journal.js';
 import {
   couldBeCommitBearing,
   parseHookPayload,
@@ -23,14 +28,17 @@ describe('FileHookJournal — the only Phase-1 observable (tk-000b)', () => {
     expect(journal.read().map((e) => e.at)).toEqual(['T1', 'T2']);
   });
 
-  it('keeps the NEWEST entries when trimming, never the oldest', () => {
+  it('keeps the NEWEST entries when READING, never the oldest', () => {
     /*
     Test Doc:
     - Why: this file is written on EVERY agent tool call. Unbounded, it degrades
-      quietly on a customer's machine. But a trim that kept the OLDEST would be
-      worse than no trim: the journal would freeze at the first N fires and never
+      quietly on a customer's machine. But a bound that kept the OLDEST would be
+      worse than no bound: the journal would freeze at the first N fires and never
       show a current failure — the exact thing it exists to show.
-    - Contract: after N+5 records, the last N survive.
+    - Contract: after N+5 records, read() returns the last N.
+    - NOTE (tk-0011): the bound moved from record() to read(). It used to be a trim
+      inside record(), and that trim was the whole-file REWRITE that made concurrent
+      hook processes lose each other's records.
     */
     const fs = new FakeFs();
     const journal = new FileHookJournal(fs, '/state/fires.jsonl', '/state');
@@ -43,12 +51,182 @@ describe('FileHookJournal — the only Phase-1 observable (tk-000b)', () => {
   });
 
   it('NEVER throws when it cannot be written — a hook must not break the agent it observes', () => {
+    /*
+    Test Doc:
+    - Why: a journal that cannot be written must not become an agent-visible
+      failure. The fire it describes has already happened either way.
+    - CAUTION: this stubs the method record() ACTUALLY CALLS. It used to stub
+      writeText, and after tk-0011 moved record() onto appendText that stub would
+      have made this row pass while injecting no fault at all — a test whose own
+      premise was absent, which is the defect this plan has now hit five times.
+    */
     const fs = new FakeFs();
-    fs.writeText = () => {
+    fs.appendText = () => {
       throw new Error('read-only filesystem');
     };
     const journal = new FileHookJournal(fs, '/state/fires.jsonl', '/state');
     expect(() => journal.record(entry(1))).not.toThrow();
+  });
+
+  it('APPENDS and never rewrites the file during a fire (dw-003d)', () => {
+    /*
+    Test Doc:
+    - Why: the interprocess loss came from record() reading the file and writing
+      the whole thing back. The out-of-process fixture (journal-race.int.test.ts)
+      proves the SYMPTOM is gone; this proves the CAUSE is gone, which is what
+      stops it being reintroduced by someone who only reruns the unit tests.
+    - Contract: record() appends, and issues no whole-file write.
+    - Quality Contribution: asserts a mechanism, not an outcome — the outcome
+      assertion cannot tell a fixed rewrite from a lucky one.
+    */
+    const fs = new FakeFs();
+    const journal = new FileHookJournal(fs, '/state/fires.jsonl', '/state');
+    journal.record(entry(1));
+    journal.record(entry(2));
+
+    expect(fs.appends).toEqual(['/state/fires.jsonl', '/state/fires.jsonl']);
+    expect(fs.writes).toEqual([]);
+  });
+
+  it('a DOUBLED rotation does not destroy the rotated generation (CONFIRMED race)', () => {
+    /*
+    Test Doc:
+    - Why: compact() is called by READERS, and two concurrent `harness hooks status`
+      invocations can both pass the threshold check before either renames. MEASURED
+      against the real filesystem before the fix: the second rename put a
+      freshly-recreated ONE-LINE live file over the rotated generation, and a
+      journal of 2001 records became 1 — read() returned a single entry.
+    - Contract: the second compactor declines and the history survives.
+    - CAUTION: this row exercises the OUTER check only — by the time B runs, the
+      live file is already small, so B never reaches its claim. The row that proves
+      the RE-CHECK is the next one, and it needs the interleaving modelled
+      explicitly. Keeping both, labelled, because this one passed unchanged when
+      the re-check was mutated out — it cannot see that mechanism at all.
+    */
+    const fs = new FakeFs();
+    const a = new FileHookJournal(fs, '/state/fires.jsonl', '/state');
+    const b = new FileHookJournal(fs, '/state/fires.jsonl', '/state');
+    for (let i = 1; i <= JOURNAL_ROTATE_AT + 1; i += 1) a.record(entry(i));
+
+    expect(a.compact()).toBe(true);
+    // A fire recreates the live file between the two rotations — the exact window.
+    a.record(entry(9001));
+    expect(b.compact()).toBe(false);
+
+    // The history survived: the newest KEEP are still readable, not a single entry.
+    const kept = a.read();
+    expect(kept).toHaveLength(JOURNAL_KEEP);
+    expect(kept.at(-1)?.at).toBe('T9001');
+  });
+
+  it('the RE-CHECK saves it when the other rotation lands mid-window', () => {
+    /*
+    Test Doc:
+    - Why: the dangerous interleaving is B passing its threshold check while the
+      live file is still large, and A rotating before B takes its claim. B's guard
+      is then STALE, and a stale guard is what destroyed 2001 records. A sequential
+      test cannot reach this — B's outer check would already see the small file.
+    - Contract: B declines, and the rotated generation is intact.
+    - HOW THE INTERLEAVING IS MODELLED, stated plainly: A's rotation is triggered
+      from inside B's `createExclusive` call, which is exactly the window between
+      B's check and B's rename. This is a MODELLED ordering, not a real race — the
+      real-concurrency proof for this file is journal-race.int.test.ts. It is
+      modelled because the ordering is the thing under test and a real race would
+      reproduce it only intermittently.
+    - Quality Contribution: without it, removing the re-check leaves every other row
+      green — measured, not assumed.
+    */
+    const fs = new FakeFs();
+    const a = new FileHookJournal(fs, '/state/fires.jsonl', '/state');
+    const b = new FileHookJournal(fs, '/state/fires.jsonl', '/state');
+    for (let i = 1; i <= JOURNAL_ROTATE_AT + 1; i += 1) a.record(entry(i));
+
+    const realCreateExclusive = fs.createExclusive.bind(fs);
+    let interleaved = false;
+    fs.createExclusive = (path: string, contents: string): boolean => {
+      if (!interleaved) {
+        interleaved = true;
+        // A rotates and releases, all inside B's window.
+        a.compact();
+        a.record(entry(9001));
+      }
+      return realCreateExclusive(path, contents);
+    };
+
+    // B's guard was passed against the LARGE file; only the re-check can stop it.
+    expect(b.compact()).toBe(false);
+
+    const kept = a.read();
+    expect(kept).toHaveLength(JOURNAL_KEEP);
+    expect(kept.at(-1)?.at).toBe('T9001');
+  });
+
+  it('an ABANDONED rotation claim does not disable rotation for good', () => {
+    /*
+    Test Doc:
+    - Why: serialising rotation with an exclusive claim introduces a new way to
+      fail silently — a process killed mid-rotation leaves the claim behind, and
+      rotation would then never run again. That is unbounded growth in a hidden
+      directory, which is the failure this bound exists to prevent, reintroduced by
+      its own fix.
+    - Contract: a claim older than the stale bound is cleared and rotation proceeds.
+    - Quality Contribution: proves the recovery path, not just the happy one.
+    */
+    const fs = new FakeFs();
+    const journal = new FileHookJournal(fs, '/state/fires.jsonl', '/state');
+    for (let i = 1; i <= JOURNAL_ROTATE_AT + 1; i += 1) journal.record(entry(i));
+
+    // A claim left by a process that died. Aged past the bound.
+    fs.mkdirp('/state');
+    fs.writeText('/state/fires.jsonl.rotating', 'rotating');
+    fs.setMtime('/state/fires.jsonl.rotating', Date.now() - (ROTATE_CLAIM_STALE_MS + 1000));
+
+    expect(journal.compact()).toBe(true);
+    expect(fs.exists('/state/fires.jsonl.1')).toBe(true);
+  });
+
+  it('a FRESH rotation claim makes a second compactor stand down', () => {
+    const fs = new FakeFs();
+    const journal = new FileHookJournal(fs, '/state/fires.jsonl', '/state');
+    for (let i = 1; i <= JOURNAL_ROTATE_AT + 1; i += 1) journal.record(entry(i));
+
+    fs.writeText('/state/fires.jsonl.rotating', 'rotating');
+    fs.setMtime('/state/fires.jsonl.rotating', Date.now());
+
+    expect(journal.compact()).toBe(false);
+    expect(fs.exists('/state/fires.jsonl.1')).toBe(false);
+  });
+
+  it('bounds the DISK by rotating with a rename, losing no record a reader wanted (dw-003e)', () => {
+    /*
+    Test Doc:
+    - Why: moving the bound out of record() leaves the file growing. Rotation is a
+      rename — atomic, and a process holding the old descriptor keeps writing to
+      the same inode, so a fire concurrent with a rotation loses nothing. A
+      compaction that read and wrote a trimmed copy back would race exactly as
+      record() used to, and would lose the NEWEST records.
+    - Contract: below the threshold it does nothing; above it, it rotates, and the
+      rotated generation is still visible to read().
+    */
+    const fs = new FakeFs();
+    const journal = new FileHookJournal(fs, '/state/fires.jsonl', '/state');
+
+    for (let i = 1; i <= JOURNAL_ROTATE_AT; i += 1) journal.record(entry(i));
+    expect(journal.compact()).toBe(false);
+
+    journal.record(entry(JOURNAL_ROTATE_AT + 1));
+    expect(journal.compact()).toBe(true);
+    expect(fs.exists('/state/fires.jsonl.1')).toBe(true);
+
+    // The rotation is invisible to a reader: the newest KEEP still come back, and
+    // they come from the rotated generation because nothing has been appended since.
+    const kept = journal.read();
+    expect(kept).toHaveLength(JOURNAL_KEEP);
+    expect(kept.at(-1)?.at).toBe(`T${JOURNAL_ROTATE_AT + 1}`);
+
+    // A fire after the rotation lands in the fresh file and reads back last.
+    journal.record(entry(9999));
+    expect(journal.read().at(-1)?.at).toBe('T9999');
   });
 
   it('survives one corrupt line rather than losing the whole journal', () => {
