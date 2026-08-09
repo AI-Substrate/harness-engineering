@@ -1,0 +1,31 @@
+docs/plans/archive/081-flow-reachability/assets/post-flight.md
+  s_2bef307df718bc::t_bf9b24553e381d 1-60
+docs/plans/archive/081-flow-reachability/plan.dd.json
+  s_c88674e85f3aea::t_30c1635785e8d1 102,109,119
+docs/plans/archive/081-flow-reachability/plan.dd.md
+  s_2bef307df718bc::t_3edf79addf517d 73-75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2cfa6a492cbabbd71d0e070204ac1857c15877a0",
+  "prompts": {},
+  "sessions": {
+    "s_2bef307df718bc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bb3484ee-e8b4-4f68-89fa-22abb2a7a8c3",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_c88674e85f3aea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71679da4-5249-4e02-9117-68a3abf3ed0e",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
