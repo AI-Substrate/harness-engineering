@@ -236,9 +236,11 @@ function restoreFlowSource(fs: FsPort, path: string, previous: string | null): b
  * the operation created it) and the operation REFUSES — the same either-both-or-neither
  * contract `writeDocumentWithSibling` gives dd's mutating verbs, and the same phase-1
  * law: validate/render before write, failure = refusal. The rollback is attempted and
- * VERIFIED, not guaranteed: when it fails, `refuse()` says so louder in `next_action`
- * rather than claiming the source is clean, so E302 covers both outcomes and a caller
- * must read `next_action`, not switch on the code alone.
+ * VERIFIED, not guaranteed — and unlike the forward write it is NOT atomic (plain
+ * `writeText`, not `writeFlowAtomic`), so a failed restore can leave the source matching
+ * neither the previous nor the mutated bytes. That is why `refuse()` warns and names the
+ * file rather than reporting a clean source: E302 covers all of these outcomes, so a
+ * caller must read `next_action`, not switch on the code alone.
  *
  * `previousSource` is the bytes at `sourcePath` BEFORE the operation wrote it, or
  * `null` when the file did not exist. It is the only thing that makes the refusal
