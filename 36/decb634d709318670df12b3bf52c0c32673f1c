@@ -1,0 +1,19 @@
+.github/workflows/ci.yml
+  s_6066df1c8c80ee::t_211a4940e2c35b 74-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "36decb634d709318670df12b3bf52c0c32673f1c",
+  "prompts": {},
+  "sessions": {
+    "s_6066df1c8c80ee": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "93825907-3aeb-4c43-9f58-99ae59f84f57",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
