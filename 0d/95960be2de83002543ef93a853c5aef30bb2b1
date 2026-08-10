@@ -1,0 +1,60 @@
+harness/cli/test/services/hooks/entry-shape.test.ts
+  s_ed609d39de2442::t_63333df80e141f 55-59
+  s_ed609d39de2442::t_5a7e232dff09e1 390-401,407-410,417-589,625
+  s_ed609d39de2442::t_935c53f76d92b3 18-19,76,79,83-92,103,107,110-113,120,129,192-194,218,255-257,265-266,285,293,298,304,307-312,590-591,601-602,618-624
+harness/cli/src/services/hooks/install-strategy-a.ts
+  s_ed609d39de2442::t_99eff3d8850d64 233-242,246-247,260-267
+  s_ed609d39de2442::t_30c202b0c58e61 68-85
+  s_ed609d39de2442::t_d4d88c8e1e48bb 167-177
+harness/cli/src/services/hooks/uninstall-strategy-a.ts
+  s_ed609d39de2442::t_db87d5e46a7675 193,199-259,264-267
+  s_ed609d39de2442::t_a56e193b5a9149 4
+  s_ed609d39de2442::t_4b55b4694f3acc 73-80
+  s_ed609d39de2442::t_156f13338b39c0 260-263
+  s_ed609d39de2442::t_195967687d4b13 268
+harness/cli/src/services/hooks/config-writer.ts
+  s_ed609d39de2442::t_f0bf3c70b9a0d4 148-165
+harness/cli/test/services/hooks/hooks-verbs.test.ts
+  s_ed609d39de2442::t_f1eb278c90e023 170-189,191-206,208-233
+  s_ed609d39de2442::t_71b7e1fe0b47af 190
+  s_ed609d39de2442::t_22b37dba3619a9 207
+harness/cli/src/services/hooks/hooks-verbs.ts
+  s_ed609d39de2442::t_ceab450987a718 10
+  s_ed609d39de2442::t_7726185a062124 289
+  s_ed609d39de2442::t_32cab87bda2583 650-655,657
+  s_ed609d39de2442::t_61ad723877fec1 422-438,444,452
+  s_ed609d39de2442::t_81e68601cb91fa 624-628
+  s_ed609d39de2442::t_f1c9fd5aba3a5f 656
+docs/plans/082-harness-hooks/assets/tasks/phase-5/execution.log.md
+  s_a76964380084ef::t_3f15881586ceb3 295-447
+harness/cli/src/services/hooks/agent-matrix.ts
+  s_ed609d39de2442::t_1b5b9fd3591571 156-165,168-170,245-247
+harness/cli/src/services/hooks/install-record.ts
+  s_ed609d39de2442::t_0a0d120dd30389 37-47,128-133,145-147,160-171
+harness/cli/test/support/writer-shape-parity.ts
+  s_ed609d39de2442::t_0305508af43bf4 2-18,39-40,44-49,82,85-91,95-96,104,115-116,152,156,158-162,164-165,199,204-211,213,215-217,219-222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "0d95960be2de83002543ef93a853c5aef30bb2b1",
+  "prompts": {},
+  "sessions": {
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_ed609d39de2442": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "62892a0d-07d6-4784-b490-986f797be544",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
