@@ -42,6 +42,41 @@ import { uninstallStrategyA } from './uninstall-strategy-a.js';
  * skip there is this plan's own defect class arriving from the installer side, so an
  * unimplemented strategy is reported NOT SUPPORTED by `list` and `status`, and
  * REFUSED BY NAME by `install`.
+ *
+ * ---
+ *
+ * **A CONTRACT IS ENFORCED BY A ROW OR IT IS PROSE.** Plan 082's actual finding,
+ * recorded here because this surface produced every instance of it.
+ *
+ * The last one was written INSIDE the function it describes:
+ * {@link autoInstallHooks} says "BUT IT IS NEVER SILENT" forty lines above code
+ * that silently dropped `refusedUpgrades`. The one before it was a rule stated
+ * two files away — `uninstall-strategy-a.ts` spells out that marker presence is
+ * not permission to replace, and the upgrade path walked past it. THE DISTANCE
+ * SHRANK FROM TWO FILES TO FOUR LINES AND THE OUTCOME WAS IDENTICAL, SO DISTANCE
+ * WAS NEVER THE VARIABLE. Neither comment was a guard; both read like one.
+ *
+ * FOUR ROUNDS, FOUR DISGUISES OF ONE DEFECT — and naming them together is what
+ * makes the fifth recognisable:
+ *
+ * 1. **A check that cannot refuse.** `binaryState: 'resolves'` is `fs.exists`; it
+ *    was true on a machine where the command could not execute. Hence
+ *    {@link ExecutionState}, and the rule that a gate is not verified until it
+ *    has refused.
+ * 2. **A predicate answering a NARROWER question than the one being asked.**
+ *    `entryIsOwnedByUs` means "any command here is ours" and was used to
+ *    authorise replacing the WHOLE entry — destroying foreign work chained into
+ *    it.
+ * 3. **A green that could not go red for the second command.** `--probe`
+ *    promised to execute EACH configured command and executed `[0]`, so `runs`
+ *    could be reported while another command was inert.
+ * 4. **A refusal that could not reach the path everyone takes.** The warning
+ *    surfaced through `harness hooks install` and was silent through
+ *    `autoInstallHooks` — the doctor / first-run entry point.
+ *
+ * The family resemblance: each was a signal that was structurally incapable of
+ * carrying bad news, and each read as correct until somebody CONSTRUCTED the
+ * adversarial case rather than reading the code.
  */
 
 /** Which write strategy an agent needs. Only A is implemented in this phase. */
