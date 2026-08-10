@@ -34,6 +34,17 @@ export interface InstallRecordEntry {
   createdFile: boolean;
   /** Event-array keys we created in it. Only these may be removed. */
   createdKeys: string[];
+  /**
+   * Root-field paths we created in it, e.g. `['tools','enableHooks']` (phase-5
+   * review F2). Only these MAY be removed, and only when nothing else in the file
+   * still depends on them — see `uninstall-strategy-a.ts`.
+   *
+   * OPTIONAL, DELIBERATELY. A record written by an older build carries no such
+   * field, and `undefined` must read as *we created nothing*, not as *unknown, so
+   * guess*. That is the same direction every other provenance question fails in
+   * here: retain.
+   */
+  createdRootExtras?: string[][];
 }
 
 export interface InstallRecord {
@@ -114,7 +125,12 @@ export function readInstallRecord(fs: FsPort, stateDir: string): InstallRecord {
 export function recordInstall(
   fs: FsPort,
   stateDir: string,
-  outcomes: readonly { path: string; created: boolean; createdKeys: readonly string[] }[],
+  outcomes: readonly {
+    path: string;
+    created: boolean;
+    createdKeys: readonly string[];
+    createdRootExtras?: readonly string[][];
+  }[],
 ): boolean {
   if (outcomes.length === 0) return true;
   const record = readInstallRecord(fs, stateDir);
@@ -126,6 +142,9 @@ export function recordInstall(
       path: outcome.path,
       createdFile: (existing?.createdFile ?? false) || outcome.created,
       createdKeys: [...new Set([...(existing?.createdKeys ?? []), ...outcome.createdKeys])],
+      // Union by PATH, not by key, so `['tools']` and `['tools','enableHooks']`
+      // stay distinct: they license different removals.
+      createdRootExtras: unionPaths(existing?.createdRootExtras, outcome.createdRootExtras),
     });
   }
 
@@ -136,6 +155,18 @@ export function recordInstall(
   } catch {
     return false;
   }
+}
+
+/** Merge two path lists, deduplicated structurally rather than by reference. */
+function unionPaths(
+  existing: readonly string[][] | undefined,
+  added: readonly string[][] | undefined,
+): string[][] {
+  const seen = new Map<string, string[]>();
+  for (const path of [...(existing ?? []), ...(added ?? [])]) {
+    seen.set(JSON.stringify(path), [...path]);
+  }
+  return [...seen.values()];
 }
 
 /** Forget these paths — called after a successful uninstall. */

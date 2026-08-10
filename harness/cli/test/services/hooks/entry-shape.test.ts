@@ -13,10 +13,10 @@ import { entryIsOwnedByUs, HOOK_MARKER } from '../../../src/services/hooks/hook-
 import { installStrategyA } from '../../../src/services/hooks/install-strategy-a.js';
 import { uninstallStrategyA } from '../../../src/services/hooks/uninstall-strategy-a.js';
 import {
-  CONFIG_VALIDATORS,
   GIT_AI_SEED_ENTRY,
   shapeOf,
-} from '../../support/agent-config-schema.js';
+  WRITER_SHAPE_CHECKS,
+} from '../../support/writer-shape-parity.js';
 
 /**
  * THE ENTRY SHAPE IS NOT UNIFORM — and getting it wrong DISABLES THE HOST
@@ -52,6 +52,11 @@ const readDoc = (path: string): unknown => JSON.parse(readFileSync(path, 'utf8')
 /** Just the `hooks` block — what uninstall promises to return to its original state. */
 const hooksBlockOf = (text: string): unknown => (JSON.parse(text) as { hooks: unknown }).hooks;
 
+/** This run's root-extra provenance, in the shape uninstall reads it. */
+const rootExtrasOf = (
+  outcomes: readonly { path: string; createdRootExtras: string[][] }[],
+): Map<string, string[][]> => new Map(outcomes.map((o) => [o.path, o.createdRootExtras]));
+
 /** Seed every one of this agent's config files with git-ai's own real entry. */
 function seedWithGitAi(spec: AgentSpec): string[] {
   return resolveConfigFiles(spec, home, env).map((path) => {
@@ -68,17 +73,23 @@ beforeEach(() => {
 });
 afterEach(() => rmSync(home, { recursive: true, force: true }));
 
-describe('THE FILE IS STILL VALID TO ITS OWN CONSUMER — the assertion nobody had', () => {
+describe('THE WHOLE FILE IS CHECKED, NOT JUST OUR ENTRY — the assertion nobody had', () => {
   it.each(
     installable.map((spec) => spec.agent),
-  )('%s: the config still satisfies that agent\u2019s own schema after install', (agent) => {
+  )('%s: the config still matches the shape git-ai writes, after install', (agent) => {
     /*
       Test Doc:
       - Why: F005. This is the row that would have stopped the defect reaching
-        Jordan's machine. It is deliberately NOT about our entry: it validates the
-        WHOLE document against what that agent requires, which is the only property
-        that distinguishes "our hook is installed" from "this file still works".
-      - Contract: zero schema violations, for every agent we install into.
+        Jordan's machine. It is deliberately NOT about our entry: it checks the
+        WHOLE document, which is the only property that distinguishes "our hook is
+        installed" from "this file still works".
+      - Contract: zero divergences from git-ai's shape, for every agent we install
+        into.
+      - WHAT THIS IS EVIDENCE OF (phase-5 review F3). For CLAUDE-CODE it is
+        runtime-measured: a divergence was OBSERVED to disable the whole file.
+        For every other agent it is WRITER PARITY — git-ai writes and asserts this
+        shape and we now match it. No agent runtime was exercised here, so a
+        divergence elsewhere is a divergence, not a proven breakage.
       - Proven RED: with the matrix collapsed back to one flat shape, claude-code,
         gemini and droid all report
         `hooks.PreToolUse.1.hooks: Expected array, but received undefined` —
@@ -89,23 +100,24 @@ describe('THE FILE IS STILL VALID TO ITS OWN CONSUMER — the assertion nobody h
     installStrategyA(fs, spec, home, env, BINARY);
 
     for (const path of paths) {
-      expect(CONFIG_VALIDATORS[agent](readDoc(path))).toEqual([]);
+      expect(WRITER_SHAPE_CHECKS[agent](readDoc(path))).toEqual([]);
     }
   });
 
-  it('the validator itself REFUSES the flat shape in a nested config', () => {
+  it('the CHECK itself REFUSES the flat shape in a nested config', () => {
     /*
     Test Doc:
-    - Why: a validator that never fails would make every row above green while
-      proving nothing. This points it at the exact broken document Jordan had.
-    - Contract: it reports the real message, at the real index.
+    - Why: a check that never fails would make every row above green while proving
+      nothing. This points it at the exact broken document Jordan had.
+    - Contract: it reports the real message, at the real index. This one row IS a
+      runtime claim: the text is what Claude Code printed, verbatim.
     */
     const broken = {
       hooks: {
         PreToolUse: [GIT_AI_SEED_ENTRY['claude-code']('PreToolUse'), { command: 'ours' }],
       },
     };
-    expect(CONFIG_VALIDATORS['claude-code'](broken)).toEqual([
+    expect(WRITER_SHAPE_CHECKS['claude-code'](broken)).toEqual([
       { at: 'hooks.PreToolUse.1.hooks', problem: 'Expected array, but received undefined' },
     ]);
   });
@@ -114,7 +126,7 @@ describe('THE FILE IS STILL VALID TO ITS OWN CONSUMER — the assertion nobody h
     // firebender treats a matcher-bearing entry as not-installed (firebender.rs:66)
     // and strips it (firebender.rs:179). Nested is as wrong there as flat is here.
     const broken = { hooks: { preToolUse: [{ matcher: '*', hooks: [] }] } };
-    expect(CONFIG_VALIDATORS.firebender(broken).map((v) => v.at)).toEqual([
+    expect(WRITER_SHAPE_CHECKS.firebender(broken).map((v) => v.at)).toEqual([
       'hooks.preToolUse.0.command',
       'hooks.preToolUse.0.matcher',
       'hooks.preToolUse.0.hooks',
@@ -177,9 +189,9 @@ describe('UNINSTALL HANDLES THE SHAPE IT WROTE', () => {
         uninstall written for the flat shape would silently find nothing, and Jordan
         would have been unable to clean up with our own tool. He removed the entries
         by hand precisely because that was not trusted.
-      - Contract: our entry is gone, git-ai's is byte-present, and the file is STILL
-        VALID afterwards — an uninstall that corrupts the document is the same class
-        of defect as the install that started this.
+      - Contract: our entry is gone, git-ai's is byte-present, and the document
+        still matches git-ai's shape afterwards — an uninstall that leaves the file
+        diverged is the same class of defect as the install that started this.
       */
     const spec = installable.find((s) => s.agent === agent) as AgentSpec;
     const paths = seedWithGitAi(spec);
@@ -203,7 +215,7 @@ describe('UNINSTALL HANDLES THE SHAPE IT WROTE', () => {
       // THE `hooks` BLOCK returns to its original bytes — that is uninstall's
       // promise, and it holds in both entry shapes.
       expect(hooksBlockOf(text)).toEqual(hooksBlockOf(before[index]));
-      expect(CONFIG_VALIDATORS[agent](JSON.parse(text))).toEqual([]);
+      expect(WRITER_SHAPE_CHECKS[agent](JSON.parse(text))).toEqual([]);
     });
   });
 
@@ -240,8 +252,9 @@ describe('UNINSTALL HANDLES THE SHAPE IT WROTE', () => {
     seedWithGitAi(correct);
     const outcomes = installStrategyA(fs, wrongShape, home, env, BINARY);
     const path = outcomes[0].path;
-    // The damage, reproduced: the file is now INVALID to claude-code.
-    expect(CONFIG_VALIDATORS['claude-code'](readDoc(path))).not.toEqual([]);
+    // The damage, reproduced — and for claude-code specifically this IS a runtime
+    // claim: this is the document state Claude Code refused to load.
+    expect(WRITER_SHAPE_CHECKS['claude-code'](readDoc(path))).not.toEqual([]);
 
     const createdKeys = new Map(outcomes.map((o) => [o.path, new Set(o.createdKeys)]));
     const removed = uninstallStrategyA({ fs, home, env, createdKeys }, correct);
@@ -249,8 +262,8 @@ describe('UNINSTALL HANDLES THE SHAPE IT WROTE', () => {
     expect(removed.reduce((sum, o) => sum + o.removed, 0)).toBe(eventKeys(correct).length);
     const text = readFileSync(path, 'utf8');
     expect(text).not.toContain(HOOK_MARKER);
-    // ...and the file is valid again, with git-ai's entry untouched.
-    expect(CONFIG_VALIDATORS['claude-code'](JSON.parse(text))).toEqual([]);
+    // ...and the file loads again, with git-ai's entry untouched.
+    expect(WRITER_SHAPE_CHECKS['claude-code'](JSON.parse(text))).toEqual([]);
     expect(text).toContain('git-ai checkpoint claude');
   });
 
@@ -269,7 +282,7 @@ describe('UNINSTALL HANDLES THE SHAPE IT WROTE', () => {
 
     seedWithGitAi(correct);
     const outcomes = installStrategyA(fs, wrongShape, home, env, BINARY);
-    expect(CONFIG_VALIDATORS.cursor(readDoc(outcomes[0].path))).not.toEqual([]);
+    expect(WRITER_SHAPE_CHECKS.cursor(readDoc(outcomes[0].path))).not.toEqual([]);
 
     const createdKeys = new Map(outcomes.map((o) => [o.path, new Set(o.createdKeys)]));
     const removed = uninstallStrategyA({ fs, home, env, createdKeys }, correct);
@@ -277,25 +290,26 @@ describe('UNINSTALL HANDLES THE SHAPE IT WROTE', () => {
     expect(removed.reduce((sum, o) => sum + o.removed, 0)).toBe(eventKeys(correct).length);
     const text = readFileSync(outcomes[0].path, 'utf8');
     expect(text).not.toContain(HOOK_MARKER);
-    expect(CONFIG_VALIDATORS.cursor(JSON.parse(text))).toEqual([]);
+    expect(WRITER_SHAPE_CHECKS.cursor(JSON.parse(text))).toEqual([]);
   });
 });
 
 describe('ROOT FIELDS THE AGENT REQUIRES — well-formed and DEAD without them', () => {
-  it('gemini gets tools.enableHooks — without it a perfect hook never fires', () => {
+  it('gemini gets tools.enableHooks — git-ai writes it on every install, so we do', () => {
     /*
     Test Doc:
     - Why: F005's finding A, and its OWN row rather than folded into a shape
       assertion, because they fail for different reasons and a shared row would hide
       one behind the other. `gemini.rs:99-106` sets `tools.enableHooks` on EVERY
-      install and `gemini.rs:478-480` asserts it — its own installer treats it as
-      mandatory. We never wrote it, so our gemini entry could be perfectly shaped and
-      never dispatched: F004's class (registered nowhere, fires never) for the third
-      time in this plan.
+      install and `gemini.rs:478-480` asserts it. We never wrote it at all.
     - Contract: a config we create carries it.
     - Proven RED: without `rootExtras` on the gemini row this reads `undefined`.
-    - MATCHED-NOT-VERIFIED: git-ai writes it, so we write it. We have not observed
-      gemini refusing to dispatch without it.
+    - MATCHED-NOT-VERIFIED (phase-5 review F3, and the wording matters). The claim
+      this row supports is *git-ai writes and asserts this flag, and we now match
+      it*. It is NOT *gemini requires it* and NOT *a hook without it never fires* —
+      no gemini runtime has been exercised here, with or without the flag. The
+      earlier wording upgraded structural parity to a dispatch guarantee, which is
+      more than the evidence carries.
     */
     const spec = installable.find((s) => s.agent === 'gemini') as AgentSpec;
     const [outcome] = installStrategyA(fs, spec, home, env, BINARY);
@@ -373,24 +387,205 @@ describe('ROOT FIELDS THE AGENT REQUIRES — well-formed and DEAD without them',
     - Why: this row exists because the uninstall symmetry rows FAILED here, and the
       failure was the right question rather than a defect. Install adds
       `tools.enableHooks`, so symmetry argues uninstall should remove it.
-      **It must not.** That flag is a document-level enablement switch shared by
-      EVERY hook consumer in the file — git-ai sets it for its own gemini hooks
-      (`gemini.rs:99-106`). Removing it on our way out would silently disable
-      somebody else's working hooks, which is precisely the "never delete work we
-      did not write" posture the marker exists to enforce. `version` is a document
-      format declaration, not an entry of ours, and the same reasoning applies.
-    - Contract: after uninstall our entries are gone and the root fields remain.
-    - The cost is a leftover root key. That is recoverable cruft; disabling another
-      tool's attribution is not — the same trade F003 settled for event-array keys.
+      **It must not, WHEN A PEER DEPENDS ON IT.** That flag is a document-level
+      enablement switch shared by every hook consumer in the file — git-ai sets it
+      for its own gemini hooks (`gemini.rs:99-106`). Removing it while git-ai's entry
+      is still there would silently disable somebody else's working hooks.
+    - Contract: after uninstall our entries are gone and, BECAUSE git-ai's entry
+      remains, the root field remains with it.
+    - NARROWED by the phase-5 review. This row seeds a foreign entry, so it always
+      described the protect-a-peer case; the IMPLEMENTATION it certified retained
+      unconditionally, which is a different and larger claim. See the provenance
+      rows below for the case this fixture never modelled: a file with NO peer at
+      all, where the retained flag protects nobody and is simply a write of ours we
+      did not reverse.
     */
     const spec = installable.find((s) => s.agent === 'gemini') as AgentSpec;
     seedWithGitAi(spec);
     const outcomes = installStrategyA(fs, spec, home, env, BINARY);
     const createdKeys = new Map(outcomes.map((o) => [o.path, new Set(o.createdKeys)]));
-    uninstallStrategyA({ fs, home, env, createdKeys }, spec);
+    uninstallStrategyA(
+      { fs, home, env, createdKeys, createdRootExtras: rootExtrasOf(outcomes) },
+      spec,
+    );
 
     const doc = readDoc(outcomes[0].path) as { tools?: { enableHooks?: unknown } };
     expect(doc.tools?.enableHooks).toBe(true);
+  });
+});
+
+describe('A ROOT FIELD IS REMOVED ONLY IF WE CREATED IT AND NOBODY ELSE NEEDS IT', () => {
+  /*
+    Test Doc:
+    - Why: phase-5 review F2, which REVERSED an endorsement. Unconditional retention
+      was a lazy implementation of a sound principle. The principle — never disable a
+      peer — only ever justified retention when a peer EXISTS. On a config with no
+      foreign hooks at all, install + uninstall left
+      `{"tools":{"enableHooks":true},"hooks":{}}` behind: a write of ours, rationalised
+      as shared, on a file where it protects nothing.
+    - The two conditions, both required, FAILING TOWARD RETENTION:
+        (a) provenance says WE created it — absent record means not ours;
+        (b) zero foreign hook entries remain anywhere in that file's hook sections
+            after our removal.
+      Any doubt at all — unparseable document, missing record, an entry we cannot
+      classify — retains. The cost of retaining wrongly is recoverable cruft; the
+      cost of removing wrongly is a peer's attribution silently switched off.
+    - Contract: the four rows below are the whole truth table.
+  */
+  const gemini = () => AGENT_MATRIX.find((s) => s.agent === 'gemini') as AgentSpec;
+  const geminiPath = () => join(home, '.gemini/settings.json');
+
+  const writeConfig = (doc: unknown): string => {
+    const path = geminiPath();
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, `${JSON.stringify(doc, null, 2)}\n`);
+    return path;
+  };
+
+  /** Install then uninstall, carrying this run's provenance across. */
+  const roundTrip = (spec: AgentSpec, provenance = true) => {
+    const outcomes = installStrategyA(fs, spec, home, env, BINARY);
+    uninstallStrategyA(
+      {
+        fs,
+        home,
+        env,
+        createdKeys: new Map(outcomes.map((o) => [o.path, new Set(o.createdKeys)])),
+        // `undefined` is the no-record case — an older install, or a deleted record.
+        ...(provenance ? { createdRootExtras: rootExtrasOf(outcomes) } : {}),
+      },
+      spec,
+    );
+    return outcomes;
+  };
+
+  const enableHooksOf = (path: string): unknown =>
+    (readDoc(path) as { tools?: { enableHooks?: unknown } }).tools?.enableHooks;
+
+  it('CREATED + NO FOREIGN HOOKS \u2192 REMOVED', () => {
+    /*
+    Test Doc:
+    - Why: the row the review reproduced. A config with no other hook consumer in
+      it: our flag protects nobody, so leaving it is not caution, it is a write we
+      failed to reverse.
+    - Contract: our entries gone AND `tools` gone with them — the whole object,
+      because `tools` itself did not exist before us.
+    - Proven RED on 62b86e96: `tools.enableHooks` reads `true` after uninstall.
+    */
+    const outcomes = roundTrip(gemini());
+    const doc = readDoc(outcomes[0].path) as Record<string, unknown>;
+    expect(doc.tools).toBeUndefined();
+    expect(readFileSync(outcomes[0].path, 'utf8')).not.toContain(HOOK_MARKER);
+  });
+
+  it('CREATED + A FOREIGN HOOK REMAINS \u2192 RETAINED, and the peer is genuinely live', () => {
+    /*
+    Test Doc:
+    - Why: THE SAFETY CLAIM, finally modelled by the fixture that asserts it. The
+      old retention row seeded a sibling with NO `enableHooks`, so it never modelled
+      a working peer — it asserted retention on a file where the flag did nothing.
+      Here git-ai's gemini entry is in the file, the file had no `enableHooks`, WE
+      turned it on, and after our uninstall git-ai's hook is still there. Removing
+      the flag now would switch off a peer that is dispatching.
+    - Contract: our entries gone, git-ai's entry present, `enableHooks` still true.
+    - This is condition (b) alone: (a) is satisfied — we DID create the flag.
+    */
+    const spec = gemini();
+    const path = writeConfig({
+      hooks: {
+        BeforeTool: [GIT_AI_SEED_ENTRY.gemini('BeforeTool')],
+        AfterTool: [GIT_AI_SEED_ENTRY.gemini('AfterTool')],
+      },
+    });
+    // The seed genuinely lacks the flag, so our install is what creates it.
+    expect(enableHooksOf(path)).toBeUndefined();
+
+    roundTrip(spec);
+
+    expect(readFileSync(path, 'utf8')).not.toContain(HOOK_MARKER);
+    expect(readFileSync(path, 'utf8')).toContain('git-ai checkpoint gemini');
+    expect(enableHooksOf(path)).toBe(true);
+  });
+
+  it('PRE-EXISTING + NO FOREIGN HOOKS \u2192 RETAINED', () => {
+    /*
+    Test Doc:
+    - Why: condition (a) alone. The user wrote this flag. That we happen to want it
+      too has never made it ours, and an empty `hooks` block is not licence to
+      delete a setting somebody typed.
+    - Contract: it survives a full round trip, with the user's sibling key.
+    */
+    const path = writeConfig({ tools: { enableHooks: true, sandbox: 'docker' }, hooks: {} });
+    roundTrip(gemini());
+
+    expect(enableHooksOf(path)).toBe(true);
+    expect((readDoc(path) as { tools: { sandbox: unknown } }).tools.sandbox).toBe('docker');
+  });
+
+  it('NO PROVENANCE AT ALL \u2192 RETAINED', () => {
+    /*
+    Test Doc:
+    - Why: the direction the whole record fails in. An install from an older build,
+      or a record a user deleted, leaves us unable to say whether the flag is ours.
+      "Unknown" resolves to "not ours", exactly as it already does for event-array
+      keys (F003) — the safe reading, never the convenient one.
+    - Contract: identical to row 1 in every respect EXCEPT that no provenance is
+      passed, and the outcome inverts.
+    */
+    const outcomes = roundTrip(gemini(), false);
+    expect(enableHooksOf(outcomes[0].path)).toBe(true);
+  });
+
+  it('and a root field we created OVER a user\u2019s object keeps the user\u2019s keys', () => {
+    /*
+    Test Doc:
+    - Why: the two provenance shapes are different removals and collapsing them
+      would delete a user's settings. When `tools` is ABSENT we create the whole
+      object and may remove the whole object; when `tools` EXISTS and only
+      `enableHooks` is missing we create ONE KEY and may remove only that key.
+    - Contract: `tools.sandbox` survives while `tools.enableHooks` goes.
+    */
+    const path = writeConfig({ tools: { sandbox: 'docker' }, hooks: {} });
+    roundTrip(gemini());
+
+    const doc = readDoc(path) as { tools: Record<string, unknown> };
+    expect(doc.tools.enableHooks).toBeUndefined();
+    expect(doc.tools.sandbox).toBe('docker');
+  });
+
+  it('an UNPARSEABLE hooks section retains, rather than guessing', () => {
+    /*
+    Test Doc:
+    - Why: "any doubt retains" needs a row, or it is a sentence in a comment. A hook
+      section we cannot classify is a peer we cannot rule out.
+    - Contract: with a hooks array replaced by a non-array we cannot read, the flag
+      stays.
+    */
+    const spec = gemini();
+    const outcomes = installStrategyA(fs, spec, home, env, BINARY);
+    const path = outcomes[0].path;
+    const doc = readDoc(path) as { hooks: Record<string, unknown> };
+    doc.hooks.SomethingElse = 'not an array at all';
+    writeFileSync(path, `${JSON.stringify(doc, null, 2)}\n`);
+
+    uninstallStrategyA(
+      {
+        fs,
+        home,
+        env,
+        createdKeys: new Map(outcomes.map((o) => [o.path, new Set(o.createdKeys)])),
+        createdRootExtras: rootExtrasOf(outcomes),
+      },
+      spec,
+    );
+    expect(enableHooksOf(path)).toBe(true);
+  });
+
+  it('cursor\u2019s created `version` follows the same rule', () => {
+    // Not a gemini special case: the rule is about root fields, not about one field.
+    const spec = AGENT_MATRIX.find((s) => s.agent === 'cursor') as AgentSpec;
+    const outcomes = roundTrip(spec);
+    expect((readDoc(outcomes[0].path) as { version?: unknown }).version).toBeUndefined();
   });
 });
 
@@ -403,8 +598,8 @@ describe('AGENTS WE CANNOT MEASURE ARE REFUSED, NOT GUESSED', () => {
       agent nobody has exercised risks exactly that on a user's machine.
     - Contract: it is present in the matrix (so `status` can report it honestly) and
       excluded from the installable set, carrying a reason a human can read.
-    - NOTE: its SHAPE is known from `firebender.rs:126-141` and is asserted by the
-      validator rows above. What is unverified is the install END TO END — no
+    - NOTE: its SHAPE is known from `firebender.rs:126-141` and is covered by the
+      writer-parity rows above. What is unverified is the install END TO END — no
       firebender exists on any machine we have touched.
     */
     const spec = AGENT_MATRIX.find((s) => s.agent === 'firebender') as AgentSpec;
@@ -420,11 +615,14 @@ describe('WINDSURF LISTENS ON ITS OWN EVENT NAMES', () => {
     /*
     Test Doc:
     - Why: F005's sibling finding. We wrote `PreToolUse`/`PostToolUse` into
-      `~/.codeium/hooks.json`. Both entries are structurally valid so the file still
-      parses — and if windsurf dispatches only on its own key names, our hook is
-      installed, well-formed and DEAD. That is F004's class (registered nowhere,
-      fires never) arriving through the event table instead of the flag table, and
-      it is the fifth uniformity assumption in this plan.
+      `~/.codeium/hooks.json`. Both entries are well-formed so the file still
+      parses — and git-ai dispatches windsurf on five cascade names and never on
+      `PreToolUse` (`windsurf.rs:17-23`), so on the upstream writer's reading our
+      hook was registered under keys the upstream writer treats as wrong for this
+      agent. That is F004's class (registered nowhere, fires never) arriving through
+      the event table instead of the flag table, and it is the fifth uniformity
+      assumption in this plan. Windsurf's runtime is unexercised, so the dead-hook
+      consequence is INFERRED from the writer, not observed.
     - Contract: the five cascade events from `windsurf.rs:17-23`, and no ToolUse key.
     */
     const spec = AGENT_MATRIX.find((s) => s.agent === 'windsurf') as AgentSpec;

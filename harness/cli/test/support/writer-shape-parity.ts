@@ -1,6 +1,21 @@
 /**
- * WHAT EACH AGENT REQUIRES OF ITS OWN CONFIG FILE — derived from git-ai's
- * per-agent installer source, NOT from the configs on this machine (plan 082 F005).
+ * THE ENTRY SHAPE git-ai WRITES FOR EACH AGENT — lifted from its per-agent
+ * installer source, NOT from the configs on this machine (plan 082 F005).
+ *
+ * WHAT THESE CHECKS ARE, STATED BEFORE ANYTHING ELSE (phase-5 review F3). They are
+ * HAND-WRITTEN PARITY CHECKS against git-ai's WRITER — not any agent's own schema,
+ * and not its runtime behaviour. What they measure is: *does our entry look like the
+ * entry the upstream writer produces for this agent?* That is a strong signal and a
+ * narrow claim, and the file used to make a wider one by calling itself a schema.
+ *
+ * THE COST OF THE FALSE NAME CUTS BOTH WAYS. Under "schema", a divergence reads as a
+ * defect even when the runtime would accept it — so a correct change could be
+ * rejected by a test that never measured the runtime at all.
+ *
+ * ONE ROW IS DIFFERENT AND IT IS THE ONE THIS FILE WAS BUILT FOR. For CLAUDE-CODE,
+ * "invalid" means invalid TO THE RUNTIME, measured: Jordan's machine, the error
+ * verbatim below, the whole file skipped. Everywhere else, read "violation" as
+ * "diverges from what git-ai writes".
  *
  * THE DEFECT THIS EXISTS TO CATCH, STATED PLAINLY. We wrote Cursor's FLAT entry
  * shape `{command}` into `~/.claude/settings.json`, which requires the NESTED shape
@@ -21,13 +36,17 @@
  * Validity is a property of the whole document, so it needs an assertion about the
  * whole document.
  *
- * WHY THE SCHEMAS ARE DERIVED FROM git-ai's SOURCE. git-ai ships SIXTEEN per-agent
- * installers under `src/mdm/agents/`. Every correct shape is already written down
+ * WHY THE SHAPES ARE DERIVED FROM git-ai's SOURCE. git-ai ships SIXTEEN per-agent
+ * installers under `src/mdm/agents/`. Every shape it writes is already written down
  * there. This plan raided that source for the four defects it was fixing and never
  * lifted the SHAPES — then wrote one shape for all seven agents. Reading the configs
  * on this machine is a weaker method for two reasons: it can only describe agents
- * that happen to have a file here (firebender has none), and an installed file is an
- * artifact of a writer rather than a statement of the requirement.
+ * that happen to have a file here (firebender has none), and an installed file
+ * records one run of one writer rather than that writer's rule.
+ *
+ * It is a weaker method than reading each AGENT's own loader would be — and that is
+ * not available: several parse their configs in native code. Upstream parity is the
+ * best evidence obtainable here, and naming it as such is the point of F3.
  *
  * Citations are `<file>:<line>` in `git-ai/src/mdm/agents/`, per agent, so the claim
  * is checkable rather than remembered.
@@ -60,15 +79,21 @@ export function shapeOf(value: unknown): ShapeSignature {
   return `{${entries.join(',')}}`;
 }
 
-export interface SchemaViolation {
+export interface ShapeDivergence {
   /** Where in the document, e.g. `hooks.PreToolUse[1]`. */
   at: string;
-  /** What the agent requires, phrased as the agent's own loader would put it. */
+  /**
+   * How it diverges from what git-ai writes here.
+   *
+   * Phrased as a loader would put it because that is the most legible wording, NOT
+   * because a loader said it — except for claude-code, where the wording IS the
+   * message Claude Code printed on Jordan's machine.
+   */
   problem: string;
 }
 
-/** Validate one whole config document against one agent's requirements. */
-export type ConfigValidator = (doc: unknown) => SchemaViolation[];
+/** Check one whole config document against the shape git-ai writes for that agent. */
+export type WriterShapeCheck = (doc: unknown) => ShapeDivergence[];
 
 const asRecord = (value: unknown): Record<string, unknown> | null =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -76,7 +101,7 @@ const asRecord = (value: unknown): Record<string, unknown> | null =>
     : null;
 
 /**
- * The NESTED entry requirement — claude-code, gemini, droid.
+ * The NESTED entry shape — claude-code, gemini, droid.
  *
  * Every element of an event array is a MATCHER BLOCK: an optional `matcher` string
  * plus a `hooks` ARRAY of `{type, command}`. A bare `{command}` is the exact defect:
@@ -87,8 +112,8 @@ const asRecord = (value: unknown): Record<string, unknown> | null =>
  * `droid.rs:183-186`, and the inner command hook at `claude_code.rs:206-209`,
  * `gemini.rs:194-197`, `droid.rs:237-240`.
  */
-const nestedValidator: ConfigValidator = (doc) => {
-  const violations: SchemaViolation[] = [];
+const nestedShape: WriterShapeCheck = (doc) => {
+  const violations: ShapeDivergence[] = [];
   const hooks = asRecord(asRecord(doc)?.hooks);
   if (hooks === null) return violations;
 
@@ -124,18 +149,20 @@ const nestedValidator: ConfigValidator = (doc) => {
 };
 
 /**
- * The FLAT entry requirement — cursor, firebender, github-copilot, windsurf.
+ * The FLAT entry shape — cursor, firebender, github-copilot, windsurf.
  *
  * Every element is the hook itself: a `command` string, and NEVER a `matcher`.
  *
- * The no-matcher rule is not inferred. firebender's own check treats a
+ * The no-matcher part is not guessed. firebender's own installer treats a
  * matcher-bearing entry as NOT INSTALLED (`firebender.rs:66`, `firebender.rs:81`)
- * and its installer REWRITES such an entry to strip it
- * (`firebender.rs:179`, test `firebender.rs:516`). So a nested block is as wrong
- * here as a flat entry is in claude-code — the mirror image of the same defect.
+ * and REWRITES such an entry to strip it (`firebender.rs:179`, test
+ * `firebender.rs:516`). So the upstream writer's rule is explicit here rather than
+ * merely observable — which is still a statement about the WRITER. Whether
+ * firebender's runtime would reject a matcher is unverified; nothing has ever
+ * exercised it.
  */
-const flatValidator: ConfigValidator = (doc) => {
-  const violations: SchemaViolation[] = [];
+const flatShape: WriterShapeCheck = (doc) => {
+  const violations: ShapeDivergence[] = [];
   const hooks = asRecord(asRecord(doc)?.hooks);
   if (hooks === null) return violations;
 
@@ -169,22 +196,30 @@ const flatValidator: ConfigValidator = (doc) => {
 };
 
 /**
- * Per-agent validators, keyed by our slug.
+ * Per-agent shape checks, keyed by our slug.
  *
  * THREE NESTED, FOUR FLAT — measured, and NOT the one-nested-exception the first
  * report assumed. Taking claude-code as a special case would have fixed a third of
  * the bug and left gemini and droid broken.
+ *
+ * EVIDENCE GRADE, PER ROW, because it is not uniform (phase-5 review F3):
+ *
+ * - **claude-code — RUNTIME-MEASURED.** A divergence here was observed to disable
+ *   the whole file, with the error text reproduced verbatim in `nestedShape`.
+ * - **every other row — WRITER PARITY.** git-ai writes this shape for this agent
+ *   and asserts it in its own tests. Whether the agent's runtime would REJECT a
+ *   divergence is UNVERIFIED here; no runtime was exercised.
  */
-export const CONFIG_VALIDATORS: Record<string, ConfigValidator> = {
+export const WRITER_SHAPE_CHECKS: Record<string, WriterShapeCheck> = {
   // NESTED — a `matcher` + `hooks` array per block.
-  'claude-code': nestedValidator, // claude_code.rs:151-154, 206-209
-  gemini: nestedValidator, //        gemini.rs:162-165, 194-197
-  droid: nestedValidator, //         droid.rs:183-186, 237-240
+  'claude-code': nestedShape, //     claude_code.rs:151-154, 206-209 — RUNTIME-MEASURED
+  gemini: nestedShape, //            gemini.rs:162-165, 194-197 — writer parity
+  droid: nestedShape, //             droid.rs:183-186, 237-240 — writer parity
   // FLAT — the hook itself, no matcher.
-  cursor: flatValidator, //          cursor.rs:150-164
-  firebender: flatValidator, //      firebender.rs:126-141 (matcher rejected: :66, :81, :179)
-  'github-copilot': flatValidator, // github_copilot.rs:59-69
-  windsurf: flatValidator, //        windsurf.rs:114-117
+  cursor: flatShape, //              cursor.rs:150-164 — writer parity
+  firebender: flatShape, //          firebender.rs:126-141 (matcher stripped: :66, :81, :179)
+  'github-copilot': flatShape, //    github_copilot.rs:59-69 — writer parity
+  windsurf: flatShape, //            windsurf.rs:114-117 — writer parity
 };
 
 /**

@@ -65,6 +65,24 @@ export interface InstallOutcome {
    * So it is captured here and persisted (`install-record.ts`).
    */
   createdKeys: string[];
+  /**
+   * Root-field paths THIS INSTALL created — e.g. `['tools','enableHooks']` or
+   * `['version']` (plan 082, phase-5 review F2).
+   *
+   * SAME PROVENANCE PROBLEM AS `createdKeys`, ONE LEVEL UP, and it was missed
+   * because retention was made unconditional instead. Uninstall retained every root
+   * field on the argument that it might belong to a peer — true when a peer exists,
+   * and on a config with no other hook consumer it just meant
+   * `{"tools":{"enableHooks":true}}` left behind forever: our write, rationalised as
+   * shared.
+   *
+   * KNOWABLE ONLY HERE. Afterwards the field exists and nothing in the file says who
+   * put it there. Recorded per PATH, and the path shape carries the second half of
+   * the answer: an ABSENT `tools` records `['tools']` (we made the whole object, we
+   * may remove the whole object), while a `tools` that merely lacked the flag records
+   * `['tools','enableHooks']` (we made one key, we may remove one key).
+   */
+  createdRootExtras: string[][];
 }
 
 /** The command we install for one agent and phase. */
@@ -146,8 +164,17 @@ export function buildEntry(
  *
  * A root key is shared with settings we have no business touching, so an existing
  * value is left exactly as the user wrote it — we add what is missing and nothing
- * else. Gemini's `tools.enableHooks` is the reason this exists at all: without it a
- * perfectly-shaped gemini hook is never dispatched (`gemini.rs:99-106`).
+ * else. Gemini's `tools.enableHooks` is the reason this exists at all: git-ai sets
+ * it on every gemini install and asserts it (`gemini.rs:99-106`, `:478-480`), and
+ * we were not setting it.
+ *
+ * MATCHED-NOT-VERIFIED (phase-5 review F3): that is a parity claim about the
+ * upstream WRITER, not a claim that gemini's runtime gates dispatch on the flag.
+ * No runtime has been exercised either way.
+ *
+ * WHAT IT RETURNS IS ALSO PROVENANCE. The list is exactly what this install is
+ * about to create, which is the only moment that is knowable — `installOneFile`
+ * records it so uninstall can reverse our own write and nobody else's.
  */
 export function missingRootExtras(
   text: string,
@@ -203,11 +230,21 @@ function installOneFile(fs: FsPort, spec: AgentSpec, path: string, binary: strin
   // what we would write — the binary path can legitimately differ between installs.
   if (containsOurEntry(before, spec)) {
     if (created) writeThroughSymlink(fs, path, before);
-    return { agent: spec.agent, path, created, alreadyPresent: true, createdKeys };
+    return {
+      agent: spec.agent,
+      path,
+      created,
+      alreadyPresent: true,
+      createdKeys,
+      // We wrote nothing this run, so we created no root field this run. An EARLIER
+      // run's provenance is in the record and is merged, never overwritten.
+      createdRootExtras: [],
+    };
   }
 
   let text = before;
-  for (const [path_, value] of missingRootExtras(text, spec)) {
+  const rootExtras = missingRootExtras(text, spec);
+  for (const [path_, value] of rootExtras) {
     text = setValue(text, path_, value);
   }
   for (const [phase, key] of phaseKeys(spec)) {
@@ -220,7 +257,14 @@ function installOneFile(fs: FsPort, spec: AgentSpec, path: string, binary: strin
   }
 
   writeThroughSymlink(fs, path, text);
-  return { agent: spec.agent, path, created, alreadyPresent: false, createdKeys };
+  return {
+    agent: spec.agent,
+    path,
+    created,
+    alreadyPresent: false,
+    createdKeys,
+    createdRootExtras: rootExtras.map(([keyPath]) => keyPath),
+  };
 }
 
 /**

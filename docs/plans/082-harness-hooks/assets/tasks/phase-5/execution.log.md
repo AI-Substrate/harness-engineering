@@ -292,3 +292,156 @@ another tool's error message.** The suite was green. The gate was green. The evi
 above ours in the file we were writing to — **the third time tonight the answer was already on the
 machine.** What changed is that the shape is now read from git-ai's source and asserted against a
 sibling, so the next reader inherits the answer instead of re-deriving it wrongly.
+
+---
+
+# F005 review delta — three findings from the gpt-5.6-sol reviewer on `62b86e96`
+
+All three accepted. Each is narrower than it first looks, and two of them are the *same shape as the
+defect they follow* — which is the point worth carrying forward.
+
+## F1 (P1) — our WRITER learned both shapes and our READER did not
+
+`ourCommands` (`hooks-verbs.ts`) parsed `entry.command` and nothing else. A nested entry has no
+top-level `command`, so `list` and `status` reported `installed:false, binaryState:absent,
+commandState:absent` **immediately after a successful install** into claude-code, gemini or droid.
+
+This is **the detection asymmetry again, and this time we owned both readers.** F005's general
+lesson was *a validator and a detector keyed on different fields will always be able to disagree*.
+
+> I wrote the lesson into the log in the same commit that shipped a third reader keyed on the old
+> field. **Knowing a defect's shape is not the same as having searched for its other instances.**
+
+That is the keeper, not the `ourCommands` line. The general form: **writing down a defect's shape
+is an act of understanding, not an act of search.** The two feel identical while you are doing the
+first one, which is why the log entry felt like closure and the third reader shipped underneath it.
+A defect class earns a *sweep* — every call site that answers the same question — and the sweep is
+a separate piece of work from the explanation.
+
+**Why it stayed green:** every `list`/`status` row in the suite used **cursor** — the one agent whose
+shape is flat. A per-agent surface tested on one agent proves one agent. The new rows are driven from
+`AGENT_MATRIX`, so the eighth agent is covered by adding a row rather than by remembering to add a
+test.
+
+**RED first, on the unmodified source:** exactly three failures — `claude-code`, `gemini`, `droid` —
+and four passes. The fix routes `ourCommands` through the same `entryCommands()` uninstall already
+matches ownership with: **one reader, not a second one that agrees today.**
+
+**The negative control is what makes the fix provable rather than plausible.** A git-ai-only nested
+config must still read `installed:false` / `binaryState:absent`. Without that row, a reader that
+returned every command it FOUND — rather than every command of OURS — passes all seven positive
+rows. The positive rows prove we can see our entry; only the negative row proves we can still tell
+it apart from somebody else's.
+
+## F2 (P1) — a principle held; its implementation was too broad
+
+The PM's endorsement of unconditional retention was reversed, correctly. `Reversibility of our own
+writes` never justified retaining a field on a file with **no peer to protect**. Install + uninstall
+on a config with no foreign hooks left `{"tools":{"enableHooks":true},"hooks":{}}` behind: our write,
+rationalised as shared.
+
+Worse, and this is the part that generalises: **the fixture that "proved" retention protects git-ai
+seeded a sibling with no `enableHooks` at all.** It asserted a safety property on a document where
+the flag was doing nothing. *A fixture can assert the right thing about the wrong world and stay
+green forever* — preservation-is-not-correctness, one level up from where F005 found it.
+
+Retention is now conditional on **both**: (a) provenance says we created it, and (b) zero foreign
+hook entries remain anywhere in that file's hook sections after our removal. **Any doubt retains** —
+unparseable document, non-array section, an entry we cannot classify. The path shape carries the
+second half of the answer for free: an absent `tools` records `['tools']` (we made the object, we may
+remove the object), while a `tools` that merely lacked the flag records `['tools','enableHooks']` (we
+made one key, we may remove one key). `foreignHooksRemain` counts an **`ours-with-foreign`** entry as
+foreign — one we refused to remove *because* it chains a peer's work is not evidence of an empty file.
+
+**Three mutations, because one condition proven is not two:**
+
+| mutation | rows RED |
+| --- | --- |
+| A — removal is a no-op (`62b86e96`'s unconditional retention) | **3** — created+no-foreign, created-over-user's-object, cursor's `version` |
+| B — condition (b) forced false | **3** — created+foreign, the protect-git-ai row, the unparseable row |
+| C2 — condition (a) discarded | **4** — including pre-existing and no-provenance |
+
+Mutation C (a *weaker* version of C2, falling back only when the map lacked the path) caught **one**
+row, not two: the pre-existing case passes an **empty list**, not an absent one.
+
+**METHOD NOTE, and it generalises past this row: an insufficiently sharp mutation UNDERSTATES the
+coverage it is measuring — in the direction nobody notices.** An over-sharp mutation fails loudly
+and gets fixed. An under-sharp one returns a smaller RED count that reads as a *finding* ("only one
+row covers condition (a)") rather than as a *broken instrument*. The tell was arithmetic: two rows
+claim to exercise (a), one went red, and the gap was in the mutation rather than in the suite. A
+mutation is an instrument, and an instrument that has not itself been checked is a claim.
+
+## F3 (P2) — structural parity was being written up as runtime requirement
+
+Accepted in full. For every agent **except claude-code**, the evidence is *git-ai writes and asserts
+this*, which is parity with the upstream writer — **not** a consumer schema and **not** observed
+runtime behaviour. The prose had upgraded it: "dispatch gate", "mandatory", "never dispatched",
+"never fires".
+
+- `test/support/agent-config-schema.ts` → **`test/support/writer-shape-parity.ts`**;
+  `CONFIG_VALIDATORS` → `WRITER_SHAPE_CHECKS`, `ConfigValidator` → `WriterShapeCheck`,
+  `SchemaViolation` → `ShapeDivergence`. The reviewer's argument for renaming the *file*, not just
+  the comments, is the one that convinced: **under the false name the tests would also reject a
+  runtime-correct divergence as if it were a defect.** A test's name is part of its contract.
+- Each row in `WRITER_SHAPE_CHECKS` now carries its evidence grade inline.
+- **claude-code keeps its runtime language, and it is now stated as the contrast**: *a wrong shape
+  disables the whole config* is MEASURED — Jordan's machine, the error verbatim in the fixture. That
+  is the one row where "invalid" means invalid-to-the-runtime.
+
+## Verification (delta)
+
+| check | result |
+| --- | --- |
+| `entry-shape.test.ts` | **39 passed** (was 32) |
+| `hooks-verbs.test.ts` | **29 passed** (was 22) |
+| hooks suite (23 files) | **407 passed**, every run |
+| whole suite, `HARNESS_TEST_SCOPE=all` | **5853 passed / 388 files — GREEN** |
+| `just checks` non-test gates | biome ok · typecheck ok · check:docs ok · check:flows ok · check:telemetry-fixtures ok · check:doctrine-parity ok · check:dd-docs ok · root-invocation-smoke ok · dd doctor ok · skills-check ok |
+| arch-check · markdown-lint · windows-check | **2 · 211 · 7** — standing baseline, unmoved |
+
+### The gate's `tests` row could NOT be driven green on this machine, and that is a MEASUREMENT
+
+Five full `HARNESS_TEST_SCOPE=all just checks` runs, and the `tests` gate failed every time — on a
+**different set of files each time**, never on anything this change touches:
+
+| run | tree | failing file(s) |
+| --- | --- | --- |
+| 1 | mine | `live-daemon-note.int.test.ts` |
+| 2 | mine | `live-daemon-note.int.test.ts` |
+| 3 | **`62b86e96`, isolated `--ref` worktree** | `exec-git-write.int.test.ts`, `pty-input.test.ts` |
+| 4 | mine | `pty-input.test.ts` |
+| 5 | mine | `live-daemon-note.int.test.ts`, `pty-input.test.ts` |
+
+**Run 3 is the control and it is why this is not being waved through.** The parent commit fails the
+same gate, on this machine, in a worktree that never saw my diff. The failure set varies run to run,
+which a code defect does not do.
+
+The cause is measured, not guessed: **load average 230–280** on a box running thirteen concurrent
+seats. All three files are wallclock-bound against shared resources — a live git-ai daemon socket
+polled for a bounded 10s (it answers in **1.2s** unloaded), a real PTY, a 64 MiB blob round trip.
+
+**The decisive run:** the whole suite executed directly with self-contention reduced —
+`HARNESS_TEST_SCOPE=all npx vitest run --maxWorkers=4` — is **5853 passed / 5853, 388 files, 57s,
+zero failures.** The same three files pass together in isolation.
+
+`VITEST_MAX_THREADS=4` does **not** reach the gate: `harness checks` spawns its own vitest and the
+variable is not honoured, so there is no supported way to bound the gate's worker count from outside.
+Captured as **DL-001** (`harness observe --kind difficulty`) rather than worked around.
+
+**The honest statement of what is proven:** every gate except `tests` is green or at its standing
+baseline, the full test suite at CI scope is green when it is not starved of CPU, and the `tests`
+gate's redness reproduces on the parent commit. **CI is the authoritative gate and it runs on an
+unloaded box** — this needs to be read there, not here.
+
+## Credit
+
+The reviewer re-ran the `entryCommands` mutation itself (5 RED, the same five rows), confirmed the
+`docs-content.ts` disclosure via `check:docs`, and left the tree byte-identical. Two of its three
+findings were defects our own green suite was actively certifying.
+
+## Softest claim, restated after the delta
+
+**Our reader and our writer now agree about both entry shapes, and a root field we created is
+reversible unless something else in the file still depends on it.** Still a claim about structural
+agreement with git-ai and about our own provenance — **no agent runtime has been exercised**, on any
+of the seven, at any point in this phase.

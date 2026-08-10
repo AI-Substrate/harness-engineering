@@ -1,7 +1,7 @@
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { AgentSpec } from './agent-matrix.js';
 import { eventKeys, resolveConfigFiles } from './agent-matrix.js';
-import { removeFromArray, writeThroughSymlink } from './config-writer.js';
+import { removeFromArray, removeValue, writeThroughSymlink } from './config-writer.js';
 import { entryCommands, entryIsOwnedByUs, entryMayRemove } from './hook-marker.js';
 
 /**
@@ -70,6 +70,14 @@ export interface UninstallDeps {
    * is the safe one.
    */
   createdKeys?: ReadonlyMap<string, ReadonlySet<string>>;
+  /**
+   * Root-field paths THIS INSTALL created, per absolute config path — the only root
+   * fields uninstall may remove, and then only under the second condition below
+   * (phase-5 review F2).
+   *
+   * ABSENT MEANS WE CREATED NOTHING, exactly as for {@link createdKeys}.
+   */
+  createdRootExtras?: ReadonlyMap<string, readonly string[][]>;
 }
 
 export function uninstallStrategyA(deps: UninstallDeps, spec: AgentSpec): UninstallOutcome[] {
@@ -182,9 +190,80 @@ function uninstallOneFile(deps: UninstallDeps, spec: AgentSpec, path: string): U
         break;
       }
     }
+    current = removeOurRootExtras(deps, path, current);
     writeThroughSymlink(deps.fs, path, current);
   }
   return { ...base, removed, refused };
+}
+
+/**
+ * Remove root fields WE created — and only where nothing else in the file needs them
+ * (plan 082, phase-5 review F2).
+ *
+ * THE PRINCIPLE IS UNCHANGED AND THE IMPLEMENTATION WAS TOO BROAD. Retention was
+ * unconditional, justified by "a document-level switch is shared, so it is not ours
+ * to clear". That justification holds only where something is there to share it
+ * with. On a config with no other hook consumer, install + uninstall left
+ * `{"tools":{"enableHooks":true},"hooks":{}}` behind: our write, never reversed,
+ * protecting nobody. **Reversibility of our own writes is the principle; retaining
+ * everything was a lazy way to satisfy it.**
+ *
+ * TWO CONDITIONS, BOTH REQUIRED:
+ *
+ * 1. **Provenance says we created it.** No record, or a record from an older build,
+ *    means we created nothing — the same direction {@link UninstallDeps.createdKeys}
+ *    fails in.
+ * 2. **No foreign hook entry remains anywhere in this file's hook sections** after
+ *    our own removal. Not just this agent's event keys: EVERY key under `hooks`,
+ *    because the flag is document-level and so is the question.
+ *
+ * ANY DOUBT RETAINS. An unparseable document, a hook section that is not an array,
+ * an entry we cannot classify — all of them count as a peer we cannot rule out. The
+ * asymmetry is deliberate: retaining wrongly leaves recoverable cruft, removing
+ * wrongly silently switches off somebody else's attribution.
+ */
+function removeOurRootExtras(deps: UninstallDeps, path: string, text: string): string {
+  const ours = deps.createdRootExtras?.get(path);
+  if (ours === undefined || ours.length === 0) return text;
+
+  let doc: { hooks?: unknown };
+  try {
+    doc = JSON.parse(stripComments(text)) as typeof doc;
+  } catch {
+    return text;
+  }
+  if (foreignHooksRemain(doc.hooks)) return text;
+
+  let current = text;
+  for (const keyPath of ours) {
+    if (keyPath.length === 0) continue;
+    current = removeValue(current, [...keyPath]);
+  }
+  return current;
+}
+
+/**
+ * Does ANY hook entry we do not own remain in this document?
+ *
+ * `true` is also the answer for anything we cannot read — a `hooks` block that is
+ * not an object, a section that is not an array, an entry with no command we can
+ * find. "I cannot tell" and "yes" must reach the same decision here, because only
+ * one of them is safe.
+ */
+function foreignHooksRemain(hooks: unknown): boolean {
+  if (hooks === undefined || hooks === null) return false;
+  if (typeof hooks !== 'object' || Array.isArray(hooks)) return true;
+  for (const section of Object.values(hooks as Record<string, unknown>)) {
+    if (!Array.isArray(section)) return true;
+    for (const entry of section) {
+      if (entryCommands(entry).length === 0) return true;
+      // NOT `entryIsOwnedByUs`. An `ours-with-foreign` entry — one we refused to
+      // remove precisely BECAUSE it chains somebody else's work — is owned by us and
+      // still carries a peer's invocation. Only a wholly-ours entry is foreign-free.
+      if (!entryMayRemove(entry)) return true;
+    }
+  }
+  return false;
 }
 
 /**

@@ -7,7 +7,7 @@ import { AGENT_MATRIX, eventKeys, resolveConfigFiles } from './agent-matrix.js';
 import { extractBinaryPath } from './binary-path.js';
 import { unacceptedOptions } from './fire-options.js';
 import { FileHookJournal } from './hook-journal.js';
-import { isOwnedByUs } from './hook-marker.js';
+import { entryCommands, isOwnedByUs } from './hook-marker.js';
 import { hookJournalPath, hookStateDir } from './hook-payload.js';
 import {
   ensureRecordWritable,
@@ -286,6 +286,7 @@ function compensate(deps: HooksDeps, spec: AgentSpec, outcomes: InstallOutcome[]
         env: deps.env,
         createdFiles: new Set(ours.filter((o) => o.created).map((o) => o.path)),
         createdKeys: new Map(ours.map((o) => [o.path, new Set(o.createdKeys)])),
+        createdRootExtras: new Map(ours.map((o) => [o.path, o.createdRootExtras])),
       },
       spec,
     );
@@ -418,12 +419,29 @@ function configuredBinaryFor(deps: HooksDeps, spec: AgentSpec): string | null {
   return command === undefined ? null : extractBinaryPath(command);
 }
 
+/**
+ * Every command OF OURS installed in this agent's configs — the one thing `list`,
+ * `status` and `configuredBinary` all read.
+ *
+ * ONE READER FOR BOTH ENTRY SHAPES (plan 082, phase-5 review F1). This used to
+ * parse `entry.command` and nothing else, which does not exist in a NESTED entry —
+ * there the command lives at `entry.hooks[].command`. So immediately after a
+ * successful install into claude-code, gemini or droid, `status` reported
+ * `installed: false, binaryState: absent, commandState: absent`. Our WRITER had
+ * learned both shapes and our READER had not.
+ *
+ * That is the same two-readers-disagree shape as F005 itself — a validator and a
+ * detector keyed on different fields — except that this time we owned both readers.
+ * So it now goes through {@link entryCommands}, the SAME function uninstall matches
+ * ownership with. Not a second implementation that agrees today: one implementation,
+ * which cannot drift.
+ */
 function ourCommands(deps: HooksDeps, spec: AgentSpec): string[] {
   const out: string[] = [];
   for (const path of resolveConfigFiles(spec, deps.home, deps.env)) {
     const raw = deps.fs.readText(path);
     if (raw === null) continue;
-    let doc: { hooks?: Record<string, { command?: unknown }[]> };
+    let doc: { hooks?: Record<string, unknown[]> };
     try {
       doc = JSON.parse(stripComments(raw)) as typeof doc;
     } catch {
@@ -431,8 +449,7 @@ function ourCommands(deps: HooksDeps, spec: AgentSpec): string[] {
     }
     for (const key of eventKeys(spec)) {
       for (const entry of doc.hooks?.[key] ?? []) {
-        if (typeof entry.command === 'string' && isOwnedByUs(entry.command))
-          out.push(entry.command);
+        out.push(...entryCommands(entry).filter(isOwnedByUs));
       }
     }
   }
@@ -604,6 +621,11 @@ export function uninstallHooks(deps: HooksDeps): UninstallReport {
   const createdKeys = new Map<string, ReadonlySet<string>>(
     record.entries.map((e) => [e.path, new Set(e.createdKeys)]),
   );
+  // A record written before phase-5 has no root-extra provenance at all, and an
+  // absent list must read as "we created nothing" rather than "unknown, so guess".
+  const createdRootExtras = new Map<string, readonly string[][]>(
+    record.entries.map((e) => [e.path, e.createdRootExtras ?? []]),
+  );
 
   const removed: UninstallReport['removed'] = [];
   const untouched: UninstallReport['untouched'] = [];
@@ -625,7 +647,14 @@ export function uninstallHooks(deps: HooksDeps): UninstallReport {
     if (spec === undefined) continue;
     try {
       for (const outcome of uninstallStrategyA(
-        { fs: deps.fs, home: deps.home, env: deps.env, createdFiles, createdKeys },
+        {
+          fs: deps.fs,
+          home: deps.home,
+          env: deps.env,
+          createdFiles,
+          createdKeys,
+          createdRootExtras,
+        },
         spec,
       )) {
         for (const r of outcome.refused) {

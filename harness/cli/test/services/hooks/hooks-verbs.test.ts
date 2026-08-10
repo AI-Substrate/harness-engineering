@@ -167,6 +167,70 @@ describe('the CUT LINE is explicit, never a silent skip (dw-001d)', () => {
   });
 });
 
+describe('THE READER SEES EVERY SHAPE THE WRITER WRITES (phase-5 review F1)', () => {
+  /*
+    Test Doc:
+    - Why: F005 taught the writer both entry shapes and left the READER on one.
+      `ourCommands` parsed `entry.command` only, so claude-code / gemini / droid
+      reported `installed:false, binaryState:absent, commandState:absent`
+      IMMEDIATELY AFTER A SUCCESSFUL INSTALL. That is the two-readers-disagree class
+      again — this time both readers are OURS.
+    - Why it stayed green: every `list`/`status` row in this suite used cursor, the
+      one agent whose shape is flat. A per-agent surface tested on one agent proves
+      one agent.
+    - Contract: for EVERY installable agent, install then observe — `installed` is
+      true, the binary is `resolves`, and the command's options are `accepted`.
+    - Proven RED on 62b86e96: the three nested agents fail all three assertions.
+    - Quality Contribution: driven from `AGENT_MATRIX`, so an eighth agent is
+      covered by adding its row rather than by remembering to add a test.
+  */
+  const installable = AGENT_MATRIX.filter((spec) => spec.supported);
+
+  it.each(
+    installable.map((spec) => spec.agent),
+  )('%s: list and status see the install, whatever shape it was written in', (agent) => {
+    const spec = installable.find((s) => s.agent === agent) as (typeof installable)[number];
+    present(spec.subdir);
+    const binaryPath = join(home, 'bin', 'harness');
+    mkdirSync(join(home, 'bin'), { recursive: true });
+    writeFileSync(binaryPath, '#!/bin/sh\n');
+
+    const report = installHooks(deps({ binary: `"${binaryPath}"` }));
+    expect(report.failed).toEqual([]);
+
+    expect(listAgents(deps()).find((r) => r.agent === agent)?.installed).toBe(true);
+
+    const row = statusHooks(deps()).find((r) => r.agent === agent);
+    expect(row?.binaryState).toBe('resolves');
+    expect(row?.configuredBinary).toBe(binaryPath);
+    expect(row?.commandState).toBe('accepted');
+  });
+
+  it('and still says NOT installed when the entry is somebody else\u2019s', () => {
+    // The negative control. Without it, a reader that returned every command it
+    // found — rather than every command of OURS — would pass every row above.
+    present('.claude');
+    mkdirSync(join(home, '.claude'), { recursive: true });
+    writeFileSync(
+      join(home, '.claude', 'settings.json'),
+      `${JSON.stringify(
+        {
+          hooks: {
+            PreToolUse: [
+              { matcher: '*', hooks: [{ type: 'command', command: 'git-ai checkpoint claude' }] },
+            ],
+          },
+        },
+        null,
+        2,
+      )}\n`,
+    );
+
+    expect(listAgents(deps()).find((r) => r.agent === 'claude-code')?.installed).toBe(false);
+    expect(statusHooks(deps()).find((r) => r.agent === 'claude-code')?.binaryState).toBe('absent');
+  });
+});
+
 describe('`status` proves its target RESOLVES, not merely that an entry exists', () => {
   it('reports the configured binary and whether it resolves', () => {
     /*

@@ -145,6 +145,24 @@ export function setValue(text: string, path: (string | number)[], value: unknown
  * Passing `undefined` as the value is jsonc-parser's array-element DELETE.
  */
 export function removeFromArray(text: string, path: (string | number)[]): string {
+  return removeAt(text, path);
+}
+
+/**
+ * Remove the OBJECT KEY at `path` — the same minimal-edit round trip, pointed at a
+ * root field rather than an array element (plan 082, phase-5 review F2).
+ *
+ * A separate name from {@link removeFromArray} because the CALLER's question is
+ * different and the safety rules around it are different: an array element is one of
+ * our entries, while a root key may be shared with a peer. `uninstall-strategy-a.ts`
+ * owns the two conditions under which pointing this at a root field is permitted.
+ */
+export function removeValue(text: string, path: (string | number)[]): string {
+  return removeAt(text, path);
+}
+
+/** Passing `undefined` as the value is jsonc-parser's DELETE, for both shapes. */
+function removeAt(text: string, path: (string | number)[]): string {
   const errors: ParseError[] = [];
   parseJsonc(text, errors, { allowTrailingComma: true });
   if (errors.length > 0) return text;

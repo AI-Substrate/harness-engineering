@@ -153,14 +153,21 @@ export interface AgentSpec {
   /**
    * Fields this agent needs at the DOCUMENT ROOT, written only when absent.
    *
-   * A third "installed but dead" surface, alongside the entry shape and the event
-   * keys. gemini gates hook dispatch on `tools.enableHooks` and its own installer
-   * sets it on every install (`gemini.rs:99-106`, asserted `gemini.rs:478-480`);
-   * cursor and firebender stamp `version: 1` (`cursor.rs:172-174`,
-   * `firebender.rs:143-148`). We wrote none of them.
+   * A third surface where our config could differ from the one the upstream writer
+   * produces, alongside the entry shape and the event keys. git-ai sets
+   * `tools.enableHooks` on every gemini install (`gemini.rs:99-106`, asserted
+   * `gemini.rs:478-480`) and stamps `version: 1` for cursor and firebender
+   * (`cursor.rs:172-174`, `firebender.rs:143-148`). We wrote none of them.
+   *
+   * MATCHED-NOT-VERIFIED (phase-5 review F3). The claim is *git-ai writes these, so
+   * we write them too* — structural parity with the upstream writer. Whether any of
+   * these agents' runtimes GATES on them is UNVERIFIED here; no runtime has been
+   * exercised, with or without the field.
    *
    * NEVER OVERWRITTEN. An existing value is the user's, and a root key is shared
-   * with settings we have no business touching.
+   * with settings we have no business touching. What we DID create is recorded, so
+   * uninstall can reverse our own write without clearing somebody else's — see
+   * `uninstall-strategy-a.ts`.
    */
   rootExtras?: Record<string, unknown>;
   /**
@@ -235,9 +242,9 @@ export const AGENT_MATRIX: AgentSpec[] = [
     override: { name: 'GEMINI_CLI_HOME', kind: 'home-root' },
     entryShape: 'nested', // gemini.rs:162-165, :194-197
     matcher: '*',
-    // WITHOUT THIS, A PERFECTLY-SHAPED GEMINI HOOK IS DEAD. gemini.rs:99-106 sets it
-    // on every install and gemini.rs:478-480 asserts it — its own installer treats
-    // it as mandatory, so we do too rather than reason about the runtime.
+    // MATCHED-NOT-VERIFIED. gemini.rs:99-106 sets this on every install and
+    // gemini.rs:478-480 asserts it; we match. Whether the gemini runtime gates
+    // dispatch on it is UNVERIFIED here — nothing has been exercised either way.
     rootExtras: { tools: { enableHooks: true } },
     supported: true,
   },
