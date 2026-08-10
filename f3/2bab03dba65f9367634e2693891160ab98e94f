@@ -1,0 +1,38 @@
+harness/cli/src/services/doctor/collector/platform.ts
+  s_6a069988adc301::t_819f1244f9f77c 84-125
+harness/cli/src/services/doctor/collector/health.ts
+  s_6a069988adc301::t_52416f340c5a55 91-96
+  s_6a069988adc301::t_e9b2d35ca938bf 578-602
+  s_6a069988adc301::t_bf9598282d20f0 344
+  s_6a069988adc301::t_f1d371d795d6f9 44
+  s_6a069988adc301::t_9d1bbf334f6f8b 131-137
+  s_6a069988adc301::t_bdab3b321abbb2 10
+harness/cli/test/services/doctor/collector-layer.test.ts
+  s_6a069988adc301::t_15d3e883f71fb1 121,128-129,140-158
+  s_6a069988adc301::t_06e90990af20c7 159-160
+harness/cli/src/services/doctor/doctor-service.ts
+  s_6a069988adc301::t_1c72c0e527c9eb 883-888,893
+  s_6a069988adc301::t_04522021f125d2 864
+  s_6a069988adc301::t_eb0dd0ee827fa0 1091
+  s_6a069988adc301::t_60b953663ac67a 34
+harness/cli/test/services/doctor/collector/health.test.ts
+  s_6a069988adc301::t_6ca157d1dc4ef2 83,95
+  s_6a069988adc301::t_9cb21f77243191 14-16
+  s_6a069988adc301::t_8a97e0154de362 13,816-892
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f32bab03dba65f9367634e2693891160ab98e94f",
+  "prompts": {},
+  "sessions": {
+    "s_6a069988adc301": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e7dab2b-673d-471a-b447-862e98eb1aba",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
