@@ -1,0 +1,26 @@
+.harness/extensions/arch-check/mapping.ts
+  s_6066df1c8c80ee::t_a7b9833c6d425f 125-165
+.harness/extensions/arch-check/mapping.test.ts
+  s_6066df1c8c80ee::t_bf48a83e0edd5b 248-359
+.harness/extensions/arch-check/fixtures/zero-modules.json
+  s_6066df1c8c80ee::t_0ae237a1c8c6f3 1-336
+.harness/extensions/arch-check/instructions.md
+  s_6066df1c8c80ee::t_b75e1dd4c35bfb 40-41,49-50,53-80
+  s_6066df1c8c80ee::t_f2fb321f745802 81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a489d5c47a61a8b4d27a6bb36be24d6078d530fe",
+  "prompts": {},
+  "sessions": {
+    "s_6066df1c8c80ee": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "93825907-3aeb-4c43-9f58-99ae59f84f57",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
