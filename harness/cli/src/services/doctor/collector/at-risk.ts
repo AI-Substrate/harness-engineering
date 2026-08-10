@@ -72,6 +72,16 @@ export function enumerateAtRisk(deps: AtRiskDeps): AtRiskReport {
   const proven = deps.ingress !== undefined && ingressProves(deps.ingress);
 
   if (commits.length > 0) {
+    // TRANSPORT-AWARE (plan 082 · F006). Making a named pipe probeable made this
+    // rung reachable with a pipe reading, and nudge REPLAY is still refused for a
+    // pipe (plan 075 · TRACE2_TARGET_POLICY.named_pipe.replayInto) — so naming
+    // the nudge here would hand a Windows operator a command that answers "not
+    // supported on this platform". The manual note check is the one thing that
+    // does work, and it is already what `harness commit` names on that branch.
+    const pipe = deps.ingress?.target.kind === 'named_pipe';
+    const next_action = pipe
+      ? 'Those commits carry no note. Replay via `harness doctor telemetry-nudge` is NOT available for a named-pipe ingress, so there is no buffer to drain: check a commit for yourself with `git notes --ref=ai show <sha>`, and recover by restoring a connect this process is allowed to make. Commits made before git-ai was installed will never gain a note and are expected here.'
+      : 'If those commits were made through a blocked ingress, run `harness doctor telemetry-nudge` from an UNSANDBOXED shell to replay any buffered trace2 events. Commits made before git-ai was installed will never gain a note and are expected here.';
     return {
       status: 'unattributed',
       commits,
@@ -81,8 +91,7 @@ export function enumerateAtRisk(deps: AtRiskDeps): AtRiskReport {
         .slice(0, 5)
         .map((sha) => sha.slice(0, 8))
         .join(', ')}${commits.length > 5 ? ', …' : ''}`,
-      next_action:
-        'If those commits were made through a blocked ingress, run `harness doctor telemetry-nudge` from an UNSANDBOXED shell to replay any buffered trace2 events. Commits made before git-ai was installed will never gain a note and are expected here.',
+      next_action,
     };
   }
 

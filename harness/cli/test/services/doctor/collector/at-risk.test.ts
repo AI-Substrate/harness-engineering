@@ -189,6 +189,56 @@ describe('plan 074 · ac-0003 — empty is not clean', () => {
     }
   });
 
+  it('never sends a Windows operator to the nudge for UNATTRIBUTED commits (F006)', () => {
+    /*
+    Test Doc:
+    - Why: the `unattributed` rung recommends `harness doctor telemetry-nudge`
+      unconditionally. Before F006 a pipe reading was never probed, so the
+      reading that reaches this rung alongside a pipe target is a CONSEQUENCE of
+      making pipes probeable. Replay into a named pipe is still refused (plan 075
+      · TRACE2_TARGET_POLICY.named_pipe.replayInto), so the recommendation is a
+      command that answers "not supported on this platform" — the same class of
+      wrong next action F1 caught one rung down.
+    - Contract: with a named-pipe target and a NON-EMPTY unattributed list, the
+      nudge is not RECOMMENDED — it is named only to say it is unavailable, the
+      same shape health.ts and commit-service already use — and the manual note
+      check is named instead. Naming the wrong verb to forbid it beats silence:
+      an operator who knows the nudge exists would otherwise try it and get a
+      bare refusal with no alternative.
+    - Quality Contribution: the sibling test above covers only the EMPTY-list
+      description arms; this is the only row that reaches the `unattributed`
+      next_action with a pipe. Asserting the absence of the RECOMMENDING form
+      ("run `harness doctor telemetry-nudge`") kills a revert to the shared
+      string, which asserting the absence of the bare verb name could not do
+      without also forbidding the honest denial.
+    */
+    const git = new FakeGitAttribution({ window: windowOf(SHAS) });
+    const report = enumerateAtRisk({
+      git,
+      ingress: {
+        target: { kind: 'named_pipe', path: '\\\\.\\pipe\\git-ai' },
+        outcome: 'denied',
+        socketExists: false,
+        markers: [],
+      },
+    });
+
+    expect(report.status).toBe('unattributed');
+    expect(report.commits).toHaveLength(3);
+    expect(report.next_action).not.toContain('run `harness doctor telemetry-nudge`');
+    expect(report.next_action).toContain('NOT available');
+    expect(report.next_action).toContain('git notes --ref=ai show');
+  });
+
+  it('still points an af_unix reading AT the nudge — the split cuts both ways', async () => {
+    const git = new FakeGitAttribution({ window: windowOf(SHAS) });
+    const report = enumerateAtRisk({ git, ingress: await ingressWith('denied') });
+
+    expect(report.status).toBe('unattributed');
+    expect(report.next_action).toContain('run `harness doctor telemetry-nudge`');
+    expect(report.next_action).not.toContain('NOT available');
+  });
+
   it('keeps SOCKET wording for an af_unix reading — the split cuts both ways', async () => {
     const git = new FakeGitAttribution({ window: windowOf(SHAS), notes: SHAS });
     const report = enumerateAtRisk({ git, ingress: await ingressWith('absent', false) });

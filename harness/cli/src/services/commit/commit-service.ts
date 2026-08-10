@@ -31,9 +31,11 @@ import { HARNESS_DIR, TEMP_DIR } from '../shared/temp.js';
  *   configured target is already buffering, and overriding it would only move
  *   the buffer somewhere the user did not choose.
  * - **`named_pipe`** (a live Windows ingress) → commit with NO override, no
- *   sidecar, and NO claim: the transport cannot be probed, so this branch
- *   reports plainly that attribution was not verified on this platform rather
- *   than calling a live ingress a buffer (plan 075 · ac-0005).
+ *   sidecar, and NO claim: attribution cannot be VERIFIED on this transport
+ *   (the pipe itself is probeable since plan 082 · F006 — reachability and
+ *   attribution are different questions), so this branch reports plainly that
+ *   nothing was verified rather than calling a live ingress a buffer
+ *   (plan 075 · ac-0005).
  * - **EVERY other outcome** (`denied` | `refused` | `absent` | `timeout` |
  *   `error:<code>` | `unconfigured`) → commit with `GIT_TRACE2_EVENT` pointed at
  *   a buffer file under the gitignored harness temp dir, and skip note-verify,
@@ -135,11 +137,14 @@ export type CommitMode =
   | 'file-buffered'
   | 'harness-buffered'
   /**
-   * The target is a LIVE ingress the harness cannot probe or verify against —
-   * today, a Windows named pipe (plan 075 · ac-0005). The commit is made with
-   * NO trace2 override, because overriding would DIVERT events away from a
-   * collector that may well be receiving them; and nothing is claimed about
-   * attribution afterwards, because nothing was measured.
+   * The target is a LIVE ingress the harness cannot VERIFY attribution against —
+   * today, a Windows named pipe (plan 075 · ac-0005). The pipe is reachable and
+   * probeable (plan 082 · F006); what is unavailable is the evidence that a note
+   * landed, because nobody has established how the collector behaves on this
+   * transport. The commit is made with NO trace2 override, because overriding
+   * would DIVERT events away from a collector that may well be receiving them;
+   * and nothing is claimed about attribution afterwards, because nothing was
+   * measured.
    */
   | 'ingress-unverified';
 

@@ -465,15 +465,27 @@ export function readCollectorHealth(deps: CollectorHealthDeps): CollectorHealth 
     // denied), so the sentence has to name what was actually observed.
     const pipe = deps.ingress.target.kind === 'named_pipe';
     const endpoint = pipe ? `named pipe at ${socket}` : `ingress socket at ${socket}`;
+    // The af_unix sentence is MEASURED: a denied connect to a socket file that
+    // is right there is the observed Seatbelt/command-sandbox signature on this
+    // machine. The PIPE sentence must NOT inherit that claim — nothing in this
+    // repo has run on Windows, so it says what would follow rather than what was
+    // seen. One measured sentence and one inferred sentence must not read alike.
     const evidence = pipe
-      ? 'the connect was denied rather than simply failing to find the pipe, which is what a command sandbox looks like'
+      ? 'the connect was denied rather than simply failing to find the pipe, which is consistent with a command sandbox denying the connect — UNMEASURED on Windows, this is inference from the error code, not an observed signature'
       : 'the connect was denied while the socket file exists, which is what a command sandbox looks like';
     // The nudge REPLAY is refused on a pipe (plan 075, unchanged by F006 — see
     // TRACE2_TARGET_POLICY.named_pipe.replayInto). Naming it here would hand a
     // Windows operator a command that answers "not supported on this platform",
     // which is worse than naming no command at all.
+    //
+    // Nor does `harness commit` VERIFY on this branch: it deliberately skips the
+    // note poll and reports `ingress-unverified` (commit-service.ts, plan 075 ·
+    // ac-0005), so promising it "tells you whether attribution landed" would
+    // promise evidence the command refuses to produce. What it actually does is
+    // commit without diverting the pipe and report the outcome as UNVERIFIED —
+    // the manual note check is the only thing that answers the question.
     const recovery = pipe
-      ? 'Commit through `harness commit "<message>"`, which tells you whether attribution landed. Replay via `harness doctor telemetry-nudge` is NOT available for a named-pipe ingress, so recovery here means restoring an unsandboxed connect rather than draining a buffer. See `harness instructions commit`.'
+      ? 'Commit through `harness commit "<message>"`, which commits WITHOUT overriding the pipe and reports attribution as NOT VERIFIED on this platform — it buffers nothing here, so there is nothing to drain. Check a commit for yourself with `git notes --ref=ai show <sha>`. Replay via `harness doctor telemetry-nudge` is NOT available for a named-pipe ingress, so recovery here means restoring an unsandboxed connect. See `harness instructions commit`.'
       : 'Commit through `harness commit "<message>"`, which buffers trace2 to a file when the ingress is blocked and tells you whether attribution landed; then run `harness doctor telemetry-nudge` from an UNSANDBOXED shell to replay the buffer. See `harness instructions commit`.';
     return {
       ...base,

@@ -499,6 +499,81 @@ describe('plan 082 · F006 — the pipe rungs say what is true about a PIPE', ()
     expect(result.next_action).toContain('NOT available for a named-pipe ingress');
   });
 
+  it('the pipe recovery promises only what `harness commit` actually produces (F2)', async () => {
+    /*
+    Test Doc:
+    - Why: this rung told a Windows operator that `harness commit` "tells you
+      whether attribution landed". On the named-pipe branch commit-service
+      deliberately SKIPS the note poll and returns `ingress-unverified` (plan 075
+      · ac-0005), so the rung promised evidence the command refuses to produce —
+      an operator would run it, read UNVERIFIED, and reasonably conclude the tool
+      is broken. The right fix is to the promise, not to the commit behaviour:
+      plan 075 chose not to claim on this transport on purpose.
+    - Contract: the pipe recovery says the commit reports NOT VERIFIED and names
+      the manual `git notes --ref=ai show` check; the af_unix recovery keeps its
+      landed/buffer promise, which is true there.
+    - Quality Contribution: pins a claim about a SIBLING service's behaviour that
+      no test in this file would otherwise notice drifting. The af_unix row below
+      stops the fix from being "delete the sentence everywhere".
+    */
+    const fs = installedFs();
+    fs.writeText(collectorStatePath(REPO), JSON.stringify(stateWith()));
+    const health = async (ingress: Awaited<ReturnType<typeof blockedPipe>>) =>
+      readCollectorHealth({
+        fs,
+        host: { platform: 'darwin', arch: 'arm64', home: HOME },
+        cwd: REPO,
+        hash: new NodeHash(),
+        manifest: pin(),
+        ingress,
+      });
+
+    const pipe = await health(await blockedPipe());
+    expect(pipe.next_action).not.toContain('tells you whether attribution landed');
+    expect(pipe.next_action).toContain('NOT VERIFIED');
+    expect(pipe.next_action).toContain('git notes --ref=ai show');
+
+    const socket = await health(await blockedSocket());
+    expect(socket.next_action).toContain('tells you whether attribution landed');
+    expect(socket.next_action).not.toContain('git notes --ref=ai show');
+  });
+
+  it('the pipe sandbox sentence does NOT inherit the af_unix MEASURED claim (F3)', async () => {
+    /*
+    Test Doc:
+    - Why: "which is what a command sandbox looks like" is a MEASURED statement
+      about af_unix on this machine (an observed Seatbelt denial). Nothing here
+      has ever run on Windows, so the pipe arm reading identically would launder
+      an inference into an observation — exactly the honesty boundary this whole
+      change is fenced by. The pipe arm is entitled to the inference; it is not
+      entitled to the same confidence.
+    - Contract: the pipe detail is labelled unmeasured; the af_unix detail keeps
+      the unqualified sentence.
+    - Quality Contribution: asserts the two sentences DIFFER, which is the actual
+      property — a copy-paste of either arm into the other passes any test that
+      only checks one of them.
+    */
+    const fs = installedFs();
+    fs.writeText(collectorStatePath(REPO), JSON.stringify(stateWith()));
+    const health = async (ingress: Awaited<ReturnType<typeof blockedPipe>>) =>
+      readCollectorHealth({
+        fs,
+        host: { platform: 'darwin', arch: 'arm64', home: HOME },
+        cwd: REPO,
+        hash: new NodeHash(),
+        manifest: pin(),
+        ingress,
+      });
+
+    const pipe = await health(await blockedPipe());
+    expect(pipe.detail).toContain('UNMEASURED on Windows');
+    expect(pipe.detail).not.toContain('which is what a command sandbox looks like');
+
+    const socket = await health(await blockedSocket());
+    expect(socket.detail).toContain('which is what a command sandbox looks like');
+    expect(socket.detail).not.toContain('UNMEASURED');
+  });
+
   it('the ingress-blocked verdict is UNCHANGED for an af_unix socket', async () => {
     // The mutation guard on the row above: deleting the socket wording entirely
     // would satisfy every pipe assertion in this describe.

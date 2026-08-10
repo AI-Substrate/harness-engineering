@@ -117,10 +117,20 @@ export function resolveTrace2Target(raw: string | null | undefined): Trace2Targe
   if (value === '') return { kind: 'unconfigured' };
   if (AF_UNIX_PREFIX.test(value)) {
     const path = value.replace(AF_UNIX_PREFIX, '').trim();
-    // An af_unix target with NO path is not a socket — git can open nothing, so
-    // nothing receives these events. `unconfigured` routes it to the buffered
-    // branch, where the harness controls a file it can actually replay.
-    return path === '' ? { kind: 'unconfigured' } : { kind: 'af_unix', path };
+    // Git's grammar is `af_unix:[<socket-type>:]<absolute-pathname>`, and git
+    // DISABLES trace2 on an af_unix target whose path is not absolute — nothing
+    // is ever delivered there. So an empty path (`af_unix:stream:`) and a
+    // relative one (`af_unix:stream:relative`, or the bare-keyword form
+    // `af_unix:stream`) are the same fact: no socket exists to receive events.
+    // `unconfigured` routes both to the buffered branch, where the harness
+    // controls a real file it can replay. Calling them `af_unix` would claim an
+    // ingress that cannot exist — and since plan 082 · F006 every `connectable`
+    // target is something the relay and `readIngress` actually CONNECT to, so
+    // the claim would become a connect to a name git never opened.
+    //
+    // Absoluteness is the POSIX leading `/`, deliberately: af_unix is a POSIX
+    // transport and inventing Windows semantics for it would be a guess.
+    return path.startsWith('/') ? { kind: 'af_unix', path } : { kind: 'unconfigured' };
   }
   // Keyword + fd forms: a destination (or none at all), never a drainable buffer.
   if (/^(?:0|1|2|true|false|[3-9])$/.test(value)) return { kind: 'unconfigured' };
@@ -318,11 +328,17 @@ export function markerExplanation(reading: IngressReading): string {
  * refuses to be connected to, which is the sandbox signature.
  *
  * A NAMED PIPE has no second half, and needs none (plan 082 · F006): there is no
- * file to stat, and the connect already separates the two cases the stat exists
- * to separate — a pipe that is not there answers `ENOENT` (`absent`), and a pipe
- * that is there and refuses answers `EACCES` (`denied`). So `denied` on a pipe
- * IS the signature, and requiring `socketExists` would make it permanently
- * unreportable.
+ * file to stat, and the connect is expected to separate the two cases the stat
+ * exists to separate — a pipe that is not there answering `ENOENT` (`absent`),
+ * and a pipe that is there and refuses answering `EACCES` (`denied`). So
+ * `denied` on a pipe IS the signature, and requiring `socketExists` would make
+ * it permanently unreportable.
+ *
+ * EXPECTED-UNVERIFIED: that ENOENT/EACCES partition is read from Win32 named-pipe
+ * semantics and Node's error mapping, not from a run. No machine this code has
+ * executed on has connected to a real named pipe, absent or denied. If Windows
+ * answers some third code, it arrives as `error:<code>` — which is the point of
+ * that arm, and is honest rather than silently mistaken.
  */
 export function ingressBlocked(reading: IngressReading): boolean {
   if (reading.outcome !== 'denied') return false;

@@ -103,6 +103,33 @@ describe('plan 074 · ac-0001 — resolveTrace2Target classifies without probing
   });
 
   it.each([
+    ['af_unix:stream', 'no socket-type separator — "stream" IS the path, and it is relative'],
+    ['af_unix:dgram', 'same, for the dgram keyword'],
+    ['af_unix:relative', 'a bare relative name'],
+    ['af_unix:stream:relative', 'a relative path behind a valid socket-type'],
+    ['af_unix:dgram:relative', 'same, for dgram'],
+    ['af_unix:./events/t.sock', 'a dot-relative path'],
+  ])('a NON-ABSOLUTE af_unix path is unconfigured (%s — %s)', (raw) => {
+    /*
+      Test Doc:
+      - Why: git's grammar is `af_unix:[<socket-type>:]<absolute-pathname>`, and
+        git DISABLES trace2 on a non-absolute AF_UNIX path — nothing is ever
+        delivered there. The resolver accepted these as `{kind:'af_unix'}`, which
+        was inert while af_unix only selected a commit branch; F006 made every
+        `connectable` target something the tickler and `readIngress` actually
+        CONNECT to, so a malformed target became a connect to a relative name.
+        Same class as the backtracking row above: calling it configured claims an
+        ingress that cannot exist.
+      - Contract: an af_unix target whose path is not absolute is `unconfigured`,
+        matching git's own behaviour, so it lands in the buffered branch.
+      - Quality Contribution: the well-formed rows above cannot reach this — they
+        are all absolute. Removing the absoluteness check fails every row here
+        while every other row in the file still passes.
+      */
+    expect(resolveTrace2Target(raw)).toEqual({ kind: 'unconfigured' });
+  });
+
+  it.each([
     '/tmp/trace2-events.jsonl',
     'C:\\Users\\dev\\trace2.jsonl',
     '//server/share/trace2.jsonl',
@@ -130,9 +157,15 @@ describe('plan 075 · ac-0001 — a Windows named pipe is an INGRESS, never a bu
   it.each([
     ['\\\\.\\pipe\\git-ai', 'the documented git-ai pipe form'],
     ['\\\\?\\pipe\\git-ai', 'the \\\\?\\ (long-path) pipe prefix'],
-    ['\\\\.\\PIPE\\Git-AI', 'Windows pipe names are CASE-INSENSITIVE'],
+    [
+      '\\\\.\\PIPE\\Git-AI',
+      'Windows pipe names are CASE-INSENSITIVE — EXPECTED-UNVERIFIED, read from Win32 docs, never run here',
+    ],
     ['\\\\.\\pipe\\git-ai\\daemon\\trace2', 'a nested pipe name'],
-    ['//./pipe/git-ai', 'the forward-slash spelling Win32 accepts identically'],
+    [
+      '//./pipe/git-ai',
+      'the forward-slash spelling Win32 accepts identically — EXPECTED-UNVERIFIED, same provenance',
+    ],
     ['\\\\.\\pipe', 'the pipe NAMESPACE root is still not a drainable file'],
   ])('%s classifies as named_pipe (%s)', (raw) => {
     expect(resolveTrace2Target(raw)).toEqual({ kind: 'named_pipe', path: raw });
@@ -205,7 +238,7 @@ describe('plan 075 · ac-0003 — the classifier is proven by what it REFUSES', 
   });
 });
 
-describe('plan 075 · ac-0001 — a named pipe is never probed', () => {
+describe('plan 075 · ac-0001 / plan 082 · F006 — a named pipe is an ingress, and IS probed', () => {
   it('readIngress classifies the pipe and makes NO connect attempt', async () => {
     const d = deps({ target: '\\\\.\\pipe\\git-ai' });
     const reading = await readIngress(d);
