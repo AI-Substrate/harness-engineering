@@ -1,0 +1,21 @@
+docs/plans/082-harness-hooks/assets/windows/root-cause-extension-cannot-find-git-ai.md
+  s_08c9ad1cb0abea::t_31ed15bb23d9f5 70,72-74,76-78,80-106
+docs/plans/082-harness-hooks/assets/windows/README.md
+  s_08c9ad1cb0abea::t_8695284b95ec28 88-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e3cf9aa22cc185657f6607491b8e8055c3f7ed26",
+  "prompts": {},
+  "sessions": {
+    "s_08c9ad1cb0abea": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "1b747797-583d-4097-a0b6-d0ebdf1febce",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
