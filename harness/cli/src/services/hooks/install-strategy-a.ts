@@ -2,7 +2,7 @@ import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { AgentSpec } from './agent-matrix.js';
 import { eventKeys, phaseKeys, resolveConfigFiles } from './agent-matrix.js';
 import { extractBinaryPath, extractInterpreterPath, INTERPRETER_FLAGS } from './binary-path.js';
-import { appendToArray, setValue, writeThroughSymlink } from './config-writer.js';
+import { appendToArray, isParseableJson, setValue, writeThroughSymlink } from './config-writer.js';
 import {
   commandTokens,
   entryCommands,
@@ -430,10 +430,32 @@ interface FilePlan {
  * committed together (F010 F2). Anything that throws here has changed nothing.
  */
 function planOneFile(fs: FsPort, spec: AgentSpec, path: string, binary: string): FilePlan {
-  const existing = fs.exists(path) ? fs.readText(path) : null;
+  const raw = fs.exists(path) ? fs.readText(path) : null;
+  // A LEADING UTF-8 BOM IS STRIPPED, AND NOTHING ELSE IS — the same one-code-
+  // point strip as `parseHookPayload`, for the same reason found the same way:
+  // PowerShell (and Windows editors) routinely write agent configs with an
+  // `EF BB BF` prefix, `JSON.parse` and jsonc-parser both reject it, and every
+  // predicate in this planner then reads false. The writers below decline the
+  // unparseable text unchanged (correctly), `text === before` holds, and the
+  // whole file reports ALREADY-PRESENT — an install that wrote nothing and
+  // claimed success, measured on the from-zero Windows fixture (2026-08-10).
+  // The stripped text is what we plan against and write back (the written file
+  // is clean); `raw` stays as `previousText` so a rollback is byte-faithful.
+  const existing = raw !== null && raw.charCodeAt(0) === 0xfeff ? raw.slice(1) : raw;
   const created = existing === null;
 
   const before = existing ?? `${JSON.stringify(skeletonFor(spec), null, 2)}\n`;
+
+  // REFUSED LOUDLY, NEVER SILENTLY SKIPPED. The writers return unparseable text
+  // unchanged, which from here is indistinguishable from "nothing to do" — so
+  // the question is asked FIRST, with the writers' own predicate. Throwing here
+  // has changed nothing (this function only reads), and the per-agent catch in
+  // `installHooks` turns it into a named failure the operator can act on.
+  if (!created && !isParseableJson(before)) {
+    throw new Error(
+      `${path} is not parseable JSON, so no hook can be installed into it — repair or remove the file and re-run. Nothing was modified.`,
+    );
+  }
   // Sampled BEFORE the first write, because afterwards every key exists.
   const createdKeys = eventKeys(spec).filter((key) => !hasEventKey(before, key));
 
@@ -477,7 +499,9 @@ function planOneFile(fs: FsPort, spec: AgentSpec, path: string, binary: string):
   const base = {
     agent: spec.agent,
     path,
-    previousText: existing,
+    // `raw`, not the BOM-stripped text: a rollback must restore the exact bytes
+    // that were on disk, BOM included.
+    previousText: raw,
     created,
     createdKeys,
     refusedUpgrades: upgrade.refused,

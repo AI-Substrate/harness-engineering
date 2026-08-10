@@ -18,7 +18,7 @@ import {
   readInstallRecord,
   recordInstall,
 } from './install-record.js';
-import type { InstallOutcome, RefusedUpgrade } from './install-strategy-a.js';
+import type { InstallChange, InstallOutcome, RefusedUpgrade } from './install-strategy-a.js';
 import { installStrategyA, PartialInstallError, revertWrite } from './install-strategy-a.js';
 import { uninstallStrategyA } from './uninstall-strategy-a.js';
 
@@ -198,7 +198,15 @@ export interface InstallReport {
   optedOut: boolean;
   /** Present only when opted out: which variable, which value, and what to do. */
   optedOutDetail?: string;
-  installed: { agent: string; path: string; created: boolean }[];
+  /**
+   * `change` travels with each entry because collapsing it is how a no-op read
+   * as an install: `InstallChange` has four values precisely so the caller can
+   * see half-working (its own docstring, dw-0014), and the one consumer that had
+   * to honour that dropped it — a from-zero Windows run reported "installed for
+   * cursor" over an outcome that wrote nothing (PM review of the 2026-08-10
+   * fixture run). Render `already-present` distinctly; never as a fresh install.
+   */
+  installed: { agent: string; path: string; created: boolean; change: InstallChange }[];
   /** Agents refused BY NAME, never silently skipped. */
   refused: { agent: string; reason: string }[];
   /**
@@ -292,7 +300,12 @@ export function installHooks(deps: HooksDeps): InstallReport {
         continue;
       }
       for (const outcome of outcomes) {
-        installed.push({ agent: outcome.agent, path: outcome.path, created: outcome.created });
+        installed.push({
+          agent: outcome.agent,
+          path: outcome.path,
+          created: outcome.created,
+          change: outcome.change,
+        });
         refusedUpgrades.push(...outcome.refusedUpgrades);
       }
     } catch (err) {
@@ -1101,7 +1114,28 @@ export function autoInstallHooks(deps: HooksDeps | null): HooksAutoInstall {
      * case where nothing failed, and teach operators to discount it.
      */
     action: failures.length > 0 ? 'failed' : 'installed',
-    detail: `agent hooks installed for ${[...new Set(report.installed.map((i) => i.agent))].join(', ')}`,
+    // WRITTEN and ALREADY-PRESENT are different claims and render as such: an
+    // outcome that wrote nothing must never appear inside "installed for …",
+    // because that phrasing is exactly how a silent no-op on cursor shipped as a
+    // success line while the file sat untouched (from-zero fixture, 2026-08-10).
+    detail: installDetail(report.installed),
     warnings,
   };
+}
+
+function installDetail(installed: InstallReport['installed']): string {
+  const agents = (entries: InstallReport['installed']) => [...new Set(entries.map((i) => i.agent))];
+  const written = installed.filter((i) => i.change !== 'already-present');
+  const present = installed.filter((i) => i.change === 'already-present');
+  // Only mention already-present for agents that got NO fresh write this run —
+  // a multi-file agent with one written file and one untouched file is an
+  // install, not a hedge.
+  const writtenAgents = agents(written);
+  const presentOnly = agents(present).filter((agent) => !writtenAgents.includes(agent));
+  if (writtenAgents.length === 0) {
+    return `agent hooks already present for ${presentOnly.join(', ')} — nothing was written this run`;
+  }
+  return `agent hooks installed for ${writtenAgents.join(', ')}${
+    presentOnly.length === 0 ? '' : `; already present for ${presentOnly.join(', ')}`
+  }`;
 }

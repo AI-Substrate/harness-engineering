@@ -62,6 +62,31 @@ export interface HookEntryTarget {
 const FORMATTING = { insertSpaces: true, tabSize: 2 } as const;
 
 /**
+ * The ONE parseability predicate the writers and their callers share.
+ *
+ * MEASURED: `parseTree` does NOT reject a broken document. It is an EDITOR
+ * parser and recovers from errors on purpose, so it returned a usable tree for
+ * `{ this is not json at all` — and the writer cheerfully rewrote that garbage
+ * into well-formed JSON, destroying whatever the user actually had. The errors
+ * array is the only thing that answers "was this really valid?".
+ *
+ * EXPORTED so a caller can distinguish "the writer declined" from "nothing
+ * needed writing". Both writers below return their input unchanged on an
+ * unparseable document — correct, a config we cannot understand is one we must
+ * not rewrite — but from the outside that refusal is byte-identical to a no-op,
+ * and treating it as success is exactly how a from-zero install on Windows
+ * reported cursor's hooks installed while writing nothing (a BOM-prefixed
+ * hooks.json failed every parse in the planner). The caller that decides
+ * "already present" must ask this predicate FIRST, with this same function, so
+ * the two judgements cannot drift.
+ */
+export function isParseableJson(text: string): boolean {
+  const errors: ParseError[] = [];
+  parseJsonc(text, errors, { allowTrailingComma: true });
+  return errors.length === 0;
+}
+
+/**
  * Append `entry` to the array at `path`, preserving everything else.
  *
  * Returns the new document text. Throws nothing: an unparseable document returns
@@ -69,14 +94,7 @@ const FORMATTING = { insertSpaces: true, tabSize: 2 } as const;
  * rewrite.
  */
 export function appendToArray(text: string, target: HookEntryTarget): string {
-  // MEASURED: `parseTree` does NOT reject a broken document. It is an EDITOR
-  // parser and recovers from errors on purpose, so it returned a usable tree for
-  // `{ this is not json at all` — and the writer cheerfully rewrote that garbage
-  // into well-formed JSON, destroying whatever the user actually had. The errors
-  // array is the only thing that answers "was this really valid?".
-  const errors: ParseError[] = [];
-  parseJsonc(text, errors, { allowTrailingComma: true });
-  if (errors.length > 0) return text;
+  if (!isParseableJson(text)) return text;
   // `-1` is jsonc-parser's append index. Modifying an existing index would REPLACE.
   const edits = modify(text, [...target.path, -1], target.entry, {
     formattingOptions: FORMATTING,

@@ -265,3 +265,37 @@ describe('installing twice is a no-op (looking ahead to tk-0009)', () => {
     expect(readFileSync(path, 'utf8')).toBe(afterFirst);
   });
 });
+
+describe('a BOM-prefixed config installs, cleanly — measured on the from-zero Windows fixture (2026-08-10)', () => {
+  it('strips the UTF-8 BOM, appends the entries, and writes clean bytes', () => {
+    // PowerShell wrote this file; every parse rejected the BOM; the writers
+    // declined the text unchanged; the planner read that as already-present and
+    // the install reported cursor installed while writing NOTHING.
+    mkdirSync(join(home, '.cursor'), { recursive: true });
+    const path = join(home, '.cursor', 'hooks.json');
+    writeFileSync(path, '﻿{\n  "hooks": {\n    "preToolUse": [],\n    "postToolUse": []\n  }\n}\n');
+
+    const outcomes = installStrategyA(fs, spec('cursor'), home, env, BINARY);
+
+    expect(outcomes).toHaveLength(1);
+    expect(outcomes[0]?.change).toBe('added-entry');
+    expect(outcomes[0]?.writtenText).not.toBeNull();
+    const after = readFileSync(path, 'utf8');
+    expect(after.charCodeAt(0)).not.toBe(0xfeff);
+    expect(after).toContain('hooks fire cursor');
+    // The rollback text is the ORIGINAL bytes, BOM included.
+    expect(outcomes[0]?.previousText?.charCodeAt(0)).toBe(0xfeff);
+  });
+
+  it('a genuinely malformed config throws BY NAME instead of no-opping into a success claim', () => {
+    mkdirSync(join(home, '.cursor'), { recursive: true });
+    const path = join(home, '.cursor', 'hooks.json');
+    writeFileSync(path, '{ this is not json at all\n');
+
+    expect(() => installStrategyA(fs, spec('cursor'), home, env, BINARY)).toThrow(
+      /not parseable JSON.*Nothing was modified/s,
+    );
+    // Refusing loudly still means refusing: the file is untouched.
+    expect(readFileSync(path, 'utf8')).toBe('{ this is not json at all\n');
+  });
+});
