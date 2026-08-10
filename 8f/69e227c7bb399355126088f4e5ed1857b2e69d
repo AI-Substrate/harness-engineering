@@ -1,0 +1,27 @@
+docs/plans/082-harness-hooks/assets/windows/README.md
+  s_08c9ad1cb0abea::t_ec600c37cb7eab 60-65
+  s_08c9ad1cb0abea::t_765445c535fa38 86-89,93-94
+  s_08c9ad1cb0abea::t_9c436f9ed3b44a 17-22
+  s_08c9ad1cb0abea::t_58148dc37e17ea 24,27,30,35,37
+docs/plans/082-harness-hooks/assets/windows/knownhuman-attestation-decides-attribution.md
+  s_08c9ad1cb0abea::t_3fa7f23b85b003 156-159
+  s_08c9ad1cb0abea::t_55dd3b66a16396 86,88-91,93-95,97-99,101-102
+docs/plans/082-harness-hooks/assets/windows/root-cause-extension-cannot-find-git-ai.md
+  s_08c9ad1cb0abea::t_c653bd707241e2 1-112
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8f69e227c7bb399355126088f4e5ed1857b2e69d",
+  "prompts": {},
+  "sessions": {
+    "s_08c9ad1cb0abea": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "1b747797-583d-4097-a0b6-d0ebdf1febce",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
