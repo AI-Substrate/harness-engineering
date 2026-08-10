@@ -9,25 +9,37 @@ listed at the bottom and are deliberately *not* blocking.
    commands were driven into a Parallels VM, the quoting/latency/ASCII traps, how the harness was
    built and deployed, how Cursor was driven, and **five probes that measured the wrong thing**.
    Read this before running anything on that box.
-2. **[`knownhuman-attestation-decides-attribution.md`](./knownhuman-attestation-decides-attribution.md)** —
+2. **[`vendor-support-status-non-wsl-experimental.md`](./vendor-support-status-non-wsl-experimental.md)** —
+   **READ THIS BEFORE QUOTING ANY WINDOWS CLAIM.** git-ai labels non-WSL Windows **experimental
+   and not production-ready**, and Cursor runs its Windows sandbox inside WSL2. Two vendors, same
+   boundary: **"Windows" is not one platform for this feature.** Also records a Cursor hook-error
+   log we never used, and a stale vendor doc.
+3. **[`knownhuman-attestation-decides-attribution.md`](./knownhuman-attestation-decides-attribution.md)** —
    THE FINDING. A human line survives only if a `KnownHuman` attestation exists for it. Includes
    the macOS counterexample that falsified an earlier, simpler headline before it shipped.
-3. **[`hook-parse-observable-brief.md`](./hook-parse-observable-brief.md)** — the defect found and
+4. **[`hook-parse-observable-brief.md`](./hook-parse-observable-brief.md)** — the defect found and
    fixed on the way: Cursor prepends a UTF-8 BOM on Windows, our parser did not strip it, and the
    hook died **silently** because the journal was built *after* the guards it returned at.
-4. **[`same-file-mixed-commit.md`](./same-file-mixed-commit.md)** and
+5. **[`same-file-mixed-commit.md`](./same-file-mixed-commit.md)** and
    **[`ordering-experiment.md`](./ordering-experiment.md)** — the two experiments that eliminated
    edit mechanism, ordering and adjacency.
-5. **[`cursor-sandbox-not-on-native-windows.md`](./cursor-sandbox-not-on-native-windows.md)** —
+6. **[`cursor-sandbox-not-on-native-windows.md`](./cursor-sandbox-not-on-native-windows.md)** —
    why the Cursor UI offers "Allowlist (with Sandbox)" on macOS and only "Allowlist" on Windows,
    vendor-sourced: **there is no native Windows sandbox; on Windows it runs inside WSL2.**
    Consequence: **the relay's rescue path has never been exercised on Windows**, because the
    condition it rescues from does not occur there.
-6. **[`machine-and-method-facts.md`](./machine-and-method-facts.md)** — reusable facts, the
+7. **[`machine-and-method-facts.md`](./machine-and-method-facts.md)** — reusable facts, the
    `harness doctor` output, machine state, and **the way back** if a deploy goes sideways.
-7. **[`deploy-runbook.md`](./deploy-runbook.md)** — build → pack → deploy → verify by behaviour.
+8. **[`deploy-runbook.md`](./deploy-runbook.md)** — build → pack → deploy → verify by behaviour.
 
 ## What was established
+
+> **PLATFORM QUALIFIER — read `vendor-support-status-non-wsl-experimental.md` before quoting any
+> of this.** The machine is **non-WSL Windows**, which **git-ai labels experimental and not
+> production-ready**, and where **Cursor has no sandbox** (it runs the sandbox inside WSL2). Every
+> finding below is measured and stands — but "broken on Windows" should be stated as **"broken on
+> the platform neither vendor has declared production-ready."** WSL2 is untested here and is the
+> obvious next measurement.
 
 **Our chain works end-to-end on Windows** — first time. Hook fires → UTF-8 BOM stripped → payload
 parsed → repo resolved → commit classified → written to a **live** daemon → note produced. It
