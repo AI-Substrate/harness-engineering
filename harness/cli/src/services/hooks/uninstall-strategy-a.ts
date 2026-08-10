@@ -219,8 +219,10 @@ function uninstallOneFile(deps: UninstallDeps, spec: AgentSpec, path: string): U
  *
  * ANY DOUBT RETAINS. An unparseable document, a hook section that is not an array,
  * an entry we cannot classify — all of them count as a peer we cannot rule out. The
- * asymmetry is deliberate: retaining wrongly leaves recoverable cruft, removing
- * wrongly silently switches off somebody else's attribution.
+ * asymmetry is deliberate: retaining wrongly leaves recoverable cruft, while
+ * removing wrongly edits a peer's configuration for it — and since no runtime has
+ * been exercised with or without the field, that is a risk we could only take
+ * blind.
  */
 function removeOurRootExtras(deps: UninstallDeps, path: string, text: string): string {
   const ours = deps.createdRootExtras?.get(path);

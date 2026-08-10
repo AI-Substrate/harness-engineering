@@ -445,3 +445,122 @@ findings were defects our own green suite was actively certifying.
 reversible unless something else in the file still depends on it.** Still a claim about structural
 agreement with git-ai and about our own provenance — **no agent runtime has been exercised**, on any
 of the seven, at any point in this phase.
+
+---
+
+# Re-verdict micro-round — two narrow residuals on `0d95960b`
+
+`pij-ugliest-constrictor` (gpt-5.6-sol) re-verdicted the delta **FIX_REQUIRED** on two residuals.
+Everything else it verified clean: the F1 mutations exact (3 RED on the nested reader, 1 RED on the
+negative control), F2's removal-no-op 3 RED, the provenance-depth behaviour, a true R066 rename, and
+a byte-identical tree.
+
+## R1 — a DIM-0 GAP ON THE EXACT SAFETY CASE THE LOG CLAIMED
+
+The reviewer mutated `entryMayRemove` → `entryIsOwnedByUs` in `foreignHooksRemain`
+(`uninstall-strategy-a.ts:259-264`) — the line whose own comment says *"NOT `entryIsOwnedByUs`"* —
+and **`entry-shape` + `uninstall` stayed 53/53 GREEN.**
+
+That line encodes the third state of our ownership model: an `ours-with-foreign` entry, one we
+refused to delete *because* it chains a peer's work, must count as a peer still in the file. The F2
+truth table exercised **wholly-foreign** and **unreadable**. It never exercised **ours-with-foreign**.
+So the model has three states, the code branches on all three, and the fixture tested two.
+
+**The shape of this miss is worth naming, because it is not the same as forgetting a case.** The
+comment on that line argues for the distinction in three sentences. Writing the argument down is what
+made the case feel covered — the same substitution the F1 confession names one section above, inside
+the same commit, one file away. *An argument in a comment is a claim; only a row that goes red is
+evidence.*
+
+**The row added:** install into a clean gemini config (so we create `tools.enableHooks`), a third
+party then chains our `BeforeTool` invocation into its own — the observed normal from dw-0041, not an
+exotic case — then the user uninstalls. **Both must survive**: the chained entry because we never
+delete work we did not write, and the flag because a field a peer also writes is not ours to clear on
+the way out. Our unchained `AfterTool` entry still goes, which is what keeps the row from passing for
+the trivial reason.
+
+RED under the reviewer's exact mutation, verbatim:
+
+```
+ × CREATED + AN OURS-WITH-FOREIGN ENTRY REMAINS → RETAINED, both of them 4ms
+
+ FAIL  test/services/hooks/entry-shape.test.ts > A ROOT FIELD IS REMOVED ONLY IF WE CREATED IT
+       AND NOBODY ELSE NEEDS IT > CREATED + AN OURS-WITH-FOREIGN ENTRY REMAINS → RETAINED, both of them
+AssertionError: expected undefined to be true // Object.is equality
+- Expected: true
++ Received: undefined
+ ❯ test/services/hooks/entry-shape.test.ts:557:33
+ Tests  1 failed | 53 passed (54)
+```
+
+**One RED, and only that row** — 53/53 green before it existed, 1/54 red after, so the row is
+carrying the mutation on its own rather than riding a neighbour. Mutation reverted; source
+byte-identical (`git diff --stat` empty).
+
+## R2 — F3 RESIDUE OUTSIDE CLAUDE-CODE
+
+Three sites the reviewer named still upgraded structural parity to a runtime requirement, each
+contradicting the disclaimer sitting ~10 lines above it in the same file:
+
+| site | was | now |
+| --- | --- | --- |
+| `entry-shape.test.ts:297` | `ROOT FIELDS THE AGENT REQUIRES — well-formed and DEAD without them` | `ROOT FIELDS THE UPSTREAM WRITER EMITS — git-ai sets them, so we match` |
+| `entry-shape.test.ts:384` | `…removing them breaks git-ai` | `…WHEN A PEER REMAINS` |
+| `config-writer.ts:119` | `root fields an agent requires` | `root fields the upstream writer emits`, + the parity disclaimer inline |
+
+**Three more of the same class, found by sweeping rather than by being told** — the lesson from the
+F1 confession applied for once at the right moment: `entry-shape.test.ts:376` (*"an agent with NO
+root requirement"*), `:484-492` (*"the peer is genuinely live"*, *"a peer that is dispatching"*), and
+`uninstall-strategy-a.ts:222` (*"silently switches off somebody else's attribution"*). All restated.
+Every one of them was mine, written in the commit that shipped the F3 sweep.
+
+**The retention argument survives the restatement, and is arguably stronger for it.** It never
+needed the flag to gate dispatch — *no runtime has been exercised either way* is itself the reason to
+retain, because clearing a field a peer also writes can only ever risk that peer and never help it.
+The runtime language was decoration on an argument that stands without it.
+
+**claude-code keeps its runtime language deliberately**, as the contrast: *"a wrong shape disables the
+whole config"* is MEASURED — Jordan's machine, the error verbatim in the fixture. It is the one row
+in this phase where "invalid" means invalid-to-the-runtime, and the surrounding rows now read as the
+weaker claims they are.
+
+## Verification
+
+| | |
+| --- | --- |
+| hooks suite, fast scope | **408 / 408**, 23 files |
+| hooks suite, `HARNESS_TEST_SCOPE=all` | **442 / 442**, 25 files (was 441 — the one new row) |
+| biome, touched files | clean, 17 files |
+| typecheck | exit 0 |
+
+Full-suite figures and the gate's load story are in the run below; the box is still carrying
+thirteen seats at load ~180-210, so the same bounded-worker method as the previous round applies and
+is quoted rather than restated as a green.
+
+### The gate, this round — same story, same file, and I am not calling it green
+
+| | |
+| --- | --- |
+| full suite, `HARNESS_TEST_SCOPE=all --maxWorkers=4` | **5854 / 5854, 388 files, 52.6s, zero failures** |
+| `HARNESS_TEST_SCOPE=all just checks` | **RED on `tests`: 5853 / 5854, 387 / 388 files** |
+| the one failure | `live-daemon-note.int.test.ts:214` — `expected null not to be null` |
+| that file, rerun alone at full scope | **2 / 2 passed, 3.9s** |
+| every other gate | `biome:ok typecheck:ok check:docs:ok check:flows:ok check:telemetry-fixtures:ok check:doctrine-parity:ok check:dd-docs:ok root-invocation-smoke:ok dd doctor:ok skills-check:ok`, and `arch-check 2 · markdown-lint 211 · windows-check 7` — **baseline unmoved** |
+| load average during the gate | **214 / 232 / 215**, thirteen seats |
+
+**`live-daemon-note` is the same file that failed runs 1, 2 and 5 of the previous round**, and the
+control for it is already on the record: run 3 was `harness checks --ref 62b86e96` in an isolated
+worktree that never saw any of this work, and it failed the same gate on a *different* file set. That
+control was not re-run tonight because nothing in this micro-round touches the daemon path — the
+diff is one test row and six comment restatements, in three files, none of them
+`live-daemon-note.int.test.ts` or anything it imports.
+
+**So the claim is the scoped one, not the general one:** the full suite is green at bounded workers,
+the touched surface is 442/442, the failure is a wallclock-bound daemon probe (1.2s unloaded, 10s
+budget) losing a race on a box at load 214, and it passes alone in 3.9s. **I am not writing "just
+checks green" and nobody should read this as a general green.** CI is the authoritative gate and it
+runs unloaded.
+
+**DL-001 stands and this is its second consecutive night** — *the gate cannot distinguish "this diff
+is broken" from "this machine is busy"*. Every round that ends with a paragraph like this one is
+evidence for fixing the instrument rather than for getting better at explaining it.

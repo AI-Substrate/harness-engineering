@@ -294,7 +294,7 @@ describe('UNINSTALL HANDLES THE SHAPE IT WROTE', () => {
   });
 });
 
-describe('ROOT FIELDS THE AGENT REQUIRES — well-formed and DEAD without them', () => {
+describe('ROOT FIELDS THE UPSTREAM WRITER EMITS — git-ai sets them, so we match', () => {
   it('gemini gets tools.enableHooks — git-ai writes it on every install, so we do', () => {
     /*
     Test Doc:
@@ -373,7 +373,7 @@ describe('ROOT FIELDS THE AGENT REQUIRES — well-formed and DEAD without them',
     expect((readDoc(path) as { version: unknown }).version).toBe(99);
   });
 
-  it('an agent with NO root requirement gains no root keys', () => {
+  it('an agent git-ai emits NO root fields for gains no root keys', () => {
     // The negative control: without it, a writer that stamped `version` into every
     // config would pass every row above.
     const spec = installable.find((s) => s.agent === 'droid') as AgentSpec;
@@ -381,16 +381,18 @@ describe('ROOT FIELDS THE AGENT REQUIRES — well-formed and DEAD without them',
     expect(Object.keys(readDoc(outcome.path) as object)).toEqual(['hooks']);
   });
 
-  it('UNINSTALL DELIBERATELY LEAVES root fields behind — removing them breaks git-ai', () => {
+  it('UNINSTALL DELIBERATELY LEAVES root fields behind WHEN A PEER REMAINS', () => {
     /*
     Test Doc:
     - Why: this row exists because the uninstall symmetry rows FAILED here, and the
       failure was the right question rather than a defect. Install adds
       `tools.enableHooks`, so symmetry argues uninstall should remove it.
-      **It must not, WHEN A PEER DEPENDS ON IT.** That flag is a document-level
-      enablement switch shared by every hook consumer in the file — git-ai sets it
-      for its own gemini hooks (`gemini.rs:99-106`). Removing it while git-ai's entry
-      is still there would silently disable somebody else's working hooks.
+      **It must not, WHILE A PEER IS STILL IN THE FILE.** That flag is a
+      document-level field git-ai sets for its own gemini hooks
+      (`gemini.rs:99-106`) — a peer's write as much as ours, and not ours to clear.
+      Whether gemini's runtime gates dispatch on it is UNVERIFIED here, and that
+      uncertainty is itself the argument for retention: clearing it can only ever
+      risk a peer, never help one.
     - Contract: after uninstall our entries are gone and, BECAUSE git-ai's entry
       remains, the root field remains with it.
     - NARROWED by the phase-5 review. This row seeds a foreign entry, so it always
@@ -429,7 +431,8 @@ describe('A ROOT FIELD IS REMOVED ONLY IF WE CREATED IT AND NOBODY ELSE NEEDS IT
             after our removal.
       Any doubt at all — unparseable document, missing record, an entry we cannot
       classify — retains. The cost of retaining wrongly is recoverable cruft; the
-      cost of removing wrongly is a peer's attribution silently switched off.
+      cost of removing wrongly is editing a peer's configuration for it, blind, with
+      no runtime exercised either way.
     - Contract: the four rows below are the whole truth table.
   */
   const gemini = () => AGENT_MATRIX.find((s) => s.agent === 'gemini') as AgentSpec;
@@ -478,15 +481,16 @@ describe('A ROOT FIELD IS REMOVED ONLY IF WE CREATED IT AND NOBODY ELSE NEEDS IT
     expect(readFileSync(outcomes[0].path, 'utf8')).not.toContain(HOOK_MARKER);
   });
 
-  it('CREATED + A FOREIGN HOOK REMAINS \u2192 RETAINED, and the peer is genuinely live', () => {
+  it('CREATED + A FOREIGN HOOK REMAINS \u2192 RETAINED, and the peer really is in the file', () => {
     /*
     Test Doc:
     - Why: THE SAFETY CLAIM, finally modelled by the fixture that asserts it. The
       old retention row seeded a sibling with NO `enableHooks`, so it never modelled
-      a working peer — it asserted retention on a file where the flag did nothing.
-      Here git-ai's gemini entry is in the file, the file had no `enableHooks`, WE
-      turned it on, and after our uninstall git-ai's hook is still there. Removing
-      the flag now would switch off a peer that is dispatching.
+      a peer sharing the field at all — it asserted retention on a file where the
+      flag was ours alone. Here git-ai's gemini entry is in the file, the file had no
+      `enableHooks`, WE turned it on, and after our uninstall git-ai's hook is still
+      there. Clearing the flag now would edit a peer's config for it — and since no
+      gemini runtime has been exercised, we cannot know that is harmless.
     - Contract: our entries gone, git-ai's entry present, `enableHooks` still true.
     - This is condition (b) alone: (a) is satisfied — we DID create the flag.
     */
@@ -504,6 +508,56 @@ describe('A ROOT FIELD IS REMOVED ONLY IF WE CREATED IT AND NOBODY ELSE NEEDS IT
 
     expect(readFileSync(path, 'utf8')).not.toContain(HOOK_MARKER);
     expect(readFileSync(path, 'utf8')).toContain('git-ai checkpoint gemini');
+    expect(enableHooksOf(path)).toBe(true);
+  });
+
+  it('CREATED + AN OURS-WITH-FOREIGN ENTRY REMAINS \u2192 RETAINED, both of them', () => {
+    /*
+    Test Doc:
+    - Why: phase-5 re-verdict. `foreignHooksRemain` deliberately asks
+      `entryMayRemove`, NOT `entryIsOwnedByUs`, so that an `ours-with-foreign` entry
+      — one we refused to delete precisely BECAUSE it chains somebody else's work —
+      counts as a peer still in the file. The comment said so; no row exercised it.
+      The reviewer mutated `entryMayRemove` \u2192 `entryIsOwnedByUs` at
+      `uninstall-strategy-a.ts:259-264` and the whole file stayed GREEN: the rows
+      here modelled WHOLLY-FOREIGN and UNREADABLE, and the third state of our own
+      ownership model had no test.
+    - The scenario is the observed normal, not an exotic one (dw-0041): a third
+      party wraps our invocation into a chained command, exactly as our own
+      attribution POC did to git-ai's. So: install into a clean config (we create
+      `tools.enableHooks`), a peer then chains our BeforeTool invocation into its
+      own, then the user uninstalls.
+    - Contract: BOTH survive. The chained entry, because we never delete work we did
+      not write; and the flag, because that entry is a peer still in the file and a
+      field a peer also writes is not ours to clear on the way out. Our unchained AfterTool entry still goes.
+    - Proven RED under `entryMayRemove` \u2192 `entryIsOwnedByUs`: the chained entry is
+      owned by us, so the mutant reads the file as peer-free and removes `tools`.
+    */
+    const spec = gemini();
+    const outcomes = installStrategyA(fs, spec, home, env, BINARY);
+    const path = outcomes[0].path;
+
+    const doc = readDoc(path) as { hooks: Record<string, { hooks: { command: string }[] }[]> };
+    const chained = doc.hooks.BeforeTool[0];
+    chained.hooks[0].command = `other-tool --run && ${chained.hooks[0].command}`;
+    writeFileSync(path, `${JSON.stringify(doc, null, 2)}\n`);
+
+    uninstallStrategyA(
+      {
+        fs,
+        home,
+        env,
+        createdKeys: new Map(outcomes.map((o) => [o.path, new Set(o.createdKeys)])),
+        createdRootExtras: rootExtrasOf(outcomes),
+      },
+      spec,
+    );
+
+    const text = readFileSync(path, 'utf8');
+    expect(text).toContain('other-tool --run');
+    expect(text).toContain(HOOK_MARKER);
+    const after = readDoc(path) as { hooks: Record<string, unknown[]> };
+    expect(after.hooks.AfterTool ?? []).toEqual([]);
     expect(enableHooksOf(path)).toBe(true);
   });
 

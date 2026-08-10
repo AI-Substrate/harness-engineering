@@ -116,9 +116,11 @@ export function writeThroughSymlink(fs: FsPort, path: string, contents: string):
  * Set the value at `path`, creating intermediate objects as needed, preserving
  * everything else (plan 082 F005).
  *
- * Used ONLY for root fields an agent requires and the document lacks — gemini's
- * `tools.enableHooks` (`gemini.rs:99-106`), cursor's and firebender's `version`
- * (`cursor.rs:172-174`, `firebender.rs:143-148`). Callers check absence first: a
+ * Used ONLY for root fields the upstream writer emits and the document lacks —
+ * gemini's `tools.enableHooks` (`gemini.rs:99-106`), cursor's and firebender's
+ * `version` (`cursor.rs:172-174`, `firebender.rs:143-148`). That is a parity claim
+ * about what git-ai writes, NOT a claim that any agent requires these fields: no
+ * runtime has been exercised with or without them. Callers check absence first: a
  * root key is shared with settings we have no business touching, so this must never
  * be pointed at a value the user already wrote.
  */
