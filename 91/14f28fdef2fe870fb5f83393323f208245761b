@@ -1,0 +1,23 @@
+harness/cli/src/services/hooks/hooks-verbs.ts
+  s_63d91637cb8544::t_cdb7bf6830d4bd 902-914,919-920,922-923,926,928,935-943
+  s_63d91637cb8544::t_bbec5c6086049a 915-918,921
+harness/cli/test/services/hooks/legacy-command-form.test.ts
+  s_63d91637cb8544::t_42438cd4a6d4a6 15,311-382
+  s_63d91637cb8544::t_40b1944f0c260d 383
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "9114f28fdef2fe870fb5f83393323f208245761b",
+  "prompts": {},
+  "sessions": {
+    "s_63d91637cb8544": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "1d978316-0846-4b75-af14-c6ee081c28fc",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
