@@ -1,0 +1,29 @@
+harness/cli/src/services/hooks/config-writer.ts
+  s_ed609d39de2442::t_22dff087dec9e7 119-123
+harness/cli/test/services/hooks/entry-shape.test.ts
+  s_ed609d39de2442::t_26152fb28d027f 297,376,384
+  s_ed609d39de2442::t_b66a22a5488b65 434-435
+  s_ed609d39de2442::t_ab94e833991ee5 390-395,531-532
+  s_ed609d39de2442::t_98a430e07de789 484,489-493
+  s_ed609d39de2442::t_dc7e591cc09cdc 514-530,533-563
+harness/cli/src/services/hooks/uninstall-strategy-a.ts
+  s_ed609d39de2442::t_0bb62a30da281d 222-225
+docs/plans/082-harness-hooks/assets/tasks/phase-5/execution.log.md
+  s_ed609d39de2442::t_191e417459468c 448-566
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f0cac4e6018dc310f17276ca62744e1dd2ac19f7",
+  "prompts": {},
+  "sessions": {
+    "s_ed609d39de2442": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "62892a0d-07d6-4784-b490-986f797be544",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
