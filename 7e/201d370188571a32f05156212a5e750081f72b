@@ -1,0 +1,59 @@
+harness/cli/src/services/hooks/install-strategy-a.ts
+  s_e67adf606e9af5::t_fcfff9bf04333a 580,599-601,627-661
+  s_e67adf606e9af5::t_650a21bc65f78d 679-685
+  s_e67adf606e9af5::t_cc5b301bf5f453 98,105,418-425,433-448,451-466,468-487,491-501,520-531,535-541
+  s_e67adf606e9af5::t_0583f1b04b7ba8 69
+  s_e67adf606e9af5::t_3ba17a05348dda 207-230,238-296,303,305-309
+  s_e67adf606e9af5::t_bcf442aad109d4 297-302,304
+  s_e67adf606e9af5::t_c4adb42b25a8c4 4,7,9,68,70-97,99-104,106-112,412-417,581,597-598,677-678,694
+harness/cli/src/services/hooks/binary-path.ts
+  s_e67adf606e9af5::t_f067db4543da12 97,100-124
+  s_e67adf606e9af5::t_cb502b2e13c383 188-215,219,230-231
+  s_e67adf606e9af5::t_1c5dbc2636e603 223-229
+  s_e67adf606e9af5::t_ee7edbdee61e66 125
+harness/cli/src/services/hooks/hook-marker.ts
+  s_e67adf606e9af5::t_f2c09b779e53ab 186-232
+harness/cli/src/services/hooks/hooks-verbs.ts
+  s_e67adf606e9af5::t_d4a0ff22a94266 349,353-372,375-378,380,383-396
+  s_e67adf606e9af5::t_f39d4ad2afc304 668-690,704-708
+  s_e67adf606e9af5::t_4d616100339518 326-333,335,337-338
+  s_e67adf606e9af5::t_001ca6877213f1 334,336
+  s_e67adf606e9af5::t_1628ff0dd7a17a 296-313
+  s_e67adf606e9af5::t_3215371b919acf 381-382
+  s_e67adf606e9af5::t_32216ffc50e9f5 9,12,22
+harness/cli/test/services/hooks/composition-boundaries.test.ts
+  s_e67adf606e9af5::t_51fdc4754a7a83 51-64,75,87
+  s_e67adf606e9af5::t_c90c6afa5b2c70 175,180
+  s_e67adf606e9af5::t_c63b2f20b6aeb9 1-50,65-74,76-86,88-174,176-179,181-359
+  s_e67adf606e9af5::t_b9dccec56f10ba 360-623
+harness/cli/src/services/hooks/fire-options.ts
+  s_e67adf606e9af5::t_5c510c536ad473 66-78,81,84-88
+harness/cli/src/services/hooks/uninstall-strategy-a.ts
+  s_e67adf606e9af5::t_4d3433977d725c 5-11,143-152,154-156,161
+harness/cli/test/services/hooks/binary-path.test.ts
+  s_e67adf606e9af5::t_7e624de90a60d7 10,215-256
+harness/cli/test/services/hooks/command-runs.test.ts
+  s_e67adf606e9af5::t_c6929e77c64163 223-233
+harness/cli/test/services/hooks/composed-command.int.test.ts
+  s_e67adf606e9af5::t_2b91149e7f8059 199-202,211-233,297-302,345-353,360-369,501-542
+harness/cli/test/services/hooks/legacy-command-form.test.ts
+  s_e67adf606e9af5::t_46c0d76e340b48 158,292,384-436
+harness/cli/test/services/hooks/win-invocation.test.ts
+  s_e67adf606e9af5::t_88cdfc7a5a77be 86-88,105,132,206,227,266
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "7e201d370188571a32f05156212a5e750081f72b",
+  "prompts": {},
+  "sessions": {
+    "s_e67adf606e9af5": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "a01f9e71-48c7-42b2-857d-e2991866b223",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
