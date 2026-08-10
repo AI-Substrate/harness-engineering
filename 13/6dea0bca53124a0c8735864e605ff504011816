@@ -1,0 +1,69 @@
+harness/cli/src/services/doctor/collector/ingress.ts
+  s_7d06b931880f9e::t_aae6f8f37e1783 200,207,215,222
+  s_7d06b931880f9e::t_056300e61ca00d 319-325,328-329
+  s_7d06b931880f9e::t_578a414735cfd0 17-22
+  s_7d06b931880f9e::t_266c56fb0e4898 154-177
+  s_7d06b931880f9e::t_f1e5cfbfeb444d 266,273-276,281-284
+  s_7d06b931880f9e::t_f9471b9a07ac13 102-114,118-123
+  s_7d06b931880f9e::t_8c6e66930c892c 277-278,285-286
+harness/cli/src/adapters/net/node-socket-probe.ts
+  s_7d06b931880f9e::t_02e2ae3a2c4ae1 41-59
+  s_7d06b931880f9e::t_7527cf16059939 17-21
+harness/cli/test/services/hooks/hooks-verb.int.test.ts
+  s_7d06b931880f9e::t_dbb90c0cd745ca 133
+harness/cli/src/services/hooks/trace2-tickler.ts
+  s_7d06b931880f9e::t_26a866cc8bfa95 2-6
+  s_7d06b931880f9e::t_5d51525eb52804 53-55
+  s_7d06b931880f9e::t_5565e64540dcd0 136,138-142
+  s_7d06b931880f9e::t_7601dc54345941 32-47,49-50,52
+  s_7d06b931880f9e::t_c846fec5738bbc 109-121
+harness/cli/test/services/doctor/collector/ingress.test.ts
+  s_7d06b931880f9e::t_b9434efc1ff05c 87-101,104
+  s_7d06b931880f9e::t_8f71f1a241049b 213-219,223-266
+  s_7d06b931880f9e::t_26a866cc8bfa95 80-86,102-103
+harness/cli/src/services/doctor/collector/health.ts
+  s_7d06b931880f9e::t_fb78ced2ac9b18 186-191
+  s_7d06b931880f9e::t_dd03c4fb27db22 3-8
+  s_7d06b931880f9e::t_60319e7956fcba 192-198,202
+  s_7d06b931880f9e::t_9abd941950da1b 459-477,481-482
+harness/cli/test/services/doctor/collector/health.test.ts
+  s_7d06b931880f9e::t_08ae6203266327 467-520
+  s_7d06b931880f9e::t_2b2fd844aba013 367-391,403-412,417-422,424-449,451-460,462,521-522
+  s_7d06b931880f9e::t_61a4d167feb85f 413-416,423
+  s_7d06b931880f9e::t_1602eb8ac587c6 461
+  s_7d06b931880f9e::t_b4c22b68c4f259 392-402
+  s_7d06b931880f9e::t_f366ef6fbcb2cc 450
+  s_7d06b931880f9e::t_0d38c1b7ce7e8a 463-466
+harness/cli/test/services/doctor/collector/at-risk.test.ts
+  s_7d06b931880f9e::t_4e940a73083314 155-198
+harness/cli/test/services/hooks/trace2-tickler.test.ts
+  s_7d06b931880f9e::t_7ace8b1c992cfe 16-36,38-41,46-50,52-53,55-57
+  s_7d06b931880f9e::t_f7eb35666c2f95 184,189-208
+  s_7d06b931880f9e::t_26a866cc8bfa95 37
+  s_7d06b931880f9e::t_27e22019fecb33 5
+  s_7d06b931880f9e::t_5b5531905f64fe 131-171,210
+  s_7d06b931880f9e::t_d82115c878e184 209,211
+harness/cli/test/services/hooks/verbs-e2e.int.test.ts
+  s_7d06b931880f9e::t_b49496ad243b9a 307-312
+harness/cli/src/services/doctor/collector/at-risk.ts
+  s_7d06b931880f9e::t_2501e2c495600c 117-123,126-130,132-133,135,137,139,143-148
+harness/cli/src/services/commit/commit-service.ts
+  s_7d06b931880f9e::t_77c1dc5c3e6dce 423-425
+  s_7d06b931880f9e::t_92b504558136ff 371,373-375
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "136dea0bca53124a0c8735864e605ff504011816",
+  "prompts": {},
+  "sessions": {
+    "s_7d06b931880f9e": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "3d06b5bd-74c6-4fc1-bec0-a90d6928a7b6",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
