@@ -125,6 +125,35 @@ Also fixed alongside: a BOM no-op, and the `installed.push` collapse that droppe
 **The acceptance bar for the from-zero rerun** is now the honest one: it should either install
 cursor's hooks **or say, by name, that it could not** — never claim it.
 
+### The rerun happened, and the bar was met — 2026-08-10 19:16
+
+Same fixture, same digest-pinned protocol, five predictions registered **before** the run. All
+five passed:
+
+| prediction | result |
+|---|---|
+| auto-install fires, binary verified and placed | pinned v1.6.21, daemon up, both pipes live |
+| a digest-verified **copy** at `WindowsApps\git-ai.exe` | shim hash **==** real binary **==** pinned manifest; `linkType` empty, so a plain file with **no inode to strand** |
+| collector row reads **healthy** | `binary-not-on-path` gone — the heal working, not the rung failing to fire |
+| cursor hooks written **cleanly** | mtime moved, **BOM stripped** (`7B 0D 0A`), file parses, one entry per phase, `hooks status` reports `installed: true` |
+| **the install record is honest** | **`createdFile: false` for cursor** — it pre-existed and was *read* this time — and `true` for copilot, which harness genuinely created |
+
+**That last row is the fix for this document's finding, measured rather than asserted.** The record
+now distinguishes *"we created it"* from *"we could not read it"*, so nothing false is carried
+forward to the consumer that would act on it.
+
+`git-ai` also resolves by bare name from a fresh shell — the condition absent all day — via a copy
+placed in a directory already on the user PATH, so **no editor restart is required**.
+
+> **Keeping the BOM was what made this a test rather than a formality.** The fixture's
+> `hooks.json` retained its `EF BB BF` deliberately; the BOM-strip installer fix was therefore
+> exercised against a genuine BOM, and the resulting file parses. A tidy-up that had rewritten
+> that file would have left this run proving nothing.
+
+**Still unmeasured:** the `KnownHuman`-on-save leg, which needs a save at the GUI. The
+precondition is now genuinely different, so the prediction is that it records immediately —
+**but nobody has measured it, and it is not claimed here.**
+
 ## The pattern this belongs to
 
 Fifth instance in this plan of *a step that completes, reports success, and does not do the thing* —
