@@ -1,0 +1,19 @@
+docs/plans/082-harness-hooks/assets/index-at-pre-what-it-catches.md
+  s_e67adf606e9af5::t_d279b3e29dfa98 1-193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d58418dfe6f1b54f7bd4815b0a5e17f8645a936f",
+  "prompts": {},
+  "sessions": {
+    "s_e67adf606e9af5": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "a01f9e71-48c7-42b2-857d-e2991866b223",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
