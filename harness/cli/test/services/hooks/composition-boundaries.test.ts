@@ -621,3 +621,273 @@ describe('F2 x F3 — a rollback must not revert a PEER agent sharing the file',
     expect(stranded).toEqual([shared()]);
   });
 });
+
+describe('F010-R1 — removing on ONE agent\u2019s behalf must be UNIVERSAL, not existential', () => {
+  /**
+   * THE DEFECT THIS ROUND WAS SENT TO FIX, REPRODUCED INSIDE THE FIX FOR IT.
+   *
+   * The first agent-qualified predicate was
+   * `entryMayRemove(entry) && entryIsOwnedByAgent(entry, agent)` — which proves
+   * every command in the entry is OURS and that SOME command is the TARGET's. It
+   * does not prove every command is the target's, and uninstall removes the WHOLE
+   * entry. So one nested block carrying two agents' commands was removable on
+   * behalf of either: the broad predicate was replaced by a narrower one that was
+   * still broad in the dimension that mattered.
+   */
+  const shared = () => join(home, '.factory', 'settings.json');
+  const collide = (name: string) =>
+    name === 'CLAUDE_CONFIG_DIR' ? join(home, '.factory') : undefined;
+
+  /** Merge both agents' commands into ONE valid nested matcher block. */
+  const mergeIntoOneBlock = () => {
+    const doc = JSON.parse(read(shared())) as {
+      hooks: Record<string, { matcher?: string; hooks?: { type: string; command: string }[] }[]>;
+    };
+    for (const key of ['PreToolUse', 'PostToolUse']) {
+      const inner = (doc.hooks[key] ?? []).flatMap((entry) => entry.hooks ?? []);
+      doc.hooks[key] = [{ matcher: '*', hooks: inner }];
+    }
+    writeFileSync(shared(), `${JSON.stringify(doc, null, 2)}\n`);
+    return doc;
+  };
+
+  it('leaves the PEER\u2019s command when both live in ONE entry', () => {
+    /*
+    Test Doc:
+    - Why: the reviewer's exact case. Both commands are wholly ours and the block
+      is valid, so nothing about it is malformed — it is simply an entry that two
+      agents share, which our own writer permits when their paths collide.
+    - Contract: uninstalling droid must not take claude-code with it.
+    - Quality Contribution: asserts on the SURVIVOR. Asserting only that droid's
+      command is gone passes when the whole array is emptied.
+    */
+    present('.claude');
+    present('.factory');
+    installHooks(deps({ env: collide }));
+    mergeIntoOneBlock();
+
+    const droid = findAgent('droid');
+    uninstallStrategyA({ fs, home, env: () => undefined }, droid as NonNullable<typeof droid>);
+
+    expect(read(shared())).toContain('hooks fire claude-code');
+  });
+
+  it('REPORTS the entry it could not remove — a refusal, never a silent skip', () => {
+    /*
+    Test Doc:
+    - Why: an entry that is neither removable nor replaceable by one agent is
+      exactly as invisible as the false install this plan started with, unless it
+      is named. We already report an entry chained with FOREIGN work; a peer's
+      harness command is the same shape of refusal with a different cause.
+    - Contract: the outcome carries a refusal naming the entry.
+    */
+    present('.claude');
+    present('.factory');
+    installHooks(deps({ env: collide }));
+    mergeIntoOneBlock();
+
+    const droid = findAgent('droid');
+    const outcomes = uninstallStrategyA(
+      { fs, home, env: () => undefined },
+      droid as NonNullable<typeof droid>,
+    );
+
+    const refusals = outcomes.flatMap((o) => o.refused);
+    expect(refusals.length).toBeGreaterThan(0);
+    expect(refusals[0]?.reason).toMatch(/another agent|peer|different agent/i);
+  });
+
+  it('still removes a SINGLE-AGENT entry — the counter-row', () => {
+    /*
+    Test Doc:
+    - Why: universality must not become "never remove anything". The ordinary
+      case is one entry, one agent, and it must still be surgically removed.
+    - Contract: droid's own entries go when they are droid's alone.
+    */
+    present('.claude');
+    present('.factory');
+    installHooks(deps({ env: collide }));
+
+    const droid = findAgent('droid');
+    uninstallStrategyA({ fs, home, env: () => undefined }, droid as NonNullable<typeof droid>);
+
+    const after = read(shared());
+    expect(after).not.toContain('hooks fire droid');
+    expect(after).toContain('hooks fire claude-code');
+  });
+
+  it('the UPGRADE loop refuses a mixed-agent entry rather than replacing it', () => {
+    /*
+    Test Doc:
+    - Why: the same broad-to-narrow mismatch on the write side. The upgrade enters
+      on "some command is this agent's" and then REPLACES THE WHOLE ENTRY with this
+      agent's command — so a shared block would lose the peer's command entirely.
+      Deleting a peer by rewriting is worse than deleting it by removing: the file
+      still looks installed.
+    - Contract: the peer's command survives an upgrade run, and the refusal is
+      reported with something an operator can act on.
+    */
+    present('.claude');
+    present('.factory');
+    installHooks(deps({ binary: LEGACY_BINARY, env: collide }));
+    mergeIntoOneBlock();
+
+    const report = installHooks(deps({ env: collide }));
+
+    expect(read(shared())).toContain('hooks fire claude-code');
+    expect(report.refusedUpgrades.length).toBeGreaterThan(0);
+  });
+});
+
+describe('F010-R1c — we never MANUFACTURE the entry we refuse to touch', () => {
+  /**
+   * THE CREATE SIDE OF THE SAME QUESTION, and it decides whether the refusal above
+   * is a rare edge or a trap we build for ourselves. Two agents can resolve to one
+   * file; if the second agent MERGED its command into the first's existing block,
+   * every install would manufacture the exact mixed-agent entry that uninstall and
+   * upgrade must now refuse — and each one would be stranded forever.
+   *
+   * We always append OUR OWN separate entry. `buildEntry` says why in its own
+   * words: appending into a `matcher: "*"` block somebody else wrote would mean
+   * editing an entry we do not own, and every nested-shape agent accepts multiple
+   * blocks per event. These rows hold that property to the create path, because a
+   * docstring is not a guard.
+   */
+  const shared = () => join(home, '.factory', 'settings.json');
+  const collide = (name: string) =>
+    name === 'CLAUDE_CONFIG_DIR' ? join(home, '.factory') : undefined;
+
+  it('gives each agent its OWN entry in a shared file — never a merged one', () => {
+    /*
+    Test Doc:
+    - Why: if we merged, the refusal for a mixed-agent entry would fire on
+      configurations WE created, on every machine where two agents collide.
+    - Contract: every entry in the shared file names exactly one agent.
+    - Quality Contribution: asserts the invariant over EVERY entry rather than
+      counting them, so a future writer that merges only sometimes still fails.
+    */
+    present('.claude');
+    present('.factory');
+    installHooks(deps({ env: collide }));
+
+    const doc = JSON.parse(read(shared())) as {
+      hooks: Record<string, { hooks?: { command: string }[] }[]>;
+    };
+    for (const key of ['PreToolUse', 'PostToolUse']) {
+      const entries = doc.hooks[key] ?? [];
+      expect(entries.length).toBe(2);
+      for (const entry of entries) {
+        const agents = new Set(
+          (entry.hooks ?? []).map((h) => h.command.split('hooks fire ')[1]?.split(' ')[0]),
+        );
+        expect(agents.size, 'one entry, one agent').toBe(1);
+      }
+    }
+  });
+
+  it('so each agent remains INDEPENDENTLY removable — the property that matters', () => {
+    /*
+    Test Doc:
+    - Why: the reason the invariant above is worth having. Separate entries mean
+      the universal removal predicate matches, so neither agent is stranded.
+    - Contract: uninstalling droid removes droid and refuses nothing.
+    */
+    present('.claude');
+    present('.factory');
+    installHooks(deps({ env: collide }));
+
+    const droid = findAgent('droid');
+    const outcomes = uninstallStrategyA(
+      { fs, home, env: () => undefined },
+      droid as NonNullable<typeof droid>,
+    );
+
+    expect(outcomes.flatMap((o) => o.refused)).toEqual([]);
+    expect(read(shared())).not.toContain('hooks fire droid');
+    expect(read(shared())).toContain('hooks fire claude-code');
+  });
+});
+
+describe('F010-R2 — completeness must cover ENTRIES, not just root extras', () => {
+  const cursorConfig = () => join(home, '.cursor', 'hooks.json');
+
+  it('restores a MISSING EVENT ENTRY on re-install', () => {
+    /*
+    Test Doc:
+    - Why: `containsOurEntry` is true when ANY event array carries this agent, so
+      the early branch fired and only upgrades and root extras ran. Delete cursor's
+      post-tool entry and no later install would ever put it back — half the
+      bracket gone, and `status` reports installed. This is the same synthesis the
+      previous round named — one marked entry vs complete configuration — fixed in
+      the root-extra half only.
+    - Contract: a second install re-adds the missing phase entry.
+    */
+    present('.cursor');
+    installHooks(deps());
+    const doc = JSON.parse(read(cursorConfig())) as { hooks: Record<string, unknown[]> };
+    doc.hooks.postToolUse = [];
+    writeFileSync(cursorConfig(), `${JSON.stringify(doc, null, 2)}\n`);
+
+    installHooks(deps());
+
+    expect(read(cursorConfig())).toContain('hooks fire cursor --phase post');
+  });
+
+  it('does not DUPLICATE the entry that was already there', () => {
+    /*
+    Test Doc:
+    - Why: the obvious over-correction — repairing the missing half by appending a
+      second copy of the half that was fine.
+    - Contract: exactly one entry per event array after the repair.
+    */
+    present('.cursor');
+    installHooks(deps());
+    const doc = JSON.parse(read(cursorConfig())) as { hooks: Record<string, unknown[]> };
+    doc.hooks.postToolUse = [];
+    writeFileSync(cursorConfig(), `${JSON.stringify(doc, null, 2)}\n`);
+
+    installHooks(deps());
+
+    const after = JSON.parse(read(cursorConfig())) as {
+      hooks: Record<string, { command: string }[]>;
+    };
+    expect(after.hooks.preToolUse).toHaveLength(1);
+    expect(after.hooks.postToolUse).toHaveLength(1);
+  });
+});
+
+describe('F010-R3 — an UNTOUCHED file must never be reported as a stranded write', () => {
+  const first = () => join(home, '.codeium', 'hooks.json');
+  const second = () => join(home, '.codeium', 'windsurf', 'hooks.json');
+
+  it('names nothing when the file that failed is the only one this run would write', () => {
+    /*
+    Test Doc:
+    - Why: `commitOneFile` correctly writes nothing for a no-op plan, and the
+      caller pushed that outcome into the rollback set anyway. `revertWrite` then
+      compared the file's bytes against `null`, refused, and the operator was told
+      an UNTOUCHED file "was written and could not be rolled back". The prose was
+      right; the caller made it false.
+    - Contract: the untouched file is byte-identical AND is not named as stranded.
+    - Quality Contribution: asserts the OPERATOR STRING against the disk. Reading
+      the prose catches what it says; only a test catches when it is said.
+    */
+    present('.codeium');
+    installHooks(deps());
+    const before = read(first());
+    // Remove ONLY the second file, so a re-install is a no-op for the first.
+    rmSync(second(), { force: true });
+
+    const failSecond = derive({
+      writeText: (p: string, text: string) => {
+        if (p.endsWith('windsurf/hooks.json')) throw new Error('EACCES: permission denied');
+        fs.writeText(p, text);
+      },
+    });
+    const report = installHooks(deps({ fs: failSecond }));
+    const reason = report.failed.find((f) => f.agent === 'windsurf')?.reason ?? '';
+
+    expect(read(first())).toBe(before);
+    expect(reason).not.toContain(first());
+  });
+});

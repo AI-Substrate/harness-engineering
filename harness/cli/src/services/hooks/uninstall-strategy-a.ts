@@ -6,6 +6,7 @@ import {
   entryCommands,
   entryIsOwnedByAgent,
   entryIsOwnedByUs,
+  entryIsSharedWithPeerAgent,
   entryMayRemove,
   entryMayRemoveForAgent,
 } from './hook-marker.js';
@@ -158,15 +159,25 @@ function uninstallOneFile(deps: UninstallDeps, spec: AgentSpec, path: string): U
       if (index === -1) {
         for (const entry of entries) {
           if (
-            entryIsOwnedByAgent(entry, spec.agent) &&
-            !entryMayRemove(entry) &&
-            !refused.some((r) => r.command === describe(entry))
+            !entryIsOwnedByAgent(entry, spec.agent) ||
+            entryMayRemoveForAgent(entry, spec.agent) ||
+            refused.some((r) => r.command === describe(entry))
           ) {
-            refused.push({
-              command: describe(entry),
-              reason: 'our invocation is chained with foreign work in the same entry',
-            });
+            continue;
           }
+          /*
+           * TWO CAUSES, TWO SENTENCES, because the operator action differs. A
+           * FOREIGN-chained entry is not ours to touch at all. An entry shared
+           * with a PEER AGENT is entirely ours and simply cannot be removed on
+           * one agent's behalf — removing it would delete the peer's hook, which
+           * is the defect this whole round exists to close.
+           */
+          refused.push({
+            command: describe(entry),
+            reason: entryIsSharedWithPeerAgent(entry, spec.agent)
+              ? `this entry also carries another agent's harness command, so removing it would delete theirs. Edit this file by hand and delete just the \`hooks fire ${spec.agent}\` command from inside the entry, leaving the other agent's in place — or split the entry into one per agent and re-run uninstall`
+              : 'our invocation is chained with foreign work in the same entry',
+          });
         }
         break;
       }

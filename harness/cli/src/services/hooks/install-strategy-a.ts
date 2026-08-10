@@ -7,6 +7,7 @@ import {
   commandTokens,
   entryCommands,
   entryIsOwnedByAgent,
+  entryIsSharedWithPeerAgent,
   entryMayRemove,
   HOOK_MARKER,
   HOOK_MARKER_FLAG,
@@ -241,20 +242,26 @@ export function installStrategyA(
     planOneFile(fs, spec, path, binary),
   );
 
-  // PHASE 2 — COMMIT, newest state kept per file so a failure can undo it.
-  const committed: InstallOutcome[] = [];
+  // PHASE 2 — COMMIT. Two lists, and the distinction is load-bearing: `outcomes`
+  // is what the caller records and reports, `written` is what a failure may need
+  // to undo. Pushing a NO-OP plan into the rollback set made `revertWrite` compare
+  // a file's bytes against `null`, refuse, and report an UNTOUCHED file as a write
+  // that could not be rolled back.
+  const outcomes: InstallOutcome[] = [];
+  const written: InstallOutcome[] = [];
   try {
     for (const plan of planned) {
       commitOneFile(fs, plan);
-      committed.push(plan.outcome);
+      outcomes.push(plan.outcome);
+      if (plan.outcome.writtenText !== null) written.push(plan.outcome);
     }
   } catch (error) {
     // PHASE 3 — ROLL BACK what this agent already wrote. Anything that cannot be
     // put back is NAMED rather than dropped.
-    const stranded = committed.filter((outcome) => !revertWrite(fs, outcome));
+    const stranded = written.filter((outcome) => !revertWrite(fs, outcome));
     throw new PartialInstallError(error instanceof Error ? error.message : String(error), stranded);
   }
-  return committed;
+  return outcomes;
 }
 
 /**
@@ -430,63 +437,53 @@ function planOneFile(fs: FsPort, spec: AgentSpec, path: string, binary: string):
   // Sampled BEFORE the first write, because afterwards every key exists.
   const createdKeys = eventKeys(spec).filter((key) => !hasEventKey(before, key));
 
+  /*
+   * ONE PATH, NOT TWO (F010 review R2). There used to be an "already present"
+   * branch and a "fresh install" branch, and the first could only repair SOME of
+   * the configuration: it upgraded entries and added root extras, and never
+   * noticed a MISSING ENTRY. Deleting cursor's post-tool entry was therefore
+   * permanent — half the bracket gone, `status` still reporting installed.
+   *
+   * The two branches asked different questions of the same file. Now there is one
+   * sequence — migrate, converge the root, add the phases this agent lacks — and
+   * ALREADY-PRESENT MEANS WHAT IT SHOULD ALWAYS HAVE MEANT: the text did not
+   * change. That collapses the branches honestly instead of adding a third.
+   */
+  const upgrade = upgradeLegacyEntries(before, spec, binary, path);
+  let text = upgrade.text ?? before;
+
+  // ADDS WHAT IS ABSENT AND NOTHING ELSE: a root key is shared with settings we
+  // have no business touching, so a value the user changed is theirs and stays.
+  const rootExtras = missingRootExtras(text, spec);
+  for (const [keyPath, value] of rootExtras) text = setValue(text, keyPath, value);
+
+  for (const [phase, key] of phaseKeys(spec)) {
+    // PER AGENT, PER EVENT KEY. An entry belonging to a PEER in this array does
+    // not make this agent installed, and an entry of ours that is already here
+    // must not be duplicated.
+    if (hasAgentEntry(text, key, spec.agent)) continue;
+    text = appendToArray(text, {
+      path: ['hooks', key],
+      // The ENTRY comes from the matrix row's shape, never from a branch on the
+      // agent name — see `buildEntry` for what F005 cost when it was assumed.
+      //
+      // AND IT IS ALWAYS OUR OWN, SEPARATE ENTRY. We never merge into a block
+      // that already exists, so we cannot manufacture the mixed-agent entry that
+      // uninstall and upgrade must refuse.
+      entry: buildEntry(spec, binary, phase),
+    });
+  }
+
   const base = {
     agent: spec.agent,
     path,
     previousText: existing,
     created,
     createdKeys,
+    refusedUpgrades: upgrade.refused,
   };
 
-  /*
-   * IDEMPOTENCY IS AGENT-QUALIFIED (F010 F3). This asked "is ANY harness-owned
-   * entry in this file", and the caller read that as "this agent is installed".
-   * Two agents can share one config: `CLAUDE_CONFIG_DIR` pointed at `.factory`
-   * puts claude-code and droid in the same `settings.json` and the same event
-   * arrays, legally. Claude installed first, droid saw a marker, and droid
-   * reported itself installed having written nothing.
-   */
-  if (containsOurEntry(before, spec)) {
-    const upgrade = upgradeLegacyEntries(before, spec, binary, path);
-    /*
-     * ROOT EXTRAS ARE REPAIRED EVEN WHEN THE ENTRY IS ALREADY THERE (F010 F4).
-     * The early return used to precede this, so an install could not converge a
-     * config to the shape it claims to write — delete `tools.enableHooks` and no
-     * later install would ever put it back. Idempotency must mean "the complete
-     * current configuration is present", not "a marked entry exists".
-     *
-     * It ADDS WHAT IS ABSENT AND NOTHING ELSE. `missingRootExtras` returns only
-     * genuinely missing paths, so a value the user changed is theirs and stays.
-     */
-    let text = upgrade.text ?? before;
-    const rootExtras = missingRootExtras(text, spec);
-    for (const [keyPath, value] of rootExtras) text = setValue(text, keyPath, value);
-
-    const wrote = upgrade.text !== null || rootExtras.length > 0;
-    if (wrote || created) {
-      return {
-        mkdir: created ? parentOf(path) : null,
-        outcome: {
-          ...base,
-          // `rewritten-entry` ONLY when an entry that already existed was migrated:
-          // that is the one case whose reversal is a byte-restore rather than a
-          // removal, and conflating it with the others is what deleted a user's
-          // hook. A created file stays `created-file` whatever else happened.
-          change: created
-            ? 'created-file'
-            : upgrade.text !== null
-              ? 'rewritten-entry'
-              : 'added-entry',
-          // NOT `alreadyPresent`: we WROTE this run. Reporting a repair as
-          // "already present" would tell a user on the platform this fixes that
-          // nothing needed doing, on the run that did it.
-          alreadyPresent: false,
-          createdRootExtras: rootExtras.map(([keyPath]) => keyPath),
-          refusedUpgrades: upgrade.refused,
-          writtenText: text,
-        },
-      };
-    }
+  if (text === before && !created) {
     return {
       mkdir: null,
       outcome: {
@@ -496,24 +493,9 @@ function planOneFile(fs: FsPort, spec: AgentSpec, path: string, binary: string):
         // We wrote nothing this run, so we created no root field this run. An EARLIER
         // run's provenance is in the record and is merged, never overwritten.
         createdRootExtras: [],
-        refusedUpgrades: upgrade.refused,
         writtenText: null,
       },
     };
-  }
-
-  let text = before;
-  const rootExtras = missingRootExtras(text, spec);
-  for (const [path_, value] of rootExtras) {
-    text = setValue(text, path_, value);
-  }
-  for (const [phase, key] of phaseKeys(spec)) {
-    text = appendToArray(text, {
-      path: ['hooks', key],
-      // The ENTRY comes from the matrix row's shape, never from a branch on the
-      // agent name — see `buildEntry` for what F005 cost when it was assumed.
-      entry: buildEntry(spec, binary, phase),
-    });
   }
 
   return {
@@ -523,10 +505,16 @@ function planOneFile(fs: FsPort, spec: AgentSpec, path: string, binary: string):
     mkdir: created ? parentOf(path) : null,
     outcome: {
       ...base,
-      change: created ? 'created-file' : 'added-entry',
+      // `rewritten-entry` ONLY when an entry that already existed was migrated:
+      // that is the one case whose reversal is a byte-restore rather than a
+      // removal, and conflating it with the others is what deleted a user's hook.
+      // A created file stays `created-file` whatever else happened.
+      change: created ? 'created-file' : upgrade.text !== null ? 'rewritten-entry' : 'added-entry',
+      // NOT `alreadyPresent`: we WROTE this run. Reporting a repair as "already
+      // present" would tell a user on the platform this fixes that nothing needed
+      // doing, on the run that did it.
       alreadyPresent: false,
       createdRootExtras: rootExtras.map(([keyPath]) => keyPath),
-      refusedUpgrades: [],
       writtenText: text,
     },
   };
@@ -594,13 +582,24 @@ function upgradeLegacyEntries(
     const entries = doc.hooks?.[key];
     if (!Array.isArray(entries)) continue;
     for (const [index, entry] of entries.entries()) {
-      // AGENT-QUALIFIED (F010 F3): in a shared config this loop would otherwise
-      // rewrite a PEER's entry as THIS agent's command — turning a cross-agent
-      // false install into cross-agent corruption.
+      // AGENT-QUALIFIED, AND UNIVERSALLY SO (F010 review R1). This rewrites the
+      // WHOLE entry as THIS agent's command, so entering on "some command here is
+      // this agent's" would delete a peer's command BY REWRITING IT — worse than
+      // deleting it outright, because the file still looks installed afterwards.
       if (!entryIsOwnedByAgent(entry, spec.agent)) continue;
       if (entryCommands(entry).every((command) => invocationIsCurrent(command, wanted))) continue;
 
       const replacement = hookCommand(binary, spec.agent, phase);
+      if (entryIsSharedWithPeerAgent(entry, spec.agent)) {
+        refused.push({
+          path,
+          command: entryCommands(entry).join(' ; '),
+          reason: "this entry also carries another agent's harness command",
+          replacement,
+          nextAction: `Left unchanged so the other agent's hook survives — rewriting this entry for ${spec.agent} would replace theirs. Split the commands into separate entries, then re-run install; ${spec.agent}'s should read: ${replacement}`,
+        });
+        continue;
+      }
       if (!entryMayRemove(entry)) {
         for (const command of entryCommands(entry)) {
           refused.push({
@@ -675,23 +674,23 @@ function hasEventKey(text: string, key: string): boolean {
 }
 
 /**
- * Is THIS AGENT's marked entry already in either event array?
+ * Does THIS AGENT already have an entry in THIS event array?
  *
- * AGENT-QUALIFIED, NOT MERELY OURS (plan 082 F010 F3). The broad question — "is
- * any harness-owned entry here" — is the right question for *may I touch this
- * file*, and the wrong one for *is this agent installed*. Two agents legally share
- * a file when `CLAUDE_CONFIG_DIR` names another agent's directory, and the broad
- * read made the second agent report itself installed with no entry of its own.
+ * AGENT-QUALIFIED AND PER-KEY. Asked of the whole document it answered "is this
+ * agent installed at all", which let a file with one of its two entries deleted
+ * read as complete. Two agents legally share a file when `CLAUDE_CONFIG_DIR`
+ * names another agent's directory, so a PEER's entry in this array proves nothing
+ * about us either.
  */
-function containsOurEntry(text: string, spec: AgentSpec): boolean {
+function hasAgentEntry(text: string, key: string, agent: string): boolean {
   let doc: { hooks?: Record<string, unknown[]> };
   try {
     doc = JSON.parse(stripComments(text)) as typeof doc;
   } catch {
     return false;
   }
-  const arrays = eventKeys(spec).map((key) => doc.hooks?.[key] ?? []);
-  return arrays.some((entries) => entries.some((entry) => entryIsOwnedByAgent(entry, spec.agent)));
+  const entries = doc.hooks?.[key];
+  return Array.isArray(entries) && entries.some((entry) => entryIsOwnedByAgent(entry, agent));
 }
 
 const stripComments = (text: string): string =>

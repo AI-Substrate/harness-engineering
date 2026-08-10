@@ -222,13 +222,48 @@ export const entryIsOwnedByAgent = (entry: unknown, agent: string): boolean =>
 /**
  * May uninstall remove this ENTRY on THIS AGENT's behalf?
  *
- * {@link entryMayRemove} plus agent qualification — the inverse of the collision
- * above. Uninstalling droid from a file it shares with claude-code must not take
- * claude's entry with it, and compensation runs the same removal path, so an
- * unqualified removal would let a FAILED droid install delete a HEALTHY claude one.
+ * UNIVERSAL, NOT EXISTENTIAL, AND THE DIFFERENCE IS A DELETED HOOK. The first
+ * agent-qualified version of this was `entryMayRemove(entry) &&
+ * entryIsOwnedByAgent(entry, agent)` — which proves every command in the entry is
+ * OURS and that SOME command is the TARGET's. It does not prove every command is
+ * the target's, and `uninstallStrategyA` removes the WHOLE entry. One valid nested
+ * block carrying claude-code's and droid's commands was therefore removable on
+ * behalf of either, and uninstalling droid deleted claude-code.
+ *
+ * **That was the defect this predicate was written to fix, reproduced inside the
+ * fix for it**: the broad test was replaced by a narrower one that was still broad
+ * in the dimension that mattered. So the question is asked of EVERY command:
+ * wholly ours, and this agent's.
+ *
+ * A mixed-agent entry is consequently neither removable nor replaceable by one
+ * agent. It must be REPORTED — see {@link entryIsSharedWithPeerAgent} — for the
+ * same reason a foreign-chained entry is: a refusal nobody hears is
+ * indistinguishable from a repair.
  */
-export const entryMayRemoveForAgent = (entry: unknown, agent: string): boolean =>
-  entryMayRemove(entry) && entryIsOwnedByAgent(entry, agent);
+export function entryMayRemoveForAgent(entry: unknown, agent: string): boolean {
+  const commands = entryCommands(entry);
+  return (
+    commands.length > 0 &&
+    commands.every(
+      (command) => classifyOwnership(command) === 'wholly-ours' && commandAgent(command) === agent,
+    )
+  );
+}
+
+/**
+ * Is this entry ours, carrying THIS agent, and ALSO carrying another agent's
+ * harness command?
+ *
+ * The state that is safe to neither remove nor rewrite on one agent's behalf. It
+ * is distinguished from a FOREIGN-chained entry deliberately, because the operator
+ * action differs: a peer's command is ours to reconcile, someone else's work is
+ * not ours to touch at all.
+ */
+export function entryIsSharedWithPeerAgent(entry: unknown, agent: string): boolean {
+  const commands = entryCommands(entry).filter(isOwnedByUs);
+  if (!commands.some((command) => commandAgent(command) === agent)) return false;
+  return commands.some((command) => commandAgent(command) !== agent);
+}
 
 /** May uninstall remove this ENTRY outright, in either shape? */
 export function entryMayRemove(entry: unknown): boolean {
