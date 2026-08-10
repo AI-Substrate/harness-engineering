@@ -1,9 +1,9 @@
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { AgentSpec } from './agent-matrix.js';
 import { eventKeys, phaseKeys, resolveConfigFiles } from './agent-matrix.js';
-import { extractBinaryPath } from './binary-path.js';
+import { extractBinaryPath, extractInterpreterPath } from './binary-path.js';
 import { appendToArray, setValue, writeThroughSymlink } from './config-writer.js';
-import { entryIsOwnedByUs, HOOK_MARKER, HOOK_MARKER_FLAG } from './hook-marker.js';
+import { entryCommands, entryIsOwnedByUs, HOOK_MARKER, HOOK_MARKER_FLAG } from './hook-marker.js';
 
 /**
  * STRATEGY A — merge our hook entry into an agent's JSON config (plan 082 tk-0005).
@@ -85,9 +85,22 @@ export interface InstallOutcome {
   createdRootExtras: string[][];
 }
 
+/**
+ * The ARGUMENTS half of our hook command — the one source of truth for the tail.
+ *
+ * SPLIT OUT BECAUSE THE POWERSHELL VARIANT USED TO REBUILD IT BY ARITHMETIC:
+ * `command.slice(binary.length)` (F008). That is a second source of truth about
+ * the same value, derived by measuring a string with a number, and it broke the
+ * moment the invocation stopped being one token. Both variants now compose the
+ * SAME tail behind their own invocation syntax, so a change to the arguments
+ * cannot reach one and miss the other.
+ */
+export const hookArgs = (agent: string, phase: 'pre' | 'post'): string =>
+  `hooks fire ${agent} --phase ${phase} --hook-input stdin ${HOOK_MARKER_FLAG} ${HOOK_MARKER}`;
+
 /** The command we install for one agent and phase. */
 export const hookCommand = (binary: string, agent: string, phase: 'pre' | 'post'): string =>
-  `${binary} hooks fire ${agent} --phase ${phase} --hook-input stdin ${HOOK_MARKER_FLAG} ${HOOK_MARKER}`;
+  `${binary} ${hookArgs(agent, phase)}`;
 
 /**
  * The skeleton for an agent with no config.
@@ -143,11 +156,21 @@ export function buildEntry(
   const extras = spec.entryExtras ?? {};
 
   if (spec.powershellVariant === true) {
-    const raw = extractBinaryPath(binary) ?? binary;
+    // BOTH PARTS, from the same structured pair the command uses (F008). The
+    // previous form extracted ONE path and re-prefixed it, which for an
+    // interpreter-first invocation produced `& 'node' hooks fire …` — node with
+    // no script, a second broken command string beside the one we had just
+    // fixed.
+    const interpreter = extractInterpreterPath(binary);
+    const script = extractBinaryPath(binary) ?? binary;
     // `& '<path>'` with embedded single quotes doubled — powershell's own escaping,
     // and the form git-ai writes (github_copilot.rs:59-69).
-    const invocation = `& '${raw.replace(/'/g, "''")}'`;
-    Object.assign(extras, { powershell: `${invocation} ${command.slice(binary.length).trim()}` });
+    const psQuote = (path: string) => `'${path.replace(/'/g, "''")}'`;
+    const invocation =
+      interpreter === null
+        ? `& ${psQuote(script)}`
+        : `& ${psQuote(interpreter)} ${psQuote(script)}`;
+    Object.assign(extras, { powershell: `${invocation} ${hookArgs(spec.agent, phase)}` });
   }
 
   if (spec.entryShape === 'nested') {
@@ -229,6 +252,21 @@ function installOneFile(fs: FsPort, spec: AgentSpec, path: string, binary: strin
   // Idempotency: our entry is FOUND by the marker, never by string equality with
   // what we would write — the binary path can legitimately differ between installs.
   if (containsOurEntry(before, spec)) {
+    const upgraded = upgradeLegacyEntries(before, spec, binary);
+    if (upgraded !== null) {
+      writeThroughSymlink(fs, path, upgraded);
+      return {
+        agent: spec.agent,
+        path,
+        created,
+        // NOT `alreadyPresent`: we WROTE this run. Reporting an upgrade as
+        // "already present" would tell a user on the platform this repairs that
+        // nothing needed doing, on the run that did it.
+        alreadyPresent: false,
+        createdKeys,
+        createdRootExtras: [],
+      };
+    }
     if (created) writeThroughSymlink(fs, path, before);
     return {
       agent: spec.agent,
@@ -265,6 +303,55 @@ function installOneFile(fs: FsPort, spec: AgentSpec, path: string, binary: strin
     createdKeys,
     createdRootExtras: rootExtras.map(([keyPath]) => keyPath),
   };
+}
+
+/**
+ * Rewrite entries of ours that predate F008 — the UPGRADE path.
+ *
+ * Returns the new document text, or `null` when there is nothing to upgrade.
+ *
+ * WHY THIS EXISTS. Idempotency finds our entry BY MARKER, so a legacy entry
+ * short-circuits install as `alreadyPresent` — correct for duplication, wrong
+ * for repair. Without this, a Windows user who upgrades the CLI and re-runs
+ * `harness hooks install` is told everything is fine while the command that
+ * cannot execute stays exactly where it was. The fix would never reach the only
+ * platform that needs it.
+ *
+ * WHY IT IS NARROW. It rewrites ONLY entries that are ours (by marker) and ONLY
+ * when the configured command lacks an interpreter while the one we would now
+ * write has one. An unconditional rewrite would churn every config on every run,
+ * and a match any broader than the marker would edit a hook we did not write —
+ * the clobbering posture `hook-marker.ts` exists to refuse. Foreign entries in
+ * the same array are addressed by INDEX and never touched.
+ */
+function upgradeLegacyEntries(text: string, spec: AgentSpec, binary: string): string | null {
+  if (extractInterpreterPath(binary) === null) return null;
+
+  let doc: { hooks?: Record<string, unknown[]> };
+  try {
+    doc = JSON.parse(stripComments(text)) as typeof doc;
+  } catch {
+    return null;
+  }
+
+  let out = text;
+  let changed = false;
+  for (const [phase, key] of phaseKeys(spec)) {
+    const entries = doc.hooks?.[key];
+    if (!Array.isArray(entries)) continue;
+    for (const [index, entry] of entries.entries()) {
+      if (!entryIsOwnedByUs(entry)) continue;
+      if (entryCommands(entry).every((command) => extractInterpreterPath(command) !== null))
+        continue;
+
+      // Rebuilt from the matrix row, exactly as a fresh install would write it —
+      // so an upgraded entry and a new one cannot drift apart.
+      const rebuilt = buildEntry(spec, binary, phase) as Record<string, unknown>;
+      out = setValue(out, ['hooks', key, index], rebuilt);
+      changed = true;
+    }
+  }
+  return changed ? out : null;
 }
 
 /**

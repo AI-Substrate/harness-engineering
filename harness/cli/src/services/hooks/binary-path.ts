@@ -56,18 +56,123 @@ export const quoteForShell = (path: string): string => `"${path.replace(/"/g, '\
 export const embedBinaryPath = (path: string): string => quoteForShell(normaliseBinaryPath(path));
 
 /**
+ * THE INVOCATION — the interpreter AND the script, both normalised, both quoted.
+ *
+ * MEASURED ON A WINDOWS 11 GUEST, 2026-08-10 (plan 082, F008):
+ *
+ *   .js=JSFile
+ *   JSFile=C:\Windows\System32\WScript.exe "%1" %*
+ *
+ * A bare `.js` path as the first token of a command is dispatched by FILE
+ * ASSOCIATION to Windows Script Host — not Node. WScript opened our ES module,
+ * could not execute it, and EXITED 0. The exact command from `hooks.json` moved
+ * the fires journal 2 -> 2 lines; the identical command with `node` in front
+ * moved it 2 -> 3. Every hook we ever installed on Windows was decorative, and
+ * F005's entry shapes and F006's relay were both correct and both unreachable,
+ * because the process carrying them was not our program.
+ *
+ * THE ORIGINAL RATIONALE SURVIVES INTACT — it was the CONCLUSION that was
+ * POSIX-only. "The path written into a user's config IS the running binary and
+ * no caller can supply a truthful substitute" is still why we use
+ * `process.argv[1]`; `process.execPath` is the same kind of fact about the same
+ * running process. A truthful PAIR rather than a truthful single. No PATH lookup
+ * (a hook subprocess may not inherit the user's PATH), no guess at where npm put
+ * a `.cmd` shim (a dev checkout has none, so shim-resolution would silently
+ * regress the dogfood machine), correct under global install, npx, and a
+ * relocated node alike.
+ *
+ * ONE FORM ON EVERY PLATFORM, deliberately. An explicit interpreter is correct
+ * on POSIX too — it removes the shebang from the trust chain — and one form
+ * means the string shipped to Windows users is the string every macOS gate run
+ * exercises. The divergence is what let this defect live for the life of the
+ * feature.
+ *
+ * The self-invocation case (`script === interpreter`, i.e. a single-file
+ * executable) collapses to one token rather than naming the binary twice.
+ */
+export function embedInvocation(interpreter: string, script: string): string {
+  const node = normaliseBinaryPath(interpreter);
+  const target = normaliseBinaryPath(script);
+  if (node === target || target === '') return embedBinaryPath(node);
+  return `${quoteForShell(node)} ${quoteForShell(target)}`;
+}
+
+/**
  * Pull the binary path back OUT of a hook command string.
  *
  * The inverse of {@link embedBinaryPath}, and the reason `status` can stat what it
  * configured. Handles the quoted form (including spaces, which is the whole point)
  * and tolerates an unquoted first token so a hand-edited entry is still readable.
  *
+ * INTERPRETER-AWARE SINCE F008, and this is the single most dangerous edge in
+ * that change. This function returns what `status` STATS. Once the command names
+ * `node` first, a reader that still took token one would stat `node.exe` — which
+ * exists on every machine capable of running this code. `binaryState` would then
+ * report `resolves` UNCONDITIONALLY: a green light that cannot go red, which is
+ * strictly worse than the bug it was hiding. So the SCRIPT is what comes back
+ * out, and the interpreter is available by name from
+ * {@link extractInterpreterPath} rather than silently discarded.
+ *
  * Returns `null` when the command does not start with a path we can identify —
  * never a guess, because a wrong path stats false and reports a healthy install as
  * broken.
  */
 export function extractBinaryPath(command: string): string | null {
-  const trimmed = command.trimStart();
+  const [first, second] = leadingTokens(command);
+  if (first === null) return null;
+  return isPathLike(second) ? second : first;
+}
+
+/**
+ * The INTERPRETER a command names, or `null` when it names none.
+ *
+ * `null` is a real answer and not a failure: a hand-edited entry, or any config
+ * written before F008, carries the one-token form. Reporting that honestly is
+ * what lets `status` say "this install predates the fix" instead of guessing an
+ * interpreter that was never configured.
+ */
+export function extractInterpreterPath(command: string): string | null {
+  const [first, second] = leadingTokens(command);
+  if (first === null) return null;
+  return isPathLike(second) ? first : null;
+}
+
+/**
+ * Is this token a PATH rather than a subcommand?
+ *
+ * The structural rule, chosen over a name test (`basename === 'node'`) on
+ * purpose: a name test has to be right about every interpreter anyone might
+ * legitimately configure — `node`, `node.exe`, a version-managed shim, a future
+ * runtime — and it is wrong the first time it meets one it does not know. Our
+ * command shape is `<invocation> hooks fire <agent> …`, so the question that
+ * actually decides it is whether the second token is a path or the literal verb
+ * `hooks`. A separator answers that without knowing any interpreter's name.
+ */
+const isPathLike = (token: string | null): token is string =>
+  token !== null && token.length > 0 && (token.includes('/') || /^[A-Za-z]:/.test(token));
+
+/**
+ * The first two whitespace-separated tokens, with quoting honoured.
+ *
+ * ONE tokenizer for both readers, so "where does the first token end" cannot be
+ * answered two different ways — the split-on-space version of this question is
+ * the naive extractor that returns `"/Users/ada` and reports every healthy
+ * install broken.
+ */
+function leadingTokens(command: string): [string | null, string | null] {
+  const tokens: string[] = [];
+  let rest = command;
+  for (let n = 0; n < 2; n += 1) {
+    const read = readToken(rest);
+    if (read === null) break;
+    tokens.push(read.token);
+    rest = read.rest;
+  }
+  return [tokens[0] ?? null, tokens[1] ?? null];
+}
+
+function readToken(input: string): { token: string; rest: string } | null {
+  const trimmed = input.trimStart();
   if (trimmed.length === 0) return null;
 
   if (trimmed.startsWith('"')) {
@@ -80,14 +185,14 @@ export function extractBinaryPath(command: string): string | null {
         i += 1;
         continue;
       }
-      if (char === '"') return out.length > 0 ? out : null;
+      if (char === '"') return out.length > 0 ? { token: out, rest: trimmed.slice(i + 1) } : null;
       out += char;
     }
     return null; // unterminated quote — not a path we can identify
   }
 
   const token = trimmed.split(/\s+/)[0];
-  return token.length > 0 ? token : null;
+  return token.length > 0 ? { token, rest: trimmed.slice(token.length) } : null;
 }
 
 /**

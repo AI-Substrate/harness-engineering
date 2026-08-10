@@ -52,7 +52,6 @@
  * predicate cannot claim our entry (asserted in both directions).
  */
 export const HOOK_MARKER = 'ai-substrate-harness-hook-v1';
-
 /** The flag that carries the marker in a Strategy A command. */
 export const HOOK_MARKER_FLAG = '--hook-owner';
 

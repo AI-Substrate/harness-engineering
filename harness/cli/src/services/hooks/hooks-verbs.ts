@@ -1,10 +1,11 @@
+import type { InvocationProbe } from '../../adapters/exec/invocation-probe-port.js';
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { AgentMarker } from '../doctor/collector/agents.js';
 import { detectAgents, UNDETECTED_INSTALLERS } from '../doctor/collector/agents.js';
 import { BACKUP_MANIFEST_NAME, restoreAgentConfigs } from '../doctor/collector/backup.js';
 import type { AgentSpec } from './agent-matrix.js';
 import { AGENT_MATRIX, eventKeys, resolveConfigFiles } from './agent-matrix.js';
-import { extractBinaryPath } from './binary-path.js';
+import { extractBinaryPath, extractInterpreterPath } from './binary-path.js';
 import { unacceptedOptions } from './fire-options.js';
 import { FileHookJournal } from './hook-journal.js';
 import { entryCommands, isOwnedByUs } from './hook-marker.js';
@@ -114,6 +115,11 @@ export interface HooksDeps {
   env: (name: string) => string | undefined;
   /** Already normalised and quoted — see `binary-path.ts`. */
   binary: string;
+  /**
+   * OPTIONAL execution probe (plan 082, F008). Absent ⇒ `executionState:
+   * 'unchecked'` — an honest "we did not look", never a green.
+   */
+  probe?: InvocationProbe;
 }
 
 /** Every agent we know about, with what we can say about each. */
@@ -321,6 +327,36 @@ function compensate(deps: HooksDeps, spec: AgentSpec, outcomes: InstallOutcome[]
  */
 export type CommandState = 'absent' | 'accepted' | 'unknown-options';
 
+/**
+ * Does the installed command ACTUALLY RUN OUR CODE? (plan 082, F008 §4.)
+ *
+ * THE FIELD FAILURE THIS EXISTS FOR, measured on a Windows 11 guest 2026-08-10:
+ * `binaryState` said `resolves` and `commandState` said `accepted` on a machine
+ * where the hook had never executed one line of our code. Both fields were
+ * telling the truth. `resolves` is `fs.exists` and the file existed; `accepted`
+ * is a static comparison of option NAMES and the names were right. THE DEFECT IS
+ * NOT EITHER FIELD — IT IS THAT `resolves` + `accepted` TOGETHER READ AS
+ * "WORKING" AND NOTHING COULD CONTRADICT THEM.
+ *
+ * So this is the only field that requires POSITIVE EVIDENCE that our process ran.
+ * Exit 0 is explicitly NOT evidence: exit 0 is exactly what Windows Script Host
+ * returned after failing to execute our ES module.
+ *
+ * - `absent` — no entry of ours; nothing to execute and nothing to claim.
+ * - `unchecked` — NOT MEASURED. Status is called from paths that must not spawn
+ *   a child, and "we did not look" is a real answer. Folding it into `runs`
+ *   re-creates the false green; folding it into `inert` cries wolf on every
+ *   working install.
+ * - `runs` — the configured invocation was executed and returned our evidence.
+ * - `inert` — it was executed and did not. Installed, and dead.
+ *
+ * A GATE IS NOT VERIFIED UNTIL IT HAS REFUSED. `binaryState` alone, once the
+ * command names an interpreter, would stat `node.exe` on a machine that is by
+ * definition running node — a green light that cannot go red, which is not a
+ * check but a decoration occupying the slot where a check should be.
+ */
+export type ExecutionState = 'absent' | 'unchecked' | 'runs' | 'inert';
+
 /** How a configured binary reads, as three states rather than a boolean. */
 export type BinaryState =
   /** No entry of ours, so there is no binary to judge. */
@@ -375,13 +411,28 @@ export interface StatusReport extends AgentReport {
   commandState: CommandState;
   /** The specific options this binary does not declare, when `unknown-options`. */
   unacceptedOptions?: string[];
+  /**
+   * Whether the configured command was EXECUTED and proved our code ran.
+   *
+   * The only field here that is not a static read. See {@link ExecutionState}
+   * for why `resolves` + `accepted` were not enough.
+   */
+  executionState: ExecutionState;
+  /** Why, in words, when the state is `inert`. */
+  executionDetail?: string;
 }
 
 export function statusHooks(deps: HooksDeps): StatusReport[] {
   return listAgents(deps).map((report) => {
     const spec = AGENT_MATRIX.find((s) => s.agent === report.agent);
     if (spec === undefined)
-      return { ...report, files: [], binaryState: 'absent', commandState: 'absent' };
+      return {
+        ...report,
+        files: [],
+        binaryState: 'absent',
+        commandState: 'absent',
+        executionState: 'absent',
+      };
 
     const files = resolveConfigFiles(spec, deps.home, deps.env).map((path) => ({
       path,
@@ -389,13 +440,20 @@ export function statusHooks(deps: HooksDeps): StatusReport[] {
     }));
     const configured = configuredBinaryFor(deps, spec);
     if (configured === null)
-      return { ...report, files, binaryState: 'absent', commandState: 'absent' };
+      return {
+        ...report,
+        files,
+        binaryState: 'absent',
+        commandState: 'absent',
+        executionState: 'absent',
+      };
 
     // Across EVERY entry of ours, not just the first: windsurf writes two files
     // and each agent writes a pre and a post command, so a check that looked at
     // one would report health for a set it had not examined.
     const unaccepted = [...new Set(ourCommands(deps, spec).flatMap(unacceptedOptions))];
     const resolves = deps.fs.exists(configured);
+    const execution = probeExecution(deps, spec, configured);
     return {
       ...report,
       files,
@@ -404,8 +462,37 @@ export function statusHooks(deps: HooksDeps): StatusReport[] {
       binaryState: resolves ? 'resolves' : 'unresolvable',
       commandState: unaccepted.length === 0 ? 'accepted' : 'unknown-options',
       ...(unaccepted.length === 0 ? {} : { unacceptedOptions: unaccepted }),
+      ...execution,
     };
   });
+}
+
+/**
+ * Run the probe against the CONFIGURED pair, or report that we did not look.
+ *
+ * `unchecked` when no probe is injected — see {@link ExecutionState}. The detail
+ * string names the failure in terms an operator can act on, because "inert" on
+ * its own sends them to read our source to find out what we tried.
+ */
+function probeExecution(
+  deps: HooksDeps,
+  spec: AgentSpec,
+  script: string,
+): { executionState: ExecutionState; executionDetail?: string } {
+  if (deps.probe === undefined) return { executionState: 'unchecked' };
+
+  const [command] = ourCommands(deps, spec);
+  const interpreter = command === undefined ? null : extractInterpreterPath(command);
+  const result = deps.probe(interpreter, script);
+  if (result.evidence) return { executionState: 'runs' };
+  return {
+    executionState: 'inert',
+    executionDetail:
+      result.detail ??
+      (result.ok
+        ? 'the command ran and produced no self-test evidence — our code did not run'
+        : 'the command could not be executed'),
+  };
 }
 
 /** Is our marked entry present in any of this agent's config files? */

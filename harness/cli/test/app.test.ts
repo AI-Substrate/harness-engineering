@@ -161,6 +161,7 @@ describe('buildProgram — composition root wiring', () => {
       'fire',
       'list',
       'status',
+      'self-test',
       'install',
       'uninstall',
       'restore',
