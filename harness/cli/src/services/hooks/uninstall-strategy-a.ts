@@ -1,8 +1,8 @@
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { AgentSpec } from './agent-matrix.js';
-import { resolveConfigFiles } from './agent-matrix.js';
+import { eventKeys, resolveConfigFiles } from './agent-matrix.js';
 import { removeFromArray, writeThroughSymlink } from './config-writer.js';
-import { classifyOwnership, isOwnedByUs } from './hook-marker.js';
+import { entryCommands, entryIsOwnedByUs, entryMayRemove } from './hook-marker.js';
 
 /**
  * UNINSTALL (plan 082 tk-000d) — surgical removal, never a restore.
@@ -91,7 +91,7 @@ function uninstallOneFile(deps: UninstallDeps, spec: AgentSpec, path: string): U
   const text = deps.fs.readText(path);
   if (text === null) return base;
 
-  let doc: { hooks?: Record<string, { command?: unknown }[]> };
+  let doc: { hooks?: Record<string, unknown[]> };
   try {
     doc = JSON.parse(stripComments(text)) as typeof doc;
   } catch {
@@ -99,11 +99,7 @@ function uninstallOneFile(deps: UninstallDeps, spec: AgentSpec, path: string): U
     return { ...base, unmarked: true };
   }
 
-  const marked = [spec.events.pre, spec.events.post].some((key) =>
-    (doc.hooks?.[key] ?? []).some(
-      (entry) => typeof entry.command === 'string' && isOwnedByUs(entry.command),
-    ),
-  );
+  const marked = eventKeys(spec).some((key) => (doc.hooks?.[key] ?? []).some(entryIsOwnedByUs));
   if (!marked) {
     // REFUSE rather than clobber — cline.rs's posture, not amp.rs's.
     return { ...base, unmarked: true };
@@ -119,11 +115,11 @@ function uninstallOneFile(deps: UninstallDeps, spec: AgentSpec, path: string): U
   let removed = 0;
   const refused: UninstallOutcome['refused'] = [];
 
-  for (const key of [spec.events.pre, spec.events.post]) {
+  for (const key of eventKeys(spec)) {
     // Re-parse each pass: an index is only valid against the text it came from, and
     // removing an entry shifts every later index in that array.
     for (;;) {
-      let parsed: { hooks?: Record<string, { command?: unknown }[]> };
+      let parsed: { hooks?: Record<string, unknown[]> };
       try {
         parsed = JSON.parse(stripComments(current)) as typeof parsed;
       } catch {
@@ -131,20 +127,17 @@ function uninstallOneFile(deps: UninstallDeps, spec: AgentSpec, path: string): U
       }
       const entries = parsed.hooks?.[key] ?? [];
       const index = entries.findIndex(
-        (entry) =>
-          typeof entry.command === 'string' &&
-          classifyOwnership(entry.command) === 'wholly-ours' &&
-          !refused.some((r) => r.command === entry.command),
+        (entry) => entryMayRemove(entry) && !refused.some((r) => r.command === describe(entry)),
       );
       if (index === -1) {
         for (const entry of entries) {
           if (
-            typeof entry.command === 'string' &&
-            classifyOwnership(entry.command) === 'ours-with-foreign' &&
-            !refused.some((r) => r.command === entry.command)
+            entryIsOwnedByUs(entry) &&
+            !entryMayRemove(entry) &&
+            !refused.some((r) => r.command === describe(entry))
           ) {
             refused.push({
-              command: entry.command,
+              command: describe(entry),
               reason: 'our invocation is chained with foreign work in the same entry',
             });
           }
@@ -175,7 +168,7 @@ function uninstallOneFile(deps: UninstallDeps, spec: AgentSpec, path: string): U
   // key behind — recoverable cruft — rather than deleting a user's key, which is not.
   if (removed > 0) {
     const ourKeys = deps.createdKeys?.get(path);
-    for (const key of [spec.events.pre, spec.events.post]) {
+    for (const key of eventKeys(spec)) {
       if (ourKeys?.has(key) !== true) continue;
       try {
         const parsed = JSON.parse(stripComments(current)) as {
@@ -193,6 +186,17 @@ function uninstallOneFile(deps: UninstallDeps, spec: AgentSpec, path: string): U
   }
   return { ...base, removed, refused };
 }
+
+/**
+ * A stable label for one entry, used to remember which ones we already refused.
+ *
+ * TWO SHAPES, ONE IDENTITY (plan 082 F005). A nested entry has no top-level
+ * `command`, so keying a refusal on `entry.command` would key every nested entry on
+ * `undefined` — they would all collapse into one, and the second would be reported
+ * as already-refused. Joining the entry's commands gives a label that exists in both
+ * shapes.
+ */
+const describe = (entry: unknown): string => entryCommands(entry).join(' ; ');
 
 const stripComments = (text: string): string =>
   text

@@ -4,7 +4,12 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { HOOK_MARKER, HOOK_MARKER_FLAG } from '../../../src/services/hooks/hook-marker.js';
+import { AGENT_MATRIX, eventKeys } from '../../../src/services/hooks/agent-matrix.js';
+import {
+  entryCommands,
+  HOOK_MARKER,
+  HOOK_MARKER_FLAG,
+} from '../../../src/services/hooks/hook-marker.js';
 import { hermeticGitEnv } from '../../support/hermetic-git.js';
 
 /**
@@ -133,15 +138,36 @@ function composedCommands(): Composed[] {
     const path = join(home, ...relative.split('/'));
     if (!existsSync(path)) return [];
     const config = JSON.parse(readFileSync(path, 'utf8')) as {
-      hooks?: Record<string, { command: string }[]>;
+      hooks?: Record<string, unknown[]>;
     };
     return Object.entries(config.hooks ?? {}).flatMap(([phase, entries]) =>
-      entries
-        .filter((entry) => entry.command.includes(HOOK_MARKER))
-        .map((entry) => ({ agent: relative, phase, command: entry.command })),
+      // READ BOTH ENTRY SHAPES (plan 082 F005). Three agents keep the command at
+      // `entry.hooks[].command`, not `entry.command` — so a flat-only read here does
+      // not merely miss them, it silently DROPS claude-code, gemini and droid from
+      // F004's coverage while the file still reports green. That is F004's own
+      // failure class (a guard that stops covering what it names) arriving through
+      // the entry shape.
+      entries.flatMap((entry) =>
+        entryCommands(entry)
+          .filter((command) => command.includes(HOOK_MARKER))
+          .map((command) => ({ agent: relative, phase, command })),
+      ),
     );
   });
 }
+
+/**
+ * How many commands a correct install writes, derived from the matrix.
+ *
+ * One per event key, per config file, for every SUPPORTED agent. Reading
+ * `spec.supported` here is what makes the held-out firebender row a fact this
+ * assertion respects rather than a discrepancy someone has to explain.
+ */
+const expectedCommandCount = (): number =>
+  AGENT_MATRIX.filter((spec) => spec.supported).reduce(
+    (total, spec) => total + spec.configFiles.length * eventKeys(spec).length,
+    0,
+  );
 
 /** Just cursor's, for the rows that need one specific command rather than all of them. */
 function cursorCommands(): Composed[] {
@@ -209,10 +235,17 @@ describe('the command the INSTALLER composed is a command `fire` can actually RU
       the command string and its consumer are the same string.
     */
     const composed = composedCommands();
-    // Every supported agent, both phases. A count assertion so a fixture that
-    // silently stopped detecting an agent reads as a failure, not as a pass.
-    expect(composed.length, 'the installer wrote a command for every agent×phase').toBe(
-      AGENT_CONFIGS.length * 2,
+    // Every supported agent, every config file, every event key. A count assertion
+    // so a fixture that silently stopped detecting an agent reads as a failure
+    // rather than as a pass.
+    //
+    // DERIVED FROM THE MATRIX, not written down. It used to be `AGENT_CONFIGS × 2`,
+    // which assumed two events per agent and that every known agent is installed —
+    // BOTH became false in plan 082 F005 (windsurf dispatches on five cascade
+    // events, and firebender is deliberately held out). A literal here would have
+    // had to be re-derived by hand at exactly the moment the shapes changed.
+    expect(composed.length, 'the installer wrote a command for every agent×file×event').toBe(
+      expectedCommandCount(),
     );
 
     for (const { agent, phase, command } of composed) {
@@ -253,8 +286,8 @@ describe('the command the INSTALLER composed is a command `fire` can actually RU
     expect(registered.size, 'the help text must actually list options').toBeGreaterThan(0);
 
     const composed = composedCommands();
-    expect(composed.length, 'every agent×phase is checked, not just cursor').toBe(
-      AGENT_CONFIGS.length * 2,
+    expect(composed.length, 'every agent×file×event is checked, not just cursor').toBe(
+      expectedCommandCount(),
     );
     for (const { agent, phase, command } of composed) {
       const emitted = argvOf(command).filter((token) => token.startsWith('--'));

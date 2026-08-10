@@ -84,28 +84,40 @@ describe('the env overrides are ASYMMETRIC (dw-000d)', () => {
 
 describe('event-name casing comes from the MATRIX, per agent (dw-000f)', () => {
   it.each([
-    ['claude-code', 'PreToolUse', 'PostToolUse'],
-    ['cursor', 'preToolUse', 'postToolUse'],
-    ['firebender', 'preToolUse', 'postToolUse'],
-    ['gemini', 'BeforeTool', 'AfterTool'],
-    ['droid', 'PreToolUse', 'PostToolUse'],
-    ['github-copilot', 'PreToolUse', 'PostToolUse'],
-    ['windsurf', 'PreToolUse', 'PostToolUse'],
+    ['claude-code', ['PreToolUse'], ['PostToolUse']],
+    ['cursor', ['preToolUse'], ['postToolUse']],
+    ['firebender', ['preToolUse'], ['postToolUse']],
+    ['gemini', ['BeforeTool'], ['AfterTool']],
+    ['droid', ['PreToolUse'], ['PostToolUse']],
+    ['github-copilot', ['PreToolUse'], ['PostToolUse']],
+    // NOT a casing variant — windsurf dispatches on CASCADE events and has no
+    // ToolUse key at all (`windsurf.rs:17-23`). We wrote PreToolUse/PostToolUse
+    // into `~/.codeium/hooks.json`: structurally valid, and dead. Plan 082 F005.
+    [
+      'windsurf',
+      ['pre_write_code', 'pre_run_command'],
+      ['post_write_code', 'post_run_command', 'post_cascade_response_with_transcript'],
+    ],
   ])('%s uses %s / %s', (agent, pre, post) => {
     /*
     Test Doc:
-    - Why: assuming `PreToolUse` is wrong for three of the seven. cursor and
+    - Why: assuming `PreToolUse` is wrong for FOUR of the seven. cursor and
       firebender are lowerCamel; gemini is BeforeTool/AfterTool, a different word
-      entirely. A wrong key writes a hook the agent never fires — an install that
-      reports success and does nothing.
-    - Contract: the casing is exactly as the source raid recorded it.
+      entirely; windsurf is five snake_case cascade events and not a ToolUse pair at
+      all. A wrong key writes a hook the agent never fires — an install that reports
+      success and does nothing.
+    - Contract: the keys are exactly as git-ai's own installer source declares them.
     */
-    expect(spec(agent).events).toEqual({ pre, post });
+    expect(spec(agent as string).events).toEqual({ pre, post });
   });
 
   it('the three casings are genuinely different — not all Pascal by accident', () => {
-    const distinct = new Set(AGENT_MATRIX.map((s) => s.events.pre));
-    expect(distinct).toEqual(new Set(['PreToolUse', 'preToolUse', 'BeforeTool']));
+    const distinct = new Set(AGENT_MATRIX.flatMap((s) => s.events.pre));
+    expect(distinct).toEqual(
+      // windsurf's two cascade events are a FOURTH shape — not a casing variant of
+      // ToolUse at all (`windsurf.rs:17-23`). See the events field doc.
+      new Set(['PreToolUse', 'preToolUse', 'BeforeTool', 'pre_write_code', 'pre_run_command']),
+    );
   });
 });
 
@@ -167,7 +179,9 @@ describe('adding an agent is adding a ROW (dw-0010)', () => {
       agent: 'totally-invented-agent',
       subdir: '.invented',
       configFiles: ['hooks.json', 'nested/more.json'],
-      events: { pre: 'WhateverBefore', post: 'WhateverAfter' },
+      events: { pre: ['WhateverBefore'], post: ['WhateverAfter'] },
+      entryShape: 'flat',
+      supported: true,
       override: { name: 'INVENTED_HOME', kind: 'home-root' },
     };
 

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { NodeFs } from '../../../src/adapters/fs/node-fs.js';
 import {
   type AgentSpec,
+  eventKeys,
   findAgent,
   resolveConfigFiles,
 } from '../../../src/services/hooks/agent-matrix.js';
@@ -78,9 +79,13 @@ describe('run2 == run1 on BYTES, over every touched config (dw-0020)', () => {
     installStrategyA(fs, s, home, env, BINARY);
     const afterSecond = readAll(s);
     expect(afterSecond).toEqual(afterFirst);
-    // And no entry was duplicated in either file.
+    // And no entry was duplicated in either file. The count is DERIVED from the
+    // matrix row, not written down: windsurf has five cascade events, not a
+    // ToolUse pair (plan 082 F005), and a literal here would need editing every
+    // time a row's event set changed — which is how an assertion quietly stops
+    // matching the thing it guards.
     for (const text of afterSecond) {
-      expect(text.split('ai-substrate-harness-hook-v1').length - 1).toBe(2);
+      expect(text.split('ai-substrate-harness-hook-v1').length - 1).toBe(eventKeys(s).length);
     }
   });
 

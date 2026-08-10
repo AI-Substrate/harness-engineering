@@ -1,8 +1,9 @@
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { AgentSpec } from './agent-matrix.js';
-import { resolveConfigFiles } from './agent-matrix.js';
-import { appendToArray, writeThroughSymlink } from './config-writer.js';
-import { HOOK_MARKER, HOOK_MARKER_FLAG, isOwnedByUs } from './hook-marker.js';
+import { eventKeys, phaseKeys, resolveConfigFiles } from './agent-matrix.js';
+import { extractBinaryPath } from './binary-path.js';
+import { appendToArray, setValue, writeThroughSymlink } from './config-writer.js';
+import { entryIsOwnedByUs, HOOK_MARKER, HOOK_MARKER_FLAG } from './hook-marker.js';
 
 /**
  * STRATEGY A — merge our hook entry into an agent's JSON config (plan 082 tk-0005).
@@ -79,7 +80,9 @@ export const hookCommand = (binary: string, agent: string, phase: 'pre' | 'post'
  * config missing a key the agent expects is a different shape from an empty one.
  */
 export function skeletonFor(spec: AgentSpec): Skeleton {
-  return { hooks: { [spec.events.pre]: [], [spec.events.post]: [] } };
+  const hooks: Record<string, unknown[]> = {};
+  for (const key of eventKeys(spec)) hooks[key] = [];
+  return { hooks };
 }
 
 /**
@@ -100,6 +103,87 @@ export function installStrategyA(
   return resolveConfigFiles(spec, home, env).map((path) => installOneFile(fs, spec, path, binary));
 }
 
+/**
+ * Build the ENTRY we append, in this agent's own shape (plan 082 F005).
+ *
+ * ONE PLACE ANSWERS "what does an entry look like here", because F005 is what
+ * happens when the answer is assumed instead: the flat shape went into three
+ * configs that require the nested one and disabled all three files outright.
+ *
+ * The nested form wraps the command in a matcher block — and it is OUR OWN block,
+ * never git-ai's. Appending into a `matcher: "*"` block somebody else wrote would
+ * mean editing an entry we do not own, which is the posture `hook-marker.ts`
+ * exists to refuse. Claude Code, gemini and droid all accept multiple blocks per
+ * event, so our own block is both valid and clean to remove.
+ */
+export function buildEntry(
+  spec: AgentSpec,
+  binary: string,
+  phase: 'pre' | 'post',
+): Record<string, unknown> {
+  const command = hookCommand(binary, spec.agent, phase);
+  const extras = spec.entryExtras ?? {};
+
+  if (spec.powershellVariant === true) {
+    const raw = extractBinaryPath(binary) ?? binary;
+    // `& '<path>'` with embedded single quotes doubled — powershell's own escaping,
+    // and the form git-ai writes (github_copilot.rs:59-69).
+    const invocation = `& '${raw.replace(/'/g, "''")}'`;
+    Object.assign(extras, { powershell: `${invocation} ${command.slice(binary.length).trim()}` });
+  }
+
+  if (spec.entryShape === 'nested') {
+    return {
+      matcher: spec.matcher ?? '*',
+      hooks: [{ type: 'command', command, ...extras }],
+    };
+  }
+  return { command, ...extras };
+}
+
+/**
+ * Fields the DOCUMENT ROOT needs, limited to those genuinely absent.
+ *
+ * A root key is shared with settings we have no business touching, so an existing
+ * value is left exactly as the user wrote it — we add what is missing and nothing
+ * else. Gemini's `tools.enableHooks` is the reason this exists at all: without it a
+ * perfectly-shaped gemini hook is never dispatched (`gemini.rs:99-106`).
+ */
+export function missingRootExtras(
+  text: string,
+  spec: AgentSpec,
+): [path: string[], value: unknown][] {
+  const wanted = spec.rootExtras;
+  if (wanted === undefined) return [];
+  let doc: Record<string, unknown>;
+  try {
+    doc = JSON.parse(stripComments(text)) as Record<string, unknown>;
+  } catch {
+    return [];
+  }
+  const out: [string[], unknown][] = [];
+  for (const [key, value] of Object.entries(wanted)) {
+    const current = doc[key];
+    if (current === undefined) {
+      out.push([[key], value]);
+      continue;
+    }
+    // A nested object (gemini's `tools`) merges KEY BY KEY, so an existing `tools`
+    // block carrying the user's own settings keeps them and gains only what is
+    // missing. Replacing the whole object would silently delete them.
+    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+      const existing = (typeof current === 'object' && current !== null ? current : {}) as Record<
+        string,
+        unknown
+      >;
+      for (const [inner, innerValue] of Object.entries(value as Record<string, unknown>)) {
+        if (existing[inner] === undefined) out.push([[key, inner], innerValue]);
+      }
+    }
+  }
+  return out;
+}
+
 function installOneFile(fs: FsPort, spec: AgentSpec, path: string, binary: string): InstallOutcome {
   const existing = fs.exists(path) ? fs.readText(path) : null;
   const created = existing === null;
@@ -113,9 +197,7 @@ function installOneFile(fs: FsPort, spec: AgentSpec, path: string, binary: strin
 
   const before = existing ?? `${JSON.stringify(skeletonFor(spec), null, 2)}\n`;
   // Sampled BEFORE the first write, because afterwards every key exists.
-  const createdKeys = [spec.events.pre, spec.events.post].filter(
-    (key) => !hasEventKey(before, key),
-  );
+  const createdKeys = eventKeys(spec).filter((key) => !hasEventKey(before, key));
 
   // Idempotency: our entry is FOUND by the marker, never by string equality with
   // what we would write — the binary path can legitimately differ between installs.
@@ -125,14 +207,15 @@ function installOneFile(fs: FsPort, spec: AgentSpec, path: string, binary: strin
   }
 
   let text = before;
-  for (const [phase, key] of [
-    ['pre', spec.events.pre],
-    ['post', spec.events.post],
-  ] as const) {
+  for (const [path_, value] of missingRootExtras(text, spec)) {
+    text = setValue(text, path_, value);
+  }
+  for (const [phase, key] of phaseKeys(spec)) {
     text = appendToArray(text, {
       path: ['hooks', key],
-      // Extras come from the matrix row, never from a branch on the agent name.
-      entry: { command: hookCommand(binary, spec.agent, phase), ...(spec.entryExtras ?? {}) },
+      // The ENTRY comes from the matrix row's shape, never from a branch on the
+      // agent name — see `buildEntry` for what F005 cost when it was assumed.
+      entry: buildEntry(spec, binary, phase),
     });
   }
 
@@ -157,16 +240,14 @@ function hasEventKey(text: string, key: string): boolean {
 
 /** Is our marked entry already in either event array? */
 function containsOurEntry(text: string, spec: AgentSpec): boolean {
-  let doc: { hooks?: Record<string, { command?: unknown }[]> };
+  let doc: { hooks?: Record<string, unknown[]> };
   try {
     doc = JSON.parse(stripComments(text)) as typeof doc;
   } catch {
     return false;
   }
-  const arrays = [spec.events.pre, spec.events.post].map((key) => doc.hooks?.[key] ?? []);
-  return arrays.some((entries) =>
-    entries.some((entry) => typeof entry.command === 'string' && isOwnedByUs(entry.command)),
-  );
+  const arrays = eventKeys(spec).map((key) => doc.hooks?.[key] ?? []);
+  return arrays.some((entries) => entries.some(entryIsOwnedByUs));
 }
 
 const stripComments = (text: string): string =>

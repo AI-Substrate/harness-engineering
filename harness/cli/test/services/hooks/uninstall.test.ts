@@ -78,7 +78,9 @@ describe('install then uninstall returns the ORIGINAL BYTES (dw-002f)', () => {
     const jsonc: AgentSpec = {
       ...spec('droid'),
       configFiles: ['settings.jsonc'],
-      events: { pre: 'preToolUse', post: 'postToolUse' },
+      events: { pre: ['preToolUse'], post: ['postToolUse'] },
+      entryShape: 'flat',
+      supported: true,
     };
 
     installStrategyA(fs, jsonc, home, env, BINARY);

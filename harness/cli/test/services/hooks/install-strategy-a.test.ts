@@ -226,7 +226,9 @@ describe('adding an agent is adding a ROW — through the REAL writer (dw-0010)'
       agent: 'totally-invented-agent',
       subdir: '.invented',
       configFiles: ['hooks.json', 'nested/more.json'],
-      events: { pre: 'WhateverBefore', post: 'WhateverAfter' },
+      events: { pre: ['WhateverBefore'], post: ['WhateverAfter'] },
+      entryShape: 'flat',
+      supported: true,
     };
 
     const outcomes = installStrategyA(fs, fake, home, env, BINARY);

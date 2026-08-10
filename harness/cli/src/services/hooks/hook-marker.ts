@@ -158,6 +158,41 @@ function segmentTokens(segment: string): string[] {
 }
 
 /**
+ * Every command string an ENTRY carries — top-level and nested.
+ *
+ * TWO SHAPES, ONE OWNERSHIP QUESTION (plan 082 F005). A flat entry keeps its command
+ * at `entry.command`; a NESTED matcher block keeps it at `entry.hooks[].command` and
+ * has no top-level `command` at all. An ownership test reading only `entry.command`
+ * therefore finds NOTHING in a nested config — so uninstall would silently refuse to
+ * remove the very entry we installed, and the user could not clean up with our own
+ * tool. That is not hypothetical: it is why three configs were repaired by hand.
+ */
+export function entryCommands(entry: unknown): string[] {
+  if (typeof entry !== 'object' || entry === null) return [];
+  const record = entry as { command?: unknown; hooks?: unknown };
+  const out: string[] = [];
+  if (typeof record.command === 'string') out.push(record.command);
+  if (Array.isArray(record.hooks)) {
+    for (const inner of record.hooks) {
+      const nested = inner as { command?: unknown };
+      if (typeof nested?.command === 'string') out.push(nested.command);
+    }
+  }
+  return out;
+}
+
+/** Is this ENTRY — in either shape — one we installed? */
+export const entryIsOwnedByUs = (entry: unknown): boolean => entryCommands(entry).some(isOwnedByUs);
+
+/** May uninstall remove this ENTRY outright, in either shape? */
+export function entryMayRemove(entry: unknown): boolean {
+  const commands = entryCommands(entry);
+  return (
+    commands.length > 0 && commands.every((command) => classifyOwnership(command) === 'wholly-ours')
+  );
+}
+
+/**
  * Would a marker appear anywhere in this text? For file-based strategies (C, D)
  * where the whole file is ours and a line comment carries the token.
  */

@@ -113,6 +113,25 @@ export function writeThroughSymlink(fs: FsPort, path: string, contents: string):
 }
 
 /**
+ * Set the value at `path`, creating intermediate objects as needed, preserving
+ * everything else (plan 082 F005).
+ *
+ * Used ONLY for root fields an agent requires and the document lacks — gemini's
+ * `tools.enableHooks` (`gemini.rs:99-106`), cursor's and firebender's `version`
+ * (`cursor.rs:172-174`, `firebender.rs:143-148`). Callers check absence first: a
+ * root key is shared with settings we have no business touching, so this must never
+ * be pointed at a value the user already wrote.
+ */
+export function setValue(text: string, path: (string | number)[], value: unknown): string {
+  const errors: ParseError[] = [];
+  parseJsonc(text, errors, { allowTrailingComma: true });
+  if (errors.length > 0) return text;
+
+  const edits = modify(text, path, value, { formattingOptions: FORMATTING });
+  return applyEdits(text, edits);
+}
+
+/**
  * Remove the entry at `index` from the array at `path` — the same minimal-edit CST
  * round-trip as {@link appendToArray}, run backwards (plan 082 tk-000d).
  *

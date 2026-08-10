@@ -3,7 +3,7 @@ import type { AgentMarker } from '../doctor/collector/agents.js';
 import { detectAgents, UNDETECTED_INSTALLERS } from '../doctor/collector/agents.js';
 import { BACKUP_MANIFEST_NAME, restoreAgentConfigs } from '../doctor/collector/backup.js';
 import type { AgentSpec } from './agent-matrix.js';
-import { AGENT_MATRIX, resolveConfigFiles } from './agent-matrix.js';
+import { AGENT_MATRIX, eventKeys, resolveConfigFiles } from './agent-matrix.js';
 import { extractBinaryPath } from './binary-path.js';
 import { unacceptedOptions } from './fire-options.js';
 import { FileHookJournal } from './hook-journal.js';
@@ -124,7 +124,14 @@ export function listAgents(deps: HooksDeps): AgentReport[] {
   const supported = AGENT_MATRIX.map((spec) => ({
     agent: spec.agent,
     detected: detected.has(spec.detectId.toLowerCase()),
-    supported: true,
+    // READ FROM THE ROW, not hard-coded (plan 082 F005). A Strategy A row can be
+    // known and still be REFUSED: firebender's entry shape is readable from git-ai's
+    // source but no install has ever been exercised against a real one. F005
+    // established that a wrong shape does not merely fail — it can disable the host
+    // application's whole config — so an unexercised agent is reported, not guessed
+    // at on a user's machine.
+    supported: spec.supported,
+    ...(spec.supported ? {} : { unsupportedReason: spec.unsupportedReason }),
     installed: isInstalled(deps, spec),
   }));
 
@@ -422,7 +429,7 @@ function ourCommands(deps: HooksDeps, spec: AgentSpec): string[] {
     } catch {
       continue;
     }
-    for (const key of [spec.events.pre, spec.events.post]) {
+    for (const key of eventKeys(spec)) {
       for (const entry of doc.hooks?.[key] ?? []) {
         if (typeof entry.command === 'string' && isOwnedByUs(entry.command))
           out.push(entry.command);
