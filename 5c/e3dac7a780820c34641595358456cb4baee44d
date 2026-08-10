@@ -1,0 +1,22 @@
+harness/cli/src/services/hooks/install-strategy-a.ts
+  s_6a069988adc301::t_d35e6851c1292c 433-449
+  s_6a069988adc301::t_28ac5bddd376c4 567-578
+harness/cli/test/services/hooks/install-strategy-a.test.ts
+  s_6a069988adc301::t_093dbe166e9e15 302-339
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "5ce3dac7a780820c34641595358456cb4baee44d",
+  "prompts": {},
+  "sessions": {
+    "s_6a069988adc301": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e7dab2b-673d-471a-b447-862e98eb1aba",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
