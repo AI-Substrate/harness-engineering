@@ -1,4 +1,9 @@
 import type { SocketRelayPort } from '../../adapters/net/socket-probe-port.js';
+import {
+  resolveTrace2Target,
+  trace2Policy,
+  trace2TargetPath,
+} from '../doctor/collector/ingress.js';
 import type { CommitEmitter } from './commit-intercept.js';
 
 /**
@@ -23,27 +28,32 @@ import type { CommitEmitter } from './commit-intercept.js';
  * where the daemon listens, and `harness doctor` already reads it from there.
  */
 
-/** The `af_unix:stream:` prefix git uses for a socket trace2 target. */
-const AF_UNIX_PREFIX = /^af_unix:(?:stream:|dgram:)?/;
-
 /**
- * The socket path inside a git `trace2.eventTarget` value, or `null` when the
- * target is not a socket at all.
+ * The path of a LIVE ingress inside a git `trace2.eventTarget` value, or `null`
+ * when the target is not something this relay can connect to at all.
  *
- * A plain FILE target (`/var/log/trace2.jsonl`) is deliberately `null`: writing
- * our events into someone's log file would be a side effect nobody asked for, and
- * it would not reach a daemon anyway. A Windows NAMED PIPE is also `null` here —
- * this relay speaks `af_unix`, and claiming otherwise would be claiming a delivery
- * that never happened.
+ * ONE CLASSIFIER, NOT TWO (plan 082 · F006). This delegates to plan 075's
+ * {@link resolveTrace2Target} and its kind table rather than re-deriving the
+ * shape from a private regex. The duplicate regex WAS the defect: it tested for
+ * `af_unix:` and so returned `null` for `\\.\pipe\git-ai-<id>-trace2` — the only
+ * trace2 transport git has on Windows, the one git-ai's own `install-hooks`
+ * configures — after the hook had already paid its full Node-startup cost and
+ * detected the commit. Full cost, zero function. Plan 075 had already fixed that
+ * exact misclassification one layer down; this file re-made it in a new file.
+ *
+ * A plain FILE target (`/var/log/trace2.jsonl`, `C:\logs\trace.jsonl`, or a real
+ * UNC share) stays `null`, and that half of the 075 split is not being widened:
+ * writing our events into someone's log file is a side effect nobody asked for
+ * that reaches no daemon.
+ *
+ * Because the table is `satisfies Record<Trace2TargetKind, …>`, a seventh target
+ * kind cannot compile until someone decides whether this relay may speak to it.
  */
-export function socketPathFromTrace2Target(target: string | null): string | null {
-  if (target === null) return null;
-  const trimmed = target.trim();
-  if (!AF_UNIX_PREFIX.test(trimmed)) return null;
-  const path = trimmed.replace(AF_UNIX_PREFIX, '');
-  return path.length > 0 ? path : null;
+export function relayTargetPath(target: string | null): string | null {
+  const resolved = resolveTrace2Target(target);
+  if (!trace2Policy(resolved).connectable) return null;
+  return trace2TargetPath(resolved);
 }
-
 /** Everything the payload needs that would otherwise be read from ambient state. */
 export interface TicklerContext {
   /** Absolute worktree path — the `def_repo` event's `worktree`, git-ai's join key. */
@@ -96,6 +106,19 @@ export function buildTicklerPayload(context: TicklerContext): { payload: string;
 /**
  * Emit over the EXISTING socket relay (plan 074's `SocketRelayPort`) — never a
  * second socket implementation, and never `node:net` in a service.
+ *
+ * The relay is transport-agnostic by construction: its connect is
+ * `net.createConnection({ path })`, and `{ path }` is the IDENTICAL Node option
+ * for an af_unix socket and a Win32 named pipe. So F006 added no transport code,
+ * no dependency and no new failure mode — only the gate that decides whether
+ * {@link SocketRelayPort.send} is reached at all.
+ *
+ * EXPECTED-UNVERIFIED on Windows: no run on this codebase has put a byte into a
+ * real named pipe or seen git-ai's Windows daemon accept these six synthetic
+ * events. What is proven here is that a pipe target reaches `send()` with the
+ * pipe path and the same bytes an af_unix target gets, instead of being
+ * discarded after the hook has already paid for the work. Delivery is a claim
+ * for Windows hardware to make, not this file.
  */
 export class Trace2Tickler implements CommitEmitter {
   constructor(
@@ -110,11 +133,13 @@ export class Trace2Tickler implements CommitEmitter {
     ok: boolean;
     detail: string;
   }> {
-    const socket = socketPathFromTrace2Target(this.readTrace2Target());
+    const socket = relayTargetPath(this.readTrace2Target());
     if (socket === null) {
-      // No af_unix ingress configured. Reported honestly — an emit that never had
-      // anywhere to go is not a success, and it is not a crash either.
-      return { ok: false, detail: 'no af_unix trace2 ingress configured' };
+      // No LIVE ingress configured — nothing set, a keyword/fd form, or a plain
+      // FILE target we deliberately refuse to write into. Reported honestly: an
+      // emit that never had anywhere to go is not a success, and it is not a
+      // crash either.
+      return { ok: false, detail: 'no relayable trace2 ingress configured' };
     }
     const { payload, sid } = buildTicklerPayload({
       repoRoot: input.repoRoot,

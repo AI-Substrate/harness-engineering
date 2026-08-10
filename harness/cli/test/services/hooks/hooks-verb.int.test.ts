@@ -130,7 +130,7 @@ describe('hooks fire — every failure path exits 0 and stays silent (dw-0018, d
       // case the journal exists to expose.
       const last = entries.at(-1) as { outcome?: { kind?: string; cause?: string } };
       expect(last.outcome?.kind).toBe('failed');
-      expect(last.outcome?.cause).toBe('no af_unix trace2 ingress configured');
+      expect(last.outcome?.cause).toBe('no relayable trace2 ingress configured');
     } finally {
       rmSync(home, { recursive: true, force: true });
     }

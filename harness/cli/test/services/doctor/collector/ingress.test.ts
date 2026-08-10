@@ -78,6 +78,58 @@ describe('plan 074 · ac-0001 — resolveTrace2Target classifies without probing
   });
 
   it.each([
+    'af_unix:',
+    'af_unix:stream:',
+    'af_unix:dgram:',
+    'af_unix:stream:   ',
+  ])('an af_unix target with NO path is unconfigured, not a socket named "stream:" (%s)', (raw) => {
+    /*
+      Test Doc:
+      - Why: the resolver used to read the path with
+        `/^af_unix:(?:stream:|dgram:)?(.+)$/`. On `af_unix:stream:` the engine
+        BACKTRACKS out of the optional keyword so `(.+)` has something to match,
+        and returns the path `stream:`. That is a socket nobody configured, and
+        plan 082 · F006 turned it live: once the tickler routes through this
+        classifier, `{kind:'af_unix', path:'stream:'}` means a relay CONNECT to a
+        relative path named `stream:`. Found by consolidating the two
+        classifiers — the tickler's own regex had always refused it.
+      - Contract: an af_unix target with no path is `unconfigured`, so it lands
+        in the buffered branch where the harness controls a real file.
+      - Quality Contribution: pins the regex's BACKTRACKING, which no test of the
+        well-formed cases above can reach. Reverting to the capturing form fails
+        the `stream:`/`dgram:` rows while every other row still passes.
+      */
+    expect(resolveTrace2Target(raw)).toEqual({ kind: 'unconfigured' });
+  });
+
+  it.each([
+    ['af_unix:stream', 'no socket-type separator — "stream" IS the path, and it is relative'],
+    ['af_unix:dgram', 'same, for the dgram keyword'],
+    ['af_unix:relative', 'a bare relative name'],
+    ['af_unix:stream:relative', 'a relative path behind a valid socket-type'],
+    ['af_unix:dgram:relative', 'same, for dgram'],
+    ['af_unix:./events/t.sock', 'a dot-relative path'],
+  ])('a NON-ABSOLUTE af_unix path is unconfigured (%s — %s)', (raw) => {
+    /*
+      Test Doc:
+      - Why: git's grammar is `af_unix:[<socket-type>:]<absolute-pathname>`, and
+        git DISABLES trace2 on a non-absolute AF_UNIX path — nothing is ever
+        delivered there. The resolver accepted these as `{kind:'af_unix'}`, which
+        was inert while af_unix only selected a commit branch; F006 made every
+        `connectable` target something the tickler and `readIngress` actually
+        CONNECT to, so a malformed target became a connect to a relative name.
+        Same class as the backtracking row above: calling it configured claims an
+        ingress that cannot exist.
+      - Contract: an af_unix target whose path is not absolute is `unconfigured`,
+        matching git's own behaviour, so it lands in the buffered branch.
+      - Quality Contribution: the well-formed rows above cannot reach this — they
+        are all absolute. Removing the absoluteness check fails every row here
+        while every other row in the file still passes.
+      */
+    expect(resolveTrace2Target(raw)).toEqual({ kind: 'unconfigured' });
+  });
+
+  it.each([
     '/tmp/trace2-events.jsonl',
     'C:\\Users\\dev\\trace2.jsonl',
     '//server/share/trace2.jsonl',
@@ -105,9 +157,15 @@ describe('plan 075 · ac-0001 — a Windows named pipe is an INGRESS, never a bu
   it.each([
     ['\\\\.\\pipe\\git-ai', 'the documented git-ai pipe form'],
     ['\\\\?\\pipe\\git-ai', 'the \\\\?\\ (long-path) pipe prefix'],
-    ['\\\\.\\PIPE\\Git-AI', 'Windows pipe names are CASE-INSENSITIVE'],
+    [
+      '\\\\.\\PIPE\\Git-AI',
+      'Windows pipe names are CASE-INSENSITIVE — EXPECTED-UNVERIFIED, read from Win32 docs, never run here',
+    ],
     ['\\\\.\\pipe\\git-ai\\daemon\\trace2', 'a nested pipe name'],
-    ['//./pipe/git-ai', 'the forward-slash spelling Win32 accepts identically'],
+    [
+      '//./pipe/git-ai',
+      'the forward-slash spelling Win32 accepts identically — EXPECTED-UNVERIFIED, same provenance',
+    ],
     ['\\\\.\\pipe', 'the pipe NAMESPACE root is still not a drainable file'],
   ])('%s classifies as named_pipe (%s)', (raw) => {
     expect(resolveTrace2Target(raw)).toEqual({ kind: 'named_pipe', path: raw });
@@ -180,25 +238,65 @@ describe('plan 075 · ac-0003 — the classifier is proven by what it REFUSES', 
   });
 });
 
-describe('plan 075 · ac-0001 — a named pipe is never probed', () => {
-  it('readIngress classifies the pipe and makes NO connect attempt', async () => {
+describe('plan 075 · ac-0001 / plan 082 · F006 — a named pipe is an ingress, and IS probed', () => {
+  it('readIngress classifies the pipe AND probes it — no connect is skipped', async () => {
     const d = deps({ target: '\\\\.\\pipe\\git-ai' });
     const reading = await readIngress(d);
     expect(reading.target).toEqual({ kind: 'named_pipe', path: '\\\\.\\pipe\\git-ai' });
-    // There is no af_unix connect to make against a pipe, and a probe that
-    // cannot mean anything must not be run.
-    expect(reading.outcome).toBeNull();
-    expect(d.probe.calls).toEqual([]);
+    // F006: the pipe IS probed now — it is a live endpoint the adapter can
+    // connect to, and a doctor that never probes it can never say whether the
+    // Windows ingress is reachable. `socketExists` stays false because there is
+    // no file to stat: a pipe's existence is answered by the connect (ENOENT →
+    // absent), never by a stat.
+    expect(reading.outcome).toBe('absent');
+    expect(d.probe.calls).toEqual(['\\\\.\\pipe\\git-ai']);
     expect(reading.socketExists).toBe(false);
   });
 
-  it('an unprobed pipe PROVES nothing and REACHES nothing', async () => {
-    const reading = await readIngress(deps({ target: '\\\\.\\pipe\\git-ai' }));
-    // Honest by construction: we never measured this transport, so no verdict
-    // may lean on it.
-    expect(ingressProves(reading)).toBe(false);
-    expect(ingressReaches(reading)).toBe(false);
-    expect(ingressBlocked(reading)).toBe(false);
+  it('a probed pipe that CONNECTS reaches and proves, exactly like a socket', async () => {
+    /*
+    Test Doc:
+    - Why: plan 075 left the pipe unprobed and therefore unprovable, saying so
+      by name ("this does NOT make replay work on Windows — that needs the
+      transport question answered first"). F006 answers it: `{ path }` is the
+      same Node option for a unix socket and a Win32 pipe, so the SAME probe
+      applies. Without this, `harness doctor` on Windows can only ever report
+      "could not tell".
+    - Contract: a connected pipe reading reaches and proves.
+    - Quality Contribution: pins the OUTCOME-driven predicates rather than the
+      kind, so they cannot regress into an af_unix-only allowlist.
+    */
+    const d = deps({
+      target: '\\\\.\\pipe\\git-ai',
+      probe: new FakeSocketProbe({ '\\\\.\\pipe\\git-ai': 'connected' }, 'absent'),
+    });
+    const reading = await readIngress(d);
+    expect(ingressProves(reading)).toBe(true);
+    expect(ingressReaches(reading)).toBe(true);
+  });
+
+  it('a DENIED pipe is blocked without a stat — the connect is the existence test', async () => {
+    /*
+    Test Doc:
+    - Why: `ingressBlocked` requires `socketExists` because a denial on a path
+      with no socket is a duller fact than a socket that is right there and
+      refuses. A pipe has no path to stat — `existsSync('\\\\.\\pipe\\…')` is not
+      a liveness test — but its connect already separates the two cases: ENOENT
+      is `absent`, EACCES is `denied`. So `denied` on a pipe IS the signature.
+    - Contract: a denied pipe reads as blocked; an absent pipe does not.
+    - Quality Contribution: guards against "just set socketExists = true for
+      pipes", which would fabricate an unmeasured filesystem fact.
+    */
+    const denied = await readIngress(
+      deps({
+        target: '\\\\.\\pipe\\git-ai',
+        probe: new FakeSocketProbe({ '\\\\.\\pipe\\git-ai': 'denied' }, 'absent'),
+      }),
+    );
+    expect(ingressBlocked(denied)).toBe(true);
+
+    const absent = await readIngress(deps({ target: '\\\\.\\pipe\\git-ai' }));
+    expect(ingressBlocked(absent)).toBe(false);
   });
 });
 
@@ -239,7 +337,12 @@ describe('plan 075 · ac-0006 — the kind table is exhaustive by CONSTRUCTION',
   });
 });
 
-describe('plan 074 · ac-0001 — readIngress probes only an af_unix target', () => {
+// The claim is CONNECTABILITY, not transport: since plan 082 · F006 a named
+// pipe is probed too (see the pipe describe above), so an "only an af_unix
+// target" title is falsified by a test in this same file. What these rows
+// actually pin is the negative side — a target git never connects to is never
+// connected to by us either.
+describe('plan 074 · ac-0001 — readIngress probes a CONNECTABLE target, never a file or an unconfigured one', () => {
   it('never probes when nothing is configured', async () => {
     const d = deps({ target: null });
     const reading = await readIngress(d);

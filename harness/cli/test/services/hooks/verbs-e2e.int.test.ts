@@ -304,7 +304,12 @@ describe('`harness hooks status` carries a REAL failed fire (phase-2 review F002
 
     expect(payloadOut.fires.recorded).toBe(true);
     expect(payloadOut.fires.failed).toBeGreaterThanOrEqual(1);
-    expect(payloadOut.fires.failures.map((f) => f.cause).join(' ')).toContain('af_unix');
+    // The CAUSE, not just the count. `relayable` rather than `af_unix` since
+    // F006: the tickler refuses on "nothing I can connect to", which now spans
+    // an af_unix socket AND a Windows named pipe.
+    expect(payloadOut.fires.failures.map((f) => f.cause).join(' ')).toContain(
+      'no relayable trace2 ingress',
+    );
   });
 });
 
