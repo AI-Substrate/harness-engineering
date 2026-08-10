@@ -215,6 +215,23 @@ reported honestly.** None errored.
 - **Ask what the probe's NEGATIVE result would look like** before running it. Three of the five
   above could not have produced an informative negative.
 
+### And one that is not Windows-specific at all
+
+**COMMITTED IS NOT SHIPPED IF IT IS NOT ON THE BRANCH THAT MERGES.**
+
+Three times during this work the agent reported *"shipped"* meaning *"committed locally"*. The
+gap was invisible because **every local signal said success**: the commit landed, the gate passed,
+and `harness commit` came back `direct-verified` with a `refs/notes/ai` entry confirming it. None
+of that is wrong, and none of it is evidence the work will reach anybody — the branch was never
+pushed, and it predated the merges it needed to sit on top of.
+
+It is the same class as everything else in this table: **a step that completes, reports success,
+and does not do the thing.** The check is one command:
+
+```bash
+git merge-base --is-ancestor <sha> origin/<branch-that-merges> && echo SHIPPED || echo NOT SHIPPED
+```
+
 ## 9. Where the artifacts live
 
 - **Instruments**: `scratch/win/*.ps1`, `*.js`, `*.bat` — gitignored, and they reference the
