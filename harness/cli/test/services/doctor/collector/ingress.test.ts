@@ -337,7 +337,12 @@ describe('plan 075 · ac-0006 — the kind table is exhaustive by CONSTRUCTION',
   });
 });
 
-describe('plan 074 · ac-0001 — readIngress probes only an af_unix target', () => {
+// The claim is CONNECTABILITY, not transport: since plan 082 · F006 a named
+// pipe is probed too (see the pipe describe above), so an "only an af_unix
+// target" title is falsified by a test in this same file. What these rows
+// actually pin is the negative side — a target git never connects to is never
+// connected to by us either.
+describe('plan 074 · ac-0001 — readIngress probes a CONNECTABLE target, never a file or an unconfigured one', () => {
   it('never probes when nothing is configured', async () => {
     const d = deps({ target: null });
     const reading = await readIngress(d);
