@@ -178,7 +178,7 @@ demonstrates the claim, and re-run at least one leg yourself. Do **not** accept
   reported it; it is pre-existing and batched to prime. Worth knowing while you review,
   because it means the two new provenance fields have **no drift guard on the extension
   side** — but do not raise it as a finding against this branch.
-- The stale `docs/how/telemetry-otlp.md:67-68` (v0.2.0 / scope 2.5 vs code v0.3.0 / 2.6).
+- The stale `docs/how/telemetry/otlp.md:67-68` (v0.2.0 / scope 2.5 vs code v0.3.0 / 2.6).
 
 ## Report shape
 

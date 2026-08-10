@@ -58,7 +58,7 @@ where they disagree, that disagreement is the finding.
   larger attribute vocabulary". Ruled out of FX001 (Ruling #2); it is a
   telemetry-wire policy decision with a first-party downstream consumer
   (eng-thrive), whose documented read contract is the frozen schema file itself.
-- **`docs/how/telemetry-otlp.md:67-68` stale** — says v0.2.0 / scope 2.5 while
+- **`docs/how/telemetry/otlp.md:67-68` stale** — says v0.2.0 / scope 2.5 while
   the code is at v0.3.0 / 2.6. Pre-dated FX001; fixing it was scope creep.
 - **The CLI↔extension `SessionEvidence` lock-step test cannot fail to compile.**
   Only `src` is in tsconfig and its SAMPLE literal already omits fields, so the
