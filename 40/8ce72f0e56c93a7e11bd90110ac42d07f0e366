@@ -1,0 +1,55 @@
+harness/cli/src/services/doctor/collector/health.ts
+  s_9080d980e96345::t_11e1cf02029fe1 445-452
+  s_9080d980e96345::t_b560ce5804ddad 374-397
+harness/cli/src/services/doctor/collector/types.ts
+  s_9080d980e96345::t_c0ba248abccc7b 141-158
+harness/cli/test/services/doctor/collector/recheck-coverage.test.ts
+  s_9080d980e96345::t_98717e876b9417 47-55,87,209
+  s_9080d980e96345::t_18379c8587c3ca 56
+harness/cli/test/services/doctor/collector/evidence.test.ts
+  s_9080d980e96345::t_30a86c24b1983a 218-222
+harness/cli/src/services/doctor/collector/exit-code.ts
+  s_9080d980e96345::t_25a58c4201c696 1-95
+harness/cli/src/services/doctor/collector/state.ts
+  s_9080d980e96345::t_8f82c10182fa4c 38-43
+harness/cli/test/services/doctor/collector/health.test.ts
+  s_9080d980e96345::t_e09dffaa274c49 598-622,624-684
+  s_9080d980e96345::t_82ecc535973487 623
+harness/cli/test/services/doctor/collector/binary-viability.test.ts
+  s_9080d980e96345::t_5f4d277cfbca86 288
+  s_9080d980e96345::t_a584318527ba01 206-208,210-213,215-218,220-222
+  s_9080d980e96345::t_6ba9fa05f72393 1-2,4-205,209,214,219,223-287,289-298,306-323,332,334-344
+  s_9080d980e96345::t_4726efab5366c4 3,299-305,324-331,333
+harness/cli/test/services/doctor/collector/auto-install.test.ts
+  s_9080d980e96345::t_98717e876b9417 58-66,87,168,219,260,287,387,513,528,544,564,593,618,651,688
+  s_9080d980e96345::t_18379c8587c3ca 67
+  s_9080d980e96345::t_4726efab5366c4 169-171,189-195,261-263,565-567,619-621,652-654
+harness/cli/src/services/doctor/collector/install.ts
+  s_9080d980e96345::t_d01117bf315a29 281-343
+  s_9080d980e96345::t_e6839ac11ddaee 526-530,532
+  s_9080d980e96345::t_def791aca73dbb 62-73
+  s_9080d980e96345::t_517ee6a0c32557 366-403
+  s_9080d980e96345::t_324a927c58efb8 6,25
+  s_9080d980e96345::t_c36288f43b3c3e 61
+harness/cli/test/services/doctor/collector/install.test.ts
+  s_9080d980e96345::t_18379c8587c3ca 48
+  s_9080d980e96345::t_98717e876b9417 39-47,106,245,311,326,357,374,428,445,511,562,580,597
+harness/cli/test/acts/doctor-collector.test.ts
+  s_9080d980e96345::t_50fc38c9deaa40 60-69,93,193
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "408ce72f0e56c93a7e11bd90110ac42d07f0e366",
+  "prompts": {},
+  "sessions": {
+    "s_9080d980e96345": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "8e3772ff-f5d7-4b01-bad0-032144d93307",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
