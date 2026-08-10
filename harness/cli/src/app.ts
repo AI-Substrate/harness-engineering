@@ -5,6 +5,7 @@ import { registerDocsAct } from './acts/docs.js';
 import { registerDoctorAct } from './acts/doctor.js';
 import { registerFlowAct } from './acts/flow.js';
 import { registerHelpAct } from './acts/help.js';
+import { registerHooksAct } from './acts/hooks.js';
 import { registerInitAct } from './acts/init.js';
 import { registerInstructionsAct } from './acts/instructions.js';
 import { registerNewAct } from './acts/new.js';
@@ -47,6 +48,7 @@ import {
 } from './output/output-port.js';
 import { helpStyleConfig, resolveUseColor } from './output/style.js';
 import { validateVerbRegistry } from './services/config/load-config.js';
+import { readCollectorHealth } from './services/doctor/collector/health.js';
 import { discoverExtensions } from './services/extensions/discovery.js';
 import {
   findExtensionAncestor,
@@ -59,6 +61,7 @@ import {
   type ExtensionRegistry,
   type VerbRegistry,
 } from './services/extensions/registry.js';
+import { readEnvOverrides } from './services/hooks/agent-matrix.js';
 import {
   buildRecordRegistry,
   coreRecordTypes,
@@ -71,7 +74,10 @@ import {
   type CaptureDeps,
   captureTelemetry,
 } from './services/telemetry/capture-service.js';
-import { buildHousekeepingDecorator } from './services/telemetry/housekeeping.js';
+import {
+  buildHousekeepingDecorator,
+  type CollectorHooksReading,
+} from './services/telemetry/housekeeping.js';
 import { buildBannerDecorator } from './services/update/banner.js';
 import { readVersion } from './version.js';
 
@@ -311,6 +317,71 @@ export async function loadRegistry(
 }
 
 /**
+ * The `checks` collector-hooks nudge's one reading (packet 3d), assembled HERE
+ * because the composition root is the only layer permitted to know both
+ * `services/telemetry` and `services/doctor` — the nudge itself takes this as an
+ * injected thunk and never imports the doctor.
+ *
+ * PLATFORM. Every path is resolved through `env.home()`, which is
+ * `$HOME || %USERPROFILE% || os.homedir()` — so this is win32-correct for the
+ * same reason `doctor` is, and for the same reason a fake `HOME` contains it.
+ * Nothing here is POSIX-shaped: no exec, no socket, no chmod, no separator
+ * arithmetic of its own.
+ *
+ * BOUNDED BY CONSTRUCTION. `readCollectorHealth` is synchronous by design and
+ * performs only `fs.exists` reads; no `ingress` probe is passed, so the ingress
+ * rung is not evaluated and nothing here can block on a socket. There is no
+ * timeout because there is no unbounded operation to time out.
+ *
+ * NEVER THROWS OUTWARD. Any failure yields `null`, which the nudge treats as "no
+ * reading" — never as good news and never as a warning.
+ */
+function readCollectorHooksForNudge(
+  fs: VerbActDeps['fs'],
+  env: VerbActDeps['env'],
+  proc: VerbActDeps['proc'],
+): CollectorHooksReading | null {
+  try {
+    const home = env.home();
+    if (home === undefined || home.trim() === '') return null;
+    const claudeConfigDir = env.get('CLAUDE_CONFIG_DIR');
+    const health = readCollectorHealth({
+      fs,
+      cwd: toPosix(proc.cwd()),
+      host: {
+        platform: process.platform,
+        arch: process.arch,
+        home: toPosix(home),
+        ...(claudeConfigDir !== undefined && claudeConfigDir.trim() !== ''
+          ? { claudeConfigDir: toPosix(claudeConfigDir) }
+          : {}),
+        // Every override the MATRIX declares, so backup and install resolve alike.
+        envOverrides: readEnvOverrides((n) => env.get(n)),
+      },
+    });
+    if (health.hooks.missing.length === 0) return null;
+    return {
+      // Agent IDS, which is what `health.hooks.missing` exposes and what git-ai
+      // itself reports. The human-facing labels stay inside health.ts.
+      missing: health.hooks.missing,
+      // `harness doctor` and NOT `health.next_action`. next_action is PROSE — a
+      // full sentence, and since plan 077 it is composed with further sentences
+      // for the ingress-blocked case — whereas this field is rendered as
+      // `— run: <command>`. Putting next_action here printed a paragraph after
+      // "run:" and could name `telemetry-nudge`, which REFUSES on Windows.
+      // `harness doctor` is a real command, correct on every platform, and never
+      // implies a fix it cannot deliver: it reports the blocked cases and
+      // resolves the ordinary one.
+      command: 'harness doctor',
+      // The case-correct detail still travels, just not as a command.
+      ...(health.next_action !== undefined && { next_action: health.next_action }),
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Build the composition root: global flags + core commands (incl. `record`, built
  * from the merged record registry = core ∪ extension) + one subcommand per
  * discovered verb, each registered with the pre-resolved `io` + injected ports. No
@@ -321,6 +392,21 @@ export function buildProgram(
   io: CliIo,
   deps: VerbActDeps,
   registry: VerbRegistry & { recordTypes?: ExtensionRecordType[] },
+  /**
+   * Enable doctor's plan-077 auto-install. DEFAULTS TO FALSE, and only the real
+   * CLI entrypoint below passes `true`.
+   *
+   * The default is load-bearing rather than tidy. `buildProgram` is what the
+   * INTEGRATION tests drive, so an auto-install enabled here runs against real
+   * fixture directories: it wrote a real `.harness/temp/gitai-collector.json`
+   * into a fixture repo, which then surfaced as a bogus extension folder named
+   * `temp` — and on a machine without git-ai it would have reached the network
+   * and invoked `install-hooks` from a unit test.
+   *
+   * So the dangerous capability is opted into at the OUTERMOST layer only, where
+   * there is exactly one caller and it is unambiguously a real user invocation.
+   */
+  autoInstallCollectorEnabled = false,
 ): Command {
   const program = new Command()
     .name('harness')
@@ -375,6 +461,7 @@ export function buildProgram(
     proc: deps.proc,
     gitWrite: deps.gitWrite ?? new ExecGitWrite(),
     db: new NodeDb(),
+    collectorHooks: () => readCollectorHooksForNudge(deps.fs, deps.env, deps.proc),
     mode: io.mode,
     writers: io.writers,
   });
@@ -384,10 +471,22 @@ export function buildProgram(
   });
 
   registerHelpAct(program, io, registry, deps.fs);
-  registerDoctorAct(program, io, registry, recordRegistry);
+  registerDoctorAct(
+    program,
+    io,
+    registry,
+    recordRegistry,
+    undefined,
+    undefined,
+    autoInstallCollectorEnabled,
+  );
   // plan 074 — a CORE verb: the sandbox failure it guards is a property of the
   // MACHINE, not of any repo's toolchain, so it cannot be a per-consumer extension.
   registerCommitAct(program, io);
+  // plan 082 — also a CORE verb, for the same reason: an agent's hook config and
+  // the collector daemon are properties of the MACHINE, not of any repo's
+  // toolchain, and doctor must be able to call it.
+  registerHooksAct(program, { fs: deps.fs, clock: deps.clock, env: deps.env });
   registerInitAct(program, io, deps);
   registerNewAct(program, io, deps);
   registerDocsAct(program, io);
@@ -451,6 +550,20 @@ export interface MainOverrides {
    * "invoked once / with command X" and AC-09 fail-safety without `vi.mock`.
    */
   capture: (deps: CaptureDeps) => void;
+  /**
+   * Enable doctor's plan-077 auto-install. DEFAULTS TO FALSE, and the default is
+   * a hermeticity control rather than a preference.
+   *
+   * `main()` is itself unit-tested (`test/app.test.ts` drives it directly), so
+   * "the outermost function is only ever a real invocation" is FALSE here — a
+   * `true` default at this layer wrote a real `.harness/temp/gitai-collector.json`
+   * during `vitest`, and on a machine without git-ai would have reached the
+   * network and run `install-hooks` from the test suite.
+   *
+   * Only `src/index.ts` — the thin bin entry, which no test imports because
+   * importing it runs `main()` — passes `true`.
+   */
+  autoInstallCollector: boolean;
 }
 
 function defaultDeps(): VerbActDeps {
@@ -488,6 +601,7 @@ export async function main(
   const isTty = overrides.isTty ?? Boolean(process.stdout.isTTY);
   const writers = overrides.writers ?? processWriters;
   const version = overrides.version ?? readVersion();
+  const autoInstallCollector = overrides.autoInstallCollector ?? false;
   const clock = deps.clock;
 
   const mode = selectMode({ json: jsonFlag(argv) }, env, isTty);
@@ -576,7 +690,7 @@ export async function main(
   process.env[CAPTURE_DEPTH_ENV] = String((Number(process.env[CAPTURE_DEPTH_ENV] ?? '0') || 0) + 1);
 
   try {
-    const program = buildProgram(version, io, deps, registry);
+    const program = buildProgram(version, io, deps, registry, autoInstallCollector);
     // FX004: refuse an unregistered verb with the reason BEFORE commander maps it to a
     // syntax error (or, for `--help`, to a silent top-level-usage fallback).
     const contextEnvelope = noExtensionContextEnvelope(argv, program, deps, clock);

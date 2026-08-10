@@ -132,6 +132,42 @@ describe('loadRegistry', () => {
 });
 
 describe('buildProgram — composition root wiring', () => {
+  it('registers every hooks SUBCOMMAND — a service built and never wired must fail here', () => {
+    /*
+    Test Doc:
+    - Why: MEASURED GAP. tk-0008's title was "Wire harness hooks
+      install|status|uninstall|list". The service layer was built and asserted
+      against directly, the task was checked — and NONE of those subcommands were
+      registered. `harness hooks status` did not exist. The existing row above asserts
+      the hooks GROUP exists, and it passed the entire time, because the group was
+      registered and only its children were missing. So the guard sat one level above
+      the gap.
+    - Contract: the hooks group's subcommand names, exactly.
+    - Quality Contribution: a test that exercises the layer BENEATH a deliverable
+      proves the layer, never the delivery. This asserts the delivery.
+    - NO DELIBERATE EXCLUSIONS ARE PERMITTED IN THIS LIST, and that rule was bought
+      the hard way. This row once carried one — "`uninstall` is deliberately ABSENT
+      until tk-000d" — which was true when written. tk-000d landed, the verb was
+      built, and nobody moved the exclusion. THE EXCEPTION OUTLIVED ITS REASON, so the
+      guard went on certifying the exact gap it was built to catch, and the delivered
+      binary answered `unknown command 'uninstall'` until a cross-model review found
+      it (phase-2 F001). A guard with a carve-out is a guard with a hole on a timer.
+      If a verb is not ready to be listed here, it is not ready to be merged.
+    */
+    const program = buildProgram('1.2.3', io, deps(), { verbs: [], records: [] });
+    const hooks = program.commands.find((c) => c.name() === 'hooks');
+    expect(hooks).toBeDefined();
+    expect(hooks?.commands.map((c) => c.name())).toEqual([
+      'fire',
+      'list',
+      'status',
+      'self-test',
+      'install',
+      'uninstall',
+      'restore',
+    ]);
+  });
+
   it('registers core commands including sensors, registry verbs, and --no-extensions', () => {
     const registry = { verbs: [mkVerb('hello'), mkVerb('build')], records: [] };
     const program = buildProgram('1.2.3', io, deps(), registry);
@@ -141,6 +177,7 @@ describe('buildProgram — composition root wiring', () => {
       'doctor',
       // plan 074 — a CORE verb (the safe commit path), registered right after doctor.
       'commit',
+      'hooks',
       'init',
       'new',
       'docs',
@@ -173,6 +210,7 @@ describe('buildProgram — composition root wiring', () => {
       'doctor',
       // plan 074 — a CORE verb (the safe commit path), registered right after doctor.
       'commit',
+      'hooks',
       'init',
       'new',
       'docs',

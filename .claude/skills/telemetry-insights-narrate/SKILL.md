@@ -95,6 +95,6 @@ only your prose against the island.)
   ships an empty, dashed placeholder and this skill is the only thing that fills
   it.
 - The end-to-end loop this skill plugs into is
-  [docs/how/cohort-telemetry-insights.md](../../../docs/how/cohort-telemetry-insights.md).
+  [docs/how/telemetry/cohort-insights.md](../../../docs/how/telemetry/cohort-insights.md).
 - Iterate this skill after each real narration — when a beat needs tribal
   knowledge, fix it here (a line), not in chat memory.

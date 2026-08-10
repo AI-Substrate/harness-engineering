@@ -19,8 +19,15 @@ import {
   watchForRegeneration,
 } from '../../../../src/services/dd/render/refresh.js';
 import { parseSchemaDeclaration } from '../../../../src/services/dd/schema/declarations.js';
+import { toPosix } from '../../../../src/services/shared/posix-path.js';
 
-const FIXTURES = fileURLToPath(new URL('./fixtures/', import.meta.url));
+// toPosix, not fileURLToPath's raw output: `fileURLToPath` returns a NATIVE
+// path (backslashed on Windows), and appending forward-slash literal segments
+// onto it produces one value with BOTH separators mixed
+// (`C:\...\fixtures\chain/repo/`). That value is used as a schema KEY, not
+// only for I/O — mixing separators there is why it fails outright rather than
+// merely looking odd (plan 108 C2).
+const FIXTURES = toPosix(fileURLToPath(new URL('./fixtures/', import.meta.url)));
 const CHAIN = `${FIXTURES}chain/repo/`;
 
 /** Content IS the hash: injective, deterministic, and obviously not a real digest. */
@@ -174,6 +181,21 @@ describe('refreshLiveReferences — the CLI path', () => {
     expect(
       referencesTarget(consumer, `${CHAIN}docs/consumer.dd.json`, `${CHAIN}docs/other.dd.json`),
     ).toBe(false);
+  });
+
+  it('knows it even when the watcher names the target in native Windows shape', () => {
+    // The lexical half of the win32 defect, proven on ANY host (the P3 idiom:
+    // exercise the shape explicitly rather than patch `process.platform`).
+    // `dependentsOf` is written against a WATCHER, and a watcher reports the
+    // OS's own spelling — back-slashed on win32. The right-hand side used to go
+    // into the comparison un-normalized, so this returned a SILENT false and the
+    // consumer's markdown was never regenerated (plan 077 · #108).
+    const path = `${CHAIN}docs/consumer.dd.json`;
+    const windowsShaped = `${CHAIN}docs\\source.dd.json`.replaceAll('/', '\\');
+    expect(windowsShaped).toContain('\\');
+    expect(referencesTarget(doc(path), path, windowsShaped)).toBe(true);
+    // Still discriminating, not merely permissive: a different file stays false.
+    expect(referencesTarget(doc(path), path, `${CHAIN}docs\\other.dd.json`)).toBe(false);
   });
 });
 

@@ -13,7 +13,7 @@
  * it without running the CLI; the kernel still owns the real exit code.
  */
 
-export type CheckName = 'markdownlint' | 'links' | 'mermaid';
+export type CheckName = 'markdownlint' | 'links' | 'mermaid' | 'unexamined';
 export type CheckOutcome = 'pass' | 'findings' | 'unavailable';
 
 export interface CheckResult {
@@ -48,6 +48,7 @@ const LABEL: Record<CheckName, string> = {
   markdownlint: 'markdown lint',
   links: 'in-repo links/anchors',
   mermaid: 'mermaid syntax',
+  unexamined: 'unexamined markdown',
 };
 
 function find(checks: CheckResult[], name: CheckName): CheckResult | undefined {

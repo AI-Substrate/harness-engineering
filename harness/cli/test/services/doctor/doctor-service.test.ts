@@ -648,177 +648,6 @@ describe('quality-gate layer (the boot + checks nucleus, ships in core)', () => 
   });
 });
 
-describe('telemetry-flush-hook check (plan 038 follow-up — the deterministic flush)', () => {
-  const TELEM_DIR = '/repo/.harness/temp/telemetry';
-  /** A tree where telemetry IS being captured (a buffer dir exists). */
-  function capturingFs(extra: Record<string, string> = {}): FakeFs {
-    const fs = new FakeFs({ ...BUILT_CLI, ...extra });
-    fs.mkdirp(TELEM_DIR);
-    return fs;
-  }
-  const hookLayer = (r: ReturnType<typeof buildDoctorReport>) =>
-    r.layers.find((l) => l.name === 'telemetry-flush-hook');
-
-  it('no telemetry captured yet → ok (the hook is only relevant once capturing)', () => {
-    const report = buildDoctorReport(deps(), EMPTY); // BUILT_CLI, no buffer
-    expect(hookLayer(report)?.ok).toBe(true);
-    expect(hookLayer(report)?.detail).toContain('no telemetry captured');
-  });
-
-  it('capturing but NO post-commit flush hook → degraded (advisory) with the just-install-hooks fix', () => {
-    const report = buildDoctorReport(deps({ fs: capturingFs() }), EMPTY);
-    const layer = hookLayer(report);
-    expect(layer?.ok).toBe(false);
-    expect(layer?.detail).toContain('NO post-commit flush hook');
-    expect(layer?.next_action).toContain('just install-hooks');
-    // Never blocks — degraded/exit 0, like every other doctor nudge.
-    const env = doctorEnvelope(report, new FakeClock('2026-06-28T00:00:00.000Z'));
-    expect(env.status).toBe('degraded');
-    expect(exitCodeFor(env)).toBe(0);
-  });
-
-  it('capturing WITH an active post-commit telemetry-sync hook (core.hooksPath=.githooks) → ok', () => {
-    const fs = capturingFs({
-      '/repo/.git/config': '[core]\n\thooksPath = .githooks\n',
-      '/repo/.githooks/post-commit': '#!/usr/bin/env bash\nnode "$bin" telemetry sync\n',
-    });
-    const report = buildDoctorReport(deps({ fs }), EMPTY);
-    expect(hookLayer(report)?.ok).toBe(true);
-    expect(hookLayer(report)?.detail).toContain('active');
-  });
-
-  /**
-   * D3, plan 108 — `core.hooksPath` set to a Windows-shaped ABSOLUTE path.
-   * `resolveHooksDir`'s old `p.startsWith('/') ? p : posixJoin(cwd, p)` never
-   * recognised a drive-letter path as absolute, so it got glued onto `cwd`
-   * (measured: `hooksPath='C:/repo/.githooks'` → `'C:/repo/C:/repo/.githooks'`,
-   * a path nothing on disk matches) and `harness doctor` reported the flush
-   * hook MISSING while it was actually present — a diagnostic lying
-   * about a control's presence, worse than no diagnostic. Fires ONLY on an
-   * ABSOLUTE `core.hooksPath`; the relative form above (our own
-   * `just install-hooks` paved path) was never affected.
-   */
-  it('capturing WITH core.hooksPath an absolute drive-letter path → still finds the active hook', () => {
-    const fs = capturingFs({
-      '/repo/.git/config': '[core]\n\thooksPath = C:/repo/.githooks\n',
-      'C:/repo/.githooks/post-commit': '#!/usr/bin/env bash\nnode "$bin" telemetry sync\n',
-    });
-    const report = buildDoctorReport(deps({ fs }), EMPTY);
-    expect(hookLayer(report)?.ok).toBe(true);
-    expect(hookLayer(report)?.detail).toContain('active');
-  });
-
-  it('kill-switch (HARNESS_NO_TELEMETRY=1) → ok even while capturing (no nag when telemetry is off)', () => {
-    const report = buildDoctorReport(
-      deps({ fs: capturingFs(), env: new FakeEnv({ HARNESS_NO_TELEMETRY: '1' }) }),
-      EMPTY,
-    );
-    expect(hookLayer(report)?.ok).toBe(true);
-  });
-
-  it('consumer repo (no dev marker) → degraded with the generic add-a-hook fix, not the just recipe', () => {
-    const fs = new FakeFs({}); // no harness/cli/tsconfig.json ⇒ consumer
-    fs.mkdirp(TELEM_DIR);
-    const layer = hookLayer(buildDoctorReport(deps({ fs }), EMPTY));
-    expect(layer?.ok).toBe(false);
-    expect(layer?.next_action).toContain('post-commit');
-    expect(layer?.next_action).not.toContain('just install-hooks');
-  });
-});
-
-describe('precommit-hook-latency check (plan 068 C4 — the budget INSTRUMENT, not a comment)', () => {
-  const SAMPLES = '/repo/.harness/temp/precommit-latency.tsv';
-  const layer = (r: ReturnType<typeof buildDoctorReport>) =>
-    r.layers.find((l) => l.name === 'precommit-hook-latency');
-  /** N samples all at `ms`, plus any extra literal lines. */
-  const tsv = (ms: number[], extra: string[] = []): string =>
-    [...ms.map((m, i) => `${1785815000000 + i}\t${m}`), ...extra].join('\n').concat('\n');
-
-  it('no samples file → ok, and says WHY it has nothing rather than implying "fast"', () => {
-    /*
-    Test Doc:
-    - Why: an absent instrument must never read as a pass. A hook that has never fired and a
-      hook that is fast produce the same silence; only one of them is evidence.
-    - Contract: missing `.harness/temp/precommit-latency.tsv` → ok with a detail naming the
-      three real causes (not installed / never fired / no sub-second clock).
-    - Quality Contribution: pins plan 068's house rule — always warn, never hide — on C4 itself.
-    */
-    const l = layer(buildDoctorReport(deps(), EMPTY));
-    expect(l?.ok).toBe(true);
-    expect(l?.detail).toContain('has not fired');
-    expect(l?.detail).toContain('sub-second clock');
-  });
-
-  it('p95 OVER the 2000ms budget → not ok, names the numbers, and points at the narrow kill switch', () => {
-    /*
-    Test Doc:
-    - Why: C4's whole point is a control that CAN fail. This is the failing direction, with a
-      known-bad fixture (five fires, one of them 9s).
-    - Contract: >= the sample floor and p95 > PRECOMMIT_P95_BUDGET_MS → ok:false + a next_action
-      naming HARNESS_NO_TELEMETRY_PRECOMMIT (disarm THIS hook, keep the post-commit flush).
-    - Worked Example: [100,120,150,180,9000] → p95 (nearest rank, ceil(0.95*5)=5) = 9000 > 2000.
-    */
-    const fs = new FakeFs({ ...BUILT_CLI, [SAMPLES]: tsv([100, 120, 150, 180, 9000]) });
-    const l = layer(buildDoctorReport(deps({ fs }), EMPTY));
-    expect(l?.ok).toBe(false);
-    expect(l?.detail).toContain('OVER BUDGET');
-    expect(l?.detail).toContain('p95 9000ms');
-    expect(l?.next_action).toContain('HARNESS_NO_TELEMETRY_PRECOMMIT');
-  });
-
-  it('p95 WITHIN budget → ok with p50/p95 reported (the non-vacuous other direction)', () => {
-    const fs = new FakeFs({ ...BUILT_CLI, [SAMPLES]: tsv([100, 120, 150, 180, 210]) });
-    const l = layer(buildDoctorReport(deps({ fs }), EMPTY));
-    expect(l?.ok).toBe(true);
-    expect(l?.detail).toContain('within budget');
-    expect(l?.detail).toContain('p50 150ms');
-    expect(l?.detail).toContain('p95 210ms');
-  });
-
-  it('below the 5-sample floor → REPORTED with its percentiles but never judged, even when huge', () => {
-    /*
-    Test Doc:
-    - Why: two slow readings on one laptop is not a distribution. Failing on them would train
-      people to ignore the layer; hiding them would lose the only signal there is.
-    - Contract: < PRECOMMIT_MIN_SAMPLES → ok:true, detail still carries p50/p95 + the floor.
-    */
-    const fs = new FakeFs({ ...BUILT_CLI, [SAMPLES]: tsv([8000, 9000]) });
-    const l = layer(buildDoctorReport(deps({ fs }), EMPTY));
-    expect(l?.ok).toBe(true);
-    expect(l?.detail).toContain('below the 5-sample floor');
-    expect(l?.detail).toContain('p95 9000ms');
-  });
-
-  it('malformed lines are COUNTED and named, not silently dropped', () => {
-    const fs = new FakeFs({
-      ...BUILT_CLI,
-      [SAMPLES]: tsv([100, 120, 150, 180, 210], ['garbage', '1785815000009\tNaN']),
-    });
-    const l = layer(buildDoctorReport(deps({ fs }), EMPTY));
-    expect(l?.ok).toBe(true);
-    expect(l?.detail).toContain('5 sample(s)');
-    expect(l?.detail).toContain('2 unparseable line(s) skipped');
-  });
-
-  it('a file with only unreadable lines → ok, and says so (never a fabricated percentile)', () => {
-    const fs = new FakeFs({ ...BUILT_CLI, [SAMPLES]: 'nonsense\nmore nonsense\n' });
-    const l = layer(buildDoctorReport(deps({ fs }), EMPTY));
-    expect(l?.ok).toBe(true);
-    expect(l?.detail).toContain('no readable samples');
-    expect(l?.detail).not.toContain('p50');
-  });
-
-  it('over budget is ADVISORY — the doctor envelope degrades but still exits 0', () => {
-    const fs = new FakeFs({ ...BUILT_CLI, [SAMPLES]: tsv([9000, 9000, 9000, 9000, 9000]) });
-    const env = doctorEnvelope(
-      buildDoctorReport(deps({ fs }), EMPTY),
-      new FakeClock('2026-08-04T00:00:00.000Z'),
-    );
-    expect(env.status).toBe('degraded');
-    expect(exitCodeFor(env)).toBe(0);
-  });
-});
-
 describe('sensor-watcher check (plan 059 follow-up — the live-scanner nudge)', () => {
   /*
   Test Doc:
@@ -993,5 +822,248 @@ describe('doctor — the shipped dd layer', () => {
     const layer = report.layers.find((entry) => entry.name === 'dd-documents');
     expect(layer?.ok).toBe(false);
     expect(layer?.detail).toContain('could not be enumerated');
+  });
+});
+
+/**
+ * The collector row's fail-safe contract (packet 3c/§5 case 4).
+ *
+ * "Failure must not break things" is a claim, so it is exercised by injecting the
+ * fault rather than by reading the code. The specific hazard: `doctor` builds all
+ * its layers in ONE array literal, so a throw inside any layer escapes the whole
+ * report — and this is the row backed by on-disk state written by ANOTHER program
+ * (git-ai), on a verb that runs for people who never opted into telemetry.
+ *
+ * MEASURED BEFORE THE GUARD EXISTED: a single throwing `fs.exists` on a `.git-ai`
+ * path produced NO ENVELOPE AT ALL — not a degraded row, not a failed layer. The
+ * entire verb died. These tests are red against that code.
+ */
+describe('doctor — the collector row degrades, it does not take the verb down', () => {
+  function throwingCollectorFs(message = 'EIO: collector state unreadable'): FakeFs {
+    const fs = new FakeFs(BUILT_CLI);
+    const passthrough = fs.exists.bind(fs);
+    (fs as unknown as { exists: (p: string) => boolean }).exists = (p: string) => {
+      if (p.includes('.git-ai')) throw new Error(message);
+      return passthrough(p);
+    };
+    return fs;
+  }
+
+  const HOST = { platform: 'darwin', arch: 'arm64', home: '/home/u' };
+
+  // NOTE: the shared `deps()` helper enumerates the fields it forwards, so an
+  // unknown key like `collectorHost` is silently DROPPED. That produced a
+  // vacuous pass here — a test comparing two runs that both had no collector
+  // row at all. Build the deps explicitly so the row is genuinely present.
+  const withCollector = (fs: FakeFs): DoctorDeps =>
+    ({ ...deps({ fs }), collectorHost: HOST }) as DoctorDeps;
+
+  it('an unreadable collector state costs the ROW, never the envelope', () => {
+    const env = runDoctor(withCollector(throwingCollectorFs()), EMPTY);
+
+    // The verb completed and still reports.
+    expect(env.command).toBe('doctor');
+    const layers = (env.data as { layers?: { name: string; ok: boolean; detail: string }[] })
+      ?.layers;
+    const row = layers?.find((l) => l.name === 'gitai-collector');
+    expect(row?.ok).toBe(false);
+    expect(row?.detail).toContain('could-not-determine');
+    expect(row?.detail).toContain('EIO: collector state unreadable');
+  });
+
+  it('every OTHER row still prints — the failure is contained to one layer', () => {
+    const healthy = runDoctor(withCollector(new FakeFs(BUILT_CLI)), EMPTY);
+    const broken = runDoctor(withCollector(throwingCollectorFs()), EMPTY);
+
+    const names = (e: typeof healthy): string[] =>
+      ((e.data as { layers?: { name: string }[] })?.layers ?? []).map((l) => l.name);
+
+    // Non-vacuous: the row must actually be present in both runs, or this
+    // comparison proves nothing (it passed vacuously before `collectorHost`
+    // was forwarded).
+    expect(names(healthy)).toContain('gitai-collector');
+    expect(names(broken)).toContain('gitai-collector');
+    // Same rows, same order. Only the collector row's verdict changed.
+    expect(names(broken)).toEqual(names(healthy));
+    expect(names(broken).length).toBeGreaterThan(1);
+  });
+
+  it('a failed reading is never reported as healthy — absent evidence is not good news', () => {
+    const env = runDoctor(withCollector(throwingCollectorFs()), EMPTY);
+    const row = (
+      env.data as { layers?: { name: string; ok: boolean; next_action?: string }[] }
+    )?.layers?.find((l) => l.name === 'gitai-collector');
+
+    expect(row?.ok).toBe(false);
+    // and it says what is unaffected, so the operator is not left guessing scope
+    expect(row?.next_action).toContain('every other row above is unaffected');
+  });
+});
+
+/**
+ * Whole-report containment (Jordan's ruling): a throw ANYWHERE in the report
+ * costs its row, never the verb.
+ *
+ * The collector row above proved the mechanism for one layer. These pin it for
+ * the rest — including the three sites that are NOT layers and therefore cannot
+ * use `safeLayer`:
+ *
+ *   - `checkConventions`, computed before the array and feeding `checkExtensions`
+ *   - `deps.git.isRepo()/currentBranch()`, read after the array
+ *   - `deps.env.get('HARNESS_JSON')`, likewise
+ *
+ * The last two were found by INJECTION, not by reading: with all fifteen layers
+ * wrapped, poisoning `git` or `env` still killed the verb outright. Nothing in
+ * the layer inventory pointed at them. That is why the ruling asked for the
+ * fault to be injected per-dependency rather than reasoned about per-layer.
+ */
+describe('doctor — no single failure can take the verb down', () => {
+  const HOST = { platform: 'darwin', arch: 'arm64', home: '/home/u' };
+
+  /** Every method of `obj` throws — the bluntest available fault. */
+  function poison<T extends object>(obj: T, label: string): T {
+    return new Proxy(obj, {
+      get(target, prop, recv) {
+        const v = Reflect.get(target, prop, recv);
+        return typeof v === 'function'
+          ? () => {
+              throw new Error(`POISON(${label}.${String(prop)})`);
+            }
+          : v;
+      },
+    });
+  }
+
+  function reportWith(over: Record<string, unknown>) {
+    return buildDoctorReport(
+      { ...deps(), collectorHost: HOST, ...over } as unknown as DoctorDeps,
+      EMPTY,
+    );
+  }
+
+  it.each([
+    'fs',
+    'proc',
+    'git',
+    'env',
+    'clock',
+  ])('a totally unusable %s port still produces a report', (port) => {
+    const base = { ...deps(), collectorHost: HOST } as unknown as Record<string, unknown>;
+    const report = reportWith({ [port]: poison(base[port] as object, port) });
+
+    // The verb survived and still enumerates every row it would normally.
+    expect(report.layers.length).toBeGreaterThan(10);
+    // No row silently claims to be fine on the strength of a failed read.
+    for (const layer of report.layers) {
+      if (layer.detail.includes('failed while running')) expect(layer.ok).toBe(false);
+    }
+  });
+
+  it('a throwing git port degrades the branch to null rather than killing the verb', () => {
+    // Found by injection: this read sits AFTER the layer array, so wrapping all
+    // fifteen layers did not cover it and the verb still died.
+    const base = { ...deps(), collectorHost: HOST } as unknown as Record<string, unknown>;
+    const report = reportWith({ git: poison(base.git as object, 'git') });
+    expect(report.branch).toBeNull();
+    expect(report.layers.length).toBeGreaterThan(10);
+  });
+
+  it('a throwing env port degrades json_env to false rather than killing the verb', () => {
+    const base = { ...deps(), collectorHost: HOST } as unknown as Record<string, unknown>;
+    const report = reportWith({ env: poison(base.env as object, 'env') });
+    expect(report.json_env).toBe(false);
+    expect(report.layers.length).toBeGreaterThan(10);
+  });
+
+  it('a failed convention scan is NOT reported as "no complaints"', () => {
+    // The subtle one. `conventions` degrades to `[]` on a throw, and an empty
+    // list otherwise READS as "scanned, nothing wrong" — good news we did not
+    // establish. The extensions row must carry the failure instead.
+    const base = { ...deps(), collectorHost: HOST } as unknown as Record<string, unknown>;
+    const report = reportWith({ fs: poison(base.fs as object, 'fs') });
+    const extensions = report.layers.find((l) => l.name === 'extensions');
+    expect(extensions?.ok).toBe(false);
+    expect(extensions?.detail).toContain('convention scan failed');
+  });
+});
+
+/**
+ * #144 — the Cursor sandbox row as a LAYER (the 18th `safeLayer` site).
+ *
+ * The module's own behaviour is covered in `collector/cursor-sandbox.test.ts`.
+ * What is pinned here is the wiring: that it appears only when warranted, that
+ * it degrades rather than gates, and that a throw inside it costs the row and
+ * not the verb.
+ */
+describe('doctor — cursor-sandbox row wiring', () => {
+  const HOST = { platform: 'darwin', arch: 'arm64', home: '/home/u' };
+  const PERMS = '/home/u/.cursor/permissions.json';
+
+  function withCursor(permissions?: string, marker = true): DoctorDeps {
+    const seed: Record<string, string> = { ...BUILT_CLI };
+    if (permissions !== undefined) seed[PERMS] = permissions;
+    const fs = new FakeFs(seed);
+    // `mkdirp`, NOT the `dirs` constructor arg: `FakeFs.exists` consults
+    // `files`/`byteFiles`/`madeDirs` and ignores `dirs`, so seeding the latter
+    // registers no marker and every "no row" assertion passes vacuously. That
+    // is exactly how the first draft of these tests was green and meaningless.
+    if (marker) fs.mkdirp('/home/u/.cursor');
+    return { ...deps({ fs }), collectorHost: HOST } as unknown as DoctorDeps;
+  }
+
+  const names = (report: { layers: { name: string }[] }): string[] =>
+    report.layers.map((l) => l.name);
+
+  it('emits NO row when Cursor is absent', () => {
+    const report = buildDoctorReport(withCursor(undefined, false), EMPTY);
+    expect(names(report)).not.toContain('cursor-sandbox');
+  });
+
+  it('DETECTION WORKS — the marker registers, so the absences below mean something', () => {
+    // The control for the two silence assertions. Without it, a marker that
+    // never registers makes both of them pass for the wrong reason.
+    const report = buildDoctorReport(withCursor(JSON.stringify({ terminalAllowlist: [] })), EMPTY);
+    expect(names(report)).toContain('cursor-sandbox');
+  });
+
+  it('emits NO row when both commands are allowlisted', () => {
+    const report = buildDoctorReport(
+      withCursor(JSON.stringify({ terminalAllowlist: ['git', 'harness'] })),
+      EMPTY,
+    );
+    expect(names(report)).not.toContain('cursor-sandbox');
+  });
+
+  it('emits the row when an entry is missing, degraded and never gating', () => {
+    const report = buildDoctorReport(
+      withCursor(JSON.stringify({ terminalAllowlist: ['harness'] })),
+      EMPTY,
+    );
+    const row = report.layers.find((l) => l.name === 'cursor-sandbox');
+    expect(row?.ok).toBe(false);
+    expect(row?.next_action).toContain('harness commit');
+    // Every other row still present — one diagnostic never displaces the report.
+    expect(names(report)).toContain('gitai-collector');
+    expect(report.layers.length).toBeGreaterThan(10);
+  });
+
+  it('a throwing fs costs the row, never the verb', () => {
+    // The reading is taken behind its own guard, so an fs that throws on the
+    // Cursor paths must not escape into the report construction.
+    const fs = new FakeFs(BUILT_CLI);
+    fs.mkdirp('/home/u/.cursor');
+    const passthrough = fs.exists.bind(fs);
+    (fs as unknown as { exists: (p: string) => boolean }).exists = (p: string) => {
+      if (p.includes('.cursor')) throw new Error('EIO: cursor config unreadable');
+      return passthrough(p);
+    };
+    const d = { ...deps({ fs }), collectorHost: HOST } as unknown as DoctorDeps;
+
+    let report: ReturnType<typeof buildDoctorReport> | null = null;
+    expect(() => {
+      report = buildDoctorReport(d, EMPTY);
+    }).not.toThrow();
+    expect(report).not.toBeNull();
+    expect((report as unknown as { layers: unknown[] }).layers.length).toBeGreaterThan(10);
   });
 });

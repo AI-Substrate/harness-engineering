@@ -94,6 +94,9 @@ export const RESERVED_NAMES: ReadonlySet<string> = new Set([
   'plan',
   'sensors',
   'commit',
+  // plan 082 — a shadowed hook verb would silently change what runs on every
+  // tool call of every agent session, with no output to notice it by.
+  'hooks',
 ]);
 
 /**

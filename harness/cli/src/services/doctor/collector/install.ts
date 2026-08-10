@@ -1,10 +1,20 @@
-import { agentsMissingHooks, detectAgents } from './agents.js';
+import { AGENT_MARKERS, agentsMissingHooks, detectAgents } from './agents.js';
+import { clearAutoInstallBlock } from './auto-install-block.js';
+import { backupAgentConfigs } from './backup.js';
 import { downloadAndVerify } from './download.js';
+import { agentEvidence, snapshotAgentConfigs } from './evidence.js';
+import { describeExit } from './exit-code.js';
 import { GITAI_PIN } from './pin.js';
-import { binaryPathFor, configPathFor, resolveArtifact } from './platform.js';
+import {
+  binaryPathFor,
+  configPathFor,
+  resolveArtifact,
+  windowsAppsShimPathFor,
+} from './platform.js';
 import { manualSkillsInstructions, readSkillsGuard } from './skills-guard.js';
 import {
   type CollectorState,
+  claimedHookAgents,
   emptyCollectorState,
   type HooksInstallStatus,
   readCollectorState,
@@ -17,7 +27,7 @@ import {
   readGlobalTrace2,
   verifyInstalledTrace2,
 } from './trace2.js';
-import { type CollectorDeps, INSTALL_HOOKS_TIMEOUT_MS } from './types.js';
+import { type CollectorDeps, INSTALL_HOOKS_TIMEOUT_MS, VIABILITY_TIMEOUT_MS } from './types.js';
 
 /**
  * The collector lifecycle (plan 073 · ac-0007, ac-0009, ac-0013, ac-0014, ac-0016).
@@ -53,6 +63,19 @@ export type HooksStage =
    * `skipped-trace2`: a deliberate, reportable, recoverable non-install.
    */
   | 'skipped-skills'
+  /**
+   * The pinned artifact is on disk and its digest matches, and it CANNOT RUN
+   * HERE (plan 082 · F007). A third refusal in the same family as the two above,
+   * and the one that was missing when a Windows 11 guest reported
+   * `git-ai CLI: already-current` beside `git-ai hooks: failed` on 2026-08-10.
+   *
+   * Not folded into `failed`, because the operator actions are different and had
+   * collapsed to one word: `failed` means the vendor command RAN and refused —
+   * read its output, re-run it. This means the vendor command never started —
+   * nothing it could have said exists, and the fix is on the machine, not in the
+   * command.
+   */
+  | 'binary-unusable'
   /**
    * `install-hooks` exited 0, and the config it ALWAYS writes is not there (or
    * could not be re-read). Deliberately not `installed` and deliberately not
@@ -153,12 +176,58 @@ function writePinnedConfig(deps: CollectorDeps): { ok: boolean; detail: string }
   }
 }
 
-/** Agent ids named in git-ai's install-hooks output (best-effort, never fatal). */
+/**
+ * Agent ids named in git-ai's `install-hooks` output.
+ *
+ * IT MATCHES NOTHING THE PINNED BINARY PRINTS, and that is measured, not
+ * suspected. At the pinned tag (see `MEASURED_AGAINST_PIN` in `agents.ts`) `install-hooks` emits, via its spinner
+ * (`src/commands/install_hooks.rs:575`, `:599`):
+ *
+ *     <Human Name>: Hooks updated
+ *     <Human Name>: Hooks already up to date
+ *
+ * The words `installed` / `already_installed` are the values of an INTERNAL enum
+ * (`install_hooks.rs:44-50`) handed to `log_message`, which writes to the daemon
+ * SOCKET and never to stdout. A `git grep` for a `println!` of either word across
+ * the whole pinned tree finds one unrelated line in `upgrade.rs`.
+ *
+ * So this returned `[]` on every real run, and the caller's
+ * `reported.length > 0 ? reported : detectAgents(...)` ALWAYS took the fallback.
+ * The consequence is the reason the whole shape had to change: the agent list we
+ * printed was never git-ai's answer — it was OUR OWN marker scan, carried by a
+ * sentence that said "verified by re-reading the global trace2 config".
+ *
+ * KEPT, rather than deleted, and kept DEFENSIVELY: it is now one input to
+ * {@link agentEvidence} instead of the source of truth, so if a future git-ai
+ * does print a parseable line we read it, and if it does not, nothing silently
+ * substitutes a different data source. A dead branch that degrades to another
+ * source without saying so is exactly how this stayed invisible.
+ *
+ * The human labels are matched too, since those are what the pinned binary
+ * actually prints — but a name in stdout is still only a CLAIM, and never
+ * evidence on its own.
+ */
+const ANSI_SGR = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, 'g');
+
 function parseInstalledAgents(stdout: string): string[] {
   const ids = new Set<string>();
+  const labelToId = new Map(AGENT_MARKERS.map((a) => [a.label.toLowerCase(), a.id]));
   for (const line of stdout.split('\n')) {
-    const match = /^\s*([a-z0-9_-]+)\s*[:=]\s*(installed|already_installed)\b/i.exec(line);
-    if (match?.[1]) ids.add(match[1].toLowerCase());
+    // Strip the ANSI colour the spinner wraps its line in, and its glyph. ESC is
+    // built from its code point rather than written into the pattern: a literal
+    // control character in a regex is unreadable in a diff and indistinguishable
+    // from a stray paste, which is what `noControlCharactersInRegex` is for.
+    const clean = line.replace(ANSI_SGR, '').replace(/^\s*[✓✗⚠]\s*/u, '');
+    const structured = /^\s*([a-z0-9_-]+)\s*[:=]\s*(installed|already_installed)\b/i.exec(clean);
+    if (structured?.[1]) {
+      ids.add(structured[1].toLowerCase());
+      continue;
+    }
+    // The pinned binary's real shape: "<Name>: Hooks updated|Hooks already up to date".
+    const spun = /^(.+?):\s*Hooks (updated|already up to date)\s*$/i.exec(clean);
+    const mapped =
+      spun?.[1] === undefined ? undefined : labelToId.get(spun[1].trim().toLowerCase());
+    if (mapped !== undefined) ids.add(mapped);
   }
   return [...ids].sort();
 }
@@ -208,10 +277,73 @@ function recordAttempt(
 
 /** Agents on this machine the RECORDED install does not cover — a pure fs read. */
 function uncoveredAgentIds(deps: CollectorDeps, state: CollectorState): string[] {
-  const covered = state.hooks.status === 'installed' ? state.hooks.agents : [];
+  const covered = state.hooks.status === 'installed' ? claimedHookAgents(state) : [];
   return agentsMissingHooks(detectAgents(deps.fs, deps.host.home), covered).map(
     (agent) => agent.id,
   );
+}
+
+/**
+ * CAN THIS BINARY RUN HERE? The cheapest self-identifying question there is,
+ * asked before anything irreversible (plan 082 · F007a).
+ *
+ * The bar is `--version` exiting 0 AND SAYING SOMETHING, and the second half is
+ * not pedantry. `trace2.ts` already records the property that makes an exit code
+ * worthless on its own: git-ai's arg parser "ignores what it does not understand
+ * and still exits 0" (`verifyInstalledTrace2`, trace2.ts:133). That is the same
+ * defence one layer down — a zero exit is not evidence a program ran its own
+ * code, and a program that identifies itself in neither stream has given us
+ * nothing to stand on. Either stream counts: which one a vendor prints its
+ * version to is not something we have measured, and refusing over that would be
+ * inventing a requirement.
+ *
+ * Never fatal to stage 1. The pinned artifact stays exactly where it was placed,
+ * digest and all; what is withheld is the destructive command.
+ */
+async function checkViability(
+  deps: CollectorDeps,
+  binaryPath: string,
+): Promise<{ ok: true } | { ok: false; detail: string; manual: string[] }> {
+  const preamble = `the pinned git-ai binary at ${binaryPath} is on disk and its SHA-256 matches the manifest, but it could not be RUN on this machine`;
+  const epilogue =
+    'install-hooks was NOT attempted — a digest proves the bytes are the ones we asked for, not that they execute here';
+  let result: { code: number; stdout: string; stderr: string };
+  try {
+    result = await deps.exec.run(binaryPath, ['--version'], {
+      cwd: deps.cwd,
+      timeoutMs: VIABILITY_TIMEOUT_MS,
+    });
+  } catch (err) {
+    return {
+      ok: false,
+      detail: `${preamble}: \`${binaryPath} --version\` could not be spawned at all (${err instanceof Error ? err.message : String(err)}). ${epilogue}`,
+      manual: manualViabilityInstructions(binaryPath),
+    };
+  }
+  const said = `${result.stdout}\n${result.stderr}`.trim();
+  if (result.code === 0 && said !== '') return { ok: true };
+  const how =
+    result.code === 0
+      ? 'exited 0 but printed nothing to either stream, so nothing here shows it reached its own code'
+      : describeExit(result.code, result.stderr);
+  return {
+    ok: false,
+    detail: `${preamble}: \`${binaryPath} --version\` ${how}. ${epilogue}`,
+    manual: manualViabilityInstructions(binaryPath),
+  };
+}
+
+/**
+ * What to do about a binary that will not start. Deliberately short, and
+ * deliberately does NOT re-state the cause — the cause is already in the
+ * warning, and repeating a Windows-specific guess in an instruction shown on
+ * every platform is how advice stops being read.
+ */
+function manualViabilityInstructions(binaryPath: string): string[] {
+  return [
+    `Run \`${binaryPath} --version\` yourself and read what the operating system says about it.`,
+    'Nothing was uninstalled and nothing was hooked: the verified binary is still on disk, and harness re-checks it on the next ordinary `harness doctor` — once it runs, the hooks go on with no flag and no re-run by hand.',
+  ];
 }
 
 /**
@@ -236,6 +368,44 @@ export async function installHooks(
   binaryPath: string,
 ): Promise<{ hooks: HooksStage; state: CollectorState; warnings: string[]; manual: string[] }> {
   const now = deps.clock.nowIso();
+
+  // ZEROTH precondition, and the one whose absence was the defect (plan 082 ·
+  // F007): ASK THE BINARY TO DO SOMETHING BEFORE HANDING IT THE DESTRUCTIVE
+  // COMMAND.
+  //
+  // A digest proves PROVENANCE — that the bytes on disk are the bytes the
+  // manifest names. It says nothing about VIABILITY, whether those bytes can
+  // execute on THIS machine. On a Windows 11 guest (2026-08-10) we reported
+  // `git-ai CLI: already-current` — true, about bytes — and in the same breath
+  // `git-ai hooks: failed`, because that same binary could not start: the loader
+  // killed it for a missing DLL before a line of its own code ran. We had
+  // verified we got the right file and never verified the file works, and then
+  // gave it the machine-wide mutation anyway.
+  //
+  // Placed FIRST, ahead of the trace2 and skills guards, for one reason: those
+  // two are about what we might destroy, and this one is about whether there is
+  // any point. It is also the cheapest question in the flow.
+  const viability = await checkViability(deps, binaryPath);
+  if (!viability.ok) {
+    const next = recordAttempt(state, now, {
+      status: 'binary-unusable',
+      detail: viability.detail,
+      uncovered: uncoveredAgentIds(deps, state),
+      // NOTHING WAS INVOKED, so nothing on this machine changed — the same rule
+      // the two guards below follow. Hooks proven installed earlier are still
+      // installed and still collecting, and overwriting that would announce that
+      // attribution had stopped when it had not.
+      preserveCoverage: true,
+    });
+    writeCollectorState(deps.fs, deps.cwd, next);
+    return {
+      hooks: 'binary-unusable',
+      state: next,
+      warnings: [viability.detail],
+      manual: viability.manual,
+    };
+  }
+
   const reading = await readGlobalTrace2({ exec: deps.exec, cwd: deps.cwd }, now);
   let next = recordTrace2Observation(state, {
     observed: reading.status,
@@ -296,6 +466,49 @@ export async function installHooks(
   }
 
   // Observed empty, and written down before we act on it.
+  //
+  // LAST MOMENT BEFORE THE ONLY UNRECOVERABLE STEP: `install-hooks` rewrites
+  // each detected agent's config in place and discards JSONC comments, keeping
+  // no backup of its own. Copy them first. Placed AFTER both guards on purpose —
+  // a refused install changes nothing, so backing up ahead of the guards would
+  // litter the disk on exactly the runs that touched nothing.
+  const backup = backupAgentConfigs(deps);
+  // The evidence snapshot is taken HERE, beside the backup and for a neighbouring
+  // reason: this is the last instant before git-ai writes. The backup records what
+  // was AT RISK; this records what was THERE, absences included, so a file git-ai
+  // CREATES is detectable — which the backup structurally cannot see.
+  const before = snapshotAgentConfigs(deps);
+  if (backup.failed.length > 0) {
+    // P1-C (cross-model review 2026-08-09). A BACKUP WE COULD NOT TAKE MUST STOP
+    // THE STEP IT EXISTS TO PROTECT.
+    //
+    // This block reverses a judgement made when the backup was written — that a
+    // backup which could abort the install would be a worse failure than the
+    // comment loss it prevents. The review is right that it had it backwards,
+    // and the reason is not the loss itself but the CLAIM: `backupAgentConfigs`
+    // is non-blocking, so the success line could name a backup directory for an
+    // operator whose config was rewritten and NOT copied. Telling someone their
+    // originals are safe, having destroyed them, is worse than not copying at
+    // all — they stop looking.
+    //
+    // Only `failed` blocks. `undeclared` is the honest, declared denominator gap
+    // (agents git-ai hooks that we do not enumerate); blocking on that would be a
+    // permanent refusal on every machine, which is a refusal nobody can act on.
+    const detail = `install-hooks was NOT run: the agent configs it rewrites in place could not be copied first (${backup.failed.join('; ')}). It discards JSONC comments and keeps no backup of its own, so harness will not run it without one.`;
+    next = recordAttempt(next, now, {
+      status: 'not-attempted',
+      detail,
+      uncovered: uncoveredAgentIds(deps, next),
+      preserveCoverage: true,
+    });
+    writeCollectorState(deps.fs, deps.cwd, next);
+    return {
+      hooks: 'not-attempted',
+      state: next,
+      warnings: [detail],
+      manual: manualHookInstructions(binaryPath, reading.entries),
+    };
+  }
   let result: { code: number; stdout: string; stderr: string };
   try {
     result = await deps.exec.run(binaryPath, ['install-hooks'], {
@@ -315,10 +528,13 @@ export async function installHooks(
 
   if (result.code !== 0) {
     next = recordAttempt(next, now, {
+      // The vendor's own words when it has any, the OS's verdict when it does
+      // not (plan 082 · F007b). Mostly unreachable now that the viability probe
+      // runs first — a binary that cannot start never gets here — but a process
+      // can also be killed BY the OS mid-run, and the fallback that reported a
+      // bare ten-digit integer with no next action is not one to leave standing.
       status: 'failed',
-      detail: `install-hooks exited ${result.code}${
-        result.stderr.trim() === '' ? '' : `: ${result.stderr.trim().split('\n')[0]}`
-      }`,
+      detail: `install-hooks ${describeExit(result.code, result.stderr)}`,
       uncovered: uncoveredAgentIds(deps, next),
       preserveCoverage: false,
     });
@@ -326,9 +542,21 @@ export async function installHooks(
     return { hooks: 'failed', state: next, warnings: [next.hooks.detail], manual: [] };
   }
 
+  // WHAT GIT-AI SAID, AND WHAT THE MACHINE SHOWS — two different facts, and the
+  // defect being fixed here was presenting them as one.
+  //
+  // `claimed` is a CLAIM: git-ai's own stdout, plus (when stdout yields nothing
+  // parseable, which is what the pinned binary does) our marker scan. Neither is
+  // per-agent evidence.
+  //
+  // `evidence` is a MEASUREMENT: config files we watched get created or change
+  // across this exact invocation. That is what `hooks.agents` now records, so the
+  // number in the report is the number we can stand behind.
   const reported = parseInstalledAgents(result.stdout);
-  const agents =
+  const claimed =
     reported.length > 0 ? reported : detectAgents(deps.fs, deps.host.home).map((a) => a.id);
+  const evidence = agentEvidence(deps, before, claimed);
+  const agents = evidence.evidenced;
 
   // VERIFY BY RE-READING, never by trusting the exit code (live dogfood): their
   // safety flag fails open, so the only trustworthy statement about what
@@ -372,18 +600,49 @@ export async function installHooks(
     last_attempt: {
       status: 'installed',
       at: now,
-      detail: 'install-hooks ran and was verified by re-reading the global trace2 config',
+      detail:
+        'install-hooks ran; the global trace2 re-read confirms git-ai installed SOMETHING, and the per-agent list is carried separately by config-file evidence',
       uncovered: [],
     },
     hooks: {
       status: 'installed',
       at: now,
       agents,
-      detail: `hooks installed for ${agents.length} agent(s): ${agents.join(', ') || '(none detected)'} — verified by re-reading the global trace2 config; agents already RUNNING stay uninstrumented until they restart`,
+      // The claim is recorded ALONGSIDE the evidence, never instead of it: the
+      // gap computation reads this, so an agent we could not evidence is never
+      // turned into a reported "not instrumented".
+      claimed: [...new Set([...claimed.map((id) => id.toLowerCase()), ...agents])].sort(),
+      // THE SENTENCE THAT WAS THE DEFECT. It used to read "hooks installed for N
+      // agent(s): <list> — verified by re-reading the global trace2 config",
+      // which attaches a per-agent list to a check with no per-agent resolving
+      // power. The trace2 re-read is real and is still here; it is now scoped to
+      // the one thing it can actually establish.
+      detail: `${evidence.detail}. The global trace2 re-read confirms git-ai installed something — that is a single machine-wide fact and does NOT discriminate between agents. Agents already RUNNING stay uninstrumented until they restart`,
     },
   };
   writeCollectorState(deps.fs, deps.cwd, next);
-  return { hooks: 'installed', state: next, warnings: [], manual: [] };
+  // The backup location is reported on the SUCCESS path too — that is the run
+  // where configs were actually rewritten, so it is the run whose operator most
+  // needs to know where the originals went. Reported as a warning-channel line
+  // because it is information, not a problem; doctor never fails on these.
+  //
+  // `undeclared` counts as something to say, and adding it is the same P1-C
+  // principle applied to its inverse. It used to be suppressed whenever nothing
+  // was copied — so a machine where we DETECTED an agent and simply did not know
+  // where its config lives reported the identical silence as a machine with
+  // nothing to copy. "We backed up nothing because there was nothing" and "we
+  // backed up nothing because we did not look" are different facts, and only one
+  // of them means the operator's file is safe. (`failed` can no longer reach
+  // here at all — it blocks above — and is kept only so this line stays true if
+  // that ever changes.)
+  const backupWorthSaying =
+    backup.copied.length > 0 || backup.failed.length > 0 || backup.undeclared.length > 0;
+  return {
+    hooks: 'installed',
+    state: next,
+    warnings: backupWorthSaying ? [backup.detail] : [],
+    manual: [],
+  };
 }
 
 /** The full lifecycle: stage 1 (pinned CLI) then stage 2 (hooks, skippable). */
@@ -402,6 +661,12 @@ export async function installCollector(deps: CollectorDeps): Promise<CollectorIn
     note_schema: { ...state.note_schema, expected: manifest.expect_schema_version },
   };
   const warnings: string[] = [];
+  // Any fresh attempt supersedes the machine-wide "stop retrying" record — an
+  // explicit `--install-collector` IS the retry, and on the automatic path this
+  // is a no-op because a blocked run never reaches here. Cleared BEFORE the
+  // attempt so a second failure writes a current record rather than preserving
+  // a stale timestamp.
+  clearAutoInstallBlock(deps.fs, deps.host);
 
   const resolution = resolveArtifact(deps.host.platform, deps.host.arch, manifest);
   if (!resolution.ok) {
@@ -511,14 +776,99 @@ export async function installCollector(deps: CollectorDeps): Promise<CollectorIn
     }
   }
 
+  // WIN32 SELF-HEAL: make the BARE NAME resolve (plan 082, windows arm). The
+  // install dir is on no PATH by default, and git-ai's editor extension spawns
+  // the literal string `git-ai` on every save — so without this, a placed and
+  // verified install still records zero save-time KnownHuman attestations and
+  // human lines fall to the agent (the measured 0-of-28 defect). A digest-
+  // verified COPY into WindowsApps, not a hardlink or a PATH edit: the copy
+  // needs no elevation and no editor restart (a running editor already has
+  // WindowsApps on its inherited PATH — measured), a PATH edit reaches only
+  // processes launched after it, and a hardlink survives in-place updates but
+  // strands on replace-by-rename — while a copy is ALWAYS either current or
+  // digest-stale, and the `binary-shadowed-on-path` doctor rung sees a stale
+  // copy the moment it looks. Re-ensured on every install; warn-only, and
+  // disclosed like every other thing this command changes.
+  const shim = ensureBareNameResolvable(deps, binaryPath, resolution.artifact.sha256, warnings);
+  const shimDisclosures =
+    shim === null
+      ? []
+      : [
+          `placed a digest-verified copy of the pinned binary at ${shim} so the bare name \`git-ai\` resolves for editor extensions (win32 only; refreshed on every install; a stale copy is surfaced by doctor's binary-shadowed-on-path rung)`,
+        ];
+
   // Config BEFORE first execution (ac-0007) — the updater runs on invocation, so
   // "before the first run" is the only moment this write is worth anything.
+  //
+  // AND A FAILED WRITE STOPS THE EXECUTION (P1-B, cross-model review 2026-08-09).
+  // It used to push a warning and run the binary anyway, which defeats the
+  // ordering entirely: the whole value of writing the config first is that
+  // git-ai never gets to self-update away from the pin, and a warning does not
+  // prevent that — it annotates it. If we cannot disable the updater, the pinned,
+  // digest-verified artifact we just placed is exactly what we must not run.
+  //
+  // Nothing is half-done here: the CLI stage's own result stands (the binary is
+  // placed and verified), and NEITHER binary invocation happens — not
+  // `install-hooks`, not the `status --json` schema probe.
   const config = writePinnedConfig(deps);
-  if (!config.ok) warnings.push(config.detail);
+  if (!config.ok) {
+    state = {
+      ...state,
+      hooks: {
+        status: 'not-attempted',
+        at: null,
+        agents: [],
+        detail: `git-ai's auto-update could not be disabled (${config.detail}), so the pinned binary was NOT executed — running it could replace the digest-verified artifact with whatever the updater fetches`,
+      },
+    };
+    writeCollectorState(deps.fs, deps.cwd, state);
+    return {
+      cli,
+      hooks: 'not-attempted',
+      state,
+      warnings: [...warnings, config.detail, state.hooks.detail],
+      // Nothing was INVOKED — but the shim copy, if placed, was still placed,
+      // and a change made is a change disclosed whatever happened after it.
+      disclosures: shimDisclosures,
+      manualInstructions: [],
+    };
+  }
 
   writeCollectorState(deps.fs, deps.cwd, state);
 
   const hooks = await installHooks(deps, state, binaryPath);
+
+  // BOUNDING THE STAGE YOU ADDED IS NOT BOUNDING THE PIPELINE (review round 2, F1).
+  //
+  // The viability probe was given its own short budget (VIABILITY_TIMEOUT_MS)
+  // precisely so a broken box does not pay for a check nobody opted into — and
+  // then this function ran `assertNoteSchema` anyway, which asks the SAME dead
+  // binary for `status --json` on a separate 15s budget. A carefully-bounded 5s
+  // guard cost 20s end to end, and since `binary-unusable` deliberately does not
+  // latch, that 20s repeated on EVERY bare `harness doctor` until the machine
+  // was fixed. Measured with a hanging fake: `clock.sleeps === [5000, 15000]`.
+  //
+  // The general shape, worth more than the number: a guard is a pipeline. Adding
+  // a stage that refuses does nothing about the stages already written after it,
+  // and those were written when this refusal could not happen.
+  //
+  // The probe is also pointless here on its own terms — ac-000f asks the binary
+  // what note schema it writes, and a binary that will not start cannot answer.
+  // `note_schema` keeps whatever it last recorded, which is the honest value:
+  // nothing new was observed.
+  if (hooks.hooks === 'binary-unusable') {
+    return {
+      cli,
+      hooks: hooks.hooks,
+      state: hooks.state,
+      warnings: [...warnings, ...hooks.warnings],
+      // Nothing was invoked — but the shim copy, if placed, was still placed;
+      // same reasoning as the pinned-config branch above.
+      disclosures: shimDisclosures,
+      manualInstructions: hooks.manual,
+    };
+  }
+
   const schema = await assertNoteSchema(deps, hooks.state, binaryPath);
 
   return {
@@ -526,9 +876,70 @@ export async function installCollector(deps: CollectorDeps): Promise<CollectorIn
     hooks: hooks.hooks,
     state: schema.state,
     warnings: [...warnings, ...hooks.warnings, ...schema.warnings],
-    disclosures: [...INSTALL_HOOKS_DISCLOSURES],
+    disclosures: [...INSTALL_HOOKS_DISCLOSURES, ...shimDisclosures],
     manualInstructions: hooks.manual,
   };
+}
+
+/**
+ * Place (or refresh) the digest-verified copy that makes the BARE NAME resolve
+ * on win32 — see the call site for why a copy beats a hardlink or a PATH edit.
+ *
+ * Returns the shim path when a current copy is in place after this call (fresh
+ * or pre-existing), `null` when the platform needs no shim or the heal failed.
+ * WARN-ONLY: a failed shim never fails the install — the binary itself is
+ * placed and verified, and doctor's `binary-not-on-path` rung keeps reporting
+ * the unresolved name until a later run heals it.
+ */
+function ensureBareNameResolvable(
+  deps: CollectorDeps,
+  binaryPath: string,
+  pinnedSha256: string,
+  warnings: string[],
+): string | null {
+  if (deps.host.platform !== 'win32') return null;
+  const shimPath = windowsAppsShimPathFor(deps.host.home);
+  try {
+    const bytes = deps.fs.readBytesNoFollow(binaryPath);
+    if (bytes === null) {
+      warnings.push(
+        `could not read the placed binary at ${binaryPath} to copy it onto PATH — the bare name \`git-ai\` stays unresolvable and editor save-time attestations will not record`,
+      );
+      return null;
+    }
+    if (deps.fs.exists(shimPath)) {
+      const existing = deps.fs.readBytesNoFollow(shimPath);
+      if (
+        existing !== null &&
+        deps.hash.sha256Hex(existing).toLowerCase() === pinnedSha256.toLowerCase()
+      ) {
+        return shimPath; // already current — nothing to write
+      }
+      // Stale or unreadable: replace. Delete-then-write, never write-over — a
+      // partial overwrite of a running exe fails harder than a fresh create.
+      deps.fs.deleteFile(shimPath);
+    }
+    deps.fs.writeBytes(shimPath, bytes);
+    // VERIFY THE WRITE LANDED — this plan just spent a day on a write that
+    // "returned normally" into nowhere. Read back and hash; a claim about the
+    // shim is a claim about bytes on disk, not about a call returning.
+    const readBack = deps.fs.readBytesNoFollow(shimPath);
+    if (
+      readBack === null ||
+      deps.hash.sha256Hex(readBack).toLowerCase() !== pinnedSha256.toLowerCase()
+    ) {
+      warnings.push(
+        `wrote the PATH shim at ${shimPath} but could not verify it by read-back — treat the bare name as unresolved until doctor's resolution rung reads clean`,
+      );
+      return null;
+    }
+    return shimPath;
+  } catch (err) {
+    warnings.push(
+      `could not place the PATH shim at ${shimPath} (${err instanceof Error ? err.message : String(err)}) — the bare name \`git-ai\` stays unresolvable; editor save-time KnownHuman attestations will not record until it resolves`,
+    );
+    return null;
+  }
 }
 
 export interface CollectorRecheckResult {
@@ -570,7 +981,9 @@ export async function recheckCollector(deps: CollectorDeps): Promise<CollectorRe
   const now = deps.clock.nowIso();
   const state = readCollectorState(deps.fs, deps.cwd) ?? emptyCollectorState(now, manifest);
   const detected = detectAgents(deps.fs, deps.host.home);
-  const covered = new Set(state.hooks.agents.map((id) => id.toLowerCase()));
+  // The GAP is computed against the CLAIM: an agent we could not evidence is
+  // not a new agent, and treating it as one would re-run install-hooks forever.
+  const covered = new Set(claimedHookAgents(state).map((id) => id.toLowerCase()));
   const newAgents = detected.filter((agent) => !covered.has(agent.id.toLowerCase()));
 
   const coverageOf = (s: CollectorState) => ({ status: s.hooks.status, agents: s.hooks.agents });

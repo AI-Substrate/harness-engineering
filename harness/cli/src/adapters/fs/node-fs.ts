@@ -18,6 +18,7 @@ import {
   statSync,
   unlinkSync,
   writeFileSync,
+  writeSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
@@ -108,6 +109,43 @@ export class NodeFs implements FsPort, FileSystemWritePort {
     return confined.status === 'ok' ? { status: 'ok', bytes: confined.bytes } : confined;
   }
 
+  /**
+   * Bounded read that must not follow a symlink.
+   *
+   * ## The guarantee is NOT the same on every platform, and that is deliberate
+   *
+   * Where the kernel offers `O_NOFOLLOW` (POSIX), the open itself refuses a symlink
+   * and the guarantee is kernel-enforced. **Windows has no `O_NOFOLLOW`** — Node does
+   * not define `fs.constants.O_NOFOLLOW` there at all — so on that platform the open
+   * proceeds WITHOUT the flag and the protection is carried entirely by the `dev`/`ino`
+   * cross-check below: the path is `lstat`ed before the open, re-`lstat`ed after it, and
+   * both are compared against `fstat` of the OPEN DESCRIPTOR. A symlink swapped in
+   * between resolution and open changes what the second `lstat` sees, and a file swapped
+   * for another changes `dev`/`ino`, so either is refused.
+   *
+   * **This is WEAKER, not equivalent, and it is accepted knowingly** (plan 077 · #108).
+   * Two limits, stated rather than glossed:
+   *
+   *   - it is a check we perform, not an invariant the kernel enforces, so it closes the
+   *     window rather than removing it;
+   *   - NTFS file-index semantics are NOT identical to POSIX inodes — `ino` there is a
+   *     file index whose uniqueness and stability guarantees differ, so the comparison
+   *     is a strong signal on that platform rather than a proof of identity; and
+   *   - of the two comparisons below, only the pre-open-vs-post-open pair is exercised
+   *     by a control (`node-fs.test.ts`, both swap kinds, verified by mutation). The
+   *     comparison against `fstat` of the open descriptor is defence in depth and is
+   *     NOT independently proven: the fixture has one injection point, so a swap that
+   *     fools the `lstat` pair but not the descriptor cannot be staged deterministically.
+   *     Do not read it as a second guarantee; read it as a narrowing.
+   *
+   * It was previously fail-closed: with no `O_NOFOLLOW` this returned `io-error` without
+   * attempting any I/O. That was a considered choice, but its consequence was that the
+   * primitive could never read ANY file on Windows — so every consumer of it
+   * (`claude-adapter`, `copilot-adapter`, `copilot-vscode-adapter`) was silently blind
+   * there, reporting null capabilities and empty file lists. The relaxation was chosen
+   * because the alternative is not a stronger guarantee, it is a feature that does not
+   * work at all on that platform.
+   */
   readTextFileNoFollow(
     root: string,
     path: string,
@@ -117,13 +155,12 @@ export class NodeFs implements FsPort, FileSystemWritePort {
     if (confined.status === 'unavailable') return confined;
 
     const noFollow = this.noFollowFlag;
-    if (noFollow === null) return { status: 'unavailable', reason: 'io-error' };
     const nonBlock = typeof constants.O_NONBLOCK === 'number' ? constants.O_NONBLOCK : 0;
 
     let descriptor: number | null = null;
     try {
       this.beforeConfinedOpen?.();
-      descriptor = openSync(confined.path, constants.O_RDONLY | noFollow | nonBlock);
+      descriptor = openSync(confined.path, constants.O_RDONLY | (noFollow ?? 0) | nonBlock);
       const opened = fstatSync(descriptor);
       if (!opened.isFile()) return { status: 'unavailable', reason: 'non-file' };
       if (opened.size > maxBytes) return { status: 'unavailable', reason: 'oversize' };
@@ -231,6 +268,48 @@ export class NodeFs implements FsPort, FileSystemWritePort {
 
   writeBytes(path: string, contents: Uint8Array): void {
     writeFileSync(path, contents);
+  }
+
+  createExclusive(path: string, contents: string): boolean {
+    // 'wx' is open(O_CREAT|O_EXCL|O_WRONLY): the existence check and the create
+    // are ONE syscall, so there is no window for a second caller to slip between
+    // them. EEXIST means someone else won — a normal outcome, not an error.
+    let descriptor: number | null = null;
+    try {
+      descriptor = openSync(path, 'wx');
+      writeFileSync(descriptor, contents);
+      return true;
+    } catch {
+      return false;
+    } finally {
+      if (descriptor !== null) closeSync(descriptor);
+    }
+  }
+
+  appendText(path: string, contents: string): boolean {
+    // 'a' is open(O_CREAT|O_WRONLY|O_APPEND). Under O_APPEND the kernel makes the
+    // seek-to-end and the write ONE atomic operation, so two processes appending
+    // concurrently both survive — which a read-modify-write pair cannot do.
+    // ONE writeSync call, deliberately: the atomicity is per write(), so a record
+    // split across two calls could be interleaved by another process mid-record.
+    //
+    // A SHORT WRITE IS A FAILURE, NOT SOMETHING TO RETRY. Looping to write the
+    // remainder would be a SECOND write() — which is precisely the split this
+    // method exists to avoid, and another process could land a whole record
+    // between the halves, corrupting both. So a short write returns false and the
+    // caller treats the record as unwritten. Reporting a truncated line as
+    // success would put a corrupt entry in a file whose whole job is to be
+    // trustworthy when something has gone wrong.
+    let descriptor: number | null = null;
+    try {
+      const payload = Buffer.from(contents, 'utf8');
+      descriptor = openSync(path, 'a');
+      return writeSync(descriptor, payload) === payload.length;
+    } catch {
+      return false;
+    } finally {
+      if (descriptor !== null) closeSync(descriptor);
+    }
   }
 
   normalizeBundleTargetIdentity(target: string): string {

@@ -206,9 +206,21 @@ fix:
 format:
     npx biome format --write harness/cli
 
-# Run the CLI unit tests with coverage (report-only).
+# Run the CLI unit tests with coverage (report-only). FAST scope by default —
+# the 12 slow files (see SLOW_TESTS in harness/cli/vitest.config.ts) are skipped,
+# which is ~81% of the runtime for 5% of the tests. Every fast run prints what it
+# skipped. Use `just test-all` before pushing; CI always runs everything.
 test:
     cd harness/cli && npx vitest run --coverage
+
+# The 12 slow files ONLY (real git, fixture repos, PTY). Rarely needed directly —
+# `just test-all` is usually what you want.
+test-heavy:
+    cd harness/cli && HARNESS_TEST_SCOPE=slow npx vitest run
+
+# The FULL suite — the same scope CI gates on. Run before pushing.
+test-all:
+    cd harness/cli && HARNESS_TEST_SCOPE=all npx vitest run --coverage
 
 # Regenerate the real telemetry-fixture goldens from the adapters (plan 037).
 gen-telemetry-fixtures:
@@ -242,29 +254,6 @@ fft: fix format test lint-md windows-check
 checks:
     npm run build
     node harness/cli/bin/harness.js checks
-
-# Install this clone's telemetry git hooks (sets core.hooksPath -> .githooks). ARMS BOTH:
-#   pre-commit  — buffers ONE counts-only capture while HEAD is still the commit the work was
-#                 based on, so file evidence anchors to the right commit (plan 068). Capture
-#                 only: no sync, no push, no checks. Git HONOURS pre-commit's exit code, so
-#                 that file is structurally exit-0 (`trap 'exit 0' EXIT`, `set -u` banned).
-#                 Disarm just this one: export HARNESS_NO_TELEMETRY_PRECOMMIT=1
-#   post-commit — runs ONLY `harness telemetry sync`, a counts-only push to
-#                 refs/harness-telemetry/*, so each commit flushes buffered telemetry without
-#                 the model having to remember. Git IGNORES its exit code.
-# Neither is the old pre-push checks gate (no build, no tests, can't recurse: the sync push is
-# --no-verify, and a capture cannot trigger a commit). `harness doctor` warns when the flush
-# hook is missing and when the pre-commit hook's p95 goes over budget.
-# Standalone + idempotent (NOT a build dependency — opt in once). Undo: `git config --unset core.hooksPath`.
-install-hooks:
-    @if ! git rev-parse --git-dir >/dev/null 2>&1; then \
-        echo "… not a git checkout — skipping hook install"; \
-    elif [ "$(git config --get core.hooksPath || true)" = ".githooks" ]; then \
-        echo "✓ telemetry hooks already enabled (core.hooksPath=.githooks): pre-commit capture + post-commit flush."; \
-    else \
-        git config core.hooksPath .githooks && \
-        echo "✓ telemetry hooks enabled (core.hooksPath=.githooks) — pre-commit buffers one capture, post-commit runs harness telemetry sync, on every commit."; \
-    fi
 
 # Generate a fresh throwaway test repo (for real agent/manual extension testing); prints its path.
 test-repo dest="":

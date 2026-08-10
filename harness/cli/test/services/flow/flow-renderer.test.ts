@@ -62,16 +62,199 @@ const MERMAID_RUNNER = fileURLToPath(
 );
 
 type Fence = { path: string; text: string };
-function validateMermaid(fences: Fence[]): { path?: string; valid: boolean; error?: string }[] {
-  const out = execFileSync('node', [MERMAID_RUNNER, JSON.stringify(fences)], { encoding: 'utf8' });
+type FenceResult = { path?: string; valid: boolean; error?: string };
+
+const why = (e: unknown): string => (e as Error)?.message ?? String(e);
+const secs = (ms: number): string => `${(ms / 1000).toFixed(1)}s`;
+
+/**
+ * Node puts the ENTIRE argv into `Command failed: …`, and our argv is the JSON
+ * of every fence — tens of KB of mermaid source. Left alone, the message whose
+ * whole job is to make this failure legible becomes the reason nobody can read
+ * it (#108, found by fault injection). Swap the payload for its shape, keep one
+ * line; the parts a reader needs (status, signal, runner path, stderr head) are
+ * reported separately by the caller.
+ */
+const briefly = (msg: string, payload: string, fenceCount: number): string =>
+  msg.split('\n')[0].replace(payload, `<${fenceCount} fence(s), ${payload.length} bytes>`);
+
+/**
+ * This batch's timeout budget, and why it is a number here rather than the
+ * suite's 30s default (#108).
+ *
+ * This is NOT the suite ceiling being raised a second time, and the distinction
+ * is the whole justification. Round two refused a raise, correctly: raising a
+ * ceiling to accommodate work nobody had measured buys one quiet round and then
+ * the same failure, and it concedes the pattern. The work is measured now. This
+ * batch is ONE `node` spawn that loads mermaid + jsdom, clocked on the
+ * consumer's Windows box at 22.3s–27.5s. Against a 30s cap that is 1.09x, which
+ * is a coin toss rather than a budget. Sizing a budget to KNOWN work is a
+ * different act from raising a ceiling to hide UNKNOWN work — only the second
+ * one is the thing round two refused.
+ *
+ * 120s covers a two-attempt worst case on that box (~55s) with room to spare. A
+ * genuinely hung spawn still fails; it just takes longer to say so.
+ */
+const BATCH_BUDGET_MS = 120_000;
+
+/** Warn (do not fail) once the batch has eaten this share of its budget. */
+const BATCH_WARN_FRACTION = 0.5;
+
+/**
+ * Fail LEGIBLY when the batch overruns, because vitest will otherwise fail it
+ * ILLEGIBLY (#108) — and this is the mechanism that defeated the last fix.
+ *
+ * `execFileSync` blocks the event loop, so vitest's timeout timer cannot fire
+ * while the runner spawn is in flight. The rejection comes instead from a
+ * post-hoc elapsed check that runs AFTER the body returns: a test that ran to
+ * completion and asserted successfully is failed retroactively. Nothing throws,
+ * so a `try/catch` around the spawn — however carefully written — never sees a
+ * thing and produces nothing. That is not a handler bug; there is no error to
+ * handle.
+ *
+ * What gets reported then is a definition-site sentinel whose stack has been
+ * pasted over the real one:
+ *
+ *     Error: STACK_TRACE_ERROR
+ *         at task (@vitest/runner/dist/chunk-artifact.js:1784:27)
+ *         …collection frames, then this file's `it(` REGISTRATION line
+ *
+ * No command, no fence count, no exit status, no stderr, and a line number
+ * pointing at a registration site rather than at anything that failed. (The
+ * informative text does survive on `error.message`; only `error.stack` is
+ * clobbered, so whether a reader ever sees it depends on their reporter — CI
+ * logs and JSON/junit output read the stack. Upstream defect: the operands of
+ * that `.replace` are transposed relative to the correct siblings in the same
+ * file.)
+ *
+ * The escape hatch is that the post-hoc check guards the RESOLVE path only. An
+ * error we throw OURSELVES is passed straight through, untouched. So once the
+ * budget is already gone we throw first and keep our own message.
+ *
+ * This can only replace a failure vitest was about to raise anyway — it never
+ * invents one. Below the ceiling it warns and stays green, so a machine that is
+ * degrading says so before it starts failing.
+ */
+function guardBatchBudget(elapsedMs: number, fenceCount: number): void {
+  if (elapsedMs >= BATCH_BUDGET_MS) {
+    throw new Error(
+      `mermaid-runner batch OVERRAN its ${secs(BATCH_BUDGET_MS)} budget: ${fenceCount} ` +
+        `fence(s) took ${secs(elapsedMs)}. This is an environment/performance failure, not a ` +
+        'mermaid syntax error — the batch ran to completion, it was simply too slow to be ' +
+        'allowed to count.\n' +
+        `  runner: ${MERMAID_RUNNER}\n` +
+        '  the runner spawns `node` and loads mermaid + jsdom; that cost is process startup ' +
+        'and is flat in fence count, so this number measures the machine, not the diagrams.',
+    );
+  }
+  if (elapsedMs >= BATCH_BUDGET_MS * BATCH_WARN_FRACTION) {
+    process.stderr.write(
+      `\n[flow-renderer] mermaid-runner batch took ${secs(elapsedMs)} of its ` +
+        `${secs(BATCH_BUDGET_MS)} budget (${fenceCount} fence(s)) — still green, but this ` +
+        'box is slow enough that the margin is shrinking.\n' +
+        '[flow-renderer] that is an environment signal, not a mermaid one.\n',
+    );
+  }
+}
+
+/**
+ * ONE run of the mermaid-runner subprocess. Every failure path throws with the
+ * context a reader needs — what was run, how many fences, how the child died,
+ * and what it said. Previously a spawn failure surfaced as a bare vitest
+ * `STACK_TRACE_ERROR` sentinel against a line number, which names neither the
+ * cause nor the component (#108).
+ */
+function runMermaidOnce(fences: Fence[]): FenceResult[] {
+  const payload = JSON.stringify(fences);
+  let out: string;
+  try {
+    out = execFileSync('node', [MERMAID_RUNNER, payload], { encoding: 'utf8' });
+  } catch (e) {
+    const err = e as { status?: number | null; signal?: string | null; stderr?: string };
+    throw new Error(
+      `mermaid-runner did not run (${fences.length} fence(s), status=${err.status ?? 'none'}, ` +
+        `signal=${err.signal ?? 'none'}): ${briefly(why(e), payload, fences.length)}\n` +
+        `  runner: ${MERMAID_RUNNER}\n` +
+        `  stderr: ${
+          String(err.stderr ?? '')
+            .trim()
+            .slice(0, 400) || '(empty)'
+        }`,
+    );
+  }
   const last = out.trim().split('\n').filter(Boolean).pop() ?? '{}';
-  const parsed = JSON.parse(last) as {
-    ok: boolean;
-    loadError?: string;
-    results?: { path?: string; valid: boolean; error?: string }[];
-  };
+  let parsed: { ok: boolean; loadError?: string; results?: FenceResult[] };
+  try {
+    parsed = JSON.parse(last);
+  } catch {
+    throw new Error(
+      `mermaid-runner emitted output that is not JSON (${fences.length} fence(s)). ` +
+        `Last line was: ${last.slice(0, 300)}`,
+    );
+  }
   if (!parsed.ok) throw new Error(`mermaid-runner setup failed: ${parsed.loadError}`);
   return parsed.results ?? [];
+}
+
+/**
+ * Validate fences, retrying the subprocess ONCE.
+ *
+ * The retry is safe by construction, not by hope: the runner ALWAYS exits 0 and
+ * reports diagram validity inside its JSON (`valid:false` per fence), and it
+ * contains no `process.exit(1)` and no `exitCode` assignment. So a THROW out of
+ * here is *always* infrastructure — a spawn failure, a `node` crash, non-JSON
+ * output, or the runner's own setup branch — and can NEVER be a mermaid syntax
+ * regression. A real regression arrives as a result row and is caught by the
+ * assertions below; it never reaches this catch, so the retry structurally
+ * cannot mask the property under test.
+ *
+ * Why it exists: on the consumer's Windows box a child process costs ~1s
+ * (measured), and one transient spawn failure turned a green suite red with an
+ * error that explained nothing.
+ *
+ * BUDGET-AWARE (#108, round five). The safety argument above is about MASKING
+ * and says nothing about TIME, which was the incomplete question. A retry
+ * spends the SAME per-test budget as the first attempt, so on a box where one
+ * spawn costs ~25s a retry under the old 30s cap did not rescue the run — it
+ * guaranteed an overrun, converting a legible one-attempt failure into the
+ * unreadable sentinel described above. The retry was not wrong; the budget was
+ * too small to hold it. With the budget sized to the real work a second attempt
+ * fits comfortably, and we additionally refuse to START one that cannot finish
+ * inside what is left. Failing on the cause beats failing on the clock.
+ */
+function validateMermaid(fences: Fence[], startedAt: number): FenceResult[] {
+  try {
+    return runMermaidOnce(fences);
+  } catch (first) {
+    const firstCost = Date.now() - startedAt;
+    const remaining = Math.max(0, BATCH_BUDGET_MS - firstCost);
+    if (firstCost > remaining) {
+      throw new Error(
+        'mermaid-runner failed and the retry was SKIPPED — a second attempt could not have ' +
+          `finished inside the budget (attempt 1 cost ${secs(firstCost)}, leaving ` +
+          `${secs(remaining)} of ${secs(BATCH_BUDGET_MS)}). Retrying would spend the rest of ` +
+          'the budget and then fail on the clock instead of on the cause, replacing this ' +
+          'message with an unreadable timeout sentinel.\n' +
+          `  attempt 1: ${why(first)}`,
+      );
+    }
+    // A retry that heals silently hides a degrading machine, which is the
+    // opposite of what a suite is for. Say it happened, then carry on green.
+    process.stderr.write(
+      `\n[flow-renderer] mermaid-runner failed and is being retried ONCE — ${why(first)}\n` +
+        '[flow-renderer] if this line appears often, the machine is dropping child ' +
+        'processes; that is an environment signal, not a mermaid one.\n',
+    );
+    try {
+      return runMermaidOnce(fences);
+    } catch (second) {
+      throw new Error(
+        'mermaid-runner failed on BOTH attempts. This is an infrastructure failure, not a ' +
+          'mermaid syntax error — the runner reports invalid diagrams as results, never as a ' +
+          `throw.\n  attempt 1: ${why(first)}\n  attempt 2: ${why(second)}`,
+      );
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -79,57 +262,230 @@ function validateMermaid(fences: Fence[]): { path?: string; valid: boolean; erro
 // class (`id:::harness:::impOptional`) is a mermaid PARSE ERROR (STYLE_SEPARATOR)
 // that string-only golden comparison never caught — importance borders go via a
 // separate `class <id> <imp>;` statement instead.
+//
+// #108 · ALL THREE parse proofs share ONE mermaid-runner spawn.
+//
+// `validateMermaid` spawns `node` and that child loads mermaid + jsdom, so the
+// cost is process startup and is FLAT in the number of fences: measured on macOS
+// at 508ms for one fence vs 558ms for twenty — 19 extra fences cost 50ms, while
+// each extra spawn costs ~500ms. Three call sites meant three spawns, and on the
+// consumer's Windows box each of those three landed at 22.3s–27.5s against a
+// 30s timeout (1.09x headroom — a flake generator, not a pass).
+//
+// The consumer proposed collapsing to "one representative parse proof". That
+// would work but it would cost coverage: these are three DIFFERENT properties
+// over three DIFFERENT inputs (the whole golden corpus; the importance-border
+// regression that actually shipped once; the full TD-columns shape). Batching
+// instead makes the work cheaper without giving any of that up — the runner
+// already accepts an array of fences and reports per-fence results.
+//
+// Memoised rather than a `beforeAll` so a filtered run (`-t AC-01`) pays for no
+// mermaid spawn at all.
 // ---------------------------------------------------------------------------
 
-describe('flow-renderer · rendered mermaid is parse-valid (plan 040)', () => {
-  const fixtures = readdirSync(FIXTURE_DIR)
-    .filter((f) => f.endsWith('.json'))
-    .map((f) => f.replace(/\.json$/, ''));
+const PARSE_FIXTURES = readdirSync(FIXTURE_DIR)
+  .filter((f) => f.endsWith('.json'))
+  .map((f) => f.replace(/\.json$/, ''));
+
+/**
+ * A diagram mermaid genuinely rejects — the chained inline class (`:::a:::b`)
+ * that plan 040 exists to catch. Used as a live control on the runner's
+ * reporting contract, not as a renderer fixture.
+ */
+const INVALID_MERMAID = 'flowchart TD\n  a[A]:::done:::impOptional\n';
+
+/** The importance-border regression doc: a chained `:::a:::b` must never appear. */
+const importanceDoc = (): FlowDoc =>
+  doc([
+    // opt + strong are SPINE chore nodes — their importance border rides a separate
+    // `class <id> <imp>;` statement (gutter-folded excursions carry importance as a
+    // marker instead, but a spine chore still gets the border).
+    {
+      id: 'opt',
+      type: 'backpressure',
+      label: 'Opt',
+      status: 'done',
+      next: ['strong'],
+      chore: { kind: 'command', importance: 'optional' },
+    },
+    {
+      id: 'strong',
+      type: 'harness-retro',
+      label: 'Strong',
+      status: 'done',
+      next: ['ship'],
+      chore: { kind: 'command', importance: 'strongly-recommended' },
+    },
+    { id: 'ship', type: 'ship', label: 'Ship', status: 'assumed', next: [] },
+  ]);
+
+/** The full TD-columns shape (plan 043) — spine, collapsed excursions, chores, agents. */
+const td = (): FlowDoc =>
+  doc(
+    [
+      { id: 'research', type: 'research', label: 'Research', status: 'done', next: ['plan'] },
+      { id: 'plan', type: 'plan', label: 'Plan', status: 'done', next: ['p1'] },
+      { id: 'p1', type: 'phase', label: 'Phase 1', status: 'in_progress', next: ['ship'] },
+      { id: 'ship', type: 'merge', label: 'Ship', status: 'assumed', next: [] },
+      // plan's TWO excursions → must collapse into ONE box (AC-02)
+      {
+        id: 'wsA',
+        type: 'workshop',
+        label: 'WS A',
+        status: 'done',
+        branch_of: 'plan',
+        next: ['plan'],
+      },
+      {
+        id: 'wsB',
+        type: 'workshop',
+        label: 'WS B',
+        status: 'done',
+        branch_of: 'plan',
+        next: ['plan'],
+      },
+      // p1's excursions — a done chore + an incomplete strongly-recommended chore
+      {
+        id: 'boot',
+        type: 'harness-boot',
+        label: 'boot',
+        status: 'done',
+        branch_of: 'p1',
+        next: ['p1'],
+        chore: { kind: 'command', importance: 'recommended' },
+      },
+      {
+        id: 'sync',
+        type: 'harness-retro',
+        label: 'sync coverage',
+        status: 'todo',
+        branch_of: 'p1',
+        next: ['p1'],
+        chore: { kind: 'command', importance: 'strongly-recommended' },
+      },
+    ],
+    {
+      nav: { now: 'p1', next: 'ship' },
+      agents: [{ slug: 'reviewer', kind: 'companion', render: 'wrap', covers: ['p1'] }],
+    } as Partial<FlowDoc>,
+  );
+
+let parseBatch: Map<string, FenceResult> | undefined;
+let parseBatchFailure: string | undefined;
+
+/**
+ * Every fence all three proofs need, validated in ONE spawn, memoised.
+ *
+ * The FAILURE is memoised too, deliberately (#108). Caching only success meant a
+ * throw left the memo unset, so the next test silently re-spawned and passed —
+ * which made one transient spawn failure surface as a single red test whose
+ * identity depended on execution order, with the other two quietly retrying.
+ * Now the outcome is shared either way: if the batch cannot be validated, all
+ * three proofs say so with the same message, because none of the three
+ * properties is proven when the runner never ran.
+ */
+function parseBatchResults(): Map<string, FenceResult> {
+  if (parseBatchFailure !== undefined) {
+    throw new Error(
+      `${parseBatchFailure}\n  (this file's three parse proofs share one runner batch — ` +
+        'this is that same failure, not an additional one)',
+    );
+  }
+  if (parseBatch) return parseBatch;
+  const startedAt = Date.now();
+  const fences: Fence[] = [
+    ...PARSE_FIXTURES.map((name) => ({
+      path: `fixture:${name}`,
+      text: mermaidBlock(renderFlow(loadFixture(name))),
+    })).filter((f) => f.text.length > 0),
+    ...mermaidBlocks(renderFlow(importanceDoc())).map((text, i) => ({
+      path: `importance:${i}`,
+      text,
+    })),
+    { path: 'td', text: mermaidBlock(renderFlow(td())) },
+    // The retry's precondition, carried IN the batch — see the assertion below.
+    // Costs no extra spawn (fence cost is flat) and cannot affect the three real
+    // proofs: the runner try/catches per fence, so an invalid one returns
+    // `valid:false` beside its siblings' `valid:true` (verified against the
+    // runner directly), and it sits under its own `contract:` key prefix.
+    { path: 'contract:invalid', text: INVALID_MERMAID },
+  ];
+  try {
+    const results = validateMermaid(fences, startedAt);
+    // AFTER the spawn, BEFORE we hand back a result vitest would retroactively
+    // reject — see `guardBatchBudget`. Ordered this way deliberately: an
+    // overrun here is reported as an overrun, not as whatever the caller
+    // asserted next.
+    guardBatchBudget(Date.now() - startedAt, fences.length);
+    parseBatch = new Map(results.map((r) => [r.path ?? '', r]));
+  } catch (e) {
+    parseBatchFailure = why(e);
+    throw e;
+  }
+  return parseBatch;
+}
+
+/**
+ * The fences batched under one key prefix. Asserts it matched something: an
+ * empty result set would otherwise satisfy "nothing invalid" vacuously, which is
+ * how a parse proof silently stops proving anything.
+ */
+function fencesUnder(prefix: string): { key: string; valid: boolean; error?: string }[] {
+  const hits = [...parseBatchResults()]
+    .filter(([key]) => key === prefix || key.startsWith(`${prefix}:`))
+    .map(([key, r]) => ({ key, ...r }));
+  expect(hits.length, `no mermaid fences batched under '${prefix}'`).toBeGreaterThan(0);
+  return hits;
+}
+
+/**
+ * The budget rides the SUITE, not one test, because the payer is whichever of
+ * these three runs FIRST — `parseBatchResults` memoises, so the first caller
+ * pays for the shared spawn and the other two are free. Which one that is
+ * depends on execution order, so all three must be able to afford it.
+ */
+describe('flow-renderer · rendered mermaid is parse-valid (plan 040)', {
+  timeout: BATCH_BUDGET_MS,
+}, () => {
+  /**
+   * ENCODES THE RETRY'S PRECONDITION (#108) — do not delete without reading
+   * `validateMermaid`.
+   *
+   * `validateMermaid` retries the runner once, and that is only safe because a
+   * mermaid parse failure is reported as DATA (`valid:false` in the results)
+   * rather than as a non-zero exit. If it ever became an exit code,
+   * `execFileSync` would throw, the retry would fire on a genuine regression,
+   * and it would silently become a mask for the exact defect these proofs exist
+   * to catch.
+   *
+   * That property lived only in a comment, which is a control with no failure
+   * mode. Here it is an assertion instead: the day someone adds a non-zero exit
+   * to `mermaid-runner.mjs`, the whole batch throws and this goes red at the
+   * moment the mask is introduced, rather than after it has hidden something.
+   * It rides the existing batch, so it costs no additional spawn.
+   */
+  it('a parse failure comes back as DATA, never as a throw (the retry rests on this)', () => {
+    const [res] = fencesUnder('contract');
+    expect(res?.valid, 'an invalid diagram must arrive as a result row, not an exit code').toBe(
+      false,
+    );
+  });
 
   it('every golden fixture renders syntactically valid mermaid (headless mermaid.parse)', () => {
-    const fences = fixtures
-      .map((name) => ({ path: name, text: mermaidBlock(renderFlow(loadFixture(name))) }))
-      .filter((f) => f.text.length > 0);
-    const results = validateMermaid(fences);
-    const invalid = results.filter((r) => !r.valid);
+    const invalid = fencesUnder('fixture').filter((r) => !r.valid);
     expect(invalid, `invalid mermaid fences: ${JSON.stringify(invalid)}`).toHaveLength(0);
   });
 
   it('importance borders use a separate `class` statement, never a chained `:::a:::b`', () => {
-    const out = renderFlow(
-      doc([
-        // opt + strong are SPINE chore nodes — their importance border rides a separate
-        // `class <id> <imp>;` statement (gutter-folded excursions carry importance as a
-        // marker instead, but a spine chore still gets the border).
-        {
-          id: 'opt',
-          type: 'backpressure',
-          label: 'Opt',
-          status: 'done',
-          next: ['strong'],
-          chore: { kind: 'command', importance: 'optional' },
-        },
-        {
-          id: 'strong',
-          type: 'harness-retro',
-          label: 'Strong',
-          status: 'done',
-          next: ['ship'],
-          chore: { kind: 'command', importance: 'strongly-recommended' },
-        },
-        { id: 'ship', type: 'ship', label: 'Ship', status: 'assumed', next: [] },
-      ]),
-    );
+    const out = renderFlow(importanceDoc());
     // the bug: no chained inline class token anywhere in the diagram
     expect(out).not.toMatch(/:::[A-Za-z][\w-]*:::/);
     // importance applied as separate, valid `class` statements
     expect(out).toContain('class opt impOptional;');
     expect(out).toContain('class strong impStrong;');
     // and every fence actually parses
-    for (const block of mermaidBlocks(out)) {
-      const [res] = validateMermaid([{ path: 'importance', text: block }]);
-      expect(res.valid, `mermaid error: ${res.error}`).toBe(true);
-    }
+    const invalid = fencesUnder('importance').filter((r) => !r.valid);
+    expect(invalid, `mermaid errors: ${JSON.stringify(invalid)}`).toHaveLength(0);
   });
 });
 
@@ -863,56 +1219,6 @@ describe('flow-renderer · zoned rail (bands pre ─ [ flight ] ─ post + title
 // the per-node 🗣 user_input bubble is dropped. Golden: reference-td-columns-format.md.
 // ---------------------------------------------------------------------------
 describe('flow-renderer · TD two-column layout (plan 043; AC-01..05)', () => {
-  const td = (): FlowDoc =>
-    doc(
-      [
-        { id: 'research', type: 'research', label: 'Research', status: 'done', next: ['plan'] },
-        { id: 'plan', type: 'plan', label: 'Plan', status: 'done', next: ['p1'] },
-        { id: 'p1', type: 'phase', label: 'Phase 1', status: 'in_progress', next: ['ship'] },
-        { id: 'ship', type: 'merge', label: 'Ship', status: 'assumed', next: [] },
-        // plan's TWO excursions → must collapse into ONE box (AC-02)
-        {
-          id: 'wsA',
-          type: 'workshop',
-          label: 'WS A',
-          status: 'done',
-          branch_of: 'plan',
-          next: ['plan'],
-        },
-        {
-          id: 'wsB',
-          type: 'workshop',
-          label: 'WS B',
-          status: 'done',
-          branch_of: 'plan',
-          next: ['plan'],
-        },
-        // p1's excursions — a done chore + an incomplete strongly-recommended chore
-        {
-          id: 'boot',
-          type: 'harness-boot',
-          label: 'boot',
-          status: 'done',
-          branch_of: 'p1',
-          next: ['p1'],
-          chore: { kind: 'command', importance: 'recommended' },
-        },
-        {
-          id: 'sync',
-          type: 'harness-retro',
-          label: 'sync coverage',
-          status: 'todo',
-          branch_of: 'p1',
-          next: ['p1'],
-          chore: { kind: 'command', importance: 'strongly-recommended' },
-        },
-      ],
-      {
-        nav: { now: 'p1', next: 'ship' },
-        agents: [{ slug: 'reviewer', kind: 'companion', render: 'wrap', covers: ['p1'] }],
-      } as Partial<FlowDoc>,
-    );
-
   it('AC-01 — emits exactly one `flowchart TD` with a single connected spine chain', () => {
     const out = renderFlow(td());
     expect(mermaidBlocks(out)).toHaveLength(1);
@@ -975,7 +1281,7 @@ describe('flow-renderer · TD two-column layout (plan 043; AC-01..05)', () => {
   });
 
   it('emits valid mermaid for the full TD-columns shape (headless mermaid.parse)', () => {
-    const [res] = validateMermaid([{ path: 'td', text: mermaidBlock(renderFlow(td())) }]);
+    const [res] = fencesUnder('td');
     expect(res.valid, `mermaid error: ${res.error}`).toBe(true);
   });
 });

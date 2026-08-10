@@ -11,6 +11,8 @@ export class FakeFs implements FsPort, FileSystemWritePort {
   readonly reads: string[] = [];
   readonly mtimeReads: string[] = [];
   readonly writes: string[] = [];
+  /** Paths appended to via {@link appendText}. Kept apart from `writes` on purpose. */
+  readonly appends: string[] = [];
   readonly mkdirs: string[] = [];
   /** Every rename as a `${from}->${to}` pair (fakes over mocks — assert on history). */
   readonly renames: string[] = [];
@@ -195,6 +197,46 @@ export class FakeFs implements FsPort, FileSystemWritePort {
     return names;
   }
 
+  createExclusive(path: string, contents: string): boolean {
+    // Models the O_EXCL branch, including the loser: a path that already exists
+    // (as text OR bytes) is NOT created and NOT overwritten.
+    if (path in this.files || this.byteFiles.has(path)) return false;
+    this.writes.push(path);
+    this.files[path] = contents;
+    // Same mtime stamping as writeText: a claim marker's age is what the pruner
+    // orders by, so the fake must age files exactly as NodeFs does or the two
+    // would prune different survivors.
+    this.mtimes[path] = this.nextMtime++;
+    return true;
+  }
+
+  appendText(path: string, contents: string): boolean {
+    // Models O_APPEND: the record is added to whatever is already there, and no
+    // existing byte is ever rewritten. Tracked separately from `writes` so a test
+    // can assert that a code path APPENDED and never REWROTE — the distinction
+    // this port exists for.
+    //
+    // The missing-parent REFUSAL is modelled deliberately. `NodeFs` returns false
+    // there (open(2) fails ENOENT), and a fake that cheerfully succeeded would
+    // hide the difference until a service that only ever ran against the fake met
+    // a real filesystem — the exact divergence that makes a fake worse than no
+    // fake. MEASURED before it was fixed: NodeFs false, FakeFs true.
+    const parent = path.slice(0, Math.max(0, path.lastIndexOf('/')));
+    const parentKnown =
+      parent === '' ||
+      this.madeDirs.has(parent) ||
+      parent in this.dirs ||
+      // An existing file proves its directory exists, however it got there.
+      path in this.files ||
+      this.byteFiles.has(path);
+    if (!parentKnown) return false;
+
+    this.appends.push(path);
+    this.files[path] = (this.files[path] ?? '') + contents;
+    this.mtimes[path] = this.nextMtime++;
+    return true;
+  }
+
   mkdirp(path: string): void {
     this.mkdirs.push(path);
     // Register each ancestor segment so exists() models a recursive create
@@ -362,9 +404,21 @@ export class FakeFs implements FsPort, FileSystemWritePort {
     const source = src.replace(/\\/g, '/').replace(/\/+$/, '');
     const target = dest.replace(/\\/g, '/').replace(/\/+$/, '');
     this.copyDirs.push({ src, dest });
+    // Compare NORMALISED against NORMALISED (#108). `source` is already POSIX, but
+    // the seeded keys are whatever the test wrote — and a test that derives them
+    // from a real path (`resolvePackagedSkillsDir()`) hands us backslashes on
+    // win32. Testing a POSIX needle against raw keys made this the one step in
+    // copyDir that did NOT tolerate separators, so the whole method reported "no
+    // such source" and every caller through the packaged-skills staging path
+    // failed on Windows only. The copy loop below already normalises; this now
+    // matches it.
+    const asPosix = (p: string): string => p.replace(/\\/g, '/');
     const hasSource =
-      source in this.dirs ||
-      Object.keys(this.files).some((p) => p === source || p.startsWith(`${source}/`));
+      Object.keys(this.dirs).some((d) => asPosix(d) === source) ||
+      Object.keys(this.files).some((p) => {
+        const q = asPosix(p);
+        return q === source || q.startsWith(`${source}/`);
+      });
     if (!hasSource) return false;
 
     this.mkdirp(target);

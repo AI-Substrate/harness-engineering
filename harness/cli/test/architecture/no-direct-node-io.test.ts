@@ -20,12 +20,22 @@ function tsFiles(dir: string): string[] {
   return out;
 }
 
-const FORBIDDEN = [/from\s+['"]node:fs['"]/, /from\s+['"]node:child_process['"]/];
+const FORBIDDEN = [
+  /from\s+['"]node:fs['"]/,
+  /from\s+['"]node:child_process['"]/,
+  // `node:net` added by plan 082 tk-0001. Until then this guard was BLIND to it: a service
+  // importing node:net passed `just checks` with the suite reporting "0 offender(s)", so the
+  // plan's G3 note claiming this guard already covered socket I/O was false. Socket I/O belongs
+  // behind `SocketRelayPort` (src/adapters/net/socket-probe-port.ts, plan 074) exactly as fs and
+  // child_process belong behind their ports.
+  /from\s+['"]node:net['"]/,
+];
 
 describe('architecture — services keep Node I/O behind ports', () => {
-  it('no service imports node:fs or node:child_process directly (KF-06)', () => {
-    // Side-effecting Node I/O lives only in adapters (NodeFs, NodeExec, NodeProcess, ExecGit);
-    // services depend on the ports, never the raw modules. node:path/node:url (pure) are allowed.
+  it('no service imports node:fs, node:child_process or node:net directly (KF-06)', () => {
+    // Side-effecting Node I/O lives only in adapters (NodeFs, NodeExec, NodeProcess, ExecGit,
+    // NodeSocketProbe); services depend on the ports, never the raw modules. node:path/node:url
+    // (pure) are allowed.
     // Narrow exception: the GENERATED docs data module embeds documentation prose verbatim — a doc
     // that quotes `from 'node:fs'` must not false-trip this guard. Only that one known generated
     // data artifact is exempt (a `@generated` header alone is NOT enough — scope the escape hatch

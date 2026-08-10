@@ -1,0 +1,57 @@
+{
+ "dd": {
+  "schema": "builder/plan"
+ },
+ "sections": [
+  {
+   "name": "meta",
+   "value": {
+    "title": "Phase 3: Round two — the flake class we created, and the one product smell",
+    "slug": "phase-3",
+    "status": "in-progress",
+    "summary": ""
+   }
+  },
+  {
+   "name": "summary",
+   "value": "Round two: fix the flake class round one created, trace the one suspected product smell, then stop."
+  },
+  {
+   "name": "tasks",
+   "value": [
+    {
+     "id": "tk-0201",
+     "title": "Fix the eight 30s-ceiling cases so they are not sitting at flake margin. THIS IS OUR OWN REGRESSION: round one killed the 5s class and created a 30s one. Prefer making the WORK cheaper over raising the ceiling again — raising it a second time concedes the pattern and buys another round of the same. The consumer's suggested cheap win: the three flow-renderer mermaid-parse cases account for ~76s between them and look consolidatable to ONE representative parse proof without losing the property under test. Verify that claim before acting on it.",
+     "state": "unchecked",
+     "satisfies": [
+      "../../../plan.dd.json#acceptance_criteria/ac-000c"
+     ],
+     "note": "OPEN — the batching work is DONE, the eight-case outcome is NOT, and ac-000c stays unchecked. Left open deliberately rather than closing the outcome to make the task tidy (review P3). DONE: consumer's consolidation claim verified then declined for something better — the cost is process SPAWNS not assertions (measured flat: 1 fence 508ms vs 20 fences 558ms), so all three parse proofs share ONE memoised spawn and keep every assertion, 3 spawns -> 1, same 58 tests. NOT DONE: the surviving case's Windows elapsed time is UNMEASURED (an earlier '~26s / 1.15x' figure was derived, not measured, and is withdrawn — review P2); one spawn remains where three were and whether that clears the ceiling is theirs to measure. The other five ceiling cases are NOT fixed and now have a MEASURED candidate mechanism, replacing this note's earlier false claim that they were fully faked with no mechanism (review P1): a read-only child_process observer recorded 144 spawns across both files, 99 of them (69%) in those five cases, at exactly 9 per doctor run — git rev-parse x3, config, symbolic-ref, merge-base, rev-list, notes, and which/where node. Cause verified at source: acts/doctor.ts runReport() constructs NodeFs/ExecGit/ExecGitAttribution itself, so injected fakes are accepted and ignored. Deliberately NOT fixed — new item, consumer ranks it. Candidate, not cause: their medians do not scale with spawn count."
+    },
+    {
+     "id": "tk-0202",
+     "title": "Trace skills.test.ts's 10 failures to a root cause and classify: product defect or test-environment. fileURLToPath(new URL('../../../../../skills', moduleUrl)) at skills-service.ts:19 — that is src/, not test/. Do NOT assume it is a product defect because it lives in src, and do NOT assume it is environmental because it only shows on Windows. Trace it and say which, with evidence. If it IS a product defect it outranks everything else in this plan, including this phase.",
+     "state": "checked",
+     "satisfies": [
+      "../../../plan.dd.json#acceptance_criteria/ac-000d"
+     ],
+     "note": "CLASSIFIED: test-environment, NOT a product defect — nothing here outranks the phase. skills-service.ts:19 explains 1 of the 10 (the drive-letter-less fixture at skills.test.ts:51); the other 9 are FakeFs.copyDir comparing a POSIX-normalised needle against raw seeded keys. Traced with fileURLToPath(url,{windows:true}) over four realistic win32 module URLs — the product resolver cannot throw. 9+1=10, mechanism verified for BOTH parts. 'It is in src/' was true of FakeFs too and load-bearing for neither. Consumer's independent trace found a DIFFERENT mechanism; evidence supports (a) theirs is a real door this route never reaches, and CANNOT distinguish (c) theirs live on their tree and mine on ours. Fix landed under prime's carve-out; controls demonstrated red-before/green-after. Confirmed by review. EXPECTED, UNVERIFIED on win32."
+    },
+    {
+     "id": "tk-0203",
+     "title": "Report the three columns for round two and state plainly whether the consumer's number moves. Round one moved it 134 -> 60. If this round moves it by ~8 (the timeouts) and the skills trace turns out environmental, say so — do not let two tasks read as more progress than the measurement supports.",
+     "state": "unchecked",
+     "satisfies": [
+      "../../../plan.dd.json#acceptance_criteria/ac-000c",
+      "../../../plan.dd.json#acceptance_criteria/ac-000d"
+     ],
+     "note": "REPORT DELIVERED, ROW LEFT OPEN. The three columns are written and committed (assets/tasks/phase-3/execution.log.md); the row stays unchecked because it rests on ac-000c, which round two did not close — closing it would make the task tidy at the cost of the partial being visible (review P3). FIXED 10 (skills) + 2 (flow-renderer timeouts) / DECLARED 0 / RECOVERED 0, never a mixed total. Expected 60 -> ~48, of which 10 of ~12 are the skills fix; the skills trace came back ENVIRONMENTAL, the surviving timeout case's Windows elapsed is UNMEASURED, and six ceiling cases are untouched — five now with a MEASURED candidate mechanism (99 spawns), replacing this log's retracted 'no mechanism was found'. Denominator +1 counted from the diff; local 5124 is NOT comparable to round one's 5116 (a main merge landed between them). Local: 5124/5124 three consecutive clean runs, just checks every hard gate ok."
+    }
+   ]
+  },
+  {
+   "name": "done_when",
+   "value": {}
+  }
+ ]
+}
