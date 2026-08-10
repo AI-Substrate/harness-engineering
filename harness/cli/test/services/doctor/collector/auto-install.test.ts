@@ -832,3 +832,81 @@ describe('F2 — a refusal is announced as a refusal, and still never latches', 
     expect(outcome.detail).not.toContain('no AI attribution is being collected');
   });
 });
+
+describe('the bare-name rungs route to the heal ONLY where a heal exists (plan 082, windows arm)', () => {
+  const WBIN = '/home/u/.git-ai/bin/git-ai.exe';
+  const SHIM = '/home/u/AppData/Local/Microsoft/WindowsApps/git-ai.exe';
+
+  function winState(): CollectorState {
+    return {
+      ...healthyState(),
+      cli: { ...healthyState().cli, path: WBIN },
+    };
+  }
+  function winPin() {
+    return {
+      ...GITAI_PIN,
+      artifacts: {
+        ...GITAI_PIN.artifacts,
+        'windows-arm64': { file: 'git-ai-windows-arm64.exe', sha256: DIGEST },
+      },
+    } as typeof GITAI_PIN;
+  }
+
+  it('win32: an unresolvable bare name triggers the lifecycle, which places the shim', async () => {
+    const fs = new FakeCollectorFs();
+    fs.seedBytes(WBIN, PAYLOAD);
+    fs.mkdirp(`${HOME}/.claude`);
+    fs.writeText(collectorStatePath(REPO), JSON.stringify(winState()));
+    const exec = new FakeSequencedExec(
+      {
+        [`${WBIN} --version`]: { code: 0, stdout: 'git-ai 1.6.22' },
+        [TRACE2_READ]: [
+          { code: 1, stdout: '' },
+          {
+            code: 0,
+            stdout:
+              'trace2.eventtarget af_unix:/home/u/.git-ai/internal/daemon/trace2.sock\ntrace2.eventnesting 5\n',
+          },
+        ],
+        [`${WBIN} install-hooks`]: { code: 0, stdout: 'Claude Code: Hooks updated\n' },
+        [`${WBIN} status --json`]: { code: 0, stdout: '{"schema_version":"authorship/3.0.0"}' },
+      },
+      {
+        [`${WBIN} install-hooks`]: {
+          [`${HOME}/.claude/settings.json`]: '{"hooks":{"git-ai":true}}',
+        },
+      },
+      fs,
+    );
+
+    const outcome = await autoInstallCollector(
+      deps({
+        fs,
+        exec,
+        host: { platform: 'win32', arch: 'arm64', home: HOME },
+        manifest: winPin(),
+        env: (name) => (name === 'PATH' ? 'C:\\Windows\\system32' : undefined),
+      }),
+    );
+
+    expect(outcome.action).toBe('installed');
+    expect(fs.readBytesNoFollow(SHIM)).toEqual(PAYLOAD);
+  });
+
+  it('non-win32: the same verdict stays QUIET — no heal exists, and re-running install-hooks on every doctor is a mutation, not a fix', async () => {
+    const fs = new FakeCollectorFs();
+    fs.seedBytes(BINARY, PAYLOAD);
+    fs.writeText(collectorStatePath(REPO), JSON.stringify(healthyState()));
+
+    const outcome = await autoInstallCollector(
+      deps({
+        fs,
+        env: (name) => (name === 'PATH' ? '/usr/bin:/usr/local/bin' : undefined),
+      }),
+    );
+
+    expect(outcome.action).toBe('not-needed');
+    expect(fs.exists('/home/u/AppData/Local/Microsoft/WindowsApps/git-ai')).toBe(false);
+  });
+});

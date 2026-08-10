@@ -133,6 +133,13 @@ export interface CollectorDeps {
    * `manifest` in code and "the pin" in prose.
    */
   manifest?: CollectorPin;
+  /**
+   * Env accessor for the PATH-resolution rung (plan 082, windows arm). Optional
+   * and injected: without it the auto-install health read simply does not
+   * evaluate bare-name resolution — absence never manufactures a warning, and
+   * fake-driven tests stay unaffected.
+   */
+  env?: (name: string) => string | undefined;
 }
 
 /** Wall-clock ceilings. A collector install must never hang a doctor run. */

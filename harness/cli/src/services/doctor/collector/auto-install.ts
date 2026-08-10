@@ -2,6 +2,7 @@ import { readAutoInstallBlock, writeAutoInstallBlock } from './auto-install-bloc
 import { readCollectorHealth } from './health.js';
 import { installCollector, recheckCollector } from './install.js';
 import { GITAI_PIN } from './pin.js';
+import { lookupGitAiOnPath } from './platform.js';
 import { mayInstallHooks, readGlobalTrace2 } from './trace2.js';
 import type { CollectorDeps } from './types.js';
 
@@ -151,11 +152,20 @@ export async function autoInstallCollector(
 }
 
 async function decide(deps: CollectorDeps): Promise<AutoInstallOutcome> {
+  // The PATH-resolution rung is evaluated here too, when an env accessor was
+  // wired — otherwise a bare doctor would WARN binary-not-on-path in its report
+  // row while this decision, reading health without the lookup, saw `healthy`
+  // and stayed quiet: a self-heal that cannot see the state it heals.
+  const pathLookup =
+    deps.env === undefined
+      ? undefined
+      : lookupGitAiOnPath(deps.fs, deps.host.platform, deps.env('PATH'));
   const health = readCollectorHealth({
     fs: deps.fs,
     host: deps.host,
     cwd: deps.cwd,
     hash: deps.hash,
+    ...(pathLookup !== undefined ? { pathLookup } : {}),
     ...(deps.manifest !== undefined ? { manifest: deps.manifest } : {}),
   });
 
@@ -246,6 +256,22 @@ async function decide(deps: CollectorDeps): Promise<AutoInstallOutcome> {
 
     case 'hooks-incomplete':
       return runLifecycle(deps, 'rechecked');
+
+    case 'binary-not-on-path':
+    case 'binary-shadowed-on-path':
+      // Installed and verified, but the bare name resolves to nothing (or to
+      // bytes that are not the pin) — the exact state the win32 shim step in
+      // `installCollector` heals. Cheap on re-entry: the already-current
+      // short-circuit skips the download and only the shim is ensured. The
+      // machine-wide failure block in `runLifecycle` still applies.
+      //
+      // WIN32 ONLY, because that is where a heal EXISTS. Routing a platform
+      // with no shim step here would re-run the whole lifecycle — including
+      // `install-hooks`, a mutation — on every bare doctor, forever, and fix
+      // nothing. Elsewhere the doctor row keeps warning and the operator owns
+      // their PATH.
+      if (deps.host.platform !== 'win32') return quiet();
+      return runLifecycle(deps, 'installed');
 
     default:
       return quiet();

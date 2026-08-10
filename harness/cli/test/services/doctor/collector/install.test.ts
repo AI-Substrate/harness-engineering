@@ -681,3 +681,100 @@ describe('the skills guard declines to destroy rather than choosing a destructio
     expect(result.hooks).toBe('skipped-skills');
   });
 });
+
+describe('the win32 PATH shim — install makes the bare name resolve (plan 082, windows arm)', () => {
+  const WBIN = '/home/u/.git-ai/bin/git-ai.exe';
+  const SHIM = '/home/u/AppData/Local/Microsoft/WindowsApps/git-ai.exe';
+  const WIN_URL = `${GITAI_PIN.release_base_url}/${GITAI_PIN.version}/git-ai-windows-arm64.exe`;
+
+  function winPin() {
+    const digest = new NodeHash().sha256Hex(PAYLOAD);
+    return {
+      ...GITAI_PIN,
+      artifacts: {
+        ...GITAI_PIN.artifacts,
+        'windows-arm64': { file: 'git-ai-windows-arm64.exe', sha256: digest },
+      },
+    } as typeof GITAI_PIN;
+  }
+
+  function winDeps(fs = new FakeCollectorFs()): CollectorDeps & { fs: FakeCollectorFs } {
+    fs.mkdirp(`${HOME}/.claude`);
+    const exec = new FakeSequencedExec(
+      {
+        [`${WBIN} --version`]: { code: 0, stdout: 'git-ai 1.6.22' },
+        [TRACE2_GET]: TRACE2_EMPTY_THEN_INSTALLED,
+        [`${WBIN} install-hooks`]: { code: 0, stdout: 'Claude Code: Hooks updated\n' },
+        [`${WBIN} status --json`]: { code: 0, stdout: '{"schema_version":"authorship/3.0.0"}' },
+      },
+      {
+        [`${WBIN} install-hooks`]: {
+          [`${HOME}/.claude/settings.json`]: '{"hooks":{"git-ai":true}}',
+        },
+      },
+      fs,
+    );
+    return {
+      fs,
+      exec,
+      hash: new NodeHash(),
+      paths: new FakePathKind(),
+      http: new FakeDownload({ [WIN_URL]: ok200(PAYLOAD) }),
+      exe: new FakeExecutableBit(),
+      clock: new FakeClock(NOW),
+      host: { platform: 'win32', arch: 'arm64', home: HOME },
+      cwd: REPO,
+      manifest: winPin(),
+    };
+  }
+
+  it('places a digest-verified copy in WindowsApps and DISCLOSES it', async () => {
+    const d = winDeps();
+
+    const result = await installCollector(d);
+
+    expect(result.cli).toBe('installed');
+    expect(d.fs.readBytesNoFollow(SHIM)).toEqual(PAYLOAD);
+    expect(result.disclosures.some((line) => line.includes(SHIM))).toBe(true);
+    expect(result.warnings.filter((w) => w.includes('shim'))).toEqual([]);
+  });
+
+  it('replaces a stale shim with the pinned bytes', async () => {
+    const fs = new FakeCollectorFs();
+    fs.writeBytes(SHIM, new TextEncoder().encode('an older git-ai'));
+
+    await installCollector(winDeps(fs));
+
+    expect(fs.readBytesNoFollow(SHIM)).toEqual(PAYLOAD);
+  });
+
+  it('a failed shim write WARNS by name and never fails the install', async () => {
+    const d = winDeps();
+    const blocked = new Proxy(d.fs, {
+      get(target, prop, receiver) {
+        if (prop === 'writeBytes') {
+          return (path: string, contents: Uint8Array) => {
+            if (path === SHIM) throw new Error('EACCES: denied');
+            return d.fs.writeBytes(path, contents);
+          };
+        }
+        return Reflect.get(target, prop, receiver);
+      },
+    });
+
+    const result = await installCollector({ ...d, fs: blocked });
+
+    expect(result.cli).toBe('installed');
+    expect(result.warnings.some((w) => w.includes(SHIM) && w.includes('KnownHuman'))).toBe(true);
+    expect(result.disclosures.some((line) => line.includes(SHIM))).toBe(false);
+  });
+
+  it('non-win32 installs never write a shim', async () => {
+    const d = deps();
+
+    await installCollector(d);
+
+    expect(d.fs.exists('/home/u/AppData/Local/Microsoft/WindowsApps/git-ai.exe')).toBe(false);
+    expect(d.fs.exists('/home/u/AppData/Local/Microsoft/WindowsApps/git-ai')).toBe(false);
+  });
+});

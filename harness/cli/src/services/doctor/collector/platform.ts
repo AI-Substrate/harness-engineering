@@ -82,6 +82,24 @@ export function daemonPidPathFor(home: string): string {
   return `${home.replace(/\/+$/, '')}/.git-ai/internal/daemon/daemon.pid.json`;
 }
 
+/**
+ * Where the win32 self-heal places a spawnable `git-ai.exe` so the BARE NAME
+ * resolves — `%LOCALAPPDATA%\Microsoft\WindowsApps`, composed from the home the
+ * way every path here is.
+ *
+ * WHY THIS DIRECTORY, all measured on the Windows fixture (2026-08-10):
+ * user-writable with no elevation and no UAC, on every user's DEFAULT PATH, no
+ * execution-alias interference with a real exe — and a RUNNING editor already
+ * has it in its inherited environment, so resolution starts working on the next
+ * save with no restart. The install dir (`~/.git-ai/bin`) is on no PATH by
+ * default, and git-ai's own extension spawns the bare name in production; that
+ * gap silently killed every save-time KnownHuman attestation (see
+ * docs/plans/082-harness-hooks/assets/windows/root-cause-extension-cannot-find-git-ai.md).
+ */
+export function windowsAppsShimPathFor(home: string): string {
+  return `${home.replace(/\/+$/, '')}/AppData/Local/Microsoft/WindowsApps/git-ai.exe`;
+}
+
 /** The answer to "would a child process spawning the bare name `git-ai` find it?". */
 export interface PathLookup {
   /** First PATH entry that holds a spawnable git-ai, or null when none does. */

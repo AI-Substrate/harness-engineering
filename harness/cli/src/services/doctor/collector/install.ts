@@ -5,7 +5,12 @@ import { downloadAndVerify } from './download.js';
 import { agentEvidence, snapshotAgentConfigs } from './evidence.js';
 import { describeExit } from './exit-code.js';
 import { GITAI_PIN } from './pin.js';
-import { binaryPathFor, configPathFor, resolveArtifact } from './platform.js';
+import {
+  binaryPathFor,
+  configPathFor,
+  resolveArtifact,
+  windowsAppsShimPathFor,
+} from './platform.js';
 import { manualSkillsInstructions, readSkillsGuard } from './skills-guard.js';
 import {
   type CollectorState,
@@ -771,6 +776,27 @@ export async function installCollector(deps: CollectorDeps): Promise<CollectorIn
     }
   }
 
+  // WIN32 SELF-HEAL: make the BARE NAME resolve (plan 082, windows arm). The
+  // install dir is on no PATH by default, and git-ai's editor extension spawns
+  // the literal string `git-ai` on every save — so without this, a placed and
+  // verified install still records zero save-time KnownHuman attestations and
+  // human lines fall to the agent (the measured 0-of-28 defect). A digest-
+  // verified COPY into WindowsApps, not a hardlink or a PATH edit: the copy
+  // needs no elevation and no editor restart (a running editor already has
+  // WindowsApps on its inherited PATH — measured), a PATH edit reaches only
+  // processes launched after it, and a hardlink survives in-place updates but
+  // strands on replace-by-rename — while a copy is ALWAYS either current or
+  // digest-stale, and the `binary-shadowed-on-path` doctor rung sees a stale
+  // copy the moment it looks. Re-ensured on every install; warn-only, and
+  // disclosed like every other thing this command changes.
+  const shim = ensureBareNameResolvable(deps, binaryPath, resolution.artifact.sha256, warnings);
+  const shimDisclosures =
+    shim === null
+      ? []
+      : [
+          `placed a digest-verified copy of the pinned binary at ${shim} so the bare name \`git-ai\` resolves for editor extensions (win32 only; refreshed on every install; a stale copy is surfaced by doctor's binary-shadowed-on-path rung)`,
+        ];
+
   // Config BEFORE first execution (ac-0007) — the updater runs on invocation, so
   // "before the first run" is the only moment this write is worth anything.
   //
@@ -801,8 +827,9 @@ export async function installCollector(deps: CollectorDeps): Promise<CollectorIn
       hooks: 'not-attempted',
       state,
       warnings: [...warnings, config.detail, state.hooks.detail],
-      // Nothing was invoked, so nothing was disclosed-and-done.
-      disclosures: [],
+      // Nothing was INVOKED — but the shim copy, if placed, was still placed,
+      // and a change made is a change disclosed whatever happened after it.
+      disclosures: shimDisclosures,
       manualInstructions: [],
     };
   }
@@ -835,9 +862,9 @@ export async function installCollector(deps: CollectorDeps): Promise<CollectorIn
       hooks: hooks.hooks,
       state: hooks.state,
       warnings: [...warnings, ...hooks.warnings],
-      // Nothing was invoked, so nothing was disclosed-and-done — the same
-      // reasoning as the pinned-config branch above.
-      disclosures: [],
+      // Nothing was invoked — but the shim copy, if placed, was still placed;
+      // same reasoning as the pinned-config branch above.
+      disclosures: shimDisclosures,
       manualInstructions: hooks.manual,
     };
   }
@@ -849,9 +876,70 @@ export async function installCollector(deps: CollectorDeps): Promise<CollectorIn
     hooks: hooks.hooks,
     state: schema.state,
     warnings: [...warnings, ...hooks.warnings, ...schema.warnings],
-    disclosures: [...INSTALL_HOOKS_DISCLOSURES],
+    disclosures: [...INSTALL_HOOKS_DISCLOSURES, ...shimDisclosures],
     manualInstructions: hooks.manual,
   };
+}
+
+/**
+ * Place (or refresh) the digest-verified copy that makes the BARE NAME resolve
+ * on win32 — see the call site for why a copy beats a hardlink or a PATH edit.
+ *
+ * Returns the shim path when a current copy is in place after this call (fresh
+ * or pre-existing), `null` when the platform needs no shim or the heal failed.
+ * WARN-ONLY: a failed shim never fails the install — the binary itself is
+ * placed and verified, and doctor's `binary-not-on-path` rung keeps reporting
+ * the unresolved name until a later run heals it.
+ */
+function ensureBareNameResolvable(
+  deps: CollectorDeps,
+  binaryPath: string,
+  pinnedSha256: string,
+  warnings: string[],
+): string | null {
+  if (deps.host.platform !== 'win32') return null;
+  const shimPath = windowsAppsShimPathFor(deps.host.home);
+  try {
+    const bytes = deps.fs.readBytesNoFollow(binaryPath);
+    if (bytes === null) {
+      warnings.push(
+        `could not read the placed binary at ${binaryPath} to copy it onto PATH — the bare name \`git-ai\` stays unresolvable and editor save-time attestations will not record`,
+      );
+      return null;
+    }
+    if (deps.fs.exists(shimPath)) {
+      const existing = deps.fs.readBytesNoFollow(shimPath);
+      if (
+        existing !== null &&
+        deps.hash.sha256Hex(existing).toLowerCase() === pinnedSha256.toLowerCase()
+      ) {
+        return shimPath; // already current — nothing to write
+      }
+      // Stale or unreadable: replace. Delete-then-write, never write-over — a
+      // partial overwrite of a running exe fails harder than a fresh create.
+      deps.fs.deleteFile(shimPath);
+    }
+    deps.fs.writeBytes(shimPath, bytes);
+    // VERIFY THE WRITE LANDED — this plan just spent a day on a write that
+    // "returned normally" into nowhere. Read back and hash; a claim about the
+    // shim is a claim about bytes on disk, not about a call returning.
+    const readBack = deps.fs.readBytesNoFollow(shimPath);
+    if (
+      readBack === null ||
+      deps.hash.sha256Hex(readBack).toLowerCase() !== pinnedSha256.toLowerCase()
+    ) {
+      warnings.push(
+        `wrote the PATH shim at ${shimPath} but could not verify it by read-back — treat the bare name as unresolved until doctor's resolution rung reads clean`,
+      );
+      return null;
+    }
+    return shimPath;
+  } catch (err) {
+    warnings.push(
+      `could not place the PATH shim at ${shimPath} (${err instanceof Error ? err.message : String(err)}) — the bare name \`git-ai\` stays unresolvable; editor save-time KnownHuman attestations will not record until it resolves`,
+    );
+    return null;
+  }
 }
 
 export interface CollectorRecheckResult {

@@ -67,6 +67,7 @@ function collectorHostTarget(env: NodeEnv): HostTarget | undefined {
 
 /** The real collector lifecycle dependencies — network, exec, hash, mode bit. */
 function realCollectorDeps(host: HostTarget, cwd: string): CollectorDeps {
+  const env = new NodeEnv();
   return {
     fs: new NodeFs(),
     paths: new NodePathKind(),
@@ -77,6 +78,7 @@ function realCollectorDeps(host: HostTarget, cwd: string): CollectorDeps {
     clock: new SystemClock(),
     host,
     cwd,
+    env: (name) => env.get(name),
   };
 }
 
