@@ -270,7 +270,10 @@ export function installHooks(deps: HooksDeps): InstallReport {
     if (!canRecord) {
       // BY NAME, like every other failure here — an agent that silently got no hook
       // is the shape this plan exists to stop.
-      failed.push({ agent: report.agent, reason: unrecordableReason(stateDir, 'nothing') });
+      failed.push({
+        agent: report.agent,
+        reason: unrecordableReason(stateDir, { kind: 'nothing' }),
+      });
       continue;
     }
     try {
@@ -320,8 +323,22 @@ export function installHooks(deps: HooksDeps): InstallReport {
   return { optedOut: false, installed, refused, refusedUpgrades, failed };
 }
 
-/** One sentence, four endings — what happened to the config we could not record. */
-type Compensation = 'nothing' | 'nothing-written' | 'rolled-back' | 'stranded';
+/**
+ * What happened to the config we could not record — and, when it went wrong, WHICH
+ * FILES it went wrong on.
+ *
+ * A SHAPE, NOT A SCALAR, and that is the whole of this fix. `compensate` reduced
+ * every failed restore to the word `stranded`, discarding the outcomes it had just
+ * examined — so the operator was told "this agent's config still carries our entry
+ * and must be removed by hand" and never told WHICH FILE, on a machine that can
+ * carry seven agent configs. The information existed and was thrown away one line
+ * before the sentence that needed it.
+ */
+type Compensation =
+  | { kind: 'nothing' }
+  | { kind: 'nothing-written' }
+  | { kind: 'rolled-back' }
+  | { kind: 'stranded'; paths: readonly string[] };
 
 /**
  * What to tell an operator about files a failed install left behind.
@@ -338,11 +355,14 @@ function strandedDetail(stranded: readonly { path: string }[]): string {
 
 function unrecordableReason(stateDir: string, outcome: Compensation): string {
   const head = `install provenance could not be written to ${installRecordPath(stateDir)}`;
-  if (outcome === 'nothing') return `${head}; nothing was installed for this agent`;
-  if (outcome === 'nothing-written')
+  if (outcome.kind === 'nothing') return `${head}; nothing was installed for this agent`;
+  if (outcome.kind === 'nothing-written')
     return `${head}; this run wrote nothing for this agent, so its existing install was left alone`;
-  if (outcome === 'rolled-back') return `${head}; the entries just written were rolled back`;
-  return `${head}, AND the rollback also failed — this agent's config still carries our entry and must be removed by hand`;
+  if (outcome.kind === 'rolled-back') return `${head}; the entries just written were rolled back`;
+  // NAMES THE FILE. "A config of yours still carries our entry" is not an action an
+  // operator can take on a machine with seven agent configs; this one is.
+  const one = outcome.paths.length === 1;
+  return `${head}, AND the rollback also failed — ${one ? 'this file' : 'these files'} still ${one ? 'carries' : 'carry'} our entry and must be edited by hand: ${outcome.paths.join(', ')}`;
 }
 
 /**
@@ -380,9 +400,13 @@ function unrecordableReason(stateDir: string, outcome: Compensation): string {
  */
 function compensate(deps: HooksDeps, outcomes: InstallOutcome[]): Compensation {
   const written = outcomes.filter((outcome) => outcome.writtenText !== null);
-  if (written.length === 0) return 'nothing-written';
+  if (written.length === 0) return { kind: 'nothing-written' };
   const stranded = written.filter((outcome) => !revertWrite(deps.fs, outcome));
-  return stranded.length === 0 ? 'rolled-back' : 'stranded';
+  // The PATHS travel with the verdict. Reducing them to a word here is what left
+  // the operator without the one fact they needed.
+  return stranded.length === 0
+    ? { kind: 'rolled-back' }
+    : { kind: 'stranded', paths: stranded.map((outcome) => outcome.path) };
 }
 
 /**

@@ -587,6 +587,17 @@ describe('F2 x F3 — a rollback must not revert a PEER agent sharing the file',
 
     expect(reason).not.toContain('rolled back');
     expect(reason).toContain('by hand');
+    /*
+     * AND IT NAMES THE FILE. This row's own comment claimed the report "says so
+     * rather than claiming a rollback", and for two rounds it asserted only the
+     * WORDING — so the reason could name the install-record path, never the config
+     * path, and pass. An operator was told a file of theirs still carries our entry
+     * and had to guess which one, on a machine with up to seven agent configs.
+     *
+     * A CONTRACT IS ENFORCED BY A ROW OR IT IS PROSE — my own log entry, arriving
+     * in my own round, on the fourth occurrence in this surface.
+     */
+    expect(reason).toContain(config);
   });
 
   it('REFUSES to restore — and says so — when the file moved under it', () => {
