@@ -1,11 +1,13 @@
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { AgentSpec } from './agent-matrix.js';
 import { eventKeys, phaseKeys, resolveConfigFiles } from './agent-matrix.js';
-import { extractBinaryPath, extractInterpreterPath } from './binary-path.js';
+import { extractBinaryPath, extractInterpreterPath, INTERPRETER_FLAGS } from './binary-path.js';
 import { appendToArray, setValue, writeThroughSymlink } from './config-writer.js';
 import {
+  commandTokens,
   entryCommands,
-  entryIsOwnedByUs,
+  entryIsOwnedByAgent,
+  entryIsSharedWithPeerAgent,
   entryMayRemove,
   HOOK_MARKER,
   HOOK_MARKER_FLAG,
@@ -64,6 +66,51 @@ export interface InstallOutcome {
   agent: string;
   /** Absolute path written. */
   path: string;
+  /**
+   * WHAT THIS RUN DID TO THIS FILE — the distinction whose absence caused the
+   * worst defect in this surface (plan 082 F010 F1).
+   *
+   * Compensation used to read `!alreadyPresent` as "we created this, so uninstall
+   * reverses it". A legacy MIGRATION also reports `!alreadyPresent`, correctly —
+   * it did write this run — but it REPLACED an entry the user already had. So the
+   * compensation for a failed provenance write ran uninstall over a pre-existing
+   * hook and DELETED IT, while the report said `rolled back`. Data loss on a
+   * user's machine, on a failure path, announced as a recovery.
+   *
+   * FOUR VALUES, NOT THREE, because two of them are `!alreadyPresent` today and
+   * have DIFFERENT REVERSALS:
+   *
+   * - `created-file` — the file did not exist. Reversal is DELETE; there are no
+   *   original bytes to return to.
+   * - `added-entry` — the file existed and we appended ours. Reversal is the
+   *   ordinary surgical uninstall, so one removal implementation and its refusals
+   *   keep applying.
+   * - `rewritten-entry` — an entry that was ALREADY THERE was migrated in place.
+   *   Reversal is RESTORE THE PREVIOUS BYTES. Removing it is not a reversal; it is
+   *   the loss.
+   * - `already-present` — nothing was written, so there is nothing to reverse.
+   *
+   * Never inferred. {@link created} and {@link alreadyPresent} are DERIVED from
+   * this field so the two answers cannot drift apart again.
+   */
+  change: InstallChange;
+  /**
+   * The file's bytes BEFORE this run wrote, or `null` when it did not exist.
+   *
+   * The only provenance that can undo a migration, and knowable only here — by the
+   * time compensation runs, the previous entry exists nowhere.
+   */
+  previousText: string | null;
+  /**
+   * The bytes this run wrote, or `null` when it wrote none.
+   *
+   * NOT redundant with {@link previousText}: it is the EVIDENCE a rollback checks
+   * before restoring. A blanket byte-restore is only safe while the file still
+   * holds exactly what we put there, and two agents can legitimately share one
+   * file — so a restore that skipped this check could revert a peer's committed
+   * install (see `restoreIfStillOurs`).
+   */
+  writtenText: string | null;
   /**
    * TRUE when this install CREATED the file (and possibly its parents).
    *
@@ -158,6 +205,30 @@ export function skeletonFor(spec: AgentSpec): Skeleton {
  * is the failure mode this plan keeps meeting, and a single return value is how it
  * hides.
  */
+/** What one run did to one config file. See {@link InstallOutcome.change}. */
+export type InstallChange = 'created-file' | 'added-entry' | 'rewritten-entry' | 'already-present';
+
+/**
+ * Install our hook entry into every config file this agent uses.
+ *
+ * Returns one outcome PER FILE — which is what makes windsurf's two paths visible
+ * to a caller instead of collapsing into a single "installed" (dw-0014). Half-working
+ * is the failure mode this plan keeps meeting, and a single return value is how it
+ * hides.
+ *
+ * PLAN EVERYTHING, THEN COMMIT, THEN ROLL BACK ON FAILURE — one agent, one unit
+ * (plan 082 F010 F2). This used to `.map()` straight over the paths, so windsurf's
+ * FIRST file committed, its SECOND threw, and the outcome array was never
+ * returned: the caller reported the agent FAILED while a file sat installed and
+ * unknown to provenance, which means uninstall would never clean it up. **We
+ * reported per agent and committed per file.** Now the writes are computed first
+ * (no side effects), committed second, and any that landed before a failure are
+ * put back — so the unit we report is the unit we commit.
+ *
+ * The thrown error carries what was COMMITTED AND COULD NOT BE PUT BACK, because a
+ * partial state that reaches nobody is exactly the orphan this change exists to
+ * prevent. See {@link PartialInstallError}.
+ */
 export function installStrategyA(
   fs: FsPort,
   spec: AgentSpec,
@@ -165,7 +236,84 @@ export function installStrategyA(
   env: (name: string) => string | undefined,
   binary: string,
 ): InstallOutcome[] {
-  return resolveConfigFiles(spec, home, env).map((path) => installOneFile(fs, spec, path, binary));
+  // PHASE 1 — PLAN. Reads only. A failure here has written nothing, so it can
+  // simply propagate: there is no state to unwind.
+  const planned = resolveConfigFiles(spec, home, env).map((path) =>
+    planOneFile(fs, spec, path, binary),
+  );
+
+  // PHASE 2 — COMMIT. Two lists, and the distinction is load-bearing: `outcomes`
+  // is what the caller records and reports, `written` is what a failure may need
+  // to undo. Pushing a NO-OP plan into the rollback set made `revertWrite` compare
+  // a file's bytes against `null`, refuse, and report an UNTOUCHED file as a write
+  // that could not be rolled back.
+  const outcomes: InstallOutcome[] = [];
+  const written: InstallOutcome[] = [];
+  try {
+    for (const plan of planned) {
+      commitOneFile(fs, plan);
+      outcomes.push(plan.outcome);
+      if (plan.outcome.writtenText !== null) written.push(plan.outcome);
+    }
+  } catch (error) {
+    // PHASE 3 — ROLL BACK what this agent already wrote. Anything that cannot be
+    // put back is NAMED rather than dropped.
+    const stranded = written.filter((outcome) => !revertWrite(fs, outcome));
+    throw new PartialInstallError(error instanceof Error ? error.message : String(error), stranded);
+  }
+  return outcomes;
+}
+
+/**
+ * A commit that failed after some of this agent's files were already written, and
+ * could not be fully undone.
+ *
+ * Carries the outcomes still ON DISK so the caller can RECORD them. Provenance for
+ * a file we cannot remove is what lets a later `uninstall` finish the job; without
+ * it the file is invisible to every tool we ship — installed, unrecorded, and
+ * unremovable, which is the one state this family promises cannot exist.
+ */
+export class PartialInstallError extends Error {
+  constructor(
+    message: string,
+    /** Written, still present, and not yet recorded anywhere. */
+    readonly stranded: InstallOutcome[],
+  ) {
+    super(message);
+    this.name = 'PartialInstallError';
+  }
+}
+
+/**
+ * Undo one committed write. `true` when the file is back to its previous state.
+ *
+ * RESTORE ONLY WHAT IS STILL OURS. A blanket byte-restore assumes nothing else
+ * touched the file since we wrote it, and that assumption is false in a case this
+ * very review established: two agents can resolve to the SAME config file
+ * (`CLAUDE_CONFIG_DIR` pointed at `.factory`). Writing our previous bytes back
+ * over a file a peer has since written to would silently un-install the peer —
+ * fixing a partial install by causing a different one. So the current bytes must
+ * still be exactly what we wrote; otherwise we report `false` and let the caller
+ * record and name the state rather than guess at it.
+ *
+ * EXPORTED, AND USED BY THE PROVENANCE COMPENSATION TOO. There were briefly two
+ * implementations of this rule — one here for a mid-commit failure, one in
+ * `hooks-verbs` for a failed provenance write — and a mutation that removed the
+ * still-ours check from the second SURVIVED THE WHOLE SUITE, because only the
+ * first was pinned. Two copies of a safety rule is one copy and a rumour.
+ */
+export function revertWrite(fs: FsPort, outcome: InstallOutcome): boolean {
+  try {
+    if (fs.readText(outcome.path) !== outcome.writtenText) return false;
+    if (outcome.previousText === null) {
+      fs.deleteFile(outcome.path);
+      return true;
+    }
+    writeThroughSymlink(fs, outcome.path, outcome.previousText);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -268,78 +416,115 @@ export function missingRootExtras(
   return out;
 }
 
-function installOneFile(fs: FsPort, spec: AgentSpec, path: string, binary: string): InstallOutcome {
+/** One file's intended write, computed without touching the disk. */
+interface FilePlan {
+  outcome: InstallOutcome;
+  /** Directory to create first, when this plan creates the file. */
+  mkdir: string | null;
+}
+
+/**
+ * Decide what to write to ONE file. READS ONLY — no write, no mkdir.
+ *
+ * Separated from the commit so an agent's files can be planned together and
+ * committed together (F010 F2). Anything that throws here has changed nothing.
+ */
+function planOneFile(fs: FsPort, spec: AgentSpec, path: string, binary: string): FilePlan {
   const existing = fs.exists(path) ? fs.readText(path) : null;
   const created = existing === null;
-
-  if (created) {
-    // Parent directories too: copilot's config lives at `.copilot/hooks/git-ai.json`
-    // and windsurf's second file at `.codeium/windsurf/hooks.json`, so the parent is
-    // routinely more than one level deep and routinely absent.
-    fs.mkdirp(parentOf(path));
-  }
 
   const before = existing ?? `${JSON.stringify(skeletonFor(spec), null, 2)}\n`;
   // Sampled BEFORE the first write, because afterwards every key exists.
   const createdKeys = eventKeys(spec).filter((key) => !hasEventKey(before, key));
 
-  // Idempotency: our entry is FOUND by the marker, never by string equality with
-  // what we would write — the binary path can legitimately differ between installs.
-  if (containsOurEntry(before, spec)) {
-    const upgrade = upgradeLegacyEntries(before, spec, binary, path);
-    if (upgrade.text !== null) {
-      writeThroughSymlink(fs, path, upgrade.text);
-      return {
-        agent: spec.agent,
-        path,
-        created,
-        // NOT `alreadyPresent`: we WROTE this run. Reporting an upgrade as
-        // "already present" would tell a user on the platform this repairs that
-        // nothing needed doing, on the run that did it.
-        alreadyPresent: false,
-        createdKeys,
-        createdRootExtras: [],
-        refusedUpgrades: upgrade.refused,
-      };
-    }
-    if (created) writeThroughSymlink(fs, path, before);
-    return {
-      agent: spec.agent,
-      path,
-      created,
-      alreadyPresent: true,
-      createdKeys,
-      // We wrote nothing this run, so we created no root field this run. An EARLIER
-      // run's provenance is in the record and is merged, never overwritten.
-      createdRootExtras: [],
-      refusedUpgrades: upgrade.refused,
-    };
-  }
+  /*
+   * ONE PATH, NOT TWO (F010 review R2). There used to be an "already present"
+   * branch and a "fresh install" branch, and the first could only repair SOME of
+   * the configuration: it upgraded entries and added root extras, and never
+   * noticed a MISSING ENTRY. Deleting cursor's post-tool entry was therefore
+   * permanent — half the bracket gone, `status` still reporting installed.
+   *
+   * The two branches asked different questions of the same file. Now there is one
+   * sequence — migrate, converge the root, add the phases this agent lacks — and
+   * ALREADY-PRESENT MEANS WHAT IT SHOULD ALWAYS HAVE MEANT: the text did not
+   * change. That collapses the branches honestly instead of adding a third.
+   */
+  const upgrade = upgradeLegacyEntries(before, spec, binary, path);
+  let text = upgrade.text ?? before;
 
-  let text = before;
+  // ADDS WHAT IS ABSENT AND NOTHING ELSE: a root key is shared with settings we
+  // have no business touching, so a value the user changed is theirs and stays.
   const rootExtras = missingRootExtras(text, spec);
-  for (const [path_, value] of rootExtras) {
-    text = setValue(text, path_, value);
-  }
+  for (const [keyPath, value] of rootExtras) text = setValue(text, keyPath, value);
+
   for (const [phase, key] of phaseKeys(spec)) {
+    // PER AGENT, PER EVENT KEY. An entry belonging to a PEER in this array does
+    // not make this agent installed, and an entry of ours that is already here
+    // must not be duplicated.
+    if (hasAgentEntry(text, key, spec.agent)) continue;
     text = appendToArray(text, {
       path: ['hooks', key],
       // The ENTRY comes from the matrix row's shape, never from a branch on the
       // agent name — see `buildEntry` for what F005 cost when it was assumed.
+      //
+      // AND IT IS ALWAYS OUR OWN, SEPARATE ENTRY. We never merge into a block
+      // that already exists, so we cannot manufacture the mixed-agent entry that
+      // uninstall and upgrade must refuse.
       entry: buildEntry(spec, binary, phase),
     });
   }
 
-  writeThroughSymlink(fs, path, text);
-  return {
+  const base = {
     agent: spec.agent,
     path,
+    previousText: existing,
     created,
-    alreadyPresent: false,
     createdKeys,
-    createdRootExtras: rootExtras.map(([keyPath]) => keyPath),
-    refusedUpgrades: [],
+    refusedUpgrades: upgrade.refused,
   };
+
+  if (text === before && !created) {
+    return {
+      mkdir: null,
+      outcome: {
+        ...base,
+        change: 'already-present',
+        alreadyPresent: true,
+        // We wrote nothing this run, so we created no root field this run. An EARLIER
+        // run's provenance is in the record and is merged, never overwritten.
+        createdRootExtras: [],
+        writtenText: null,
+      },
+    };
+  }
+
+  return {
+    // Parent directories too: copilot's config lives at `.copilot/hooks/git-ai.json`
+    // and windsurf's second file at `.codeium/windsurf/hooks.json`, so the parent is
+    // routinely more than one level deep and routinely absent.
+    mkdir: created ? parentOf(path) : null,
+    outcome: {
+      ...base,
+      // `rewritten-entry` ONLY when an entry that already existed was migrated:
+      // that is the one case whose reversal is a byte-restore rather than a
+      // removal, and conflating it with the others is what deleted a user's hook.
+      // A created file stays `created-file` whatever else happened.
+      change: created ? 'created-file' : upgrade.text !== null ? 'rewritten-entry' : 'added-entry',
+      // NOT `alreadyPresent`: we WROTE this run. Reporting a repair as "already
+      // present" would tell a user on the platform this fixes that nothing needed
+      // doing, on the run that did it.
+      alreadyPresent: false,
+      createdRootExtras: rootExtras.map(([keyPath]) => keyPath),
+      writtenText: text,
+    },
+  };
+}
+
+/** Perform one planned write. The ONLY place this strategy touches the disk. */
+function commitOneFile(fs: FsPort, plan: FilePlan): void {
+  if (plan.mkdir !== null) fs.mkdirp(plan.mkdir);
+  if (plan.outcome.writtenText === null) return;
+  writeThroughSymlink(fs, plan.outcome.path, plan.outcome.writtenText);
 }
 
 /**
@@ -380,7 +565,8 @@ function upgradeLegacyEntries(
   binary: string,
   path: string,
 ): { text: string | null; refused: RefusedUpgrade[] } {
-  if (extractInterpreterPath(binary) === null) return { text: null, refused: [] };
+  const wanted = requiredInvocationParts(binary);
+  if (wanted === null) return { text: null, refused: [] };
 
   let doc: { hooks?: Record<string, unknown[]> };
   try {
@@ -396,11 +582,24 @@ function upgradeLegacyEntries(
     const entries = doc.hooks?.[key];
     if (!Array.isArray(entries)) continue;
     for (const [index, entry] of entries.entries()) {
-      if (!entryIsOwnedByUs(entry)) continue;
-      if (entryCommands(entry).every((command) => extractInterpreterPath(command) !== null))
-        continue;
+      // AGENT-QUALIFIED, AND UNIVERSALLY SO (F010 review R1). This rewrites the
+      // WHOLE entry as THIS agent's command, so entering on "some command here is
+      // this agent's" would delete a peer's command BY REWRITING IT — worse than
+      // deleting it outright, because the file still looks installed afterwards.
+      if (!entryIsOwnedByAgent(entry, spec.agent)) continue;
+      if (entryCommands(entry).every((command) => invocationIsCurrent(command, wanted))) continue;
 
       const replacement = hookCommand(binary, spec.agent, phase);
+      if (entryIsSharedWithPeerAgent(entry, spec.agent)) {
+        refused.push({
+          path,
+          command: entryCommands(entry).join(' ; '),
+          reason: "this entry also carries another agent's harness command",
+          replacement,
+          nextAction: `Left unchanged so the other agent's hook survives — rewriting this entry for ${spec.agent} would replace theirs. Split the commands into separate entries, then re-run install; ${spec.agent}'s should read: ${replacement}`,
+        });
+        continue;
+      }
       if (!entryMayRemove(entry)) {
         for (const command of entryCommands(entry)) {
           refused.push({
@@ -425,6 +624,41 @@ function upgradeLegacyEntries(
 }
 
 /**
+ * What an installed command must NAME to be current, or `null` when this binary
+ * cannot say (it names no interpreter itself, so it cannot demand one).
+ */
+function requiredInvocationParts(binary: string): { flags: readonly string[] } | null {
+  if (extractInterpreterPath(binary) === null) return null;
+  return { flags: INTERPRETER_FLAGS.filter((flag) => binary.includes(flag)) };
+}
+
+/**
+ * Does this installed command already carry the invocation this binary writes?
+ *
+ * TWO STRUCTURAL QUESTIONS, AND DELIBERATELY NOT STRING EQUALITY. It asks whether
+ * the command names an INTERPRETER (the F008 repair: a bare `.js` first token is
+ * dispatched to WScript.exe on Windows, so those entries cannot run our code) and
+ * whether it carries the interpreter FLAGS this binary now requires (the F010 F5
+ * repair: without `--no-warnings` a hostile `NO_COLOR`/`FORCE_COLOR` pair makes
+ * Node speak inside an agent's tool loop). Generalising from the first to both is
+ * what makes a repair reach the installs that ALREADY EXIST instead of only new
+ * ones — the whole reason the upgrade path exists.
+ *
+ * IT MUST NOT BECOME `command === whatWeWouldWrite`. The BINARY PATH LEGITIMATELY
+ * DIFFERS BETWEEN INSTALLS — a global install, an npx run and a dev checkout all
+ * name different paths, and all three are correct — so string equality would
+ * rewrite every config on every run for two users sharing a machine. And churn is
+ * not merely noisy here: `installHooks` compensates a failed provenance write by
+ * undoing "what THIS run wrote", so a needless rewrite hands the compensation a
+ * healthy hook to undo.
+ */
+function invocationIsCurrent(command: string, wanted: { flags: readonly string[] }): boolean {
+  if (extractInterpreterPath(command) === null) return false;
+  const tokens = commandTokens(command);
+  return wanted.flags.every((flag) => tokens.includes(flag));
+}
+
+/**
  * Does this document already carry this event array?
  *
  * PRESENT-BUT-EMPTY COUNTS AS PRESENT — that is the whole distinction F003 turns on.
@@ -439,16 +673,24 @@ function hasEventKey(text: string, key: string): boolean {
   }
 }
 
-/** Is our marked entry already in either event array? */
-function containsOurEntry(text: string, spec: AgentSpec): boolean {
+/**
+ * Does THIS AGENT already have an entry in THIS event array?
+ *
+ * AGENT-QUALIFIED AND PER-KEY. Asked of the whole document it answered "is this
+ * agent installed at all", which let a file with one of its two entries deleted
+ * read as complete. Two agents legally share a file when `CLAUDE_CONFIG_DIR`
+ * names another agent's directory, so a PEER's entry in this array proves nothing
+ * about us either.
+ */
+function hasAgentEntry(text: string, key: string, agent: string): boolean {
   let doc: { hooks?: Record<string, unknown[]> };
   try {
     doc = JSON.parse(stripComments(text)) as typeof doc;
   } catch {
     return false;
   }
-  const arrays = eventKeys(spec).map((key) => doc.hooks?.[key] ?? []);
-  return arrays.some((entries) => entries.some(entryIsOwnedByUs));
+  const entries = doc.hooks?.[key];
+  return Array.isArray(entries) && entries.some((entry) => entryIsOwnedByAgent(entry, agent));
 }
 
 const stripComments = (text: string): string =>

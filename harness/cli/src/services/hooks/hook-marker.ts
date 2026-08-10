@@ -183,6 +183,88 @@ export function entryCommands(entry: unknown): string[] {
 /** Is this ENTRY — in either shape — one we installed? */
 export const entryIsOwnedByUs = (entry: unknown): boolean => entryCommands(entry).some(isOwnedByUs);
 
+/**
+ * WHICH AGENT does this command of ours name? `null` when it names none.
+ *
+ * THE DISTINCTION THE WHOLE-SURFACE REVIEW FOUND MISSING (plan 082 F010 F3).
+ * {@link isOwnedByUs} answers *"is this OURS"*, and every caller that needed
+ * *"is this THIS AGENT's"* asked the broader question and read the broader answer
+ * as the narrower one. That is not academic: `CLAUDE_CONFIG_DIR` pointed at
+ * `.factory` makes claude-code and droid resolve to the SAME `settings.json` and
+ * the SAME event arrays, and it is legal under the matrix. Claude installed first;
+ * droid then saw a harness marker, called itself already-installed, and wrote
+ * nothing. Detected agent, healthy report, no hook.
+ *
+ * READ FROM THE ARGUMENTS, NOT THE PATH. Our command is
+ * `<invocation> hooks fire <agent> --phase …`, so the agent is the token after
+ * `fire`. The path is quoted, Windows-normalised and legitimately different
+ * between installs; the verb and its argument are invariant, which is the same
+ * reasoning that put the marker in its own flag rather than inside the path.
+ */
+export function commandAgent(command: string): string | null {
+  const tokens = commandTokens(command);
+  const at = tokens.indexOf('fire');
+  if (at === -1) return null;
+  const agent = tokens[at + 1];
+  return agent === undefined || agent.startsWith('-') ? null : agent;
+}
+
+/**
+ * Is this entry ours AND this agent's?
+ *
+ * Both halves are required and neither implies the other: a foreign entry can
+ * mention an agent name, and an entry of ours can belong to a DIFFERENT agent
+ * sharing the same file.
+ */
+export const entryIsOwnedByAgent = (entry: unknown, agent: string): boolean =>
+  entryCommands(entry).some((command) => isOwnedByUs(command) && commandAgent(command) === agent);
+
+/**
+ * May uninstall remove this ENTRY on THIS AGENT's behalf?
+ *
+ * UNIVERSAL, NOT EXISTENTIAL, AND THE DIFFERENCE IS A DELETED HOOK. The first
+ * agent-qualified version of this was `entryMayRemove(entry) &&
+ * entryIsOwnedByAgent(entry, agent)` — which proves every command in the entry is
+ * OURS and that SOME command is the TARGET's. It does not prove every command is
+ * the target's, and `uninstallStrategyA` removes the WHOLE entry. One valid nested
+ * block carrying claude-code's and droid's commands was therefore removable on
+ * behalf of either, and uninstalling droid deleted claude-code.
+ *
+ * **That was the defect this predicate was written to fix, reproduced inside the
+ * fix for it**: the broad test was replaced by a narrower one that was still broad
+ * in the dimension that mattered. So the question is asked of EVERY command:
+ * wholly ours, and this agent's.
+ *
+ * A mixed-agent entry is consequently neither removable nor replaceable by one
+ * agent. It must be REPORTED — see {@link entryIsSharedWithPeerAgent} — for the
+ * same reason a foreign-chained entry is: a refusal nobody hears is
+ * indistinguishable from a repair.
+ */
+export function entryMayRemoveForAgent(entry: unknown, agent: string): boolean {
+  const commands = entryCommands(entry);
+  return (
+    commands.length > 0 &&
+    commands.every(
+      (command) => classifyOwnership(command) === 'wholly-ours' && commandAgent(command) === agent,
+    )
+  );
+}
+
+/**
+ * Is this entry ours, carrying THIS agent, and ALSO carrying another agent's
+ * harness command?
+ *
+ * The state that is safe to neither remove nor rewrite on one agent's behalf. It
+ * is distinguished from a FOREIGN-chained entry deliberately, because the operator
+ * action differs: a peer's command is ours to reconcile, someone else's work is
+ * not ours to touch at all.
+ */
+export function entryIsSharedWithPeerAgent(entry: unknown, agent: string): boolean {
+  const commands = entryCommands(entry).filter(isOwnedByUs);
+  if (!commands.some((command) => commandAgent(command) === agent)) return false;
+  return commands.some((command) => commandAgent(command) !== agent);
+}
+
 /** May uninstall remove this ENTRY outright, in either shape? */
 export function entryMayRemove(entry: unknown): boolean {
   const commands = entryCommands(entry);

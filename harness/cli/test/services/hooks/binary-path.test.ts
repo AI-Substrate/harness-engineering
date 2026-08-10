@@ -7,6 +7,7 @@ import { findAgent } from '../../../src/services/hooks/agent-matrix.js';
 import {
   embedBinaryPath,
   extractBinaryPath,
+  extractInterpreterPath,
   looksLikeInstalledBinary,
   normaliseBinaryPath,
   quoteForShell,
@@ -209,5 +210,47 @@ describe('the installed command uses the embedded form end-to-end', () => {
 
     expect(extracted).not.toBeNull();
     expect(existsSync(extracted as string)).toBe(true);
+  });
+});
+
+describe('an interpreter FLAG must not turn the readers back into liars (plan 082 F010 F5)', () => {
+  /*
+   * THE SINGLE MOST DANGEROUS EDGE IN THIS FILE, and F008's own docstring names it:
+   * once the command names an interpreter first, a reader that takes token one
+   * stats `node` — which exists on every machine capable of running this code — so
+   * `binaryState` reports `resolves` UNCONDITIONALLY. A green light that cannot go
+   * red is strictly worse than the bug it hides.
+   *
+   * Adding a flag between the interpreter and the script re-opens exactly that
+   * hole, because the naive "is token two a path" test now answers NO. These rows
+   * pin both readers against the flag-bearing form.
+   */
+  const NODE = '/usr/local/bin/node';
+  const SCRIPT = '/usr/local/lib/harness/bin/harness.js';
+  const flagged = `"${NODE}" --no-warnings "${SCRIPT}" hooks fire cursor --phase pre`;
+
+  it('still returns the SCRIPT, not the interpreter, as the path status stats', () => {
+    expect(extractBinaryPath(flagged)).toBe(SCRIPT);
+  });
+
+  it('still recognises the interpreter, so the entry is not misread as LEGACY', () => {
+    /*
+    Test Doc:
+    - Why: `upgradeLegacyEntries` treats "no interpreter" as "written before F008"
+      and rewrites the entry. A reader blinded by a flag would call every current
+      entry legacy and rewrite EVERY config on EVERY run — churn that, via the
+      compensation path, can uninstall a healthy hook to make up for an unrelated
+      failure. That is F1's composition, reached from a different direction.
+    - Contract: the interpreter is still named.
+    */
+    expect(extractInterpreterPath(flagged)).toBe(NODE);
+  });
+
+  it('reports no interpreter for a bare-script command — the discriminator survives', () => {
+    // The counter-row: if flag-skipping were implemented by "just take the last
+    // path-like token", a legacy one-token command would start reporting an
+    // interpreter and the Windows repair would never fire again.
+    expect(extractInterpreterPath(`"${SCRIPT}" hooks fire cursor --phase pre`)).toBeNull();
+    expect(extractBinaryPath(`"${SCRIPT}" hooks fire cursor --phase pre`)).toBe(SCRIPT);
   });
 });

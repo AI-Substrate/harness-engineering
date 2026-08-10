@@ -6,9 +6,10 @@ import { BACKUP_MANIFEST_NAME, restoreAgentConfigs } from '../doctor/collector/b
 import type { AgentSpec } from './agent-matrix.js';
 import { AGENT_MATRIX, eventKeys, resolveConfigFiles } from './agent-matrix.js';
 import { extractBinaryPath, extractInterpreterPath } from './binary-path.js';
+import { writeThroughSymlink } from './config-writer.js';
 import { unacceptedOptions } from './fire-options.js';
 import { FileHookJournal } from './hook-journal.js';
-import { entryCommands, isOwnedByUs } from './hook-marker.js';
+import { commandAgent, entryCommands, isOwnedByUs } from './hook-marker.js';
 import { hookJournalPath, hookStateDir } from './hook-payload.js';
 import {
   ensureRecordWritable,
@@ -18,7 +19,7 @@ import {
   recordInstall,
 } from './install-record.js';
 import type { InstallOutcome, RefusedUpgrade } from './install-strategy-a.js';
-import { installStrategyA } from './install-strategy-a.js';
+import { installStrategyA, PartialInstallError, revertWrite } from './install-strategy-a.js';
 import { uninstallStrategyA } from './uninstall-strategy-a.js';
 
 /**
@@ -269,7 +270,10 @@ export function installHooks(deps: HooksDeps): InstallReport {
     if (!canRecord) {
       // BY NAME, like every other failure here — an agent that silently got no hook
       // is the shape this plan exists to stop.
-      failed.push({ agent: report.agent, reason: unrecordableReason(stateDir, 'nothing') });
+      failed.push({
+        agent: report.agent,
+        reason: unrecordableReason(stateDir, { kind: 'nothing' }),
+      });
       continue;
     }
     try {
@@ -283,7 +287,7 @@ export function installHooks(deps: HooksDeps): InstallReport {
         // returned to the state whose provenance we could not keep.
         failed.push({
           agent: report.agent,
-          reason: unrecordableReason(stateDir, compensate(deps, spec, outcomes)),
+          reason: unrecordableReason(stateDir, compensate(deps, outcomes)),
         });
         continue;
       }
@@ -292,6 +296,24 @@ export function installHooks(deps: HooksDeps): InstallReport {
         refusedUpgrades.push(...outcome.refusedUpgrades);
       }
     } catch (err) {
+      /*
+       * A PARTIAL INSTALL IS RECORDED AND NAMED, NEVER SILENTLY HELD (F010 F2).
+       *
+       * `installStrategyA` now rolls back an agent's committed files when a later
+       * one fails, but a rollback can itself fail — and a file that is written,
+       * unrecorded and unreported is invisible to every tool we ship: uninstall
+       * will not remove it because provenance never heard of it, and status will
+       * not explain it. Recording it is what makes a later `uninstall` able to
+       * finish the job, and naming it is what tells the operator to run one.
+       */
+      if (err instanceof PartialInstallError && err.stranded.length > 0) {
+        recordInstall(deps.fs, hookStateDir(deps.home), err.stranded);
+        failed.push({
+          agent: report.agent,
+          reason: `${err.message}; ${strandedDetail(err.stranded)}`,
+        });
+        continue;
+      }
       failed.push({
         agent: report.agent,
         reason: err instanceof Error ? err.message : String(err),
@@ -301,53 +323,90 @@ export function installHooks(deps: HooksDeps): InstallReport {
   return { optedOut: false, installed, refused, refusedUpgrades, failed };
 }
 
-/** One sentence, four endings — what happened to the config we could not record. */
-type Compensation = 'nothing' | 'nothing-written' | 'rolled-back' | 'stranded';
+/**
+ * What happened to the config we could not record — and, when it went wrong, WHICH
+ * FILES it went wrong on.
+ *
+ * A SHAPE, NOT A SCALAR, and that is the whole of this fix. `compensate` reduced
+ * every failed restore to the word `stranded`, discarding the outcomes it had just
+ * examined — so the operator was told "this agent's config still carries our entry
+ * and must be removed by hand" and never told WHICH FILE, on a machine that can
+ * carry seven agent configs. The information existed and was thrown away one line
+ * before the sentence that needed it.
+ */
+type Compensation =
+  | { kind: 'nothing' }
+  | { kind: 'nothing-written' }
+  | { kind: 'rolled-back' }
+  | { kind: 'stranded'; paths: readonly string[] };
+
+/**
+ * What to tell an operator about files a failed install left behind.
+ *
+ * NAMES THE PATHS AND THE NEXT ACTION. "windsurf failed" with a file still
+ * installed is the report that produced this defect: the agent looked untouched
+ * and was not.
+ */
+function strandedDetail(stranded: readonly { path: string }[]): string {
+  const one = stranded.length === 1;
+  const paths = stranded.map((o) => o.path).join(', ');
+  return `${one ? 'this file was' : 'these files were'} written and could not be rolled back: ${paths}. ${one ? 'Its' : 'Their'} provenance HAS been recorded, so \`harness hooks uninstall\` can remove ${one ? 'it' : 'them'}`;
+}
 
 function unrecordableReason(stateDir: string, outcome: Compensation): string {
   const head = `install provenance could not be written to ${installRecordPath(stateDir)}`;
-  if (outcome === 'nothing') return `${head}; nothing was installed for this agent`;
-  if (outcome === 'nothing-written')
+  if (outcome.kind === 'nothing') return `${head}; nothing was installed for this agent`;
+  if (outcome.kind === 'nothing-written')
     return `${head}; this run wrote nothing for this agent, so its existing install was left alone`;
-  if (outcome === 'rolled-back') return `${head}; the entries just written were rolled back`;
-  return `${head}, AND the rollback also failed — this agent's config still carries our entry and must be removed by hand`;
+  if (outcome.kind === 'rolled-back') return `${head}; the entries just written were rolled back`;
+  // NAMES THE FILE. "A config of yours still carries our entry" is not an action an
+  // operator can take on a machine with seven agent configs; this one is.
+  const one = outcome.paths.length === 1;
+  return `${head}, AND the rollback also failed — ${one ? 'this file' : 'these files'} still ${one ? 'carries' : 'carry'} our entry and must be edited by hand: ${outcome.paths.join(', ')}`;
 }
 
 /**
- * Undo the entries this run wrote, using the provenance we hold IN MEMORY.
+ * Undo what this run wrote, using the provenance we hold IN MEMORY.
  *
- * The record on disk is precisely what we could not write, so the in-memory outcomes
- * are the only provenance that exists — and they are exactly the provenance uninstall
- * would have read. Running the real uninstall path rather than a bespoke unwind keeps
- * one removal implementation, including its refusals.
+ * SCOPED TO WHAT THIS RUN WROTE, BY CONSTRUCTION — for every kind of change,
+ * without exception. That sentence is the whole fix, and it took three rounds to
+ * arrive at because each earlier attempt scoped the reversal to what the AGENT
+ * OWNS and then corrected the cases where that reached too far:
  *
- * ONLY WHAT THIS RUN WROTE, AND THAT IS THE LOAD-BEARING HALF. An `alreadyPresent`
- * file was installed by an EARLIER run whose record very likely DID persist; removing
- * its entry to compensate for our own failed write would undo a good install and
- * leave a record claiming a file that no longer carries our marker. A compensation
- * that over-reaches is a worse failure than the one it is compensating for, because
- * the first is a config we cannot fully remove and this one is a config we removed
- * without being asked.
+ * 1. the legacy UPGRADE reported `!alreadyPresent`, so compensation ran a
+ *    whole-agent uninstall over an entry the USER already had, and deleted it;
+ * 2. an explicit discriminant fixed that route, and then the completeness REPAIR
+ *    of a partial config — an `added-entry` — walked through the same door: the
+ *    uninstall removed the phase that was already there along with the phase this
+ *    run appended.
+ *
+ * **The discriminant answers HOW to reverse. It never answered WHAT to reverse.**
+ * A reversal expressed as "remove this agent's entries" can always reach something
+ * this run did not write; a reversal expressed as "put these exact bytes back"
+ * cannot. So compensation no longer calls {@link uninstallStrategyA} at all — the
+ * whole-agent removal path belongs to the `uninstall` verb, where the user asked
+ * for it and where the previous bytes are genuinely unknown.
+ *
+ * WHAT THE BYTE-RESTORE GIVES US THAT THE REMOVAL PATH DID NOT:
+ * - foreign work chained into an entry is preserved automatically — it is in the
+ *   previous bytes — so the refusals that path carried are not needed here;
+ * - a key or root field that existed before is restored exactly, with no
+ *   provenance bookkeeping to get wrong;
+ * - a file we created is removed, because its previous state was absence.
+ *
+ * And it REFUSES rather than forces: if the file no longer holds exactly what we
+ * wrote, someone else has touched it — two agents can share one config — so we
+ * report `stranded` and name it instead of overwriting a peer.
  */
-function compensate(deps: HooksDeps, spec: AgentSpec, outcomes: InstallOutcome[]): Compensation {
-  const ours = outcomes.filter((o) => !o.alreadyPresent);
-  if (ours.length === 0) return 'nothing-written';
-  try {
-    uninstallStrategyA(
-      {
-        fs: deps.fs,
-        home: deps.home,
-        env: deps.env,
-        createdFiles: new Set(ours.filter((o) => o.created).map((o) => o.path)),
-        createdKeys: new Map(ours.map((o) => [o.path, new Set(o.createdKeys)])),
-        createdRootExtras: new Map(ours.map((o) => [o.path, o.createdRootExtras])),
-      },
-      spec,
-    );
-    return 'rolled-back';
-  } catch {
-    return 'stranded';
-  }
+function compensate(deps: HooksDeps, outcomes: InstallOutcome[]): Compensation {
+  const written = outcomes.filter((outcome) => outcome.writtenText !== null);
+  if (written.length === 0) return { kind: 'nothing-written' };
+  const stranded = written.filter((outcome) => !revertWrite(deps.fs, outcome));
+  // The PATHS travel with the verdict. Reducing them to a word here is what left
+  // the operator without the one fact they needed.
+  return stranded.length === 0
+    ? { kind: 'rolled-back' }
+    : { kind: 'stranded', paths: stranded.map((outcome) => outcome.path) };
 }
 
 /**
@@ -634,6 +693,29 @@ function configuredBinaryFor(deps: HooksDeps, spec: AgentSpec): string | null {
  * ownership with. Not a second implementation that agrees today: one implementation,
  * which cannot drift.
  */
+/**
+ * Every command OF OURS AND OF THIS AGENT installed in this agent's configs — the
+ * one thing `list`, `status` and `configuredBinary` all read.
+ *
+ * ONE READER FOR BOTH ENTRY SHAPES (plan 082, phase-5 review F1). This used to
+ * parse `entry.command` and nothing else, which does not exist in a NESTED entry —
+ * there the command lives at `entry.hooks[].command`. So immediately after a
+ * successful install into claude-code, gemini or droid, `status` reported
+ * `installed: false, binaryState: absent, commandState: absent`. Our WRITER had
+ * learned both shapes and our READER had not.
+ *
+ * That is the same two-readers-disagree shape as F005 itself — a validator and a
+ * detector keyed on different fields — except that this time we owned both readers.
+ * So it now goes through {@link entryCommands}, the SAME function uninstall matches
+ * ownership with. Not a second implementation that agrees today: one implementation,
+ * which cannot drift.
+ *
+ * AND IT IS AGENT-QUALIFIED (plan 082 F010 F3). `status` answers a PER-AGENT
+ * question, and this fed it a per-HARNESS answer: with two agents resolving to one
+ * config file, droid was credited with claude-code's command — a healthy status for
+ * an agent with no hook. The marker proves the entry is OURS; only the `hooks fire
+ * <agent>` argument proves whose.
+ */
 function ourCommands(deps: HooksDeps, spec: AgentSpec): string[] {
   const out: string[] = [];
   for (const path of resolveConfigFiles(spec, deps.home, deps.env)) {
@@ -647,7 +729,11 @@ function ourCommands(deps: HooksDeps, spec: AgentSpec): string[] {
     }
     for (const key of eventKeys(spec)) {
       for (const entry of doc.hooks?.[key] ?? []) {
-        out.push(...entryCommands(entry).filter(isOwnedByUs));
+        out.push(
+          ...entryCommands(entry).filter(
+            (command) => isOwnedByUs(command) && commandAgent(command) === spec.agent,
+          ),
+        );
       }
     }
   }

@@ -2,7 +2,14 @@ import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { AgentSpec } from './agent-matrix.js';
 import { eventKeys, resolveConfigFiles } from './agent-matrix.js';
 import { removeFromArray, removeValue, writeThroughSymlink } from './config-writer.js';
-import { entryCommands, entryIsOwnedByUs, entryMayRemove } from './hook-marker.js';
+import {
+  entryCommands,
+  entryIsOwnedByAgent,
+  entryIsOwnedByUs,
+  entryIsSharedWithPeerAgent,
+  entryMayRemove,
+  entryMayRemoveForAgent,
+} from './hook-marker.js';
 
 /**
  * UNINSTALL (plan 082 tk-000d) — surgical removal, never a restore.
@@ -134,21 +141,43 @@ function uninstallOneFile(deps: UninstallDeps, spec: AgentSpec, path: string): U
         break;
       }
       const entries = parsed.hooks?.[key] ?? [];
+      /*
+       * AGENT-QUALIFIED REMOVAL (plan 082 F010 F3, the inverse collision).
+       *
+       * `entryMayRemove` alone means "wholly ours" — which in a config SHARED by
+       * two agents also matches the PEER's entry. Uninstalling droid would take
+       * claude-code's hook with it, and worse: install compensation runs this same
+       * path, so a FAILED droid install could delete a HEALTHY claude one. The
+       * marker proves the entry is ours; the `hooks fire <agent>` argument proves
+       * whose, and the ownership question here is whose.
+       */
       const index = entries.findIndex(
-        (entry) => entryMayRemove(entry) && !refused.some((r) => r.command === describe(entry)),
+        (entry) =>
+          entryMayRemoveForAgent(entry, spec.agent) &&
+          !refused.some((r) => r.command === describe(entry)),
       );
       if (index === -1) {
         for (const entry of entries) {
           if (
-            entryIsOwnedByUs(entry) &&
-            !entryMayRemove(entry) &&
-            !refused.some((r) => r.command === describe(entry))
+            !entryIsOwnedByAgent(entry, spec.agent) ||
+            entryMayRemoveForAgent(entry, spec.agent) ||
+            refused.some((r) => r.command === describe(entry))
           ) {
-            refused.push({
-              command: describe(entry),
-              reason: 'our invocation is chained with foreign work in the same entry',
-            });
+            continue;
           }
+          /*
+           * TWO CAUSES, TWO SENTENCES, because the operator action differs. A
+           * FOREIGN-chained entry is not ours to touch at all. An entry shared
+           * with a PEER AGENT is entirely ours and simply cannot be removed on
+           * one agent's behalf — removing it would delete the peer's hook, which
+           * is the defect this whole round exists to close.
+           */
+          refused.push({
+            command: describe(entry),
+            reason: entryIsSharedWithPeerAgent(entry, spec.agent)
+              ? `this entry also carries another agent's harness command, so removing it would delete theirs. Edit this file by hand and delete just the \`hooks fire ${spec.agent}\` command from inside the entry, leaving the other agent's in place — or split the entry into one per agent and re-run uninstall`
+              : 'our invocation is chained with foreign work in the same entry',
+          });
         }
         break;
       }

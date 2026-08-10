@@ -220,7 +220,17 @@ describe('EVERY configured command, not the first (F008 review F2)', () => {
       hooks: Record<string, { command: string }[]>;
     };
     for (const entry of doc.hooks.postToolUse) {
-      entry.command = entry.command.replace(`"/usr/local/bin/node" `, '');
+      /*
+       * DEGRADE TO A FORM THE INSTALLER ACTUALLY WROTE — the WHOLE invocation
+       * prefix, not just the node path. A pre-F008 entry was `"<script>" hooks
+       * fire …` and never `--no-warnings "<script>" …`; stripping only the
+       * interpreter once the invocation carries flags would build a stimulus no
+       * version of this tool has ever emitted, and then measure our readers
+       * against it. That is the constructed-stimulus error this plan has paid for
+       * three times.
+       */
+      entry.command = entry.command.slice(entry.command.indexOf('"', 1) + 1).trimStart();
+      entry.command = entry.command.slice(entry.command.indexOf('"'));
     }
     writeFileSync(path, `${JSON.stringify(doc, null, 2)}\n`);
   };
