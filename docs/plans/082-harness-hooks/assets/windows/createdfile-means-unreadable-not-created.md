@@ -97,15 +97,33 @@ entry *and* misrecord `createdFile` together and the delete branch runs on a use
    into a single installed"* — **the type is correct and its one consumer does not honour it.** A
    doctrine defeated at the consumption site, not at the definition.
 
-## Still unexplained — stated plainly
+## RESOLVED — the write did not land because the file was untouchable in that window
 
-**Why cursor's write did not land.** `writeText` does **not** swallow (`node-fs.ts:265` is a bare
-`writeFileSync`, it throws), and a throw would have produced a `PartialInstallError` and **no
-record** — but a record exists. So the write did not fail, did not throw, and did not land.
+**Composed and fixed by `pij-immediate-newt` (`5ce3dac7`, `2a8702f8`).** This section previously
+read *"still unexplained"*; it is superseded rather than deleted, because the shape of what two
+agents could not determine from outside is itself part of the record.
 
-**No mechanism is offered for that.** It needs instrumentation inside the process. Two agents
-stopped here rather than invent a third explanation, which is the correct outcome and is recorded
-as such.
+The file was **readable at 18:35:49** — the backup captured it byte-identical — and **untouchable
+at 18:35:53**. **Both installers refused it in that window**, ours and git-ai's, which is
+consistent with what this box shows: neither wrote `hooks.json`, and 16 Cursor processes were
+running.
+
+**Two silent legs on our side, now named per-agent failures instead of successes:**
+
+1. `readText` returning null recorded as **created** (this document's finding)
+2. **`writeThroughSymlink` returning null ignored at commit** — the leg neither clam nor I could
+   see from outside, and the direct answer to *why the write did not land without throwing*:
+   it did not throw, it returned a value the caller discarded
+
+`writeText` not swallowing was correct reasoning; the swallow was one layer further out, at the
+call site that dropped the result. **The pattern held to the end: the check you trust is the one
+nobody has tested.**
+
+Also fixed alongside: a BOM no-op, and the `installed.push` collapse that dropped `InstallChange`
+(§ *The fix*, item 2).
+
+**The acceptance bar for the from-zero rerun** is now the honest one: it should either install
+cursor's hooks **or say, by name, that it could not** — never claim it.
 
 ## The pattern this belongs to
 
