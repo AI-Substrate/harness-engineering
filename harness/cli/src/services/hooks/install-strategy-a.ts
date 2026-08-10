@@ -430,7 +430,23 @@ interface FilePlan {
  * committed together (F010 F2). Anything that throws here has changed nothing.
  */
 function planOneFile(fs: FsPort, spec: AgentSpec, path: string, binary: string): FilePlan {
-  const raw = fs.exists(path) ? fs.readText(path) : null;
+  // ABSENT and UNREADABLE are different worlds and must not share a value.
+  // `readText` swallows every error to null, so `exists ? readText : null`
+  // recorded a locked/denied/EBUSY file — all live states on Windows with the
+  // editor running — as `created: true`. That flag feeds the install record,
+  // and uninstall DELETES paths recorded as created: misrecord it and the
+  // delete branch runs on a user's file (only the marker guard, checking a
+  // different fact, stood in front of it — protection by coincidence).
+  // Measured on the from-zero fixture (2026-08-10): cursor's hooks.json was
+  // present, unread, recorded created, and never written. Refusing loudly here
+  // turns that into a named per-agent failure.
+  const fileExists = fs.exists(path);
+  const raw = fileExists ? fs.readText(path) : null;
+  if (fileExists && raw === null) {
+    throw new Error(
+      `${path} exists but could not be read (locked, permission-denied, or transiently held by another process) — refusing to plan against a config we cannot see. Nothing was modified; re-run when the file is readable.`,
+    );
+  }
   // A LEADING UTF-8 BOM IS STRIPPED, AND NOTHING ELSE IS — the same one-code-
   // point strip as `parseHookPayload`, for the same reason found the same way:
   // PowerShell (and Windows editors) routinely write agent configs with an
@@ -548,7 +564,18 @@ function planOneFile(fs: FsPort, spec: AgentSpec, path: string, binary: string):
 function commitOneFile(fs: FsPort, plan: FilePlan): void {
   if (plan.mkdir !== null) fs.mkdirp(plan.mkdir);
   if (plan.outcome.writtenText === null) return;
-  writeThroughSymlink(fs, plan.outcome.path, plan.outcome.writtenText);
+  // `null` is writeThroughSymlink DECLINING — the existing path could not be
+  // resolved — and ignoring it recorded a write that never happened as an
+  // install (from-zero fixture, 2026-08-10: no throw, no file, a clean record).
+  // A declined write must fail the agent BY NAME, exactly like a throwing one:
+  // the catch in `installStrategyA` rolls back this agent's earlier files and
+  // surfaces the reason instead of a success line.
+  const written = writeThroughSymlink(fs, plan.outcome.path, plan.outcome.writtenText);
+  if (written === null) {
+    throw new Error(
+      `${plan.outcome.path} exists but its real path could not be resolved (locked, permission-denied, or a broken link) — the hook entry was NOT written`,
+    );
+  }
 }
 
 /**

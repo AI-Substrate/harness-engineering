@@ -299,3 +299,41 @@ describe('a BOM-prefixed config installs, cleanly — measured on the from-zero 
     expect(readFileSync(path, 'utf8')).toBe('{ this is not json at all\n');
   });
 });
+
+describe('absent and unreadable are different worlds (from-zero fixture, 2026-08-10)', () => {
+  it('a file that EXISTS but cannot be read throws by name — never records created', () => {
+    mkdirSync(join(home, '.cursor'), { recursive: true });
+    const path = join(home, '.cursor', 'hooks.json');
+    writeFileSync(path, '{ "hooks": { "preToolUse": [], "postToolUse": [] } }\n');
+    // A locked/denied file on Windows: exists() true, every read fails.
+    const blind = new Proxy(fs, {
+      get(target, prop, receiver) {
+        if (prop === 'readText') return () => null;
+        return Reflect.get(target, prop, receiver);
+      },
+    });
+
+    expect(() => installStrategyA(blind, spec('cursor'), home, env, BINARY)).toThrow(
+      /exists but could not be read.*Nothing was modified/s,
+    );
+  });
+
+  it('a write the symlink resolver DECLINES fails the agent instead of recording success', () => {
+    mkdirSync(join(home, '.cursor'), { recursive: true });
+    const path = join(home, '.cursor', 'hooks.json');
+    const before = '{ "hooks": { "preToolUse": [], "postToolUse": [] } }\n';
+    writeFileSync(path, before);
+    // exists true + realpath unresolvable = writeThroughSymlink returns null.
+    const unresolvable = new Proxy(fs, {
+      get(target, prop, receiver) {
+        if (prop === 'realpath') return () => null;
+        return Reflect.get(target, prop, receiver);
+      },
+    });
+
+    expect(() => installStrategyA(unresolvable, spec('cursor'), home, env, BINARY)).toThrow(
+      /real path could not be resolved.*NOT written/s,
+    );
+    expect(readFileSync(path, 'utf8')).toBe(before);
+  });
+});
