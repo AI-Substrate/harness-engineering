@@ -3,6 +3,7 @@ import { FakeGitAttribution } from '../../../../src/adapters/git/fake-git-attrib
 import { NodeHash } from '../../../../src/adapters/hash/node-hash.js';
 import { FakeSocketProbe } from '../../../../src/adapters/net/fake-socket-probe.js';
 import type { ProbeOutcome } from '../../../../src/adapters/net/socket-probe-port.js';
+import { describeExit } from '../../../../src/services/doctor/collector/exit-code.js';
 import {
   type CollectorHealth,
   readCollectorHealth,
@@ -593,5 +594,216 @@ describe('plan 082 · F006 — the pipe rungs say what is true about a PIPE', ()
     expect(result.detail).toContain('while the socket file exists');
     expect(result.next_action).toContain('telemetry-nudge');
     expect(result.next_action).not.toContain('NOT available');
+  });
+});
+
+/**
+ * Plan 082 · F007 — A NEW STATE INHERITS THE DEFAULT VERDICT OF EVERY RUNG THAT
+ * PREDATES IT, AND THE DEFAULT IS USUALLY "FINE".
+ *
+ * `binary-unusable` was added to the hook-status union for the installer's sake.
+ * This ladder was written when that value could not exist, so every rung passed
+ * it through — and the bottom of the ladder is `healthy`. A binary the Windows
+ * loader refuses to start would have been reported as "installed and
+ * hash-matching, collection is CONFIGURED".
+ *
+ * That is the same exhaustiveness lesson as the named-pipe work (F006), arriving
+ * in a third place: adding a state to a union is never a local change, because
+ * the fall-through verdict is always the most confident one available. These
+ * rows exist so the ladder cannot silently regain that default.
+ */
+describe('a binary that cannot RUN is never healthy (plan 082 · F007)', () => {
+  const unusable = (detail: string) =>
+    stateWith({
+      hooks: { status: 'binary-unusable', at: NOW, agents: [], detail },
+    });
+
+  it('does NOT fall through to healthy — the row would have lied more loudly after the fix', () => {
+    // THE FIXTURE IS THE REAL PRODUCER, not a hand-typed sentence. The claim
+    // under test is a COMPOSITION — `describeExit` names the measured cause, the
+    // ladder interpolates it — and a fixture that types the detail by hand can
+    // assert that composition while it is broken. This one goes through the
+    // function production goes through.
+    const result = health({
+      fs: installedFs(),
+      state: unusable(`\`${BINARY} --version\` ${describeExit(3_221_225_781, '')}`),
+    });
+
+    expect(result.verdict).not.toBe('healthy');
+    expect(result.verdict).toBe('degraded');
+    expect(result.detail).not.toContain('CONFIGURED');
+    // The two halves that were previously said as one: the digest is REAL…
+    expect(result.detail).toContain('digest matches');
+    // …and it proves provenance, not that the program runs.
+    expect(result.detail).toContain('CANNOT RUN');
+    expect(result.detail).toContain('no AI attribution is being collected');
+    // And the operator is given the measured cause, not a ten-digit integer —
+    // stated ONCE, by the code that measured it, in the detail it produced.
+    expect(`${result.detail} ${result.next_action}`).toContain('Visual C++ Redistributable');
+    // F3 (review round 2): the command handed over must be RUNNABLE. Harness
+    // deliberately never runs git-ai's own installer, which is the thing that
+    // would put `git-ai` on PATH — so a bare `git-ai --version` is advice we
+    // know does not work on the machine we are giving it to.
+    expect(result.next_action).toContain(`${BINARY} --version`);
+    expect(result.next_action).not.toContain('`git-ai --version`');
+  });
+
+  /**
+   * F3 — THE MEASURED CAUSE IS NOT A GENERAL ONE. The brief allowed the
+   * redistributable to be named for `0xC0000135` and nothing else: it is the one
+   * cause that was verified, by fixing it on a Windows 11 guest. A probe that
+   * timed out, could not be spawned, or exited 0 in silence has told us nothing
+   * about DLLs — and on a Linux box the sentence is not even coherent.
+   */
+  it('does NOT name the Visual C++ Redistributable for an outcome that is not STATUS_DLL_NOT_FOUND', () => {
+    const silent = health({
+      fs: installedFs(),
+      state: unusable(
+        '`/home/u/.git-ai/bin/git-ai --version` exited 0 but printed nothing to either stream',
+      ),
+    });
+    const timedOut = health({
+      fs: installedFs(),
+      state: unusable(
+        '`/home/u/.git-ai/bin/git-ai --version` could not be spawned at all (ETIMEDOUT)',
+      ),
+    });
+
+    for (const result of [silent, timedOut]) {
+      const row = `${result.detail} ${result.next_action}`;
+      expect(row).not.toContain('Visual C++');
+      expect(row).not.toContain('VCRedist');
+      // Still actionable, still executable, still honest about not knowing.
+      expect(result.next_action).toContain(`${BINARY} --version`);
+    }
+  });
+
+  it('tells the operator it self-heals — no flag, no re-run by hand', () => {
+    const result = health({ fs: installedFs(), state: unusable('cannot start') });
+
+    expect(result.next_action).toContain('next ordinary `harness doctor`');
+    // Nothing here should send them at `--install-collector`: the probe is
+    // re-attempted on every run precisely so that is unnecessary.
+    expect(result.next_action).not.toContain('--install-collector');
+  });
+
+  it('a BLOCKED re-check keeps the coverage it proved and does not advise a command that cannot work', () => {
+    const fs = installedFs();
+    fs.mkdirp(`${HOME}/.cursor`);
+
+    const result = health({
+      fs,
+      state: stateWith({
+        // Hooks went on earlier, by a binary that DID run…
+        hooks: {
+          status: 'installed',
+          at: NOW,
+          agents: ['claude'],
+          claimed: ['claude'],
+          detail: 'hooks installed',
+        },
+        // …and the re-check for the new harness hit a binary that no longer does.
+        last_attempt: {
+          status: 'binary-unusable',
+          at: NOW,
+          detail: `\`${BINARY} --version\` ${describeExit(3_221_225_781, '')}`,
+          uncovered: ['cursor'],
+        },
+      }),
+    });
+
+    expect(result.verdict).toBe('hooks-incomplete');
+    expect(result.detail).toContain('Cursor');
+    expect(result.detail).toContain('could no longer run');
+    // The hooks that ARE on are still on: a probe that refused to invoke the
+    // vendor command changed nothing on this machine.
+    expect(result.detail).toContain('remain installed and collecting');
+    // `--recheck-collector` would run the same probe and refuse again. Naming it
+    // is advice we already know does not work.
+    expect(result.next_action).not.toContain('--recheck-collector');
+    // F3: same two rules as the primary rung — a runnable command, and the
+    // measured cause carried by the attempt that measured it rather than
+    // guessed at again here.
+    expect(result.next_action).toContain(`${BINARY} --version`);
+    expect(result.next_action).not.toContain('`git-ai --version`');
+    expect(`${result.detail} ${result.next_action}`).toContain('0xC0000135');
+  });
+
+  it('the BLOCKED re-check does not guess at Windows either when the cause is something else', () => {
+    const fs = installedFs();
+    fs.mkdirp(`${HOME}/.cursor`);
+
+    const result = health({
+      fs,
+      state: stateWith({
+        hooks: {
+          status: 'installed',
+          at: NOW,
+          agents: ['claude'],
+          claimed: ['claude'],
+          detail: 'hooks installed',
+        },
+        last_attempt: {
+          status: 'binary-unusable',
+          at: NOW,
+          detail: `\`${BINARY} --version\` exited 0 but printed nothing to either stream`,
+          uncovered: ['cursor'],
+        },
+      }),
+    });
+
+    const row = `${result.detail} ${result.next_action}`;
+    expect(row).not.toContain('Visual C++');
+    expect(row).not.toContain('VCRedist');
+    expect(result.next_action).toContain(`Make the binary at ${BINARY} runnable`);
+  });
+
+  /**
+   * F3 · THE RULE THIS ROUND ESTABLISHED — AN ACTIONABLE STRING MUST BE
+   * SELF-CONTAINED, BECAUSE YOU CANNOT CONTROL WHICH SURFACE RENDERS IT ALONE.
+   *
+   * This is not hypothetical and it is not general-caution: `harness checks`'
+   * housekeeping nudge takes `next_action` and NOTHING else
+   * (`CollectorHooksReading`, three fields on purpose so it cannot couple to
+   * this ladder), and it can reach exactly this rung — `hooks.missing` is `[]`
+   * unless `hooks.status === 'installed'`, so the blocked RE-CHECK is the only
+   * `binary-unusable` verdict that surface ever sees.
+   *
+   * So the assertion is deliberately on `next_action` BY ITSELF. A version that
+   * said "see the detail above" passed a row-composed assertion and was false
+   * exactly where an operator was standing.
+   */
+  it('next_action ALONE carries the cause — the `checks` nudge renders it with no detail beside it', () => {
+    const fs = installedFs();
+    fs.mkdirp(`${HOME}/.cursor`);
+    const result = health({
+      fs,
+      state: stateWith({
+        hooks: {
+          status: 'installed',
+          at: NOW,
+          agents: ['claude'],
+          claimed: ['claude'],
+          detail: 'hooks installed',
+        },
+        last_attempt: {
+          status: 'binary-unusable',
+          at: NOW,
+          detail: `\`${BINARY} --version\` ${describeExit(3_221_225_781, '')}`,
+          uncovered: ['cursor'],
+        },
+      }),
+    });
+
+    const alone = result.next_action ?? '';
+    // Everything an operator needs, with nothing else on screen: what to do…
+    expect(alone).toContain(`Make the binary at ${BINARY} runnable`);
+    // …what was actually observed…
+    expect(alone).toContain('0xC0000135');
+    expect(alone).toContain('Visual C++ Redistributable');
+    // …and that it self-heals.
+    expect(alone).toContain('next ordinary `harness doctor`');
+    // The failure mode this row exists to forbid.
+    expect(alone).not.toContain('above');
   });
 });

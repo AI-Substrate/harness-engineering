@@ -55,6 +55,16 @@ const HOME = '/home/u';
 const REPO = '/repo';
 const NOW = '2026-08-09T00:00:00.000Z';
 const BINARY = '/home/u/.git-ai/bin/git-ai';
+
+/**
+ * EVERY FIXTURE MUST DECLARE THAT THE BINARY RUNS (plan 082 · F007).
+ *
+ * `installHooks` now asks `--version` before it hands over `install-hooks`, and
+ * an unconfigured fake answers exit 0 with silence — which is REFUSED. That is
+ * deliberate: a fixture that has not said the binary works must break loudly
+ * rather than sail through the guard and assert nothing.
+ */
+const VIABLE = { [`${BINARY} --version`]: { code: 0, stdout: 'git-ai 1.6.22' } };
 const PAYLOAD = new TextEncoder().encode('#!/bin/sh\necho git-ai\n');
 const DIGEST = new NodeHash().sha256Hex(PAYLOAD);
 
@@ -74,7 +84,7 @@ function deps(over: Partial<CollectorDeps> = {}): CollectorDeps {
     paths: new FakePathKind({}),
     hash: new NodeHash(),
     http: new FakeDownload({}),
-    exec: new FakeSequencedExec({}),
+    exec: new FakeSequencedExec({ ...VIABLE }),
     exe: new FakeExecutableBit(),
     clock: new FakeClock(NOW),
     host: { platform: 'darwin', arch: 'arm64', home: HOME },
@@ -155,7 +165,10 @@ describe('§3b — the ONE warn case: a pre-existing global trace2 config', () =
     fs.writeText(collectorStatePath(REPO), JSON.stringify(skippedByTrace2()));
     // The LIVE config still has the operator's keys — the record and the machine
     // agree, so the refusal stands.
-    const exec = new FakeSequencedExec({ [TRACE2_READ]: TRACE2_PRESENT });
+    const exec = new FakeSequencedExec({
+      ...VIABLE,
+      [TRACE2_READ]: TRACE2_PRESENT,
+    });
 
     const outcome = await autoInstallCollector(deps({ fs, exec }));
 
@@ -173,7 +186,13 @@ describe('§3b — the ONE warn case: a pre-existing global trace2 config', () =
     fs.writeText(collectorStatePath(REPO), JSON.stringify(skippedByTrace2()));
 
     const outcome = await autoInstallCollector(
-      deps({ fs, exec: new FakeSequencedExec({ [TRACE2_READ]: TRACE2_PRESENT }) }),
+      deps({
+        fs,
+        exec: new FakeSequencedExec({
+          ...VIABLE,
+          [TRACE2_READ]: TRACE2_PRESENT,
+        }),
+      }),
     );
 
     // The latch's operator-facing half: our advice led to a re-run, and the
@@ -197,6 +216,7 @@ describe('§3b — the ONE warn case: a pre-existing global trace2 config', () =
     fs.mkdirp(`${HOME}/.claude`);
     fs.writeText(collectorStatePath(REPO), JSON.stringify(skippedByTrace2()));
     const exec = new FakeSequencedExec({
+      ...VIABLE,
       // THREE reads happen on this path, in order: the unlatch check added here,
       // `installHooks`' own guard, and the post-install verification that git-ai
       // wrote its key. The first two must report EMPTY (git exits 1 with no
@@ -237,7 +257,10 @@ describe('§3b — the ONE warn case: a pre-existing global trace2 config', () =
     const fs = new FakeCollectorFs();
     fs.seedBytes(BINARY, PAYLOAD);
     fs.writeText(collectorStatePath(REPO), JSON.stringify(skippedByTrace2()));
-    const exec = new FakeSequencedExec({ [TRACE2_READ]: { code: 128, stderr: 'no git here' } });
+    const exec = new FakeSequencedExec({
+      ...VIABLE,
+      [TRACE2_READ]: { code: 128, stderr: 'no git here' },
+    });
 
     const outcome = await autoInstallCollector(deps({ fs, exec }));
 
@@ -261,7 +284,7 @@ describe('§3b — the ONE warn case: a pre-existing global trace2 config', () =
         hooks: { status: 'installed', at: NOW, agents: ['claude'], detail: 'hooks installed' },
       }),
     );
-    const exec = new FakeSequencedExec({});
+    const exec = new FakeSequencedExec({ ...VIABLE });
 
     const result = await recheckCollector(deps({ fs, exec }));
 
@@ -361,7 +384,7 @@ describe('§3a — an unsupported platform is never retried and never guessed at
 describe('HARNESS_NO_COLLECTOR=1 — a different consent from HARNESS_NO_TELEMETRY', () => {
   it('installs NOTHING and never consults the network', async () => {
     const http = new FakeDownload({});
-    const exec = new FakeSequencedExec({});
+    const exec = new FakeSequencedExec({ ...VIABLE });
 
     const outcome = await autoInstallCollector(deps({ http, exec }), true);
 
@@ -487,6 +510,7 @@ describe('P1-A — a failing HOOK stage is recorded, not repeated forever', () =
     // place and discards its JSONC comments.
     const { fs } = readyToHook();
     const exec = new FakeSequencedExec({
+      ...VIABLE,
       [TRACE2_READ]: { code: 1 },
       [`${BINARY} install-hooks`]: { code: 3, stderr: 'boom' },
     });
@@ -501,6 +525,7 @@ describe('P1-A — a failing HOOK stage is recorded, not repeated forever', () =
     // THE PROPERTY, and it is the one the old code failed: a second bare doctor
     // does not run the destructive command again.
     const second = new FakeSequencedExec({
+      ...VIABLE,
       [TRACE2_READ]: { code: 1 },
       [`${BINARY} install-hooks`]: { code: 3, stderr: 'boom' },
     });
@@ -516,6 +541,7 @@ describe('P1-A — a failing HOOK stage is recorded, not repeated forever', () =
     // exactly like `failed` did.
     const { fs } = readyToHook();
     const exec = new FakeSequencedExec({
+      ...VIABLE,
       // Guard reads EMPTY; the post-install read finds git-ai's key ABSENT.
       [TRACE2_READ]: [{ code: 1 }, { code: 1 }],
       [`${BINARY} install-hooks`]: { code: 0, stdout: 'ok' },
@@ -535,7 +561,10 @@ describe('P1-A — a failing HOOK stage is recorded, not repeated forever', () =
     // them would reintroduce the latch through a second door: the operator clears
     // their trace2 config and the machine-wide record refuses anyway.
     const { fs } = readyToHook();
-    const exec = new FakeSequencedExec({ [TRACE2_READ]: TRACE2_PRESENT });
+    const exec = new FakeSequencedExec({
+      ...VIABLE,
+      [TRACE2_READ]: TRACE2_PRESENT,
+    });
 
     const outcome = await autoInstallCollector(deps({ fs, exec }));
 
@@ -561,6 +590,7 @@ describe('P1-A — a failing HOOK stage is recorded, not repeated forever', () =
     fs.mkdirp(`${HOME}/.claude`);
     fs.writeText(collectorStatePath(REPO), JSON.stringify(skippedByTrace2()));
     const exec = new FakeSequencedExec({
+      ...VIABLE,
       [TRACE2_READ]: [{ code: 1 }, TRACE2_PRESENT],
     });
 
@@ -585,7 +615,10 @@ describe('P1-B — a pin that could not be written stops the first execution', (
     fs.mkdirp(`${HOME}/.claude`);
     fs.writeText(collectorStatePath(REPO), JSON.stringify(skippedByTrace2()));
     fs.failWrites.add(configPathFor(HOME));
-    const exec = new FakeSequencedExec({ [TRACE2_READ]: { code: 1 } });
+    const exec = new FakeSequencedExec({
+      ...VIABLE,
+      [TRACE2_READ]: { code: 1 },
+    });
 
     const outcome = await autoInstallCollector(deps({ fs, exec }));
 
@@ -615,7 +648,10 @@ describe('P1-C — a backup we could not take blocks the step it protects', () =
       `${backupDirFor(HOME, NOW)}/${storedPathFor(`${HOME}/.claude/settings.json`, HOME)}`,
     );
     fs.writeText(collectorStatePath(REPO), JSON.stringify(skippedByTrace2()));
-    const exec = new FakeSequencedExec({ [TRACE2_READ]: { code: 1 } });
+    const exec = new FakeSequencedExec({
+      ...VIABLE,
+      [TRACE2_READ]: { code: 1 },
+    });
 
     const outcome = await autoInstallCollector(deps({ fs, exec }));
 
@@ -649,6 +685,7 @@ describe('P1-C — a backup we could not take blocks the step it protects', () =
     // for the day a new agent is added without measuring its paths.
     fs.writeText(collectorStatePath(REPO), JSON.stringify(skippedByTrace2()));
     const exec = new FakeSequencedExec({
+      ...VIABLE,
       [TRACE2_READ]: [
         { code: 1 },
         { code: 1 },
@@ -675,5 +712,123 @@ describe('P1-C — a backup we could not take blocks the step it protects', () =
     const undeclared = AGENT_MARKERS.filter((agent) => agent.configs.length === 0);
 
     expect(undeclared.map((agent) => agent.id)).toEqual([]);
+  });
+});
+
+/**
+ * F2 (review round 2) — A GUARD REFUSAL MAY NOT RENDER AS A SUCCESSFUL INSTALL.
+ *
+ * `binary-unusable` is correctly kept OUT of `HOOK_STAGE_FAILURES` (it must not
+ * latch — the operator installs the missing runtime and the next ordinary doctor
+ * just works). But keeping it out of the failure set dropped it through to the
+ * success branch, where a bare doctor announced:
+ *
+ *     git-ai collector: harness installed the pinned git-ai collector
+ *     automatically (cli: already-current, hooks: binary-unusable) — no flag
+ *     required
+ *
+ * beside a warning saying the binary cannot run and nothing is being collected.
+ * That is the ORIGINAL DEFECT — a claim about bytes standing where a claim about
+ * behaviour was needed — recreated one layer up, in prose. The retry policy is
+ * right; the headline is not, and the two are separable.
+ */
+describe('F2 — a refusal is announced as a refusal, and still never latches', () => {
+  /** A machine where the binary is placed and verified, and cannot run. */
+  function brokenBinaryDeps(over: Partial<CollectorDeps> = {}): CollectorDeps {
+    const fs = new FakeCollectorFs();
+    fs.seedBytes(BINARY, PAYLOAD);
+    fs.mkdirp(`${HOME}/.claude`);
+    const exec = new FakeSequencedExec({
+      [`${BINARY} --version`]: { code: 3_221_225_781, stdout: '', stderr: '' },
+      [TRACE2_READ]: { code: 1 },
+    });
+    return deps({ fs, exec, ...over });
+  }
+
+  it('does NOT report the success headline — no "installed", no "no flag required"', async () => {
+    const d = brokenBinaryDeps();
+
+    const outcome = await autoInstallCollector(d);
+
+    expect(outcome.action).not.toBe('installed');
+    expect(outcome.detail).not.toContain('no flag required');
+    expect(outcome.detail).not.toContain('harness installed the pinned git-ai collector');
+  });
+
+  it('says what actually happened: nothing was hooked and nothing is being collected', async () => {
+    const d = brokenBinaryDeps();
+
+    const outcome = await autoInstallCollector(d);
+
+    expect(outcome.detail).toContain('could NOT be run');
+    expect(outcome.detail).toContain('no AI attribution is being collected');
+    // …and that it fixes itself, because it does. This is the half of the
+    // message that justifies keeping the refusal out of HOOK_STAGE_FAILURES.
+    expect(outcome.detail).toContain('next ordinary `harness doctor`');
+    expect(outcome.detail).not.toContain('--install-collector');
+  });
+
+  it('STILL DOES NOT LATCH — no machine-wide block is written', async () => {
+    const fs = new FakeCollectorFs();
+    fs.seedBytes(BINARY, PAYLOAD);
+    fs.mkdirp(`${HOME}/.claude`);
+    const d = brokenBinaryDeps({ fs });
+
+    await autoInstallCollector(d);
+
+    // The whole reason this outcome is not in HOOK_STAGE_FAILURES: a block here
+    // would make the operator re-run `--install-collector` after installing a
+    // redistributable, which is the machine-customisation task plan 077 deleted.
+    expect(readAutoInstallBlock(fs, { platform: 'darwin', arch: 'arm64', home: HOME })).toBeNull();
+  });
+
+  /**
+   * THE COUNTER-ROW. Without it, "never say installed" is satisfied by never
+   * saying installed — and the success announcement that plan 077 §3a requires
+   * ("tell, don't ask") would be gone with every test still green.
+   */
+  it('a run where the binary DOES work still gets the success headline', async () => {
+    const fs = new FakeCollectorFs();
+    fs.seedBytes(BINARY, PAYLOAD);
+    fs.mkdirp(`${HOME}/.claude`);
+    const exec = new FakeSequencedExec({
+      ...VIABLE,
+      [TRACE2_READ]: [{ code: 1 }, { code: 0, stdout: 'trace2.eventtarget af_unix:/tmp/s\n' }],
+      [`${BINARY} install-hooks`]: { code: 0, stdout: 'claude: installed\n' },
+    });
+
+    const outcome = await autoInstallCollector(deps({ fs, exec }));
+
+    expect(outcome.action).toBe('installed');
+    expect(outcome.detail).toContain('no flag required');
+  });
+
+  it('the RE-CHECK door says the same thing — it is the same refusal', async () => {
+    // The install path was the one the review measured, but `recheckCollector`
+    // reaches the identical guard and fell through to `action: 'rechecked'`,
+    // announcing "harness re-ran the git-ai hook install" about a run in which
+    // nothing was run.
+    const fs = new FakeCollectorFs();
+    fs.seedBytes(BINARY, PAYLOAD);
+    fs.mkdirp(`${HOME}/.claude`);
+    fs.mkdirp(`${HOME}/.cursor`);
+    fs.writeText(collectorStatePath(REPO), JSON.stringify(healthyState()));
+    const exec = new FakeSequencedExec({
+      [`${BINARY} --version`]: { code: 3_221_225_781, stdout: '', stderr: '' },
+      [TRACE2_READ]: { code: 1 },
+    });
+
+    const outcome = await autoInstallCollector(deps({ fs, exec }));
+
+    expect(outcome.action).not.toBe('rechecked');
+    expect(outcome.detail).not.toContain('harness re-ran the git-ai hook install');
+    expect(outcome.detail).toContain('could NOT be run');
+    // AND THE SENTENCE IS DIFFERENT HERE, deliberately. This row's first draft
+    // asserted `no AI attribution is being collected` — copied from the install
+    // door, and FALSE on this one: the hooks that went on earlier are still on
+    // and still collecting. Printing it would be the same class of error as the
+    // headline this finding is about, one door over.
+    expect(outcome.detail).toContain('hooks already installed are unaffected');
+    expect(outcome.detail).not.toContain('no AI attribution is being collected');
   });
 });

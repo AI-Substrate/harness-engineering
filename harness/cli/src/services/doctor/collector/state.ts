@@ -35,6 +35,12 @@ export type HooksInstallStatus =
   | 'installed'
   | 'skipped-trace2'
   | 'skipped-skills'
+  /**
+   * The digest-verified binary cannot execute on this machine, so the vendor
+   * command was never invoked (plan 082 · F007). A refusal, not a failure — see
+   * `HooksStage` in install.ts for why the two must not be one word.
+   */
+  | 'binary-unusable'
   | 'unverified'
   | 'failed'
   | 'not-attempted';

@@ -371,6 +371,55 @@ export function readCollectorHealth(deps: CollectorHealthDeps): CollectorHealth 
         'Move or rename the reported skill paths if they are yours to keep, then re-run `harness doctor --install-collector`. Harness will not delete them for you.',
     };
   }
+  // A NEW STATE INHERITS THE DEFAULT VERDICT OF EVERY RUNG THAT PREDATES IT, and
+  // the default at the bottom of this ladder is `healthy` (plan 082 · F007).
+  //
+  // This rung is not decoration. Without it a `binary-unusable` state falls
+  // through `skipped-*`, through `failed || not-attempted`, past the missing-agent
+  // rung — and lands on `healthy`, announcing that a binary which cannot start is
+  // "installed and hash-matching, collection is CONFIGURED". The row was already
+  // half-lying before F007 (it reported the CLI `already-current`, a claim about
+  // bytes, beside a hook failure caused by those bytes not running); after F007 it
+  // would have lied MORE loudly, because the hook stage would no longer say
+  // `failed` to contradict it.
+  //
+  // The CLI half of the sentence is kept TRUE rather than softened: the artifact
+  // genuinely is present and genuinely does match the pin. What is added is the
+  // half that was missing — that this proves provenance and not viability.
+  //
+  // F3 (review round 2) — THE CAUSE IS NAMED ONCE, BY THE CODE THAT MEASURED IT.
+  // This action used to assert that a missing Visual C++ Redistributable was the
+  // usual Windows cause of EVERY `binary-unusable` outcome — a timeout, a failed
+  // spawn, a silent exit 0, an ordinary non-zero, and on hosts that are not
+  // Windows at all. Only ONE cause was ever measured (`0xC0000135`, fixed on a
+  // Windows 11 guest on 2026-08-10), and `describeExit` already names it for
+  // exactly that code and no other. That sentence arrives here inside
+  // `state.hooks.detail`, and this rung CARRIES it rather than deciding for
+  // itself when to mention a redistributable. `describeExit` stays the only
+  // thing in the codebase that names one.
+  //
+  // AND next_action CARRIES IT, NOT `detail` — because an actionable string must
+  // be SELF-CONTAINED. You cannot control which surface renders it alone, and
+  // one already does: `harness checks`' housekeeping nudge takes `next_action`
+  // and nothing else (`housekeeping.ts` · `CollectorHooksReading`, three fields
+  // on purpose so it cannot couple to this ladder). A `next_action` that says
+  // "see the detail above" is false wherever there is no above. So the cause
+  // travels with the action, and `detail` states the condition without it —
+  // which is also why this is not a stutter on the doctor row: the two fields
+  // say different things, they do not repeat one.
+  //
+  // AND THE COMMAND IS RUNNABLE. It said `git-ai --version`, which is not on
+  // PATH: harness deliberately never runs the vendor's `install.sh` (see the
+  // header of install.ts), and that installer is the thing that prepends PATH.
+  // We placed the binary at a path we know, so we hand over that path.
+  if (state.hooks.status === 'binary-unusable') {
+    return {
+      ...base,
+      verdict: 'degraded',
+      detail: `the pinned git-ai ${manifest.version} is present at ${binaryPath} and its digest matches — but it CANNOT RUN on this machine, so no hooks were installed and no AI attribution is being collected`,
+      next_action: `Make the binary at ${binaryPath} runnable and harness needs nothing further from you — it re-probes on the next ordinary \`harness doctor\` and installs the hooks itself once it runs, with no flag and no re-run by hand. This is what harness observed when it asked: ${state.hooks.detail}`,
+    };
+  }
   if (state.hooks.status === 'unverified') {
     return {
       ...base,
@@ -416,6 +465,22 @@ export function readCollectorHealth(deps: CollectorHealthDeps): CollectorHealth 
         verdict: 'hooks-incomplete',
         detail: `${covered}, but ${labels} is NOT instrumented — the automatic re-install was blocked because real content sits where git-ai keeps its skill links: ${attempt.detail}`,
         next_action: `Move or rename the reported skill paths if they are yours to keep, then re-run \`harness doctor --recheck-collector\` to cover ${labels}. The hooks already installed are unaffected either way.`,
+      };
+    }
+    if (attempt?.status === 'binary-unusable') {
+      // The rung that made F3's condition matter: this is the ONLY
+      // `binary-unusable` verdict `harness checks`' housekeeping nudge can
+      // reach, and that surface renders `next_action` with no `detail` beside
+      // it. `missing` is `[]` unless `hooks.status === 'installed'`
+      // (see above), so the primary rung above structurally cannot get here —
+      // measured, not assumed. Hence the same rule, for the same reason: the
+      // observation travels inside the action, and `describeExit` remains the
+      // only code that names a redistributable.
+      return {
+        ...base,
+        verdict: 'hooks-incomplete',
+        detail: `${covered}, but ${labels} is NOT instrumented — the automatic re-install was blocked at ${attempt.at} because the pinned binary could no longer run`,
+        next_action: `Make the binary at ${binaryPath} runnable and the next ordinary \`harness doctor\` covers ${labels} by itself. The hooks already installed are unaffected — they were installed by a binary that ran. This is what harness observed when it asked: ${attempt.detail}`,
       };
     }
     return {

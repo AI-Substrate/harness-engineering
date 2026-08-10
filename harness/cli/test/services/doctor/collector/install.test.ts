@@ -36,6 +36,16 @@ const HOME = '/home/u';
 const REPO = '/repo';
 const NOW = '2026-08-06T10:00:00.000Z';
 const BINARY = '/home/u/.git-ai/bin/git-ai';
+
+/**
+ * EVERY FIXTURE MUST DECLARE THAT THE BINARY RUNS (plan 082 · F007).
+ *
+ * `installHooks` now asks `--version` before it hands over `install-hooks`, and
+ * an unconfigured fake answers exit 0 with silence — which is REFUSED. That is
+ * deliberate: a fixture that has not said the binary works must break loudly
+ * rather than sail through the guard and assert nothing.
+ */
+const VIABLE = { [`${BINARY} --version`]: { code: 0, stdout: 'git-ai 1.6.22' } };
 const CONFIG = '/home/u/.git-ai/config.json';
 const TRACE2_GET = 'git config --global --get-regexp ^trace2\\.';
 /**
@@ -93,6 +103,7 @@ function deps(
     over.exec ??
     new FakeSequencedExec(
       {
+        ...VIABLE,
         // The guard read is EMPTY; the verification read afterwards shows git-ai's
         // own keys — which is what a successful `install-hooks` actually does.
         [TRACE2_GET]: TRACE2_EMPTY_THEN_INSTALLED,
@@ -231,6 +242,7 @@ describe('installCollector — stage 1 places a verified CLI and pins git-ai to 
 describe('installCollector — stage 2 is INDEPENDENT of stage 1 (ac-0013, ac-0014)', () => {
   it('a present trace2 config skips hooks WITHOUT touching the installed CLI', async () => {
     const exec = new FakeExec({
+      ...VIABLE,
       [TRACE2_GET]: { code: 0, stdout: 'trace2.eventTarget /Users/x/.trace2\n' },
       [`${BINARY} status --json`]: { code: 0, stdout: '{"schema_version":"authorship/3.0.0"}' },
     });
@@ -296,6 +308,7 @@ describe('installCollector — stage 2 is INDEPENDENT of stage 1 (ac-0013, ac-00
 
   it('an unreadable trace2 config fails closed — hooks are not installed', async () => {
     const exec = new FakeExec({
+      ...VIABLE,
       [TRACE2_GET]: { code: 128, stderr: 'fatal: unreadable' },
       [`${BINARY} status --json`]: { code: 0, stdout: '' },
     });
@@ -310,6 +323,7 @@ describe('installCollector — stage 2 is INDEPENDENT of stage 1 (ac-0013, ac-00
 
   it('a failing install-hooks is reported without unwinding the CLI install', async () => {
     const exec = new FakeExec({
+      ...VIABLE,
       [TRACE2_GET]: { code: 1, stdout: '' },
       [`${BINARY} install-hooks`]: { code: 2, stderr: 'daemon unreachable' },
       [`${BINARY} status --json`]: { code: 0, stdout: '' },
@@ -340,6 +354,7 @@ describe('installCollector — the note schema is asserted after install (ac-000
 
   it('warns on a mismatch, so binary drift and format drift are reviewed together', async () => {
     const exec = new FakeExec({
+      ...VIABLE,
       [TRACE2_GET]: { code: 1, stdout: '' },
       [`${BINARY} install-hooks`]: { code: 0, stdout: 'claude: installed\n' },
       [`${BINARY} status --json`]: { code: 0, stdout: '{"schema_version":"authorship/4.0.0"}' },
@@ -356,6 +371,7 @@ describe('installCollector — the note schema is asserted after install (ac-000
 
   it('records `unknown` — never a pass — when the schema cannot be read', async () => {
     const exec = new FakeExec({
+      ...VIABLE,
       [TRACE2_GET]: { code: 1, stdout: '' },
       [`${BINARY} install-hooks`]: { code: 0, stdout: 'claude: installed\n' },
       [`${BINARY} status --json`]: { code: 1, stdout: '' },
@@ -409,6 +425,7 @@ describe('recheckCollector — a new coding harness is detected and reported (ac
     fs.mkdirp(`${HOME}/.claude`);
     const exec = new FakeSequencedExec(
       {
+        ...VIABLE,
         [TRACE2_GET]: TRACE2_EMPTY_THEN_INSTALLED,
         [`${BINARY} install-hooks`]: { code: 0, stdout: 'Claude Code: Hooks updated\n' },
         [`${BINARY} status --json`]: { code: 0, stdout: '{"schema_version":"authorship/3.0.0"}' },
@@ -425,6 +442,7 @@ describe('recheckCollector — a new coding harness is detected and reported (ac
     // blocks on both, exactly as on a machine we had never touched.
     fs.mkdirp(`${HOME}/.gemini`);
     const guarded = new FakeExec({
+      ...VIABLE,
       [TRACE2_GET]: { code: 0, stdout: 'trace2.normalTarget /tmp/trace\n' },
     });
     const recheck = await recheckCollector({ ...d, exec: guarded });
@@ -490,6 +508,7 @@ describe('the dogfood hazards are encoded, not remembered', () => {
 
   it('verifies the trace2 outcome by RE-READING the config, not from the exit code', async () => {
     const exec = new FakeExec({
+      ...VIABLE,
       [TRACE2_GET]: { code: 1, stdout: '' },
       [`${BINARY} install-hooks`]: { code: 0, stdout: 'claude: installed\n' },
       [`${BINARY} status --json`]: { code: 0, stdout: '{"schema_version":"authorship/3.0.0"}' },
@@ -540,6 +559,7 @@ describe('a zero exit is NOT proof that hooks were installed', () => {
     // Guard reads empty, install-hooks exits 0, and the config it ALWAYS writes
     // on a real install is still not there. Nothing was hooked.
     const exec = new FakeSequencedExec({
+      ...VIABLE,
       [TRACE2_GET]: { code: 1, stdout: '' },
       [`${BINARY} install-hooks`]: { code: 0, stdout: 'claude: installed\n' },
       [`${BINARY} status --json`]: statusOk,
@@ -557,6 +577,7 @@ describe('a zero exit is NOT proof that hooks were installed', () => {
 
   it('an UNREADABLE post-install read means unverified — absent evidence is not good news', async () => {
     const exec = new FakeSequencedExec({
+      ...VIABLE,
       [TRACE2_GET]: [
         { code: 1, stdout: '' },
         { code: 128, stderr: 'fatal: unreadable' },
@@ -573,6 +594,7 @@ describe('a zero exit is NOT proof that hooks were installed', () => {
 
   it('a post-install read carrying SOMEONE ELSE’S keys is not our install either', async () => {
     const exec = new FakeSequencedExec({
+      ...VIABLE,
       [TRACE2_GET]: [
         { code: 1, stdout: '' },
         { code: 0, stdout: 'trace2.normalTarget /tmp/trace\n' },
