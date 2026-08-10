@@ -55,14 +55,15 @@ sandbox** — vendor-documented, WSL2-only — so git's own trace2 always reache
 commit was ever at risk. Every Windows measurement here is the pass-through case. That is a scope
 fact, not a defect, and it must travel with any Windows claim.
 
-**Attribution is wrong when no `KnownHuman` attestation exists for the human's lines** — which on
-Windows is always, because **`KnownHuman` has never once been recorded there** (0 of 28
-checkpoints). **Root cause found:** git-ai's extension spawns the bare string `git-ai`, which is
-on **no PATH** on that box, so the save-time attestation dies `ENOENT` every time; at commit time
-the human-recovery sweep then skips itself whenever an AI claim landed and no `h_` exists. **The
-binary, preset and daemon leg all work on Windows** — verified by positive control. Eliminated by
-measurement: the Cursor sandbox, our relay emitting vs staying silent, edit ordering, adjacency,
-the agent's edit mechanism, and same-file vs cross-file.
+**Attribution was wrong because no `KnownHuman` attestation was ever recorded on Windows** — 0
+across 31 checkpoints. **Root cause found AND FIXED:** git-ai's extension spawns the bare string
+`git-ai`, which was on **no PATH** on that box, so the save-time attestation died `ENOENT` every
+time; at commit time the human-recovery sweep then skips itself whenever an AI claim landed and no
+`h_` exists. Adding `%USERPROFILE%\.git-ai\bin` to the user PATH produced the **first
+extension-originated `KnownHuman` on that machine**, one second after a save. **It is a git-ai
+installer defect**, not a harness one. Eliminated by measurement along the way: the Cursor
+sandbox, our relay emitting vs staying silent, edit ordering, adjacency, the agent's edit
+mechanism, and same-file vs cross-file.
 
 **Two code changes shipped from this work**, both in the harness:
 
@@ -83,11 +84,15 @@ Now recorded in
 
 ## Open, and deliberately not blocking
 
-- **Why git-ai's `KnownHuman` path never fires on Windows** — **ANSWERED**, see
+- **Why git-ai's `KnownHuman` path never fires on Windows** — **ANSWERED AND FIXED**, see
   [`root-cause-extension-cannot-find-git-ai.md`](./root-cause-extension-cannot-find-git-ai.md).
-  The fix (`%USERPROFILE%\.git-ai\bin` on the user PATH) is **APPLIED and verified resolving**;
-  the confirming save test needs a human at the Cursor GUI. Baseline for it: 31 checkpoints,
-  **0 `KnownHuman`**.
+  The extension spawned a bare `git-ai` that was on no PATH. Adding
+  `%USERPROFILE%\.git-ai\bin` to the user PATH produced the **first extension-originated
+  `KnownHuman` ever recorded on that machine**, within a second of a save. It is a **git-ai
+  installer defect** and the report is evidence-complete.
+- **The acceptance run**: does a Windows note now carry **both** `h_` and `s_` for a same-file
+  mixed commit run *by the agent* — replicating the macOS counterexample. Predicted by the
+  mechanism, **not yet measured**.
 - Whether the daemon **acts on** our six synthetic events — they reach a live listener, but we
   have not shown one produced a note git's own trace2 could not have. **On native Windows this may
   be unanswerable**: with no sandbox, git's own stream always arrives.

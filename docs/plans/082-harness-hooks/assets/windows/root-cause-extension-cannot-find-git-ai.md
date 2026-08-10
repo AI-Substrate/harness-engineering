@@ -67,15 +67,14 @@ git-ai.exe checkpoint known_human --hook-input stdin   (with a real JSON payload
 **The binary, the preset, and the CLI-to-daemon named-pipe leg all work on Windows.** There is
 exactly one fault, and it is the spawn.
 
-## The fix — APPLIED, awaiting the save test
+## The fix — CONFIRMED BY MEASUREMENT
 
-> **Prediction:** add `%USERPROFILE%\.git-ai\bin` to the **user** PATH, restart Cursor, save a
-> file in a repo. A `KnownHuman` checkpoint should appear in the daemon log within roughly one
-> second (save + the 500ms debounce).
+> **Prediction, registered before the fix:** add `%USERPROFILE%\.git-ai\bin` to the **user** PATH,
+> restart Cursor, save a file in a repo. A `KnownHuman` checkpoint should appear in the daemon log
+> within roughly one second (save + the 500ms debounce).
 
-**First half APPLIED 2026-08-10** by `pij-immediate-newt` (`scratch/win/path-fix-gitai.ps1` —
-appends to the user Path only, idempotent, no other entries touched). **Verified independently
-from a fresh process:**
+**Applied 2026-08-10** by `pij-immediate-newt` (`scratch/win/path-fix-gitai.ps1` — appends to the
+user Path only, idempotent, no other entries touched), then **verified from a fresh process:**
 
 ```
 USER Path contains .git-ai\bin   -> True   (read from the registry, not the session env)
@@ -83,27 +82,46 @@ where git-ai                     -> C:\Users\<user>\.git-ai\bin\git-ai.exe
 git-ai --version                 -> 1.6.21
 ```
 
-**So the spawn that was failing can now succeed.** The bare string `git-ai` — exactly what the
-extension spawns — resolves.
-
-**Second half NOT YET RUN.** It needs a human at the GUI: restart Cursor, save a file, then read
-`~/.git-ai/internal/daemon/logs/<pid>.log` for `checkpoint start kind=KnownHuman`. State at the
-time of writing, for a clean before/after:
+**Then confirmed end to end.** Cursor restarted, one hand edit and save in the probe repo:
 
 ```
-probe repo C:\src\cursor:  checkpoints = 31   KnownHuman = 0
+before:  checkpoints = 31   KnownHuman = 0
+after:   checkpoints = 32   KnownHuman = 1
 ```
 
-**Any `KnownHuman` above zero after a save is the confirmation.** If it stays at zero with the
-PATH resolving, the spawn is not the only fault and the extension-host console is the next
-evidence.
+Daemon log, both `KnownHuman` records ever produced on that machine:
 
-### If it holds, this is an installer defect worth reporting
+```
+07:30:16Z  checkpoint start kind=KnownHuman repo=C:\src\khprobe   <- the manual positive control
+07:41:17Z  checkpoint start kind=KnownHuman repo=c:\src\cursor    <- THE EXTENSION'S OWN SPAWN
+           checkpoint done  kind=KnownHuman duration_ms=212  status=ok  trace t_79a0a2b7a7b228
+```
 
-git-ai's Windows installer places the binary and **does not put its directory on PATH**, and its
-own extension then cannot find it. That is a clean, one-line, reportable bug on a platform the
-vendor already labels experimental — and it is the feedback they explicitly ask for. See
+**That second record is the first extension-originated `KnownHuman` ever produced on this box**,
+and it arrived within a second of a save, exactly as predicted. The lowercase drive letter
+(`c:\src\cursor`) distinguishes the extension's spawn from the hand-run control.
+
+**The prediction was published before the fix and confirmed after it. One spawn, one PATH entry,
+one line of evidence.**
+
+### This is an installer defect, and the report is evidence-complete
+
+**git-ai's Windows installer places the binary at `%USERPROFILE%\.git-ai\bin` and never adds that
+directory to PATH. Its own VS Code extension then spawns the bare name `git-ai` in production and
+cannot find it.** Every document save fails `ENOENT` into the extension-host console, no
+`KnownHuman` attestation is ever recorded, and human-authored lines are subsequently claimed for
+the agent session on any agent-run commit.
+
+Clean, one-line, reproducible, with a verified fix — and on a platform the vendor already labels
+experimental and explicitly solicits feedback on. See
 [`vendor-support-status-non-wsl-experimental.md`](./vendor-support-status-non-wsl-experimental.md).
+
+### Still open — the acceptance run
+
+**Whether a Windows note now carries BOTH `h_` and `s_`** for a same-file mixed commit run **by
+the agent** — i.e. replicating the macOS counterexample on Windows. The mechanism says it should:
+a landed `h_` flips `should_recover_remaining_as_known_human()` to `true` via its early return.
+**That is predicted, not measured.**
 
 ## The instrument that should have been used first
 
