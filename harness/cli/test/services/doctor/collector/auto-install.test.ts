@@ -714,3 +714,121 @@ describe('P1-C — a backup we could not take blocks the step it protects', () =
     expect(undeclared.map((agent) => agent.id)).toEqual([]);
   });
 });
+
+/**
+ * F2 (review round 2) — A GUARD REFUSAL MAY NOT RENDER AS A SUCCESSFUL INSTALL.
+ *
+ * `binary-unusable` is correctly kept OUT of `HOOK_STAGE_FAILURES` (it must not
+ * latch — the operator installs the missing runtime and the next ordinary doctor
+ * just works). But keeping it out of the failure set dropped it through to the
+ * success branch, where a bare doctor announced:
+ *
+ *     git-ai collector: harness installed the pinned git-ai collector
+ *     automatically (cli: already-current, hooks: binary-unusable) — no flag
+ *     required
+ *
+ * beside a warning saying the binary cannot run and nothing is being collected.
+ * That is the ORIGINAL DEFECT — a claim about bytes standing where a claim about
+ * behaviour was needed — recreated one layer up, in prose. The retry policy is
+ * right; the headline is not, and the two are separable.
+ */
+describe('F2 — a refusal is announced as a refusal, and still never latches', () => {
+  /** A machine where the binary is placed and verified, and cannot run. */
+  function brokenBinaryDeps(over: Partial<CollectorDeps> = {}): CollectorDeps {
+    const fs = new FakeCollectorFs();
+    fs.seedBytes(BINARY, PAYLOAD);
+    fs.mkdirp(`${HOME}/.claude`);
+    const exec = new FakeSequencedExec({
+      [`${BINARY} --version`]: { code: 3_221_225_781, stdout: '', stderr: '' },
+      [TRACE2_READ]: { code: 1 },
+    });
+    return deps({ fs, exec, ...over });
+  }
+
+  it('does NOT report the success headline — no "installed", no "no flag required"', async () => {
+    const d = brokenBinaryDeps();
+
+    const outcome = await autoInstallCollector(d);
+
+    expect(outcome.action).not.toBe('installed');
+    expect(outcome.detail).not.toContain('no flag required');
+    expect(outcome.detail).not.toContain('harness installed the pinned git-ai collector');
+  });
+
+  it('says what actually happened: nothing was hooked and nothing is being collected', async () => {
+    const d = brokenBinaryDeps();
+
+    const outcome = await autoInstallCollector(d);
+
+    expect(outcome.detail).toContain('could NOT be run');
+    expect(outcome.detail).toContain('no AI attribution is being collected');
+    // …and that it fixes itself, because it does. This is the half of the
+    // message that justifies keeping the refusal out of HOOK_STAGE_FAILURES.
+    expect(outcome.detail).toContain('next ordinary `harness doctor`');
+    expect(outcome.detail).not.toContain('--install-collector');
+  });
+
+  it('STILL DOES NOT LATCH — no machine-wide block is written', async () => {
+    const fs = new FakeCollectorFs();
+    fs.seedBytes(BINARY, PAYLOAD);
+    fs.mkdirp(`${HOME}/.claude`);
+    const d = brokenBinaryDeps({ fs });
+
+    await autoInstallCollector(d);
+
+    // The whole reason this outcome is not in HOOK_STAGE_FAILURES: a block here
+    // would make the operator re-run `--install-collector` after installing a
+    // redistributable, which is the machine-customisation task plan 077 deleted.
+    expect(readAutoInstallBlock(fs, { platform: 'darwin', arch: 'arm64', home: HOME })).toBeNull();
+  });
+
+  /**
+   * THE COUNTER-ROW. Without it, "never say installed" is satisfied by never
+   * saying installed — and the success announcement that plan 077 §3a requires
+   * ("tell, don't ask") would be gone with every test still green.
+   */
+  it('a run where the binary DOES work still gets the success headline', async () => {
+    const fs = new FakeCollectorFs();
+    fs.seedBytes(BINARY, PAYLOAD);
+    fs.mkdirp(`${HOME}/.claude`);
+    const exec = new FakeSequencedExec({
+      ...VIABLE,
+      [TRACE2_READ]: [{ code: 1 }, { code: 0, stdout: 'trace2.eventtarget af_unix:/tmp/s\n' }],
+      [`${BINARY} install-hooks`]: { code: 0, stdout: 'claude: installed\n' },
+    });
+
+    const outcome = await autoInstallCollector(deps({ fs, exec }));
+
+    expect(outcome.action).toBe('installed');
+    expect(outcome.detail).toContain('no flag required');
+  });
+
+  it('the RE-CHECK door says the same thing — it is the same refusal', async () => {
+    // The install path was the one the review measured, but `recheckCollector`
+    // reaches the identical guard and fell through to `action: 'rechecked'`,
+    // announcing "harness re-ran the git-ai hook install" about a run in which
+    // nothing was run.
+    const fs = new FakeCollectorFs();
+    fs.seedBytes(BINARY, PAYLOAD);
+    fs.mkdirp(`${HOME}/.claude`);
+    fs.mkdirp(`${HOME}/.cursor`);
+    fs.writeText(collectorStatePath(REPO), JSON.stringify(healthyState()));
+    const exec = new FakeSequencedExec({
+      [`${BINARY} --version`]: { code: 3_221_225_781, stdout: '', stderr: '' },
+      [TRACE2_READ]: { code: 1 },
+    });
+
+    const outcome = await autoInstallCollector(deps({ fs, exec }));
+
+    expect(outcome.action).not.toBe('rechecked');
+    expect(outcome.detail).not.toContain('harness re-ran the git-ai hook install');
+    expect(outcome.detail).toContain('could NOT be run');
+    // AND THE SENTENCE IS DIFFERENT HERE, deliberately. This row's first draft
+    // asserted `no AI attribution is being collected` — copied from the install
+    // door, and FALSE on this one: the hooks that went on earlier are still on
+    // and still collecting. Printing it would be the same class of error as the
+    // headline this finding is about, one door over.
+    expect(outcome.detail).toContain('hooks already installed are unaffected');
+    expect(outcome.detail).not.toContain('no AI attribution is being collected');
+  });
+});

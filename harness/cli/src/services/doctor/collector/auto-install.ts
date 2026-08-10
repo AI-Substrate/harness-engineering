@@ -45,6 +45,22 @@ export type AutoInstallAction =
   | 'skipped-opt-out'
   | 'skipped-unsupported'
   | 'skipped-blocked'
+  /**
+   * The pinned binary is placed and digest-verified, and it CANNOT RUN here, so
+   * the hooks were never attempted (plan 082 · F007 · review round 2, F2).
+   *
+   * ITS OWN ACTION BECAUSE IT IS NEITHER OF THE TWO IT KEPT COLLAPSING INTO. It
+   * is not `failed` — `failed` writes the machine-wide block, and blocking here
+   * would force the operator back to `--install-collector` after installing a
+   * missing runtime, which is the machine-customisation task plan 077 deleted.
+   * And it is not `installed`, which is what it fell through to: a bare doctor
+   * announced "harness installed the pinned git-ai collector automatically …
+   * no flag required" beside a warning saying the binary cannot run and nothing
+   * is being collected. That is the ORIGINAL DEFECT of this plan — a claim about
+   * bytes standing where a claim about behaviour was needed — recreated one
+   * layer up, in prose.
+   */
+  | 'skipped-binary-unusable'
   | 'failed';
 
 /**
@@ -251,6 +267,7 @@ async function runLifecycle(
 
   if (action === 'rechecked') {
     const result = await recheckCollector(deps);
+    if (result.hooks === 'binary-unusable') return binaryUnusable('recheck', result.warnings);
     if (HOOK_STAGE_FAILURES.has(result.hooks)) {
       // Same unbounded-repeat hazard as the install path below, reached from the
       // other direction: a re-check that fails leaves a `degraded`/`incomplete`
@@ -277,6 +294,7 @@ async function runLifecycle(
       result.warnings.slice(1),
     );
   }
+  if (result.hooks === 'binary-unusable') return binaryUnusable('install', result.warnings);
   if (HOOK_STAGE_FAILURES.has(result.hooks)) {
     // P1-A (cross-model review, pij-assistant-asp / gpt-5.6-terra, 2026-08-09).
     //
@@ -322,6 +340,29 @@ async function runLifecycle(
  * action, and the unlatch depends on re-attempting them on every run.
  */
 const HOOK_STAGE_FAILURES: ReadonlySet<string> = new Set(['failed', 'unverified', 'not-attempted']);
+
+/**
+ * THE GUARD REFUSAL, ANNOUNCED AS ONE — not as a failure, and not as an install
+ * (plan 082 · F007 · review round 2, F2).
+ *
+ * TWO DOORS, TWO TRUTHS, and that is why this takes a `door` rather than
+ * printing one sentence. On a first install nothing is hooked and nothing is
+ * being collected. On a RE-CHECK the hooks that are already on are still on and
+ * still collecting — a probe that refused to invoke the vendor command changed
+ * nothing — and saying "no AI attribution is being collected" there would be
+ * false in exactly the way this plan exists to stop.
+ *
+ * WHAT IS SHARED is the half that justifies never latching: the operator is told
+ * this fixes itself. `--install-collector` is deliberately not named, because
+ * needing it would be the machine-customisation task plan 077 deleted.
+ */
+function binaryUnusable(door: 'install' | 'recheck', warnings: string[]): AutoInstallOutcome {
+  const detail =
+    door === 'install'
+      ? 'the pinned git-ai CLI is installed and its digest matches, but the binary could NOT be run on this machine, so no hooks were installed and no AI attribution is being collected. Nothing on your machine was changed and nothing needs undoing — read the cause below, and once the binary runs the next ordinary `harness doctor` installs the hooks itself, with no flag and no re-run by hand.'
+      : 'a newly-detected coding harness was NOT hooked: the pinned git-ai binary could NOT be run on this machine, so nothing was invoked. The hooks already installed are unaffected and still collecting — read the cause below, and once the binary runs the next ordinary `harness doctor` covers the new harness itself, with no flag and no re-run by hand.';
+  return { action: 'skipped-binary-unusable', detail, warnings };
+}
 
 /**
  * Record the failure MACHINE-WIDE, then report it — the single place that pairs

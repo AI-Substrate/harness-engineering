@@ -810,6 +810,38 @@ export async function installCollector(deps: CollectorDeps): Promise<CollectorIn
   writeCollectorState(deps.fs, deps.cwd, state);
 
   const hooks = await installHooks(deps, state, binaryPath);
+
+  // BOUNDING THE STAGE YOU ADDED IS NOT BOUNDING THE PIPELINE (review round 2, F1).
+  //
+  // The viability probe was given its own short budget (VIABILITY_TIMEOUT_MS)
+  // precisely so a broken box does not pay for a check nobody opted into — and
+  // then this function ran `assertNoteSchema` anyway, which asks the SAME dead
+  // binary for `status --json` on a separate 15s budget. A carefully-bounded 5s
+  // guard cost 20s end to end, and since `binary-unusable` deliberately does not
+  // latch, that 20s repeated on EVERY bare `harness doctor` until the machine
+  // was fixed. Measured with a hanging fake: `clock.sleeps === [5000, 15000]`.
+  //
+  // The general shape, worth more than the number: a guard is a pipeline. Adding
+  // a stage that refuses does nothing about the stages already written after it,
+  // and those were written when this refusal could not happen.
+  //
+  // The probe is also pointless here on its own terms — ac-000f asks the binary
+  // what note schema it writes, and a binary that will not start cannot answer.
+  // `note_schema` keeps whatever it last recorded, which is the honest value:
+  // nothing new was observed.
+  if (hooks.hooks === 'binary-unusable') {
+    return {
+      cli,
+      hooks: hooks.hooks,
+      state: hooks.state,
+      warnings: [...warnings, ...hooks.warnings],
+      // Nothing was invoked, so nothing was disclosed-and-done — the same
+      // reasoning as the pinned-config branch above.
+      disclosures: [],
+      manualInstructions: hooks.manual,
+    };
+  }
+
   const schema = await assertNoteSchema(deps, hooks.state, binaryPath);
 
   return {

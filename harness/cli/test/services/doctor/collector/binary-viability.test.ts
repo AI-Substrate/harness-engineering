@@ -7,7 +7,10 @@ import {
 } from '../../../../src/services/doctor/collector/install.js';
 import { GITAI_PIN } from '../../../../src/services/doctor/collector/pin.js';
 import { readCollectorState } from '../../../../src/services/doctor/collector/state.js';
-import type { CollectorDeps } from '../../../../src/services/doctor/collector/types.js';
+import {
+  type CollectorDeps,
+  VIABILITY_TIMEOUT_MS,
+} from '../../../../src/services/doctor/collector/types.js';
 import {
   FakeCollectorFs,
   FakeDownload,
@@ -340,5 +343,78 @@ describe('F007b — a process the OS killed produced no output, and we say which
     expect(said).toContain('0xC0000135');
     expect(said).not.toContain('terminated by the');
     expect(said).not.toContain('Visual C++ Redistributable');
+  });
+});
+
+/**
+ * F1 (review round 2) — BOUNDING THE STAGE YOU ADDED IS NOT BOUNDING THE PIPELINE.
+ *
+ * The first cut of F007 gave the `--version` probe its own short constant and
+ * stopped there. It never asked what runs AFTER the refusal: `installCollector`
+ * called `assertNoteSchema` unconditionally, which invokes the SAME dead binary
+ * as `status --json` on a separate 15s budget. So a carefully-bounded 5s guard
+ * cost 20s end to end — and because `binary-unusable` is deliberately not
+ * latched, a broken box paid it again on every bare `harness doctor`.
+ *
+ * THE INSTRUMENT. The exec fake converts the timeout BUDGET each call is handed
+ * into an observable, by sleeping it on the fake clock. That models a binary
+ * that HANGS rather than one that fails fast — the observed Windows failure
+ * returns instantly, but a probe on a path nobody opted into has to survive the
+ * other failure modes too, which is exactly what condition A was about.
+ */
+describe('F1 — the whole pipeline is bounded, not just the stage that was added', () => {
+  /** A binary that never answers: every call burns its full budget. */
+  function hanging(base: ReturnType<typeof deps>, clock: FakeClock) {
+    const binaryCalls: string[][] = [];
+    return {
+      binaryCalls,
+      exec: {
+        run: async (command: string, args: string[], opts: { cwd: string; timeoutMs?: number }) => {
+          if (command !== BINARY) return base.exec.run(command, args, opts);
+          binaryCalls.push(args);
+          await clock.sleep(opts.timeoutMs ?? 0);
+          return { code: 124, stdout: '', stderr: '', ok: false };
+        },
+      },
+    };
+  }
+
+  it('a refusal ENDS the run: the dead binary is invoked ONCE, for the probe alone', async () => {
+    const clock = new FakeClock(NOW);
+    const base = deps();
+    const { exec, binaryCalls } = hanging(base, clock);
+
+    const result = await installCollector({ ...base, clock, exec });
+
+    expect(result.hooks).toBe('binary-unusable');
+    // NOT `install-hooks`, and NOT `status --json`. One question was asked, it
+    // was not answered, and the pipeline stopped.
+    expect(binaryCalls).toEqual([['--version']]);
+  });
+
+  it('the END-TO-END ceiling is the probe timeout, not the probe timeout PLUS the schema probe', async () => {
+    const clock = new FakeClock(NOW);
+    const base = deps();
+    const { exec } = hanging(base, clock);
+
+    await installCollector({ ...base, clock, exec });
+
+    // The assertion the first round did not make. Asserting the `--version`
+    // call's own timeoutMs passed while the run cost 20s.
+    expect(clock.sleeps).toEqual([VIABILITY_TIMEOUT_MS]);
+  });
+
+  /**
+   * THE COUNTER-ROW. "Skip the schema probe" is trivially satisfied by never
+   * running it at all — which would silently delete ac-000f's note-schema drift
+   * check for every healthy machine. The skip is conditional on the refusal.
+   */
+  it('a binary that RUNS still gets its post-install schema probe, exactly as before', async () => {
+    const d = deps();
+
+    await installCollector(d);
+
+    expect(d.exec.calls.filter((c) => c.args[0] === 'status')).toHaveLength(1);
+    expect(readCollectorState(d.fs, REPO)?.note_schema.status).toBe('match');
   });
 });

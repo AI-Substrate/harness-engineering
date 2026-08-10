@@ -8,6 +8,7 @@ import { FakeClock } from '../../src/adapters/clock/fake-clock.js';
 import { NodeHash } from '../../src/adapters/hash/node-hash.js';
 import { FakeSocketProbe } from '../../src/adapters/net/fake-socket-probe.js';
 import type { CliIo, OutputMode, Writers } from '../../src/output/output-port.js';
+import { GITAI_PIN } from '../../src/services/doctor/collector/pin.js';
 import type { CollectorDeps } from '../../src/services/doctor/collector/types.js';
 import type { HarnessVerb } from '../../src/services/extensions/contract.js';
 import type { VerbRegistry } from '../../src/services/extensions/registry.js';
@@ -350,5 +351,75 @@ describe('plan 082 — doctor installs hooks ONLY into the INJECTED deps', () =>
     for (const path of written) {
       expect(path.startsWith(realHome)).toBe(false);
     }
+  });
+});
+
+/**
+ * F2 (review round 2) — THE STRING THE OPERATOR ACTUALLY READS.
+ *
+ * The first round pinned the refusal one layer below this, in the service, and
+ * that is exactly how a success-shaped headline reached a bare doctor run
+ * unnoticed: every service assertion was true and the sentence printed to stderr
+ * said `harness installed … — no flag required` beside a warning that the binary
+ * cannot run. This drives the REGISTERED command, so the assertion is on the
+ * announcement itself.
+ */
+describe('plan 082 · F007 — a bare doctor never announces a refusal as an install', () => {
+  const HOME_U = '/home/u';
+  const GITAI = '/home/u/.git-ai/bin/git-ai';
+  const BYTES = new TextEncoder().encode('#!/bin/sh\necho git-ai\n');
+  /** STATUS_DLL_NOT_FOUND, as the Windows 11 guest reported it on 2026-08-10. */
+  const DLL_NOT_FOUND = 3_221_225_781;
+
+  /** The pinned manifest with one digest swapped for the fake payload's real one. */
+  function testPin() {
+    return {
+      ...GITAI_PIN,
+      artifacts: {
+        ...GITAI_PIN.artifacts,
+        'macos-arm64': { file: 'git-ai-macos-arm64', sha256: new NodeHash().sha256Hex(BYTES) },
+      },
+    } as typeof GITAI_PIN;
+  }
+
+  /** A machine where the pinned binary is present and digest-clean, and dead. */
+  function brokenBinaryDeps(): CollectorDeps {
+    const fs = new FakeCollectorFs();
+    fs.seedBytes(GITAI, BYTES);
+    fs.mkdirp(`${HOME_U}/.claude`);
+    return {
+      fs,
+      paths: new FakePathKind({}),
+      hash: new NodeHash(),
+      http: new FakeDownload({}),
+      exec: new FakeSequencedExec({
+        [`${GITAI} --version`]: { code: DLL_NOT_FOUND, stdout: '', stderr: '' },
+        'git config --global --get-regexp ^trace2\\.': { code: 1 },
+      }),
+      exe: new FakeExecutableBit(),
+      clock: new FakeClock('2026-08-10T00:00:00.000Z'),
+      host: { platform: 'darwin', arch: 'arm64', home: HOME_U },
+      cwd: '/repo',
+      manifest: testPin(),
+    };
+  }
+
+  it('the announced line reports the refusal, not a successful install', async () => {
+    const { io, err } = ioFor('text');
+    vi.spyOn(process, 'exit').mockImplementation(((c?: number) => {
+      throw new Error(`exit:${c ?? 0}`);
+    }) as never);
+    const program = new Command().name('harness');
+    registerDoctorAct(program, io, EMPTY, undefined, brokenBinaryDeps(), { probe }, true);
+    await expect(program.parseAsync(['node', 'harness', 'doctor'])).rejects.toThrow(/^exit:/);
+    const announced = err();
+
+    expect(announced).toContain('git-ai collector:');
+    // THE DEFECT, verbatim as it was printed.
+    expect(announced).not.toContain('no flag required');
+    expect(announced).not.toContain('harness installed the pinned git-ai collector');
+    // What the same reader must see instead.
+    expect(announced).toContain('could NOT be run');
+    expect(announced).toContain('no AI attribution is being collected');
   });
 });
