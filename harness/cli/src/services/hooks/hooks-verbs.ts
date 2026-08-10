@@ -1,10 +1,11 @@
+import type { InvocationProbe } from '../../adapters/exec/invocation-probe-port.js';
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { AgentMarker } from '../doctor/collector/agents.js';
 import { detectAgents, UNDETECTED_INSTALLERS } from '../doctor/collector/agents.js';
 import { BACKUP_MANIFEST_NAME, restoreAgentConfigs } from '../doctor/collector/backup.js';
 import type { AgentSpec } from './agent-matrix.js';
 import { AGENT_MATRIX, eventKeys, resolveConfigFiles } from './agent-matrix.js';
-import { extractBinaryPath } from './binary-path.js';
+import { extractBinaryPath, extractInterpreterPath } from './binary-path.js';
 import { unacceptedOptions } from './fire-options.js';
 import { FileHookJournal } from './hook-journal.js';
 import { entryCommands, isOwnedByUs } from './hook-marker.js';
@@ -16,7 +17,7 @@ import {
   readInstallRecord,
   recordInstall,
 } from './install-record.js';
-import type { InstallOutcome } from './install-strategy-a.js';
+import type { InstallOutcome, RefusedUpgrade } from './install-strategy-a.js';
 import { installStrategyA } from './install-strategy-a.js';
 import { uninstallStrategyA } from './uninstall-strategy-a.js';
 
@@ -41,6 +42,41 @@ import { uninstallStrategyA } from './uninstall-strategy-a.js';
  * skip there is this plan's own defect class arriving from the installer side, so an
  * unimplemented strategy is reported NOT SUPPORTED by `list` and `status`, and
  * REFUSED BY NAME by `install`.
+ *
+ * ---
+ *
+ * **A CONTRACT IS ENFORCED BY A ROW OR IT IS PROSE.** Plan 082's actual finding,
+ * recorded here because this surface produced every instance of it.
+ *
+ * The last one was written INSIDE the function it describes:
+ * {@link autoInstallHooks} says "BUT IT IS NEVER SILENT" forty lines above code
+ * that silently dropped `refusedUpgrades`. The one before it was a rule stated
+ * two files away — `uninstall-strategy-a.ts` spells out that marker presence is
+ * not permission to replace, and the upgrade path walked past it. THE DISTANCE
+ * SHRANK FROM TWO FILES TO FOUR LINES AND THE OUTCOME WAS IDENTICAL, SO DISTANCE
+ * WAS NEVER THE VARIABLE. Neither comment was a guard; both read like one.
+ *
+ * FOUR ROUNDS, FOUR DISGUISES OF ONE DEFECT — and naming them together is what
+ * makes the fifth recognisable:
+ *
+ * 1. **A check that cannot refuse.** `binaryState: 'resolves'` is `fs.exists`; it
+ *    was true on a machine where the command could not execute. Hence
+ *    {@link ExecutionState}, and the rule that a gate is not verified until it
+ *    has refused.
+ * 2. **A predicate answering a NARROWER question than the one being asked.**
+ *    `entryIsOwnedByUs` means "any command here is ours" and was used to
+ *    authorise replacing the WHOLE entry — destroying foreign work chained into
+ *    it.
+ * 3. **A green that could not go red for the second command.** `--probe`
+ *    promised to execute EACH configured command and executed `[0]`, so `runs`
+ *    could be reported while another command was inert.
+ * 4. **A refusal that could not reach the path everyone takes.** The warning
+ *    surfaced through `harness hooks install` and was silent through
+ *    `autoInstallHooks` — the doctor / first-run entry point.
+ *
+ * The family resemblance: each was a signal that was structurally incapable of
+ * carrying bad news, and each read as correct until somebody CONSTRUCTED the
+ * adversarial case rather than reading the code.
  */
 
 /** Which write strategy an agent needs. Only A is implemented in this phase. */
@@ -114,6 +150,11 @@ export interface HooksDeps {
   env: (name: string) => string | undefined;
   /** Already normalised and quoted — see `binary-path.ts`. */
   binary: string;
+  /**
+   * OPTIONAL execution probe (plan 082, F008). Absent ⇒ `executionState:
+   * 'unchecked'` — an honest "we did not look", never a green.
+   */
+  probe?: InvocationProbe;
 }
 
 /** Every agent we know about, with what we can say about each. */
@@ -160,6 +201,16 @@ export interface InstallReport {
   /** Agents refused BY NAME, never silently skipped. */
   refused: { agent: string; reason: string }[];
   /**
+   * Legacy entries we declined to UPGRADE because foreign work is chained into
+   * them (F008 review F1).
+   *
+   * A THIRD list, not folded into `refused`: that one means "we have no writer
+   * for this agent" — a stated design limit with nothing for the user to do.
+   * This means "we wrote for this agent, and left one entry alone that cannot
+   * run", which is an action item and carries the command to paste.
+   */
+  refusedUpgrades: RefusedUpgrade[];
+  /**
    * Agents whose write THREW, with the reason — distinct from `refused`.
    *
    * The two are different diagnoses and collapsing them would hide the one that
@@ -185,6 +236,7 @@ export function installHooks(deps: HooksDeps): InstallReport {
       optedOutDetail: optOutNotice(deps.env),
       installed: [],
       refused: [],
+      refusedUpgrades: [],
       failed: [],
     };
   }
@@ -192,6 +244,7 @@ export function installHooks(deps: HooksDeps): InstallReport {
   const reports = listAgents(deps);
   const installed: InstallReport['installed'] = [];
   const refused: InstallReport['refused'] = [];
+  const refusedUpgrades: InstallReport['refusedUpgrades'] = [];
   const failed: InstallReport['failed'] = [];
 
   // ASKED BEFORE THE FIRST CONFIG IS TOUCHED (phase-3 review F001). An install we
@@ -236,6 +289,7 @@ export function installHooks(deps: HooksDeps): InstallReport {
       }
       for (const outcome of outcomes) {
         installed.push({ agent: outcome.agent, path: outcome.path, created: outcome.created });
+        refusedUpgrades.push(...outcome.refusedUpgrades);
       }
     } catch (err) {
       failed.push({
@@ -244,7 +298,7 @@ export function installHooks(deps: HooksDeps): InstallReport {
       });
     }
   }
-  return { optedOut: false, installed, refused, failed };
+  return { optedOut: false, installed, refused, refusedUpgrades, failed };
 }
 
 /** One sentence, four endings — what happened to the config we could not record. */
@@ -321,6 +375,36 @@ function compensate(deps: HooksDeps, spec: AgentSpec, outcomes: InstallOutcome[]
  */
 export type CommandState = 'absent' | 'accepted' | 'unknown-options';
 
+/**
+ * Does the installed command ACTUALLY RUN OUR CODE? (plan 082, F008 §4.)
+ *
+ * THE FIELD FAILURE THIS EXISTS FOR, measured on a Windows 11 guest 2026-08-10:
+ * `binaryState` said `resolves` and `commandState` said `accepted` on a machine
+ * where the hook had never executed one line of our code. Both fields were
+ * telling the truth. `resolves` is `fs.exists` and the file existed; `accepted`
+ * is a static comparison of option NAMES and the names were right. THE DEFECT IS
+ * NOT EITHER FIELD — IT IS THAT `resolves` + `accepted` TOGETHER READ AS
+ * "WORKING" AND NOTHING COULD CONTRADICT THEM.
+ *
+ * So this is the only field that requires POSITIVE EVIDENCE that our process ran.
+ * Exit 0 is explicitly NOT evidence: exit 0 is exactly what Windows Script Host
+ * returned after failing to execute our ES module.
+ *
+ * - `absent` — no entry of ours; nothing to execute and nothing to claim.
+ * - `unchecked` — NOT MEASURED. Status is called from paths that must not spawn
+ *   a child, and "we did not look" is a real answer. Folding it into `runs`
+ *   re-creates the false green; folding it into `inert` cries wolf on every
+ *   working install.
+ * - `runs` — the configured invocation was executed and returned our evidence.
+ * - `inert` — it was executed and did not. Installed, and dead.
+ *
+ * A GATE IS NOT VERIFIED UNTIL IT HAS REFUSED. `binaryState` alone, once the
+ * command names an interpreter, would stat `node.exe` on a machine that is by
+ * definition running node — a green light that cannot go red, which is not a
+ * check but a decoration occupying the slot where a check should be.
+ */
+export type ExecutionState = 'absent' | 'unchecked' | 'runs' | 'inert';
+
 /** How a configured binary reads, as three states rather than a boolean. */
 export type BinaryState =
   /** No entry of ours, so there is no binary to judge. */
@@ -375,13 +459,35 @@ export interface StatusReport extends AgentReport {
   commandState: CommandState;
   /** The specific options this binary does not declare, when `unknown-options`. */
   unacceptedOptions?: string[];
+  /**
+   * Whether the configured command was EXECUTED and proved our code ran.
+   *
+   * The only field here that is not a static read. See {@link ExecutionState}
+   * for why `resolves` + `accepted` were not enough.
+   */
+  executionState: ExecutionState;
+  /** Why, in words, when the state is `inert` — how many failed, and which one first. */
+  executionDetail?: string;
+  /**
+   * EVERY configured command of ours that produced no evidence.
+   *
+   * A list, not a count: an agent can have four commands across two files, and
+   * "one of them is broken" is not a fact anyone can act on.
+   */
+  inertCommands?: string[];
 }
 
 export function statusHooks(deps: HooksDeps): StatusReport[] {
   return listAgents(deps).map((report) => {
     const spec = AGENT_MATRIX.find((s) => s.agent === report.agent);
     if (spec === undefined)
-      return { ...report, files: [], binaryState: 'absent', commandState: 'absent' };
+      return {
+        ...report,
+        files: [],
+        binaryState: 'absent',
+        commandState: 'absent',
+        executionState: 'absent',
+      };
 
     const files = resolveConfigFiles(spec, deps.home, deps.env).map((path) => ({
       path,
@@ -389,13 +495,20 @@ export function statusHooks(deps: HooksDeps): StatusReport[] {
     }));
     const configured = configuredBinaryFor(deps, spec);
     if (configured === null)
-      return { ...report, files, binaryState: 'absent', commandState: 'absent' };
+      return {
+        ...report,
+        files,
+        binaryState: 'absent',
+        commandState: 'absent',
+        executionState: 'absent',
+      };
 
     // Across EVERY entry of ours, not just the first: windsurf writes two files
     // and each agent writes a pre and a post command, so a check that looked at
     // one would report health for a set it had not examined.
     const unaccepted = [...new Set(ourCommands(deps, spec).flatMap(unacceptedOptions))];
     const resolves = deps.fs.exists(configured);
+    const execution = probeExecution(deps, spec);
     return {
       ...report,
       files,
@@ -404,8 +517,74 @@ export function statusHooks(deps: HooksDeps): StatusReport[] {
       binaryState: resolves ? 'resolves' : 'unresolvable',
       commandState: unaccepted.length === 0 ? 'accepted' : 'unknown-options',
       ...(unaccepted.length === 0 ? {} : { unacceptedOptions: unaccepted }),
+      ...execution,
     };
   });
+}
+
+/**
+ * Run the probe against EVERY configured command of ours, or report that we did
+ * not look.
+ *
+ * EVERY, NOT THE FIRST (F008 review F2). This destructured `ourCommands()[0]`
+ * and returned that single verdict for the whole agent, so `runs` could be
+ * reported while another configured command was inert — a false green on
+ * windsurf's two files and on every agent's pre/post pair, which mid-upgrade is
+ * all of them. The one command guaranteed to be probed was the one least likely
+ * to be wrong. The CLI's promise ("execute each configured command") was the
+ * correct behaviour; the implementation did not meet it, so the implementation
+ * moved.
+ *
+ * EACH COMMAND SUPPLIES ITS OWN PAIR. A config can legitimately hold one command
+ * of each form mid-upgrade, so the interpreter and script are read per command
+ * rather than taken from the agent's first entry.
+ *
+ * ANY MISSING EVIDENCE REFUSES, and the detail says HOW MANY and WHICH: `inert`
+ * on an agent with four commands, with nothing naming the failure, sends an
+ * operator hunting through JSON. A refusal must be findable, not merely correct.
+ *
+ * `unchecked` when no probe is injected — see {@link ExecutionState}.
+ */
+function probeExecution(
+  deps: HooksDeps,
+  spec: AgentSpec,
+): {
+  executionState: ExecutionState;
+  executionDetail?: string;
+  inertCommands?: string[];
+} {
+  const probe = deps.probe;
+  if (probe === undefined) return { executionState: 'unchecked' };
+
+  const commands = ourCommands(deps, spec);
+  if (commands.length === 0) return { executionState: 'absent' };
+
+  const inert: { command: string; detail: string }[] = [];
+  for (const command of commands) {
+    const script = extractBinaryPath(command);
+    if (script === null) {
+      inert.push({ command, detail: 'the command names no path we can identify' });
+      continue;
+    }
+    const result = probe(extractInterpreterPath(command), script);
+    if (result.evidence) continue;
+    inert.push({
+      command,
+      detail:
+        result.detail ??
+        (result.ok
+          ? 'the command ran and produced no self-test evidence — our code did not run'
+          : 'the command could not be executed'),
+    });
+  }
+
+  if (inert.length === 0) return { executionState: 'runs' };
+  const [first] = inert;
+  return {
+    executionState: 'inert',
+    executionDetail: `${inert.length} of ${commands.length} configured command(s) produced no evidence that our code ran — first: ${first.command} (${first.detail})`,
+    inertCommands: inert.map((entry) => entry.command),
+  };
 }
 
 /** Is our marked entry present in any of this agent's config files? */
@@ -755,19 +934,48 @@ export function autoInstallHooks(deps: HooksDeps | null): HooksAutoInstall {
     };
   }
 
-  const warnings = report.failed.map((f) => `agent hooks: ${f.agent} — ${f.reason}`);
+  const failures = report.failed.map((f) => `agent hooks: ${f.agent} — ${f.reason}`);
+  /*
+   * REFUSALS ARE WARNINGS TOO, and this is the path that matters (F008
+   * re-verdict). `autoInstallHooks` is the doctor / first-run entry point — how
+   * almost every real user installs — and it built its warnings from `failed`
+   * alone. So a refused legacy upgrade surfaced through `harness hooks install`,
+   * which few people run, and was SILENT here: a Windows user with a chained
+   * legacy entry got "installed", no warning, and a hook that cannot run.
+   *
+   * That contradicted the "BUT IT IS NEVER SILENT" contract stated forty lines
+   * above it. PROXIMITY TO A STATED CONTRACT — even one's own, even in the same
+   * function — IS NOT PROTECTION. A contract is enforced by a row or it is prose.
+   *
+   * `nextAction` is included, not just the reason, and so is the OFFENDING
+   * COMMAND: the whole point of the refusal is that the user must repair this
+   * entry by hand, so they need to know WHICH entry (an agent can hold four) and
+   * WHAT TO WRITE. A warning missing either half sends them to read our source.
+   */
+  const refusals = report.refusedUpgrades.map(
+    (r) => `agent hooks: ${r.path} — ${r.reason}: ${r.command} — ${r.nextAction}`,
+  );
+  const warnings = [...failures, ...refusals];
   if (report.installed.length === 0) {
     return {
-      action: warnings.length > 0 ? 'failed' : 'not-needed',
+      action: failures.length > 0 ? 'failed' : 'not-needed',
       detail:
-        warnings.length > 0
+        failures.length > 0
           ? 'agent hooks could NOT be installed for any detected agent'
           : 'no detected agent needed an agent hook installed',
       warnings,
     };
   }
   return {
-    action: warnings.length > 0 ? 'failed' : 'installed',
+    /*
+     * KEYED ON FAILURES, NOT ON `warnings.length`. A refused upgrade is an ACTION
+     * ITEM, not a failed install — the install did everything it was allowed to
+     * do, and declined exactly one entry on purpose. Doctor prints warnings
+     * whatever the action is (`acts/doctor.ts:358`), so the message is delivered
+     * either way; calling a working install `failed` would spend the word on a
+     * case where nothing failed, and teach operators to discount it.
+     */
+    action: failures.length > 0 ? 'failed' : 'installed',
     detail: `agent hooks installed for ${[...new Set(report.installed.map((i) => i.agent))].join(', ')}`,
     warnings,
   };

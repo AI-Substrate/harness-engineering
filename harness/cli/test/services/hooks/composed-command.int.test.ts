@@ -185,13 +185,23 @@ function journal(): Record<string, unknown>[] {
   }
 }
 
-/** Run an argv exactly as composed. `spawnSync` so a non-zero exit is DATA, not a throw. */
+/**
+ * Run an argv exactly as composed. `spawnSync` so a non-zero exit is DATA, not a throw.
+ *
+ * THE COMMAND SUPPLIES ITS OWN INTERPRETER (plan 082, F008). This used to spawn
+ * `process.execPath` with the composed argv appended — i.e. the TEST supplied the
+ * `node` that the CONFIG did not. That is exactly the assumption the defect was
+ * made of: the row named itself "executes the installed string verbatim" while
+ * quietly prepending the one token whose absence made every Windows install
+ * inert. A file-association dispatch cannot be caught by a harness that hands the
+ * command to Node itself.
+ */
 function runArgv(argv: string[]): { status: number | null; stdout: string; stderr: string } {
   const payload = JSON.stringify({
     tool_name: 'Shell',
     tool_input: { cwd: repo, command: 'git status' },
   });
-  const result = spawnSync(process.execPath, argv, {
+  const result = spawnSync(argv[0], argv.slice(1), {
     cwd: repo,
     encoding: 'utf8',
     input: payload,
@@ -251,7 +261,19 @@ describe('the command the INSTALLER composed is a command `fire` can actually RU
     for (const { agent, phase, command } of composed) {
       const argv = argvOf(command);
       const where = `${agent} ${phase}`;
-      expect(existsSync(argv[0]), `${where}: composed binary ${argv[0]} must exist`).toBe(true);
+      // EVERY token of the invocation must exist, not just the first (F008).
+      // Derived INDEPENDENTLY, in keeping with this file's stance: the invocation
+      // is whatever precedes the literal `hooks` verb. Checking only argv[0] once
+      // that token is `node` asks whether Node exists on a machine that is
+      // running Node — a check that cannot fail, occupying the slot where a check
+      // should be.
+      const verbAt = argv.indexOf('hooks');
+      expect(verbAt, `${where}: the command must reach the hooks verb`).toBeGreaterThan(0);
+      for (const token of argv.slice(0, verbAt)) {
+        expect(existsSync(token), `${where}: composed invocation token ${token} must exist`).toBe(
+          true,
+        );
+      }
 
       const run = runArgv(argv);
       expect(run.stderr, `${where}: the hook must print nothing an agent can see`).toBe('');

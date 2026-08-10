@@ -1,9 +1,15 @@
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { AgentSpec } from './agent-matrix.js';
 import { eventKeys, phaseKeys, resolveConfigFiles } from './agent-matrix.js';
-import { extractBinaryPath } from './binary-path.js';
+import { extractBinaryPath, extractInterpreterPath } from './binary-path.js';
 import { appendToArray, setValue, writeThroughSymlink } from './config-writer.js';
-import { entryIsOwnedByUs, HOOK_MARKER, HOOK_MARKER_FLAG } from './hook-marker.js';
+import {
+  entryCommands,
+  entryIsOwnedByUs,
+  entryMayRemove,
+  HOOK_MARKER,
+  HOOK_MARKER_FLAG,
+} from './hook-marker.js';
 
 /**
  * STRATEGY A — merge our hook entry into an agent's JSON config (plan 082 tk-0005).
@@ -32,6 +38,26 @@ import { entryIsOwnedByUs, HOOK_MARKER, HOOK_MARKER_FLAG } from './hook-marker.j
 /** The document written when an agent has no config at all. */
 export interface Skeleton {
   hooks: Record<string, unknown[]>;
+}
+
+/**
+ * An upgrade we DECLINED, because our invocation is chained with foreign work
+ * in the same entry (F008 review F1).
+ *
+ * REPORTED, NEVER SILENT. The refusal is correct and it is not free: the entry
+ * we left alone is still the bare-`.js` form, so on Windows that operator stays
+ * unattributed and nothing has told them why. This carries the replacement so it
+ * can be pasted in by hand.
+ */
+export interface RefusedUpgrade {
+  path: string;
+  /** The entry we left alone, as it stands on disk. */
+  command: string;
+  reason: string;
+  /** The command we WOULD have written — the interpreter-first form. */
+  replacement: string;
+  /** One sentence an operator can act on, naming the replacement. */
+  nextAction: string;
 }
 
 export interface InstallOutcome {
@@ -83,11 +109,32 @@ export interface InstallOutcome {
    * `['tools','enableHooks']` (we made one key, we may remove one key).
    */
   createdRootExtras: string[][];
+  /**
+   * Upgrades this run DECLINED — an entry of ours chained with foreign work.
+   *
+   * On the outcome rather than thrown, for the same reason the outcome is per
+   * FILE: a refusal that reaches nobody is indistinguishable from a repair, and
+   * the entry we declined to touch is the one that cannot run.
+   */
+  refusedUpgrades: RefusedUpgrade[];
 }
+
+/**
+ * The ARGUMENTS half of our hook command — the one source of truth for the tail.
+ *
+ * SPLIT OUT BECAUSE THE POWERSHELL VARIANT USED TO REBUILD IT BY ARITHMETIC:
+ * `command.slice(binary.length)` (F008). That is a second source of truth about
+ * the same value, derived by measuring a string with a number, and it broke the
+ * moment the invocation stopped being one token. Both variants now compose the
+ * SAME tail behind their own invocation syntax, so a change to the arguments
+ * cannot reach one and miss the other.
+ */
+export const hookArgs = (agent: string, phase: 'pre' | 'post'): string =>
+  `hooks fire ${agent} --phase ${phase} --hook-input stdin ${HOOK_MARKER_FLAG} ${HOOK_MARKER}`;
 
 /** The command we install for one agent and phase. */
 export const hookCommand = (binary: string, agent: string, phase: 'pre' | 'post'): string =>
-  `${binary} hooks fire ${agent} --phase ${phase} --hook-input stdin ${HOOK_MARKER_FLAG} ${HOOK_MARKER}`;
+  `${binary} ${hookArgs(agent, phase)}`;
 
 /**
  * The skeleton for an agent with no config.
@@ -143,11 +190,21 @@ export function buildEntry(
   const extras = spec.entryExtras ?? {};
 
   if (spec.powershellVariant === true) {
-    const raw = extractBinaryPath(binary) ?? binary;
+    // BOTH PARTS, from the same structured pair the command uses (F008). The
+    // previous form extracted ONE path and re-prefixed it, which for an
+    // interpreter-first invocation produced `& 'node' hooks fire …` — node with
+    // no script, a second broken command string beside the one we had just
+    // fixed.
+    const interpreter = extractInterpreterPath(binary);
+    const script = extractBinaryPath(binary) ?? binary;
     // `& '<path>'` with embedded single quotes doubled — powershell's own escaping,
     // and the form git-ai writes (github_copilot.rs:59-69).
-    const invocation = `& '${raw.replace(/'/g, "''")}'`;
-    Object.assign(extras, { powershell: `${invocation} ${command.slice(binary.length).trim()}` });
+    const psQuote = (path: string) => `'${path.replace(/'/g, "''")}'`;
+    const invocation =
+      interpreter === null
+        ? `& ${psQuote(script)}`
+        : `& ${psQuote(interpreter)} ${psQuote(script)}`;
+    Object.assign(extras, { powershell: `${invocation} ${hookArgs(spec.agent, phase)}` });
   }
 
   if (spec.entryShape === 'nested') {
@@ -229,6 +286,22 @@ function installOneFile(fs: FsPort, spec: AgentSpec, path: string, binary: strin
   // Idempotency: our entry is FOUND by the marker, never by string equality with
   // what we would write — the binary path can legitimately differ between installs.
   if (containsOurEntry(before, spec)) {
+    const upgrade = upgradeLegacyEntries(before, spec, binary, path);
+    if (upgrade.text !== null) {
+      writeThroughSymlink(fs, path, upgrade.text);
+      return {
+        agent: spec.agent,
+        path,
+        created,
+        // NOT `alreadyPresent`: we WROTE this run. Reporting an upgrade as
+        // "already present" would tell a user on the platform this repairs that
+        // nothing needed doing, on the run that did it.
+        alreadyPresent: false,
+        createdKeys,
+        createdRootExtras: [],
+        refusedUpgrades: upgrade.refused,
+      };
+    }
     if (created) writeThroughSymlink(fs, path, before);
     return {
       agent: spec.agent,
@@ -239,6 +312,7 @@ function installOneFile(fs: FsPort, spec: AgentSpec, path: string, binary: strin
       // We wrote nothing this run, so we created no root field this run. An EARLIER
       // run's provenance is in the record and is merged, never overwritten.
       createdRootExtras: [],
+      refusedUpgrades: upgrade.refused,
     };
   }
 
@@ -264,7 +338,90 @@ function installOneFile(fs: FsPort, spec: AgentSpec, path: string, binary: strin
     alreadyPresent: false,
     createdKeys,
     createdRootExtras: rootExtras.map(([keyPath]) => keyPath),
+    refusedUpgrades: [],
   };
+}
+
+/**
+ * Rewrite entries of ours that predate F008 — the UPGRADE path.
+ *
+ * Returns the new document text, or `null` when there is nothing to upgrade.
+ *
+ * WHY THIS EXISTS. Idempotency finds our entry BY MARKER, so a legacy entry
+ * short-circuits install as `alreadyPresent` — correct for duplication, wrong
+ * for repair. Without this, a Windows user who upgrades the CLI and re-runs
+ * `harness hooks install` is told everything is fine while the command that
+ * cannot execute stays exactly where it was. The fix would never reach the only
+ * platform that needs it.
+ *
+ * `entryMayRemove`, NOT `entryIsOwnedByUs` (F008 review F1). The loose predicate
+ * means "ANY command in this entry is ours", and this function REPLACES THE
+ * WHOLE ENTRY — so gating on it destroyed foreign work chained into a legacy
+ * entry (`… --hook-owner … && other-tool --run`). The strict predicate already
+ * existed: F005 built the three-state ownership model precisely so we would
+ * refuse to clobber a mixed entry, `uninstall-strategy-a.ts` states the rule in
+ * a comment, and this path walked around both.
+ *
+ * REFUSE, DO NOT PERFORM SURGERY. Splicing our segment out of somebody else's
+ * shell command line is more machinery and a worse failure mode than declining;
+ * "we never rewrite work we did not write" is a sentence we can keep. The
+ * refusal is REPORTED with the replacement command, because a silent refusal
+ * leaves the user with a hook that cannot run and no way to know why.
+ *
+ * WHY IT IS OTHERWISE NARROW. It rewrites ONLY when the configured command lacks
+ * an interpreter while the one we would now write has one. An unconditional
+ * rewrite would churn every config on every run — and, because `installHooks`
+ * rolls back "what THIS run wrote", could uninstall a good hook to compensate
+ * for an unrelated failure.
+ */
+function upgradeLegacyEntries(
+  text: string,
+  spec: AgentSpec,
+  binary: string,
+  path: string,
+): { text: string | null; refused: RefusedUpgrade[] } {
+  if (extractInterpreterPath(binary) === null) return { text: null, refused: [] };
+
+  let doc: { hooks?: Record<string, unknown[]> };
+  try {
+    doc = JSON.parse(stripComments(text)) as typeof doc;
+  } catch {
+    return { text: null, refused: [] };
+  }
+
+  let out = text;
+  let changed = false;
+  const refused: RefusedUpgrade[] = [];
+  for (const [phase, key] of phaseKeys(spec)) {
+    const entries = doc.hooks?.[key];
+    if (!Array.isArray(entries)) continue;
+    for (const [index, entry] of entries.entries()) {
+      if (!entryIsOwnedByUs(entry)) continue;
+      if (entryCommands(entry).every((command) => extractInterpreterPath(command) !== null))
+        continue;
+
+      const replacement = hookCommand(binary, spec.agent, phase);
+      if (!entryMayRemove(entry)) {
+        for (const command of entryCommands(entry)) {
+          refused.push({
+            path,
+            command,
+            reason: 'our invocation is chained with foreign work in the same entry',
+            replacement,
+            nextAction: `Left unchanged so the foreign work in it survives. This entry still names a bare script, which Windows dispatches to WScript.exe by file association, so it cannot run our code. Replace OUR segment of it by hand with: ${replacement}`,
+          });
+        }
+        continue;
+      }
+
+      // Rebuilt from the matrix row, exactly as a fresh install would write it —
+      // so an upgraded entry and a new one cannot drift apart.
+      const rebuilt = buildEntry(spec, binary, phase) as Record<string, unknown>;
+      out = setValue(out, ['hooks', key, index], rebuilt);
+      changed = true;
+    }
+  }
+  return { text: changed ? out : null, refused };
 }
 
 /**

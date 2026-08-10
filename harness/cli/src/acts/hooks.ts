@@ -1,12 +1,14 @@
 import type { Command } from 'commander';
 import type { Clock } from '../adapters/clock/clock-port.js';
 import type { EnvPort } from '../adapters/env/env-port.js';
+import { HOOK_SELF_TEST_MARKER } from '../adapters/exec/invocation-probe-port.js';
+import { spawnInvocationProbe } from '../adapters/exec/spawn-invocation-probe.js';
 import type { FsPort } from '../adapters/fs/fs-port.js';
 import { ExecGit } from '../adapters/git/exec-git.js';
 import { ExecGitAttribution } from '../adapters/git/exec-git-attribution.js';
 import { NodeHash } from '../adapters/hash/node-hash.js';
 import { NodeSocketProbe } from '../adapters/net/node-socket-probe.js';
-import { embedBinaryPath } from '../services/hooks/binary-path.js';
+import { embedInvocation } from '../services/hooks/binary-path.js';
 import { CommitIntercept, type HookPhase } from '../services/hooks/commit-intercept.js';
 import { FIRE_OPTIONS } from '../services/hooks/fire-options.js';
 import { FileHookJournal } from '../services/hooks/hook-journal.js';
@@ -125,8 +127,33 @@ export function registerHooksAct(program: Command, deps: HooksActDeps): void {
       'Per-agent install state, whether the configured binary resolves, and recent fires.',
     )
     .option('--json', 'machine-readable output')
-    .action((opts: { json?: boolean }) => {
-      emit(deps, opts.json, (d) => ({ agents: statusHooks(d), fires: fireSummary(d) }));
+    .option(
+      '--probe',
+      'EXECUTE each configured command and report whether OUR code ran (spawns a child)',
+    )
+    .action((opts: { json?: boolean; probe?: boolean }) => {
+      emit(deps, opts.json, (d) => ({
+        agents: statusHooks(opts.probe === true ? { ...d, probe: spawnInvocationProbe } : d),
+        fires: fireSummary(d),
+      }));
+    });
+
+  /*
+   * THE SELF-TEST — the evidence `executionState` needs (plan 082, F008).
+   *
+   * It prints a sentinel and exits 0. That is the entire contract, and the
+   * smallness is the point: the question it answers is not "does the CLI work"
+   * but "did THIS interpreter, given THIS script path, get as far as running our
+   * code at all". On the Windows guest measured on 2026-08-10 the answer was no
+   * — Windows Script Host opened the file, could not execute an ES module, and
+   * exited 0 without printing anything. Exit 0 is therefore not the signal; the
+   * sentinel on stdout is.
+   */
+  hooks
+    .command('self-test')
+    .description('Print a sentinel proving this invocation reached our code. Exits 0.')
+    .action(() => {
+      process.stdout.write(`${HOOK_SELF_TEST_MARKER}\n`);
     });
 
   hooks
@@ -193,6 +220,15 @@ export function hooksDeps(deps: HooksActDeps): HooksDeps | null {
  * process, because the path written into a user's config IS the running binary and
  * no caller can supply a truthful substitute; `env` only reads variables. Neither
  * can write outside a fence; `fs` and `home` can.
+ *
+ * F008 MADE THAT PAIR TRUTHFUL ON BOTH PLATFORMS. `process.argv[1]` alone is a
+ * SCRIPT PATH, and on Windows a bare `.js` first token is dispatched by file
+ * association to `WScript.exe` — measured on a Windows 11 guest 2026-08-10, exit
+ * 0, our journal unmoved across ~58 real hook invocations. The rationale above
+ * was right and its conclusion was POSIX-only: on macOS the shebang makes that
+ * path executable, on Windows it is a document. `process.execPath` is the same
+ * kind of fact about the same running process — no PATH lookup, no guess at a
+ * `.cmd` shim npm may or may not have written — so the invocation names both.
  */
 export function hooksDepsFor(
   fs: FsPort,
@@ -204,8 +240,11 @@ export function hooksDepsFor(
     fs,
     home: home.replace(/\\/g, '/').replace(/\/+$/, ''),
     env: (name) => env.get(name),
-    // The binary the hook command names — resolved, normalised and ALWAYS quoted.
-    binary: embedBinaryPath(process.argv[1] ?? 'harness'),
+    // The INVOCATION the hook command names — interpreter and script, resolved,
+    // normalised and ALWAYS quoted. One form on every platform: the string
+    // shipped to Windows users is then the string every macOS gate run
+    // exercises, and that divergence is what let F008 live.
+    binary: embedInvocation(process.execPath, process.argv[1] ?? 'harness'),
   };
 }
 
