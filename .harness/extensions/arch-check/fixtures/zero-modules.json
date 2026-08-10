@@ -1,0 +1,336 @@
+{
+  "modules": [],
+  "summary": {
+    "violations": [],
+    "error": 0,
+    "warn": 0,
+    "info": 0,
+    "totalCruised": 0,
+    "totalDependenciesCruised": 0,
+    "ruleSetUsed": {
+      "forbidden": [
+        {
+          "name": "no-circular",
+          "comment": "No circular dependencies anywhere in the CLI.",
+          "severity": "warn",
+          "from": {},
+          "to": {
+            "circular": true
+          },
+          "scope": "module"
+        },
+        {
+          "name": "services-never-import-acts",
+          "comment": "Services are adapter-agnostic business logic \u2014 they must not know about command handlers.",
+          "severity": "warn",
+          "from": {
+            "path": "^harness/cli/src/services"
+          },
+          "to": {
+            "path": "^harness/cli/src/acts"
+          },
+          "scope": "module"
+        },
+        {
+          "name": "services-only-adapter-ports",
+          "comment": "Services may depend on adapter PORT interfaces only, never concrete node-*/exec-*/system-* implementations or fakes.",
+          "severity": "warn",
+          "from": {
+            "path": "^harness/cli/src/services"
+          },
+          "to": {
+            "path": "^harness/cli/src/adapters",
+            "pathNot": "-port\\.ts$"
+          },
+          "scope": "module"
+        },
+        {
+          "name": "services-ports-type-only",
+          "comment": "Port imports from services must be type-only (the kernel injects the implementation).",
+          "severity": "warn",
+          "from": {
+            "path": "^harness/cli/src/services"
+          },
+          "to": {
+            "path": "^harness/cli/src/adapters/.*-port\\.ts$",
+            "dependencyTypesNot": [
+              "type-only"
+            ]
+          },
+          "scope": "module"
+        },
+        {
+          "name": "dd-core-never-imports-output",
+          "comment": "dd-core returns structured values and never imports harness envelopes or exits.",
+          "severity": "warn",
+          "from": {
+            "path": "^harness/cli/src/services/dd/core"
+          },
+          "to": {
+            "path": "^harness/cli/src/output",
+            "reachable": true
+          },
+          "scope": "module"
+        },
+        {
+          "name": "dd-core-never-imports-acts",
+          "comment": "dd-core is a library boundary and never imports command handlers.",
+          "severity": "warn",
+          "from": {
+            "path": "^harness/cli/src/services/dd/core"
+          },
+          "to": {
+            "path": "^harness/cli/src/acts",
+            "reachable": true
+          },
+          "scope": "module"
+        },
+        {
+          "name": "dd-core-never-imports-node-adapters",
+          "comment": "dd-core is ports-free and never imports any harness adapter.",
+          "severity": "warn",
+          "from": {
+            "path": "^harness/cli/src/services/dd/core"
+          },
+          "to": {
+            "path": "^harness/cli/src/adapters",
+            "reachable": true
+          },
+          "scope": "module"
+        },
+        {
+          "name": "dd-graph-never-imports-render",
+          "comment": "dd graph emits mermaid directly. A renderer import anywhere in its chain would re-couple the render and links phases, which were split so they could land in parallel.",
+          "severity": "warn",
+          "from": {
+            "path": "^harness/cli/src/acts/dd/(graph|links)\\.ts$"
+          },
+          "to": {
+            "path": "^harness/cli/src/services/dd/render",
+            "reachable": true
+          },
+          "scope": "module"
+        },
+        {
+          "name": "dd-links-never-imports-render",
+          "comment": "The links layer consumes the render layer only through an injected interface; it never imports it.",
+          "severity": "warn",
+          "from": {
+            "path": "^harness/cli/src/services/dd/links"
+          },
+          "to": {
+            "path": "^harness/cli/src/services/dd/render",
+            "reachable": true
+          },
+          "scope": "module"
+        },
+        {
+          "name": "dd-links-never-imports-output",
+          "comment": "The links layer returns structured findings and never imports harness envelopes or exits.",
+          "severity": "warn",
+          "from": {
+            "path": "^harness/cli/src/services/dd/links"
+          },
+          "to": {
+            "path": "^harness/cli/src/output",
+            "reachable": true
+          },
+          "scope": "module"
+        },
+        {
+          "name": "dd-links-never-imports-acts",
+          "comment": "The links layer is a library boundary and never imports command handlers.",
+          "severity": "warn",
+          "from": {
+            "path": "^harness/cli/src/services/dd/links"
+          },
+          "to": {
+            "path": "^harness/cli/src/acts",
+            "reachable": true
+          },
+          "scope": "module"
+        },
+        {
+          "name": "dd-mutate-never-imports-output",
+          "comment": "The dd writer layer returns structured refusals and never imports harness envelopes or exits \u2014 the act maps a refusal reason to an E-code, exactly as it does for dd-core and links.",
+          "severity": "warn",
+          "from": {
+            "path": "^harness/cli/src/services/dd/mutate"
+          },
+          "to": {
+            "path": "^harness/cli/src/output",
+            "reachable": true
+          },
+          "scope": "module"
+        },
+        {
+          "name": "dd-mutate-never-imports-acts",
+          "comment": "The dd writer layer is a library boundary and never imports command handlers.",
+          "severity": "warn",
+          "from": {
+            "path": "^harness/cli/src/services/dd/mutate"
+          },
+          "to": {
+            "path": "^harness/cli/src/acts",
+            "reachable": true
+          },
+          "scope": "module"
+        },
+        {
+          "name": "dd-mutate-never-imports-node-adapters",
+          "comment": "The dd writer layer is `(doc, address, value) => doc | refusal`. Reading and writing files belongs to the act, so a mutation is testable \u2014 and a refusal provable \u2014 without a filesystem.",
+          "severity": "warn",
+          "from": {
+            "path": "^harness/cli/src/services/dd/mutate"
+          },
+          "to": {
+            "path": "^harness/cli/src/adapters",
+            "reachable": true
+          },
+          "scope": "module"
+        },
+        {
+          "name": "dd-plan-never-imports-output",
+          "comment": "The plan semantic layer returns structured findings and never imports harness envelopes or exits \u2014 the act maps a finding class to an E-code, exactly as every other dd layer does.",
+          "severity": "warn",
+          "from": {
+            "path": "^harness/cli/src/services/dd/plan"
+          },
+          "to": {
+            "path": "^harness/cli/src/output",
+            "reachable": true
+          },
+          "scope": "module"
+        },
+        {
+          "name": "dd-plan-never-imports-acts",
+          "comment": "The plan semantic layer is a library boundary and never imports command handlers.",
+          "severity": "warn",
+          "from": {
+            "path": "^harness/cli/src/services/dd/plan"
+          },
+          "to": {
+            "path": "^harness/cli/src/acts",
+            "reachable": true
+          },
+          "scope": "module"
+        },
+        {
+          "name": "dd-plan-never-imports-node-adapters",
+          "comment": "The plan semantic layer takes already-loaded documents and already-walked edges. Reading files belongs to the act, so a contradiction is provable without a filesystem.",
+          "severity": "warn",
+          "from": {
+            "path": "^harness/cli/src/services/dd/plan"
+          },
+          "to": {
+            "path": "^harness/cli/src/adapters",
+            "reachable": true
+          },
+          "scope": "module"
+        },
+        {
+          "name": "dd-plan-never-imports-render",
+          "comment": "The plan semantic layer reads structure, never markdown \u2014 the same boundary that keeps dd graph independent of the renderer.",
+          "severity": "warn",
+          "from": {
+            "path": "^harness/cli/src/services/dd/plan"
+          },
+          "to": {
+            "path": "^harness/cli/src/services/dd/render",
+            "reachable": true
+          },
+          "scope": "module"
+        },
+        {
+          "name": "dd-render-never-imports-output",
+          "comment": "The dd renderer is pure \u2014 it returns markdown and never imports harness envelopes or exits.",
+          "severity": "warn",
+          "from": {
+            "path": "^harness/cli/src/services/dd/render"
+          },
+          "to": {
+            "path": "^harness/cli/src/output",
+            "reachable": true
+          },
+          "scope": "module"
+        },
+        {
+          "name": "dd-render-never-imports-acts",
+          "comment": "The dd renderer is a library boundary and never imports command handlers.",
+          "severity": "warn",
+          "from": {
+            "path": "^harness/cli/src/services/dd/render"
+          },
+          "to": {
+            "path": "^harness/cli/src/acts",
+            "reachable": true
+          },
+          "scope": "module"
+        },
+        {
+          "name": "dd-render-never-imports-node-adapters",
+          "comment": "The dd renderer takes precomputed inputs \u2014 it is ports-free and imports no harness adapter.",
+          "severity": "warn",
+          "from": {
+            "path": "^harness/cli/src/services/dd/render"
+          },
+          "to": {
+            "path": "^harness/cli/src/adapters",
+            "reachable": true
+          },
+          "scope": "module"
+        },
+        {
+          "name": "flow-consumes-dd-sdk-only",
+          "comment": "The flow spine is an EXTERNAL consumer of dd, not a co-resident: it may import ONLY dd's published SDK barrels (services/dd/links/index.ts, services/dd/schema/index.ts and services/dd/plan/index.ts), never a dd module path. That line is the whole difference between an SDK and a shared folder. When the flow needs something dd does not export, EXPOSE a named seam on a barrel deliberately (as `deriveSchemaItems` was, and as `readPlanCheck` is for the check-kind gate) \u2014 never reach past one. Covers TYPE-ONLY imports too (see tsPreCompilationDeps above): a type reaching past the barrel couples the flow to an internal shape just as hard as a value does, and breaks the same way when dd moves it.",
+          "severity": "warn",
+          "from": {
+            "path": "^harness/cli/src/(services/flow|acts/flow\\.ts$)"
+          },
+          "to": {
+            "path": "^harness/cli/src/services/dd",
+            "pathNot": "^harness/cli/src/services/dd/(links|schema|plan)/index\\.ts$"
+          },
+          "scope": "module"
+        },
+        {
+          "name": "adapters-stay-leaf",
+          "comment": "Adapters are leaves \u2014 they never import services, acts, or output.",
+          "severity": "warn",
+          "from": {
+            "path": "^harness/cli/src/adapters"
+          },
+          "to": {
+            "path": "^harness/cli/src/(services|acts|output)"
+          },
+          "scope": "module"
+        },
+        {
+          "name": "output-stays-leaf",
+          "comment": "The output/envelope layer must not reach back into services or acts.",
+          "severity": "warn",
+          "from": {
+            "path": "^harness/cli/src/output"
+          },
+          "to": {
+            "path": "^harness/cli/src/(services|acts)"
+          },
+          "scope": "module"
+        },
+        {
+          "name": "no-fakes-in-prod",
+          "comment": "Fake adapters are test doubles \u2014 production source must not import them.",
+          "severity": "warn",
+          "from": {
+            "path": "^harness/cli/src",
+            "pathNot": "\\.(test|spec)\\.ts$"
+          },
+          "to": {
+            "path": "/fake-[^/]+\\.ts$"
+          },
+          "scope": "module"
+        }
+      ]
+    }
+  }
+}

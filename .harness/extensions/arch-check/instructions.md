@@ -37,7 +37,8 @@ missing rule can be encoded.
 
 | Condition | `status` | exit | what to do |
 |---|---|---|---|
-| 0 violations | `ok` | 0 | nothing — the architecture holds |
+| 0 violations **over ≥1 module cruised** | `ok` | 0 | nothing — the architecture holds |
+| **0 modules cruised** | `error` | 1 | the gate scanned NOTHING and enforced nothing — this is an abstention, not a pass. See below |
 | ≥1 **error**-severity violation | `error` | 1 | `next_action` names the first violated rule and quotes its comment — fix the import, never the rule (see discipline below) |
 | only **warn/info**-severity violations | `degraded` | 0 | review `data.violations[]`; promote a rule to `error` once it should block |
 | dependency-cruiser not installed | `unconfigured` | 2 | `npm install -D dependency-cruiser`; run from the repo root |
@@ -45,8 +46,38 @@ missing rule can be encoded.
 | depcruise crash / unparseable output | `error` | 1 | inspect `error.details` (stderr + parse detail); reproduce with the raw command below |
 
 Error codes: `E_ARCH_VIOLATION` (error-severity violations; `error.message`
-counts ALL violations), `E_DEPCRUISE_OUTPUT` (crash/unparseable),
+counts ALL violations), `E_ARCH_NO_MODULES` (empty cruise — see below),
+`E_DEPCRUISE_OUTPUT` (crash/unparseable),
 `E_ARCH_CHECK_UNEXPECTED` (backstop — should never fire).
+
+### `E_ARCH_NO_MODULES` — the empty cruise
+
+depcruise reports an empty scan as `totalCruised: 0` with an empty
+`violations[]`, a **valid schema and exit 0**. Read naively that is
+indistinguishable from a clean tree, and until 2026-08-11 this verb reported it
+as `ok` — the count was parsed, validated and published as `data.modules`, and
+never examined. A gate that scanned nothing has abstained, not passed, so it now
+fails **`error`/exit 1** regardless of the (necessarily empty) violation list.
+
+This is `error` rather than `degraded` on purpose: the warn-launch posture above
+governs the severity of a **violation that was found**, not whether the scan
+happened at all. Warn-launch is a statement about what blocks; an empty cruise
+is the absence of any statement.
+
+Known routes into it:
+
+- **A TypeScript major that drops the JS compiler API.** dependency-cruiser
+  parses through `src/extract/tsc/parse.mjs` and declares no `typescript`
+  dependency of its own, so it resolves the host project's. Measured: depcruise
+  18.1.0 cruises 336 modules under TypeScript 6.0.3 and **0** under 7.0.2 on the
+  same tree, because TS7's native port exposes only `version` from
+  `require('typescript')`. Check with
+  `node -e "console.log(typeof require('typescript').createProgram)"` —
+  `undefined` means depcruise is blind. Note `tsc` itself keeps working (it is a
+  native binary), so **the build and the test suite stay green and cannot see
+  this**.
+- **Bare `npx depcruise`** in directory mode (Gotcha #1) — always the local bin.
+- **A target path matching no source.**
 
 **Launch posture (2026-06-10)**: every committed rule ships at `warn`, so a
 violation lands as `degraded`/exit 0 plus a CI `::warning::` annotation —

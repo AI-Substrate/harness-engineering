@@ -122,6 +122,47 @@ export function mapToDecision(parsed: unknown, rules: DepcruiseRule[]): ArchDeci
     violations,
   };
 
+  // An empty cruise is an ABSTENTION, not a pass. depcruise reports
+  // `totalCruised: 0` with an empty `violations[]`, a valid schema and exit 0 —
+  // so without this branch the gate enforces the hexagonal contract over NOTHING
+  // and publishes `ok`. The count was already fetched, validated and stored as
+  // `data.modules`; it was simply never read. A zero must never be published
+  // without its denominator being examined.
+  //
+  // This is checked BEFORE the violation branches deliberately: 0 modules always
+  // comes with 0 violations, so "no violations" is exactly what an empty scan
+  // looks like, and the clean path would otherwise swallow it.
+  //
+  // Distinct from a malformed document (`parseDepcruiseJson` → row 6): there the
+  // schema has drifted; here the schema is intact and the answer is honestly
+  // empty. Measured live 2026-08-11: dependency-cruiser 18.1.0 under TypeScript
+  // 7.0.2 cruises 0 modules (336 under 6.0.3, same tree) because TS7's native
+  // port drops the JS compiler API depcruise parses with — and depcruise
+  // declares no `typescript` dependency of its own, so it resolves the host's.
+  // The same shape is reachable via Gotcha #1 (bare `npx depcruise` in directory
+  // mode) and by a mistargeted path.
+  if (summary.totalCruised === 0) {
+    return {
+      status: 'error',
+      exitIntent: 1,
+      data,
+      error: {
+        code: 'E_ARCH_NO_MODULES',
+        message: 'depcruise cruised 0 modules — no rule was enforced',
+      },
+      next_action:
+        'arch-check scanned NOTHING, so this is not a pass — no architecture rule was evaluated. ' +
+        'Reproduce with `./node_modules/.bin/depcruise --config .dependency-cruiser.cjs ' +
+        '--output-type json harness/cli/src` and read `summary.totalCruised`. ' +
+        'Common causes: (1) a TypeScript major that dropped the JS compiler API ' +
+        'dependency-cruiser parses with (check `node -e "console.log(typeof ' +
+        'require(\'typescript\').createProgram)"` — `undefined` means depcruise is blind, ' +
+        'and `tsc`/tests stay green regardless, so they cannot see it); ' +
+        '(2) invoking bare `npx depcruise` instead of the local bin (Gotcha #1); ' +
+        '(3) a target path that matches no source. Do not merge on this result.',
+    };
+  }
+
   const firstError = violations.find((v) => v.severity === 'error');
   if (firstError) {
     return {
