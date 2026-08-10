@@ -1,0 +1,57 @@
+harness/cli/test/acts/doctor.test.ts
+  s_9080d980e96345::t_b4bf484751d800 11,356-423
+  s_9080d980e96345::t_123ef5f009a50a 424-425
+harness/cli/test/services/doctor/collector/binary-viability.test.ts
+  s_9080d980e96345::t_267eee2c62426b 10-13
+  s_9080d980e96345::t_d90cf5e7f4c6a0 348-420
+harness/cli/test/services/doctor/collector/health.test.ts
+  s_9080d980e96345::t_22ba025ccc122d 649,651,657,664,670,709,724-807
+  s_9080d980e96345::t_6fd534368c6b41 622-626
+  s_9080d980e96345::t_1c78230cf0e38c 646-648
+  s_9080d980e96345::t_6310c72448ff35 650
+  s_9080d980e96345::t_41c5c682a66459 652-656
+  s_9080d980e96345::t_4720ae04ebf627 658-663
+  s_9080d980e96345::t_5490618c7f0a20 665-669
+  s_9080d980e96345::t_d663d29ee1f751 671-673
+  s_a18d70feab1eb1::t_c4b608e20f34a7 6,629,640-645,674-678
+harness/cli/src/services/doctor/collector/auto-install.ts
+  s_9080d980e96345::t_254e6877c15318 48-63
+  s_9080d980e96345::t_e08a64ec4b6c6b 270,297
+  s_9080d980e96345::t_390249192d32f3 345-366
+  s_9080d980e96345::t_88b455bd37f776 344
+harness/cli/src/services/doctor/collector/install.ts
+  s_9080d980e96345::t_b5188ec3656e9b 813-844
+harness/cli/src/services/doctor/collector/health.ts
+  s_9080d980e96345::t_4ae28ff9df8e66 471-478,482-483
+  s_9080d980e96345::t_7d634f7bd3c0c4 419
+  s_9080d980e96345::t_2f07681ccbbfc4 420
+  s_9080d980e96345::t_cc5ef4c6970ec1 397-409
+  s_9080d980e96345::t_313c839a1780a4 389-396,410-414
+harness/cli/test/services/doctor/collector/auto-install.test.ts
+  s_9080d980e96345::t_60dd0a5d8f94b3 826-832
+  s_9080d980e96345::t_25334feb0ed328 717-825,833-834
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d7f85f317b753740c0d94c3b4a1abeae9c704de2",
+  "prompts": {},
+  "sessions": {
+    "s_9080d980e96345": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "8e3772ff-f5d7-4b01-bad0-032144d93307",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_a18d70feab1eb1": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "b4790703-deee-415c-a878-73dae45d2598",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
