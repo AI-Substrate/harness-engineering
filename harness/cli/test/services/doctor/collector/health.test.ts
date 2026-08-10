@@ -11,6 +11,10 @@ import {
 import { readIngress } from '../../../../src/services/doctor/collector/ingress.js';
 import { GITAI_PIN } from '../../../../src/services/doctor/collector/pin.js';
 import {
+  lookupGitAiOnPath,
+  type PathLookup,
+} from '../../../../src/services/doctor/collector/platform.js';
+import {
   type CollectorState,
   collectorStatePath,
   emptyCollectorState,
@@ -76,6 +80,7 @@ function health(
     state?: CollectorState | null;
     hash?: boolean;
     platform?: string;
+    pathLookup?: PathLookup;
   } = {},
 ): CollectorHealth {
   const fs = over.fs ?? new FakeCollectorFs();
@@ -87,6 +92,7 @@ function health(
     host: { platform: over.platform ?? 'darwin', arch: 'arm64', home: HOME },
     cwd: REPO,
     ...(over.hash === false ? {} : { hash: new NodeHash() }),
+    ...(over.pathLookup !== undefined ? { pathLookup: over.pathLookup } : {}),
     manifest: pin(),
   });
 }
@@ -805,5 +811,82 @@ describe('a binary that cannot RUN is never healthy (plan 082 · F007)', () => {
     expect(alone).toContain('next ordinary `harness doctor`');
     // The failure mode this row exists to forbid.
     expect(alone).not.toContain('above');
+  });
+});
+
+describe('the binary-not-on-path rung — resolution, not existence (plan 082, windows arm)', () => {
+  it('an otherwise-healthy install whose bare name resolves nowhere warns, and says why it is invisible', () => {
+    const result = health({ fs: installedFs(), pathLookup: { resolved: null } });
+
+    expect(result.verdict).toBe('binary-not-on-path');
+    expect(result.detail).toContain('KnownHuman');
+    expect(result.detail).toContain('root-cause-extension-cannot-find-git-ai');
+    expect(result.next_action).toContain('/home/u/.git-ai/bin');
+    expect(result.next_action).toContain('restart');
+    expect(result.onPath).toEqual({ resolved: null });
+  });
+
+  it('a resolvable bare name leaves the healthy verdict untouched and records where it resolved', () => {
+    const result = health({
+      fs: installedFs(),
+      pathLookup: { resolved: '/home/u/.local/bin/git-ai' },
+    });
+
+    expect(result.verdict).toBe('healthy');
+    expect(result.onPath).toEqual({ resolved: '/home/u/.local/bin/git-ai' });
+  });
+
+  it('an absent lookup evaluates nothing — absence never manufactures a warning', () => {
+    const result = health({ fs: installedFs() });
+
+    expect(result.verdict).toBe('healthy');
+    expect(result.onPath).toBeNull();
+  });
+
+  it('the rung never masks an earlier, more specific verdict', () => {
+    const fs = new FakeCollectorFs();
+    fs.seedBytes(BINARY, new TextEncoder().encode('replaced out from under the pin'));
+    fs.mkdirp(`${HOME}/.claude`);
+
+    const result = health({ fs, pathLookup: { resolved: null } });
+
+    expect(result.verdict).toBe('degraded');
+  });
+});
+
+describe('lookupGitAiOnPath resolves the bare name the way a shell-less spawn would', () => {
+  it('finds the binary through any PATH entry, not just the install dir', () => {
+    const fs = new FakeCollectorFs();
+    fs.seedBytes('/home/u/.local/bin/git-ai', PAYLOAD);
+
+    const result = lookupGitAiOnPath(fs, 'darwin', '/usr/bin:/home/u/.local/bin');
+
+    expect(result.resolved).toBe('/home/u/.local/bin/git-ai');
+  });
+
+  it('reports unresolved when the binary exists ONLY at the install dir and PATH lacks it', () => {
+    const fs = new FakeCollectorFs();
+    fs.seedBytes(BINARY, PAYLOAD); // present on disk — the false-negative trap
+
+    const result = lookupGitAiOnPath(fs, 'darwin', '/usr/bin:/usr/local/bin');
+
+    expect(result.resolved).toBeNull();
+  });
+
+  it('on win32 it splits on semicolons, strips quotes, and looks for the .exe', () => {
+    const fs = new FakeCollectorFs();
+    fs.seedBytes('C:/Users/u/.git-ai/bin/git-ai.exe', PAYLOAD);
+
+    const result = lookupGitAiOnPath(
+      fs,
+      'win32',
+      'C:\\Windows\\system32;"C:\\Users\\u\\.git-ai\\bin"',
+    );
+
+    expect(result.resolved).toBe('C:/Users/u/.git-ai/bin/git-ai.exe');
+  });
+
+  it('an unset PATH is unresolved, not a crash', () => {
+    expect(lookupGitAiOnPath(new FakeCollectorFs(), 'darwin', undefined).resolved).toBeNull();
   });
 });

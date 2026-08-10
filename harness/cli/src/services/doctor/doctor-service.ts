@@ -31,6 +31,7 @@ import { type AtRiskReport, enumerateAtRisk } from './collector/at-risk.js';
 import { type CursorSandboxRow, cursorSandboxRow } from './collector/cursor-sandbox.js';
 import { type CollectorHealth, readCollectorHealth } from './collector/health.js';
 import type { IngressReading } from './collector/ingress.js';
+import { lookupGitAiOnPath } from './collector/platform.js';
 import type { HostTarget } from './collector/types.js';
 
 /** Adapters the doctor service depends on (injected — never constructed here). */
@@ -860,6 +861,7 @@ function checkCollector(
   fs: FsPort,
   proc: ProcessPort,
   host: HostTarget,
+  env: EnvPort,
   hash?: HashPort,
   ingress?: IngressReading,
   optedOut = false,
@@ -878,10 +880,17 @@ function checkCollector(
   // Degraded and never healthy: a reading we could not take is not good news.
   let health: CollectorHealth;
   try {
+    // Resolution of the BARE NAME, not existence of the install dir: editor
+    // extensions spawn the literal string `git-ai`, so the PATH lookup is the
+    // fact that decides whether save-time KnownHuman attestations get recorded.
+    // A pure fs read over the env — nothing is spawned (P7). Inside the guard
+    // on purpose: its fs.exists walk is exactly the kind of read the guard exists
+    // to keep from costing the verb.
     health = readCollectorHealth({
       fs,
       host,
       cwd: toPosix(proc.cwd()),
+      pathLookup: lookupGitAiOnPath(fs, host.platform, env.get('PATH')),
       ...(hash !== undefined ? { hash } : {}),
       ...(ingress !== undefined ? { ingress } : {}),
       optedOut,
@@ -1079,6 +1088,7 @@ export function buildDoctorReport(
               deps.fs,
               deps.proc,
               collectorHost,
+              deps.env,
               deps.hash,
               deps.ingress,
               deps.collectorOptedOut === true,

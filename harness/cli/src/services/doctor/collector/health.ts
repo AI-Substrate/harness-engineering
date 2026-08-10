@@ -7,7 +7,7 @@ import {
   trace2TargetPath,
 } from './ingress.js';
 import { GITAI_PIN } from './pin.js';
-import { binaryPathFor, daemonPidPathFor, resolveArtifact } from './platform.js';
+import { binaryPathFor, daemonPidPathFor, type PathLookup, resolveArtifact } from './platform.js';
 import { type CollectorState, claimedHookAgents, readCollectorState } from './state.js';
 import type { CollectorFsPort, CollectorPin, HostTarget } from './types.js';
 
@@ -41,6 +41,7 @@ export type CollectorVerdict =
   | 'cli-only-skills'
   | 'hooks-incomplete'
   | 'ingress-blocked'
+  | 'binary-not-on-path'
   | 'degraded'
   | 'could-not-determine';
 
@@ -87,6 +88,12 @@ export interface CollectorHealth {
    * this field's `null` was defined to prevent.
    */
   ingress?: IngressReading | null;
+  /**
+   * Whether the bare name `git-ai` resolves on this process's PATH, when the
+   * composition root looked. `null` means nobody looked — never rendered as
+   * resolvable.
+   */
+  onPath?: PathLookup | null;
 }
 
 export interface CollectorHealthDeps {
@@ -121,6 +128,13 @@ export interface CollectorHealthDeps {
    * acting on.
    */
   optedOut?: boolean;
+  /**
+   * An ALREADY-PERFORMED lookup of the bare name `git-ai` against PATH (see
+   * {@link lookupGitAiOnPath}) — performed by the composition root, which is the
+   * only layer holding the env. Absent → the rung is not evaluated; absence
+   * never manufactures a warning.
+   */
+  pathLookup?: PathLookup;
 }
 
 /**
@@ -327,6 +341,7 @@ export function readCollectorHealth(deps: CollectorHealthDeps): CollectorHealth 
     lastAttempt:
       attempt === null ? null : { status: attempt.status, at: attempt.at, detail: attempt.detail },
     ingress: deps.ingress ?? null,
+    onPath: deps.pathLookup ?? null,
   };
 
   if (digest === 'mismatch') {
@@ -557,6 +572,31 @@ export function readCollectorHealth(deps: CollectorHealthDeps): CollectorHealth 
       verdict: 'ingress-blocked',
       detail: `git-ai ${manifest.version} is installed and hooked up, but this process CANNOT reach its ${endpoint} — ${evidence}${markerExplanation(deps.ingress)}. Commits made from here carry NO attribution, and git-ai may later attest their lines as known-human`,
       next_action: recovery,
+    };
+  }
+
+  // ADDITIVE (plan 082, windows arm): the pinned binary is installed, verified
+  // and hooked up — and the bare name `git-ai` resolves to NOTHING on PATH.
+  // Placed immediately before `healthy` like the ingress rung above: the only
+  // read it converts is one that would otherwise claim collection is configured.
+  //
+  // Why a whole rung for a PATH entry: this failure is INVISIBLE from inside.
+  // Binary present, extension installed, daemon running, commits succeeding,
+  // notes being written — and human attribution quietly wrong, because git-ai's
+  // editor extension spawns the bare name on every save to record the KnownHuman
+  // attestation, the spawn dies with ENOENT in the extension-host console where
+  // nobody looks, and the commit-time recovery then skips the human sweep on any
+  // commit that carries AI attestations. Measured end-to-end on non-WSL Windows
+  // (0 KnownHuman in 28 checkpoints until the PATH entry was added); a macOS
+  // host resolves the login-shell env into the extension host and normally
+  // never hits this. Warn-only, like every doctor rung (073 ac-000c).
+  if (deps.pathLookup !== undefined && deps.pathLookup.resolved === null) {
+    const binaryDir = binaryPath.slice(0, binaryPath.lastIndexOf('/'));
+    return {
+      ...base,
+      verdict: 'binary-not-on-path',
+      detail: `git-ai ${manifest.version} is installed at ${binaryPath} and hooked up, but the bare name \`git-ai\` resolves to NOTHING on PATH — editor extensions spawn \`git-ai\` by name on every save to record human (KnownHuman) attestations, so those spawns fail silently and human-typed lines can later be attributed to the AI agent. Everything else about this install reads fine from inside; that invisibility is exactly what this row exists to surface (evidence: docs/plans/082-harness-hooks/assets/windows/root-cause-extension-cannot-find-git-ai.md)`,
+      next_action: `Add ${binaryDir} to your user PATH yourself, then FULLY restart your editor/IDE so its extension host inherits the new environment (an already-running process keeps the old one). Doctor will not edit PATH for you.`,
     };
   }
 

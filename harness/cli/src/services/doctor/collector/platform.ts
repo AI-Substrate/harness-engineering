@@ -81,3 +81,45 @@ export function configPathFor(home: string): string {
 export function daemonPidPathFor(home: string): string {
   return `${home.replace(/\/+$/, '')}/.git-ai/internal/daemon/daemon.pid.json`;
 }
+
+/** The answer to "would a child process spawning the bare name `git-ai` find it?". */
+export interface PathLookup {
+  /** First PATH entry that holds a spawnable git-ai, or null when none does. */
+  resolved: string | null;
+}
+
+/**
+ * Resolve the BARE NAME `git-ai` against a PATH value, by filesystem read only —
+ * nothing is spawned.
+ *
+ * Resolution, not existence, is the whole point. The binary can sit at
+ * `~/.git-ai/bin` the entire time and that fact tells nobody anything: git-ai's
+ * own editor extension spawns the literal string `git-ai` in production, so the
+ * question that decides whether save-time KnownHuman attestations get recorded
+ * is whether the bare name resolves for a GUI-launched process. An existence
+ * check on the install dir is the false-negative trap that hid this for weeks
+ * (see docs/plans/082-harness-hooks/assets/windows/root-cause-extension-cannot-find-git-ai.md).
+ *
+ * On win32 a shell-less spawn resolves `.exe`/`.com` only (`.cmd`/`.bat` need a
+ * shell), and PATH entries may be quoted. On POSIX the executable bit is not
+ * checked — a present-but-unexecutable file is close enough to name here, and
+ * the fs port has no mode read.
+ */
+export function lookupGitAiOnPath(
+  fs: { exists(path: string): boolean },
+  platform: string,
+  pathValue: string | undefined,
+): PathLookup {
+  const sep = platform === 'win32' ? ';' : ':';
+  const names = platform === 'win32' ? ['git-ai.exe', 'git-ai.com'] : ['git-ai'];
+  for (const raw of (pathValue ?? '').split(sep)) {
+    const entry = platform === 'win32' ? raw.replace(/^"+|"+$/g, '') : raw;
+    if (entry.trim() === '') continue;
+    const dir = entry.replace(/\\/g, '/').replace(/\/+$/, '');
+    for (const name of names) {
+      const candidate = `${dir}/${name}`;
+      if (fs.exists(candidate)) return { resolved: candidate };
+    }
+  }
+  return { resolved: null };
+}
