@@ -146,6 +146,17 @@ this investigation had ever done.
 **Nothing in the harness changed to achieve this.** One PATH entry, on a defect that was git-ai's
 installer the whole time.
 
+> **CONFIGURATION CAVEAT, stated because the record should not imply more than it measured.**
+> Both the PATH save test and this acceptance run executed with **git-ai's hook entries only** —
+> the harness hook entries had been removed at 16:49 for the git-ai-only control run
+> (see § *What was eliminated by measurement* in the mechanism doc) and were not restored before these runs.
+>
+> **It does not weaken either result**: both concern git-ai's own checkpoint channel, and the
+> harness hooks were separately measured **neutral** — with them removed entirely, the
+> misattribution was identical to every run where they were active. But "on a normally
+> configured machine" would overstate it, and the two runs should be repeated with both hook
+> sets present before anyone claims the fixed behaviour under a full install.
+
 ## The instrument that should have been used first
 
 `~/.git-ai/internal/daemon/logs/<pid>.log` records **every** checkpoint the daemon receives:
@@ -172,7 +183,53 @@ opened before building any of its own.
    vendors treat WSL2 as the supported Windows path — see
    [`vendor-support-status-non-wsl-experimental.md`](./vendor-support-status-non-wsl-experimental.md).
 
-## Artifacts left on the box
+## Machine state as left, 2026-08-10
 
-`C:\src\khprobe` and `C:\src\kh-payload-newt.json` — the positive-control repo and payload.
-`C:\src\cursor` counts were deliberately left untouched by that control.
+**The VM is now a from-zero fixture** for exercising the harness install path. git-ai was fully
+uninstalled and **verified clean by behaviour, not existence** — a fresh commit in a new repo
+produced no note, no `.git/ai`, no `refs/notes/ai`, and respawned no daemon.
+
+| item | state |
+|---|---|
+| `%USERPROFILE%\.git-ai` | removed |
+| git-ai daemon / named pipe | gone |
+| global `trace2` section | removed |
+| the PATH entry that fixed the defect | **removed** (deliberately — the fixture must reproduce the defect) |
+| `hooks.json` | **zero entries in both phases** — correct from-zero state |
+| git-ai VS Code extension | **still installed, deliberately.** The fleet-realistic defect state is *extension present, binary unresolvable*, which is exactly what an installer self-heal must fix |
+| `C:\src` probe repos | kept, `C:\src\cursor` has the real history |
+
+**Evidence snapshotted before the uninstall** to `scratch/win/preuninstall-snapshot/` on the Mac
+share: both daemon logs (including the `KnownHuman` confirmation — the only record of the
+measurement that closed the defect, which the uninstall would have destroyed), all `hooks.json`
+backups, all journal archives, the probe repo's working logs, a notes dump, and the verbatim
+pre-uninstall PATH and trace2 keys.
+
+**Remediation erases evidence.** Snapshot before you clean up.
+
+## Windows installer self-heal — the hardlink premise is VIABLE
+
+Measured for the planned installer step, unelevated, no UAC:
+
+**A hardlink into `%LOCALAPPDATA%\Microsoft\WindowsApps` works**, resolves by bare name from a
+fresh shell, and executes correctly — no execution-alias interference. That directory is already
+on the user PATH, so **a running editor picks it up with no restart**, unlike a PATH patch.
+
+**The load-bearing detail is TARGET ownership, not the link directory:**
+
+| target owner | result |
+|---|---|
+| `NT AUTHORITY\SYSTEM` (`Program Files`) | **`Access is denied`** |
+| the user | **created, resolves, runs** |
+
+Creating a hardlink requires rights on the **target**. The first probe used a `Program Files`
+binary and returned `Access is denied` — which would have condemned the design for the wrong
+reason, since **git-ai's real binary is user-owned** (`%USERPROFILE%\.git-ai\bin`). The
+representative case is the one that works.
+
+Also measured: WindowsApps is plain-file writable by the user, so the directory was never the
+obstacle; and **five** directories on the user PATH are user-writable —
+`WindowsApps`, `VS Code\bin`, `AppData\Roaming\npm`, `AppData\Local\cursor-agent`, and
+`cursor\resources\app\bin`. `%APPDATA%\npm` is worth considering alongside WindowsApps: harness
+already installs there, so it would be writing into a directory it owns rather than one Windows
+manages.
