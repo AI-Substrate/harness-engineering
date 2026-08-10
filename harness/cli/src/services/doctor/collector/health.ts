@@ -1,6 +1,11 @@
 import type { HashPort } from '../../../adapters/hash/hash-port.js';
 import { type AgentMarker, agentsMissingHooks, detectAgents } from './agents.js';
-import { type IngressReading, ingressBlocked, markerExplanation } from './ingress.js';
+import {
+  type IngressReading,
+  ingressBlocked,
+  markerExplanation,
+  trace2TargetPath,
+} from './ingress.js';
 import { GITAI_PIN } from './pin.js';
 import { binaryPathFor, daemonPidPathFor, resolveArtifact } from './platform.js';
 import { type CollectorState, claimedHookAgents, readCollectorState } from './state.js';
@@ -178,12 +183,23 @@ function undetermined(
 function withIngressWarning(health: CollectorHealth): CollectorHealth {
   const reading = health.ingress;
   if (reading == null || !ingressBlocked(reading)) return health;
-  const socket = reading.target.kind === 'af_unix' ? reading.target.path : '(unknown)';
+  // The target's OWN path, from the kind table's accessor — never a kind check
+  // that collapses to `(unknown)` (plan 082 · F006). A blocked reading always has
+  // a probed endpoint, so `(unknown)` here would only ever have meant "we know
+  // the path and declined to print it", which reads to the operator as a
+  // missing fact rather than an omitted one.
+  const socket = trace2TargetPath(reading.target) ?? '(unknown)';
+  // Same nudge caveat as the `ingress-blocked` rung: replay into a named pipe is
+  // refused (TRACE2_TARGET_POLICY.named_pipe.replayInto === false), so a Windows
+  // operator must not be sent to a command that will decline.
+  const recovery =
+    reading.target.kind === 'named_pipe'
+      ? 'Independently of that, commit through `harness commit "<message>"` while the ingress is blocked; note that `harness doctor telemetry-nudge` cannot replay into a named-pipe ingress.'
+      : 'Independently of that, commit through `harness commit "<message>"` while the ingress is blocked, then run `harness doctor telemetry-nudge` from an UNSANDBOXED shell.';
   return {
     ...health,
     detail: `${health.detail}; SEPARATELY, this process cannot reach the git-ai ingress at ${socket}${markerExplanation(reading)}, so commits made from here carry NO attribution and git-ai may later attest their lines as known-human`,
-    next_action:
-      `${health.next_action ?? ''} Independently of that, commit through \`harness commit "<message>"\` while the ingress is blocked, then run \`harness doctor telemetry-nudge\` from an UNSANDBOXED shell.`.trim(),
+    next_action: `${health.next_action ?? ''} ${recovery}`.trim(),
   };
 }
 
@@ -440,13 +456,30 @@ export function readCollectorHealth(deps: CollectorHealthDeps): CollectorHealth 
   // filesystem-level signal can see. Warn-only, like every doctor rung (073
   // ac-000c) — this never blocks a commit or a run.
   if (deps.ingress !== undefined && ingressBlocked(deps.ingress)) {
-    const socket = deps.ingress.target.kind === 'af_unix' ? deps.ingress.target.path : '(unknown)';
+    const socket = trace2TargetPath(deps.ingress.target) ?? '(unknown)';
+    // TRANSPORT-AWARE, because a pipe reading can reach this rung now (plan 082
+    // · F006) and three of these sentences were written when only a socket
+    // could. "the socket file exists" is not merely imprecise about a pipe — it
+    // is false: no stat was taken and there is no file to stat. For a pipe the
+    // CONNECT carries that evidence instead (`ENOENT` → absent, `EACCES` →
+    // denied), so the sentence has to name what was actually observed.
+    const pipe = deps.ingress.target.kind === 'named_pipe';
+    const endpoint = pipe ? `named pipe at ${socket}` : `ingress socket at ${socket}`;
+    const evidence = pipe
+      ? 'the connect was denied rather than simply failing to find the pipe, which is what a command sandbox looks like'
+      : 'the connect was denied while the socket file exists, which is what a command sandbox looks like';
+    // The nudge REPLAY is refused on a pipe (plan 075, unchanged by F006 — see
+    // TRACE2_TARGET_POLICY.named_pipe.replayInto). Naming it here would hand a
+    // Windows operator a command that answers "not supported on this platform",
+    // which is worse than naming no command at all.
+    const recovery = pipe
+      ? 'Commit through `harness commit "<message>"`, which tells you whether attribution landed. Replay via `harness doctor telemetry-nudge` is NOT available for a named-pipe ingress, so recovery here means restoring an unsandboxed connect rather than draining a buffer. See `harness instructions commit`.'
+      : 'Commit through `harness commit "<message>"`, which buffers trace2 to a file when the ingress is blocked and tells you whether attribution landed; then run `harness doctor telemetry-nudge` from an UNSANDBOXED shell to replay the buffer. See `harness instructions commit`.';
     return {
       ...base,
       verdict: 'ingress-blocked',
-      detail: `git-ai ${manifest.version} is installed and hooked up, but this process CANNOT reach its ingress socket at ${socket} — the connect was denied while the socket file exists, which is what a command sandbox looks like${markerExplanation(deps.ingress)}. Commits made from here carry NO attribution, and git-ai may later attest their lines as known-human`,
-      next_action:
-        'Commit through `harness commit "<message>"`, which buffers trace2 to a file when the ingress is blocked and tells you whether attribution landed; then run `harness doctor telemetry-nudge` from an UNSANDBOXED shell to replay the buffer. See `harness instructions commit`.',
+      detail: `git-ai ${manifest.version} is installed and hooked up, but this process CANNOT reach its ${endpoint} — ${evidence}${markerExplanation(deps.ingress)}. Commits made from here carry NO attribution, and git-ai may later attest their lines as known-human`,
+      next_action: recovery,
     };
   }
 

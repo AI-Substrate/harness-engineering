@@ -368,9 +368,11 @@ export async function harnessCommit(
         ? 'harness-buffered'
         : fileTarget !== null
           ? 'file-buffered'
-          : // A live-but-unprobeable ingress (a named pipe) is NOT
+          : // A live ingress whose ATTRIBUTION was never established is NOT
             // `direct-verified`: nothing here was verified, and saying so is the
-            // point.
+            // point. (F006 made the pipe probeable, so this is no longer "we
+            // cannot connect to it" — it is "no note was waited for on a
+            // transport whose collector behaviour is unmeasured".)
             policy.receives === 'always'
             ? 'ingress-unverified'
             : 'direct-verified',
@@ -418,7 +420,9 @@ export async function harnessCommit(
     // - no `GIT_TRACE2_EVENT` override — git talked to the pipe exactly as it
     //   normally would, and diverting a live ingress to "protect" it would turn
     //   the fix into the bug (the F-08 exclusivity rule, applied to a transport
-    //   we cannot probe);
+    //   whose collector behaviour we have never measured — F006 made the pipe
+    //   PROBEABLE, which is a different question from whether the daemon on the
+    //   other end records what it receives);
     // - no `.shas` sidecar and no known-targets record beside the pipe path —
     //   those are the bookkeeping of a DRAINABLE buffer, and writing them next
     //   to a pipe both asserts a falsehood and may simply fail;

@@ -152,6 +152,50 @@ describe('plan 074 · ac-0003 — empty is not clean', () => {
     expect(absent.detail).toContain('daemon is not running');
   });
 
+  it('never tells a Windows operator their SOCKET FILE is missing (F006)', () => {
+    /*
+    Test Doc:
+    - Why: before F006 a pipe reading always had `outcome: null` and so was
+      described by the kind table. Now it is PROBED, so it reaches the outcome
+      arms — which were written when only a socket could get there and said
+      "has no socket file", "a stale socket", "blocking the socket connect".
+      About a named pipe the first is not imprecise but FALSE: there is no socket
+      file for a pipe whether or not the daemon is running. That is plan 075's
+      "four wrong statements from one misclassification" arriving through the
+      front door instead of the back.
+    - Contract: a probed pipe is described in pipe vocabulary, never socket
+      vocabulary.
+    - Quality Contribution: asserts the ABSENCE of the wrong word as well as the
+      presence of the right one — a description that said "named pipe" while
+      still mentioning a socket file would pass a presence-only assertion.
+    */
+    const git = new FakeGitAttribution({ window: windowOf(SHAS), notes: SHAS });
+    const pipeReading = (outcome: ProbeOutcome) =>
+      enumerateAtRisk({
+        git,
+        ingress: {
+          target: { kind: 'named_pipe', path: '\\\\.\\pipe\\git-ai' },
+          outcome,
+          socketExists: false,
+          markers: [],
+        },
+      }).detail;
+
+    expect(pipeReading('absent')).toContain('has no named pipe');
+    expect(pipeReading('denied')).toContain('blocking the named pipe connect');
+    expect(pipeReading('refused')).toContain('a stale named pipe');
+    for (const outcome of ['absent', 'denied', 'refused'] as const) {
+      expect(pipeReading(outcome)).not.toContain('socket');
+    }
+  });
+
+  it('keeps SOCKET wording for an af_unix reading — the split cuts both ways', async () => {
+    const git = new FakeGitAttribution({ window: windowOf(SHAS), notes: SHAS });
+    const report = enumerateAtRisk({ git, ingress: await ingressWith('absent', false) });
+    expect(report.detail).toContain('has no socket');
+    expect(report.detail).not.toContain('named pipe');
+  });
+
   it('a FILE target is unproven — events buffer rather than reach the collector', () => {
     const git = new FakeGitAttribution({ window: windowOf(SHAS), notes: SHAS });
     const report = enumerateAtRisk({
