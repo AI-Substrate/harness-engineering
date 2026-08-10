@@ -127,14 +127,14 @@ bare `additionalAttributes: false`:
    (`harness-otlp-schema.test.ts:100`, "closed set (no smuggled attrs)"). It is a
    PRODUCER-side claim (we emit nothing outside this list), not a consumer promise that the
    list never grows.
-2. `docs/how/telemetry-otlp.md:75` prescribes exactly this procedure: "To swap a semconv
+2. `docs/how/telemetry/otlp.md:75` prescribes exactly this procedure: "To swap a semconv
    name when it stabilises, edit `semconv.ts` and the frozen contract, nothing else."
 3. `scope_version` MIRRORS the segment schema version (documented "kept in lockstep with
    Segment 2.5"; `schemaIdentityForSegmentVersion` implements it). It is not a vocabulary
    version — a `2.7` scope with no Segment 2.7 would break a stated invariant.
 
 Finding, NOT fixed here (already stale before FX001; fixing it is scope creep):
-`docs/how/telemetry-otlp.md:67-68` still says schema_url `v0.2.0` / scope `2.5` while the
+`docs/how/telemetry/otlp.md:67-68` still says schema_url `v0.2.0` / scope `2.5` while the
 code is at `v0.3.0` / `2.6`.
 
 Spun to prime, not this fix: vocabulary ADDITIONS have no version handle at all, because

@@ -106,6 +106,26 @@ function deps(over: {
     proc: new FakeProcess({ node: '/usr/bin/node' }, REPO),
     clock: new FakeClock(NOW),
     ingress: over.ingress,
+    /**
+     * The platform is INJECTED, never inherited (plan 077 · tk-0102 · #108).
+     *
+     * `isWin32()` (nudge.ts:711) falls back to the module constant `IS_WIN32`
+     * when `deps.platform` is undefined — i.e. it reads the HOST. This helper
+     * omitted it, so on a Windows box every case built here silently took the
+     * win32 branch and ~40 of them failed with signatures like
+     * `expected 'unsupported-platform' to be 'no-buffer'`. Those failures said
+     * nothing about the code; they said this helper read the machine it ran on.
+     *
+     * This is the file's OWN convention — the cases that WANT win32 inject it
+     * (`pipeDeps({ platform: 'win32' })`, `win32Deps()`) — and `nudge.ts:300`
+     * states the rule outright: P3, pass the parameter, never patch
+     * `process.platform`. The shared helper was the one caller that didn't.
+     *
+     * `linux` rather than `darwin` for no reason beyond it being the CI platform
+     * these expectations were written against; any non-win32 value is equivalent
+     * here. Overridable by spreading, exactly as the win32 cases already do.
+     */
+    platform: 'linux',
     // No wall clock in CI: the bounded confirmation settle resolves instantly.
     sleep: () => Promise.resolve(),
     confirmTimeoutMs: 500,
@@ -794,6 +814,8 @@ describe('plan 074 · ac-0005/ac-0006 — R2: the buffer is machine-global, not 
       clock: new FakeClock(NOW),
       ingress: ing,
       bufferPath,
+      // Injected, not inherited — see the shared `deps()` helper (tk-0102).
+      platform: 'linux',
       sleep: () => Promise.resolve(),
       confirmTimeoutMs: 500,
     };
@@ -1072,6 +1094,8 @@ describe('plan 074 · ac-0005/ac-0006 — R4: location cannot prove provenance (
       clock: new FakeClock(NOW),
       ingress: ing,
       bufferPath,
+      // Injected, not inherited — see the shared `deps()` helper (tk-0102).
+      platform: 'linux',
       sleep: () => Promise.resolve(),
       confirmTimeoutMs: 500,
     };
@@ -1602,18 +1626,34 @@ describe('plan 075 · ac-0006 — the win32 guard plan 074 claimed and did not h
     expect(fs.renames.length).toBeGreaterThan(0);
   });
 
-  it('omitting the platform keeps the POSIX behaviour these suites already prove', async () => {
-    // The default is `process.platform`, and CI is POSIX. Stated as a test so
-    // the whole plan-074 suite passing untouched is a deliberate result rather
-    // than a coincidence of a field nobody set.
+  it('omitting the platform falls back to the HOST — the default the guard is for', async () => {
+    // The fallback is real behaviour worth a test: `isWin32()` reads the module
+    // constant when `deps.platform` is undefined, and the composition root is
+    // the only caller entitled to rely on it.
+    //
+    // Plan 077 · tk-0102: this case used to build its deps from the shared
+    // `deps()` helper, which set no platform — so it asserted the POSIX outcome
+    // while silently depending on the test HOST being POSIX. On the downstream
+    // consumer's Windows box it produced the tell that root-caused the whole
+    // class: `expected 'unsupported-platform' not to be 'unsupported-platform'`.
+    //
+    // The helper now injects `platform`, so the omission is made EXPLICIT here
+    // (that is the property under test), and the expectation is stated for each
+    // host rather than for the one this happened to run on. Both arms assert;
+    // neither is vacuous, and on Windows this now proves the fallback instead of
+    // failing over it.
     const fs = new FakeFs();
     fs.mkdirp(`${REPO}/.harness/temp/trace2`);
     fs.writeText(BUFFER, payload());
-    const d = deps({ fs, ingress: await ingress('connected') });
+    const { platform: _injected, ...d } = deps({ fs, ingress: await ingress('connected') });
     expect((d as { platform?: string }).platform).toBeUndefined();
 
     const out = await telemetryNudge(d);
 
-    expect(out.reason).not.toBe('unsupported-platform');
+    if (process.platform === 'win32') {
+      expect(out.reason).toBe('unsupported-platform');
+    } else {
+      expect(out.reason).not.toBe('unsupported-platform');
+    }
   });
 });

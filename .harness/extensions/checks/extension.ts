@@ -358,13 +358,20 @@ const checks: HarnessVerb = {
       // than CI's does. That reduction is declared here rather than left to the
       // subprocess's stderr banner, which no JSON consumer ever sees: a gate that
       // quietly narrows what it proves is worse than a slow one.
+      //
+      // THE COUNT IS READ FROM THE RUN, NEVER REMEMBERED. It used to be the literal
+      // `12`, which silently became wrong the moment SLOW_TESTS changed size (#108
+      // removed two entries and this string kept saying 12). A second copy of a
+      // number with nothing keeping it true is a figure that reads as counted and
+      // is not. If the banner cannot be parsed, say so with no number at all.
       const started = Date.now();
       const scope = ctx.env.get('HARNESS_TEST_SCOPE') ?? 'fast';
       const test = await ctx.exec('npx', ['vitest', 'run', '--coverage'], { cwd: `${root}/${CLI_DIR}` });
+      const skipped = /(\d+) slow file\(s\) SKIPPED/.exec(test.stderr)?.[1];
       const scopeNote =
         scope === 'all'
           ? 'full suite'
-          : `${scope} scope \u2014 12 slow file(s) NOT run; set HARNESS_TEST_SCOPE=all for the full suite (CI does)`;
+          : `${scope} scope \u2014 ${skipped ? `${skipped} slow file(s)` : 'the slow files'} NOT run; set HARNESS_TEST_SCOPE=all for the full suite (CI does)`;
       gates.push({
         name: 'tests',
         status: test.ok ? 'ok' : 'error',

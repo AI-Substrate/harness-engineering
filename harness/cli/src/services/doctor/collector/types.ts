@@ -45,6 +45,23 @@ export interface HostTarget {
    * touches. Absent → the guard falls back to `<home>/.claude`.
    */
   claudeConfigDir?: string;
+  /**
+   * Every config-root env override the AGENT MATRIX declares, as read from the
+   * environment (plan 082 tk-000a).
+   *
+   * WHY THIS EXISTS. `backupAgentConfigs` composed every source path as
+   * `<home>/<rel>`, and `agents.ts` states in its own comment that it does NOT read
+   * `CLAUDE_CONFIG_DIR`, `CODEX_HOME` or `GEMINI_CLI_HOME`. Harmless while nothing
+   * else was override-aware — but the installer now IS, so on a machine with
+   * `CLAUDE_CONFIG_DIR` set we would back up `~/.claude/settings.json` and then
+   * modify `$CLAUDE_CONFIG_DIR/settings.json`: **backing up the wrong file and
+   * writing to an unbacked one, silently**, while reporting a backup directory to
+   * an operator who would stop looking for their originals.
+   *
+   * Keyed by variable NAME so the matrix stays the single source of truth about
+   * which variables matter — adding an override is still adding a matrix row.
+   */
+  envOverrides?: Readonly<Record<string, string>>;
 }
 
 /** One artifact resolved for a host: what to fetch and what it must hash to. */
@@ -76,9 +93,18 @@ export type CollectorFsPort = Pick<
   | 'writeBytes'
   | 'mkdirp'
   | 'mkdtemp'
+  | 'createSiblingTempDir'
   | 'rename'
   | 'deleteFile'
   | 'removeDir'
+  // `realpath` is here for the HOOKS installer, not the collector: `harness doctor`
+  // installs our agent hooks from these same deps, and the comment-preserving
+  // writer resolves a symlinked config before writing through it. It is listed
+  // because doctor MUST compose both installers from ONE resolved deps object —
+  // two independent answers to "where is home" is what wrote to a real developer's
+  // editor configs on 2026-08-10.
+  | 'realpath'
+  | 'readdir'
 >;
 
 /** Everything the install/re-check lifecycle needs. */
@@ -107,8 +133,33 @@ export interface CollectorDeps {
    * `manifest` in code and "the pin" in prose.
    */
   manifest?: CollectorPin;
+  /**
+   * Env accessor for the PATH-resolution rung (plan 082, windows arm). Optional
+   * and injected: without it the auto-install health read simply does not
+   * evaluate bare-name resolution — absence never manufactures a warning, and
+   * fake-driven tests stay unaffected.
+   */
+  env?: (name: string) => string | undefined;
 }
 
 /** Wall-clock ceilings. A collector install must never hang a doctor run. */
 export const DOWNLOAD_TIMEOUT_MS = 60_000;
 export const INSTALL_HOOKS_TIMEOUT_MS = 120_000;
+/**
+ * The viability probe's own, deliberately SHORT ceiling (plan 082 · F007).
+ *
+ * It is not INSTALL_HOOKS_TIMEOUT_MS and must never become it. The probe is a
+ * precondition that refuses rather than a failure that latches, so it is
+ * re-attempted on EVERY bare `harness doctor` — which is the correct behaviour
+ * (the operator installs the missing redistributable and the next ordinary run
+ * simply works, with nothing to re-run by hand) and is exactly why its cost is a
+ * design constraint rather than an implementation detail. Nobody opted into this
+ * path.
+ *
+ * The measured failure — a Windows loader error — is instant, but that is one
+ * failure mode. A binary that HANGS instead (a stalled DLL, a blocking AV scan)
+ * would otherwise tax every doctor run on that machine for two full minutes.
+ * Five seconds is generous for a cold start of an unsigned executable and 24×
+ * cheaper when the answer never comes.
+ */
+export const VIABILITY_TIMEOUT_MS = 5_000;

@@ -120,7 +120,31 @@ export async function downloadAndVerify(
       };
     }
 
-    tempDir = deps.fs.mkdtemp('harness-gitai-');
+    // STAGE BESIDE THE TARGET, never in the system temp dir (plan 077).
+    //
+    // `mkdtemp` resolves to `os.tmpdir()`, and on most Linux boxes `/tmp` is a
+    // separate filesystem — tmpfs. POSIX `rename(2)` CANNOT cross a filesystem
+    // boundary; it returns EXDEV by specification. So staging in `/tmp` and
+    // publishing into `$HOME/.git-ai` did not merely risk failing, it could
+    // NEVER succeed there. MEASURED on a clean Ubuntu 25.04 VM:
+    //
+    //   EXDEV: cross-device link not permitted,
+    //     rename '/tmp/harness-gitai-owk7ok/download.bin' -> '/home/u/.git-ai/bin/git-ai'
+    //   stat -c %d /tmp -> 50 (tmpfs)      stat -c %d $HOME -> 41 (/dev/vdb1)
+    //
+    // The download and the digest both SUCCEEDED; only the publish failed. It
+    // hid on macOS, where `/tmp` and `$HOME` are usually one volume — the same
+    // runner-blindness the fleet spent the day on, with our own dev platform as
+    // the hiding place.
+    //
+    // A copy+unlink fallback would "fix" it by giving up atomicity, which is the
+    // one property the mode-before-rename ordering below exists to protect: a
+    // half-written `git-ai` on the final path is worse than a failed install.
+    // Staging on the destination's own filesystem KEEPS the guarantee instead of
+    // trading it away.
+    const destParent = request.destPath.replace(/\/[^/]*$/, '');
+    if (destParent !== '' && destParent !== request.destPath) deps.fs.mkdirp(destParent);
+    tempDir = deps.fs.createSiblingTempDir(request.destPath, 'harness-gitai-');
     const tempPath = `${tempDir.replace(/\/+$/, '')}/download.bin`;
     deps.fs.writeBytes(tempPath, response.bytes);
 
@@ -159,8 +183,9 @@ export async function downloadAndVerify(
     // holds something a user cannot run (ac-0016).
     const executable = request.platform === 'win32' ? false : deps.exe.setExecutable(tempPath);
 
-    const parent = request.destPath.replace(/\/[^/]*$/, '');
-    if (parent !== '' && parent !== request.destPath) deps.fs.mkdirp(parent);
+    // Same-filesystem by construction now, so this rename is atomic rather than
+    // hopeful. The destination directory already exists — creating it is what
+    // made the sibling staging possible in the first place.
     deps.fs.rename(tempPath, request.destPath);
     discard(deps.fs, tempDir);
 

@@ -2,7 +2,6 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { outcomeEvents } from '../../../src/services/telemetry/outcome-events.js';
-import { getSessionEvidence } from '../../../src/services/telemetry/session-evidence.js';
 import { createSyntheticPlan, type SyntheticCorpus } from '../../support/dd-corpus.js';
 import { runCliIn } from '../../support/run-cli.js';
 

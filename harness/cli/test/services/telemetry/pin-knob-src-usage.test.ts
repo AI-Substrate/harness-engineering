@@ -166,7 +166,13 @@ function tsFilesUnder(dir: string): string[] {
 function readSrcFiles(): SourceMap {
   const files = new Map<string, string>();
   for (const file of tsFilesUnder(SRC)) {
-    files.set(file.slice(SRC.length + 1), readFileSync(file, 'utf8'));
+    // Keys must match the forward-slash literals in DECLARED_PIN_IDENTIFIER_SITES /
+    // DECLARED_PIN_SUPPLY_SITES below (e.g. 'services/telemetry/segment.ts'). `join()`
+    // yields native separators, so on Windows every key arrived as
+    // 'services\telemetry\segment.ts' and never matched a declared site — all three
+    // controls failed with the RIGHT COUNT and WRONG CONTENT (plan 108 C1): a false
+    // alarm, not a silent gap, but a false alarm is still a control nobody can trust.
+    files.set(file.slice(SRC.length + 1).replaceAll('\\', '/'), readFileSync(file, 'utf8'));
   }
   return files;
 }

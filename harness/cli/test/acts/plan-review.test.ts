@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { hasBinary, missingBinaryReason } from '../support/external-binary.js';
 import { runCli } from '../support/run-cli.js';
 
 /**
@@ -114,7 +115,25 @@ describe('dw-000d — Dim-0 rows cite the fixture that fired', () => {
   });
 });
 
-describe('dw-000d — the queries a reviewer actually wants', () => {
+/**
+ * jq is the SUBJECT here, not the mechanism — do not rewrite these in-process.
+ *
+ * done_when dw-000d (plan 071, phase 3) claims verbatim that "a jq recipe answers
+ * which findings were refuted", and our own dd docs RECOMMEND jq to users for
+ * exactly these queries. These three cases are the only thing proving that
+ * recommendation holds. Replacing jq with in-process JSON would assert that our
+ * parser can read our own JSON — a tautology that passes — so on a host without
+ * jq the honest move is to skip loudly and say what stopped being checked.
+ */
+describe.skipIf(!hasBinary('jq'))('dw-000d — the queries a reviewer actually wants', () => {
+  if (!hasBinary('jq')) {
+    console.warn(
+      missingBinaryReason(
+        'jq',
+        'that a reviewer at a shell can answer "which findings were refuted", "what did Dim-0 probe", and "is anything undecided" against a builder/review document using the jq recipes our dd docs publish (dw-000d).',
+      ),
+    );
+  }
   const jq = (filter: string): string =>
     execFileSync('jq', ['-r', filter, `${REPO_ROOT}${REVIEW}`], { encoding: 'utf8' }).trim();
 

@@ -36,6 +36,16 @@ const HOME = '/home/u';
 const REPO = '/repo';
 const NOW = '2026-08-06T10:00:00.000Z';
 const BINARY = '/home/u/.git-ai/bin/git-ai';
+
+/**
+ * EVERY FIXTURE MUST DECLARE THAT THE BINARY RUNS (plan 082 · F007).
+ *
+ * `installHooks` now asks `--version` before it hands over `install-hooks`, and
+ * an unconfigured fake answers exit 0 with silence — which is REFUSED. That is
+ * deliberate: a fixture that has not said the binary works must break loudly
+ * rather than sail through the guard and assert nothing.
+ */
+const VIABLE = { [`${BINARY} --version`]: { code: 0, stdout: 'git-ai 1.6.22' } };
 const CONFIG = '/home/u/.git-ai/config.json';
 const TRACE2_GET = 'git config --global --get-regexp ^trace2\\.';
 /**
@@ -80,15 +90,46 @@ function deps(
   } = {},
 ): CollectorDeps & { fs: FakeCollectorFs; exec: FakeExec | FakeSequencedExec } {
   const fs = over.fs ?? new FakeCollectorFs();
+  // The two agents this fixture's `install-hooks` hooks are PRESENT on the
+  // machine, because that is why git-ai hooks them. Seeded here rather than per
+  // test: an install fixture whose agents do not exist models a run that had
+  // nothing to do, and the evidence check would then be asserting against a
+  // world that cannot produce evidence.
+  if (over.fs === undefined) {
+    fs.mkdirp(`${HOME}/.claude`);
+    fs.mkdirp(`${HOME}/.codex`);
+  }
   const exec =
     over.exec ??
-    new FakeSequencedExec({
-      // The guard read is EMPTY; the verification read afterwards shows git-ai's
-      // own keys — which is what a successful `install-hooks` actually does.
-      [TRACE2_GET]: TRACE2_EMPTY_THEN_INSTALLED,
-      [`${BINARY} install-hooks`]: { code: 0, stdout: 'claude: installed\ncodex: installed\n' },
-      [`${BINARY} status --json`]: { code: 0, stdout: '{"schema_version":"authorship/3.0.0"}' },
-    });
+    new FakeSequencedExec(
+      {
+        ...VIABLE,
+        // The guard read is EMPTY; the verification read afterwards shows git-ai's
+        // own keys — which is what a successful `install-hooks` actually does.
+        [TRACE2_GET]: TRACE2_EMPTY_THEN_INSTALLED,
+        // THE REAL OUTPUT FORMAT, and it did not used to be. This fixture said
+        // `claude: installed\ncodex: installed` — a shape the pinned binary never
+        // prints. It was written to match our PARSER rather than the binary, so
+        // fixture and parser corroborated each other while both were wrong, and
+        // the parser's total failure against a real machine stayed invisible for
+        // the life of the feature. Measured from git-ai's own spinner output.
+        [`${BINARY} install-hooks`]: {
+          code: 0,
+          stdout: 'Claude Code: Hooks updated\nCodex: Hooks updated\n',
+        },
+        [`${BINARY} status --json`]: { code: 0, stdout: '{"schema_version":"authorship/3.0.0"}' },
+      },
+      {
+        // …and it WRITES. An install-hooks that leaves the filesystem untouched
+        // models a machine where nothing happened; every evidence check would
+        // then be asserting against a world that cannot produce evidence.
+        [`${BINARY} install-hooks`]: {
+          [`${HOME}/.claude/settings.json`]: '{"hooks":{"git-ai":true}}',
+          [`${HOME}/.codex/config.toml`]: 'hooks = ["git-ai"]\n',
+        },
+      },
+      fs,
+    );
   return {
     fs,
     exec,
@@ -201,6 +242,7 @@ describe('installCollector — stage 1 places a verified CLI and pins git-ai to 
 describe('installCollector — stage 2 is INDEPENDENT of stage 1 (ac-0013, ac-0014)', () => {
   it('a present trace2 config skips hooks WITHOUT touching the installed CLI', async () => {
     const exec = new FakeExec({
+      ...VIABLE,
       [TRACE2_GET]: { code: 0, stdout: 'trace2.eventTarget /Users/x/.trace2\n' },
       [`${BINARY} status --json`]: { code: 0, stdout: '{"schema_version":"authorship/3.0.0"}' },
     });
@@ -266,6 +308,7 @@ describe('installCollector — stage 2 is INDEPENDENT of stage 1 (ac-0013, ac-00
 
   it('an unreadable trace2 config fails closed — hooks are not installed', async () => {
     const exec = new FakeExec({
+      ...VIABLE,
       [TRACE2_GET]: { code: 128, stderr: 'fatal: unreadable' },
       [`${BINARY} status --json`]: { code: 0, stdout: '' },
     });
@@ -280,6 +323,7 @@ describe('installCollector — stage 2 is INDEPENDENT of stage 1 (ac-0013, ac-00
 
   it('a failing install-hooks is reported without unwinding the CLI install', async () => {
     const exec = new FakeExec({
+      ...VIABLE,
       [TRACE2_GET]: { code: 1, stdout: '' },
       [`${BINARY} install-hooks`]: { code: 2, stderr: 'daemon unreachable' },
       [`${BINARY} status --json`]: { code: 0, stdout: '' },
@@ -310,6 +354,7 @@ describe('installCollector — the note schema is asserted after install (ac-000
 
   it('warns on a mismatch, so binary drift and format drift are reviewed together', async () => {
     const exec = new FakeExec({
+      ...VIABLE,
       [TRACE2_GET]: { code: 1, stdout: '' },
       [`${BINARY} install-hooks`]: { code: 0, stdout: 'claude: installed\n' },
       [`${BINARY} status --json`]: { code: 0, stdout: '{"schema_version":"authorship/4.0.0"}' },
@@ -326,6 +371,7 @@ describe('installCollector — the note schema is asserted after install (ac-000
 
   it('records `unknown` — never a pass — when the schema cannot be read', async () => {
     const exec = new FakeExec({
+      ...VIABLE,
       [TRACE2_GET]: { code: 1, stdout: '' },
       [`${BINARY} install-hooks`]: { code: 0, stdout: 'claude: installed\n' },
       [`${BINARY} status --json`]: { code: 1, stdout: '' },
@@ -377,11 +423,16 @@ describe('recheckCollector — a new coding harness is detected and reported (ac
   it('a re-check on a machine whose trace2 is someone ELSE’s refuses too', async () => {
     const fs = new FakeCollectorFs();
     fs.mkdirp(`${HOME}/.claude`);
-    const exec = new FakeSequencedExec({
-      [TRACE2_GET]: TRACE2_EMPTY_THEN_INSTALLED,
-      [`${BINARY} install-hooks`]: { code: 0, stdout: 'claude: installed\n' },
-      [`${BINARY} status --json`]: { code: 0, stdout: '{"schema_version":"authorship/3.0.0"}' },
-    });
+    const exec = new FakeSequencedExec(
+      {
+        ...VIABLE,
+        [TRACE2_GET]: TRACE2_EMPTY_THEN_INSTALLED,
+        [`${BINARY} install-hooks`]: { code: 0, stdout: 'Claude Code: Hooks updated\n' },
+        [`${BINARY} status --json`]: { code: 0, stdout: '{"schema_version":"authorship/3.0.0"}' },
+      },
+      { [`${BINARY} install-hooks`]: { [`${HOME}/.claude/settings.json`]: '{"hooks":{}}' } },
+      fs,
+    );
     const d = deps({ fs, exec });
     await installCollector(d);
 
@@ -391,6 +442,7 @@ describe('recheckCollector — a new coding harness is detected and reported (ac
     // blocks on both, exactly as on a machine we had never touched.
     fs.mkdirp(`${HOME}/.gemini`);
     const guarded = new FakeExec({
+      ...VIABLE,
       [TRACE2_GET]: { code: 0, stdout: 'trace2.normalTarget /tmp/trace\n' },
     });
     const recheck = await recheckCollector({ ...d, exec: guarded });
@@ -456,6 +508,7 @@ describe('the dogfood hazards are encoded, not remembered', () => {
 
   it('verifies the trace2 outcome by RE-READING the config, not from the exit code', async () => {
     const exec = new FakeExec({
+      ...VIABLE,
       [TRACE2_GET]: { code: 1, stdout: '' },
       [`${BINARY} install-hooks`]: { code: 0, stdout: 'claude: installed\n' },
       [`${BINARY} status --json`]: { code: 0, stdout: '{"schema_version":"authorship/3.0.0"}' },
@@ -506,6 +559,7 @@ describe('a zero exit is NOT proof that hooks were installed', () => {
     // Guard reads empty, install-hooks exits 0, and the config it ALWAYS writes
     // on a real install is still not there. Nothing was hooked.
     const exec = new FakeSequencedExec({
+      ...VIABLE,
       [TRACE2_GET]: { code: 1, stdout: '' },
       [`${BINARY} install-hooks`]: { code: 0, stdout: 'claude: installed\n' },
       [`${BINARY} status --json`]: statusOk,
@@ -523,6 +577,7 @@ describe('a zero exit is NOT proof that hooks were installed', () => {
 
   it('an UNREADABLE post-install read means unverified — absent evidence is not good news', async () => {
     const exec = new FakeSequencedExec({
+      ...VIABLE,
       [TRACE2_GET]: [
         { code: 1, stdout: '' },
         { code: 128, stderr: 'fatal: unreadable' },
@@ -539,6 +594,7 @@ describe('a zero exit is NOT proof that hooks were installed', () => {
 
   it('a post-install read carrying SOMEONE ELSE’S keys is not our install either', async () => {
     const exec = new FakeSequencedExec({
+      ...VIABLE,
       [TRACE2_GET]: [
         { code: 1, stdout: '' },
         { code: 0, stdout: 'trace2.normalTarget /tmp/trace\n' },
@@ -556,7 +612,15 @@ describe('a zero exit is NOT proof that hooks were installed', () => {
     const result = await installCollector(deps());
 
     expect(result.hooks).toBe('installed');
-    expect(result.state.hooks.detail).toContain('verified by re-reading');
+    // The trace2 re-read still decides `installed` — but it is now recorded where
+    // it is TRUE, on the attempt, and scoped to the one thing it establishes. It
+    // used to sit on `hooks.detail` carrying a per-agent list, which is a check
+    // with no per-agent resolving power vouching for a per-agent claim.
+    expect(result.state.last_attempt?.detail).toContain('global trace2 re-read');
+    expect(result.state.hooks.detail).toContain('does NOT discriminate between agents');
+    // And the per-agent half is carried by evidence we can point at.
+    expect(result.state.hooks.detail).toContain('EVIDENCED');
+    expect(result.state.hooks.agents).toEqual(['claude', 'codex']);
   });
 });
 
@@ -615,5 +679,102 @@ describe('the skills guard declines to destroy rather than choosing a destructio
     const result = await installCollector(deps({ paths }));
 
     expect(result.hooks).toBe('skipped-skills');
+  });
+});
+
+describe('the win32 PATH shim — install makes the bare name resolve (plan 082, windows arm)', () => {
+  const WBIN = '/home/u/.git-ai/bin/git-ai.exe';
+  const SHIM = '/home/u/AppData/Local/Microsoft/WindowsApps/git-ai.exe';
+  const WIN_URL = `${GITAI_PIN.release_base_url}/${GITAI_PIN.version}/git-ai-windows-arm64.exe`;
+
+  function winPin() {
+    const digest = new NodeHash().sha256Hex(PAYLOAD);
+    return {
+      ...GITAI_PIN,
+      artifacts: {
+        ...GITAI_PIN.artifacts,
+        'windows-arm64': { file: 'git-ai-windows-arm64.exe', sha256: digest },
+      },
+    } as typeof GITAI_PIN;
+  }
+
+  function winDeps(fs = new FakeCollectorFs()): CollectorDeps & { fs: FakeCollectorFs } {
+    fs.mkdirp(`${HOME}/.claude`);
+    const exec = new FakeSequencedExec(
+      {
+        [`${WBIN} --version`]: { code: 0, stdout: 'git-ai 1.6.22' },
+        [TRACE2_GET]: TRACE2_EMPTY_THEN_INSTALLED,
+        [`${WBIN} install-hooks`]: { code: 0, stdout: 'Claude Code: Hooks updated\n' },
+        [`${WBIN} status --json`]: { code: 0, stdout: '{"schema_version":"authorship/3.0.0"}' },
+      },
+      {
+        [`${WBIN} install-hooks`]: {
+          [`${HOME}/.claude/settings.json`]: '{"hooks":{"git-ai":true}}',
+        },
+      },
+      fs,
+    );
+    return {
+      fs,
+      exec,
+      hash: new NodeHash(),
+      paths: new FakePathKind(),
+      http: new FakeDownload({ [WIN_URL]: ok200(PAYLOAD) }),
+      exe: new FakeExecutableBit(),
+      clock: new FakeClock(NOW),
+      host: { platform: 'win32', arch: 'arm64', home: HOME },
+      cwd: REPO,
+      manifest: winPin(),
+    };
+  }
+
+  it('places a digest-verified copy in WindowsApps and DISCLOSES it', async () => {
+    const d = winDeps();
+
+    const result = await installCollector(d);
+
+    expect(result.cli).toBe('installed');
+    expect(d.fs.readBytesNoFollow(SHIM)).toEqual(PAYLOAD);
+    expect(result.disclosures.some((line) => line.includes(SHIM))).toBe(true);
+    expect(result.warnings.filter((w) => w.includes('shim'))).toEqual([]);
+  });
+
+  it('replaces a stale shim with the pinned bytes', async () => {
+    const fs = new FakeCollectorFs();
+    fs.writeBytes(SHIM, new TextEncoder().encode('an older git-ai'));
+
+    await installCollector(winDeps(fs));
+
+    expect(fs.readBytesNoFollow(SHIM)).toEqual(PAYLOAD);
+  });
+
+  it('a failed shim write WARNS by name and never fails the install', async () => {
+    const d = winDeps();
+    const blocked = new Proxy(d.fs, {
+      get(target, prop, receiver) {
+        if (prop === 'writeBytes') {
+          return (path: string, contents: Uint8Array) => {
+            if (path === SHIM) throw new Error('EACCES: denied');
+            return d.fs.writeBytes(path, contents);
+          };
+        }
+        return Reflect.get(target, prop, receiver);
+      },
+    });
+
+    const result = await installCollector({ ...d, fs: blocked });
+
+    expect(result.cli).toBe('installed');
+    expect(result.warnings.some((w) => w.includes(SHIM) && w.includes('KnownHuman'))).toBe(true);
+    expect(result.disclosures.some((line) => line.includes(SHIM))).toBe(false);
+  });
+
+  it('non-win32 installs never write a shim', async () => {
+    const d = deps();
+
+    await installCollector(d);
+
+    expect(d.fs.exists('/home/u/AppData/Local/Microsoft/WindowsApps/git-ai.exe')).toBe(false);
+    expect(d.fs.exists('/home/u/AppData/Local/Microsoft/WindowsApps/git-ai')).toBe(false);
   });
 });

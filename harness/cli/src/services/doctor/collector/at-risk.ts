@@ -72,6 +72,16 @@ export function enumerateAtRisk(deps: AtRiskDeps): AtRiskReport {
   const proven = deps.ingress !== undefined && ingressProves(deps.ingress);
 
   if (commits.length > 0) {
+    // TRANSPORT-AWARE (plan 082 · F006). Making a named pipe probeable made this
+    // rung reachable with a pipe reading, and nudge REPLAY is still refused for a
+    // pipe (plan 075 · TRACE2_TARGET_POLICY.named_pipe.replayInto) — so naming
+    // the nudge here would hand a Windows operator a command that answers "not
+    // supported on this platform". The manual note check is the one thing that
+    // does work, and it is already what `harness commit` names on that branch.
+    const pipe = deps.ingress?.target.kind === 'named_pipe';
+    const next_action = pipe
+      ? 'Those commits carry no note. Replay via `harness doctor telemetry-nudge` is NOT available for a named-pipe ingress, so there is no buffer to drain: check a commit for yourself with `git notes --ref=ai show <sha>`, and recover by restoring a connect this process is allowed to make. Commits made before git-ai was installed will never gain a note and are expected here.'
+      : 'If those commits were made through a blocked ingress, run `harness doctor telemetry-nudge` from an UNSANDBOXED shell to replay any buffered trace2 events. Commits made before git-ai was installed will never gain a note and are expected here.';
     return {
       status: 'unattributed',
       commits,
@@ -81,8 +91,7 @@ export function enumerateAtRisk(deps: AtRiskDeps): AtRiskReport {
         .slice(0, 5)
         .map((sha) => sha.slice(0, 8))
         .join(', ')}${commits.length > 5 ? ', …' : ''}`,
-      next_action:
-        'If those commits were made through a blocked ingress, run `harness doctor telemetry-nudge` from an UNSANDBOXED shell to replay any buffered trace2 events. Commits made before git-ai was installed will never gain a note and are expected here.',
+      next_action,
     };
   }
 
@@ -114,23 +123,37 @@ export function enumerateAtRisk(deps: AtRiskDeps): AtRiskReport {
 /** Why nothing could be proven, in operator language. */
 function describeIngress(ingress: IngressReading | undefined): string {
   if (ingress === undefined) return 'was not probed on this run';
-  // The kind table owns the non-socket descriptions, so a new target kind
-  // cannot arrive here and be described by the probe fallback below — which
-  // would report "could not be probed" about something that was never probeable
-  // (that is how a named pipe used to read).
-  if (ingress.target.kind !== 'af_unix') {
+  // Gate on "did a probe happen", not on the KIND (plan 082 · F006). The kind
+  // table still owns every UNPROBEABLE target, so a future kind cannot fall into
+  // the arms below and be told "could not be probed" about something that was
+  // never probeable — the 075 property is preserved by a different mechanism.
+  // What changed is that a named pipe now HAS an outcome and so reaches these
+  // arms, which is why not one of them may say "socket" any more.
+  if (ingress.outcome === null) {
     return trace2Policy(ingress.target).describe(trace2TargetPath(ingress.target) ?? '');
   }
+  // A pipe is not a socket and has no socket FILE. Telling a Windows operator
+  // their socket file is missing would be a true-sounding sentence about an
+  // object that never exists on their platform — plan 075's "four wrong
+  // statements from one misclassification", arriving through the front door.
+  const endpoint = ingress.target.kind === 'named_pipe' ? 'named pipe' : 'socket';
   switch (ingress.outcome) {
+    case 'connected':
+      return `was reachable — the ${endpoint} connected`;
     case 'denied':
-      return 'was DENIED — a sandbox is blocking the socket connect';
+      return `was DENIED — a sandbox is blocking the ${endpoint} connect`;
     case 'refused':
-      return 'refused the connection — a stale socket with nothing listening';
+      return `refused the connection — a stale ${endpoint} with nothing listening`;
     case 'absent':
-      return 'has no socket file — the daemon is not running';
+      return `has no ${endpoint} — the daemon is not running`;
     case 'timeout':
       return 'did not answer within the probe timeout';
     default:
-      return `could not be probed (${ingress.outcome ?? 'not probed'})`;
+      // Keeps the code rather than guessing. `error:EBUSY` on a pipe is the one
+      // worth knowing: a LIVE daemon with every pipe instance in use, not a dead
+      // one — see the connect site in `adapters/net/node-socket-probe.ts`. This
+      // wording asserts nothing about the daemon either way, which is why it is
+      // safe for a case nobody here has measured.
+      return `could not be probed (${ingress.outcome})`;
   }
 }

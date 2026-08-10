@@ -346,7 +346,7 @@ flowchart TD
   are still readable; see the telemetry front door for the current capture
   controls and contributor-commit attribution contract.
 
-**See also:** [Harness telemetry](telemetry.md) ·
+**See also:** [Harness telemetry](telemetry/README.md) ·
 [The git-ai collector handover](gitai-collector.md) ·
 `harness/cli/src/services/telemetry/segment.schema.json`.
 

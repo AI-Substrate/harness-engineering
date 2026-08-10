@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,6 +15,7 @@ import { buildProgram } from '../../src/app.js';
 import type { Envelope } from '../../src/output/envelope.js';
 import type { CliIo, Writers } from '../../src/output/output-port.js';
 import type { VerbRegistry } from '../../src/services/extensions/registry.js';
+import { toPosix } from '../../src/services/shared/posix-path.js';
 
 const EMPTY: VerbRegistry = { verbs: [], records: [] };
 
@@ -273,11 +274,33 @@ describe('harness plan — live over a real corpus', () => {
     expect(drive.envelope.error?.message).not.toContain(repo);
   });
 
-  it('does not re-anchor a drive-rooted --dir below the repository', async () => {
-    const created = await run(['plan', 'new', 'drive-rooted', '--phase', 'X', '--dir', 'C:/out']);
-    // The FOLDER the act computed is the assertion; where a POSIX host then puts
-    // that string is the OS's business, not this act's.
-    expect((created.envelope.data as { folder: string }).folder).toBe('C:/out/drive-rooted');
+  it('does not re-anchor a root-anchored --dir below the repository', async () => {
+    // A REAL root-anchored directory OUTSIDE the repo — `/…` on POSIX, `C:\…`
+    // on Windows, both spellings coming from the host's own tmpdir.
+    //
+    // This used to pass the literal `C:/out`, which on a POSIX host is an inert
+    // string that lands a `C:` directory inside the temp repo. On a WINDOWS host
+    // it is a real drive-root location an unelevated process cannot create, so
+    // `plan new` failed at the WRITE, returned an error envelope, and the
+    // assertion read `.folder` off `undefined` (plan 077 · #108). Worse, on a
+    // host where the drive root IS writable it would have littered a real `C:\out`
+    // outside the sandbox. EXPECTED, UNVERIFIED — nobody here has a Windows box.
+    //
+    // The drive-letter SPELLING of root-anchored is not lost with it: the sibling
+    // case above drives `plan validate C:/elsewhere/plan` through a real act on
+    // every platform (it never writes, so it runs everywhere), and
+    // `posix-path.test.ts` pins `resolveInRepo('c:/…')` lexically.
+    const outside = toPosix(mkdtempSync(join(tmpdir(), 'harness-plan-outside-')));
+    try {
+      const created = await run(['plan', 'new', 'drive-rooted', '--phase', 'X', '--dir', outside]);
+      expect((created.envelope.data as { folder: string }).folder).toBe(`${outside}/drive-rooted`);
+      // Not just the computed string: the document actually landed out there,
+      // and NOT under the repository the act was invoked from.
+      expect(existsSync(join(outside, 'drive-rooted', 'plan.dd.json'))).toBe(true);
+      expect(existsSync(join(repo, 'drive-rooted'))).toBe(false);
+    } finally {
+      rmSync(outside, { recursive: true, force: true });
+    }
   });
 });
 

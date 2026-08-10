@@ -3,15 +3,22 @@ import { configDefaults, defineConfig } from 'vitest/config';
 /**
  * The SLOW set — the inner loop's cost, named explicitly.
  *
- * These 12 files are 5% of the suite's tests but ~81% of its wall time and
- * 1,363 of its 1,617 process spawns. Nearly all of that is real `git`
+ * These files are a small fraction of the suite's tests but the large majority
+ * of its wall time and process spawns. Nearly all of that is real `git`
  * invocations and fixture repositories, which is cheap on macOS `fork`/`exec`
  * and expensive on Windows `CreateProcess` — so this list is ordered by
  * measured cost, and the trailing comment on each line is its MEASURED median,
  * not an estimate. Re-measure before editing.
  *
- * WHY A LIST AND NOT A `*.slow.test.ts` FILENAME CONVENTION: 11 of these 12
- * files are named in ~60 tracked documents (plan execution logs, retro records,
+ * THE AGGREGATE SHARES ARE DELIBERATELY LOOSE. They were counted on main when
+ * this list held 12 entries (5% of tests, ~81% of wall time, 1,363 of 1,617
+ * spawns), before #108 deleted the two harness-capture hook tests that lived at
+ * `test/integration/{pre,post}-commit-hook.test.ts`. Subtracting their measured
+ * 155 and 12 spawns would yield a total that reads as counted and never was, so
+ * the shares stay qualitative until someone re-runs the measurement.
+ *
+ * WHY A LIST AND NOT A `*.slow.test.ts` FILENAME CONVENTION: all 10 of these
+ * files are named in 39 tracked documents (plan execution logs, retro records,
  * a live plan-073 review, and one archived dd `address` field). Renaming them
  * would stand up a glob that auto-scales, but would strand every one of those
  * traceability references — where a path is an identity, a move yields a wrong
@@ -20,7 +27,8 @@ import { configDefaults, defineConfig } from 'vitest/config';
  */
 export const SLOW_TESTS = [
   'test/adapters/git/exec-remote-telemetry-git.int.test.ts', // 25.5s · 712 spawns
-  'test/integration/pre-commit-hook.test.ts', //               18.2s · 155 spawns
+  'test/services/hooks/provocation.int.test.ts', //             8.7s · real git, 32 isolated repos
+  'test/services/hooks/live-daemon-note.int.test.ts', //        3.6s · live git-ai daemon or SKIPPED
   'test/sensors/tui/pty-input.test.ts', //                     10.4s · skipped on win32
   'test/adapters/git/cat-file-batch.int.test.ts', //            6.9s · 117 spawns
   'test/adapters/git/exec-git-write.int.test.ts', //            6.0s · 119 spawns
@@ -30,7 +38,6 @@ export const SLOW_TESTS = [
   'test/integration/dd-flow-gate.int.test.ts', //               3.0s ·  17 spawns
   'test/services/telemetry/git-read.test.ts', //                1.9s ·  46 spawns
   'test/integration/update-banner.test.ts', //                  1.6s ·  45 spawns
-  'test/integration/post-commit-hook.test.ts', //               1.6s ·  12 spawns
 ];
 
 /**
@@ -64,7 +71,7 @@ const DEFAULT_INCLUDE = ['test/**/*.test.ts', '../../.harness/extensions/**/*.te
  */
 if (SCOPE === 'fast') {
   process.stderr.write(
-    `\n  tests: FAST scope — ${SLOW_TESTS.length} slow file(s) SKIPPED (~81% of runtime, 5% of tests).\n` +
+    `\n  tests: FAST scope — ${SLOW_TESTS.length} slow file(s) SKIPPED (most of the runtime, few of the tests).\n` +
       '         Set HARNESS_TEST_SCOPE=all to include them. CI always runs all.\n\n',
   );
 }
@@ -79,6 +86,32 @@ export default defineConfig({
     // Report-only coverage this slice — no thresholds (plan R5); a young codebase
     // shouldn't be gated on coverage. Phase 3 CI surfaces the summary.
     passWithNoTests: true,
+    /**
+     * A stopwatch is not an assertion (plan 077 · tk-0101 · #108).
+     *
+     * vitest's 5s default was reporting ~30% of a downstream consumer's Windows
+     * failures — 46 of 151 FAIL lines read `Test timed out in 5000ms` — and it
+     * MANUFACTURED failures: five files that pass on `main` went red on the s077
+     * branch purely because that run was 32% slower on the same box with nothing
+     * else changed. While that stands, no other measurement of this suite is
+     * trustworthy, on any platform.
+     *
+     * GLOBAL, not win32-only, deliberately. The property that blows the budget is
+     * "this suite spawns processes constantly" — real git, loopback daemons, real
+     * hooks — not "this suite is on Windows". The same contention bites a loaded
+     * Linux dev box and a shared CI runner (#109 measures exactly that), so a
+     * win32-only raise would leave the flake in place here while encoding
+     * "Windows is the weird one", which is the wrong diagnosis attached to the
+     * right symptom. It is also a FLOOR: three files previously set their own
+     * 20s via `vi.setConfig`, which would now be a downgrade, so they defer to
+     * this value instead.
+     *
+     * What it costs: a genuinely hung test takes 30s to fail rather than 5s. That
+     * is the correct trade — a hang still fails, whereas a too-tight budget fails
+     * cases whose assertions were never in doubt and hides the ones that were.
+     */
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
     /**
      * Trace2 is disabled for the WHOLE test run, and that is the point.
      *

@@ -64,8 +64,11 @@ const METRICS_BLOB = readFileSync(`${CORPUS}expected-otlp-metrics.jsonl`, 'utf8'
  * `exec-remote-telemetry-git.int.test.ts`. Note this is a BUDGET, not a fix: the
  * fixture setup was moved into a hook first (see the describe below), and this
  * covers only the irreducible real-git work that IS each case's subject.
+ *
+ * The number now lives in `vitest.config.ts` as a 30s GLOBAL floor (plan 077 ·
+ * tk-0101) — a local 20s `vi.setConfig` would be a DOWNGRADE below it — so this
+ * file keeps the measurement that justified it and defers on the value.
  */
-vi.setConfig({ testTimeout: 20_000, hookTimeout: 30_000 });
 
 /** The session id + capture date carried by the copilot-cli corpus blob (RES_SESSION). */
 const SID = 'b67cd3ce-e0ee-4048-831e-7f4591f20a60';

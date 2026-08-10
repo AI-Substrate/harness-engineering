@@ -1,0 +1,109 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Phase 1: Class 3 — undeclared external binaries",
+        "slug": "phase-1",
+        "status": "draft",
+        "summary": ""
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Class 3 — undeclared external binaries. Shipped in 038d1e50 (PR #118); two tasks remain open pending the consumer's reply."
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-0001",
+          "title": "Sweep class 3 by CLASS, not by the reported instance. Enumerate every real (unmocked) external-binary spawn in src and test, state the predicate so the count is auditable, and classify each site guarded/unguarded AND subject/mechanism. Both dimensions are disqualifying and neither is visible to a grep for spawn calls.",
+          "state": "checked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001"
+          ]
+        },
+        {
+          "id": "tk-0002",
+          "title": "Eliminate the three MECHANISM binaries: grep -c -> countMatchingLines() (counts LINES, not occurrences — a match(/../g).length rewrite disagrees the moment two matches share a line); cp -> copyFileSync() (also converts a previously SILENT failed copy into a throw); chmod +x -> chmodSync(0o755).",
+          "state": "checked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0002"
+          ]
+        },
+        {
+          "id": "tk-0003",
+          "title": "Declare the two SUBJECT binaries with loud skips rather than rewriting them. New helper test/support/external-binary.ts: hasBinary() (per-process cached probe) + missingBinaryReason() naming the binary, why it cannot be substituted, and what specifically stopped being checked. An absent-binary skip that prints nothing is a control that passes by examining nothing.",
+          "state": "checked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0002"
+          ]
+        },
+        {
+          "id": "tk-0004",
+          "title": "Prove every change. POSITIVE control per rewrite, run in the same commit BEFORE deleting the binary: old and new against the same real fixture, asserted equal. NEGATIVE control per guard: force the probe to a non-existent binary and confirm the cases skip and the reason prints — tested separately for jq and bash, never assuming the second from the first.",
+          "state": "checked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0003"
+          ]
+        },
+        {
+          "id": "tk-0005",
+          "title": "Measure the windows-latest runner image rather than assuming it. Read the published manifest, record what is present, and STOP at its boundary — do not read the documented 'MSYS2 not on PATH' line as covering Git's bundled usr/bin, which is a different directory.",
+          "state": "checked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0005"
+          ]
+        },
+        {
+          "id": "tk-0006",
+          "title": "Ship as a consumable PR with honest numbers: three columns, an unproven number marked PENDING rather than asserted, the subject-vs-mechanism reasoning stated so a future contributor does not 'simplify' the probe-skips away, and the transitive-vs-direct guard distinction recorded so a future sweep does not re-derive the whole correction.",
+          "state": "checked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0004"
+          ]
+        },
+        {
+          "id": "tk-0007",
+          "title": "Resolve FAILURES FIXED from pending to measured, once the consumer sends failure signatures for post-commit-hook.test.ts (7) and cat-file-batch.int.test.ts (4). ENOENT means the eliminations were FIXES worth up to 11 more of their failures; anything else means they were hardening. Update the PR body either way — it currently carries a pending claim.",
+          "state": "unchecked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0004"
+          ]
+        },
+        {
+          "id": "tk-0008",
+          "title": "Agree the round-one set WITH the consumer before starting it. They rank what blocks them; we work their order. Size is not the same as blocking, and the largest failing file may be irrelevant to what they ship.",
+          "state": "unchecked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0006"
+          ]
+        },
+        {
+          "id": "tk-0009",
+          "state": "unchecked",
+          "title": "Coordinate with pij-tiny-bug BEFORE measuring anything for class 4. Its #109 instrument already exists (spawn/fs counters + per-file attribution), so rebuilding it is the duplication this fleet is trying to avoid. Treat its numbers as LOWER bounds: fs-write columns patch writeFileSync and the fs.promises family but not the fd API, and grandchild processes are undercounted.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0007"
+          ]
+        },
+        {
+          "id": "tk-000a",
+          "state": "unchecked",
+          "title": "Establish the consumer's delivery path rather than inferring it. If their shipping artefact comes from the registry, none of this work reaches them until a release ships — latest published is 0.13.0, main is 0.13.0, and the bump sits in release-please #84. If it IS the registry, note that a green tag plus a GitHub release is NOT a published package (npm --provenance rejects private repos with E422; bit us on #56), so the registry must be verified separately.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0008"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "done_when",
+      "value": {}
+    }
+  ]
+}

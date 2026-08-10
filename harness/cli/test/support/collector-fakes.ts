@@ -22,6 +22,23 @@ import type {
  */
 
 export class FakeCollectorFs implements CollectorFsPort {
+  /** A config that is not a symlink resolves to itself — the hooks writer asks. */
+  realpath(path: string): string | null {
+    return this.exists(path) ? path : null;
+  }
+
+  /** Entry names directly inside a directory; `[]` when absent. */
+  readdir(path: string): string[] {
+    const prefix = `${path.replace(/\/+$/, '')}/`;
+    const names = new Set<string>();
+    for (const key of [...this.files.keys(), ...this.dirs]) {
+      if (!key.startsWith(prefix)) continue;
+      const rest = key.slice(prefix.length);
+      if (rest.length > 0) names.add(rest.split('/')[0]);
+    }
+    return [...names].sort();
+  }
+
   readonly files = new Map<string, Uint8Array>();
   readonly dirs = new Set<string>();
   readonly writes: string[] = [];
@@ -29,6 +46,8 @@ export class FakeCollectorFs implements CollectorFsPort {
   readonly deletes: string[] = [];
   readonly removedDirs: string[] = [];
   readonly mkdtemps: string[] = [];
+  /** Sibling temp dirs handed out, so a test can assert WHERE staging happened. */
+  readonly siblingTempDirs: string[] = [];
   /** Paths whose write should FAIL — models a full disk / read-only mount. */
   readonly failWrites = new Set<string>();
   /** Paths whose read-back should return SHORT bytes — models an interrupted write. */
@@ -83,8 +102,34 @@ export class FakeCollectorFs implements CollectorFsPort {
     return dir;
   }
 
+  /**
+   * Sibling staging — a temp dir on the TARGET's own filesystem.
+   *
+   * Modelled faithfully enough to be falsifiable: `rename` below refuses to move
+   * a path across a device boundary, exactly as POSIX `rename(2)` does, and the
+   * device is derived from the first path segment. Without that, this fake would
+   * happily rename `/tmp/... -> /home/u/...` and a test could never tell the
+   * EXDEV bug from the fix (plan 077).
+   */
+  createSiblingTempDir(target: string, prefix: string): string {
+    const parent = target.replace(/\/[^/]*$/, '') || '/';
+    const dir = `${parent}/.${target.split('/').pop() ?? 'x'}.${prefix}${this.tempCounter++}`;
+    this.siblingTempDirs.push(dir);
+    this.dirs.add(dir);
+    return dir;
+  }
+
   rename(from: string, to: string): void {
     this.renames.push(`${from}->${to}`);
+    // POSIX `rename(2)` returns EXDEV across a filesystem boundary. Modelled
+    // here because the fake NOT modelling it is what let a guaranteed-fatal
+    // Linux bug ship: staging in `/tmp` and publishing into `$HOME` can never
+    // succeed where `/tmp` is tmpfs, and every unit test passed anyway (plan
+    // 077). A fake permissive where the kernel is strict cannot fail on the one
+    // thing that matters. `/` + first segment stands in for the device.
+    if (device(from) !== device(to)) {
+      throw new Error(`EXDEV: cross-device link not permitted, rename '${from}' -> '${to}'`);
+    }
     const bytes = this.files.get(from);
     if (bytes === undefined) throw new Error(`FakeCollectorFs: rename source missing: ${from}`);
     this.files.set(to, bytes);
@@ -171,7 +216,25 @@ export class FakeSequencedExec implements ExecPort {
   readonly calls: Array<{ command: string; args: string[]; cwd: string; timeoutMs?: number }> = [];
   private readonly queues = new Map<string, ExecScript[]>();
 
-  constructor(private readonly scripts: Record<string, ExecScript | ExecScript[]> = {}) {}
+  constructor(
+    private readonly scripts: Record<string, ExecScript | ExecScript[]> = {},
+    /**
+     * SIDE EFFECTS THE SCRIPTED COMMAND PERFORMS ON DISK — absolute path → new
+     * contents, applied when that command runs.
+     *
+     * WITHOUT THIS THE FAKE IS INERT WHERE THE REAL BINARY WRITES, which is the
+     * same defect class as a `rename` that moved bytes across devices the kernel
+     * would refuse: a fake permissive (here, silent) exactly where the real thing
+     * acts, so no test could go red. `install-hooks` exists to write agent config
+     * files; a fixture that runs it and leaves the filesystem untouched models a
+     * machine where it did nothing, and any check that reads those files for
+     * evidence would be asserting against a world that cannot produce it.
+     *
+     * Pass `fs` so the writes land in the same fake the code under test reads.
+     */
+    private readonly effects: Record<string, Record<string, string>> = {},
+    private readonly fs?: { writeText(path: string, contents: string): void },
+  ) {}
 
   async run(command: string, args: string[], opts: ExecOptions): Promise<ExecResult> {
     this.calls.push({
@@ -192,6 +255,11 @@ export class FakeSequencedExec implements ExecPort {
       script = (queue.length > 1 ? queue.shift() : queue[0]) ?? { code: 0 };
     } else if (scripted !== undefined) {
       script = scripted;
+    }
+    // Applied only on success, because that is when the real command writes.
+    const effect = this.effects[key];
+    if (effect !== undefined && this.fs !== undefined && script.code === 0) {
+      for (const [path, contents] of Object.entries(effect)) this.fs.writeText(path, contents);
     }
     return {
       code: script.code,
@@ -216,4 +284,12 @@ export class FakePathKind implements PathKindPort {
     this.calls.push(path);
     return this.kinds[path] ?? 'absent';
   }
+}
+
+/**
+ * Stand-in for a filesystem id: the first path segment. `/tmp/...` and
+ * `/home/...` are different devices, which is the real-world case that matters.
+ */
+function device(path: string): string {
+  return `/${path.replace(/^\/+/, '').split('/')[0] ?? ''}`;
 }

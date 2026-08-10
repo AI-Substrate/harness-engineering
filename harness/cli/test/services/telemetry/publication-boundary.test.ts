@@ -11,7 +11,7 @@ import {
 import { homedir, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Event } from '../../../src/services/telemetry/events.js';
 import { serializeEvent } from '../../../src/services/telemetry/segment.js';
 
@@ -48,8 +48,10 @@ const REPO_ROOT = spawnSync('git', ['rev-parse', '--show-toplevel'], {
  * below for the measurement. Set once for the file: the property is true of every
  * case that touches the owning scan, and a per-case number invites the next author
  * to guess. The assertions themselves are milliseconds; this covers the children.
+ *
+ * The number now lives in `vitest.config.ts` as a 30s GLOBAL floor (plan 077 ·
+ * tk-0101); a local 20s `vi.setConfig` would be a DOWNGRADE below it.
  */
-vi.setConfig({ testTimeout: 20_000, hookTimeout: 30_000 });
 
 const CLI_SRC = fileURLToPath(new URL('../../../src/', import.meta.url));
 
@@ -317,7 +319,7 @@ describe('publication boundary — an owning scan spends exactly two git childre
       if (r.status !== 0) throw new Error(`fixture git ${args.join(' ')} failed: ${r.stderr}`);
     };
     write('.gitignore', '*.log\n');
-    write('docs/how/telemetry-reports.md', 'a doc\n');
+    write('docs/how/telemetry/reports.md', 'a doc\n');
     write('harness/cli/src/services/telemetry/render/r.ts', 'export const r = 1;\n');
     write('a.session.json', '{}\n');
     write('b.report.json', '{}\n');
@@ -355,7 +357,7 @@ describe('publication boundary — an owning scan spends exactly two git childre
     expect(ownedArtifactPaths).toEqual([
       'a.session.json',
       'b.report.json',
-      'docs/how/telemetry-reports.md',
+      'docs/how/telemetry/reports.md',
       'harness/cli/src/services/telemetry/render/r.ts',
     ]);
     const ownedIgnoredPaths = operations.ignoredPaths([...ownedArtifactPaths, ignoredControl]);

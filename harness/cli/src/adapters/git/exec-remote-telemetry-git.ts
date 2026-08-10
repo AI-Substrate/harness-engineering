@@ -94,7 +94,40 @@ const SAFE_CREDENTIAL_CONFIG_ENV = [
   'XDG_CONFIG_HOME',
 ] as const;
 
-function safeGitEnvironment(credentialConfigPath?: string): NodeJS.ProcessEnv {
+/**
+ * The null-device spelling handed to `GIT_CONFIG_GLOBAL`.
+ *
+ * `os.devNull` is `/dev/null` on POSIX but `\\.\nul` on win32 — a DEVICE path rather than
+ * an absent file. MEASURED on a real Windows host by the downstream consumer of #108,
+ * with a positive control (a global config carrying a detectable `user.name`, proven
+ * detectable before each case):
+ *
+ *   GIT_CONFIG_GLOBAL=NUL        exit 0    ISOLATED
+ *   GIT_CONFIG_GLOBAL=\\.\nul    exit 128  fatal: unable to access '\\.\nul': Invalid argument
+ *   GIT_CONFIG_GLOBAL=/dev/null  exit 0    ISOLATED (an absent file, so: no config)
+ *
+ * The control is what makes "no leak" mean something — without it, "nothing leaked" is
+ * indistinguishable from "the probe cannot see a leak".
+ *
+ * THE FAILURE MODE IS FAIL-CLOSED, NOT A LEAK. This comment previously implied the
+ * operator's real config would be read instead; that was wrong. Under `\\.\nul` git
+ * refuses to run at all — `add`, `status`, `rev-parse` all return 128 — so on Windows
+ * this adapter was INOPERATIVE, never leaky. Nothing was ever exposed.
+ *
+ * Which also means this is NOT a member of the silent-wrong-answer family that A1/A2 and
+ * the `skills` failures belong to, and it was mis-filed there. It fails loud.
+ *
+ * `platform` is injected (defaulting to the host) so the win32 branch is reachable from a
+ * POSIX test — the same shape as `NodeBackground`/`resolveSpawn`.
+ */
+export function nullDeviceForPlatform(platform: NodeJS.Platform = process.platform): string {
+  return platform === 'win32' ? 'NUL' : devNull;
+}
+
+export function safeGitEnvironment(
+  credentialConfigPath?: string,
+  platform: NodeJS.Platform = process.platform,
+): NodeJS.ProcessEnv {
   const inherited: NodeJS.ProcessEnv = {};
   for (const name of SAFE_INHERITED_ENV) {
     const value = process.env[name];
@@ -104,7 +137,7 @@ function safeGitEnvironment(credentialConfigPath?: string): NodeJS.ProcessEnv {
     ...inherited,
     GIT_TERMINAL_PROMPT: '0',
     GIT_CONFIG_NOSYSTEM: '1',
-    GIT_CONFIG_GLOBAL: credentialConfigPath ?? devNull,
+    GIT_CONFIG_GLOBAL: credentialConfigPath ?? nullDeviceForPlatform(platform),
     GIT_OPTIONAL_LOCKS: '0',
     GIT_PROTOCOL_FROM_USER: '0',
     GIT_ALLOW_PROTOCOL: 'https:ssh:git',
@@ -112,7 +145,10 @@ function safeGitEnvironment(credentialConfigPath?: string): NodeJS.ProcessEnv {
   };
 }
 
-function safeCredentialConfigEnvironment(materializing = false): NodeJS.ProcessEnv {
+export function safeCredentialConfigEnvironment(
+  materializing = false,
+  platform: NodeJS.Platform = process.platform,
+): NodeJS.ProcessEnv {
   const inherited: NodeJS.ProcessEnv = {};
   for (const name of SAFE_CREDENTIAL_CONFIG_ENV) {
     const value = process.env[name];
@@ -123,7 +159,7 @@ function safeCredentialConfigEnvironment(materializing = false): NodeJS.ProcessE
     GIT_CONFIG_NOSYSTEM: '1',
     GIT_TERMINAL_PROMPT: '0',
     GCM_INTERACTIVE: 'never',
-    ...(materializing ? { GIT_CONFIG_GLOBAL: devNull } : {}),
+    ...(materializing ? { GIT_CONFIG_GLOBAL: nullDeviceForPlatform(platform) } : {}),
   };
 }
 

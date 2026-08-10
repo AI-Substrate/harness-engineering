@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -21,6 +21,29 @@ import { hermeticGitEnv } from '../../support/hermetic-git.js';
 
 const SID = 'b67cd3ce-e0ee-4048-831e-7f4591f20a60';
 const REF = telemetryRefFor('2026/06/24', SID);
+
+/**
+ * `grep -c <fixed> <file>`, in-process — how many LINES contain the literal.
+ *
+ * This replaced a real `spawnSync('grep', …)`, which is an undeclared external
+ * binary: it ships on GitHub's ubuntu runners so CI never noticed, and it is
+ * absent on Windows, where these two cases fail rather than skip (#108).
+ *
+ * LINES, NOT OCCURRENCES — that is the whole subtlety and the reason this is a
+ * named helper rather than an inline one-liner. `grep -c` counts matching lines;
+ * a `match(/…/g).length` rewrite counts matches and disagrees the moment two
+ * matches share a line. The trace format puts one `built-in: git` per line
+ * today, so the two agree TODAY — which is exactly what would let a silent
+ * regression in here go unnoticed. Do not "simplify" this to a match count.
+ *
+ * The needle is a FIXED string, so grep's BRE-vs-JS-regex difference does not
+ * arise here. If a caller ever needs a pattern, that difference comes back.
+ */
+function countMatchingLines(file: string, needle: string): number {
+  return readFileSync(file, 'utf8')
+    .split('\n')
+    .filter((line) => line.includes(needle)).length;
+}
 
 let repo: string;
 
@@ -113,10 +136,7 @@ describe('ExecGitRead — batched flat-tree reads (plan 067)', () => {
     expect(blobs).toHaveLength(150);
     expect(blobs.find((b) => b.name === '99.json')?.content).toBe('{"seq":99}\n');
     // Pre-067 this cost 151 subprocesses (one `cat-file blob` per entry).
-    const spawns = (
-      spawnSync('grep', ['-c', 'built-in: git', trace], { encoding: 'utf8' }).stdout ?? '0'
-    ).trim();
-    expect(Number.parseInt(spawns, 10)).toBeLessThanOrEqual(5);
+    expect(countMatchingLines(trace, 'built-in: git')).toBeLessThanOrEqual(5);
     // 20s, not vitest's default 5s. This case PUBLISHES 150 blobs through real
     // git before it can measure anything, and under full-suite load that setup
     // alone has been seen at ~6s — so the default budget failed a test whose
@@ -152,10 +172,7 @@ describe('ExecGitRead.refsWithBlob — batched shape probe (plan 067)', () => {
     }
 
     expect(withManifest).toEqual([rolled]);
-    const spawns = (
-      spawnSync('grep', ['-c', 'built-in: git', trace], { encoding: 'utf8' }).stdout ?? '0'
-    ).trim();
-    expect(Number.parseInt(spawns, 10)).toBe(1);
+    expect(countMatchingLines(trace, 'built-in: git')).toBe(1);
   });
 
   it('agrees with a full tree read about every ref (the probe is not a guess)', () => {

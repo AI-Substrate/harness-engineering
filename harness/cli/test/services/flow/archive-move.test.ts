@@ -62,6 +62,11 @@ const git = (args: string[]): string =>
     encoding: 'utf8',
     env: {
       ...process.env,
+      // The POSIX literal is DELIBERATE — do NOT "modernise" this to `os.devNull`. On
+      // win32 '/dev/null' is just a missing file, which git treats as no config;
+      // `os.devNull` would resolve to the device path '\\.\nul' that git is reported to
+      // reject, introducing the defect fixed at the GIT_CONFIG_GLOBAL sites in
+      // src/adapters/git/exec-remote-telemetry-git.ts (see nullDeviceForPlatform).
       GIT_CONFIG_GLOBAL: '/dev/null',
       GIT_CONFIG_NOSYSTEM: '1',
       GIT_AUTHOR_NAME: 'Harness',

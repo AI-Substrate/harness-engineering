@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "preToolUse": [
+      {
+        "command": "python3 /home/dev/probe.py PRE >/dev/null 2>&1; tee -a /tmp/pre.jsonl | /home/dev/.git-ai/bin/git-ai checkpoint cursor --hook-input stdin"
+      }
+    ],
+    "postToolUse": [
+      {
+        "command": "python3 /home/dev/probe.py POST >/dev/null 2>&1; tee -a /tmp/post.jsonl | /home/dev/.git-ai/bin/git-ai checkpoint cursor --hook-input stdin"
+      }
+    ]
+  },
+  "version": 1
+}

@@ -9,17 +9,34 @@ import { scanCorpus } from '../../../../src/services/dd/links/scan.js';
 import { traverseCorpus } from '../../../../src/services/dd/links/traverse.js';
 import type { SchemaFs } from '../../../../src/services/dd/schema/model.js';
 import { ConventionSchemaResolver } from '../../../../src/services/dd/schema/resolve.js';
+import { toPosix } from '../../../../src/services/shared/posix-path.js';
 
-// `fileURLToPath` yields NATIVE separators, and everything below concatenates
-// forward-slash literals onto it — on Windows that produces a mixed-separator
-// path like `C:\\repo/docs/how/dd/exemplar`. This value is not merely passed to
-// `readFileSync` (which tolerates mixing); it is handed to `scanCorpus` and
-// `traverseCorpus` as `repoRoot`, where containment checks and address
-// resolution compare it against POSIX-shaped paths. Normalise once, here, at the
-// boundary where the native form enters (plan 108 · C2).
-const REPO_ROOT = fileURLToPath(new URL('../../../../../../', import.meta.url))
-  .replaceAll('\\', '/')
-  .replace(/\/$/, '');
+/**
+ * The corpus root as a LOGICAL path (plan 017), converted ONCE here at the
+ * boundary — exactly what production does with `toPosix(proc.cwd())`.
+ *
+ * `fileURLToPath` returns a NATIVE path, so on win32 this constant used to be
+ * `C:\\…\\repo\\`: the trailing-separator strip missed a back-slash, and every
+ * address built from it was native-shaped. It is not merely passed to
+ * `readFileSync` (which tolerates mixed separators) — it is handed to
+ * `scanCorpus` and `traverseCorpus` as `repoRoot`, where containment checks and
+ * address resolution compare it against POSIX-shaped paths. `scanCorpus` builds
+ * its paths with `posixJoin`, so `linksFor`'s `edge.from === path` compared a
+ * native key against POSIX-logical edges, matched nothing, and reported
+ * `outbound: []` (plan 077 · #108, and plan 108 · C2 — the same defect was found
+ * twice, independently, from both ends).
+ *
+ * `toPosix` rather than an inline `replaceAll('\\', '/')`: it ALSO upper-cases the
+ * drive letter, and `edge.from === path` is an exact string compare — so `c:` vs
+ * `C:` would still mismatch after a separator-only fix.
+ *
+ * On POSIX `toPosix` is the identity, so this changes nothing here and everything
+ * there — EXPECTED, UNVERIFIED: nobody on this plan has a Windows box.
+ */
+const REPO_ROOT = toPosix(fileURLToPath(new URL('../../../../../../', import.meta.url))).replace(
+  /\/$/,
+  '',
+);
 const EXEMPLAR = `${REPO_ROOT}/docs/how/dd/exemplar`;
 const AC_0201 = `${EXEMPLAR}/plan.dd.json#acceptance_criteria/ac-0201`;
 

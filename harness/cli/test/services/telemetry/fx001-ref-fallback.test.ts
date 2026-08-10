@@ -781,7 +781,7 @@ describe('FX001 R3 — an unchecked surface names itself', () => {
   });
 
   it('the act envelope discloses a dropped root', async () => {
-    const fs = new FakeFs({ [`/home/u/.pij/pij-nobody.json`]: 'not json at all' }, {});
+    const fs = new FakeFs({ '/home/u/.pij/pij-nobody.json': 'not json at all' }, {});
     const { io, out, err } = actIo();
     const code = await runGet(['pij-nobody'], io, fs, new FakeGitRead());
     const envelope = JSON.parse(out() || err());

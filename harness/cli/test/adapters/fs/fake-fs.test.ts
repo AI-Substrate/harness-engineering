@@ -261,6 +261,30 @@ describe('FakeFs', () => {
     expect(fs.readdir('/tmp/harness-skills-0')).toContain('references');
   });
 
+  /**
+   * #108 · the known-bad fixture, runnable on every platform.
+   *
+   * `skills.test.ts` seeds this fake from `resolvePackagedSkillsDir()`, which
+   * returns a REAL path — POSIX here, `C:\...\skills` on the consumer's Windows
+   * box. copyDir normalised its `src` argument but matched it against raw keys,
+   * so on win32 alone it answered "no such source" and 9 skills tests failed.
+   * Windows-shaped keys are the input that distinguishes the fix from the defect,
+   * so the assertion is written with them rather than with the platform's own
+   * separator — this case is red before the fix on macOS and Linux too.
+   */
+  it('copyDir finds its source when the seeded keys are WINDOWS-shaped (#108)', () => {
+    const dir = 'C:\\src\\pristine-116\\skills';
+    const fs = new FakeFs(
+      { [`${dir}/eng-harness-flow/SKILL.md`]: 'skill', [`${dir}/README.md`]: 'readme' },
+      { [dir]: ['README.md', 'eng-harness-flow'], [`${dir}/eng-harness-flow`]: ['SKILL.md'] },
+    );
+
+    expect(fs.copyDir(dir, '/tmp/harness-skills-0')).toBe(true);
+
+    expect(fs.readText('/tmp/harness-skills-0/README.md')).toBe('readme');
+    expect(fs.readText('/tmp/harness-skills-0/eng-harness-flow/SKILL.md')).toBe('skill');
+  });
+
   it('deleteFile removes a file, drops it from the parent listing, records, and is idempotent (T007)', () => {
     /*
     Test Doc:
@@ -694,5 +718,42 @@ describe('NodeFs', () => {
     } finally {
       rmSync(base, { recursive: true, force: true });
     }
+  });
+});
+
+describe('createExclusive — the claim primitive (plan 082 tk-0003)', () => {
+  it('NodeFs and FakeFs agree: the first call creates, every later call loses', () => {
+    /*
+    Test Doc:
+    - Why: the commit guard's concurrency defence is O_EXCL. If the fake models it
+      as an ordinary write, every concurrency test in the suite passes while the
+      real system double-emits.
+    - Contract: createExclusive returns true exactly once per path, false after,
+      and never overwrites the existing contents.
+    - Quality Contribution: pins REAL and FAKE to the same behaviour in one test,
+      so they cannot drift.
+    */
+    const dir = mkdtempSync(join(tmpdir(), 'harness-createexcl-'));
+    try {
+      const real = new NodeFs();
+      const target = join(dir, 'claim');
+      expect(real.createExclusive(target, 'first')).toBe(true);
+      expect(real.createExclusive(target, 'second')).toBe(false);
+      expect(real.readText(target)).toBe('first');
+
+      const fake = new FakeFs();
+      expect(fake.createExclusive('/x/claim', 'first')).toBe(true);
+      expect(fake.createExclusive('/x/claim', 'second')).toBe(false);
+      expect(fake.readText('/x/claim')).toBe('first');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('reports an impossible create as LOST rather than throwing', () => {
+    // A missing parent directory is an I/O failure, not a win. The caller must
+    // never read "I could not claim this" as "I claimed this".
+    const real = new NodeFs();
+    expect(real.createExclusive('/nonexistent-root-42/claim', 'x')).toBe(false);
   });
 });

@@ -1,0 +1,15 @@
+{
+  // Droid stores settings as JSONC. These comments are the property most likely to
+  // be destroyed silently by a parse-and-reserialize writer.
+  "claudeHooksImported": true,
+  "hooks": {
+    // preToolUse is deliberately written BEFORE postToolUse: not alphabetical, so a
+    // whole-file re-sort is visible in the bytes.
+    "preToolUse": [
+      { "command": "echo droid-pre" }
+    ],
+    "postToolUse": [
+      { "command": "echo droid-post" }
+    ]
+  }
+}

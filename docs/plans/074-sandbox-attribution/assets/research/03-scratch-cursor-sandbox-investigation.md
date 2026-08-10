@@ -75,6 +75,22 @@ being a directory** — confirming from the code what the on-disk evidence showe
 
 ### Backfill is impossible — tested, twice
 
+> ⚠️ **SUPERSEDED 2026-08-09 — the flat claim "backfill is impossible" is FALSIFIED.**
+> F-09 demonstrated backfill and H-03 recorded it, but no supersession marker was ever put on
+> THIS section, so the original wording kept circulating as settled fact. The measurements
+> below are still exactly what was observed; it is the **generalisation** from them that does
+> not hold. Read them as "these two operations did not backfill", not as "nothing can".
+>
+> Note also what the two attempts actually probed: `git checkout` moves a head, and
+> `--allow-empty` creates a new commit. Neither gives the daemon a **pre-command reflog
+> cursor** for the noteless commits, and per the vendor spec
+> (`daemon-trace2-ingestion-spec.md:21-35`) a command without a cursor or immutable argv OIDs
+> is *not exact* and **fails closed by design** — see
+> [the two-channel model](../../../../how/telemetry/gitai-06-two-channel-model.md). So the
+> observed "nothing happened" is the specified behaviour of those two commands, not a
+> property of backfill in general.
+
+
 In `/Users/jordanknight/substrate/harness-engineering-worktrees/cursor-test`, from an
 **unsandboxed** shell, against four noteless commits (`7189458e`, `90669bc5`, `62eae5a3`,
 `028c7c65`):

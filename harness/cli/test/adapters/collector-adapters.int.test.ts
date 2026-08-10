@@ -1,19 +1,23 @@
-import {
-  chmodSync,
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  statSync,
-  symlinkSync,
-  writeFileSync,
-} from 'node:fs';
+import { chmodSync, lstatSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { NodeExecutableBit } from '../../src/adapters/fs/node-executable-bit.js';
 import { NodePathKind } from '../../src/adapters/fs/node-path-kind.js';
 import { NodeDownload } from '../../src/adapters/http/node-download.js';
+
+/**
+ * `chmodSync`/`lstatSync` mocked, defaulting to the REAL implementation
+ * (`vi.fn(actual.fn)` pass-through) — every OTHER use of `node:fs` in this file
+ * (`mkdtempSync`, `rmSync`, `writeFileSync`) is untouched and still hits the
+ * real filesystem. Only `NodeExecutableBit`'s and `NodePathKind`'s two specific
+ * seams get completed: see the tests below for why (plan 108 B2).
+ */
+vi.mock('node:fs', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs')>();
+  return { ...actual, chmodSync: vi.fn(actual.chmodSync), lstatSync: vi.fn(actual.lstatSync) };
+});
 
 /*
 Test Doc:
@@ -165,14 +169,20 @@ describe('NodeDownload', () => {
 
 describe('NodeExecutableBit', () => {
   it('sets mode 0o755 on a real file', () => {
+    // The seam completed, not skipped (plan 108 B2): the platform was already
+    // injected (the `'linux'` constructor arg), but the assertion still read
+    // back `statSync`'s real mode bits — and Windows `chmod` cannot represent
+    // POSIX mode bits at all (it only toggles the read-only flag), so that
+    // assertion was never portable. What the port's contract actually claims
+    // ("sets mode 0o755") is a claim about the SYSCALL it makes, so assert that
+    // directly instead of the host filesystem's after-the-fact rendering of it.
     const dir = mkdtempSync(join(tmpdir(), 'harness-exebit-'));
     try {
       const path = join(dir, 'bin');
       writeFileSync(path, '#!/bin/sh\n');
-      chmodSync(path, 0o600);
 
       expect(new NodeExecutableBit('linux').setExecutable(path)).toBe(true);
-      expect(statSync(path).mode & 0o777).toBe(0o755);
+      expect(chmodSync).toHaveBeenCalledWith(path, 0o755);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -193,17 +203,29 @@ describe('NodePathKind', () => {
   it('never dereferences the final component — a link to a directory reads `symlink`', () => {
     // The whole skills guard turns on this distinction: git-ai's own link may be
     // replaced, somebody's directory may not.
-    const dir = mkdtempSync(join(tmpdir(), 'harness-pathkind-'));
+    //
+    // Seam completed, not skipped (plan 108 B2): creating a REAL symlink needs
+    // Developer Mode or elevation on Windows, which CI does not grant — but
+    // `NodePathKind.kindNoFollow` never creates one, it only READS `lstat`'s
+    // result and classifies it. Injecting that result tests the actual contract
+    // ("never dereferences the final component") without depending on this
+    // host's ability to create the fixture that would exercise it.
+    const target = '/fake/harness-pathkind/target';
+    const link = '/fake/harness-pathkind/link';
+    lstatSync.mockImplementation((path) => {
+      if (path === link) {
+        return { isSymbolicLink: () => true, isDirectory: () => false, isFile: () => false };
+      }
+      if (path === target) {
+        return { isSymbolicLink: () => false, isDirectory: () => true, isFile: () => false };
+      }
+      throw Object.assign(new Error(`unexpected lstat: ${path}`), { code: 'ENOENT' });
+    });
     try {
-      const target = join(dir, 'target');
-      const link = join(dir, 'link');
-      mkdirSync(target);
-      symlinkSync(target, link);
-
       expect(new NodePathKind().kindNoFollow(link)).toBe('symlink');
       expect(new NodePathKind().kindNoFollow(target)).toBe('directory');
     } finally {
-      rmSync(dir, { recursive: true, force: true });
+      lstatSync.mockRestore();
     }
   });
 
@@ -222,15 +244,20 @@ describe('NodePathKind', () => {
 
   it('a broken symlink is still a symlink, not an absent path', () => {
     // `exists()` would say no here. That answer would let the guard treat
-    // somebody's dangling link as free space.
-    const dir = mkdtempSync(join(tmpdir(), 'harness-pathkind-'));
+    // somebody's dangling link as free space. Same seam completion as above —
+    // a dangling symlink still needs real symlink creation to test via the
+    // filesystem, which needs elevation on Windows (plan 108 B2).
+    const link = '/fake/harness-pathkind/dangling';
+    lstatSync.mockImplementation((path) => {
+      if (path === link) {
+        return { isSymbolicLink: () => true, isDirectory: () => false, isFile: () => false };
+      }
+      throw Object.assign(new Error(`unexpected lstat: ${path}`), { code: 'ENOENT' });
+    });
     try {
-      const link = join(dir, 'dangling');
-      symlinkSync(join(dir, 'gone'), link);
-
       expect(new NodePathKind().kindNoFollow(link)).toBe('symlink');
     } finally {
-      rmSync(dir, { recursive: true, force: true });
+      lstatSync.mockRestore();
     }
   });
 });

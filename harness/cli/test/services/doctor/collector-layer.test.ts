@@ -118,7 +118,29 @@ describe('the gitai-collector doctor row', () => {
     expect(row?.detail).toContain('no AI attribution is being collected');
   });
 
-  it('reads ok when the collector is installed, hooked and hash-matching', () => {
+  it('reads ok when the collector is installed, hooked, hash-matching and on PATH', () => {
+    const report = buildDoctorReport(
+      deps({
+        fs: fsWith(installedState(), {
+          [BINARY]: 'binary bytes',
+          [`${HOME}/.claude/settings.json`]: '{}',
+        }),
+        // The bare name must RESOLVE, not merely exist — healthy requires both.
+        env: new FakeEnv({ PATH: `/usr/bin:${HOME}/.git-ai/bin` }),
+      }),
+      EMPTY,
+    );
+
+    const row = collectorRow(report);
+    expect(row?.ok).toBe(true);
+    expect(row?.detail).toContain('healthy');
+    expect(row?.detail).toContain('cannot prove it is occurring');
+  });
+
+  it('warns binary-not-on-path when the install is perfect but the bare name resolves nowhere', () => {
+    // Same perfect install as the healthy case — the default FakeEnv simply has
+    // no PATH, which is exactly the measured Windows shape: binary present,
+    // hooks on, and the editor extension's bare-name spawn ENOENTs on every save.
     const report = buildDoctorReport(
       deps({
         fs: fsWith(installedState(), {
@@ -130,9 +152,10 @@ describe('the gitai-collector doctor row', () => {
     );
 
     const row = collectorRow(report);
-    expect(row?.ok).toBe(true);
-    expect(row?.detail).toContain('healthy');
-    expect(row?.detail).toContain('cannot prove it is occurring');
+    expect(row?.ok).toBe(false);
+    expect(row?.detail).toContain('binary-not-on-path');
+    expect(row?.detail).toContain('KnownHuman');
+    expect(row?.next_action).toContain('PATH');
   });
 
   it('WARNS and never blocks — a failing collector row still exits 0 (ac-000c)', () => {

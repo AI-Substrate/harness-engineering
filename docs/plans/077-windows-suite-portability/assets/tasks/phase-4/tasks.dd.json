@@ -1,0 +1,72 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Phase 4: A windows-latest leg we can run ourselves",
+        "slug": "phase-4",
+        "status": "in-progress",
+        "summary": ""
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Build an on-demand windows-latest job so this repo can see its own Windows failure count, instead of depending on a downstream volunteer running our suite on their laptop. Warn-launch, dispatch-only, and it must report SKIPS so a green cannot mean 'we stopped looking'."
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-0401",
+          "title": "Add .github/workflows/windows.yml with workflow_dispatch ONLY — no pull_request trigger, no push trigger. It must accept the branch/ref to run against so it can be pointed at s077/suite-portability. Warn-launch: the job reports and blocks nothing, and the workflow says WHY in a comment, so a later reader does not read 'non-blocking' as 'nobody cared'.",
+          "state": "unchecked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-000e",
+            "../../../plan.dd.json#acceptance_criteria/ac-0010"
+          ],
+          "note": "GOTCHA, verified: GitHub only exposes workflow_dispatch for workflows present on the DEFAULT branch. A windows.yml living only on s077/suite-portability is NOT dispatchable. Land the workflow file on main as its own small PR, then dispatch it against any branch."
+        },
+        {
+          "id": "tk-0402",
+          "title": "The job reports passed / failed / SKIPPED as three numbers in the GitHub job summary, not buried in logs. A rising skip count must be visible without opening the run. This round deliberately added win32 skips (the git-daemon cluster, the URL-scope credential case), so a job that goes green BECAUSE the hard things are switched off is the control-that-cannot-fail shape this plan has spent five rounds removing.",
+          "state": "unchecked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-000f"
+          ],
+          "note": "Do NOT make the suite green by skipping. If something fails, it fails and the job says so. This job's job is to tell the truth, not to be green."
+        },
+        {
+          "id": "tk-0403",
+          "title": "Run it once against s077/suite-portability and compare the result to the consumer's last pristine measurement — 12 files / 27 tests failing of 5121 on f19bf0d1, minus what 5a8e8f5b fixed. Report the delta as a number. A count DRAMATICALLY lower than that is a suspect JOB before it is a suspect SUITE.",
+          "state": "unchecked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0011"
+          ],
+          "note": "The consumer measures ~1s per child process on Windows, so expect a slow job. Do not tune it down by skipping."
+        },
+        {
+          "id": "tk-0404",
+          "title": "State plainly, in the workflow and in the execution log, what this job does NOT cover. ac-0005 already PROVED a hosted runner is curated and cannot stand in for the consumer's box — and two defects from this very round demonstrate it: acts/plan failed only because an UNELEVATED process cannot create C:\\out (a privileged runner would have gone green while creating a directory at the drive root), and the timeout class is contention-dependent. A green run must not be reported as 'Windows is fine'.",
+          "state": "unchecked",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0011"
+          ],
+          "note": "This is the honesty column. It is the difference between 'we can now see the path-shape class' and 'Windows is covered'."
+        },
+        {
+          "id": "tk-0405",
+          "title": "Add a per-file zero-collection signal to the windows leg: no test file may report ZERO collected tests. A file that dies during COLLECTION (the probeShell finally{rmSync} EPERM, #108 round seven) reports `Tests: no tests` — every case UNRUN rather than failed — and the existing 4800 undercollection floor cannot see it, because losing 7 of 5166 is 0.1% while the floor sits 7% away. The floor was built to catch a HALVED suite; this is a different animal. Detect the shape directly from testResults[] rather than hoping an aggregate moves far enough.",
+          "state": "unchecked",
+          "note": "LOGGED AS A DECISION, NOT BUILT (round seven). Deferred deliberately so it is not rediscovered later as a gap. Context: our runner reported the affected file GREEN while the consumer lost the whole file, so this is also a runner-vs-real-box divergence the summariser is currently blind to."
+        }
+      ]
+    },
+    {
+      "name": "done_when",
+      "value": {}
+    }
+  ]
+}

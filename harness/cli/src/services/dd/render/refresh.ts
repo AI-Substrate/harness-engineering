@@ -1,4 +1,4 @@
-import { isAddressFailure, parseAddress } from '../core/address.js';
+import { isAddressFailure, normalizeFilePath, parseAddress } from '../core/address.js';
 import { DEFAULT_GATE_TERMINAL_STATES } from '../core/constants.js';
 import { type DdDerivedState, deriveState } from '../core/derive.js';
 import type { DdDoc, ResolvedDdSchema } from '../core/model.js';
@@ -141,11 +141,22 @@ export function refreshLiveReferences(options: RefreshOptions): DdRefreshResult 
   return { derived, refreshed, issues };
 }
 
-/** True when `doc` declares a reference to `targetPath` — its own outbound ledger only. */
+/**
+ * True when `doc` declares a reference to `targetPath` — its own outbound ledger only.
+ *
+ * BOTH sides are normalized before comparison, and that is load-bearing rather
+ * than defensive. `resolveAddressFile` already returns a POSIX-logical path, but
+ * `targetPath` arrives from a caller — and the caller a `dependentsOf` is written
+ * against is a WATCHER, which reports whatever shape its OS reports. On win32
+ * that is a back-slashed native path, so an un-normalized right-hand side made
+ * this predicate silently false for every change, and a consumer's markdown was
+ * simply never regenerated (plan 077 · #108). Silently false is the worst
+ * available answer here: nothing throws, nothing warns, the view just goes stale.
+ * EXPECTED, UNVERIFIED — nobody on this plan has a Windows box to run it on.
+ */
 export function referencesTarget(doc: DdDoc, docPath: string, targetPath: string): boolean {
-  return doc.references.some(
-    (reference) => resolveAddressFile(docPath, reference.path) === targetPath,
-  );
+  const target = normalizeFilePath(targetPath);
+  return doc.references.some((reference) => resolveAddressFile(docPath, reference.path) === target);
 }
 
 // ---------------------------------------------------------------------------

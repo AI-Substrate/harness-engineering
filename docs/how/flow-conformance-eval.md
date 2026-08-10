@@ -452,7 +452,7 @@ What this unlocks across a fleet (the questions the eval matrix exists to feed):
   is simply the richest current source of stage boundaries.
 
 Two disciplines carry over from the cohort-insights layer (see
-[cohort telemetry insights](./cohort-telemetry-insights.md)): claims are
+[cohort telemetry insights](./telemetry/cohort-insights.md)): claims are
 **correlational only** (a fleet of K=4 supports "correlates with", never
 "causes"), and **every number is generator-computed** — the LLM narrates
 computed rows verbatim, with each row's `n` and caveat, and never derives a
@@ -491,7 +491,7 @@ bases only when you want the ambient/capability-only reading.
 
 ## See also
 
-- [Harness telemetry](./telemetry.md) — the `SessionEvidence` the telemetry lane reads.
+- [Harness telemetry](./telemetry/README.md) — the `SessionEvidence` the telemetry lane reads.
 - [Extend the harness](./extend-the-harness.md) — how the `flow-eval` extension itself is built.
 - The engine: `.harness/extensions/flow-eval/` (loader, resolvers, scorer, report writer).
 - The contract behind the schema: `docs/plans/041-flow-conformance-eval/workshops/001-scenario-and-assertion-schema.md`.

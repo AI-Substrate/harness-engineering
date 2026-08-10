@@ -1,3 +1,5 @@
+import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { VerbActDeps } from '../src/acts/verb.js';
 import { FakeClock } from '../src/adapters/clock/fake-clock.js';
@@ -46,10 +48,23 @@ describe('buildInstallArgv (pure)', () => {
   });
 
   describe('resolvePackagedSkillsDir (pure)', () => {
+    /**
+     * #108 · the module URL is built from a real path rather than hand-written.
+     *
+     * A literal `file:///pkg/...` carries no drive letter, and on win32
+     * `fileURLToPath` rejects a drive-less file URL with `ERR_INVALID_FILE_URL_PATH`
+     * ("File URL path must be absolute"). That threw at `skills-service.ts:19` and
+     * read as a product defect in `src/` — but `import.meta.url` on Windows ALWAYS
+     * carries a drive letter, so only this fixture could construct the input that
+     * throws. Deriving the URL from `resolve()` keeps the assertion (five levels up
+     * from `dist/services/skills` is the package root) true on both platforms.
+     */
     it('resolves from the dist services/skills module URL back to the package root skills dir', () => {
-      expect(
-        resolvePackagedSkillsDir('file:///pkg/harness/cli/dist/services/skills/skills-service.js'),
-      ).toBe('/pkg/skills');
+      const pkgRoot = resolve('/pkg');
+      const moduleUrl = pathToFileURL(
+        join(pkgRoot, 'harness', 'cli', 'dist', 'services', 'skills', 'skills-service.js'),
+      ).href;
+      expect(resolvePackagedSkillsDir(moduleUrl)).toBe(join(pkgRoot, 'skills'));
     });
   });
 
