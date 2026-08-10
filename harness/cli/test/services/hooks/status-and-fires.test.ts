@@ -175,6 +175,88 @@ describe('status surfaces a FAILED FIRE from the journal (dw-002b, dw-002c)', ()
   });
 });
 
+describe('status surfaces an UNREADABLE PAYLOAD, in its own list (plan 082 F009)', () => {
+  it('a REAL unparseable fire reaches the SURFACE, not just the journal file', () => {
+    /*
+    Test Doc:
+    - Why: F009 made a parse failure observable in the journal. If it stopped
+      there, the failure would be recorded by the file and dropped by the surface
+      operators actually read — the journal's own blindness rebuilt one layer up,
+      which is the same defect family this plan has now met five times.
+    - Contract: driven through the REAL bin so the entry is one the runtime wrote,
+      never one this test fabricated — the fabricated-stimulus mistake that cost
+      this plan two hours.
+    - Quality Contribution: asserts on the journal-derived field, never on an exit
+      code, because the exit code is 0 by design and carries no information.
+    */
+    const repo = join(home, 'repo');
+    execFileSync('git', ['init', '-q', '-b', 'main', repo], { env: hermeticGitEnv() });
+    execFileSync(
+      process.execPath,
+      [CLI, 'hooks', 'fire', 'cursor', '--phase', 'post', '--hook-input', 'stdin'],
+      {
+        cwd: repo,
+        // Real BOM BYTES in front of a TRUNCATED document: the Windows trigger and
+        // a genuine malformation together, so the strip cannot mask the failure.
+        input: Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from('{"cwd":', 'utf8')]),
+        env: { ...hermeticGitEnv(), HOME: home, USERPROFILE: home },
+      },
+    );
+
+    const summary = fireSummary(deps());
+    expect(summary.unparseable).toBe(1);
+    expect(summary.unreadable).toHaveLength(1);
+    // The head names the prefix ON SIGHT. `ef bb bf` here IS the Cursor BOM — the
+    // fact nobody could see for three sessions and ~58 invocations.
+    expect(summary.unreadable[0]?.headHex.startsWith('ef bb bf')).toBe(true);
+    expect(summary.unreadable[0]?.rawLen).toBeGreaterThan(0);
+  });
+
+  it('does NOT inflate `failed` — an unreadable input is a different fault from a failed emit', () => {
+    /*
+    Test Doc:
+    - Why: "our emit failed" points at the collector; "we could not read the input"
+      points at the agent client. They need different operator actions, so one
+      number serving both is useless for both. F008 made the same call when it gave
+      refused-upgrades its own list rather than folding it into refusals.
+    - Contract: two counts, two lists, no double-counting in either direction.
+    - Quality Contribution: a mixed journal, so a future "simplification" that adds
+      the two together fails here rather than in an operator's diagnosis.
+    */
+    writeJournal([
+      entry(1, 'recorded'),
+      entry(2, 'failed', 'socket unreachable'),
+      {
+        at: 'T3',
+        phase: 'post',
+        repoRoot: null,
+        outcome: {
+          kind: 'unparseable',
+          reason: 'payload-not-json',
+          rawLen: 794,
+          headHex: 'ef bb bf 7b 22 63 6f 6e',
+        },
+      },
+    ]);
+
+    const summary = fireSummary(deps());
+    expect(summary.total).toBe(3);
+    expect(summary.failed).toBe(1);
+    expect(summary.failures).toEqual([{ at: 'T2', cause: 'socket unreachable' }]);
+    expect(summary.unparseable).toBe(1);
+    expect(summary.unreadable).toEqual([
+      { at: 'T3', rawLen: 794, headHex: 'ef bb bf 7b 22 63 6f 6e' },
+    ]);
+  });
+
+  it('reports ZERO unreadable when nothing was unreadable — the discriminator, again', () => {
+    writeJournal([entry(1, 'recorded')]);
+    const summary = fireSummary(deps());
+    expect(summary.unparseable).toBe(0);
+    expect(summary.unreadable).toEqual([]);
+  });
+});
+
 describe('status is the FIRST caller of compact() — the rotation fix, live (dw-0040)', () => {
   it('N concurrent `harness hooks status` PROCESSES lose no records — a live SMOKE test', async () => {
     /*

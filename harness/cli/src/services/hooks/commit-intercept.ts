@@ -18,7 +18,15 @@ export type FireOutcome =
   | { kind: 'recorded'; phase: 'pre' }
   | { kind: 'emitted'; head: string }
   | { kind: 'silent'; reason: TransitionReason | 'lost-the-claim' }
-  | { kind: 'failed'; cause: string };
+  | { kind: 'failed'; cause: string }
+  /**
+   * The payload could not be read at all, so no fire was ever attempted.
+   *
+   * NOT produced by {@link CommitIntercept} — it is written by the act BEFORE the
+   * guards that used to return early, because those guards are where an
+   * unparseable payload vanished. It is the only outcome that names no repository.
+   */
+  | { kind: 'unparseable'; reason: 'payload-not-json'; rawLen: number; headHex: string };
 
 /**
  * How the runtime tells the collector a commit happened here (implemented over
@@ -31,7 +39,13 @@ export interface CommitEmitter {
 
 /** Where an outcome is written so a silent failure is visible (tk-000b). */
 export interface HookJournal {
-  record(entry: { at: string; phase: HookPhase; repoRoot: string; outcome: FireOutcome }): void;
+  record(entry: {
+    at: string;
+    phase: HookPhase;
+    /** `null` only for a payload so malformed it never named a repository. */
+    repoRoot: string | null;
+    outcome: FireOutcome;
+  }): void;
 }
 
 export interface CommitInterceptDeps {

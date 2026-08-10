@@ -428,6 +428,25 @@ export interface FireSummary {
   failed: number;
   /** Newest failures, with the cause the journal recorded. */
   failures: { at: string; cause: string }[];
+  /**
+   * How many fires could not READ their payload at all (plan 082 F009).
+   *
+   * ITS OWN COUNT, DELIBERATELY NOT ADDED TO {@link failed}. "Our emit failed" and
+   * "we could not read the agent's input" call for different operator actions and
+   * different diagnoses — one points at the collector, the other at the agent
+   * client — and a single number is useless for both. The same call was made in
+   * F008, where folding refused-upgrades into refusals would have collapsed two
+   * meanings into one.
+   */
+  unparseable: number;
+  /**
+   * Newest unreadable payloads: WHEN, HOW MUCH arrived and the BOUNDED HEX HEAD.
+   *
+   * Never the body — it carries `user_email` and `transcript_path`. The head is
+   * what makes a new prefix diagnosable in seconds instead of three sessions: a
+   * leading `ef bb bf` here IS the Cursor-on-Windows BOM, named on sight.
+   */
+  unreadable: { at: string; rawLen: number; headHex: string }[];
 }
 
 export interface StatusReport extends AgentReport {
@@ -668,12 +687,32 @@ export function fireSummary(deps: HooksDeps): FireSummary {
       cause: entry.outcome.kind === 'failed' ? entry.outcome.cause : '',
     }));
 
+  /*
+   * A THIRD LIST, NOT A BIGGER `failed`. A payload we could not read is a
+   * different fault with a different owner than an emit that failed, and the
+   * count is only actionable while the two stay apart.
+   *
+   * This list is why the F009 fix does not stop at the journal. The failure it
+   * makes observable would otherwise be recorded by the file and dropped by the
+   * surface operators actually read — the journal's own blindness, rebuilt one
+   * layer up.
+   */
+  const unreadable = entries
+    .filter((entry) => entry.outcome.kind === 'unparseable')
+    .map((entry) => ({
+      at: entry.at,
+      rawLen: entry.outcome.kind === 'unparseable' ? entry.outcome.rawLen : 0,
+      headHex: entry.outcome.kind === 'unparseable' ? entry.outcome.headHex : '',
+    }));
+
   return {
     // `recorded: false` is NOT "everything succeeded" — see the field doc.
     recorded: entries.length > 0,
     total: entries.length,
     failed: failures.length,
     failures: failures.slice(-10),
+    unparseable: unreadable.length,
+    unreadable: unreadable.slice(-10),
   };
 }
 
