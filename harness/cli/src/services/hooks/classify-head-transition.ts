@@ -225,21 +225,12 @@ export function classifyHeadTransition(inputs: TransitionInputs): TransitionOutc
   if (commandScan === 'imports-content') {
     return { decision: 'silent', reason: 'command-imports-content' };
   }
-  // `index-was-not-clean` WAS HERE, AND WAS REMOVED (2026-08-10, Jordan's ruling).
-  //
-  // It asked the wrong question. Every check above answers "was a genuine new commit
-  // AUTHORED HERE?" — which is what the six synthetic events assert. This one asked
-  // "did someone stage in a SEPARATE tool call?", which is not evidence about whether
-  // a commit happened, and it made the relay an adjudicator of whether a commit
-  // DESERVES attribution. That call is git-ai's, not ours: we emit no sha, no line
-  // ranges and no authorship, so we cannot mis-attribute — only wrongly assert that a
-  // commit occurred.
-  //
-  // MEASURED COST of keeping it (Windows, run 8, commit d35a2c6e): the agent staged
-  // with `git add -A` in one tool call and committed in the next, so PRE saw a dirty
-  // index and we stayed SILENT. git-ai attributed the commit anyway through its own
-  // channel and got it WRONG — eight files the agent never opened claimed in full, and
-  // eight hand-typed human lines claimed for the agent. Our silence bought no safety;
-  // it only removed us from a note that was written regardless.
+  // THE discriminator. Everything above this line is defeated by at least one
+  // measured transition; this is what separates the remaining seven from a
+  // genuine agent commit. `unknown` fails the same way `already-staged` does —
+  // a read we could not make is not evidence.
+  if (indexAtPre !== 'clean') {
+    return { decision: 'silent', reason: 'index-was-not-clean' };
+  }
   return { decision: 'emit', reason: 'authored-here' };
 }
