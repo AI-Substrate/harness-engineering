@@ -1,0 +1,24 @@
+docs/plans/082-harness-hooks/assets/windows/vendor-support-status-non-wsl-experimental.md
+  s_08c9ad1cb0abea::t_7089208cff90ad 1-120
+docs/plans/082-harness-hooks/assets/windows/README.md
+  s_08c9ad1cb0abea::t_be5db0b6adc68e 37-42
+  s_08c9ad1cb0abea::t_4246050ee140e6 12-17
+  s_08c9ad1cb0abea::t_6ceb8adc5c67ec 36
+  s_08c9ad1cb0abea::t_37c9861dfcdcdd 20,23,26,31,33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "9a65c556eb9fb128c4ad56128f4ad58e193a3d4e",
+  "prompts": {},
+  "sessions": {
+    "s_08c9ad1cb0abea": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "1b747797-583d-4097-a0b6-d0ebdf1febce",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
