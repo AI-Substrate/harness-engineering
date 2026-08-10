@@ -18,9 +18,14 @@ listed at the bottom and are deliberately *not* blocking.
 4. **[`same-file-mixed-commit.md`](./same-file-mixed-commit.md)** and
    **[`ordering-experiment.md`](./ordering-experiment.md)** — the two experiments that eliminated
    edit mechanism, ordering and adjacency.
-5. **[`machine-and-method-facts.md`](./machine-and-method-facts.md)** — reusable facts, the
+5. **[`cursor-sandbox-not-on-native-windows.md`](./cursor-sandbox-not-on-native-windows.md)** —
+   why the Cursor UI offers "Allowlist (with Sandbox)" on macOS and only "Allowlist" on Windows,
+   vendor-sourced: **there is no native Windows sandbox; on Windows it runs inside WSL2.**
+   Consequence: **the relay's rescue path has never been exercised on Windows**, because the
+   condition it rescues from does not occur there.
+6. **[`machine-and-method-facts.md`](./machine-and-method-facts.md)** — reusable facts, the
    `harness doctor` output, machine state, and **the way back** if a deploy goes sideways.
-6. **[`deploy-runbook.md`](./deploy-runbook.md)** — build → pack → deploy → verify by behaviour.
+7. **[`deploy-runbook.md`](./deploy-runbook.md)** — build → pack → deploy → verify by behaviour.
 
 ## What was established
 
@@ -28,6 +33,11 @@ listed at the bottom and are deliberately *not* blocking.
 parsed → repo resolved → commit classified → written to a **live** daemon → note produced. It
 also fails *honestly*: stop the daemon and the pipe vanishes, `connect` returns `ENOENT`, and the
 relay journals `failed: absent` rather than a false `emitted`.
+
+**But the relay's RESCUE path was never exercised there.** Cursor has **no native Windows
+sandbox** — vendor-documented, WSL2-only — so git's own trace2 always reached the daemon and no
+commit was ever at risk. Every Windows measurement here is the pass-through case. That is a scope
+fact, not a defect, and it must travel with any Windows claim.
 
 **Attribution is wrong when no `KnownHuman` attestation exists for the human's lines** — which on
 Windows is always, because **`KnownHuman` has never once been recorded there** (0 of 28
@@ -56,9 +66,12 @@ Now recorded in
 ## Open, and deliberately not blocking
 
 - Whether the daemon **acts on** our six synthetic events — they reach a live listener, but we
-  have not shown one produced a note git's own trace2 could not have.
-- **Why git-ai's `KnownHuman` path never fires on Windows** — the extension is installed and
-  never produces one. Highest-value open question.
+  have not shown one produced a note git's own trace2 could not have. **On native Windows this may
+  be unanswerable**: with no sandbox, git's own stream always arrives.
+- **Why git-ai's `KnownHuman` path never fires on Windows** — same extension version produces 16
+  attestations on macOS and 0 on Windows. Highest-value open question, and **unrelated to the
+  sandbox gap** (different subsystem, no shared evidence).
+- **The relay's rescue path on Windows**, which needs Cursor running through WSL2 or an
+  artificially blocked ingress.
 - The third outcome shape (human line **unclaimed** rather than claimed) was seen once.
-- macOS/Windows comparison of what produces a `KnownHuman` attestation.
 - `validate-attribution` cannot run in the guest (`E149`) and its parser drops `unparseable`.
