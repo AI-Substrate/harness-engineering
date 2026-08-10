@@ -22,6 +22,48 @@ live daemon whose absence fails silently.
 
 ---
 
+## PRACTICAL GUIDANCE — a human line survives only if a KnownHuman attestation exists (MEASURED 2026-08-10)
+
+> **`KnownHuman` (`h_…`) is the only durable human claim. A plain `Human` checkpoint is a diff
+> base, not an attestation.** Without a `KnownHuman` for those lines, commit-time recovery
+> assigns unwitnessed lines to the only session it knows — in an agent-run commit, the agent's.
+
+**On Windows this currently always bites**: `KnownHuman` has **never once been recorded** on the
+test machine (0 of 28 checkpoints), even though git-ai's VS Code extension is installed there.
+**So on Windows, commit your own work yourself from the Cursor UI** — it is presently the only
+reliable way for your lines to be attributed to you.
+
+Measured back to back in one repository, minutes apart:
+
+| who ran the commit | contents | result |
+|---|---|---|
+| **agent** (`git add -A` + `git commit`) | agent edits + a human-authored file | the human's file, **never opened by the agent**, claimed in full for the agent session. No `h_` |
+| **human**, from the Cursor UI | human-only work | **correct `h_` known-human attribution** |
+| **human**, from the UI, after the agent had also edited | agent lines + one human line | agent's lines correct; the human's line **unclaimed** — not stolen, not attested |
+
+**Who commits is not the mechanism, though — it is one way to produce an attestation.** A macOS
+commit where the **agent** ran `git add -A` still produced a correct `h_` **beside** the agent's
+`s_` claim in the same note, because a `KnownHuman` checkpoint existed for those lines.
+
+**If the agent must commit, use explicit pathspecs** — `harness commit "<msg>" -- <paths>` rather
+than `git add -A`. It does **not** fix attribution, but it collapses the blast radius: one
+measured pair went from **9 of 10** claims minted by recovery down to **0 of 1**. A sweeping stage
+hands the recovery ladder every unwitnessed file in the tree, and it claims all of them.
+
+**Do not read an unclaimed range as "attributed to the human."** Unclaimed is silence, not
+attestation.
+
+**This is git-ai's commit-time recovery, not the harness relay.** The relay was measured working
+end-to-end on Windows (hook fires, BOM stripped, payload parsed, commit classified, written to a
+live daemon, and it reports `failed` honestly when the daemon is stopped). Removing our strongest
+guard, disabling the Cursor sandbox, inverting edit order and breaking adjacency each changed
+**nothing** about the outcomes above.
+
+Full evidence:
+[`docs/plans/082-harness-hooks/assets/windows/knownhuman-attestation-decides-attribution.md`](../../plans/082-harness-hooks/assets/windows/knownhuman-attestation-decides-attribution.md).
+
+---
+
 ## 1. End to end
 
 | Stage | What happens | Fails how |

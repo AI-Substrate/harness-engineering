@@ -14,7 +14,7 @@ measurement with its invocation pasted, or an explicit statement that no measure
 |---|---|---|
 | **macOS** (arm64, this machine) | **MEASURED** — all rows green | **MEASURED** against a live git-ai 1.6.21 daemon |
 | **Linux** (Ubuntu plucky, aarch64, OrbStack) | **MEASURED** — all rows green | **SKIPPED** — no daemon in the VM (the skip path itself is proven) |
-| **Windows** | **UNVERIFIED** — no instrument | **UNVERIFIED** |
+| **Windows** | **MEASURED 2026-08-10** — see § Windows update | **MEASURED** against a live git-ai 1.6.21 daemon over a named pipe |
 
 ---
 
@@ -129,6 +129,18 @@ property of someone else's system that we do not control, which is exactly why i
 
 ## Windows — UNVERIFIED, and here is precisely what needs doing
 
+> **SUPERSEDED 2026-08-10 — Windows is now MEASURED. The work list below was accurate when
+> written and is kept as the record of what was asked for.** Item 1's conclusion ("the tickler
+> will refuse to emit … inert on Windows today") **no longer holds**: F006 established that
+> Node's `net.connect` takes the same `{path}` shape for an `af_unix` socket and a Win32 named
+> pipe, so no transport code was needed. Measured on a real Windows host against a live daemon:
+> the relay **emitted** to `\\.\pipe\git-ai-<digest>-trace2` and a note was written.
+>
+> Full result: [`windows/same-file-mixed-commit.md`](./windows/same-file-mixed-commit.md) ·
+> machine and method facts: [`windows/machine-and-method-facts.md`](./windows/machine-and-method-facts.md)
+> · the defect found and fixed on the way: [`windows/hook-parse-observable-brief.md`](./windows/hook-parse-observable-brief.md)
+> · deploy procedure: [`windows/deploy-runbook.md`](./windows/deploy-runbook.md)
+
 Handed to the remote agent on **#108**. Nothing below is a claim; it is a work list.
 
 **Why it cannot be inferred from the macOS/Linux results.** The whole emit path changes shape:
@@ -162,6 +174,18 @@ cd harness/cli && $env:HARNESS_TEST_SCOPE='all'; npx vitest run test/services/ho
 
 **Until that report lands, Windows stays UNVERIFIED and the emit path there is believed inert.**
 Do not describe this feature as cross-platform.
+
+> **The report landed, 2026-08-10.** Answering the three asks directly:
+> **(a)** No rows failed for the reasons predicted; the failure found was a different one
+> entirely — Cursor prepends a **UTF-8 BOM** to hook stdin on Windows, our parser did not strip
+> it, and the hook died **silently** because the journal was constructed *after* the guards it
+> returned at. Fixed in `46b0dd00` and deployed.
+> **(b)** The live daemon **found a pipe** — it did not SKIP.
+> **(c)** `trace2.eventTarget` on that host is `\\.\pipe\git-ai-7e23ac9630ec3d08-trace2`.
+>
+> **Windows may now be described as measured for the hook path.** The one thing that must NOT be
+> described as working is *same-file mixed-commit attribution correctness*, which fails — and
+> that is git-ai attribution semantics, not this feature.
 
 ---
 
