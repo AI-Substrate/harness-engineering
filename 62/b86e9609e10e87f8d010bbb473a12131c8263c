@@ -1,0 +1,82 @@
+harness/cli/src/services/hooks/hooks-verbs.ts
+  s_ed609d39de2442::t_7263ab199fc914 127-134
+  s_ed609d39de2442::t_072872bed34db3 6
+  s_ed609d39de2442::t_bc28da38f870d4 432
+harness/cli/src/services/docs/docs-content.ts
+  s_ed609d39de2442::t_ebe236f94f387a 85
+harness/cli/src/services/hooks/install-strategy-a.ts
+  s_ed609d39de2442::t_718ce0b96531a3 243
+  s_ed609d39de2442::t_26b6e77d1ef811 186
+  s_ed609d39de2442::t_b36cad192046e2 3,5-6
+  s_ed609d39de2442::t_bd24c7c3d99d57 4,152-155
+  s_ed609d39de2442::t_e893899f0bc84c 106-151,156-185
+  s_ed609d39de2442::t_f5c096cc19640f 210-213,216-218,250
+  s_ed609d39de2442::t_423a277a93fc89 83-85,200,249
+harness/cli/src/services/hooks/hook-marker.ts
+  s_ed609d39de2442::t_bd24c7c3d99d57 185
+  s_ed609d39de2442::t_54701c9370d85a 161-184,186-194
+  s_ed609d39de2442::t_5a16d16ef61639 160
+harness/cli/test/services/hooks/install-strategy-a.test.ts
+  s_ed609d39de2442::t_59ae12ca758acf 229-231
+harness/cli/src/services/hooks/config-writer.ts
+  s_ed609d39de2442::t_24d5fec4459d55 116-133
+  s_ed609d39de2442::t_5743ff5129359b 115
+harness/cli/test/services/hooks/idempotency.test.ts
+  s_ed609d39de2442::t_f5cefd164b71dd 8
+  s_ed609d39de2442::t_cef5e392057791 82-86,88
+harness/cli/test/support/agent-config-schema.ts
+  s_ed609d39de2442::t_4e1309372fbe6a 1-160,165-225
+  s_ed609d39de2442::t_bd24c7c3d99d57 161-164
+harness/cli/test/services/hooks/entry-shape.test.ts
+  s_ed609d39de2442::t_bd24c7c3d99d57 72-75,87-89,91-94,126-129,142-144,146-152,154-155,170-173,184-186,188-189,191-198,200-208
+  s_ed609d39de2442::t_03dcae81c11928 210-222
+  s_ed609d39de2442::t_b54448eda15ca4 1-11,13-51,55-71,76-86,90,95-125,130-141,145,153,156-169,174-183,187,190,199,209,255,282-283,397-446
+  s_ed609d39de2442::t_5296096822f701 223-254
+  s_ed609d39de2442::t_d09b9e3b523ec2 284-367,394-396
+  s_ed609d39de2442::t_3ccda1ff69841c 52-54,368-393
+  s_ed609d39de2442::t_8e6629bf0231cd 256-281
+  s_ed609d39de2442::t_714fcdc61cefcd 12
+harness/cli/test/services/hooks/uninstall.test.ts
+  s_ed609d39de2442::t_59ae12ca758acf 81-83
+harness/cli/test/services/hooks/composed-command.int.test.ts
+  s_ed609d39de2442::t_aed907b1512b91 8-12
+  s_ed609d39de2442::t_1cbbc7c59e2de8 141,144-154
+  s_ed609d39de2442::t_47a65027231bef 7
+  s_ed609d39de2442::t_929c346a24e899 159-171,238-248,289-290
+harness/cli/src/services/hooks/uninstall-strategy-a.ts
+  s_ed609d39de2442::t_b36cad192046e2 3,5,118,130,135-137,140,171
+  s_ed609d39de2442::t_9bec3426883c95 94,122,190-199
+  s_ed609d39de2442::t_bd24c7c3d99d57 102
+  s_ed609d39de2442::t_e064d73abb929e 200
+harness/cli/test/services/hooks/agent-matrix.test.ts
+  s_ed609d39de2442::t_588479f8138957 87-100,104,106-109,111
+  s_ed609d39de2442::t_59ae12ca758acf 115-120,182-184
+harness/cli/src/services/hooks/agent-matrix.ts
+  s_ed609d39de2442::t_718ce0b96531a3 192-197
+  s_ed609d39de2442::t_a4ffc1260940b7 213-216,223-226,233,236-242,249-252,259-268,283-284,306-307
+  s_ed609d39de2442::t_cda427f801ca70 47-85
+  s_ed609d39de2442::t_32cc98aed3aa6f 116-126,175-186,189-190
+  s_ed609d39de2442::t_8f3731b6bdd774 166-172,286-291
+  s_ed609d39de2442::t_e48303fe12f175 142-165
+  s_ed609d39de2442::t_43ee84aa2aad78 191,210,292,300-305,308
+docs/plans/082-harness-hooks/assets/tasks/phase-5/execution.log.md
+  s_ed609d39de2442::t_6bf1a6c50029eb 1-194,203,205-217,219,222,245,255,260-294
+  s_ed609d39de2442::t_0ec3ede0659be2 195-202,204
+  s_ed609d39de2442::t_7a8139a4d7fc00 218,220-221,223-244,246-254,256-259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "62b86e9609e10e87f8d010bbb473a12131c8263c",
+  "prompts": {},
+  "sessions": {
+    "s_ed609d39de2442": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "62892a0d-07d6-4784-b490-986f797be544",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
