@@ -1,0 +1,38 @@
+harness/cli/src/services/doctor/collector/health.ts
+  s_7d06b931880f9e::t_a457cf389c87dd 468-472,474,480-486,488
+harness/cli/test/services/doctor/collector/at-risk.test.ts
+  s_7d06b931880f9e::t_e34dae73383b11 192-202,208-209,214-227,230-237,240-241
+  s_7d06b931880f9e::t_aad8fd190fcf80 203-207,210-213,228-229,238-239
+harness/cli/src/services/doctor/collector/ingress.ts
+  s_7d06b931880f9e::t_0ecd6d94cb1a90 120-133
+  s_7d06b931880f9e::t_a146445709179c 331-341
+harness/cli/src/services/commit/commit-service.ts
+  s_7d06b931880f9e::t_99314fc4bf4075 140-147
+  s_7d06b931880f9e::t_94f7329f12079a 34-38
+harness/cli/src/services/doctor/collector/at-risk.ts
+  s_7d06b931880f9e::t_13b53d6ee42ba0 75-84,94
+harness/cli/test/services/doctor/collector/health.test.ts
+  s_7d06b931880f9e::t_b9af1125564065 502-576
+harness/cli/test/services/doctor/collector/ingress.test.ts
+  s_7d06b931880f9e::t_faaf68e34f5d2b 106-130
+  s_7d06b931880f9e::t_fbdeb528e80646 131
+  s_7d06b931880f9e::t_7c62efb55068cc 160-163,165-168
+  s_7d06b931880f9e::t_089cb9e9e00ee4 241
+  s_7d06b931880f9e::t_dd453dae80f271 105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e45d19a4aeed73defb25f3a08f16da0ca16d8075",
+  "prompts": {},
+  "sessions": {
+    "s_7d06b931880f9e": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "3d06b5bd-74c6-4fc1-bec0-a90d6928a7b6",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
