@@ -3,6 +3,7 @@ import { clearAutoInstallBlock } from './auto-install-block.js';
 import { backupAgentConfigs } from './backup.js';
 import { downloadAndVerify } from './download.js';
 import { agentEvidence, snapshotAgentConfigs } from './evidence.js';
+import { describeExit } from './exit-code.js';
 import { GITAI_PIN } from './pin.js';
 import { binaryPathFor, configPathFor, resolveArtifact } from './platform.js';
 import { manualSkillsInstructions, readSkillsGuard } from './skills-guard.js';
@@ -21,7 +22,7 @@ import {
   readGlobalTrace2,
   verifyInstalledTrace2,
 } from './trace2.js';
-import { type CollectorDeps, INSTALL_HOOKS_TIMEOUT_MS } from './types.js';
+import { type CollectorDeps, INSTALL_HOOKS_TIMEOUT_MS, VIABILITY_TIMEOUT_MS } from './types.js';
 
 /**
  * The collector lifecycle (plan 073 · ac-0007, ac-0009, ac-0013, ac-0014, ac-0016).
@@ -57,6 +58,19 @@ export type HooksStage =
    * `skipped-trace2`: a deliberate, reportable, recoverable non-install.
    */
   | 'skipped-skills'
+  /**
+   * The pinned artifact is on disk and its digest matches, and it CANNOT RUN
+   * HERE (plan 082 · F007). A third refusal in the same family as the two above,
+   * and the one that was missing when a Windows 11 guest reported
+   * `git-ai CLI: already-current` beside `git-ai hooks: failed` on 2026-08-10.
+   *
+   * Not folded into `failed`, because the operator actions are different and had
+   * collapsed to one word: `failed` means the vendor command RAN and refused —
+   * read its output, re-run it. This means the vendor command never started —
+   * nothing it could have said exists, and the fix is on the machine, not in the
+   * command.
+   */
+  | 'binary-unusable'
   /**
    * `install-hooks` exited 0, and the config it ALWAYS writes is not there (or
    * could not be re-read). Deliberately not `installed` and deliberately not
@@ -265,6 +279,69 @@ function uncoveredAgentIds(deps: CollectorDeps, state: CollectorState): string[]
 }
 
 /**
+ * CAN THIS BINARY RUN HERE? The cheapest self-identifying question there is,
+ * asked before anything irreversible (plan 082 · F007a).
+ *
+ * The bar is `--version` exiting 0 AND SAYING SOMETHING, and the second half is
+ * not pedantry. `trace2.ts` already records the property that makes an exit code
+ * worthless on its own: git-ai's arg parser "ignores what it does not understand
+ * and still exits 0" (`verifyInstalledTrace2`, trace2.ts:133). That is the same
+ * defence one layer down — a zero exit is not evidence a program ran its own
+ * code, and a program that identifies itself in neither stream has given us
+ * nothing to stand on. Either stream counts: which one a vendor prints its
+ * version to is not something we have measured, and refusing over that would be
+ * inventing a requirement.
+ *
+ * Never fatal to stage 1. The pinned artifact stays exactly where it was placed,
+ * digest and all; what is withheld is the destructive command.
+ */
+async function checkViability(
+  deps: CollectorDeps,
+  binaryPath: string,
+): Promise<{ ok: true } | { ok: false; detail: string; manual: string[] }> {
+  const preamble = `the pinned git-ai binary at ${binaryPath} is on disk and its SHA-256 matches the manifest, but it could not be RUN on this machine`;
+  const epilogue =
+    'install-hooks was NOT attempted — a digest proves the bytes are the ones we asked for, not that they execute here';
+  let result: { code: number; stdout: string; stderr: string };
+  try {
+    result = await deps.exec.run(binaryPath, ['--version'], {
+      cwd: deps.cwd,
+      timeoutMs: VIABILITY_TIMEOUT_MS,
+    });
+  } catch (err) {
+    return {
+      ok: false,
+      detail: `${preamble}: \`${binaryPath} --version\` could not be spawned at all (${err instanceof Error ? err.message : String(err)}). ${epilogue}`,
+      manual: manualViabilityInstructions(binaryPath),
+    };
+  }
+  const said = `${result.stdout}\n${result.stderr}`.trim();
+  if (result.code === 0 && said !== '') return { ok: true };
+  const how =
+    result.code === 0
+      ? 'exited 0 but printed nothing to either stream, so nothing here shows it reached its own code'
+      : describeExit(result.code, result.stderr);
+  return {
+    ok: false,
+    detail: `${preamble}: \`${binaryPath} --version\` ${how}. ${epilogue}`,
+    manual: manualViabilityInstructions(binaryPath),
+  };
+}
+
+/**
+ * What to do about a binary that will not start. Deliberately short, and
+ * deliberately does NOT re-state the cause — the cause is already in the
+ * warning, and repeating a Windows-specific guess in an instruction shown on
+ * every platform is how advice stops being read.
+ */
+function manualViabilityInstructions(binaryPath: string): string[] {
+  return [
+    `Run \`${binaryPath} --version\` yourself and read what the operating system says about it.`,
+    'Nothing was uninstalled and nothing was hooked: the verified binary is still on disk, and harness re-checks it on the next ordinary `harness doctor` — once it runs, the hooks go on with no flag and no re-run by hand.',
+  ];
+}
+
+/**
  * Stage 2 — hooks. Callable on its own for a re-check (ac-0010): the trace2
  * guard runs EVERY time, first install and re-check alike, because git-ai
  * re-applies the trace2 removal on every invocation.
@@ -286,6 +363,44 @@ export async function installHooks(
   binaryPath: string,
 ): Promise<{ hooks: HooksStage; state: CollectorState; warnings: string[]; manual: string[] }> {
   const now = deps.clock.nowIso();
+
+  // ZEROTH precondition, and the one whose absence was the defect (plan 082 ·
+  // F007): ASK THE BINARY TO DO SOMETHING BEFORE HANDING IT THE DESTRUCTIVE
+  // COMMAND.
+  //
+  // A digest proves PROVENANCE — that the bytes on disk are the bytes the
+  // manifest names. It says nothing about VIABILITY, whether those bytes can
+  // execute on THIS machine. On a Windows 11 guest (2026-08-10) we reported
+  // `git-ai CLI: already-current` — true, about bytes — and in the same breath
+  // `git-ai hooks: failed`, because that same binary could not start: the loader
+  // killed it for a missing DLL before a line of its own code ran. We had
+  // verified we got the right file and never verified the file works, and then
+  // gave it the machine-wide mutation anyway.
+  //
+  // Placed FIRST, ahead of the trace2 and skills guards, for one reason: those
+  // two are about what we might destroy, and this one is about whether there is
+  // any point. It is also the cheapest question in the flow.
+  const viability = await checkViability(deps, binaryPath);
+  if (!viability.ok) {
+    const next = recordAttempt(state, now, {
+      status: 'binary-unusable',
+      detail: viability.detail,
+      uncovered: uncoveredAgentIds(deps, state),
+      // NOTHING WAS INVOKED, so nothing on this machine changed — the same rule
+      // the two guards below follow. Hooks proven installed earlier are still
+      // installed and still collecting, and overwriting that would announce that
+      // attribution had stopped when it had not.
+      preserveCoverage: true,
+    });
+    writeCollectorState(deps.fs, deps.cwd, next);
+    return {
+      hooks: 'binary-unusable',
+      state: next,
+      warnings: [viability.detail],
+      manual: viability.manual,
+    };
+  }
+
   const reading = await readGlobalTrace2({ exec: deps.exec, cwd: deps.cwd }, now);
   let next = recordTrace2Observation(state, {
     observed: reading.status,
@@ -408,10 +523,13 @@ export async function installHooks(
 
   if (result.code !== 0) {
     next = recordAttempt(next, now, {
+      // The vendor's own words when it has any, the OS's verdict when it does
+      // not (plan 082 · F007b). Mostly unreachable now that the viability probe
+      // runs first — a binary that cannot start never gets here — but a process
+      // can also be killed BY the OS mid-run, and the fallback that reported a
+      // bare ten-digit integer with no next action is not one to leave standing.
       status: 'failed',
-      detail: `install-hooks exited ${result.code}${
-        result.stderr.trim() === '' ? '' : `: ${result.stderr.trim().split('\n')[0]}`
-      }`,
+      detail: `install-hooks ${describeExit(result.code, result.stderr)}`,
       uncovered: uncoveredAgentIds(deps, next),
       preserveCoverage: false,
     });

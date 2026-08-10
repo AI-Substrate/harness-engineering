@@ -215,6 +215,11 @@ describe('installHooks records what it can evidence, not what git-ai named', () 
 
     const exec = new FakeSequencedExec(
       {
+        // The viability probe (plan 082 · F007): this fixture must DECLARE that
+        // the binary runs, because an unconfigured fake exits 0 in silence and
+        // `installHooks` refuses that — deliberately, so a fixture that never
+        // said the binary works breaks instead of quietly skipping the install.
+        [`${binary} --version`]: { code: 0, stdout: 'git-ai 1.6.22' },
         // TWO reads on this path: the guard (EMPTY, which unlocks the install)
         // and the post-install verification (git-ai's own key, which is what
         // proves the vendor command really ran). A third entry here would leave

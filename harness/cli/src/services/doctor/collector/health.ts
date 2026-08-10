@@ -371,6 +371,30 @@ export function readCollectorHealth(deps: CollectorHealthDeps): CollectorHealth 
         'Move or rename the reported skill paths if they are yours to keep, then re-run `harness doctor --install-collector`. Harness will not delete them for you.',
     };
   }
+  // A NEW STATE INHERITS THE DEFAULT VERDICT OF EVERY RUNG THAT PREDATES IT, and
+  // the default at the bottom of this ladder is `healthy` (plan 082 · F007).
+  //
+  // This rung is not decoration. Without it a `binary-unusable` state falls
+  // through `skipped-*`, through `failed || not-attempted`, past the missing-agent
+  // rung — and lands on `healthy`, announcing that a binary which cannot start is
+  // "installed and hash-matching, collection is CONFIGURED". The row was already
+  // half-lying before F007 (it reported the CLI `already-current`, a claim about
+  // bytes, beside a hook failure caused by those bytes not running); after F007 it
+  // would have lied MORE loudly, because the hook stage would no longer say
+  // `failed` to contradict it.
+  //
+  // The CLI half of the sentence is kept TRUE rather than softened: the artifact
+  // genuinely is present and genuinely does match the pin. What is added is the
+  // half that was missing — that this proves provenance and not viability.
+  if (state.hooks.status === 'binary-unusable') {
+    return {
+      ...base,
+      verdict: 'degraded',
+      detail: `the pinned git-ai ${manifest.version} is present at ${binaryPath} and its digest matches — but it CANNOT RUN on this machine, so no hooks were installed and no AI attribution is being collected: ${state.hooks.detail}`,
+      next_action:
+        'A matching digest proves the right bytes, not a working program. Run `git-ai --version` yourself and read what the operating system says. On Windows a missing Microsoft Visual C++ Redistributable is the usual cause (`winget install Microsoft.VCRedist.2015+.x64`); harness re-probes on the next ordinary `harness doctor` and installs the hooks itself once the binary runs.',
+    };
+  }
   if (state.hooks.status === 'unverified') {
     return {
       ...base,
@@ -416,6 +440,14 @@ export function readCollectorHealth(deps: CollectorHealthDeps): CollectorHealth 
         verdict: 'hooks-incomplete',
         detail: `${covered}, but ${labels} is NOT instrumented — the automatic re-install was blocked because real content sits where git-ai keeps its skill links: ${attempt.detail}`,
         next_action: `Move or rename the reported skill paths if they are yours to keep, then re-run \`harness doctor --recheck-collector\` to cover ${labels}. The hooks already installed are unaffected either way.`,
+      };
+    }
+    if (attempt?.status === 'binary-unusable') {
+      return {
+        ...base,
+        verdict: 'hooks-incomplete',
+        detail: `${covered}, but ${labels} is NOT instrumented — the automatic re-install was blocked at ${attempt.at} because the pinned binary could no longer run: ${attempt.detail}`,
+        next_action: `Make the binary runnable (run \`${binaryPath} --version\` and read the operating system's answer; on Windows a missing Microsoft Visual C++ Redistributable is the usual cause), and the next ordinary \`harness doctor\` covers ${labels} by itself. The hooks already installed are unaffected — they were installed by a binary that ran.`,
       };
     }
     return {

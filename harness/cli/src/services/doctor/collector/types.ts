@@ -138,3 +138,21 @@ export interface CollectorDeps {
 /** Wall-clock ceilings. A collector install must never hang a doctor run. */
 export const DOWNLOAD_TIMEOUT_MS = 60_000;
 export const INSTALL_HOOKS_TIMEOUT_MS = 120_000;
+/**
+ * The viability probe's own, deliberately SHORT ceiling (plan 082 · F007).
+ *
+ * It is not INSTALL_HOOKS_TIMEOUT_MS and must never become it. The probe is a
+ * precondition that refuses rather than a failure that latches, so it is
+ * re-attempted on EVERY bare `harness doctor` — which is the correct behaviour
+ * (the operator installs the missing redistributable and the next ordinary run
+ * simply works, with nothing to re-run by hand) and is exactly why its cost is a
+ * design constraint rather than an implementation detail. Nobody opted into this
+ * path.
+ *
+ * The measured failure — a Windows loader error — is instant, but that is one
+ * failure mode. A binary that HANGS instead (a stalled DLL, a blocking AV scan)
+ * would otherwise tax every doctor run on that machine for two full minutes.
+ * Five seconds is generous for a cold start of an unsigned executable and 24×
+ * cheaper when the answer never comes.
+ */
+export const VIABILITY_TIMEOUT_MS = 5_000;

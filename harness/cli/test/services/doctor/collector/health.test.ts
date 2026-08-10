@@ -595,3 +595,90 @@ describe('plan 082 · F006 — the pipe rungs say what is true about a PIPE', ()
     expect(result.next_action).not.toContain('NOT available');
   });
 });
+
+/**
+ * Plan 082 · F007 — A NEW STATE INHERITS THE DEFAULT VERDICT OF EVERY RUNG THAT
+ * PREDATES IT, AND THE DEFAULT IS USUALLY "FINE".
+ *
+ * `binary-unusable` was added to the hook-status union for the installer's sake.
+ * This ladder was written when that value could not exist, so every rung passed
+ * it through — and the bottom of the ladder is `healthy`. A binary the Windows
+ * loader refuses to start would have been reported as "installed and
+ * hash-matching, collection is CONFIGURED".
+ *
+ * That is the same exhaustiveness lesson as the named-pipe work (F006), arriving
+ * in a third place: adding a state to a union is never a local change, because
+ * the fall-through verdict is always the most confident one available. These
+ * rows exist so the ladder cannot silently regain that default.
+ */
+describe('a binary that cannot RUN is never healthy (plan 082 · F007)', () => {
+  const unusable = (detail: string) =>
+    stateWith({
+      hooks: { status: 'binary-unusable', at: NOW, agents: [], detail },
+    });
+
+  it('does NOT fall through to healthy — the row would have lied more loudly after the fix', () => {
+    const result = health({
+      fs: installedFs(),
+      state: unusable('`git-ai --version` exited 3221225781 (0xC0000135) and produced no output'),
+    });
+
+    expect(result.verdict).not.toBe('healthy');
+    expect(result.verdict).toBe('degraded');
+    expect(result.detail).not.toContain('CONFIGURED');
+    // The two halves that were previously said as one: the digest is REAL…
+    expect(result.detail).toContain('digest matches');
+    // …and it proves provenance, not that the program runs.
+    expect(result.detail).toContain('CANNOT RUN');
+    expect(result.detail).toContain('no AI attribution is being collected');
+    // And the operator is given the measured cause, not a ten-digit integer.
+    expect(result.next_action).toContain('Visual C++ Redistributable');
+    expect(result.next_action).toContain('--version');
+  });
+
+  it('tells the operator it self-heals — no flag, no re-run by hand', () => {
+    const result = health({ fs: installedFs(), state: unusable('cannot start') });
+
+    expect(result.next_action).toContain('next ordinary `harness doctor`');
+    // Nothing here should send them at `--install-collector`: the probe is
+    // re-attempted on every run precisely so that is unnecessary.
+    expect(result.next_action).not.toContain('--install-collector');
+  });
+
+  it('a BLOCKED re-check keeps the coverage it proved and does not advise a command that cannot work', () => {
+    const fs = installedFs();
+    fs.mkdirp(`${HOME}/.cursor`);
+
+    const result = health({
+      fs,
+      state: stateWith({
+        // Hooks went on earlier, by a binary that DID run…
+        hooks: {
+          status: 'installed',
+          at: NOW,
+          agents: ['claude'],
+          claimed: ['claude'],
+          detail: 'hooks installed',
+        },
+        // …and the re-check for the new harness hit a binary that no longer does.
+        last_attempt: {
+          status: 'binary-unusable',
+          at: NOW,
+          detail: '`git-ai --version` exited 3221225781 (0xC0000135)',
+          uncovered: ['cursor'],
+        },
+      }),
+    });
+
+    expect(result.verdict).toBe('hooks-incomplete');
+    expect(result.detail).toContain('Cursor');
+    expect(result.detail).toContain('could no longer run');
+    // The hooks that ARE on are still on: a probe that refused to invoke the
+    // vendor command changed nothing on this machine.
+    expect(result.detail).toContain('remain installed and collecting');
+    // `--recheck-collector` would run the same probe and refuse again. Naming it
+    // is advice we already know does not work.
+    expect(result.next_action).not.toContain('--recheck-collector');
+    expect(result.next_action).toContain('Visual C++ Redistributable');
+  });
+});

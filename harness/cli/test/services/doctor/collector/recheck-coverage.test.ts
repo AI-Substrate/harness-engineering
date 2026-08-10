@@ -44,6 +44,16 @@ const HOME = '/home/u';
 const REPO = '/repo';
 const NOW = '2026-08-06T10:00:00.000Z';
 const BINARY = '/home/u/.git-ai/bin/git-ai';
+
+/**
+ * EVERY FIXTURE MUST DECLARE THAT THE BINARY RUNS (plan 082 · F007).
+ *
+ * `installHooks` now asks `--version` before it hands over `install-hooks`, and
+ * an unconfigured fake answers exit 0 with silence — which is REFUSED. That is
+ * deliberate: a fixture that has not said the binary works must break loudly
+ * rather than sail through the guard and assert nothing.
+ */
+const VIABLE = { [`${BINARY} --version`]: { code: 0, stdout: 'git-ai 1.6.22' } };
 const TRACE2_GET = 'git config --global --get-regexp ^trace2\\.';
 /** git-ai's own two keys — what a successful `install-hooks` leaves behind. */
 const GITAI_TRACE2 =
@@ -74,6 +84,7 @@ function machine(): CollectorDeps & { fs: FakeCollectorFs; exec: FakeSequencedEx
   fs.mkdirp(`${HOME}/.codex`);
   const exec = new FakeSequencedExec(
     {
+      ...VIABLE,
       [TRACE2_GET]: [
         { code: 1, stdout: '' },
         { code: 0, stdout: `${GITAI_TRACE2}\n` },
@@ -195,6 +206,7 @@ describe('install → new agent → blocked re-check (the sequence, not the step
     const deps = machine();
     // Someone else's trace2 config, on a machine harness has never touched.
     const exec = new FakeSequencedExec({
+      ...VIABLE,
       [TRACE2_GET]: { code: 0, stdout: 'trace2.normalTarget /tmp/trace\n' },
       [`${BINARY} status --json`]: { code: 0, stdout: '{"schema_version":"authorship/3.0.0"}' },
     });
