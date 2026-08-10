@@ -69,8 +69,21 @@ export const ROTATE_CLAIM_STALE_MS = 60_000;
 export interface JournalEntry {
   at: string;
   phase: HookPhase;
-  repoRoot: string;
+  /**
+   * The repository the fire concerned — `null` ONLY for an `unparseable` outcome,
+   * where the document never named one. Every other outcome has a repo by
+   * construction, because the guards it passed required one.
+   */
+  repoRoot: string | null;
   outcome: FireOutcome;
+  /**
+   * A UTF-8 BOM was stripped from the payload this entry describes.
+   *
+   * Rides an entry that was being written anyway — a stripped BOM is worth a TRACE
+   * (so a change on the wire is visible the first time) but not a line of its own.
+   * The hook fires on every tool call; a record per strip would be a firehose.
+   */
+  strippedBom?: true;
 }
 
 export class FileHookJournal implements HookJournal {

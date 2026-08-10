@@ -9,7 +9,11 @@ import { ExecGitAttribution } from '../adapters/git/exec-git-attribution.js';
 import { NodeHash } from '../adapters/hash/node-hash.js';
 import { NodeSocketProbe } from '../adapters/net/node-socket-probe.js';
 import { embedInvocation } from '../services/hooks/binary-path.js';
-import { CommitIntercept, type HookPhase } from '../services/hooks/commit-intercept.js';
+import {
+  CommitIntercept,
+  type HookJournal,
+  type HookPhase,
+} from '../services/hooks/commit-intercept.js';
 import { FIRE_OPTIONS } from '../services/hooks/fire-options.js';
 import { FileHookJournal } from '../services/hooks/hook-journal.js';
 import {
@@ -277,6 +281,41 @@ async function fire(deps: HooksActDeps, agent: string, opts: FireOpts): Promise<
     const raw = opts.hookInput === 'stdin' ? await readStdin() : null;
     const payload = parseHookPayload(raw);
 
+    const dir = hookStateDir(home);
+    const file = new FileHookJournal(deps.fs, hookJournalPath(home), dir);
+
+    /*
+     * THE JOURNAL IS CONSTRUCTED BEFORE THE GUARDS BELOW, AND THAT ORDER IS THE FIX.
+     *
+     * It used to be built after them, so a payload we could not parse returned at
+     * the repo guard — `repoRoot` is null, `looksLikeRepo` is false — and exited 0
+     * having written nothing. The verb's contract is exit-0-always-and-silent
+     * precisely BECAUSE it runs inside an agent's tool loop, and that contract is
+     * paid for by a single promise: the journal is the observable. The one failure
+     * the journal could not record was its own, which is why a UTF-8 BOM on
+     * Cursor's Windows stdin cost three sessions and ~58 invocations to find. Fix
+     * the BOM and this blind spot is still here, waiting for the next malformed
+     * payload on any agent, on any platform.
+     *
+     * ONLY the parse failure is journalled here. Not every skipped read: the hook
+     * fires on EVERY tool call (~38 across a 19-tool-call run) and Node starts
+     * slowly, so a line per skip would trade a blind journal for an unusable one —
+     * the same loss by a different route. A parse failure is rare and actionable.
+     *
+     * The PAYLOAD BODY IS NEVER WRITTEN. It carries `user_email` and
+     * `transcript_path`; the record names the failure's shape, its size and a
+     * bounded hex head, and nothing else.
+     */
+    if (payload.unparseable !== null) {
+      file.record({
+        at: deps.clock.nowIso(),
+        phase,
+        repoRoot: null,
+        outcome: { kind: 'unparseable', ...payload.unparseable },
+      });
+      return;
+    }
+
     // Exit before ANY git work on a tool that cannot have committed. The hook
     // fires on every tool call and Node starts slowly; this is the mitigation for
     // the plan's Node-startup watch-item.
@@ -284,8 +323,12 @@ async function fire(deps: HooksActDeps, agent: string, opts: FireOpts): Promise<
     if (!looksLikeRepo(deps.fs, payload.repoRoot)) return;
     const repoRoot = payload.repoRoot as string;
 
-    const dir = hookStateDir(home);
-    const journal = new FileHookJournal(deps.fs, hookJournalPath(home), dir);
+    // A stripped BOM leaves a trace on the entries this fire was going to write
+    // anyway, so a CHANGE in what arrives on the wire is visible on the first fire
+    // rather than the fiftieth — at the cost of zero extra journal lines.
+    const journal: HookJournal = payload.strippedBom
+      ? { record: (entry) => file.record({ ...entry, strippedBom: true }) }
+      : file;
     const attribution = new ExecGitAttribution(repoRoot);
     const intercept = new CommitIntercept({
       git: new ExecGit(repoRoot),
@@ -309,10 +352,23 @@ async function fire(deps: HooksActDeps, agent: string, opts: FireOpts): Promise<
 }
 
 /** Read stdin to end. A stdin that never arrives resolves empty rather than hanging forever. */
-function readStdin(): Promise<string | null> {
+/**
+ * Read stdin to end AS BYTES. A stdin that never arrives resolves empty rather
+ * than hanging forever.
+ *
+ * NO `setEncoding`, AND THAT IS THE POINT. It used to decode to UTF-8 here, which
+ * is lossy for anything that is not UTF-8 and destroys the evidence before the
+ * parser can describe it: a UTF-16LE payload becomes U+FFFD, and the journal would
+ * then report `ef bf bd` — the replacement character, identical for every unknown
+ * encoding — instead of the `ff fe` that names it. That is the exact error that
+ * cost this defect two hours in the first place, a text-mode instrument reporting
+ * bytes it had already mangled. The decode still happens, one layer in, where the
+ * original bytes survive beside it.
+ */
+function readStdin(): Promise<Buffer | null> {
   return new Promise((resolve) => {
     let done = false;
-    const settle = (value: string | null) => {
+    const settle = (value: Buffer | null) => {
       if (done) return;
       done = true;
       resolve(value);
@@ -321,14 +377,13 @@ function readStdin(): Promise<string | null> {
     // tool call it is bracketing.
     const timer = setTimeout(() => settle(null), 2_000);
     timer.unref?.();
-    let buffer = '';
-    process.stdin.setEncoding('utf8');
-    process.stdin.on('data', (chunk) => {
-      buffer += chunk;
+    const chunks: Buffer[] = [];
+    process.stdin.on('data', (chunk: Buffer | string) => {
+      chunks.push(typeof chunk === 'string' ? Buffer.from(chunk, 'utf8') : chunk);
     });
     process.stdin.on('end', () => {
       clearTimeout(timer);
-      settle(buffer);
+      settle(Buffer.concat(chunks));
     });
     process.stdin.on('error', () => {
       clearTimeout(timer);

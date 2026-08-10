@@ -257,6 +257,8 @@ describe('parseHookPayload — the one input this runtime does not control (tk-0
       repoRoot: '/repo/alpha',
       command: 'git add -A && git commit -m "x"',
       toolName: 'Shell',
+      strippedBom: false,
+      unparseable: null,
     });
   });
 
@@ -276,11 +278,94 @@ describe('parseHookPayload — the one input this runtime does not control (tk-0
     // A repo path inferred from a malformed document could point the state store
     // at the WRONG repository, and mis-attributing to the wrong repo is worse
     // than not firing at all.
-    expect(parseHookPayload(raw)).toEqual({ repoRoot: null, command: null, toolName: null });
+    const payload = parseHookPayload(raw);
+    expect({
+      repoRoot: payload.repoRoot,
+      command: payload.command,
+      toolName: payload.toolName,
+    }).toEqual({ repoRoot: null, command: null, toolName: null });
+  });
+
+  it('SAYS it could not parse — the other half of do-not-guess (plan 082 F009)', () => {
+    /*
+    Test Doc:
+    - Why: do-not-guess was implemented and say-you-could-not-parse was not, so the
+      one failure the journal could not record was its own.
+    - Contract: an unparseable document reports WHY and HOW MUCH, alongside the
+      empty payload it already returned.
+    - Quality Contribution: separates "nothing arrived" from "something arrived and
+      was rubbish" — indistinguishable before this, and that was the whole defect.
+    */
+    expect(parseHookPayload('{ not json')).toMatchObject({
+      repoRoot: null,
+      unparseable: { reason: 'payload-not-json', rawLen: 10 },
+    });
+  });
+
+  it.each([
+    ['null input', null],
+    ['an empty string', ''],
+    ['whitespace only', '  \n '],
+  ])('does NOT call %s a parse failure — nothing arrived, nothing broke', (_name, raw) => {
+    // The hook fires on every tool call. Journalling an absent stdin would put a
+    // line on the disk for invocations that are working exactly as designed.
+    expect(parseHookPayload(raw).unparseable).toBeNull();
   });
 
   it('ignores blank strings rather than treating them as values', () => {
     expect(parseHookPayload(JSON.stringify({ tool_input: { cwd: '   ' } })).repoRoot).toBeNull();
+  });
+});
+
+describe('parseHookPayload — the UTF-8 BOM Cursor prepends on Windows (plan 082 F009)', () => {
+  /**
+   * Decoded FROM the bytes `EF BB BF`, never typed as `\uFEFF` and never copied
+   * out of a text-mode log. A PowerShell wrapper rendered these same three bytes
+   * as the ASCII `n++`, and that rendering was trusted as a measurement for hours.
+   */
+  const BOM = Buffer.from([0xef, 0xbb, 0xbf]).toString('utf8');
+
+  it('the fixture is the decode of REAL BOM BYTES', () => {
+    expect(Buffer.from(BOM, 'utf8').toString('hex')).toBe('efbbbf');
+    expect(BOM).toHaveLength(1);
+  });
+
+  it('strips ONE leading BOM and parses the document behind it', () => {
+    const payload = parseHookPayload(`${BOM}${JSON.stringify({ tool_input: { cwd: '/repo/a' } })}`);
+    expect(payload.repoRoot).toBe('/repo/a');
+    expect(payload.strippedBom).toBe(true);
+    expect(payload.unparseable).toBeNull();
+  });
+
+  it('strips a BOM and NOTHING ELSE — junk before a brace stays a parse failure', () => {
+    /*
+    Test Doc:
+    - Why: scan-to-first-brace was the original proposal and is WITHDRAWN. It was
+      designed for ASCII junk of unknown shape; against a known BOM it is both
+      imprecise and actively harmful, because it silently swallows the malformed
+      payloads the observability half of this fix exists to expose.
+    - Contract: a precise strip, then an honest failure for anything else.
+    - Quality Contribution: this test IS the withdrawal. A future scan-to-brace
+      "tolerance" cannot be added without deleting it.
+    */
+    const payload = parseHookPayload(`n++${JSON.stringify({ tool_input: { cwd: '/repo/a' } })}`);
+    expect(payload.repoRoot).toBeNull();
+    expect(payload.unparseable?.reason).toBe('payload-not-json');
+    expect(payload.strippedBom).toBe(false);
+  });
+
+  it('a SECOND BOM is not stripped — one BOM is a prefix, two are a malformed document', () => {
+    expect(parseHookPayload(`${BOM}${BOM}{"cwd":"/repo/a"}`).unparseable?.reason).toBe(
+      'payload-not-json',
+    );
+  });
+
+  it('reports the head of an unparseable payload as HEX, bounded, so a NEW prefix is diagnosable', () => {
+    // Bounded to a few structural bytes on purpose: the head of a JSON document
+    // is punctuation and key names, and the body carries user_email and a
+    // transcript path that must never reach the journal.
+    const head = parseHookPayload('n++{"tool_input":{"cwd":"/repo/a"}}')?.unparseable?.headHex;
+    expect(head).toBe('6e 2b 2b 7b 22 74 6f 6f');
   });
 });
 
