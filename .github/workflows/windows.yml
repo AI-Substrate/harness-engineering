@@ -143,6 +143,24 @@ jobs:
       # the summarise step below, which DOES fail.
       - name: Run the suite (report-only)
         working-directory: harness/cli
+        env:
+          # THE SCOPE MUST BE SET EXPLICITLY, AND THIS LINE IS THE WHOLE POINT OF
+          # THE JOB. `vitest.config.ts` defaults HARNESS_TEST_SCOPE to `fast`,
+          # which SKIPS the slow files; its own comment says "all — everything.
+          # What CI sets; what a gate must mean." This workflow did not set it.
+          #
+          # Measured 2026-08-10: the fast default collects 349 test files and this
+          # job reported success five times running. The full suite is 393 files,
+          # and at `all` the same sha produces 112 failures — 81 of them one
+          # product defect that makes every telemetry git call exit 128 on
+          # Windows. Every one of those was invisible here, and the job still
+          # rendered green in `gh run list`, which is how it came to be cited as
+          # Windows coverage.
+          #
+          # A platform job that measures a REDUCED default is worse than no
+          # platform job: it answers a question nobody asked in the voice of the
+          # one they did.
+          HARNESS_TEST_SCOPE: all
         run: |
           $ErrorActionPreference = 'Continue'
           # Two reporters on purpose: `default` puts human-readable failures in
@@ -153,6 +171,7 @@ jobs:
           # doing less work: coverage is already proven on every push by the
           # ubuntu leg, it does not vary by platform, and instrumenting adds time
           # to a job that is already slow for real reasons.
+          "scope: $env:HARNESS_TEST_SCOPE (files collected below must reflect it)"
           npx --no-install vitest run `
             --reporter=default `
             --reporter=json `
@@ -285,6 +304,12 @@ jobs:
           $sum += "| todo | $todo |"
           $sum += "| total collected | $total |"
           $sum += "| test files failed | $filesBad of $filesTot |"
+          # THE DENOMINATOR TRAVELS WITH THE NUMBERS. A count without its scope is
+          # unreadable: 349 files green at `fast` and 393 files with 112 failures
+          # at `all` are both true of the same sha, and only this row tells them
+          # apart. Read from the environment, not hardcoded, so it cannot drift
+          # from what actually ran.
+          $sum += "| scope | ``$env:HARNESS_TEST_SCOPE`` |"
           $sum += ""
           $sum += "Ref measured: ``$(git rev-parse HEAD)``  ·  node ``$(node --version)``"
           $sum += ""
