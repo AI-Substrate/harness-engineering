@@ -63,17 +63,29 @@ export const FIRE_OPTION_NAMES: readonly string[] = FIRE_OPTIONS.map(
 /**
  * The option tokens a command string passes to `fire`, in order.
  *
- * Deliberately naive — anything starting with `--` is an option token. It is used
- * to ASK a question about a command, never to execute one, so over-reporting a
- * `--`-prefixed value would be a false alarm and under-reporting would be a miss;
- * the installer never emits a `--`-prefixed value, and a hand-edit that does gets
- * the false alarm, which is the safe direction.
+ * SCOPED TO WHAT THE VERB ACTUALLY RECEIVES — everything after the literal `hooks`
+ * token (plan 082 F010 F5). The invocation in front of the script belongs to the
+ * INTERPRETER, not to us: `--no-warnings` is Node's flag, `fire` has no business
+ * declaring it, and a scan of the whole string reported it as an option this binary
+ * does not accept. `status` then said `unknown-options` for every healthy install —
+ * a drift report about our own command, which is the same shape as the defects this
+ * review found: a reader whose scope was wider than the state it judged.
+ *
+ * Deliberately naive WITHIN that scope — anything starting with `--` is an option
+ * token. It is used to ASK a question about a command, never to execute one, so
+ * over-reporting a `--`-prefixed value would be a false alarm and under-reporting
+ * would be a miss; the installer never emits a `--`-prefixed value, and a hand-edit
+ * that does gets the false alarm, which is the safe direction.
  */
 export function optionTokensIn(command: string): string[] {
-  return command
+  const tokens = command
     .split(/\s+/)
     .map((token) => token.replace(/^['"]+|['"]+$/g, ''))
-    .filter((token) => token.startsWith('--'));
+    .filter((token) => token.length > 0);
+  // A command that never reaches the verb passes nothing to `fire`; scanning it
+  // whole would judge an interpreter's flags as ours.
+  const verbAt = tokens.indexOf('hooks');
+  return (verbAt === -1 ? [] : tokens.slice(verbAt + 1)).filter((token) => token.startsWith('--'));
 }
 
 /** Options a command names that this binary's `fire` does not declare. */

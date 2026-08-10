@@ -155,7 +155,7 @@ describe('RE-INSTALL over a legacy entry UPGRADES it', () => {
     expect(after.hooks.preToolUse.length).toBe(1);
     expect(after.hooks.postToolUse.length).toBe(1);
     for (const entry of [...after.hooks.preToolUse, ...after.hooks.postToolUse]) {
-      expect(entry.command.startsWith(`"${NODE}" "`)).toBe(true);
+      expect(entry.command.startsWith(`"${NODE}" --no-warnings "`)).toBe(true);
       expect(extractInterpreterPath(entry.command)).toBe(NODE);
     }
   });
@@ -289,7 +289,7 @@ describe('an OURS-WITH-FOREIGN legacy entry is REFUSED, not rewritten (F008 revi
     const refusal = report.refusedUpgrades.find((r) => r.command.includes('other-tool --run'));
     expect(refusal, 'the refusal must be reported, not swallowed').toBeDefined();
     expect(refusal?.reason).toMatch(/chained|foreign/i);
-    expect(refusal?.replacement.startsWith(`"${NODE}" "`)).toBe(true);
+    expect(refusal?.replacement.startsWith(`"${NODE}" --no-warnings "`)).toBe(true);
     expect(refusal?.nextAction ?? '').toContain(refusal?.replacement ?? 'MISSING');
   });
 
@@ -379,5 +379,58 @@ describe('the refusal survives the path EVERYONE takes (F008 re-verdict)', () =>
 
     expect(report.warnings).toEqual([]);
     expect(report.action).toBe('installed');
+  });
+});
+
+describe('the repair reaches installs that ALREADY EXIST (plan 082 F010 F5)', () => {
+  /** An F008-era install: interpreter-first, but without the flags we now require. */
+  const preFlagBinary = () =>
+    `${embedBinaryPath(NODE).replace(/^"|"$/g, '"')} ${embedBinaryPath(join(home, 'bin', 'harness.js'))}`;
+
+  it('UPGRADES an entry that names an interpreter but lacks a required flag', () => {
+    /*
+    Test Doc:
+    - Why: the upgrade predicate used to ask ONE structural question — does this
+      command name an interpreter — so a repair that adds anything else to the
+      invocation could never reach the machines that already have a hook. That is
+      the exact failure the upgrade path was built to prevent, one generation on:
+      "the fix would never reach the only platform that needs it". `--no-warnings`
+      is the case in hand; the generalisation is the point.
+    - Contract: re-installing over an F008-era entry rewrites it to carry the flag,
+      and leaves exactly one entry per phase.
+    */
+    installHooks(deps({ binary: preFlagBinary() }));
+    const before = readCursor();
+    expect(before.hooks.preToolUse).toHaveLength(1);
+    expect(before.hooks.preToolUse[0]?.command).not.toContain('--no-warnings');
+
+    installHooks(deps());
+
+    const after = readCursor();
+    expect(after.hooks.preToolUse).toHaveLength(1);
+    expect(after.hooks.postToolUse).toHaveLength(1);
+    for (const entry of [...after.hooks.preToolUse, ...after.hooks.postToolUse]) {
+      expect(entry.command).toContain('--no-warnings');
+    }
+  });
+
+  it('does NOT rewrite when only the BINARY PATH differs — the counter-row', () => {
+    /*
+    Test Doc:
+    - Why: the constraint that stops this becoming string equality. A global
+      install, an npx run and a dev checkout name DIFFERENT paths and all three are
+      correct, so equality would rewrite every config on every run for two users
+      sharing a machine — and churn is not merely noisy here: `installHooks`
+      compensates a failed provenance write by undoing "what THIS run wrote", so a
+      needless rewrite hands the compensation a healthy hook to undo. That is F1's
+      composition, reached from the other side.
+    - Contract: a second install from a DIFFERENT path leaves the file byte-identical.
+    */
+    installHooks(deps());
+    const before = readFileSync(cursorConfig(), 'utf8');
+
+    installHooks(deps({ binary: embedInvocation(NODE, join(home, 'elsewhere', 'harness.js')) }));
+
+    expect(readFileSync(cursorConfig(), 'utf8')).toBe(before);
   });
 });
