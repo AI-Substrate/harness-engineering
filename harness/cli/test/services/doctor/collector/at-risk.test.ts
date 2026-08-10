@@ -207,10 +207,15 @@ describe('plan 074 · ac-0003 — empty is not clean', () => {
       bare refusal with no alternative.
     - Quality Contribution: the sibling test above covers only the EMPTY-list
       description arms; this is the only row that reaches the `unattributed`
-      next_action with a pipe. Asserting the absence of the RECOMMENDING form
-      ("run `harness doctor telemetry-nudge`") kills a revert to the shared
-      string, which asserting the absence of the bare verb name could not do
-      without also forbidding the honest denial.
+      next_action with a pipe. The assertion is a WHOLE-STRING pin, not a
+      substring guard. A substring guard on the recommending form was shown to
+      be satisfiable by a string that both recommends the nudge and forbids it —
+      prepending "Run `harness doctor telemetry-nudge` from an UNSANDBOXED
+      shell." ahead of the honest prohibition left this file green, because the
+      capitalised sentence is not the exact lowercase substring. No regex
+      cleverness closes that; equality does. This is an operator string we own
+      and every word of it is a claim, so the whole string is the contract —
+      the same posture as the F3 measured-wording pins.
     */
     const git = new FakeGitAttribution({ window: windowOf(SHAS) });
     const report = enumerateAtRisk({
@@ -225,8 +230,13 @@ describe('plan 074 · ac-0003 — empty is not clean', () => {
 
     expect(report.status).toBe('unattributed');
     expect(report.commits).toHaveLength(3);
-    expect(report.next_action).not.toContain('run `harness doctor telemetry-nudge`');
-    expect(report.next_action).toContain('NOT available');
+    expect(report.next_action).toBe(
+      'Those commits carry no note. Replay via `harness doctor telemetry-nudge` is NOT available for a named-pipe ingress, so there is no buffer to drain: check a commit for yourself with `git notes --ref=ai show <sha>`, and recover by restoring a connect this process is allowed to make. Commits made before git-ai was installed will never gain a note and are expected here.',
+    );
+    // Kept as its own row: the whole-string pin above is what makes the
+    // contract exhaustive, but this names the ONE thing an operator must be
+    // left holding, so a future rewrite that drops it fails with a message
+    // that says WHICH promise was broken rather than only "strings differ".
     expect(report.next_action).toContain('git notes --ref=ai show');
   });
 

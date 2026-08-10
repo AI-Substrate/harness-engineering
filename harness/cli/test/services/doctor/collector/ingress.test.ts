@@ -239,7 +239,7 @@ describe('plan 075 · ac-0003 — the classifier is proven by what it REFUSES', 
 });
 
 describe('plan 075 · ac-0001 / plan 082 · F006 — a named pipe is an ingress, and IS probed', () => {
-  it('readIngress classifies the pipe and makes NO connect attempt', async () => {
+  it('readIngress classifies the pipe AND probes it — no connect is skipped', async () => {
     const d = deps({ target: '\\\\.\\pipe\\git-ai' });
     const reading = await readIngress(d);
     expect(reading.target).toEqual({ kind: 'named_pipe', path: '\\\\.\\pipe\\git-ai' });
