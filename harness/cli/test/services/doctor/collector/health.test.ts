@@ -826,14 +826,20 @@ describe('the binary-not-on-path rung — resolution, not existence (plan 082, w
     expect(result.onPath).toEqual({ resolved: null });
   });
 
-  it('a resolvable bare name leaves the healthy verdict untouched and records where it resolved', () => {
-    const result = health({
-      fs: installedFs(),
-      pathLookup: { resolved: '/home/u/.local/bin/git-ai' },
-    });
+  it('a bare name resolving to a faithful copy (hardlink shape) of the pin stays healthy', () => {
+    const fs = installedFs();
+    fs.seedBytes('/home/u/.local/bin/git-ai', PAYLOAD); // same bytes, different path
+
+    const result = health({ fs, pathLookup: { resolved: '/home/u/.local/bin/git-ai' } });
 
     expect(result.verdict).toBe('healthy');
     expect(result.onPath).toEqual({ resolved: '/home/u/.local/bin/git-ai' });
+  });
+
+  it('a bare name resolving to the install path itself stays healthy', () => {
+    const result = health({ fs: installedFs(), pathLookup: { resolved: BINARY } });
+
+    expect(result.verdict).toBe('healthy');
   });
 
   it('an absent lookup evaluates nothing — absence never manufactures a warning', () => {
@@ -851,6 +857,44 @@ describe('the binary-not-on-path rung — resolution, not existence (plan 082, w
     const result = health({ fs, pathLookup: { resolved: null } });
 
     expect(result.verdict).toBe('degraded');
+  });
+});
+
+describe('the binary-shadowed-on-path rung — resolving is not enough, it must resolve to the pin', () => {
+  it('a bare name resolving to FOREIGN bytes warns shadowed, naming both paths', () => {
+    const fs = installedFs();
+    fs.seedBytes('/usr/local/bin/git-ai', new TextEncoder().encode('an older git-ai'));
+
+    const result = health({ fs, pathLookup: { resolved: '/usr/local/bin/git-ai' } });
+
+    expect(result.verdict).toBe('binary-shadowed-on-path');
+    expect(result.detail).toContain('/usr/local/bin/git-ai');
+    expect(result.detail).toContain(BINARY);
+    expect(result.detail).toContain('stranded hardlink');
+    expect(result.next_action).toContain('--install-collector');
+  });
+
+  it('a resolved path that cannot be read warns shadowed and says so, never assumes match', () => {
+    const result = health({
+      fs: installedFs(),
+      pathLookup: { resolved: '/usr/local/bin/git-ai' }, // nothing seeded there
+    });
+
+    expect(result.verdict).toBe('binary-shadowed-on-path');
+    expect(result.detail).toContain('could not be read');
+  });
+
+  it('without a hash port this run cannot judge the resolved bytes — no warning is manufactured', () => {
+    const fs = installedFs();
+    fs.seedBytes('/usr/local/bin/git-ai', new TextEncoder().encode('an older git-ai'));
+
+    const result = health({
+      fs,
+      hash: false, // state digest still matches the pin, so the ladder reaches this rung
+      pathLookup: { resolved: '/usr/local/bin/git-ai' },
+    });
+
+    expect(result.verdict).toBe('healthy');
   });
 });
 

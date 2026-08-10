@@ -42,6 +42,7 @@ export type CollectorVerdict =
   | 'hooks-incomplete'
   | 'ingress-blocked'
   | 'binary-not-on-path'
+  | 'binary-shadowed-on-path'
   | 'degraded'
   | 'could-not-determine';
 
@@ -598,6 +599,46 @@ export function readCollectorHealth(deps: CollectorHealthDeps): CollectorHealth 
       detail: `git-ai ${manifest.version} is installed at ${binaryPath} and hooked up, but the bare name \`git-ai\` resolves to NOTHING on PATH — editor extensions spawn \`git-ai\` by name on every save to record human (KnownHuman) attestations, so those spawns fail silently and human-typed lines can later be attributed to the AI agent. Everything else about this install reads fine from inside; that invisibility is exactly what this row exists to surface (evidence: docs/plans/082-harness-hooks/assets/windows/root-cause-extension-cannot-find-git-ai.md)`,
       next_action: `Add ${binaryDir} to your user PATH yourself, then FULLY restart your editor/IDE so its extension host inherits the new environment (an already-running process keeps the old one). Doctor will not edit PATH for you.`,
     };
+  }
+
+  // The sibling rung: the bare name resolves SOMEWHERE — is that somewhere the
+  // pinned bytes? Resolving is not enough: an older copy, a second install, or
+  // a shim earlier in PATH executes instead of the verified binary while every
+  // other signal reads fine. Once an installer hardlinks the binary into a
+  // PATH dir this stops being latent and becomes the EXPECTED failure mode:
+  // replace-by-rename updaters strand a hardlink on the old inode, which keeps
+  // executing, at the old version, silently — a working binary of the wrong
+  // bytes, which is worse than ENOENT because nothing ever fails.
+  //
+  // Identity is by CONTENT, not path or inode: a hardlink or faithful copy of
+  // the pinned binary at another path hashes to the pin and passes; a stranded
+  // or foreign binary does not. realpath cannot answer this (hardlinks are
+  // peers, there is no "real" one), and the fs port has no inode read — the
+  // digest is both available and the stronger claim. Evaluated only when this
+  // run can actually hash (deps.hash) — absent evidence never manufactures a
+  // warning — and skipped when the resolved path IS the install path, which the
+  // digest above already covered.
+  if (deps.pathLookup?.resolved != null && deps.hash !== undefined) {
+    const resolved = deps.pathLookup.resolved;
+    const fold = (p: string) => (deps.host.platform === 'win32' ? p.toLowerCase() : p);
+    if (fold(resolved) !== fold(binaryPath)) {
+      const bytes = deps.fs.readBytesNoFollow(resolved);
+      const matchesPin =
+        bytes !== null &&
+        deps.hash.sha256Hex(bytes).toLowerCase() === resolution.artifact.sha256.toLowerCase();
+      if (!matchesPin) {
+        return {
+          ...base,
+          verdict: 'binary-shadowed-on-path',
+          detail: `the bare name \`git-ai\` resolves to ${resolved}, which ${
+            bytes === null
+              ? 'could not be read to verify'
+              : `does NOT match the pinned ${manifest.version} digest`
+          } — the verified install at ${binaryPath} is being shadowed, so everything that spawns \`git-ai\` by name (editor save-time KnownHuman attestations included) executes the wrong binary while this row would otherwise read healthy. A stranded hardlink after a replace-by-rename update looks exactly like this`,
+          next_action: `Remove or update the entry at ${resolved} (or re-run \`harness doctor --install-collector\` to refresh what harness placed) so the bare name resolves to the pinned binary, then restart your editor.`,
+        };
+      }
+    }
   }
 
   return {
