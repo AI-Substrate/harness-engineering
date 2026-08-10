@@ -83,7 +83,9 @@ describe('the emitted command NAMES THE INTERPRETER (row 1)', () => {
       OS dispatch to Node is Node itself.
     - Contract: the invocation is `"<node>" "<script>"`, in that order.
     */
-    expect(embedInvocation(NODE_WIN, SCRIPT_WIN)).toBe(`"${NODE_WIN}" "${SCRIPT_WIN}"`);
+    expect(embedInvocation(NODE_WIN, SCRIPT_WIN)).toBe(
+      `"${NODE_WIN}" --no-warnings "${SCRIPT_WIN}"`,
+    );
   });
 
   it.each([
@@ -100,7 +102,7 @@ describe('the emitted command NAMES THE INTERPRETER (row 1)', () => {
     */
     const invocation = embedInvocation(NODE_WIN, SCRIPT_WIN);
     expect(hookCommand(invocation, agent, 'post')).toBe(
-      `"${NODE_WIN}" "${SCRIPT_WIN}" hooks fire ${agent} --phase post --hook-input stdin --hook-owner ai-substrate-harness-hook-v1`,
+      `"${NODE_WIN}" --no-warnings "${SCRIPT_WIN}" hooks fire ${agent} --phase post --hook-input stdin --hook-owner ai-substrate-harness-hook-v1`,
     );
   });
 
@@ -127,7 +129,7 @@ describe('the emitted command NAMES THE INTERPRETER (row 1)', () => {
       );
       expect(commands.length).toBeGreaterThan(0);
       for (const command of commands) {
-        expect(command.startsWith(`"${NODE_WIN}" "${SCRIPT_WIN}" `)).toBe(true);
+        expect(command.startsWith(`"${NODE_WIN}" --no-warnings "${SCRIPT_WIN}" `)).toBe(true);
       }
     }
   });
@@ -201,7 +203,7 @@ describe('ONE command form on every platform (row 5, disclosed change)', () => {
     */
     const command = hookCommand(embedInvocation(NODE_POSIX, SCRIPT_POSIX), 'cursor', 'post');
     expect(command).toBe(
-      `"${NODE_POSIX}" "${SCRIPT_POSIX}" hooks fire cursor --phase post --hook-input stdin --hook-owner ai-substrate-harness-hook-v1`,
+      `"${NODE_POSIX}" --no-warnings "${SCRIPT_POSIX}" hooks fire cursor --phase post --hook-input stdin --hook-owner ai-substrate-harness-hook-v1`,
     );
     expect(extractBinaryPath(command)).toBe(SCRIPT_POSIX);
   });
@@ -222,7 +224,7 @@ describe('the PRODUCTION composition, not a re-derivation (F008 review F3)', () 
     const deps = hooksDepsFor(new NodeFs(), home, { get: () => undefined });
     expect(deps).not.toBeNull();
     expect(deps?.binary).toBe(
-      `${quoteForShell(normaliseBinaryPath(process.execPath))} ${quoteForShell(
+      `${quoteForShell(normaliseBinaryPath(process.execPath))} --no-warnings ${quoteForShell(
         normaliseBinaryPath(process.argv[1] ?? 'harness'),
       )}`,
     );
@@ -261,7 +263,7 @@ describe('every SUPPORTED agent, whole-string (F008 review F3)', () => {
     const expected = new Set(
       (['pre', 'post'] as const).map(
         (phase) =>
-          `"${NODE_WIN}" "${SCRIPT_WIN}" hooks fire ${spec.agent} --phase ${phase} --hook-input stdin --hook-owner ai-substrate-harness-hook-v1`,
+          `"${NODE_WIN}" --no-warnings "${SCRIPT_WIN}" hooks fire ${spec.agent} --phase ${phase} --hook-input stdin --hook-owner ai-substrate-harness-hook-v1`,
       ),
     );
     for (const command of seen) expect(expected.has(command)).toBe(true);

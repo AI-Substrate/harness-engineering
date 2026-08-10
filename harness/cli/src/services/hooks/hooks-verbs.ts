@@ -6,9 +6,10 @@ import { BACKUP_MANIFEST_NAME, restoreAgentConfigs } from '../doctor/collector/b
 import type { AgentSpec } from './agent-matrix.js';
 import { AGENT_MATRIX, eventKeys, resolveConfigFiles } from './agent-matrix.js';
 import { extractBinaryPath, extractInterpreterPath } from './binary-path.js';
+import { writeThroughSymlink } from './config-writer.js';
 import { unacceptedOptions } from './fire-options.js';
 import { FileHookJournal } from './hook-journal.js';
-import { entryCommands, isOwnedByUs } from './hook-marker.js';
+import { commandAgent, entryCommands, isOwnedByUs } from './hook-marker.js';
 import { hookJournalPath, hookStateDir } from './hook-payload.js';
 import {
   ensureRecordWritable,
@@ -18,7 +19,7 @@ import {
   recordInstall,
 } from './install-record.js';
 import type { InstallOutcome, RefusedUpgrade } from './install-strategy-a.js';
-import { installStrategyA } from './install-strategy-a.js';
+import { installStrategyA, PartialInstallError, revertWrite } from './install-strategy-a.js';
 import { uninstallStrategyA } from './uninstall-strategy-a.js';
 
 /**
@@ -292,6 +293,24 @@ export function installHooks(deps: HooksDeps): InstallReport {
         refusedUpgrades.push(...outcome.refusedUpgrades);
       }
     } catch (err) {
+      /*
+       * A PARTIAL INSTALL IS RECORDED AND NAMED, NEVER SILENTLY HELD (F010 F2).
+       *
+       * `installStrategyA` now rolls back an agent's committed files when a later
+       * one fails, but a rollback can itself fail — and a file that is written,
+       * unrecorded and unreported is invisible to every tool we ship: uninstall
+       * will not remove it because provenance never heard of it, and status will
+       * not explain it. Recording it is what makes a later `uninstall` able to
+       * finish the job, and naming it is what tells the operator to run one.
+       */
+      if (err instanceof PartialInstallError && err.stranded.length > 0) {
+        recordInstall(deps.fs, hookStateDir(deps.home), err.stranded);
+        failed.push({
+          agent: report.agent,
+          reason: `${err.message}; ${strandedDetail(err.stranded)}`,
+        });
+        continue;
+      }
       failed.push({
         agent: report.agent,
         reason: err instanceof Error ? err.message : String(err),
@@ -304,6 +323,19 @@ export function installHooks(deps: HooksDeps): InstallReport {
 /** One sentence, four endings — what happened to the config we could not record. */
 type Compensation = 'nothing' | 'nothing-written' | 'rolled-back' | 'stranded';
 
+/**
+ * What to tell an operator about files a failed install left behind.
+ *
+ * NAMES THE PATHS AND THE NEXT ACTION. "windsurf failed" with a file still
+ * installed is the report that produced this defect: the agent looked untouched
+ * and was not.
+ */
+function strandedDetail(stranded: readonly { path: string }[]): string {
+  const one = stranded.length === 1;
+  const paths = stranded.map((o) => o.path).join(', ');
+  return `${one ? 'this file was' : 'these files were'} written and could not be rolled back: ${paths}. ${one ? 'Its' : 'Their'} provenance HAS been recorded, so \`harness hooks uninstall\` can remove ${one ? 'it' : 'them'}`;
+}
+
 function unrecordableReason(stateDir: string, outcome: Compensation): string {
   const head = `install provenance could not be written to ${installRecordPath(stateDir)}`;
   if (outcome === 'nothing') return `${head}; nothing was installed for this agent`;
@@ -314,36 +346,54 @@ function unrecordableReason(stateDir: string, outcome: Compensation): string {
 }
 
 /**
- * Undo the entries this run wrote, using the provenance we hold IN MEMORY.
+ * Undo what this run wrote, using the provenance we hold IN MEMORY.
  *
  * The record on disk is precisely what we could not write, so the in-memory outcomes
  * are the only provenance that exists — and they are exactly the provenance uninstall
- * would have read. Running the real uninstall path rather than a bespoke unwind keeps
- * one removal implementation, including its refusals.
+ * would have read.
  *
- * ONLY WHAT THIS RUN WROTE, AND THAT IS THE LOAD-BEARING HALF. An `alreadyPresent`
- * file was installed by an EARLIER run whose record very likely DID persist; removing
- * its entry to compensate for our own failed write would undo a good install and
- * leave a record claiming a file that no longer carries our marker. A compensation
- * that over-reaches is a worse failure than the one it is compensating for, because
- * the first is a config we cannot fully remove and this one is a config we removed
- * without being asked.
+ * IT BRANCHES ON WHAT THIS RUN ACTUALLY DID, AND THAT IS THE FIX (plan 082 F010 F1).
+ * It used to take every `!alreadyPresent` outcome and run uninstall over it. A
+ * legacy MIGRATION reports `!alreadyPresent` — correctly, it wrote this run — but
+ * the entry it rewrote was ALREADY THE USER'S. So compensating a failed provenance
+ * write DELETED a pre-existing hook and reported `rolled back`: data loss on a
+ * failure path, announced as a recovery. `created`/`alreadyPresent` cannot express
+ * the difference, which is why {@link InstallOutcome.change} exists and why nothing
+ * here infers it.
+ *
+ * - `rewritten-entry` → RESTORE THE PREVIOUS BYTES. Removal is not a reversal here.
+ * - `created-file` / `added-entry` → the ordinary uninstall path, so there is ONE
+ *   removal implementation and its refusals keep applying.
+ * - `already-present` → nothing was written; an EARLIER run installed it and very
+ *   likely recorded it, and removing it would undo a good install to compensate for
+ *   our own failure.
+ *
+ * A restore that cannot prove the file is still ours is REFUSED rather than forced —
+ * two agents can share one config file, so blanket bytes could revert a peer.
  */
 function compensate(deps: HooksDeps, spec: AgentSpec, outcomes: InstallOutcome[]): Compensation {
-  const ours = outcomes.filter((o) => !o.alreadyPresent);
-  if (ours.length === 0) return 'nothing-written';
+  const migrated = outcomes.filter((o) => o.change === 'rewritten-entry');
+  const written = outcomes.filter((o) => o.change === 'created-file' || o.change === 'added-entry');
+  if (migrated.length === 0 && written.length === 0) return 'nothing-written';
+
   try {
-    uninstallStrategyA(
-      {
-        fs: deps.fs,
-        home: deps.home,
-        env: deps.env,
-        createdFiles: new Set(ours.filter((o) => o.created).map((o) => o.path)),
-        createdKeys: new Map(ours.map((o) => [o.path, new Set(o.createdKeys)])),
-        createdRootExtras: new Map(ours.map((o) => [o.path, o.createdRootExtras])),
-      },
-      spec,
-    );
+    for (const outcome of migrated) {
+      // The SAME rule the mid-commit rollback uses, not a second copy of it.
+      if (!revertWrite(deps.fs, outcome)) return 'stranded';
+    }
+    if (written.length > 0) {
+      uninstallStrategyA(
+        {
+          fs: deps.fs,
+          home: deps.home,
+          env: deps.env,
+          createdFiles: new Set(written.filter((o) => o.created).map((o) => o.path)),
+          createdKeys: new Map(written.map((o) => [o.path, new Set(o.createdKeys)])),
+          createdRootExtras: new Map(written.map((o) => [o.path, o.createdRootExtras])),
+        },
+        spec,
+      );
+    }
     return 'rolled-back';
   } catch {
     return 'stranded';
@@ -615,6 +665,29 @@ function configuredBinaryFor(deps: HooksDeps, spec: AgentSpec): string | null {
  * ownership with. Not a second implementation that agrees today: one implementation,
  * which cannot drift.
  */
+/**
+ * Every command OF OURS AND OF THIS AGENT installed in this agent's configs — the
+ * one thing `list`, `status` and `configuredBinary` all read.
+ *
+ * ONE READER FOR BOTH ENTRY SHAPES (plan 082, phase-5 review F1). This used to
+ * parse `entry.command` and nothing else, which does not exist in a NESTED entry —
+ * there the command lives at `entry.hooks[].command`. So immediately after a
+ * successful install into claude-code, gemini or droid, `status` reported
+ * `installed: false, binaryState: absent, commandState: absent`. Our WRITER had
+ * learned both shapes and our READER had not.
+ *
+ * That is the same two-readers-disagree shape as F005 itself — a validator and a
+ * detector keyed on different fields — except that this time we owned both readers.
+ * So it now goes through {@link entryCommands}, the SAME function uninstall matches
+ * ownership with. Not a second implementation that agrees today: one implementation,
+ * which cannot drift.
+ *
+ * AND IT IS AGENT-QUALIFIED (plan 082 F010 F3). `status` answers a PER-AGENT
+ * question, and this fed it a per-HARNESS answer: with two agents resolving to one
+ * config file, droid was credited with claude-code's command — a healthy status for
+ * an agent with no hook. The marker proves the entry is OURS; only the `hooks fire
+ * <agent>` argument proves whose.
+ */
 function ourCommands(deps: HooksDeps, spec: AgentSpec): string[] {
   const out: string[] = [];
   for (const path of resolveConfigFiles(spec, deps.home, deps.env)) {
@@ -628,7 +701,11 @@ function ourCommands(deps: HooksDeps, spec: AgentSpec): string[] {
     }
     for (const key of eventKeys(spec)) {
       for (const entry of doc.hooks?.[key] ?? []) {
-        out.push(...entryCommands(entry).filter(isOwnedByUs));
+        out.push(
+          ...entryCommands(entry).filter(
+            (command) => isOwnedByUs(command) && commandAgent(command) === spec.agent,
+          ),
+        );
       }
     }
   }

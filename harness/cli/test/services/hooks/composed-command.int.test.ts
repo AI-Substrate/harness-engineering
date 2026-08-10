@@ -196,7 +196,10 @@ function journal(): Record<string, unknown>[] {
  * inert. A file-association dispatch cannot be caught by a harness that hands the
  * command to Node itself.
  */
-function runArgv(argv: string[]): { status: number | null; stdout: string; stderr: string } {
+function runArgv(
+  argv: string[],
+  envOver: NodeJS.ProcessEnv = {},
+): { status: number | null; stdout: string; stderr: string } {
   const payload = JSON.stringify({
     tool_name: 'Shell',
     tool_input: { cwd: repo, command: 'git status' },
@@ -205,7 +208,29 @@ function runArgv(argv: string[]): { status: number | null; stdout: string; stder
     cwd: repo,
     encoding: 'utf8',
     input: payload,
-    env: { ...hermeticGitEnv(), HOME: home, USERPROFILE: home },
+    /*
+     * THE COLOUR PAIR IS PINNED, NOT INHERITED (plan 082 F010 F5).
+     *
+     * `hermeticGitEnv` starts from `process.env`, so these rows used to inherit
+     * whatever colour variables the developer's shell happened to carry. A
+     * reviewer running the suite with BOTH `NO_COLOR` and `FORCE_COLOR` set saw
+     * two rows go red that are green everywhere else — Node prints a startup
+     * warning about the conflict before any of our code runs. **A test that
+     * passes or fails on an inherited environment variable is not a gate**, in
+     * either direction: it hid a real defect here, and it would report a false
+     * one on the next machine that has the pair set for its own reasons.
+     *
+     * So the default is NEUTRAL — both unset — and the hostile pair is set
+     * DELIBERATELY by the row that exists to prove we survive it.
+     */
+    env: {
+      ...hermeticGitEnv(),
+      HOME: home,
+      USERPROFILE: home,
+      NO_COLOR: undefined,
+      FORCE_COLOR: undefined,
+      ...envOver,
+    },
   });
   return { status: result.status, stdout: result.stdout ?? '', stderr: result.stderr ?? '' };
 }
@@ -269,7 +294,12 @@ describe('the command the INSTALLER composed is a command `fire` can actually RU
       // should be.
       const verbAt = argv.indexOf('hooks');
       expect(verbAt, `${where}: the command must reach the hooks verb`).toBeGreaterThan(0);
-      for (const token of argv.slice(0, verbAt)) {
+      // The invocation is PATHS plus INTERPRETER FLAGS (F010 F5). A flag is not a
+      // file, so only the paths are stat-able — and the count is asserted so this
+      // cannot degrade into checking nothing once everything is filtered out.
+      const paths = argv.slice(0, verbAt).filter((token) => !token.startsWith('-'));
+      expect(paths.length, `${where}: the invocation must name interpreter and script`).toBe(2);
+      for (const token of paths) {
         expect(existsSync(token), `${where}: composed invocation token ${token} must exist`).toBe(
           true,
         );
@@ -312,11 +342,29 @@ describe('the command the INSTALLER composed is a command `fire` can actually RU
       expectedCommandCount(),
     );
     for (const { agent, phase, command } of composed) {
-      const emitted = argvOf(command).filter((token) => token.startsWith('--'));
+      /*
+       * ONLY THE OPTIONS THE VERB RECEIVES (F010 F5). Tokens before the `hooks`
+       * verb belong to the INTERPRETER — `--no-warnings` is Node's flag and `fire`
+       * has no business declaring it. Scanning the whole string asked commander to
+       * account for someone else's arguments, and the production reader that made
+       * the same mistake reported `unknown-options` for every healthy install.
+       */
+      const argv = argvOf(command);
+      const emitted = argv.slice(argv.indexOf('hooks') + 1).filter((t) => t.startsWith('--'));
       expect(emitted.length, `${agent} ${phase}: the installer emits options`).toBeGreaterThan(0);
       for (const flag of emitted) {
         expect(registered.has(flag), `${agent} ${phase}: \`fire\` must register ${flag}`).toBe(
           true,
+        );
+      }
+      // The other half, and it is what keeps the split honest: an interpreter flag
+      // must never drift to the far side of the verb, where commander would meet it.
+      const interpreterFlags = argv
+        .slice(0, argv.indexOf('hooks'))
+        .filter((t) => t.startsWith('-'));
+      for (const flag of interpreterFlags) {
+        expect(emitted.includes(flag), `${agent} ${phase}: ${flag} is the interpreter's`).toBe(
+          false,
         );
       }
     }
@@ -448,5 +496,47 @@ describe('`hooks status` can see that the ARGUMENTS are rejected, not just that 
     expect(cursor?.unacceptedOptions).toEqual(['--from-a-newer-harness']);
     // Independent of the binary check, which still passes — the point of the split.
     expect(cursor?.binaryState).toBe('resolves');
+  });
+});
+
+describe('the silent contract survives an environment we do not control (plan 082 F010 F5)', () => {
+  it('prints NOTHING with both NO_COLOR and FORCE_COLOR set — the pair Node warns about', () => {
+    /*
+    Test Doc:
+    - Why: `fire` runs inside an agent's tool loop under an exit-0-AND-SILENT
+      contract, and since F008 the installed command launches Node DIRECTLY. Node
+      emits `Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env
+      being set.` at STARTUP — before our process has run a line — so no amount of
+      discipline inside `fire` can suppress it. A reviewer hit this in a real
+      environment, not a constructed one.
+    - Contract: make the INVOCATION robust rather than the environment. The
+      composed command stays silent even when the hostile pair is set.
+    - Quality Contribution: the pair is set EXPLICITLY here rather than inherited,
+      so this row reproduces the defect on any machine instead of only on the
+      machines that happen to be configured for it.
+    */
+    const { command } = cursorCommands().find((c) => c.phase === 'preToolUse') as Composed;
+    const run = runArgv(argvOf(command), { NO_COLOR: '1', FORCE_COLOR: '1' });
+
+    expect(run.stderr, 'a startup warning is still output an agent can see').toBe('');
+    expect(run.stdout).toBe('');
+    expect(run.status).toBe(0);
+    // Exit 0 carries no information by design, so silence alone could mean the
+    // process died before reaching us. The journal is what separates the two.
+    expect(journal().length, 'silent must mean it RAN, not that it never started').toBe(1);
+  });
+
+  it('still REACHES our code under that environment — silence is not the only property', () => {
+    /*
+    Test Doc:
+    - Why: the counter-row for the obvious wrong fix. Redirecting or swallowing the
+      hook's output would satisfy the row above while breaking everything the hook
+      is for, and exit 0 could not tell you.
+    - Contract: the journal records a fire under the hostile environment.
+    */
+    const { command } = cursorCommands().find((c) => c.phase === 'preToolUse') as Composed;
+    runArgv(argvOf(command), { NO_COLOR: '1', FORCE_COLOR: '1' });
+
+    expect(journal().length).toBe(1);
   });
 });

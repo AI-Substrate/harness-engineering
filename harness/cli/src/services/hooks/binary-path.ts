@@ -94,8 +94,34 @@ export function embedInvocation(interpreter: string, script: string): string {
   const node = normaliseBinaryPath(interpreter);
   const target = normaliseBinaryPath(script);
   if (node === target || target === '') return embedBinaryPath(node);
-  return `${quoteForShell(node)} ${quoteForShell(target)}`;
+  return `${quoteForShell(node)} ${INTERPRETER_FLAGS.join(' ')} ${quoteForShell(target)}`;
 }
+
+/**
+ * Flags the composed invocation gives the INTERPRETER, before the script.
+ *
+ * `--no-warnings` DEFENDS THE SILENT CONTRACT AGAINST AN ENVIRONMENT WE DO NOT
+ * CONTROL (plan 082 F010 F5). `fire` runs inside an agent's tool loop and must
+ * print nothing an agent can see; since F008 the command launches Node directly,
+ * and Node writes `Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR'
+ * env being set.` to stderr AT STARTUP — before a line of our code runs, so no
+ * discipline inside `fire` can suppress it. MEASURED on node v24.7.0, and found by
+ * a reviewer in a real environment rather than a constructed one.
+ *
+ * WHAT IT HIDES, stated plainly because a suppression that is not reasoned about
+ * is a defect waiting: every process warning for the hook process — deprecations,
+ * experimental-feature notices, MaxListenersExceeded. We accept that HERE and only
+ * here, because this is the one process contractually forbidden from speaking, and
+ * a warning it cannot deliver has nowhere useful to go: it lands mid-tool-call in
+ * an agent's transcript, where it is noise at best and a corrupted turn at worst.
+ * The same code runs under the ordinary CLI, and under every test, with warnings
+ * ON — so the surface is not lost, only moved to where someone can read it.
+ *
+ * A LIST, so `upgradeLegacyEntries` can ask whether an installed command carries
+ * what this binary now requires. That is what makes the fix reach the installs
+ * that already exist rather than only new ones.
+ */
+export const INTERPRETER_FLAGS: readonly string[] = ['--no-warnings'];
 
 /**
  * Pull the binary path back OUT of a hook command string.
@@ -159,14 +185,50 @@ const isPathLike = (token: string | null): token is string =>
  * the naive extractor that returns `"/Users/ada` and reports every healthy
  * install broken.
  */
+/**
+ * The first two PATH-BEARING tokens, with quoting honoured and interpreter FLAGS
+ * skipped.
+ *
+ * ONE tokenizer for both readers, so "where does the first token end" cannot be
+ * answered two different ways — the split-on-space version of this question is
+ * the naive extractor that returns `"/Users/ada` and reports every healthy
+ * install broken.
+ *
+ * FLAGS ARE SKIPPED BETWEEN THEM, AND THAT IS LOAD-BEARING (plan 082 F010 F5).
+ * The invocation now carries `--no-warnings` between the interpreter and the
+ * script. A reader that still asked "is token TWO a path" would answer NO for
+ * every command we ship, and both callers would then be wrong in the worst
+ * available direction: {@link extractInterpreterPath} would report `null`, so
+ * every current entry reads as PRE-F008 LEGACY and the upgrade path rewrites
+ * every config on every run — churn that, through the install compensation, can
+ * uninstall a healthy hook to make up for an unrelated failure. And
+ * {@link extractBinaryPath} would return the INTERPRETER, so `status` stats
+ * `node` on a machine that is by definition running node: a green light that
+ * cannot go red, which F008 already established is strictly worse than the bug it
+ * hides.
+ *
+ * ONLY leading `-` tokens are skipped, and only BEFORE the second path. Our shape
+ * is `<interpreter> [flags] <script> hooks fire …`, so scanning stops at the
+ * first token that is neither a flag nor a path — the literal verb `hooks` — and
+ * a bare-script command therefore still reports NO interpreter, which is what
+ * keeps the Windows repair firing.
+ */
 function leadingTokens(command: string): [string | null, string | null] {
   const tokens: string[] = [];
   let rest = command;
-  for (let n = 0; n < 2; n += 1) {
+  for (;;) {
     const read = readToken(rest);
     if (read === null) break;
-    tokens.push(read.token);
     rest = read.rest;
+    if (read.token.startsWith('-')) {
+      // A command whose FIRST token is a flag names no binary we can identify —
+      // never guess, because a wrong path stats false and reports a healthy
+      // install as broken. Later flags are part of the invocation and are skipped.
+      if (tokens.length === 0) return [null, null];
+      continue;
+    }
+    tokens.push(read.token);
+    if (tokens.length === 2) break;
   }
   return [tokens[0] ?? null, tokens[1] ?? null];
 }

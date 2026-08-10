@@ -183,6 +183,53 @@ export function entryCommands(entry: unknown): string[] {
 /** Is this ENTRY — in either shape — one we installed? */
 export const entryIsOwnedByUs = (entry: unknown): boolean => entryCommands(entry).some(isOwnedByUs);
 
+/**
+ * WHICH AGENT does this command of ours name? `null` when it names none.
+ *
+ * THE DISTINCTION THE WHOLE-SURFACE REVIEW FOUND MISSING (plan 082 F010 F3).
+ * {@link isOwnedByUs} answers *"is this OURS"*, and every caller that needed
+ * *"is this THIS AGENT's"* asked the broader question and read the broader answer
+ * as the narrower one. That is not academic: `CLAUDE_CONFIG_DIR` pointed at
+ * `.factory` makes claude-code and droid resolve to the SAME `settings.json` and
+ * the SAME event arrays, and it is legal under the matrix. Claude installed first;
+ * droid then saw a harness marker, called itself already-installed, and wrote
+ * nothing. Detected agent, healthy report, no hook.
+ *
+ * READ FROM THE ARGUMENTS, NOT THE PATH. Our command is
+ * `<invocation> hooks fire <agent> --phase …`, so the agent is the token after
+ * `fire`. The path is quoted, Windows-normalised and legitimately different
+ * between installs; the verb and its argument are invariant, which is the same
+ * reasoning that put the marker in its own flag rather than inside the path.
+ */
+export function commandAgent(command: string): string | null {
+  const tokens = commandTokens(command);
+  const at = tokens.indexOf('fire');
+  if (at === -1) return null;
+  const agent = tokens[at + 1];
+  return agent === undefined || agent.startsWith('-') ? null : agent;
+}
+
+/**
+ * Is this entry ours AND this agent's?
+ *
+ * Both halves are required and neither implies the other: a foreign entry can
+ * mention an agent name, and an entry of ours can belong to a DIFFERENT agent
+ * sharing the same file.
+ */
+export const entryIsOwnedByAgent = (entry: unknown, agent: string): boolean =>
+  entryCommands(entry).some((command) => isOwnedByUs(command) && commandAgent(command) === agent);
+
+/**
+ * May uninstall remove this ENTRY on THIS AGENT's behalf?
+ *
+ * {@link entryMayRemove} plus agent qualification — the inverse of the collision
+ * above. Uninstalling droid from a file it shares with claude-code must not take
+ * claude's entry with it, and compensation runs the same removal path, so an
+ * unqualified removal would let a FAILED droid install delete a HEALTHY claude one.
+ */
+export const entryMayRemoveForAgent = (entry: unknown, agent: string): boolean =>
+  entryMayRemove(entry) && entryIsOwnedByAgent(entry, agent);
+
 /** May uninstall remove this ENTRY outright, in either shape? */
 export function entryMayRemove(entry: unknown): boolean {
   const commands = entryCommands(entry);

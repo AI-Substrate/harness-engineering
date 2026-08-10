@@ -2,7 +2,13 @@ import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { AgentSpec } from './agent-matrix.js';
 import { eventKeys, resolveConfigFiles } from './agent-matrix.js';
 import { removeFromArray, removeValue, writeThroughSymlink } from './config-writer.js';
-import { entryCommands, entryIsOwnedByUs, entryMayRemove } from './hook-marker.js';
+import {
+  entryCommands,
+  entryIsOwnedByAgent,
+  entryIsOwnedByUs,
+  entryMayRemove,
+  entryMayRemoveForAgent,
+} from './hook-marker.js';
 
 /**
  * UNINSTALL (plan 082 tk-000d) — surgical removal, never a restore.
@@ -134,13 +140,25 @@ function uninstallOneFile(deps: UninstallDeps, spec: AgentSpec, path: string): U
         break;
       }
       const entries = parsed.hooks?.[key] ?? [];
+      /*
+       * AGENT-QUALIFIED REMOVAL (plan 082 F010 F3, the inverse collision).
+       *
+       * `entryMayRemove` alone means "wholly ours" — which in a config SHARED by
+       * two agents also matches the PEER's entry. Uninstalling droid would take
+       * claude-code's hook with it, and worse: install compensation runs this same
+       * path, so a FAILED droid install could delete a HEALTHY claude one. The
+       * marker proves the entry is ours; the `hooks fire <agent>` argument proves
+       * whose, and the ownership question here is whose.
+       */
       const index = entries.findIndex(
-        (entry) => entryMayRemove(entry) && !refused.some((r) => r.command === describe(entry)),
+        (entry) =>
+          entryMayRemoveForAgent(entry, spec.agent) &&
+          !refused.some((r) => r.command === describe(entry)),
       );
       if (index === -1) {
         for (const entry of entries) {
           if (
-            entryIsOwnedByUs(entry) &&
+            entryIsOwnedByAgent(entry, spec.agent) &&
             !entryMayRemove(entry) &&
             !refused.some((r) => r.command === describe(entry))
           ) {
