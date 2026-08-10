@@ -8,7 +8,7 @@ import {
   rmSync,
   statSync,
 } from 'node:fs';
-import { devNull, tmpdir } from 'node:os';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type {
   AdvertisedTelemetryRef,
@@ -95,33 +95,45 @@ const SAFE_CREDENTIAL_CONFIG_ENV = [
 ] as const;
 
 /**
- * The null-device spelling handed to `GIT_CONFIG_GLOBAL`.
+ * The path handed to `GIT_CONFIG_GLOBAL` to make git skip that config level.
  *
- * `os.devNull` is `/dev/null` on POSIX but `\\.\nul` on win32 — a DEVICE path rather than
- * an absent file. MEASURED on a real Windows host by the downstream consumer of #108,
- * with a positive control (a global config carrying a detectable `user.name`, proven
- * detectable before each case):
+ * IT IS `/dev/null` ON EVERY PLATFORM, WINDOWS INCLUDED. That is not a POSIX assumption
+ * leaking into a Windows path: it is a documented contract of the variable itself. git's
+ * `Documentation/git.adoc`, under `GIT_CONFIG_GLOBAL`/`GIT_CONFIG_SYSTEM` — *"Can be set
+ * to `/dev/null` to skip reading configuration files of the respective level."* git reads
+ * the string, it does not open a device.
  *
- *   GIT_CONFIG_GLOBAL=NUL        exit 0    ISOLATED
+ * MEASURED BY US (plan 083), 2026-08-11, on Parallels **Windows 11 build 26100** with
+ * **git 2.55.0.windows.3**, outside vitest, four verbs (`add`/`status`/`rev-parse`/
+ * `config`) × three values, with a positive control (a global config carrying a
+ * detectable `user.name`, proven detectable before each case — without it "nothing
+ * leaked" is indistinguishable from "the probe cannot see a leak"):
+ *
+ *   GIT_CONFIG_GLOBAL=NUL        exit 128  fatal: unable to access 'NUL': Invalid argument
  *   GIT_CONFIG_GLOBAL=\\.\nul    exit 128  fatal: unable to access '\\.\nul': Invalid argument
- *   GIT_CONFIG_GLOBAL=/dev/null  exit 0    ISOLATED (an absent file, so: no config)
+ *   GIT_CONFIG_GLOBAL=/dev/null  exit 0    ISOLATED, and git runs
  *
- * The control is what makes "no leak" mean something — without it, "nothing leaked" is
- * indistinguishable from "the probe cannot see a leak".
+ * BOTH of the values this repo has ever emitted are in the rejected set: `'NUL'` (this
+ * function, plan 077 · #108) and `\\.\nul` (`os.devNull`, what `main` emitted before the
+ * merge). A reader who greps `main` for `NUL`, finds nothing and concludes the report was
+ * overblown has disproved nothing — the two branches were broken by DIFFERENT values.
  *
- * THE FAILURE MODE IS FAIL-CLOSED, NOT A LEAK. This comment previously implied the
- * operator's real config would be read instead; that was wrong. Under `\\.\nul` git
- * refuses to run at all — `add`, `status`, `rev-parse` all return 128 — so on Windows
- * this adapter was INOPERATIVE, never leaky. Nothing was ever exposed.
+ * The earlier table here recorded `NUL -> exit 0 ISOLATED`, attributed to *"the downstream
+ * consumer of #108, with a positive control"*. Product code was built on that and nobody
+ * re-measured, because a positive control had already been cited. It is now replaced by
+ * our own run above; the git version is load-bearing, so it is named.
  *
- * Which also means this is NOT a member of the silent-wrong-answer family that A1/A2 and
- * the `skills` failures belong to, and it was mis-filed there. It fails loud.
+ * THE FAILURE MODE IS FAIL-CLOSED, NOT A LEAK. Under either rejected value git refuses to
+ * run at all, so on Windows this adapter was INOPERATIVE, never leaky. Nothing was ever
+ * exposed. It fails loud, and so it is not a member of the silent-wrong-answer family.
  *
- * `platform` is injected (defaulting to the host) so the win32 branch is reachable from a
- * POSIX test — the same shape as `NodeBackground`/`resolveSpawn`.
+ * `platform` is ACCEPTED AND DELIBERATELY IGNORED. It is the regression seam: the callers
+ * still thread it, so a test can drive the whole env-building path as win32 from a POSIX
+ * host and assert the literal `/dev/null` comes out. Deleting the parameter would make
+ * "no platform variance here" unassertable, which is the exact property that broke.
  */
-export function nullDeviceForPlatform(platform: NodeJS.Platform = process.platform): string {
-  return platform === 'win32' ? 'NUL' : devNull;
+export function gitConfigNullPath(_platform: NodeJS.Platform = process.platform): string {
+  return '/dev/null';
 }
 
 export function safeGitEnvironment(
@@ -137,7 +149,7 @@ export function safeGitEnvironment(
     ...inherited,
     GIT_TERMINAL_PROMPT: '0',
     GIT_CONFIG_NOSYSTEM: '1',
-    GIT_CONFIG_GLOBAL: credentialConfigPath ?? nullDeviceForPlatform(platform),
+    GIT_CONFIG_GLOBAL: credentialConfigPath ?? gitConfigNullPath(platform),
     GIT_OPTIONAL_LOCKS: '0',
     GIT_PROTOCOL_FROM_USER: '0',
     GIT_ALLOW_PROTOCOL: 'https:ssh:git',
@@ -159,7 +171,7 @@ export function safeCredentialConfigEnvironment(
     GIT_CONFIG_NOSYSTEM: '1',
     GIT_TERMINAL_PROMPT: '0',
     GCM_INTERACTIVE: 'never',
-    ...(materializing ? { GIT_CONFIG_GLOBAL: nullDeviceForPlatform(platform) } : {}),
+    ...(materializing ? { GIT_CONFIG_GLOBAL: gitConfigNullPath(platform) } : {}),
   };
 }
 
