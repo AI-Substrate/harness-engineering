@@ -120,4 +120,39 @@ test('given_unconfigured_verb_when_run_then_status_unconfigured_exit_2', () => {
 
 <!-- USER CONTENT START -->
 <!-- Add project-specific rules here; preserved across regenerations. -->
+
+### The global `harness` binary is owned by `main` alone
+
+- **MUST NOT** point the machine-global `harness` at a worktree. A worktree never
+  runs `npm link`, `just link`, `harness skills install --global`, or anything else
+  that repoints the global at itself.
+- **MUST** exercise a worktree build by invoking it explicitly:
+  `node <worktree>/harness/cli/bin/harness.js <verb>` — never bare `harness`.
+- **MUST** put the machine back on `main` after every merged PR:
+  `just local-deploy` (root checkout only — syncs main, builds, links, deploys
+  skills, then **proves** the global is not a worktree via `just verify-global-link`).
+
+**Rationale.** A linked worktree silently redirects *every other seat's* `harness`
+call to an in-flight, possibly-broken build, and **nothing in the envelope reveals
+which binary answered**. It is strictly worse than a stale install: a stale install
+is at least a shipped state.
+
+**Why this is a control and not etiquette.** `just link` already refuses to run from
+a worktree (`_require-root-checkout`), and `harness doctor`'s version-skew layer does
+**not** catch a worktree link — on 2026-08-05 it reported *"running 0.13.0 matches the
+repo (no stale install shadowing)"* while the global resolved into
+`…-worktrees/s065-deterministic-documents/…`. **Version identity is not path
+identity.** `just verify-global-link` checks the resolved path, and treats an absent
+`harness` as `NOT-PROBEABLE`, never as a pass.
+
+**Companion failure, same root cause — deployed artifacts drift silently.** On
+2026-08-05 the deployed builder skill was **three weeks stale** (`~/.agents` is a
+*copy*, not a symlink to source), so a Jul-15 builder authored plan 072 for a tool
+that reads Aug-4 plans and `harness plan ready` answered `E400: no plan.dd.json` on
+its own plan. **Eleven green `harness checks` runs never mentioned it** —
+`check:doctrine-parity` guards the mirrored doctrine block, not deploy freshness.
+Nothing yet detects that a deployed skill is behind its source; until something does,
+`just local-deploy` after every merge is the only thing standing between the fleet and
+that class of failure.
+
 <!-- USER CONTENT END -->
