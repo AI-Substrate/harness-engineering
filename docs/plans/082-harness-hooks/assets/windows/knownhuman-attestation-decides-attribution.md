@@ -83,25 +83,23 @@ command.** Two routes reach the same outcome:
 2. **Something records `KnownHuman` while the human types** — the attestation exists regardless of
    who later commits (`0a7ed688`)
 
-## 4. What produces a `KnownHuman` attestation — NARROWED, NOT SOLVED
+## 4. What produces a `KnownHuman` attestation — ANSWERED
 
-The obvious hypothesis was git-ai's VS Code extension, active in Cursor on the Mac and absent on
-Windows. **Measured, and that is not it:**
+**Root cause found by `pij-immediate-newt`:** git-ai's VS Code extension records `KnownHuman` on
+document save, and to do so it spawns **the bare string `git-ai`** (`out/utils/binary-path.js`
+resolves a real path only in `ExtensionMode.Development`). On the Windows box **`git-ai` is on no
+PATH at all**, so every save spawns `ENOENT` and no attestation is ever written.
 
-```
-C:\Users\<user>\.cursor\extensions\git-ai.git-ai-vscode-0.1.21-universal   <- INSTALLED
-```
+The extension **is installed** there — `git-ai.git-ai-vscode-0.1.21-universal`, the same version
+string as the macOS box — and it ships `known-human-checkpoint-manager.js`. It is present, it
+fires on save, and its spawn fails silently.
 
-The extension **is installed on Windows**, and it ships `known-human-checkpoint-manager.js` which
-references `known_human` three times. **It is present and it never fires here** — 0 of 28
-checkpoints.
+**The binary, preset and daemon leg all work on Windows**, proven by positive control: a full-path
+`checkpoint known_human --hook-input stdin` with a real payload writes a `KnownHuman` record and
+appears in the daemon log as `checkpoint start kind=KnownHuman … status=ok`.
 
-So the difference is not *extension installed vs not*. It is that **the extension's KnownHuman
-path does not fire on Windows**, and why is unknown. That is now the highest-value open question,
-and it has a familiar shape: a component installed, believed active, and silently doing nothing —
-the same class as the UTF-8 BOM defect that opened this investigation.
-
-`git-ai checkpoint known_human` is the other documented route and was never exercised here.
+Full chain, the refuted intermediate claim, and the falsifiable fix:
+[`root-cause-extension-cannot-find-git-ai.md`](./root-cause-extension-cannot-find-git-ai.md).
 
 ## 5. Practical guidance — unchanged, and still correct
 
@@ -155,8 +153,10 @@ guard and measuring no difference in either direction.
 
 ## 8. Open
 
-- **Why the extension's `KnownHuman` path never fires on Windows.** Highest value: one component,
-  two boxes, different behaviour.
+- ~~Why the extension's `KnownHuman` path never fires on Windows.~~ **ANSWERED** — the extension
+  spawns the bare string `git-ai`, which is on no PATH there. See
+  [`root-cause-extension-cannot-find-git-ai.md`](./root-cause-extension-cannot-find-git-ai.md).
+  The one-line fix is stated there and is **not yet run**.
 - **`bc52299`'s unclaimed-but-not-stolen shape** was seen once; stability unknown.
 - **Whether the daemon ACTS on our six synthetic events.** They reach a live listener; we have not
   shown one produced a note git's own trace2 could not have.
