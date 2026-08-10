@@ -85,8 +85,9 @@ Now recorded in
 
 - **Why git-ai's `KnownHuman` path never fires on Windows** — **ANSWERED**, see
   [`root-cause-extension-cannot-find-git-ai.md`](./root-cause-extension-cannot-find-git-ai.md).
-  The falsifiable fix (put `%USERPROFILE%\.git-ai\bin` on the user PATH and restart Cursor) is
-  **not yet run**.
+  The fix (`%USERPROFILE%\.git-ai\bin` on the user PATH) is **APPLIED and verified resolving**;
+  the confirming save test needs a human at the Cursor GUI. Baseline for it: 31 checkpoints,
+  **0 `KnownHuman`**.
 - Whether the daemon **acts on** our six synthetic events — they reach a live listener, but we
   have not shown one produced a note git's own trace2 could not have. **On native Windows this may
   be unanswerable**: with no sandbox, git's own stream always arrives.

@@ -67,18 +67,43 @@ git-ai.exe checkpoint known_human --hook-input stdin   (with a real JSON payload
 **The binary, the preset, and the CLI-to-daemon named-pipe leg all work on Windows.** There is
 exactly one fault, and it is the spawn.
 
-## The falsifiable fix prediction
+## The fix — APPLIED, awaiting the save test
 
-> Add `%USERPROFILE%\.git-ai\bin` to the **user** PATH, restart Cursor, save a file in a repo.
-> A `KnownHuman` checkpoint should appear in the daemon log within roughly one second
-> (save + the 500ms debounce).
+> **Prediction:** add `%USERPROFILE%\.git-ai\bin` to the **user** PATH, restart Cursor, save a
+> file in a repo. A `KnownHuman` checkpoint should appear in the daemon log within roughly one
+> second (save + the 500ms debounce).
 
-**Not yet run.** If it holds, the whole Windows attribution failure reduces to an installer
-defect — git-ai's Windows installer places the binary but does not put its directory on PATH, and
-its own extension then cannot find it.
+**First half APPLIED 2026-08-10** by `pij-immediate-newt` (`scratch/win/path-fix-gitai.ps1` —
+appends to the user Path only, idempotent, no other entries touched). **Verified independently
+from a fresh process:**
 
-If it does **not** hold, the extension is failing for some further reason and the extension-host
-console is the next evidence.
+```
+USER Path contains .git-ai\bin   -> True   (read from the registry, not the session env)
+where git-ai                     -> C:\Users\<user>\.git-ai\bin\git-ai.exe
+git-ai --version                 -> 1.6.21
+```
+
+**So the spawn that was failing can now succeed.** The bare string `git-ai` — exactly what the
+extension spawns — resolves.
+
+**Second half NOT YET RUN.** It needs a human at the GUI: restart Cursor, save a file, then read
+`~/.git-ai/internal/daemon/logs/<pid>.log` for `checkpoint start kind=KnownHuman`. State at the
+time of writing, for a clean before/after:
+
+```
+probe repo C:\src\cursor:  checkpoints = 31   KnownHuman = 0
+```
+
+**Any `KnownHuman` above zero after a save is the confirmation.** If it stays at zero with the
+PATH resolving, the spawn is not the only fault and the extension-host console is the next
+evidence.
+
+### If it holds, this is an installer defect worth reporting
+
+git-ai's Windows installer places the binary and **does not put its directory on PATH**, and its
+own extension then cannot find it. That is a clean, one-line, reportable bug on a platform the
+vendor already labels experimental — and it is the feedback they explicitly ask for. See
+[`vendor-support-status-non-wsl-experimental.md`](./vendor-support-status-non-wsl-experimental.md).
 
 ## The instrument that should have been used first
 
