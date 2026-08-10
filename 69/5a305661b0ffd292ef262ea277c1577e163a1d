@@ -1,0 +1,39 @@
+harness/cli/src/services/doctor/collector/install.ts
+  s_6a069988adc301::t_33db5ff01abe49 865-867
+  s_6a069988adc301::t_8bb601bff2d9e2 8-13
+  s_6a069988adc301::t_dc3cd4e2d65087 779-799
+  s_6a069988adc301::t_a6008646efd741 830-832
+  s_6a069988adc301::t_a808aebace8ca9 879,884-936
+  s_6a069988adc301::t_ffaa0383cdd3b7 937-944
+harness/cli/src/services/doctor/collector/platform.ts
+  s_6a069988adc301::t_2497a1306cc1d5 85-102
+harness/cli/src/acts/doctor.ts
+  s_6a069988adc301::t_e356faaabfd997 70,81
+harness/cli/src/services/doctor/collector/types.ts
+  s_6a069988adc301::t_984fb592724520 136-142
+harness/cli/src/services/doctor/collector/auto-install.ts
+  s_6a069988adc301::t_b2c5de117bd050 260-266,274-275
+  s_6a069988adc301::t_7e635b4951a96c 155-162,168
+  s_6a069988adc301::t_ece6eb15d16f4f 5
+  s_6a069988adc301::t_8b4b38e09689e6 267-273
+harness/cli/test/services/doctor/collector/auto-install.test.ts
+  s_6a069988adc301::t_10d5801aaae134 835-912
+harness/cli/test/services/doctor/collector/install.test.ts
+  s_6a069988adc301::t_8c3b726326a46e 684-780
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "695a305661b0ffd292ef262ea277c1577e163a1d",
+  "prompts": {},
+  "sessions": {
+    "s_6a069988adc301": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e7dab2b-673d-471a-b447-862e98eb1aba",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
