@@ -28,39 +28,48 @@ live daemon whose absence fails silently.
 > base, not an attestation.** Without a `KnownHuman` for those lines, commit-time recovery
 > assigns unwitnessed lines to the only session it knows — in an agent-run commit, the agent's.
 
-**On Windows this currently always bites**: `KnownHuman` has **never once been recorded** on the
-test machine (0 of 28 checkpoints), even though git-ai's VS Code extension is installed there.
-**So on Windows, commit your own work yourself from the Cursor UI** — it is presently the only
-reliable way for your lines to be attributed to you.
+### On Windows, CHECK YOUR PATH FIRST — this was the whole defect
 
-Measured back to back in one repository, minutes apart:
+**If `where git-ai` does not resolve, git-ai's editor extension cannot record human attestations,
+and every hand-written line you author will be claimed for the agent on an agent-run commit.**
 
-| who ran the commit | contents | result |
-|---|---|---|
-| **agent** (`git add -A` + `git commit`) | agent edits + a human-authored file | the human's file, **never opened by the agent**, claimed in full for the agent session. No `h_` |
-| **human**, from the Cursor UI | human-only work | **correct `h_` known-human attribution** |
-| **human**, from the UI, after the agent had also edited | agent lines + one human line | agent's lines correct; the human's line **unclaimed** — not stolen, not attested |
+git-ai's Windows installer places the binary at `%USERPROFILE%\.git-ai\bin` and **does not add
+that directory to PATH**, while its own VS Code extension spawns the **bare name** `git-ai` in
+production. Every document save fails `ENOENT` into the extension-host console — silently.
 
-**Who commits is not the mechanism, though — it is one way to produce an attestation.** A macOS
-commit where the **agent** ran `git add -A` still produced a correct `h_` **beside** the agent's
-`s_` claim in the same note, because a `KnownHuman` checkpoint existed for those lines.
+```powershell
+where git-ai            # must resolve. If not:
+# add %USERPROFILE%\.git-ai\bin to the USER Path, then restart your editor
+```
 
-**If the agent must commit, use explicit pathspecs** — `harness commit "<msg>" -- <paths>` rather
-than `git add -A`. It does **not** fix attribution, but it collapses the blast radius: one
-measured pair went from **9 of 10** claims minted by recovery down to **0 of 1**. A sweeping stage
-hands the recovery ladder every unwitnessed file in the tree, and it claims all of them.
+**Measured on the test machine**: before the PATH fix, `KnownHuman` records = **0 of 31**
+checkpoints, and every agent-run commit claimed the human's lines. After it, the extension
+produced a `KnownHuman` **one second after a save**, and the next mixed commit — **run by the
+agent** — carried both claims correctly:
+
+```
+seed.mjs
+  h_c6c79ed115e5e7                    19-21,63     <- the human
+  s_f1a6225dd0dc49::t_ed02d59ed5c4d0  64-67        <- the agent
+```
+
+### Then, defensively
+
+**If the agent commits, prefer explicit pathspecs** — `harness commit "<msg>" -- <paths>` rather
+than `git add -A`. A sweeping stage hands the recovery ladder every unwitnessed file in the tree:
+one measured pair went from **9 of 10** claims minted by recovery down to **0 of 1**.
 
 **Do not read an unclaimed range as "attributed to the human."** Unclaimed is silence, not
 attestation.
 
-**This is git-ai's commit-time recovery, not the harness relay.** The relay was measured working
-end-to-end on Windows (hook fires, BOM stripped, payload parsed, commit classified, written to a
-live daemon, and it reports `failed` honestly when the daemon is stopped). Removing our strongest
-guard, disabling the Cursor sandbox, inverting edit order and breaking adjacency each changed
-**nothing** about the outcomes above.
+**None of this was the harness relay.** The relay was measured working end-to-end on Windows
+(hook fires, BOM stripped, payload parsed, commit classified, written to a live daemon, and it
+reports `failed` honestly when the daemon is stopped). Removing our strongest guard, disabling
+the Cursor sandbox, inverting edit order and breaking adjacency each changed **nothing**. One
+PATH entry changed everything.
 
 Full evidence:
-[`docs/plans/082-harness-hooks/assets/windows/knownhuman-attestation-decides-attribution.md`](../../plans/082-harness-hooks/assets/windows/knownhuman-attestation-decides-attribution.md).
+[`docs/plans/082-harness-hooks/assets/windows/root-cause-extension-cannot-find-git-ai.md`](../../plans/082-harness-hooks/assets/windows/root-cause-extension-cannot-find-git-ai.md).
 
 ---
 

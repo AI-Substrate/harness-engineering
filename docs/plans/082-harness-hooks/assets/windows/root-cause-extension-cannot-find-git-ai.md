@@ -116,12 +116,35 @@ Clean, one-line, reproducible, with a verified fix — and on a platform the ven
 experimental and explicitly solicits feedback on. See
 [`vendor-support-status-non-wsl-experimental.md`](./vendor-support-status-non-wsl-experimental.md).
 
-### Still open — the acceptance run
+### CLOSED — the acceptance run passed
 
-**Whether a Windows note now carries BOTH `h_` and `s_`** for a same-file mixed commit run **by
-the agent** — i.e. replicating the macOS counterexample on Windows. The mechanism says it should:
-a landed `h_` flips `should_recover_remaining_as_known_human()` to `true` via its early return.
-**That is predicted, not measured.**
+**Commit `03a81310f7eaa8544ea148f803985b0e01e8c24d`**, `C:\src\cursor`: hand edits **and** agent
+edits to `seed.mjs`, **commit run by the agent**. The note:
+
+```
+seed.mjs
+  h_c6c79ed115e5e7                    19-21,63    <- THE HUMAN
+  s_f1a6225dd0dc49::t_ed02d59ed5c4d0  64-67       <- the agent
+  s_f1a6225dd0dc49::t_6c1ca1cf96e0b8  62          <- the agent
+---
+"humans":   { "h_c6c79ed115e5e7": { … } }
+"sessions": { "s_f1a6225dd0dc49": { agent_id: { tool: "cursor", … } } }
+```
+
+**Both prefixes, same file, same commit, agent-run — the macOS counterexample reproduced on
+Windows.** The note carries a `humans` block *and* a `sessions` block, which no Windows note in
+this investigation had ever done.
+
+**The defect is closed at all three layers:**
+
+| layer | before | after |
+|---|---|---|
+| checkpoint | `KnownHuman` never recorded (0 of 31) | recorded on save, one second after |
+| the `:661` gate | skipped the human sweep — no `h_` existed | landed `h_` flips it via the early return |
+| outcome | human lines claimed for the agent | **human lines correctly attributed** |
+
+**Nothing in the harness changed to achieve this.** One PATH entry, on a defect that was git-ai's
+installer the whole time.
 
 ## The instrument that should have been used first
 

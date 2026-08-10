@@ -77,10 +77,18 @@ mechanism, and same-file vs cross-file.
 Now recorded in
 [`docs/how/telemetry/gitai-05-attribution-algorithm.md`](../../../../how/telemetry/gitai-05-attribution-algorithm.md):
 
-1. **Commit your own work yourself** from the Cursor UI. Agent-run commits claim human work.
-2. **If the agent commits, use explicit pathspecs** — `harness commit "<msg>" -- <paths>`. It does
-   not fix attribution but collapses the blast radius (9-of-10 minted claims → 0-of-1).
-3. **Unclaimed is not human.** No note observed here has ever carried both an `s_` and an `h_`.
+> **FIRST, CHECK THE PATH.** On Windows, if `where git-ai` does not resolve, git-ai's extension
+> cannot record human attestations and **all your hand-written work will be claimed for the agent**
+> on any agent-run commit. Add `%USERPROFILE%\.git-ai\bin` to your user PATH and restart your
+> editor. That single step fixed every symptom below on the test machine.
+
+With the PATH correct, attribution works on Windows — human and agent claims coexist in one note.
+The remaining advice is defensive rather than corrective:
+
+1. **If the agent commits, prefer explicit pathspecs** — `harness commit "<msg>" -- <paths>`. A
+   sweeping `git add -A` hands the recovery ladder every unwitnessed file in the tree: one
+   measured pair went from **9 of 10** claims minted by recovery to **0 of 1**.
+2. **Unclaimed is not human.** An absent claim is silence, not attestation.
 
 ## Open, and deliberately not blocking
 
@@ -90,9 +98,10 @@ Now recorded in
   `%USERPROFILE%\.git-ai\bin` to the user PATH produced the **first extension-originated
   `KnownHuman` ever recorded on that machine**, within a second of a save. It is a **git-ai
   installer defect** and the report is evidence-complete.
-- **The acceptance run**: does a Windows note now carry **both** `h_` and `s_` for a same-file
-  mixed commit run *by the agent* — replicating the macOS counterexample. Predicted by the
-  mechanism, **not yet measured**.
+- ~~**The acceptance run**: does a Windows note now carry **both** `h_` and `s_` for a same-file
+  mixed commit run *by the agent*~~ — **PASSED.** Commit `03a81310`: `h_c6c79ed115e5e7 19-21,63`
+  beside `s_f1a6225dd0dc49::t_… 62,64-67` in one note, agent-run. The macOS counterexample
+  reproduced on Windows. **The attribution defect is closed at all three layers.**
 - Whether the daemon **acts on** our six synthetic events — they reach a live listener, but we
   have not shown one produced a note git's own trace2 could not have. **On native Windows this may
   be unanswerable**: with no sandbox, git's own stream always arrives.
