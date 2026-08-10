@@ -899,19 +899,48 @@ export function autoInstallHooks(deps: HooksDeps | null): HooksAutoInstall {
     };
   }
 
-  const warnings = report.failed.map((f) => `agent hooks: ${f.agent} — ${f.reason}`);
+  const failures = report.failed.map((f) => `agent hooks: ${f.agent} — ${f.reason}`);
+  /*
+   * REFUSALS ARE WARNINGS TOO, and this is the path that matters (F008
+   * re-verdict). `autoInstallHooks` is the doctor / first-run entry point — how
+   * almost every real user installs — and it built its warnings from `failed`
+   * alone. So a refused legacy upgrade surfaced through `harness hooks install`,
+   * which few people run, and was SILENT here: a Windows user with a chained
+   * legacy entry got "installed", no warning, and a hook that cannot run.
+   *
+   * That contradicted the "BUT IT IS NEVER SILENT" contract stated forty lines
+   * above it. PROXIMITY TO A STATED CONTRACT — even one's own, even in the same
+   * function — IS NOT PROTECTION. A contract is enforced by a row or it is prose.
+   *
+   * `nextAction` is included, not just the reason, and so is the OFFENDING
+   * COMMAND: the whole point of the refusal is that the user must repair this
+   * entry by hand, so they need to know WHICH entry (an agent can hold four) and
+   * WHAT TO WRITE. A warning missing either half sends them to read our source.
+   */
+  const refusals = report.refusedUpgrades.map(
+    (r) => `agent hooks: ${r.path} — ${r.reason}: ${r.command} — ${r.nextAction}`,
+  );
+  const warnings = [...failures, ...refusals];
   if (report.installed.length === 0) {
     return {
-      action: warnings.length > 0 ? 'failed' : 'not-needed',
+      action: failures.length > 0 ? 'failed' : 'not-needed',
       detail:
-        warnings.length > 0
+        failures.length > 0
           ? 'agent hooks could NOT be installed for any detected agent'
           : 'no detected agent needed an agent hook installed',
       warnings,
     };
   }
   return {
-    action: warnings.length > 0 ? 'failed' : 'installed',
+    /*
+     * KEYED ON FAILURES, NOT ON `warnings.length`. A refused upgrade is an ACTION
+     * ITEM, not a failed install — the install did everything it was allowed to
+     * do, and declined exactly one entry on purpose. Doctor prints warnings
+     * whatever the action is (`acts/doctor.ts:358`), so the message is delivered
+     * either way; calling a working install `failed` would spend the word on a
+     * case where nothing failed, and teach operators to discount it.
+     */
+    action: failures.length > 0 ? 'failed' : 'installed',
     detail: `agent hooks installed for ${[...new Set(report.installed.map((i) => i.agent))].join(', ')}`,
     warnings,
   };

@@ -12,6 +12,7 @@ import {
 } from '../../../src/services/hooks/binary-path.js';
 import { isOwnedByUs } from '../../../src/services/hooks/hook-marker.js';
 import {
+  autoInstallHooks,
   type HooksDeps,
   installHooks,
   statusHooks,
@@ -305,5 +306,78 @@ describe('an OURS-WITH-FOREIGN legacy entry is REFUSED, not rewritten (F008 revi
 
     expect(report.refusedUpgrades).toEqual([]);
     expect(extractInterpreterPath(readCursor().hooks.preToolUse[0].command)).toBe(NODE);
+  });
+});
+
+describe('the refusal survives the path EVERYONE takes (F008 re-verdict)', () => {
+  /**
+   * `autoInstallHooks` is the doctor / first-run entry point — it is how almost
+   * every real user installs. It built its warnings from `report.failed` alone
+   * and dropped `refusedUpgrades`, so the refusal surfaced on the path few
+   * people take and was silent on the path everyone takes: a Windows user with a
+   * chained legacy entry got "installed", no warning, and a hook that cannot
+   * run.
+   *
+   * AND IT CONTRADICTED THIS FUNCTION'S OWN DOCBLOCK — "BUT IT IS NEVER SILENT",
+   * forty lines above the code that was silent. My last report said proximity to
+   * a correct precedent two files away is not protection. This is the sharper
+   * form: PROXIMITY TO YOUR OWN STATED CONTRACT IS NOT PROTECTION EITHER. A
+   * contract is enforced by a row or it is prose.
+   */
+  const withForeign = () => {
+    installHooks(deps({ binary: legacyBinary() }));
+    const doc = readCursor();
+    for (const key of Object.keys(doc.hooks)) {
+      for (const entry of doc.hooks[key]) {
+        if (isOwnedByUs(entry.command)) entry.command = `${entry.command} && other-tool --run`;
+      }
+    }
+    fs.writeText(cursorConfig(), `${JSON.stringify(doc, null, 2)}\n`);
+  };
+
+  it('SURFACES the refusal through doctor auto-install too', () => {
+    /*
+    Test Doc:
+    - Why: the reviewer's counter-row, kept. A refusal nobody sees is a silent
+      failure wearing a report's clothes.
+    - Contract: the warning names the entry we left alone AND carries the
+      interpreter-first replacement to paste.
+    */
+    withForeign();
+
+    const report = autoInstallHooks(deps());
+
+    expect(report.warnings.join('\n')).toContain('other-tool --run');
+    expect(report.warnings.join('\n')).toContain(`"${NODE}" `);
+  });
+
+  it('does NOT call the install FAILED — a refusal is an action item, not a failure', () => {
+    /*
+    Test Doc:
+    - Why: `action` drove off `warnings.length`, so appending refusals to that
+      list would report a working install as `failed`. Doctor prints warnings
+      regardless of action (`acts/doctor.ts:358`), so the warning is delivered
+      either way — and calling a successful install a failure would train
+      operators to ignore the word.
+    - Contract: warned, and still `installed`.
+    */
+    withForeign();
+
+    const report = autoInstallHooks(deps());
+
+    expect(report.warnings.length).toBeGreaterThan(0);
+    expect(report.action).toBe('installed');
+  });
+
+  it('a CLEAN auto-install warns about nothing — the counter-row', () => {
+    /*
+    Test Doc:
+    - Why: without this, "always warn" passes both rows above.
+    - Contract: no foreign work, no warnings.
+    */
+    const report = autoInstallHooks(deps());
+
+    expect(report.warnings).toEqual([]);
+    expect(report.action).toBe('installed');
   });
 });
