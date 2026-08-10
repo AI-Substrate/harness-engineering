@@ -1,0 +1,47 @@
+harness/cli/src/services/hooks/hook-payload.ts
+  s_e67adf606e9af5::t_811a8faf981680 159-174,176-177,180
+  s_e67adf606e9af5::t_66aba67b5f2301 124-130,132-133,138
+  s_e67adf606e9af5::t_cbe8230fa6ffe3 43-45,48-58,72-75
+  s_e67adf606e9af5::t_d382e19501a406 104-122,131,136,140,151-158,175,178-179,181
+  s_e67adf606e9af5::t_fda15992507e34 18-36,39-42,46-47,59-71,76-85
+harness/cli/test/services/hooks/hook-journal.test.ts
+  s_e67adf606e9af5::t_16c10fede6ddc0 260-261,281-312,320-369
+  s_e67adf606e9af5::t_43c549e7c75a31 370-371
+harness/cli/test/services/hooks/hooks-verb.int.test.ts
+  s_e67adf606e9af5::t_cd1e7daefa73fe 33
+  s_e67adf606e9af5::t_b6270a571d4e60 164-310,380-400
+  s_e67adf606e9af5::t_3d131f19886e33 311-327,331-339
+  s_e67adf606e9af5::t_8b9605b8710618 340-379
+  s_e67adf606e9af5::t_dcba68975c1838 328-330
+harness/cli/src/services/hooks/commit-intercept.ts
+  s_e67adf606e9af5::t_5423da306341c5 21-29
+  s_e67adf606e9af5::t_5d545e7854f05b 42-48
+harness/cli/src/acts/hooks.ts
+  s_e67adf606e9af5::t_dcba68975c1838 12-16
+  s_e67adf606e9af5::t_b0d76b32b2b6d3 355-368,371,380-382,386
+  s_e67adf606e9af5::t_b52985630301d0 284-318,326-328,330-331
+  s_e67adf606e9af5::t_907a30df37b5fd 329
+harness/cli/src/services/hooks/hook-journal.ts
+  s_e67adf606e9af5::t_cdfff294d24c86 72-77,79-86
+harness/cli/test/services/hooks/status-and-fires.test.ts
+  s_e67adf606e9af5::t_d92b6f032dd384 178-259
+harness/cli/src/services/hooks/hooks-verbs.ts
+  s_e67adf606e9af5::t_cf468f85e7a920 431-449
+  s_e67adf606e9af5::t_65d6c5a40ba823 690-707,714-715
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "46b0dd003e2643796a571b08967a9a2aa0b2f7a1",
+  "prompts": {},
+  "sessions": {
+    "s_e67adf606e9af5": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "a01f9e71-48c7-42b2-857d-e2991866b223",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
