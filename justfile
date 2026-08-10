@@ -269,3 +269,57 @@ install-hooks:
 # Generate a fresh throwaway test repo (for real agent/manual extension testing); prints its path.
 test-repo dest="":
     @bash scripts/new-test-repo.sh "{{dest}}"
+
+# ---------------------------------------------------------------------------
+# POST-MERGE DEPLOY — one command, so it stops being a memory exercise.
+#
+# Jordan's standing instruction: after EVERY merged PR, the machine must be put
+# back on main — latest source, built CLI, global link pointing at main, skills
+# deployed. Each of those four was already possible and all four depended on
+# someone remembering. Tonight the skills half was THREE WEEKS STALE and it cost
+# a whole plan: a Jul-15 builder authored plan 072 for a tool that reads Aug-4
+# plans, and `harness plan ready` answered E400 on its own plan. Eleven green
+# `harness checks` runs never mentioned it — `check:doctrine-parity` guards the
+# mirrored doctrine block, not deploy freshness.
+#
+# The link step is the one with teeth: a linked WORKTREE silently redirects every
+# other seat's `harness` call to an in-flight, possibly-broken build, and nothing
+# in the envelope reveals which binary answered. See docs/project-rules/rules.md.
+local-deploy: _require-root-checkout
+    @echo "==> 1/5 sync main"
+    git fetch origin main --quiet
+    git merge --ff-only origin/main
+    @echo "==> 2/5 build"
+    npm run build
+    @echo "==> 3/5 link global at main"
+    npm link --ignore-scripts
+    @echo "==> 4/5 deploy skills"
+    @just install-skills-from-source
+    @echo "==> 5/5 PROVE the global is main, not a worktree"
+    @just verify-global-link
+
+# Assert the machine-global `harness` resolves inside the ROOT checkout.
+#
+# A rule that must be remembered is not a control — the same failure mode as the
+# stale skills this recipe exists to prevent. `doctor`'s version-skew layer does
+# NOT catch this: it reported "running 0.13.0 matches the repo (no stale install
+# shadowing)" while the global pointed into a worktree, because the version
+# matched. Version identity is not path identity.
+verify-global-link:
+    @resolved="$(readlink -f "$(command -v harness 2>/dev/null)" 2>/dev/null || true)"; \
+    root="$(git rev-parse --show-toplevel)"; \
+    if [ -z "$resolved" ]; then \
+        echo "NOT-PROBEABLE: no global \`harness\` on PATH — absence is not a pass."; exit 1; \
+    fi; \
+    case "$resolved" in \
+        *-worktrees/*) echo "FAIL: global \`harness\` resolves INSIDE A WORKTREE:"; \
+                       echo "  $resolved"; \
+                       echo "  Every seat's \`harness\` call is running that in-flight build."; \
+                       echo "  Fix from the root checkout: just local-deploy"; exit 1;; \
+    esac; \
+    case "$resolved" in \
+        "$root"/*) echo "OK: global harness -> $resolved";; \
+        *)         echo "FAIL: global \`harness\` resolves OUTSIDE this checkout:"; \
+                   echo "  $resolved"; \
+                   echo "  expected under: $root"; exit 1;; \
+    esac
