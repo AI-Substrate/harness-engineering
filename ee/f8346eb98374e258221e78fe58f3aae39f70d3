@@ -1,0 +1,30 @@
+harness/cli/src/services/hooks/uninstall-strategy-a.ts
+  s_e67adf606e9af5::t_b8436c685429db 178
+  s_e67adf606e9af5::t_98b6944d08716f 175-177
+  s_e67adf606e9af5::t_a3a5dbfa5927fc 179-180
+  s_e67adf606e9af5::t_cf7d21264bf523 9,162-164,166,168-174
+harness/cli/src/services/hooks/install-strategy-a.ts
+  s_e67adf606e9af5::t_862347e6f5a40c 585-588,593-602
+  s_e67adf606e9af5::t_0aa9a96b70c4a9 264
+  s_e67adf606e9af5::t_fa88dfd5fc4b4b 10,245-251,255-256,261,440-476,483,486,508-515,677,679-683,685,692-693
+harness/cli/src/services/hooks/hook-marker.ts
+  s_e67adf606e9af5::t_58ade3772aa6ac 225-260,262-266
+harness/cli/test/services/hooks/composition-boundaries.test.ts
+  s_e67adf606e9af5::t_9a6f2039a3404f 624-893
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "eef8346eb98374e258221e78fe58f3aae39f70d3",
+  "prompts": {},
+  "sessions": {
+    "s_e67adf606e9af5": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "a01f9e71-48c7-42b2-857d-e2991866b223",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
