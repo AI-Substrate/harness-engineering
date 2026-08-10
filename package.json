@@ -1,7 +1,7 @@
 {
   "name": "@ai-substrate/engineering-harness",
   "version": "0.13.0",
-  "description": "Starter Harness CLI Core — the agent-friendly front door to this repo's engineering harness.",
+  "description": "Starter Harness CLI Core \u2014 the agent-friendly front door to this repo's engineering harness.",
   "type": "module",
   "repository": {
     "type": "git",
@@ -58,8 +58,8 @@
     "picomatch": "^4.0.5"
   },
   "optionalDependencies": {
-    "ink": "^5.2.1",
-    "react": "^18.3.1"
+    "ink": "^7.1.1",
+    "react": "^19.2.8"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.0",
