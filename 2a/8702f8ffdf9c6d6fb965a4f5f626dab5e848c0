@@ -1,0 +1,32 @@
+harness/cli/src/services/hooks/hooks-verbs.ts
+  s_6a069988adc301::t_148c6d99a0b617 303-308
+  s_6a069988adc301::t_36eb651daa4aef 21
+  s_6a069988adc301::t_9b43e7e8298fca 1117-1121,1125-1141
+  s_6a069988adc301::t_b1d9c40bad3d2a 201-209
+harness/cli/src/services/hooks/install-strategy-a.ts
+  s_6a069988adc301::t_87fcae60da1ad8 433-444,448-458
+  s_6a069988adc301::t_3da0980692a46b 502-504
+  s_6a069988adc301::t_d0a0e928449eb6 5
+harness/cli/src/services/hooks/config-writer.ts
+  s_6a069988adc301::t_bde86a4d5bf73d 97
+  s_6a069988adc301::t_06927647ff44ca 65-88
+  s_6a069988adc301::t_327069881e6100 64
+harness/cli/test/services/hooks/install-strategy-a.test.ts
+  s_6a069988adc301::t_f05b9066855e4f 268-301
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "2a8702f8ffdf9c6d6fb965a4f5f626dab5e848c0",
+  "prompts": {},
+  "sessions": {
+    "s_6a069988adc301": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5e7dab2b-673d-471a-b447-862e98eb1aba",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
