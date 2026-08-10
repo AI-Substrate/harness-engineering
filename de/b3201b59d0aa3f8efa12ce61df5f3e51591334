@@ -1,0 +1,31 @@
+docs/project-rules/rules.md
+  s_c88674e85f3aea::t_0eca90905f4336 123-157
+justfile
+  s_c88674e85f3aea::t_4dd65a7901e1db 272-325
+package-lock.json
+  s_a76964380084ef::t_4fa5895d9ccc75 33-35,1925,1932,3261,3266,3409,3416,6651-6660,6721,6731
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "deb3201b59d0aa3f8efa12ce61df5f3e51591334",
+  "prompts": {},
+  "sessions": {
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_c88674e85f3aea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71679da4-5249-4e02-9117-68a3abf3ed0e",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
