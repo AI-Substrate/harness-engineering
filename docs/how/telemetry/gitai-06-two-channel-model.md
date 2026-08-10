@@ -238,6 +238,17 @@ all, and git-ai produced a **correct** `h_` attestation naming the right author.
 
 ## 3. THE SANDBOX FAILURE MODE, AND ITS TWO ESCAPES
 
+> **PLATFORM SCOPE, MEASURED AND VENDOR-SOURCED 2026-08-10.** This failure mode requires a
+> sandbox, and **there is no native Windows sandbox.** Cursor's own engineering blog:
+> *"On Windows, we run our Linux sandbox inside WSL2… Building an equivalent native Windows
+> sandbox is significantly harder… We're working with Microsoft."* macOS uses Seatbelt directly;
+> Linux uses Landlock v3 and **falls back to prompting** when the kernel prerequisites are absent.
+>
+> So on a Cursor running natively on Windows the Command Mode dropdown offers only **"Allowlist"**,
+> with no **"(with Sandbox)"** option, git's trace2 is never blocked, and **the relay's rescue path
+> is dormant** — every Windows measurement in plan 082 is the pass-through case. Detail:
+> [`docs/plans/082-harness-hooks/assets/windows/cursor-sandbox-not-on-native-windows.md`](../../plans/082-harness-hooks/assets/windows/cursor-sandbox-not-on-native-windows.md).
+
 **Why it breaks:** inside the Cursor sandbox a unix-socket `connect()` is a **network
 operation** and is blocked, so the trace2 event is never delivered. **Links 3 and 5 both
 fail.** Link 2 still works, because it is a filesystem write.
