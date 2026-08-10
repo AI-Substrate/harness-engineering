@@ -1,0 +1,45 @@
+docs/plans/082-harness-hooks/assets/platform-findings.md
+  s_08c9ad1cb0abea::t_ed2e49e0d86f90 17
+  s_08c9ad1cb0abea::t_1d95dcf972328b 178-188
+  s_08c9ad1cb0abea::t_7aa8d8c7e5e9d9 132-143
+  s_08c9ad1cb0abea::t_ddaef024413112 189
+docs/plans/082-harness-hooks/assets/windows/knownhuman-attestation-decides-attribution.md
+  s_08c9ad1cb0abea::t_7368ab25741594 1-163
+docs/how/telemetry/gitai-05-attribution-algorithm.md
+  s_08c9ad1cb0abea::t_730cf4b56da9dc 26,30,36-42,47,52-53,55-57,61-62,64-66
+  s_08c9ad1cb0abea::t_5f1f83435fd73a 25,27-29,31-35,43-46,48-51,54,58-60,63
+docs/plans/082-harness-hooks/assets/windows/README.md
+  s_08c9ad1cb0abea::t_eeebece5dd6272 12-14
+  s_08c9ad1cb0abea::t_709a0c104cb270 32-37
+  s_08c9ad1cb0abea::t_34302c663dc3dd 1-11,15-31,38-59,62,64
+  s_08c9ad1cb0abea::t_ec55abdf705d6d 60-61,63
+docs/plans/082-harness-hooks/assets/windows/METHOD-how-this-was-run.md
+  s_08c9ad1cb0abea::t_fae844617f289b 12
+  s_08c9ad1cb0abea::t_a883593f8001ec 1-11,13-224
+docs/plans/082-harness-hooks/assets/windows/ordering-experiment.md
+  s_08c9ad1cb0abea::t_a90d42b50b1e79 1-130
+docs/plans/082-harness-hooks/assets/windows/deploy-runbook.md
+  s_08c9ad1cb0abea::t_f4a11f980878a9 1-174
+docs/plans/082-harness-hooks/assets/windows/hook-parse-observable-brief.md
+  s_08c9ad1cb0abea::t_e5ea601fe6dcff 1-463
+docs/plans/082-harness-hooks/assets/windows/machine-and-method-facts.md
+  s_08c9ad1cb0abea::t_05ad83b25ac9ef 1-201
+docs/plans/082-harness-hooks/assets/windows/same-file-mixed-commit.md
+  s_08c9ad1cb0abea::t_c6ca9680d2adcf 1-221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b6b4f297dc8ec33af06e87f4723374ccf23fb952",
+  "prompts": {},
+  "sessions": {
+    "s_08c9ad1cb0abea": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "1b747797-583d-4097-a0b6-d0ebdf1febce",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
