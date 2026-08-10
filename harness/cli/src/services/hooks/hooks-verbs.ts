@@ -284,7 +284,7 @@ export function installHooks(deps: HooksDeps): InstallReport {
         // returned to the state whose provenance we could not keep.
         failed.push({
           agent: report.agent,
-          reason: unrecordableReason(stateDir, compensate(deps, spec, outcomes)),
+          reason: unrecordableReason(stateDir, compensate(deps, outcomes)),
         });
         continue;
       }
@@ -348,56 +348,41 @@ function unrecordableReason(stateDir: string, outcome: Compensation): string {
 /**
  * Undo what this run wrote, using the provenance we hold IN MEMORY.
  *
- * The record on disk is precisely what we could not write, so the in-memory outcomes
- * are the only provenance that exists — and they are exactly the provenance uninstall
- * would have read.
+ * SCOPED TO WHAT THIS RUN WROTE, BY CONSTRUCTION — for every kind of change,
+ * without exception. That sentence is the whole fix, and it took three rounds to
+ * arrive at because each earlier attempt scoped the reversal to what the AGENT
+ * OWNS and then corrected the cases where that reached too far:
  *
- * IT BRANCHES ON WHAT THIS RUN ACTUALLY DID, AND THAT IS THE FIX (plan 082 F010 F1).
- * It used to take every `!alreadyPresent` outcome and run uninstall over it. A
- * legacy MIGRATION reports `!alreadyPresent` — correctly, it wrote this run — but
- * the entry it rewrote was ALREADY THE USER'S. So compensating a failed provenance
- * write DELETED a pre-existing hook and reported `rolled back`: data loss on a
- * failure path, announced as a recovery. `created`/`alreadyPresent` cannot express
- * the difference, which is why {@link InstallOutcome.change} exists and why nothing
- * here infers it.
+ * 1. the legacy UPGRADE reported `!alreadyPresent`, so compensation ran a
+ *    whole-agent uninstall over an entry the USER already had, and deleted it;
+ * 2. an explicit discriminant fixed that route, and then the completeness REPAIR
+ *    of a partial config — an `added-entry` — walked through the same door: the
+ *    uninstall removed the phase that was already there along with the phase this
+ *    run appended.
  *
- * - `rewritten-entry` → RESTORE THE PREVIOUS BYTES. Removal is not a reversal here.
- * - `created-file` / `added-entry` → the ordinary uninstall path, so there is ONE
- *   removal implementation and its refusals keep applying.
- * - `already-present` → nothing was written; an EARLIER run installed it and very
- *   likely recorded it, and removing it would undo a good install to compensate for
- *   our own failure.
+ * **The discriminant answers HOW to reverse. It never answered WHAT to reverse.**
+ * A reversal expressed as "remove this agent's entries" can always reach something
+ * this run did not write; a reversal expressed as "put these exact bytes back"
+ * cannot. So compensation no longer calls {@link uninstallStrategyA} at all — the
+ * whole-agent removal path belongs to the `uninstall` verb, where the user asked
+ * for it and where the previous bytes are genuinely unknown.
  *
- * A restore that cannot prove the file is still ours is REFUSED rather than forced —
- * two agents can share one config file, so blanket bytes could revert a peer.
+ * WHAT THE BYTE-RESTORE GIVES US THAT THE REMOVAL PATH DID NOT:
+ * - foreign work chained into an entry is preserved automatically — it is in the
+ *   previous bytes — so the refusals that path carried are not needed here;
+ * - a key or root field that existed before is restored exactly, with no
+ *   provenance bookkeeping to get wrong;
+ * - a file we created is removed, because its previous state was absence.
+ *
+ * And it REFUSES rather than forces: if the file no longer holds exactly what we
+ * wrote, someone else has touched it — two agents can share one config — so we
+ * report `stranded` and name it instead of overwriting a peer.
  */
-function compensate(deps: HooksDeps, spec: AgentSpec, outcomes: InstallOutcome[]): Compensation {
-  const migrated = outcomes.filter((o) => o.change === 'rewritten-entry');
-  const written = outcomes.filter((o) => o.change === 'created-file' || o.change === 'added-entry');
-  if (migrated.length === 0 && written.length === 0) return 'nothing-written';
-
-  try {
-    for (const outcome of migrated) {
-      // The SAME rule the mid-commit rollback uses, not a second copy of it.
-      if (!revertWrite(deps.fs, outcome)) return 'stranded';
-    }
-    if (written.length > 0) {
-      uninstallStrategyA(
-        {
-          fs: deps.fs,
-          home: deps.home,
-          env: deps.env,
-          createdFiles: new Set(written.filter((o) => o.created).map((o) => o.path)),
-          createdKeys: new Map(written.map((o) => [o.path, new Set(o.createdKeys)])),
-          createdRootExtras: new Map(written.map((o) => [o.path, o.createdRootExtras])),
-        },
-        spec,
-      );
-    }
-    return 'rolled-back';
-  } catch {
-    return 'stranded';
-  }
+function compensate(deps: HooksDeps, outcomes: InstallOutcome[]): Compensation {
+  const written = outcomes.filter((outcome) => outcome.writtenText !== null);
+  if (written.length === 0) return 'nothing-written';
+  const stranded = written.filter((outcome) => !revertWrite(deps.fs, outcome));
+  return stranded.length === 0 ? 'rolled-back' : 'stranded';
 }
 
 /**

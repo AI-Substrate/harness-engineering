@@ -891,3 +891,127 @@ describe('F010-R3 — an UNTOUCHED file must never be reported as a stranded wri
     expect(reason).not.toContain(first());
   });
 });
+
+describe('F010-R4 — COMPENSATION MAY NEVER TOUCH WHAT THIS RUN DID NOT WRITE', () => {
+  /**
+   * THE CLASS, NOT THE ROUTE — and this describe exists because three rounds fixed
+   * three doors into one room.
+   *
+   * Round 1: the legacy UPGRADE reported `!alreadyPresent`, and compensation ran a
+   * whole-agent uninstall over an entry the user already had. Fixed with an explicit
+   * discriminant.
+   * Round 3: the completeness REPAIR of a partial config is an `added-entry`, and
+   * compensation ran the same whole-agent uninstall — removing the phase that was
+   * already there along with the phase this run added.
+   *
+   * Each fix was correct and each opened the same door from a new direction,
+   * because **the discriminant answers HOW to reverse and never answers WHAT to
+   * reverse**. A reversal scoped to what the AGENT OWNS will always be able to
+   * reach something this run did not write; only a reversal scoped to what THIS
+   * RUN WROTE cannot.
+   *
+   * So the property is asserted DIRECTLY and PARAMETERISED over every discriminant
+   * value, rather than once per defect: after a failed provenance write, the file
+   * is byte-identical to its pre-run state — where "no file" is a valid pre-run
+   * state. A fourth door has to fail one of these rows.
+   */
+  const cursorConfig = () => join(home, '.cursor', 'hooks.json');
+
+  /** Each row returns the state the file must be restored to — `null` for absent. */
+  const cases: [name: string, discriminant: string, setup: () => string | null][] = [
+    [
+      'created-file — the file did not exist, so the reversal is its absence',
+      'created-file',
+      () => null,
+    ],
+    [
+      'added-entry — a config with FOREIGN entries we appended beside',
+      'added-entry',
+      () => {
+        const doc = {
+          hooks: {
+            preToolUse: [{ command: 'other-tool --run' }],
+            postToolUse: [{ command: 'other-tool --post' }],
+          },
+          version: 1,
+        };
+        writeFileSync(cursorConfig(), `${JSON.stringify(doc, null, 2)}\n`);
+        return read(cursorConfig());
+      },
+    ],
+    [
+      'added-entry (REPAIR) — a PARTIAL config of ours, one phase already present',
+      'added-entry',
+      () => {
+        // The reviewer's reproduction: install, delete only the post-tool entry,
+        // and let the completeness repair put it back.
+        installHooks(deps());
+        const doc = JSON.parse(read(cursorConfig())) as { hooks: Record<string, unknown[]> };
+        doc.hooks.postToolUse = [];
+        writeFileSync(cursorConfig(), `${JSON.stringify(doc, null, 2)}\n`);
+        return read(cursorConfig());
+      },
+    ],
+    [
+      'rewritten-entry — a legacy entry the upgrade migrates in place',
+      'rewritten-entry',
+      () => {
+        installHooks(deps({ binary: LEGACY_BINARY }));
+        return read(cursorConfig());
+      },
+    ],
+    [
+      'already-present — nothing to write, so nothing to reverse',
+      'already-present',
+      () => {
+        installHooks(deps());
+        return read(cursorConfig());
+      },
+    ],
+  ];
+
+  it.each(cases)('%s', (_name, _discriminant, setup) => {
+    /*
+    Test Doc:
+    - Why: the question asked ONCE of every discriminant value — can this reversal
+      touch anything this run did not write? If the answer is not structurally no,
+      it is another door. Written as one parameterised property rather than a row
+      per defect, because a row per defect is what produced three rounds.
+    - Contract: after an install whose provenance write fails, the config is
+      byte-identical to its pre-run state.
+    - Quality Contribution: asserts BYTES against a state captured before the run,
+      so it cannot be satisfied by a reversal that happens to leave the right
+      number of entries.
+    */
+    present('.cursor');
+    const before = setup();
+
+    const report = installHooks(deps({ fs: failRecordAfterProbe() }));
+
+    expect(report.failed.map((f) => f.agent)).toContain('cursor');
+    const after = existsSync(cursorConfig()) ? read(cursorConfig()) : null;
+    expect(after).toBe(before);
+  });
+
+  it('and the REPORT agrees with the disk on every one of them', () => {
+    /*
+    Test Doc:
+    - Why: `rolled back` while the file has lost content is the shape of the
+      original defect; the inverse — reporting a strand after a clean restore —
+      would send an operator hunting for a file that is fine.
+    - Contract: the reason says rolled back exactly when the bytes came back.
+    */
+    present('.cursor');
+    installHooks(deps());
+    const doc = JSON.parse(read(cursorConfig())) as { hooks: Record<string, unknown[]> };
+    doc.hooks.postToolUse = [];
+    writeFileSync(cursorConfig(), `${JSON.stringify(doc, null, 2)}\n`);
+    const before = read(cursorConfig());
+
+    const report = installHooks(deps({ fs: failRecordAfterProbe() }));
+    const reason = report.failed.find((f) => f.agent === 'cursor')?.reason ?? '';
+
+    expect(reason).toContain('rolled back');
+    expect(read(cursorConfig())).toBe(before);
+  });
+});
