@@ -1,0 +1,30 @@
+harness/cli/test/services/hooks/legacy-command-form.test.ts
+  s_63d91637cb8544::t_0c9c0292d202f7 221-309
+harness/cli/src/services/hooks/install-strategy-a.ts
+  s_63d91637cb8544::t_b365c4af7ea71b 6-12,43-62,112-119,289-291,302,315,341,357-363,365-375,377-383,389,394,403-416,424
+  s_63d91637cb8544::t_b3563c1b76f8c5 364
+harness/cli/test/services/hooks/command-runs.test.ts
+  s_63d91637cb8544::t_21d1ae032c5253 1
+  s_63d91637cb8544::t_cf443a2c500fd6 181-281
+harness/cli/src/services/hooks/hooks-verbs.ts
+  s_63d91637cb8544::t_efe0c0a31c7ef3 20,168-177,204,212,257,266,434,436-442,476,491-509,511,516-547,550-551
+harness/cli/test/services/hooks/win-invocation.test.ts
+  s_63d91637cb8544::t_de5db926fd0e9f 5,12-13,15,209-245,258,269
+  s_63d91637cb8544::t_f2104d477c30b2 7,246-257,259-268
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b98a3554409945342b273ecda8d76ceeef254a09",
+  "prompts": {},
+  "sessions": {
+    "s_63d91637cb8544": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "1d978316-0846-4b75-af14-c6ee081c28fc",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
