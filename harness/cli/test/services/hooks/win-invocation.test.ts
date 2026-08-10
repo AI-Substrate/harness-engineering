@@ -2,13 +2,17 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { hooksDepsFor } from '../../../src/acts/hooks.js';
 import { NodeFs } from '../../../src/adapters/fs/node-fs.js';
-import { findAgent } from '../../../src/services/hooks/agent-matrix.js';
+import { AGENT_MATRIX, eventKeys, findAgent } from '../../../src/services/hooks/agent-matrix.js';
 import {
   embedInvocation,
   extractBinaryPath,
   extractInterpreterPath,
+  normaliseBinaryPath,
+  quoteForShell,
 } from '../../../src/services/hooks/binary-path.js';
+import { entryCommands } from '../../../src/services/hooks/hook-marker.js';
 import {
   buildEntry,
   hookCommand,
@@ -200,5 +204,66 @@ describe('ONE command form on every platform (row 5, disclosed change)', () => {
       `"${NODE_POSIX}" "${SCRIPT_POSIX}" hooks fire cursor --phase post --hook-input stdin --hook-owner ai-substrate-harness-hook-v1`,
     );
     expect(extractBinaryPath(command)).toBe(SCRIPT_POSIX);
+  });
+});
+
+describe('the PRODUCTION composition, not a re-derivation (F008 review F3)', () => {
+  /**
+   * THE ROWS ABOVE CALL `embedInvocation` THEMSELVES, so they cannot see
+   * `hooksDepsFor` ceasing to call it. A reviewer changed the composition root to
+   * `embedInvocation(argv[1], argv[1])` — which collapses to the legacy bare
+   * script — and every guard in this file and in the integration file passed.
+   *
+   * The byte-exact tables prove the FORMATTER. This proves the SOURCE: that the
+   * two paths we embed are the running interpreter and the running script, taken
+   * from the process rather than reconstructed.
+   */
+  it('names the RUNNING interpreter and the RUNNING script', () => {
+    const deps = hooksDepsFor(new NodeFs(), home, { get: () => undefined });
+    expect(deps).not.toBeNull();
+    expect(deps?.binary).toBe(
+      `${quoteForShell(normaliseBinaryPath(process.execPath))} ${quoteForShell(
+        normaliseBinaryPath(process.argv[1] ?? 'harness'),
+      )}`,
+    );
+    // And the two are DIFFERENT paths — the mutation that collapses the pair
+    // produces a well-formed command that passes every string-shape assertion.
+    expect(extractInterpreterPath(`${deps?.binary} hooks fire cursor`)).toBe(
+      normaliseBinaryPath(process.execPath),
+    );
+    expect(extractBinaryPath(`${deps?.binary} hooks fire cursor`)).not.toBe(
+      normaliseBinaryPath(process.execPath),
+    );
+  });
+});
+
+describe('every SUPPORTED agent, whole-string (F008 review F3)', () => {
+  /**
+   * The tables above covered three agents. Gemini, droid and windsurf had no
+   * byte-exact row, and the on-disk assertion was a `startsWith`. Derived from
+   * the matrix so a new agent cannot be added without one.
+   */
+  it.each(
+    AGENT_MATRIX.filter((spec) => spec.supported).map((spec) => [spec.agent, spec]),
+  )('%s: every command on disk equals the expected string exactly', (_name, spec) => {
+    const invocation = embedInvocation(NODE_WIN, SCRIPT_WIN);
+    const outcomes = installStrategyA(fs, spec, home, env, invocation);
+    const seen: string[] = [];
+    for (const outcome of outcomes) {
+      const doc = JSON.parse(readFileSync(outcome.path, 'utf8')) as {
+        hooks: Record<string, unknown[]>;
+      };
+      for (const entries of Object.values(doc.hooks)) {
+        for (const entry of entries) seen.push(...entryCommands(entry));
+      }
+    }
+    expect(seen.length).toBe(outcomes.length * eventKeys(spec).length);
+    const expected = new Set(
+      (['pre', 'post'] as const).map(
+        (phase) =>
+          `"${NODE_WIN}" "${SCRIPT_WIN}" hooks fire ${spec.agent} --phase ${phase} --hook-input stdin --hook-owner ai-substrate-harness-hook-v1`,
+      ),
+    );
+    for (const command of seen) expect(expected.has(command)).toBe(true);
   });
 });

@@ -218,3 +218,92 @@ describe('RE-INSTALL over a legacy entry UPGRADES it', () => {
     expect(extractInterpreterPath(ours[0].command)).toBe(NODE);
   });
 });
+
+describe('an OURS-WITH-FOREIGN legacy entry is REFUSED, not rewritten (F008 review F1)', () => {
+  /**
+   * MARKER PRESENCE IS NOT PERMISSION TO REPLACE.
+   *
+   * The upgrade gated on `entryIsOwnedByUs` — which deliberately means "ANY
+   * command in this entry is ours" (`hook-marker.ts`) — and then replaced the
+   * WHOLE entry. The strict predicate `entryMayRemove` already existed: F005
+   * built the three-state ownership model precisely so we would refuse to
+   * clobber a mixed entry, and the upgrade path walked around it. A reviewer
+   * chained `&& other-tool --run` into a legacy entry, re-installed, and the
+   * foreign work was gone.
+   *
+   * REFUSE, DO NOT PERFORM SURGERY. Segment surgery on somebody else's shell
+   * command line is how we would ship the exact harm this plan has spent itself
+   * refusing.
+   *
+   * BUT REFUSING MUST NOT BE SILENT, because the cost lands on the user: a
+   * refused entry is still the broken bare-`.js` form, so that operator stays
+   * unattributed on Windows and nothing has told them why. The refusal carries
+   * the replacement command so it can be pasted in by hand.
+   */
+  const withForeign = () => {
+    installHooks(deps({ binary: legacyBinary() }));
+    const doc = readCursor();
+    for (const key of Object.keys(doc.hooks)) {
+      for (const entry of doc.hooks[key]) {
+        if (isOwnedByUs(entry.command)) entry.command = `${entry.command} && other-tool --run`;
+      }
+    }
+    fs.writeText(cursorConfig(), `${JSON.stringify(doc, null, 2)}\n`);
+    return readFileSync(cursorConfig(), 'utf8');
+  };
+
+  it('does not erase foreign work chained into a legacy entry', () => {
+    /*
+    Test Doc:
+    - Why: the reviewer's counter-row, kept. Replacing a mixed entry destroys
+      `other-tool --run` — work we did not write and were never asked to remove.
+    - Contract: the foreign segment survives, and the file is BYTE-IDENTICAL —
+      "we left it alone" is stronger than "the substring is still in there
+      somewhere", which a partial rewrite could also satisfy.
+    */
+    const before = withForeign();
+
+    installHooks(deps());
+
+    const after = readFileSync(cursorConfig(), 'utf8');
+    expect(after).toContain('other-tool --run');
+    expect(after).toBe(before);
+  });
+
+  it('SURFACES the refusal, naming the command form to paste in by hand', () => {
+    /*
+    Test Doc:
+    - Why: a silent refusal leaves a Windows operator with a hook that cannot
+      run and no way to know why we declined to repair it. `executionState:
+      inert` will tell them it does not run; this tells them why we did not fix
+      it and what to write instead.
+    - Contract: the refusal names the entry, gives a reason, and carries the
+      REPLACEMENT command — which must itself be the interpreter-first form,
+      since a refusal quoting the broken shape would be worse than silence.
+    */
+    withForeign();
+
+    const report = installHooks(deps());
+
+    const refusal = report.refusedUpgrades.find((r) => r.command.includes('other-tool --run'));
+    expect(refusal, 'the refusal must be reported, not swallowed').toBeDefined();
+    expect(refusal?.reason).toMatch(/chained|foreign/i);
+    expect(refusal?.replacement.startsWith(`"${NODE}" "`)).toBe(true);
+    expect(refusal?.nextAction ?? '').toContain(refusal?.replacement ?? 'MISSING');
+  });
+
+  it('a WHOLLY-OURS legacy entry is still upgraded — the counter-row', () => {
+    /*
+    Test Doc:
+    - Why: without this, "refuse everything" passes every row above and the fix
+      never reaches the platform it was written for.
+    - Contract: no foreign work, no refusal, and the entry IS upgraded.
+    */
+    installHooks(deps({ binary: legacyBinary() }));
+
+    const report = installHooks(deps());
+
+    expect(report.refusedUpgrades).toEqual([]);
+    expect(extractInterpreterPath(readCursor().hooks.preToolUse[0].command)).toBe(NODE);
+  });
+});

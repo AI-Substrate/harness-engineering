@@ -17,7 +17,7 @@ import {
   readInstallRecord,
   recordInstall,
 } from './install-record.js';
-import type { InstallOutcome } from './install-strategy-a.js';
+import type { InstallOutcome, RefusedUpgrade } from './install-strategy-a.js';
 import { installStrategyA } from './install-strategy-a.js';
 import { uninstallStrategyA } from './uninstall-strategy-a.js';
 
@@ -166,6 +166,16 @@ export interface InstallReport {
   /** Agents refused BY NAME, never silently skipped. */
   refused: { agent: string; reason: string }[];
   /**
+   * Legacy entries we declined to UPGRADE because foreign work is chained into
+   * them (F008 review F1).
+   *
+   * A THIRD list, not folded into `refused`: that one means "we have no writer
+   * for this agent" — a stated design limit with nothing for the user to do.
+   * This means "we wrote for this agent, and left one entry alone that cannot
+   * run", which is an action item and carries the command to paste.
+   */
+  refusedUpgrades: RefusedUpgrade[];
+  /**
    * Agents whose write THREW, with the reason — distinct from `refused`.
    *
    * The two are different diagnoses and collapsing them would hide the one that
@@ -191,6 +201,7 @@ export function installHooks(deps: HooksDeps): InstallReport {
       optedOutDetail: optOutNotice(deps.env),
       installed: [],
       refused: [],
+      refusedUpgrades: [],
       failed: [],
     };
   }
@@ -198,6 +209,7 @@ export function installHooks(deps: HooksDeps): InstallReport {
   const reports = listAgents(deps);
   const installed: InstallReport['installed'] = [];
   const refused: InstallReport['refused'] = [];
+  const refusedUpgrades: InstallReport['refusedUpgrades'] = [];
   const failed: InstallReport['failed'] = [];
 
   // ASKED BEFORE THE FIRST CONFIG IS TOUCHED (phase-3 review F001). An install we
@@ -242,6 +254,7 @@ export function installHooks(deps: HooksDeps): InstallReport {
       }
       for (const outcome of outcomes) {
         installed.push({ agent: outcome.agent, path: outcome.path, created: outcome.created });
+        refusedUpgrades.push(...outcome.refusedUpgrades);
       }
     } catch (err) {
       failed.push({
@@ -250,7 +263,7 @@ export function installHooks(deps: HooksDeps): InstallReport {
       });
     }
   }
-  return { optedOut: false, installed, refused, failed };
+  return { optedOut: false, installed, refused, refusedUpgrades, failed };
 }
 
 /** One sentence, four endings — what happened to the config we could not record. */
@@ -418,8 +431,15 @@ export interface StatusReport extends AgentReport {
    * for why `resolves` + `accepted` were not enough.
    */
   executionState: ExecutionState;
-  /** Why, in words, when the state is `inert`. */
+  /** Why, in words, when the state is `inert` — how many failed, and which one first. */
   executionDetail?: string;
+  /**
+   * EVERY configured command of ours that produced no evidence.
+   *
+   * A list, not a count: an agent can have four commands across two files, and
+   * "one of them is broken" is not a fact anyone can act on.
+   */
+  inertCommands?: string[];
 }
 
 export function statusHooks(deps: HooksDeps): StatusReport[] {
@@ -453,7 +473,7 @@ export function statusHooks(deps: HooksDeps): StatusReport[] {
     // one would report health for a set it had not examined.
     const unaccepted = [...new Set(ourCommands(deps, spec).flatMap(unacceptedOptions))];
     const resolves = deps.fs.exists(configured);
-    const execution = probeExecution(deps, spec, configured);
+    const execution = probeExecution(deps, spec);
     return {
       ...report,
       files,
@@ -468,30 +488,67 @@ export function statusHooks(deps: HooksDeps): StatusReport[] {
 }
 
 /**
- * Run the probe against the CONFIGURED pair, or report that we did not look.
+ * Run the probe against EVERY configured command of ours, or report that we did
+ * not look.
  *
- * `unchecked` when no probe is injected — see {@link ExecutionState}. The detail
- * string names the failure in terms an operator can act on, because "inert" on
- * its own sends them to read our source to find out what we tried.
+ * EVERY, NOT THE FIRST (F008 review F2). This destructured `ourCommands()[0]`
+ * and returned that single verdict for the whole agent, so `runs` could be
+ * reported while another configured command was inert — a false green on
+ * windsurf's two files and on every agent's pre/post pair, which mid-upgrade is
+ * all of them. The one command guaranteed to be probed was the one least likely
+ * to be wrong. The CLI's promise ("execute each configured command") was the
+ * correct behaviour; the implementation did not meet it, so the implementation
+ * moved.
+ *
+ * EACH COMMAND SUPPLIES ITS OWN PAIR. A config can legitimately hold one command
+ * of each form mid-upgrade, so the interpreter and script are read per command
+ * rather than taken from the agent's first entry.
+ *
+ * ANY MISSING EVIDENCE REFUSES, and the detail says HOW MANY and WHICH: `inert`
+ * on an agent with four commands, with nothing naming the failure, sends an
+ * operator hunting through JSON. A refusal must be findable, not merely correct.
+ *
+ * `unchecked` when no probe is injected — see {@link ExecutionState}.
  */
 function probeExecution(
   deps: HooksDeps,
   spec: AgentSpec,
-  script: string,
-): { executionState: ExecutionState; executionDetail?: string } {
-  if (deps.probe === undefined) return { executionState: 'unchecked' };
+): {
+  executionState: ExecutionState;
+  executionDetail?: string;
+  inertCommands?: string[];
+} {
+  const probe = deps.probe;
+  if (probe === undefined) return { executionState: 'unchecked' };
 
-  const [command] = ourCommands(deps, spec);
-  const interpreter = command === undefined ? null : extractInterpreterPath(command);
-  const result = deps.probe(interpreter, script);
-  if (result.evidence) return { executionState: 'runs' };
+  const commands = ourCommands(deps, spec);
+  if (commands.length === 0) return { executionState: 'absent' };
+
+  const inert: { command: string; detail: string }[] = [];
+  for (const command of commands) {
+    const script = extractBinaryPath(command);
+    if (script === null) {
+      inert.push({ command, detail: 'the command names no path we can identify' });
+      continue;
+    }
+    const result = probe(extractInterpreterPath(command), script);
+    if (result.evidence) continue;
+    inert.push({
+      command,
+      detail:
+        result.detail ??
+        (result.ok
+          ? 'the command ran and produced no self-test evidence — our code did not run'
+          : 'the command could not be executed'),
+    });
+  }
+
+  if (inert.length === 0) return { executionState: 'runs' };
+  const [first] = inert;
   return {
     executionState: 'inert',
-    executionDetail:
-      result.detail ??
-      (result.ok
-        ? 'the command ran and produced no self-test evidence — our code did not run'
-        : 'the command could not be executed'),
+    executionDetail: `${inert.length} of ${commands.length} configured command(s) produced no evidence that our code ran — first: ${first.command} (${first.detail})`,
+    inertCommands: inert.map((entry) => entry.command),
   };
 }
 

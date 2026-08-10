@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -176,5 +176,106 @@ describe('the counter-rows — this must not become "always report broken" (row 
     const { probe } = fakeProbe({ ok: true, evidence: true });
     const row = statusHooks(deps({ probe })).find((r) => r.agent === 'cursor');
     expect(row?.executionState).toBe('absent');
+  });
+});
+
+describe('EVERY configured command, not the first (F008 review F2)', () => {
+  /**
+   * A GREEN THAT COULD NOT GO RED FOR THE SECOND COMMAND.
+   *
+   * `harness hooks status --probe` promises to EXECUTE EACH configured command.
+   * The implementation destructured the first and reported its result for the
+   * whole agent, so `executionState: runs` could be returned while another
+   * configured command was inert.
+   *
+   * That is a false green on exactly the configurations most likely to be
+   * stale — windsurf writes TWO files, every agent writes a pre and a post
+   * entry, and mid-upgrade a config can legitimately hold one command of each
+   * form. The one shape guaranteed to be probed was the one least likely to be
+   * wrong.
+   *
+   * Same lesson as M6 arriving from the other side: a predicate that answers a
+   * narrower question than the one being asked. Both findings of this round
+   * were found by CONSTRUCTING the adversarial case, not by reading the code.
+   */
+
+  /** Evidence only when an interpreter is configured — the mid-upgrade machine. */
+  const interpreterAwareProbe = () => {
+    const seen: (string | null)[] = [];
+    const probe: InvocationProbe = (interpreter, script) => {
+      seen.push(interpreter);
+      void script;
+      return interpreter === null
+        ? { ok: true, evidence: false, detail: 'no interpreter — dispatched by file association' }
+        : { ok: true, evidence: true };
+    };
+    return { probe, seen };
+  };
+
+  /** Install current-form commands, then rewrite ONLY post back to the legacy form. */
+  const mixedInstall = (script: string) => {
+    installed({ binary: embedInvocation('/usr/local/bin/node', script) });
+    const path = join(home, '.cursor', 'hooks.json');
+    const doc = JSON.parse(readFileSync(path, 'utf8')) as {
+      hooks: Record<string, { command: string }[]>;
+    };
+    for (const entry of doc.hooks.postToolUse) {
+      entry.command = entry.command.replace(`"/usr/local/bin/node" `, '');
+    }
+    writeFileSync(path, `${JSON.stringify(doc, null, 2)}\n`);
+  };
+
+  it('probes EVERY owned command, not just the first', () => {
+    const script = realScript();
+    const { probe, seen } = interpreterAwareProbe();
+    mixedInstall(script);
+
+    statusHooks(deps({ binary: embedInvocation('/usr/local/bin/node', script), probe }));
+
+    expect(seen).toEqual(['/usr/local/bin/node', null]);
+  });
+
+  it('does NOT report runs when a LATER command is inert', () => {
+    /*
+    Test Doc:
+    - Why: the reviewer's counter-row. `runs` on an agent where one of two
+      configured commands cannot execute is precisely the false green this
+      field was added to abolish.
+    - Contract: not `runs`, and the detail NAMES the failing command so the
+      operator can find it — a bare "inert" on an agent with four commands sends
+      them hunting.
+    */
+    const script = realScript();
+    const { probe } = interpreterAwareProbe();
+    mixedInstall(script);
+
+    const row = statusHooks(
+      deps({ binary: embedInvocation('/usr/local/bin/node', script), probe }),
+    ).find((r) => r.agent === 'cursor');
+
+    expect(row?.executionState).not.toBe('runs');
+    expect(row?.executionDetail ?? '').toMatch(/1 of 2|--phase post/);
+    expect(row?.inertCommands?.length).toBe(1);
+    expect(row?.inertCommands?.[0]).toContain('--phase post');
+  });
+
+  it('reports RUNS when EVERY command is evidenced — the counter-row', () => {
+    /*
+    Test Doc:
+    - Why: without this, "refuse whenever there is more than one command"
+      passes the row above.
+    - Contract: two commands, both evidenced, still `runs`.
+    */
+    const script = realScript();
+    const { probe, seen } = interpreterAwareProbe();
+    installed({ binary: embedInvocation('/usr/local/bin/node', script) });
+
+    const row = statusHooks(
+      deps({ binary: embedInvocation('/usr/local/bin/node', script), probe }),
+    ).find((r) => r.agent === 'cursor');
+
+    expect(seen.length).toBe(2);
+    expect(row?.executionState).toBe('runs');
+    expect(row?.inertCommands ?? []).toEqual([]);
   });
 });
