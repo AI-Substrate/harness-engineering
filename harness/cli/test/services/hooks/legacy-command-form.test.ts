@@ -17,7 +17,7 @@ import {
   statusHooks,
   uninstallHooks,
 } from '../../../src/services/hooks/hooks-verbs.js';
-import { hookCommand } from '../../../src/services/hooks/install-strategy-a.js';
+import { hookCommand, installStrategyA } from '../../../src/services/hooks/install-strategy-a.js';
 
 /**
  * THE READER MUST NOT FORGET THE OLD SHAPE (plan 082, F008 backward compatibility).
@@ -164,12 +164,34 @@ describe('RE-INSTALL over a legacy entry UPGRADES it', () => {
     Test Doc:
     - Why: the counter-row. An upgrade path that rewrites unconditionally would
       pass the row above while churning every config on every run.
-    - Contract: byte-identical file after a second install.
+    - Contract: byte-identical file after a second install, AND the outcome still
+      reports `alreadyPresent`. The report is the half with teeth: `installHooks`
+      rolls back "what THIS run wrote" when the provenance record fails, so an
+      install that claims it wrote a pre-existing entry can UNINSTALL A GOOD
+      HOOK to compensate for its own failure. Bytes alone cannot see that — a
+      rewrite producing identical bytes is invisible on disk and loud in the
+      outcome.
     */
     installHooks(deps());
     const before = readFileSync(cursorConfig(), 'utf8');
-    installHooks(deps());
+
+    const outcomes = installStrategyA(fs, cursor(), home, () => undefined, deps().binary);
+    expect(outcomes.every((o) => o.alreadyPresent)).toBe(true);
     expect(readFileSync(cursorConfig(), 'utf8')).toBe(before);
+  });
+
+  it('the UPGRADE reports that it wrote — the same field, the other direction', () => {
+    /*
+    Test Doc:
+    - Why: the mirror of the row above, and it is what stops `alreadyPresent`
+      being hard-coded either way. An upgrade that reported `alreadyPresent`
+      would tell a user on the platform this repairs that nothing needed doing,
+      on the very run that did it.
+    - Contract: upgrading a legacy entry reports a write.
+    */
+    installHooks(deps({ binary: legacyBinary() }));
+    const outcomes = installStrategyA(fs, cursor(), home, () => undefined, deps().binary);
+    expect(outcomes.every((o) => o.alreadyPresent)).toBe(false);
   });
 
   it('leaves a FOREIGN entry in the same array untouched', () => {
