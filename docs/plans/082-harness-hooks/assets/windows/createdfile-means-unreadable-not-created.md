@@ -150,9 +150,19 @@ placed in a directory already on the user PATH, so **no editor restart is requir
 > exercised against a genuine BOM, and the resulting file parses. A tidy-up that had rewritten
 > that file would have left this run proving nothing.
 
-**Still unmeasured:** the `KnownHuman`-on-save leg, which needs a save at the GUI. The
-precondition is now genuinely different, so the prediction is that it records immediately —
-**but nobody has measured it, and it is not claimed here.**
+**CLOSED — the `KnownHuman`-on-save leg confirmed, 19:23.** A save in Cursor produced **three
+extension-originated `KnownHuman` checkpoints** on the fresh daemon (`4276.log`, 09:23:46–09:24:00Z,
+all `status=ok`, 126–316ms) — the first checkpoints that daemon ever received — **with no editor
+restart**, because the shim went into a directory already on the user PATH.
+
+**The full chain is now measured end to end on a from-zero install:**
+
+```
+bare doctor -> auto-install -> digest-verified shim -> bare-name resolution -> save -> KnownHuman
+```
+
+Which closes the defect this plan opened with, at every layer: the checkpoint is recorded, the
+recovery gate has a landed `h_` to find, and human-authored lines survive an agent-run commit.
 
 ## The pattern this belongs to
 
