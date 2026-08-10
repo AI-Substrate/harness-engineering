@@ -1,0 +1,21 @@
+harness/cli/test/services/doctor/collector/ingress.test.ts
+  s_7d06b931880f9e::t_b9918c243ff1be 242
+harness/cli/test/services/doctor/collector/at-risk.test.ts
+  s_7d06b931880f9e::t_934fc0b0134581 210-218,233-239
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "91b1a28082dc036e57fe08d7673f35f37d94a10a",
+  "prompts": {},
+  "sessions": {
+    "s_7d06b931880f9e": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "3d06b5bd-74c6-4fc1-bec0-a90d6928a7b6",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
