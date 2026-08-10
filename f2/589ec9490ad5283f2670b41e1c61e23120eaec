@@ -1,0 +1,19 @@
+harness/cli/src/services/hooks/hooks-verbs.ts
+  s_63d91637cb8544::t_05bccad38511c3 45-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f2589ec9490ad5283f2670b41e1c61e23120eaec",
+  "prompts": {},
+  "sessions": {
+    "s_63d91637cb8544": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "1d978316-0846-4b75-af14-c6ee081c28fc",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
