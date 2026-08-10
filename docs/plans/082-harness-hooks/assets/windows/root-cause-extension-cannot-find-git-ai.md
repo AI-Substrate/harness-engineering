@@ -233,3 +233,28 @@ obstacle; and **five** directories on the user PATH are user-writable —
 `cursor\resources\app\bin`. `%APPDATA%\npm` is worth considering alongside WindowsApps: harness
 already installs there, so it would be writing into a directory it owns rather than one Windows
 manages.
+
+### The hardlink's own failure mode — and a rule this plan stated too weakly
+
+This document's guidance for detecting the defect was **"detect by resolution, not existence"** —
+because the binary existed the whole time and that told nobody anything.
+
+**That rule is necessary and still not sufficient.** `pij-respectable-clam`'s review of the
+`harness doctor` rung caught the gap: **resolving to a *different* `git-ai` reads healthy.** A
+bare name that resolves proves something answers, not that the *right* thing answers.
+
+It matters here specifically, because it is **the hardlink's expected failure mode**: an update
+that replaces the real binary by rename leaves the hardlink pointing at the old inode — still
+present, still resolving, still executing, now stale. Exactly the shape this whole investigation
+kept walking into: a component that completes, reports success, and is not doing the thing.
+
+**So the check is three-deep, and each layer defeats the one above:**
+
+| layer | defeated by |
+|---|---|
+| the file exists | a binary nothing can resolve — **this plan's defect** |
+| the bare name resolves | resolving to a *different* or stale binary |
+| **content identity** — the resolved binary matches the pinned digest | *(nothing measured yet)* |
+
+Implemented as `binary-shadowed-on-path` with digest-based content identity (`ce4893cf`), after
+`f32bab03` shipped with only the middle layer.
