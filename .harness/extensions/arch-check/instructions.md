@@ -7,8 +7,9 @@ It proves the CLI's hexagonal (ports & adapters) contract by running
 dependency-cruiser over `harness/cli/src` against the committed rules at the
 repo root (`.dependency-cruiser.cjs`) and reporting an honest envelope. You
 never need to *infer* whether the layering holds: run this verb after any
-change that adds or moves an import. CI runs it on every PR through this
-same verb (one config, one code path).
+change that adds or moves an import. CI runs it through this same verb (one
+config, one code path) whenever CI is dispatched — see AGENTS.md, CI is
+manual on branches.
 
 The rules are encoded team memory: each one carries its rationale as a
 `comment`, and that comment travels into the violation — the fix is explained

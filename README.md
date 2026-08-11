@@ -104,7 +104,7 @@ You fix the check.
 
 Then you re-run the check - the agent sees the issue and fixes it. This PR comment, the knowledge that the more experienced person had is now *encoded* in to the system for everyone else. No need to load extensive architecture documents in to context. No need for human to back read every PR ever. It just works. 
 
-> This repo practices exactly that. The composite gate is **`harness checks`** (tests, lint, typecheck, drift guards, architecture, skills, markdown, Windows-compat) — one command. Run it before you push; CI runs it on every PR so nothing merges red. You don't fix the code and move on — you fix the *check*.
+> This repo practices exactly that. The composite gate is **`harness checks`** (tests, lint, typecheck, drift guards, architecture, skills, markdown, Windows-compat) — one command. Run it before you push; the same command runs in CI, and `ci-required` is a required check, so nothing merges red. You don't fix the code and move on — you fix the *check*.
 
 ## Why it exists
 

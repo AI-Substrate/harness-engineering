@@ -1,7 +1,32 @@
 name: CI
 
 on:
-  pull_request:
+  # MANUAL on branches; automatic only on `main`. Pushing to a PR branch does
+  # NOT start a run.
+  #
+  # WHY: under `pull_request`, every push to every open PR paid for the full
+  # Node 22 + Node 24 matrix and package-smoke. Most of those pushes are
+  # work-in-progress nobody was waiting on a verdict for, and with many
+  # concurrent seats that made this the single largest Actions line item.
+  #
+  # THIS DOES NOT WEAKEN THE GATE — read before "restoring" the trigger.
+  # `ci-required` is a REQUIRED status check on `main` (repo ruleset). Because
+  # nothing auto-runs, a head SHA that has never been tested has no `ci-required`
+  # check at all, so the PR reports `Expected — waiting for status to be
+  # reported` and is UNMERGEABLE. What moved is WHEN you pay (when you want the
+  # verdict), not WHETHER green is required.
+  #
+  # Deliberately NOT done with a job-level `if:` on a `pull_request` trigger: a
+  # job skipped by `if:` reports as SKIPPED, and branch protection counts
+  # skipped as SUCCESS — that shape would let an untested PR merge. Absent is
+  # safe; skipped is not.
+  #
+  # Trigger it (checks attach to the head SHA of the ref you dispatch):
+  #   just ci                                # current branch
+  #   gh workflow run ci.yml --ref <branch>
+  # Push another commit afterwards and the PR blocks again — the check is pinned
+  # to the SHA that was actually tested, which is the point.
+  workflow_dispatch: {}
   push:
     branches: [main]
 
