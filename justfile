@@ -256,13 +256,13 @@ checks:
     node harness/cli/bin/harness.js checks
 
 # Dispatch CI on a branch. CI NO LONGER auto-runs on a PR-branch push (see the
-# `on:` block in .github/workflows/ci.yml) — the required `ci-required` check is
+# `on:` block in .github/workflows/ci.yml) — the required `ci-verdict` status is
 # absent until someone asks for it, so an untested PR stays unmergeable.
 #
 # The footgun this recipe exists to close: `workflow_dispatch` tests the sha that
-# is ON THE REMOTE, not the one in your working tree, and the required check
-# binds to THAT sha. Dispatch with unpushed commits and you get a green check
-# against code you did not write — so this refuses when they disagree.
+# is ON THE REMOTE, not the one in your working tree, and the verdict binds to
+# THAT sha. Dispatch with unpushed commits and you get a green verdict against
+# code you did not write — so this refuses when they disagree.
 #
 # Dispatch CI on a branch (default: current) — CI does not auto-run on push.
 ci ref="":

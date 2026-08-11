@@ -10,22 +10,23 @@ on:
   # concurrent seats that made this the single largest Actions line item.
   #
   # THIS DOES NOT WEAKEN THE GATE — read before "restoring" the trigger.
-  # `ci-required` is a REQUIRED status check on `main` (repo ruleset). Because
-  # nothing auto-runs, a head SHA that has never been tested has no `ci-required`
-  # check at all, so the PR reports `Expected — waiting for status to be
-  # reported` and is UNMERGEABLE. What moved is WHEN you pay (when you want the
-  # verdict), not WHETHER green is required.
+  # `ci-verdict` is a REQUIRED status check on `main` (repo ruleset), published
+  # by the `ci-required` job below. Because nothing auto-runs, a head SHA that
+  # has never been dispatched has no verdict at all, so the PR reports
+  # `Expected — waiting for status to be reported` and is UNMERGEABLE. What
+  # moved is WHEN you pay (when you want the verdict), not WHETHER green is
+  # required.
   #
   # Deliberately NOT done with a job-level `if:` on a `pull_request` trigger: a
   # job skipped by `if:` reports as SKIPPED, and branch protection counts
   # skipped as SUCCESS — that shape would let an untested PR merge. Absent is
   # safe; skipped is not.
   #
-  # Trigger it (checks attach to the head SHA of the ref you dispatch):
+  # Trigger it (the verdict binds to the head SHA of the ref you dispatch):
   #   just ci                                # current branch
   #   gh workflow run ci.yml --ref <branch>
-  # Push another commit afterwards and the PR blocks again — the check is pinned
-  # to the SHA that was actually tested, which is the point.
+  # Push another commit afterwards and the PR blocks again — the verdict is
+  # pinned to the SHA that was actually tested, which is the point.
   workflow_dispatch: {}
   push:
     branches: [main]
@@ -142,6 +143,11 @@ jobs:
   ci-required:
     name: ci-required
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Least-privilege, and ONLY here: this is the one job that publishes the
+      # commit status the ruleset requires.
+      statuses: write
     needs: [rename-guard, build-test, package-smoke]
     if: always()
     steps:
@@ -152,6 +158,47 @@ jobs:
           exit 1
       - name: All required jobs passed
         run: echo "All required jobs passed."
+
+      # DO NOT DELETE THIS STEP AS "REDUNDANT WITH THE JOB". It is what makes a
+      # manually-dispatched run able to gate a PR at all.
+      #
+      # MEASURED, not assumed: a `workflow_dispatch` check suite is EXCLUDED from
+      # the commit's `statusCheckRollup`, and rulesets evaluate the ROLLUP. On sha
+      # 803ff983 the suite and all five check runs were visible via
+      # `/commits/<sha>/check-runs` with conclusion success, the suite even listed
+      # `pull_requests: [166]` — and `statusCheckRollup` was still `null`, so the
+      # PR sat BLOCKED with `ci-required` required. The identical query against a
+      # `pull_request`-event sha returned a SUCCESS rollup with 5 contexts. So the
+      # `ci-required` CHECK RUN cannot satisfy a required check on a dispatched
+      # run, no matter how green it is.
+      #
+      # A commit STATUS *is* rollup-eligible regardless of event, so this job
+      # publishes its verdict as one and the ruleset requires THAT context
+      # (`ci-verdict`, pinned to the GitHub Actions app so a human cannot hand-post
+      # a green verdict with `gh api .../statuses/<sha>`).
+      #
+      # Fail-safe by construction: if the run never happens, is cancelled early, or
+      # the workflow file fails to parse, no status is posted, and an absent
+      # required status blocks. Nothing here can make a PR mergeable by omission.
+      - name: Publish the rollup-eligible verdict (ci-verdict)
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FAILED: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: |
+          set -euo pipefail
+          if [ "$FAILED" = "true" ]; then
+            state=failure; desc="a required job failed or was cancelled"
+          else
+            state=success; desc="rename-guard + build-test (22,24) + package-smoke passed"
+          fi
+          gh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state="$state" \
+            -f context="ci-verdict" \
+            -f description="$desc" \
+            -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            --silent
+          echo "posted ci-verdict=$state for ${GITHUB_SHA}"
 
   # Packaging / bin-symlink smoke (companion F005 guard): pack the tarball,
   # install it into a clean temp project, and invoke the installed `harness`
