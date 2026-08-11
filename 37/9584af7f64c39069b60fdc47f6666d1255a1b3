@@ -1,0 +1,19 @@
+docs/plans/083-windows-portability/assets/briefs/CODER-dd-schema-fs.md
+  s_a76964380084ef::t_fce70e196de5d0 1-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "379584af7f64c39069b60fdc47f6666d1255a1b3",
+  "prompts": {},
+  "sessions": {
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
