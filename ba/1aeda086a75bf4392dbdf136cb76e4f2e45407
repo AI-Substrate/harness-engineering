@@ -1,0 +1,53 @@
+harness/cli/test/adapters/fs/node-fs.test.ts
+  s_29acd296a1d1a3::t_4ee1090b044266 84-96,98,100,102-112,114,116-123,169,217-219
+  s_29acd296a1d1a3::t_be1a8c7bc0038e 141-168,170,172-184,186-187,189-214,216,220-227,229-230
+  s_29acd296a1d1a3::t_628f0d4d39af2f 15
+  s_29acd296a1d1a3::t_c211f9fa45bc3c 78-83,99,101,113,115,125-126
+  s_29acd296a1d1a3::t_a8274d4de97482 298-307
+  s_29acd296a1d1a3::t_305b5eaf849a29 40-44
+harness/cli/test/support/symlink-capability.ts
+  s_29acd296a1d1a3::t_4ee1090b044266 101-103
+  s_29acd296a1d1a3::t_48ec108b03742d 1-100
+harness/cli/test/adapters/fs/fake-fs.test.ts
+  s_29acd296a1d1a3::t_d65731b2f63ad2 552-557,609,678-683,708
+  s_29acd296a1d1a3::t_97696c6fd55061 610-611,709-710
+  s_29acd296a1d1a3::t_4ee1090b044266 558,572-608,684-707
+  s_29acd296a1d1a3::t_d37401f258e9a3 16
+harness/cli/test/services/hooks/config-writer.test.ts
+  s_29acd296a1d1a3::t_4ee1090b044266 25,206-207,218-221,223-224,226,228-230,263,275
+  s_29acd296a1d1a3::t_c7692f47af4aea 154,156-160,162-166,169,172-205,231-232,234-238,252-256
+  s_29acd296a1d1a3::t_ded850d4cc4c52 2,14
+harness/cli/src/services/doctor/collector/backup.ts
+  s_29acd296a1d1a3::t_b75d21b616c84c 198-214
+  s_29acd296a1d1a3::t_5a3f7edd7cea29 128-145
+  s_29acd296a1d1a3::t_e7a9391596bdce 155,215
+  s_29acd296a1d1a3::t_b686ff4853114e 2
+harness/cli/test/services/doctor/collector/backup-path-shape.test.ts
+  s_29acd296a1d1a3::t_fe911e0aff6891 1,7-96,153-154
+  s_29acd296a1d1a3::t_acd148177cae65 2-6,97-152
+harness/cli/test/acts/doctor.test.ts
+  s_29acd296a1d1a3::t_ca2541114b9cd9 5
+  s_29acd296a1d1a3::t_2828e305a61179 137
+  s_29acd296a1d1a3::t_e7443fb5a13ab2 101-133,135
+  s_29acd296a1d1a3::t_a744792ea7e299 241-285
+  s_29acd296a1d1a3::t_4ee1090b044266 287-292,295,298,312
+  s_29acd296a1d1a3::t_528de8c1cd813b 286
+harness/cli/test/services/doctor/collector/backup-restore.int.test.ts
+  s_29acd296a1d1a3::t_e7a9391596bdce 49-61,110,136,142,176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ba1aeda086a75bf4392dbdf136cb76e4f2e45407",
+  "prompts": {},
+  "sessions": {
+    "s_29acd296a1d1a3": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "b251803c-a996-4096-9c8d-8f3d456d421a",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
