@@ -1,0 +1,19 @@
+harness/cli/test/ci-refusal-probe.test.ts
+  s_d184cde77eb56e::t_de16f3742e41cd 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3b0da3f236ce232636f80714b88a18a43c0b66dd",
+  "prompts": {},
+  "sessions": {
+    "s_d184cde77eb56e": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "8708cfa5-d3e6-406b-adf7-91839e59fdcf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
