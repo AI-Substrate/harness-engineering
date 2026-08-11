@@ -214,6 +214,53 @@ this very commit and its collection-time death is precisely what `trySymlink` pr
 the failure count to RISE when it lands**: a file that has never collected on Windows may carry
 failures nobody has ever seen. That is a gain, not a regression.
 
+## TEST-GREEN — 2 → 0 — 2026-08-11
+
+```
+control  ba1aeda0 : 395 files / 6055 collected / pass 6018 / FAIL 2 / skip 35
+TIMEOUT  3fa304e6 : 395 files / 6055 collected / pass 6020 / FAIL 0 / skip 35
+cleared 2 · NEW 0 · denominator STABLE
+```
+
+**Plan total: 107 → 28 → 11 → 2 → 0, four commits, seven product files.** Nothing was hiding
+behind the wall — no real defect surfaced when the budget was raised.
+
+### The honest headline has two halves, and both must travel
+
+> **Zero failing tests over 6055 collected across 395 files — with one file permanently absent on
+> this host.**
+
+`Failed Suites: 1` — still `dd-schema-fs.test.ts`, still symlink EPERM at line 40. **Test-green is
+not suite-green.** This commit does not address it and the record says so rather than letting a
+clean line imply coverage it does not have.
+
+### The budget is comfortable, not proven
+
+| row | before | this run | % of 120s budget |
+|---|---:|---:|---:|
+| `composed-command` — executes the installed string verbatim | 54232ms | **33886ms** | 28% |
+| credential RED-A — accepts the exact helper | (killed at wall) | **24605ms** | 21% |
+
+**Quote the conservative headroom, not this run's.** `composed-command` has now measured **54.2s
+and 33.9s on the same machine, same row, ~90 minutes apart — a 60% swing.** So the real margin is
+120s against the **worst ever observed** 54.2s = **2.2×**, not the 3.5× this run flatters it with.
+That variance *is* the phenomenon — it is exactly why a 30s wall made this family oscillate
+14 → 1 → 0 → 1. **A budget must be sized against the spread, not against any single measurement.**
+2.2× against the worst we have seen is comfortable; it is not settled on one green run, and it
+wants re-observing on a loaded box before anyone treats 120s as proven headroom.
+
+### Correction — a truncation is not a measurement
+
+This plan previously argued the credential row was *"39 milliseconds over a 30000ms wall"*, from
+its reported `30039ms`. **That was the timeout KILL TIME, not the row's duration.** It was cut off
+*at* the wall, so its true completion cost had never been measured — it could have needed 30.1s or
+300s and the figure would read the same. **This run produced the first true duration ever taken
+for that row: 24605ms.**
+
+The conclusion (it was marginal) holds — but on evidence obtained *afterwards*, not on the figure
+that was cited for it. A censored observation carries no information above its cap, and comparing
+one against the bound that produced it is circular.
+
 ## Found and NOT fixed — carried forward deliberately
 
 Reported by `pij-defeated-peacock` while fixing the hooks cluster; each is outside that packet and
