@@ -1,0 +1,30 @@
+docs/plans/083-windows-portability/assets/briefs/CODER-dd-schema-fs.md
+  s_a76964380084ef::t_fce70e196de5d0 1-92
+harness/cli/test/acts/dd-schema-fs.test.ts
+  s_29acd296a1d1a3::t_c7b33af16bb860 1,8,21-58,79-98
+  s_29acd296a1d1a3::t_552f5ea7059a09 113-139,141-155,161-179
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4f4b8507ae38073368886a8a7ce18638c451f80b",
+  "prompts": {},
+  "sessions": {
+    "s_29acd296a1d1a3": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "b251803c-a996-4096-9c8d-8f3d456d421a",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
