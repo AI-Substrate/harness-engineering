@@ -881,7 +881,21 @@ describe('ExecRemoteTelemetryGit — HTTPS credential discovery RED cluster A', 
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
-  });
+    // 120s, not the 30s floor — the same spawn-count budget as
+    // hooks/composed-command.int.test.ts, set to the SAME value so the two do not
+    // drift apart for no reason.
+    //
+    // This row drives many real `git` invocations to build and read back a
+    // credential-helper chain. Measured on the Windows VM at 30039ms against a
+    // 30000ms wall — 39 MILLISECONDS over — and it OSCILLATED across runs
+    // (this timing family moved 14 -> 1 -> 0 -> 1) precisely because it sits on
+    // the boundary. A row that passes or fails on machine load is reporting the
+    // load, not the code.
+    //
+    // NOT SKIPPED. The credential-leak assertions are the security-relevant part
+    // of this file; losing them on the slow platform is exactly the outcome a
+    // budget raise exists to avoid.
+  }, 120_000);
 
   /**
    * SKIPPED on win32, deliberately and by name (plan 077 · #108).
