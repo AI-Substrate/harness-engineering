@@ -1,4 +1,5 @@
 import type { FsPort } from '../../../adapters/fs/fs-port.js';
+import { toPosix } from '../../shared/posix-path.js';
 import { AGENT_MARKERS, configPathsFor, detectAgents, UNDETECTED_INSTALLERS } from './agents.js';
 import type { CollectorDeps } from './types.js';
 
@@ -128,13 +129,26 @@ export function backupDirFor(home: string, nowIso: string): string {
  * character is substituted and nothing needs decoding.
  */
 export function storedPathFor(source: string, home: string): string {
-  const root = home.replace(/\/+$/, '');
-  if (source.startsWith(`${root}/`)) return `files/home/${source.slice(root.length + 1)}`;
-  return `files/abs/${source.replace(/^\/+/, '')}`;
+  // Both sides cross the boundary before they are compared: a caller may hand us a
+  // native `home` (plan 083). Without this the prefix test answers falsely on
+  // Windows and a home-relative config is filed under `files/abs/`, where restore
+  // looks for it in the wrong namespace.
+  const root = toPosix(home).replace(/\/+$/, '');
+  const src = toPosix(source);
+  if (src.startsWith(`${root}/`)) return `files/home/${src.slice(root.length + 1)}`;
+  return `files/abs/${src.replace(/^\/+/, '')}`;
 }
 
 export function backupAgentConfigs(deps: CollectorDeps): ConfigBackup {
-  const home = deps.host.home.replace(/\/+$/, '');
+  // CONVERTED AT THE BOUNDARY (plan 083). `deps.host.home` is NATIVE — it comes
+  // from `os.homedir()` — and every path built from it below is one this service
+  // SURFACES (`restored`, the manifest `source`) or COMPARES (`storedPathFor`).
+  // Interpolating it raw into `${home}/${rel}` produced a MIXED path on Windows,
+  // `C:\Users\dev/.cursor/hooks.json`, which Node's fs accepts — so the copy
+  // worked and only the comparison and the report were wrong. `storedPathFor`
+  // then matched it only because the mixed shape happened to put a `/` exactly
+  // where it looked for one: correct by coincidence. See services/shared/posix-path.ts.
+  const home = toPosix(deps.host.home).replace(/\/+$/, '');
   const takenAt = deps.clock.nowIso();
   const dir = backupDirFor(home, takenAt);
   const copied: string[] = [];

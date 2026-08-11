@@ -27,6 +27,22 @@ const fs = new NodeFs();
 const env = () => undefined;
 const BINARY = '"/usr/local/bin/harness"';
 
+/**
+ * The LOGICAL spelling of a native path — the shape these outcomes carry.
+ *
+ * `outcome.path` comes from `resolveConfigFiles`, and a path a service surfaces or
+ * compares is forward-slashed on EVERY OS by rule (`services/shared/posix-path.ts`);
+ * `home` is converted once, at that boundary. So comparing against a native
+ * `path.join` asserts a shape this surface does not promise — and it did so
+ * invisibly, because on macOS the two spellings coincide. These rows failed only on
+ * Windows (plan 083).
+ *
+ * Spelled out rather than imported from the product, so the expectation states the
+ * shape independently instead of agreeing with whatever the resolver does.
+ */
+const logical = (path: string): string =>
+  path.replace(/\\/g, '/').replace(/^([a-z]):/, (_m, drive: string) => `${drive.toUpperCase()}:`);
+
 const spec = (agent: string): AgentSpec => {
   const found = findAgent(agent);
   if (found === undefined) throw new Error(`${agent} missing from the matrix`);
@@ -51,7 +67,7 @@ describe('the ABSENT-FILE case — one situation, three consequences (dw-0011, d
     const [outcome] = installStrategyA(fs, spec('github-copilot'), home, env, BINARY);
 
     expect(outcome.created).toBe(true);
-    expect(outcome.path).toBe(join(home, '.copilot/hooks/harness.json'));
+    expect(outcome.path).toBe(logical(join(home, '.copilot/hooks/harness.json')));
     expect(existsSync(outcome.path)).toBe(true);
 
     const doc = JSON.parse(readFileSync(outcome.path, 'utf8')) as {
@@ -193,8 +209,8 @@ describe('windsurf writes BOTH files — half-working is the failure mode (dw-00
     const outcomes = installStrategyA(fs, spec('windsurf'), home, env, BINARY);
 
     expect(outcomes.map((o) => o.path)).toEqual([
-      join(home, '.codeium/hooks.json'),
-      join(home, '.codeium/windsurf/hooks.json'),
+      logical(join(home, '.codeium/hooks.json')),
+      logical(join(home, '.codeium/windsurf/hooks.json')),
     ]);
     for (const outcome of outcomes) {
       expect(existsSync(outcome.path)).toBe(true);

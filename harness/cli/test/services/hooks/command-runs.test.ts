@@ -130,7 +130,17 @@ describe('executionState — the check that would have caught this (row 3)', () 
     statusHooks(deps({ binary: embedInvocation('/usr/local/bin/node', script), probe }));
 
     expect(calls.length).toBeGreaterThan(0);
-    expect(calls[0]).toEqual({ interpreter: '/usr/local/bin/node', script });
+    // THE LOGICAL SPELLING, because the probe receives what was READ BACK OUT of the
+    // config — and what goes in is deliberately forward-slashed by
+    // `normaliseBinaryPath` (a shell command inside another tool's file, where a
+    // backslash escapes). Comparing against the native `join` asserted a shape this
+    // surface never promised, and only Windows could tell (plan 083). The PAIRING —
+    // interpreter AND script together — is what this row is actually about, and it
+    // is untouched.
+    expect(calls[0]).toEqual({
+      interpreter: '/usr/local/bin/node',
+      script: script.replace(/\\/g, '/'),
+    });
   });
 });
 

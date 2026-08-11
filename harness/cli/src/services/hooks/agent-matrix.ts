@@ -1,3 +1,5 @@
+import { posixJoin, toPosix } from '../shared/posix-path.js';
+
 /**
  * THE AGENT MATRIX, AS DATA (plan 082 tk-0004).
  *
@@ -316,12 +318,39 @@ export const AGENT_MATRIX: AgentSpec[] = [
   },
 ];
 
-/** POSIX-joined path. The matrix is data, so it must not import `node:path`. */
-const joinPath = (...parts: string[]): string =>
-  parts
-    .filter((part) => part.length > 0)
-    .join('/')
-    .replace(/\/{2,}/g, '/');
+/**
+ * THE CONFIG PATH IS A LOGICAL PATH, AND `home` IS THE BOUNDARY (plan 083).
+ *
+ * IT ALWAYS JOINED WITH `/`, AND THAT WAS RIGHT — `services/shared/posix-path.ts`
+ * is the repo-wide rule: every path a service surfaces or compares is forward-
+ * slashed on every OS, and conversion happens ONCE, at the boundary where a native
+ * path enters. What was missing was the conversion. `home` arrives NATIVE (it comes
+ * from `os.homedir()`) and was interpolated raw, so on Windows the result was a
+ * MIXED path: `C:\Users\dev/.cursor/hooks.json` — neither shape, and the boundary
+ * this module was supposed to sit on was never crossed.
+ *
+ * Node's fs accepts a mixed path, which is exactly why it survived: every read and
+ * write worked, so nothing failed loudly. WHAT IT BROKE IS COMPARISON AND DISPLAY,
+ * both of which this value feeds:
+ *
+ * - The path is recorded as PROVENANCE (`install-record.json`) and named in
+ *   operator-facing failure reasons, so one config file was spelled two different
+ *   ways depending on which side of the boundary produced it. Two spellings of one
+ *   path is how a record stops matching the file it is about.
+ * - `configPathsFor` (the collector) strips the home prefix by STRING and worked
+ *   only because the mixed shape happened to put a `/` exactly where it looked for
+ *   one. Correct by coincidence is the state this join was quietly maintaining.
+ *
+ * THE RESULT IS THE SAME SHAPE ON EVERY PLATFORM, which is the point of the rule
+ * and is what makes it testable anywhere: a macOS run can pass a Windows-shaped
+ * `home` and assert the exact literal, with no platform branch to be wrong about.
+ *
+ * `posixJoin` RATHER THAN `node:path`, per the AC-2 invariant that no file under
+ * `src/services` imports `node:path` (asserted by `test/services/windows-shape.test.ts`).
+ * It `toPosix`-es every segment on the way in, so the boundary conversion and the
+ * join are the same call and cannot drift apart.
+ */
+const joinPath = (...parts: string[]): string => posixJoin(...parts.filter((p) => p.length > 0));
 
 /**
  * The directory this agent's config files live in.
@@ -339,7 +368,11 @@ export function resolveConfigRoot(
   if (override !== undefined) {
     const value = env(override.name);
     if (value !== undefined && value.length > 0) {
-      return override.kind === 'config-dir' ? value : joinPath(value, spec.subdir);
+      // `toPosix` on the VERBATIM branch too: it is the same boundary, and a
+      // `CLAUDE_CONFIG_DIR` a user typed with backslashes is exactly as native as
+      // `home`. Returning it raw would leak the one shape this module exists to
+      // convert, through the branch that joins nothing.
+      return override.kind === 'config-dir' ? toPosix(value) : joinPath(value, spec.subdir);
     }
   }
   return joinPath(home, spec.subdir);

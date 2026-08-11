@@ -203,3 +203,103 @@ describe('adding an agent is adding a ROW (dw-0010)', () => {
     expect(findAgent('totally-invented-agent')).toBeUndefined();
   });
 });
+
+/**
+ * THE PATH SHAPE THESE RESOLVERS EMIT (plan 083).
+ *
+ * WHY THIS DESCRIBE EXISTS AT ALL. Every row it covers passed on macOS for the
+ * life of the feature and failed only on a Windows VM. `services/shared/posix-path.ts`
+ * is the repo-wide rule — a path a service surfaces or compares is forward-slashed
+ * on every OS, converted ONCE at the boundary where a native path enters — and this
+ * resolver joined with `/` while never converting `home`, which arrives NATIVE from
+ * `os.homedir()`. Windows therefore got a MIXED path,
+ * `C:\Users\dev/.cursor/hooks.json`: neither shape, and a boundary never crossed.
+ *
+ * Node's fs accepts a mixed path, so every read and write worked and nothing failed
+ * loudly. What broke was COMPARISON, which is invisible until something compares.
+ *
+ * NO `skipIf`, NO PLATFORM PARAMETER, AND THAT IS THE POINT. A logical path is the
+ * same on every OS by construction, so a Windows-shaped `home` is just an input and
+ * these rows assert exact literals from any host — including the gate that runs on
+ * every push. A `skipIf(platform() !== 'win32')` would have re-created the defect
+ * inside the instrument: green on the machine that cannot fail, mute on the one
+ * that can.
+ */
+describe('the resolved path is LOGICAL — forward slashes, on every OS', () => {
+  it('converts a NATIVE Windows home at the boundary, including multi-segment files', () => {
+    /*
+    Test Doc:
+    - Why: `C:\Users\dev/.copilot/hooks/harness.json` is what the resolver actually
+      produced. It is recorded as provenance and named in operator-facing failure
+      text, so one config file had two spellings depending on which side of the
+      boundary produced it.
+    - Contract: one shape, forward slashes throughout — the drive letter kept, the
+      backslashes converted, and the `/` already inside `hooks/harness.json` left
+      alone.
+    - Quality Contribution: asserts the FULL literal rather than
+      `not.toContain('\\')`, so a resolver that converted only the home boundary and
+      left a segment alone still goes red.
+    */
+    expect(resolveConfigFiles(spec('github-copilot'), 'C:\\Users\\dev', noEnv)).toEqual([
+      'C:/Users/dev/.copilot/hooks/harness.json',
+    ]);
+    expect(resolveConfigFiles(spec('windsurf'), 'C:\\Users\\dev', noEnv)).toEqual([
+      'C:/Users/dev/.codeium/hooks.json',
+      'C:/Users/dev/.codeium/windsurf/hooks.json',
+    ]);
+  });
+
+  it('a POSIX home is UNCHANGED — the counter-row that keeps this from being a rename', () => {
+    /*
+    Test Doc:
+    - Why: a fix that made Windows right by moving the POSIX answer would trade one
+      platform's defect for the other's. Every shipped macOS and Linux install
+      resolves through this same function.
+    - Contract: byte-identical to what the previous resolver emitted.
+    */
+    expect(resolveConfigFiles(spec('github-copilot'), '/home/dev', noEnv)).toEqual([
+      '/home/dev/.copilot/hooks/harness.json',
+    ]);
+    expect(resolveConfigFiles(spec('windsurf'), '/home/dev', noEnv)).toEqual([
+      '/home/dev/.codeium/hooks.json',
+      '/home/dev/.codeium/windsurf/hooks.json',
+    ]);
+  });
+
+  it('an env override crosses the SAME boundary, both kinds', () => {
+    /*
+    Test Doc:
+    - Why: `config-dir` is the one branch that returns a value it did not join, so it
+      is where a boundary conversion is most likely to stop halfway — and a
+      `CLAUDE_CONFIG_DIR` a user typed with backslashes is exactly as native as
+      `home`. `home-root` must convert AND append.
+    - Contract: both kinds emit a fully logical path.
+    - Quality Contribution: covers the verbatim branch, which joins nothing and so
+      would silently pass through whatever shape it was handed.
+    */
+    expect(
+      resolveConfigFiles(spec('gemini'), 'C:\\Users\\dev', env({ GEMINI_CLI_HOME: 'D:\\cfg' })),
+    ).toEqual(['D:/cfg/.gemini/settings.json']);
+    expect(
+      resolveConfigFiles(
+        spec('claude-code'),
+        'C:\\Users\\dev',
+        env({ CLAUDE_CONFIG_DIR: 'D:\\cfg' }),
+      ),
+    ).toEqual(['D:/cfg/settings.json']);
+  });
+
+  it('a lower-case drive letter is CANONICALISED — one key, not two', () => {
+    /*
+    Test Doc:
+    - Why: these paths become dedupe keys and record entries. Windows treats `c:`
+      and `C:` as the same drive, so two spellings of one home would enter a Set as
+      two distinct files — the same duplication the home-relative strip guards
+      against, arriving through case instead of through separators.
+    - Contract: the drive letter is upper-cased, matching `toPosix`.
+    */
+    expect(resolveConfigFiles(spec('cursor'), 'c:\\Users\\dev', noEnv)).toEqual([
+      'C:/Users/dev/.cursor/hooks.json',
+    ]);
+  });
+});

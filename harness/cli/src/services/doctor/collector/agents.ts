@@ -1,4 +1,5 @@
 import { AGENT_MATRIX, resolveConfigFiles } from '../../hooks/agent-matrix.js';
+import { toPosix } from '../../shared/posix-path.js';
 import type { CollectorFsPort } from './types.js';
 
 /**
@@ -244,8 +245,34 @@ export function configPathsFor(
   const ours =
     spec === undefined
       ? []
-      : resolveConfigFiles(spec, home, (name) => envOverrides[name]).map((abs) =>
-          abs.startsWith(`${home}/`) ? abs.slice(home.length + 1) : abs,
-        );
+      : resolveConfigFiles(spec, home, (name) => envOverrides[name]).map(relativeToHome(home));
   return [...new Set([...agent.configs, ...ours])];
 }
+
+/**
+ * Make a resolved absolute config path home-relative.
+ *
+ * BOTH SIDES CROSS THE BOUNDARY FIRST, and that is the correction rather than the
+ * decoration (plan 083). `resolveConfigFiles` returns a LOGICAL path — forward
+ * slashes on every OS, per `services/shared/posix-path.ts` — while `home` arrives
+ * NATIVE from `os.homedir()`. The previous strip compared the two raw
+ * (`abs.startsWith(`${home}/`)`), which answered TRUE on Windows only because the
+ * resolver used to emit a MIXED `C:\Users\dev/.cursor/hooks.json` that happened to
+ * carry a `/` exactly where this looked for one. It was correct by coincidence, and
+ * the coincidence was the defect: with the resolver fixed, a raw comparison falls
+ * through and returns an ABSOLUTE path where a home-relative key is expected.
+ *
+ * THE RESULT IS A KEY, NOT A PATH TO USE. It is unioned through a `Set` with
+ * `AGENT_MARKERS[].configs` — logical literals like `.cursor/hooks.json` — and a
+ * second spelling of one file in that set means the backup copies it twice and the
+ * evidence digest reports a file that has no second copy on disk.
+ */
+const relativeToHome =
+  (home: string) =>
+  (abs: string): string => {
+    const logicalHome = toPosix(home).replace(/\/+$/, '');
+    const logicalAbs = toPosix(abs);
+    return logicalAbs.startsWith(`${logicalHome}/`)
+      ? logicalAbs.slice(logicalHome.length + 1)
+      : logicalAbs;
+  };

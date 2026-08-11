@@ -46,6 +46,26 @@ import { hookCommand, installStrategyA } from '../../../src/services/hooks/insta
 
 const NODE = '/usr/local/bin/node';
 
+/**
+ * The LOGICAL spelling of a native path — what a hook command carries.
+ *
+ * NOT A PLATFORM PAPER-OVER, and the direction of the judgement matters (plan 083).
+ * `normaliseBinaryPath` forward-slashes deliberately, because the value it produces
+ * is EMBEDDED IN A SHELL COMMAND inside another tool's config file, where a
+ * backslash is an escape character on POSIX shells; that rationale is recorded on
+ * the function and it is correct. So the PRODUCT is right and the ASSERTION was
+ * wrong: comparing what came back out of a command string against a native
+ * `path.join` asserts a shape this surface never promised, and it did so
+ * invisibly — every row here passed on macOS, where the two spellings coincide,
+ * and failed only on Windows.
+ *
+ * Written out here rather than imported from `binary-path.js` ON PURPOSE. Using
+ * the function under test to build its own expectation makes the row agree with
+ * whatever the product does; this states the shape independently, so a product
+ * that stopped normalising goes red.
+ */
+const logical = (path: string): string => path.replace(/\\/g, '/');
+
 let home: string;
 const fs = new NodeFs();
 
@@ -82,7 +102,7 @@ afterEach(() => rmSync(home, { recursive: true, force: true }));
 describe('the reader handles BOTH forms', () => {
   it('a legacy one-token command still yields its script, and NO interpreter', () => {
     const command = hookCommand(legacyBinary(), 'cursor', 'post');
-    expect(extractBinaryPath(command)).toBe(join(home, 'bin', 'harness.js'));
+    expect(extractBinaryPath(command)).toBe(logical(join(home, 'bin', 'harness.js')));
     expect(extractInterpreterPath(command)).toBeNull();
   });
 
@@ -105,7 +125,7 @@ describe('the reader handles BOTH forms', () => {
     installHooks(deps({ binary: legacyBinary() }));
     const row = statusHooks(deps({ binary: legacyBinary() })).find((r) => r.agent === 'cursor');
     expect(row?.installed).toBe(true);
-    expect(row?.configuredBinary).toBe(join(home, 'bin', 'harness.js'));
+    expect(row?.configuredBinary).toBe(logical(join(home, 'bin', 'harness.js')));
   });
 });
 

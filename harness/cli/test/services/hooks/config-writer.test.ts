@@ -148,7 +148,55 @@ describe('the writer matches the committed golden — a REGRESSION LOCK, not the
 });
 
 describe('writing through a SYMLINKED config path (dw-0007)', () => {
-  it('leaves the symlink intact and updates its TARGET', () => {
+  /**
+   * CAN THIS PROCESS CREATE A SYMLINK AT ALL?
+   *
+   * PROBED, NOT INFERRED FROM `platform()` (plan 083). The question is not "is this
+   * Windows" but "does this process hold symlink privilege", and those differ: an
+   * elevated Windows box, or one with Developer Mode on, can; an ordinary user
+   * account cannot, and `symlinkSync` throws EPERM. Both rows below create a
+   * symlink in their SETUP, so on an unelevated Windows host they died before
+   * reaching the contract — a staging failure wearing the costume of a product
+   * defect.
+   *
+   * THE PRODUCT IS NOT IMPLICATED AND THESE ROWS ARE NOT WEAKENED. The second one
+   * is an executable proof of a real hazard (a rename-based "atomic" write destroys
+   * a dotfile-managed config), and a version rewritten to pass without a symlink
+   * would prove nothing while looking like it still did. Skipping with a stated
+   * reason is the honest answer: the property is unproven on this host, and it says
+   * so, rather than reporting a green it did not earn.
+   *
+   * THIS RAISES THE PINNED SKIP COUNT ON UNELEVATED WINDOWS BY TWO. That is
+   * deliberate and must be moved deliberately — `windows.yml` pins the count
+   * precisely so "we stopped looking" cannot wear a green.
+   */
+  const canSymlink = ((): boolean => {
+    const dir = mkdtempSync(join(tmpdir(), 'harness-symlink-probe-'));
+    try {
+      const target = join(dir, 'target');
+      writeFileSync(target, 'x', 'utf8');
+      symlinkSync(target, join(dir, 'link'));
+      return true;
+    } catch {
+      return false;
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  })();
+
+  const symlinkable = it.skipIf(!canSymlink);
+  /**
+   * The reason travels in the NAME, so it reaches the JSON reporter and any CI
+   * summary. A skipped row whose name does not say WHY is the silence this repo
+   * has been bitten by before: someone scanning a run cannot tell a row that was
+   * never relevant from a row that could not be attempted on that host.
+   */
+  const orSkipped = (name: string): string =>
+    canSymlink
+      ? name
+      : `${name} [SKIPPED — this process cannot create a symlink (Windows EPERM without elevation or Developer Mode); the property is NOT proven on this host]`;
+
+  symlinkable(orSkipped('leaves the symlink intact and updates its TARGET'), () => {
     /*
     Test Doc:
     - Why: agent configs are routinely dotfile-managed (chezmoi, stow), so the config
@@ -176,8 +224,10 @@ describe('writing through a SYMLINKED config path (dw-0007)', () => {
     expect(written).toBe(fs.realpath(real));
   });
 
-  it('the RENAME-based atomic write DESTROYS the symlink — the hazard, executable', () => {
-    /*
+  symlinkable(
+    orSkipped('the RENAME-based atomic write DESTROYS the symlink — the hazard, executable'),
+    () => {
+      /*
     Test Doc:
     - Why: honesty about what the row above does and does not prove. `writeFileSync`
       already follows a symlink, so a plain write preserves the link on its own —
@@ -190,28 +240,29 @@ describe('writing through a SYMLINKED config path (dw-0007)', () => {
     - Quality Contribution: converts "a rename would break this" from a comment into
       a measurement, so the guard has a reason a reader can see rather than trust.
     */
-    const store = join(home, 'dotfiles2');
-    mkdirSync(store, { recursive: true });
-    const real = join(store, 'hooks.json');
-    writeFileSync(real, '{}\n');
-    const linked = join(home, 'linked.json');
-    symlinkSync(real, linked);
+      const store = join(home, 'dotfiles2');
+      mkdirSync(store, { recursive: true });
+      const real = join(store, 'hooks.json');
+      writeFileSync(real, '{}\n');
+      const linked = join(home, 'linked.json');
+      symlinkSync(real, linked);
 
-    // The tempting "atomic" write.
-    const temp = `${linked}.tmp`;
-    writeFileSync(temp, '{"clobbered":true}\n');
-    renameSync(temp, linked);
+      // The tempting "atomic" write.
+      const temp = `${linked}.tmp`;
+      writeFileSync(temp, '{"clobbered":true}\n');
+      renameSync(temp, linked);
 
-    expect(lstatSync(linked).isSymbolicLink()).toBe(false); // the link is GONE
-    expect(readFileSync(real, 'utf8')).toBe('{}\n'); // the real file never changed
+      expect(lstatSync(linked).isSymbolicLink()).toBe(false); // the link is GONE
+      expect(readFileSync(real, 'utf8')).toBe('{}\n'); // the real file never changed
 
-    // Ours, on a fresh link, keeps it.
-    rmSync(linked, { force: true });
-    symlinkSync(real, linked);
-    writeThroughSymlink(fs, linked, '{"ok":true}\n');
-    expect(lstatSync(linked).isSymbolicLink()).toBe(true);
-    expect(readFileSync(real, 'utf8')).toContain('ok');
-  });
+      // Ours, on a fresh link, keeps it.
+      rmSync(linked, { force: true });
+      symlinkSync(real, linked);
+      writeThroughSymlink(fs, linked, '{"ok":true}\n');
+      expect(lstatSync(linked).isSymbolicLink()).toBe(true);
+      expect(readFileSync(real, 'utf8')).toContain('ok');
+    },
+  );
 
   it('writes where asked when the path does not exist yet', () => {
     const target = join(home, 'fresh.json');
