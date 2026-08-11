@@ -1,0 +1,37 @@
+harness/cli/src/services/docs/docs-content.ts
+  s_d184cde77eb56e::t_fd0882b1c339e5 58
+.harness/extensions/arch-check/instructions.md
+  s_d184cde77eb56e::t_4c03f067a38cd9 10-12
+.github/workflows/ci.yml
+  s_d184cde77eb56e::t_44112cb527f978 4-29
+.harness/extensions/windows-check/instructions.md
+  s_d184cde77eb56e::t_a61b7ab0d098cf 8-10
+harness/cli/README.md
+  s_d184cde77eb56e::t_f47466d096619a 166-175,183,186,189
+justfile
+  s_d184cde77eb56e::t_77edc56457c06d 258-264,268-282
+  s_d184cde77eb56e::t_bad45819ffb6db 265-267
+README.md
+  s_d184cde77eb56e::t_1bafa1e7396f04 107
+AGENTS.md
+  s_d184cde77eb56e::t_6c70a9590400f0 46-74
+docs/how/architecture-conformance.md
+  s_d184cde77eb56e::t_bee706df72dee2 94
+  s_d184cde77eb56e::t_0caa6a0cb7acd4 16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "803ff983304db37c258b0f74c6199b8442f79f97",
+  "prompts": {},
+  "sessions": {
+    "s_d184cde77eb56e": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "8708cfa5-d3e6-406b-adf7-91839e59fdcf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
