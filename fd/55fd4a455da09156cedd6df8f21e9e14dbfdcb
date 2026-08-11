@@ -1,0 +1,73 @@
+harness/cli/test/services/hooks/command-runs.test.ts
+  s_29acd296a1d1a3::t_ad7dd75860c122 133-143
+harness/cli/src/services/hooks/agent-matrix.ts
+  s_29acd296a1d1a3::t_49defbd5026cc8 321,323,331,335-336,347,352
+  s_29acd296a1d1a3::t_d938eb5436af8e 1
+  s_29acd296a1d1a3::t_87fe9f0f2101aa 371-374
+  s_29acd296a1d1a3::t_1dcf47ac2be90d 2
+  s_29acd296a1d1a3::t_3ee42a468f6179 322,324-330,332-334,337-346,348-351
+  s_29acd296a1d1a3::t_fba957191ec723 353,375
+harness/cli/test/services/hooks/install-strategy-a.test.ts
+  s_29acd296a1d1a3::t_b930d42cb04954 43-44
+  s_29acd296a1d1a3::t_9e8c9375b27c57 30-42,45,70,212-213
+harness/cli/test/services/hooks/agent-matrix.test.ts
+  s_29acd296a1d1a3::t_4bc4f2ebc80569 284-288
+  s_29acd296a1d1a3::t_7d27ca5061c71c 206-207,209,217,227,230-231,239,242,245,249-251,253-254,257,259,261-262,264-268,270-271,279-280,283,290-291,293-294,300,304-305
+  s_29acd296a1d1a3::t_983233b2c4a5b7 208,210-216,218-226,228-229,232-238,240-241,243-244,246-248,252,255-256,258,260,263,269,272-278,281-282,289,292,295-299,301-303
+harness/cli/src/services/doctor/collector/agents.ts
+  s_29acd296a1d1a3::t_f0e5b0d7075831 2
+  s_29acd296a1d1a3::t_691b38f2d599de 253,255-263,265-268,273-274
+  s_29acd296a1d1a3::t_f94c0476ba0785 251-252,254,264,269-272,275-278
+  s_29acd296a1d1a3::t_5d26b2c900ab96 248
+harness/cli/test/services/hooks/verbs-e2e.int.test.ts
+  s_29acd296a1d1a3::t_b930d42cb04954 47-48
+  s_29acd296a1d1a3::t_eaccfb378b8ecb 36-46,49,209,486,495,498
+harness/cli/test/services/hooks/binary-path.test.ts
+  s_29acd296a1d1a3::t_0d197ac5853e72 29-45
+  s_29acd296a1d1a3::t_04f123444b3d46 81-86
+harness/cli/test/services/doctor/collector/config-paths.test.ts
+  s_29acd296a1d1a3::t_4bc4f2ebc80569 47,68
+  s_29acd296a1d1a3::t_9bae699637eb25 21-25,35,62
+  s_29acd296a1d1a3::t_adcc8b07a83385 1-20,26-34,36-46,48-57,59-61,63-67,70-84,86-88
+  s_29acd296a1d1a3::t_ae8be2e8deacf4 58,69,85
+harness/cli/test/services/hooks/legacy-command-form.test.ts
+  s_29acd296a1d1a3::t_4c9c80d69aa28d 128
+  s_29acd296a1d1a3::t_49a958ecdeb718 105
+  s_29acd296a1d1a3::t_2621421c16c58d 49-68
+harness/cli/test/services/hooks/composition-boundaries.test.ts
+  s_29acd296a1d1a3::t_b930d42cb04954 70-71
+  s_29acd296a1d1a3::t_f4d480514f78c4 200,258,270,273,537,640,658,661,672
+  s_29acd296a1d1a3::t_3dddcdaf3a5f66 588-602
+  s_29acd296a1d1a3::t_cde711d6191569 573
+  s_29acd296a1d1a3::t_106d892a022f34 61-69,72
+  s_29acd296a1d1a3::t_dc01bef9a5c97d 604
+  s_29acd296a1d1a3::t_74dd5e6f301795 605-607,614-626
+  s_29acd296a1d1a3::t_0be58101ac6ae7 60,627
+harness/cli/test/services/hooks/config-writer.test.ts
+  s_29acd296a1d1a3::t_ea4ca846e2834f 227-229
+  s_29acd296a1d1a3::t_ce155025992f46 230,243-248,250-253,255-256,258-263
+  s_29acd296a1d1a3::t_2e9a483d58fb9d 264-265
+  s_29acd296a1d1a3::t_c7e700a334f034 179
+  s_29acd296a1d1a3::t_eed35ab86253fa 151-178,180-187,198
+  s_29acd296a1d1a3::t_7f8509fc1a7a12 188-197,199
+harness/cli/src/services/doctor/collector/backup.ts
+  s_29acd296a1d1a3::t_3f874c60c04736 132-139
+  s_29acd296a1d1a3::t_033ffa312dfc5a 2
+  s_29acd296a1d1a3::t_8ee8771c32570d 143-151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "fd55fd4a455da09156cedd6df8f21e9e14dbfdcb",
+  "prompts": {},
+  "sessions": {
+    "s_29acd296a1d1a3": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "b251803c-a996-4096-9c8d-8f3d456d421a",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
