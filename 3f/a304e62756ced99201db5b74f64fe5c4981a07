@@ -1,0 +1,21 @@
+harness/cli/test/services/hooks/composed-command.int.test.ts
+  s_a76964380084ef::t_61f3111102c847 318-338
+harness/cli/test/adapters/git/exec-remote-telemetry-git.int.test.ts
+  s_a76964380084ef::t_70c4353bac53ab 884-898
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3fa304e62756ced99201db5b74f64fe5c4981a07",
+  "prompts": {},
+  "sessions": {
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
