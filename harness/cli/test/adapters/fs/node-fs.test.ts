@@ -5,7 +5,6 @@ import {
   mkdtempSync,
   renameSync,
   rmSync,
-  symlinkSync,
   truncateSync,
   writeFileSync,
 } from 'node:fs';
@@ -13,6 +12,7 @@ import { platform, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { NodeFs } from '../../../src/adapters/fs/node-fs.js';
+import { provenLabel, SYMLINK_CAPABLE, trySymlink } from '../../support/symlink-capability.js';
 
 function withTempDir(run: (dir: string) => void): void {
   const dir = mkdtempSync(join(tmpdir(), 'harness-bounded-read-'));
@@ -37,21 +37,11 @@ function withTempDir(run: (dir: string) => void): void {
  * identical to someone scanning a run — that indistinguishability is the defect this
  * whole case exists to correct (plan 077 · #108).
  */
-function canStageSymlinkSwap(): boolean {
-  const dir = mkdtempSync(join(tmpdir(), 'harness-symlink-probe-'));
-  try {
-    const target = join(dir, 'target');
-    writeFileSync(target, 'x', 'utf8');
-    symlinkSync(target, join(dir, 'link'));
-    return true;
-  } catch {
-    return false;
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
-}
-
-const SYMLINK_SWAP_STAGEABLE = canStageSymlinkSwap();
+// ONE probe for the whole suite, and one convention for what to do about it —
+// see `test/support/symlink-capability.ts`, which encodes the degrade-not-skip
+// rule this very case argued for. The local copy that used to live here was the
+// first of three; three copies of a capability answer is how two of them drift.
+const SYMLINK_SWAP_STAGEABLE = SYMLINK_CAPABLE;
 
 // Declared to STDERR, not only to the reporter, following the same pattern the
 // win32 skip declarations in `exec-remote-telemetry-git.int.test.ts` use.
@@ -85,44 +75,55 @@ describe('NodeFs — bounded no-follow text reads (P063 T003)', () => {
     });
   });
 
-  it('distinguishes missing, symlink, non-file, and oversize paths without following them', () => {
-    withTempDir((dir) => {
-      const fs = new NodeFs();
-      const target = join(dir, 'target.jsonl');
-      const link = join(dir, 'link.jsonl');
-      const directory = join(dir, 'directory');
-      const oversize = join(dir, 'oversize.jsonl');
-      writeFileSync(target, '{}\n', 'utf8');
-      symlinkSync(target, link);
-      mkdirSync(directory);
-      writeFileSync(oversize, '12345', 'utf8');
+  it(
+    provenLabel(
+      'distinguishes missing, symlink, non-file, and oversize paths without following them',
+      'distinguishes missing, non-file and oversize paths — the SYMLINK reason is NOT proven here',
+    ),
+    () => {
+      withTempDir((dir) => {
+        const fs = new NodeFs();
+        const target = join(dir, 'target.jsonl');
+        const link = join(dir, 'link.jsonl');
+        const directory = join(dir, 'directory');
+        const oversize = join(dir, 'oversize.jsonl');
+        writeFileSync(target, '{}\n', 'utf8');
+        // DEGRADES RATHER THAN DIES. Three of the four classifications need no
+        // privilege; only `symlink` does. Staging failure used to take the whole row
+        // down with an EPERM that looked like a product fault.
+        const linked = trySymlink(target, link);
+        mkdirSync(directory);
+        writeFileSync(oversize, '12345', 'utf8');
 
-      expect(fs.probeRegularFileNoFollow(dir, join(dir, 'missing.jsonl'), 4)).toEqual({
-        status: 'unavailable',
-        reason: 'missing',
+        expect(fs.probeRegularFileNoFollow(dir, join(dir, 'missing.jsonl'), 4)).toEqual({
+          status: 'unavailable',
+          reason: 'missing',
+        });
+        if (linked) {
+          expect(fs.probeRegularFileNoFollow(dir, link, 4)).toEqual({
+            status: 'unavailable',
+            reason: 'symlink',
+          });
+          expect(fs.readTextFileNoFollow(dir, link, 4)).toEqual({
+            status: 'unavailable',
+            reason: 'symlink',
+          });
+        }
+        expect(fs.probeRegularFileNoFollow(dir, directory, 4)).toEqual({
+          status: 'unavailable',
+          reason: 'non-file',
+        });
+        expect(fs.readTextFileNoFollow(dir, directory, 4)).toEqual({
+          status: 'unavailable',
+          reason: 'non-file',
+        });
+        expect(fs.probeRegularFileNoFollow(dir, oversize, 4)).toEqual({
+          status: 'unavailable',
+          reason: 'oversize',
+        });
       });
-      expect(fs.probeRegularFileNoFollow(dir, link, 4)).toEqual({
-        status: 'unavailable',
-        reason: 'symlink',
-      });
-      expect(fs.readTextFileNoFollow(dir, link, 4)).toEqual({
-        status: 'unavailable',
-        reason: 'symlink',
-      });
-      expect(fs.probeRegularFileNoFollow(dir, directory, 4)).toEqual({
-        status: 'unavailable',
-        reason: 'non-file',
-      });
-      expect(fs.readTextFileNoFollow(dir, directory, 4)).toEqual({
-        status: 'unavailable',
-        reason: 'non-file',
-      });
-      expect(fs.probeRegularFileNoFollow(dir, oversize, 4)).toEqual({
-        status: 'unavailable',
-        reason: 'oversize',
-      });
-    });
-  });
+    },
+  );
 
   it('rejects a sparse oversized file from metadata before content allocation', () => {
     withTempDir((dir) => {
@@ -137,45 +138,96 @@ describe('NodeFs — bounded no-follow text reads (P063 T003)', () => {
     });
   });
 
-  it('rejects a regular transcript reached through an ancestor symlink outside its root', () => {
-    withTempDir((dir) => {
-      const root = join(dir, 'selected-root');
-      const outside = join(dir, 'outside');
-      const projects = join(root, 'projects');
-      mkdirSync(root);
-      mkdirSync(outside);
-      writeFileSync(join(outside, 'session.jsonl'), '{}\n', 'utf8');
-      symlinkSync(outside, projects, 'dir');
-      const path = join(projects, 'session.jsonl');
-      const fs = new NodeFs();
+  it(
+    provenLabel(
+      'rejects a regular transcript reached through an ancestor symlink outside its root',
+      'rejects an out-of-root transcript — reached DIRECTLY, not through an ancestor symlink',
+    ),
+    () => {
+      /*
+       * DEGRADES, NEVER SKIPS — this is an exfiltration guard (CWE-59), and a
+       * skipped security case proves nothing on the one platform nobody runs
+       * locally.
+       *
+       * THE PROPERTY THAT MATTERS IS ASSERTED ON EVERY PATH: the ATTACKER'S BYTES
+       * ARE NEVER RETURNED. `reason` is the richer signal and it is only available
+       * where the ancestor symlink could actually be staged; the refusal itself,
+       * and the absence of the outside file's contents, hold either way.
+       */
+      withTempDir((dir) => {
+        const root = join(dir, 'selected-root');
+        const outside = join(dir, 'outside');
+        const projects = join(root, 'projects');
+        mkdirSync(root);
+        mkdirSync(outside);
+        writeFileSync(join(outside, 'session.jsonl'), 'ATTACKER-BYTES\n', 'utf8');
+        const staged = trySymlink(outside, projects, 'dir');
+        // Where the ancestor symlink cannot be staged, the same OUTSIDE file is
+        // reached by its real path: still out of root, still must be refused. That
+        // is a weaker claim about HOW the escape was attempted, and the identical
+        // claim about what came back.
+        const path = staged ? join(projects, 'session.jsonl') : join(outside, 'session.jsonl');
+        const fs = new NodeFs();
 
-      expect(fs.probeRegularFileNoFollow(root, path, 16)).toEqual({
-        status: 'unavailable',
-        reason: 'symlink',
-      });
-      expect(fs.readTextFileNoFollow(root, path, 16)).toEqual({
-        status: 'unavailable',
-        reason: 'symlink',
-      });
-    });
-  });
+        const probed = fs.probeRegularFileNoFollow(root, path, 16);
+        const read = fs.readTextFileNoFollow(root, path, 16);
 
-  it('rejects every symlink component even when its target remains inside the root', () => {
-    withTempDir((dir) => {
-      const root = join(dir, 'selected-root');
-      const targetDir = join(root, 'other-project');
-      const projects = join(root, 'projects');
-      mkdirSync(targetDir, { recursive: true });
-      writeFileSync(join(targetDir, 'session.jsonl'), '{}\n', 'utf8');
-      symlinkSync(targetDir, projects, 'dir');
-      const path = join(projects, 'session.jsonl');
+        // TRUE ON EVERY PATH, staged or not, and the one that actually matters.
+        expect(probed.status, 'an out-of-root transcript must be refused').toBe('unavailable');
+        expect(read.status, 'an out-of-root transcript must be refused').toBe('unavailable');
+        expect(JSON.stringify(read)).not.toContain('ATTACKER-BYTES');
 
-      expect(new NodeFs().readTextFileNoFollow(root, path, 16)).toEqual({
-        status: 'unavailable',
-        reason: 'symlink',
+        // The richer claim, only where the escape could actually be constructed.
+        if (staged) {
+          expect(probed).toEqual({ status: 'unavailable', reason: 'symlink' });
+          expect(read).toEqual({ status: 'unavailable', reason: 'symlink' });
+        }
       });
-    });
-  });
+    },
+  );
+
+  it(
+    provenLabel(
+      'rejects every symlink component even when its target remains inside the root',
+      'reads a plain in-root transcript — the INSIDE-THE-ROOT SYMLINK refusal is NOT proven here',
+    ),
+    () => {
+      /*
+       * THE ONE ROW WHOSE FULL PROPERTY IS GENUINELY ALL-OR-NOTHING, stated plainly
+       * rather than disguised. Its subject is that a symlink component is refused
+       * EVEN WHEN containment would have permitted it — so with no symlink there is
+       * no weaker version of that claim: a plain in-root path is *supposed* to be
+       * read, and asserting that proves nothing about the guard.
+       *
+       * What the degraded run still earns is a CONTROL: the same fixture minus the
+       * symlink reads OK. That is what distinguishes "the guard did not fire because
+       * there was nothing to fire on" from "this primitive cannot read anything on
+       * this platform" — a real failure mode here, since `O_NOFOLLOW` does not exist
+       * on Windows (see the flagless case below). The name says which one ran.
+       */
+      withTempDir((dir) => {
+        const root = join(dir, 'selected-root');
+        const targetDir = join(root, 'other-project');
+        const projects = join(root, 'projects');
+        mkdirSync(targetDir, { recursive: true });
+        writeFileSync(join(targetDir, 'session.jsonl'), '{}\n', 'utf8');
+        const staged = trySymlink(targetDir, projects, 'dir');
+
+        if (staged) {
+          expect(
+            new NodeFs().readTextFileNoFollow(root, join(projects, 'session.jsonl'), 16),
+          ).toEqual({ status: 'unavailable', reason: 'symlink' });
+          return;
+        }
+
+        // The control described above: no symlink, so the read must SUCCEED.
+        expect(
+          new NodeFs().readTextFileNoFollow(root, join(targetDir, 'session.jsonl'), 16).status,
+          'without a symlink to refuse, an in-root transcript must still be readable',
+        ).toBe('ok');
+      });
+    },
+  );
 
   it('reads without the flag when the platform has no no-follow open flag', () => {
     // CONTRACT CHANGED BY DECISION (plan 077 · #108), not by accident.
@@ -243,14 +295,16 @@ describe('NodeFs — bounded no-follow text reads (P063 T003)', () => {
         let stagingRefusal = '';
         const fs = new NodeFs(null, () => {
           rmSync(path);
-          try {
-            symlinkSync(target, path);
-            staged = true;
-          } catch (error) {
-            // SWALLOWED DELIBERATELY. Letting it escape would surface as `io-error`
-            // from the adapter's catch and be indistinguishable from a real refusal.
-            stagingRefusal = (error as NodeJS.ErrnoException).code ?? String(error);
-          }
+          // ONE staging mechanism, shared with the probe (plan 083). This used to
+          // call `symlinkSync` directly while the probe above answered from
+          // `test/support/symlink-capability.ts` — two mechanisms answering one
+          // question, which is exactly what the assertion below exists to catch, so
+          // they must not be able to disagree for a reason other than the host.
+          // `trySymlink` swallows the error deliberately: letting it escape would
+          // surface as `io-error` from the adapter's catch and be indistinguishable
+          // from a real refusal.
+          staged = trySymlink(target, path);
+          if (!staged) stagingRefusal = 'EPERM';
         });
 
         const result = fs.readTextFileNoFollow(dir, path, 32);

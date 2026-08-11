@@ -4,7 +4,6 @@ import {
   mkdtempSync,
   openSync,
   rmSync,
-  symlinkSync,
   unlinkSync,
   writeFileSync,
 } from 'node:fs';
@@ -14,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { FakeFs } from '../../../src/adapters/fs/fake-fs.js';
 import { NodeFs } from '../../../src/adapters/fs/node-fs.js';
+import { provenLabel, trySymlink } from '../../support/symlink-capability.js';
 
 describe('FakeFs', () => {
   it('given_seeded_file_when_probed_then_returns_content_and_records_reads', () => {
@@ -549,8 +549,13 @@ describe('NodeFs', () => {
     }
   });
 
-  it('confined copy REFUSES an out-of-tree symlink — CWE-59 exfil guard, one op (plan 031 AC-03)', () => {
-    /*
+  it(
+    provenLabel(
+      'confined copy REFUSES an out-of-tree symlink — CWE-59 exfil guard, one op (plan 031 AC-03)',
+      'confined copy REFUSES an out-of-tree SOURCE — the SYMLINK escape is not proven here',
+    ),
+    () => {
+      /*
     Test Doc:
     - Why: a malicious clone can commit a fixed artifact path (e.g.
       `.harness/reports/harnessability/latest.json`) as a SYMLINK to an absolute
@@ -564,30 +569,46 @@ describe('NodeFs', () => {
     - Runs on ubuntu/macOS (real symlinks); the ruled-out windows-latest leg is covered
       by-construction elsewhere (plan 017).
     */
-    const fs = new NodeFs();
-    const base = mkdtempSync(join(tmpdir(), 'harness-exfil-'));
-    try {
-      const secret = join(base, 'secret.txt');
-      writeFileSync(secret, 'TOP-SECRET');
-      const clone = join(base, 'clone');
-      mkdirSync(join(clone, '.harness', 'reports'), { recursive: true });
-      // The committed artifact path is a symlink escaping the clone to the secret.
-      const planted = join(clone, '.harness', 'reports', 'latest.json');
-      symlinkSync(secret, planted);
-      const dest = join(base, 'out');
+      const fs = new NodeFs();
+      const base = mkdtempSync(join(tmpdir(), 'harness-exfil-'));
+      try {
+        const secret = join(base, 'secret.txt');
+        writeFileSync(secret, 'TOP-SECRET');
+        const clone = join(base, 'clone');
+        mkdirSync(join(clone, '.harness', 'reports'), { recursive: true });
+        // The committed artifact path is a symlink escaping the clone to the secret.
+        const planted = join(clone, '.harness', 'reports', 'latest.json');
+        /*
+         * DEGRADES, NEVER SKIPS. This is the CWE-59 exfil guard, and a skipped
+         * security case is silence on the one platform nobody runs locally.
+         *
+         * THE PROPERTY THAT MATTERS — the secret's bytes never reach `dest` — is
+         * asserted on BOTH paths below. Where the symlink can be planted we prove the
+         * full claim (the guard refuses the ESCAPE, and a non-confined copy of the
+         * same link would have succeeded). Where it cannot, we prove the containment
+         * claim with the escape it can still express: an out-of-tree source.
+         */
+        const plantedOk = trySymlink(secret, planted);
+        const dest = join(base, 'out');
+        const source = plantedOk ? planted : secret;
 
-      // Guard refuses (one op): returns false, nothing written.
-      expect(fs.copy(planted, dest, { confineRoot: clone })).toBe(false);
-      expect(fs.exists(join(dest, 'latest.json'))).toBe(false);
+        // Guard refuses (one op): returns false, nothing written.
+        expect(fs.copy(source, dest, { confineRoot: clone })).toBe(false);
+        expect(fs.exists(join(dest, 'latest.json'))).toBe(false);
+        // THE CLAIM THAT MATTERS, on every path: the secret did not get out.
+        expect(fs.exists(join(dest, 'secret.txt'))).toBe(false);
 
-      // Control: WITHOUT the confineRoot the same symlink copies — so it is the
-      // guard that refuses, not a missing/broken symlink.
-      expect(fs.copy(planted, dest)).toBe(true);
-      expect(fs.readText(join(dest, 'latest.json'))).toBe('TOP-SECRET');
-    } finally {
-      rmSync(base, { recursive: true, force: true });
-    }
-  });
+        if (plantedOk) {
+          // Control: WITHOUT the confineRoot the same symlink copies — so it is the
+          // guard that refuses, not a missing/broken symlink.
+          expect(fs.copy(planted, dest)).toBe(true);
+          expect(fs.readText(join(dest, 'latest.json'))).toBe('TOP-SECRET');
+        }
+      } finally {
+        rmSync(base, { recursive: true, force: true });
+      }
+    },
+  );
 
   it('confined copy refuses a missing source (no silent skip-all distinction) (plan 031)', () => {
     const fs = new NodeFs();
@@ -654,29 +675,39 @@ describe('NodeFs', () => {
     }
   });
 
-  it('publishes byte-exact sibling directories without following target symlinks', () => {
-    const fs = new NodeFs();
-    const base = mkdtempSync(join(tmpdir(), 'harness-bundle-fs-'));
-    try {
-      const target = join(base, 'pull');
-      const sibling = fs.createSiblingTempDir(target, 'tmp-');
-      fs.mkdirp(join(sibling, 'blobs'));
-      fs.writeBytes(join(sibling, 'blobs', 'a.blob'), Uint8Array.from([0, 255]));
-      fs.writeText(join(sibling, 'bundle.json'), '{}\n');
-      expect(fs.listRegularFilesNoFollow(sibling)).toEqual(['blobs/a.blob', 'bundle.json']);
-      fs.publishDirectoryExclusive(sibling, target, 'pull-lock');
-      expect(fs.readBytesNoFollow(join(target, 'blobs', 'a.blob'))).toEqual(
-        Uint8Array.from([0, 255]),
-      );
+  it(
+    provenLabel(
+      'publishes byte-exact sibling directories without following target symlinks',
+      'publishes byte-exact sibling directories — the no-follow REFUSAL is not proven here',
+    ),
+    () => {
+      const fs = new NodeFs();
+      const base = mkdtempSync(join(tmpdir(), 'harness-bundle-fs-'));
+      try {
+        const target = join(base, 'pull');
+        const sibling = fs.createSiblingTempDir(target, 'tmp-');
+        fs.mkdirp(join(sibling, 'blobs'));
+        fs.writeBytes(join(sibling, 'blobs', 'a.blob'), Uint8Array.from([0, 255]));
+        fs.writeText(join(sibling, 'bundle.json'), '{}\n');
+        expect(fs.listRegularFilesNoFollow(sibling)).toEqual(['blobs/a.blob', 'bundle.json']);
+        fs.publishDirectoryExclusive(sibling, target, 'pull-lock');
+        expect(fs.readBytesNoFollow(join(target, 'blobs', 'a.blob'))).toEqual(
+          Uint8Array.from([0, 255]),
+        );
 
-      const outside = join(base, 'outside');
-      writeFileSync(outside, 'outside');
-      symlinkSync(outside, join(target, 'link'));
-      expect(fs.listRegularFilesNoFollow(target)).toBeNull();
-    } finally {
-      rmSync(base, { recursive: true, force: true });
-    }
-  });
+        const outside = join(base, 'outside');
+        writeFileSync(outside, 'outside');
+        // The publish/read assertions above need no privilege and always run; only
+        // the no-follow REFUSAL below does. Degrading here keeps the byte-exactness
+        // claim on every host instead of losing the whole row to an EPERM in setup.
+        if (trySymlink(outside, join(target, 'link'))) {
+          expect(fs.listRegularFilesNoFollow(target)).toBeNull();
+        }
+      } finally {
+        rmSync(base, { recursive: true, force: true });
+      }
+    },
+  );
 
   it('does not remove a pre-held real writer lock and removes its own lock after success', () => {
     const fs = new NodeFs();
