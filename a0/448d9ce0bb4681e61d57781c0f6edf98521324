@@ -1,0 +1,95 @@
+docs/plans/083-windows-portability/assets/briefs/CODER-hooks-windows.md
+  s_a76964380084ef::t_583c77d51a3fa6 1-160
+docs/plans/083-windows-portability/windows-portability-plan.md
+  s_a76964380084ef::t_fa5403d99b9432 149-174
+  s_a76964380084ef::t_4f8c865f182887 80-92
+  s_a76964380084ef::t_12c79bfc77c5eb 50-79,175-187
+  s_a76964380084ef::t_6a77c87d021de3 30-48
+  s_a76964380084ef::t_0ea457bf327971 188-235
+  s_a76964380084ef::t_fe56075034593f 24-29
+  s_a76964380084ef::t_415efaa27aee3e 93-148
+  s_a76964380084ef::t_c4a9f0c40fca17 248,250-266
+  s_a76964380084ef::t_3113b05a71c4fb 1-23,49,236-247,267-307
+  s_a76964380084ef::t_8ef59bac9e1857 249
+docs/plans/083-windows-portability/assets/briefs/VM-LANE-narwhal.md
+  s_a76964380084ef::t_5ee2da3afaa9b5 1-54
+docs/plans/083-windows-portability/original-ask.md
+  s_a76964380084ef::t_cd1b2d97c545c0 1-23
+docs/plans/083-windows-portability/assets/windows/WINDOWS-ISSUES.md
+  s_a76964380084ef::t_e4c2b6b10de3b6 12-15,62-93
+  s_a76964380084ef::t_d7908082b6450e 18-44,60-61
+  s_a76964380084ef::t_396a0b8b4c10ff 45-59
+  s_a76964380084ef::t_caa66d5754c9fe 95-118
+  s_6066df1c8c80ee::t_fe7e4772bbfa70 1-11,16-17,94,119-642
+docs/plans/083-windows-portability/assets/windows/FINDING-windows-check-cannot-see-the-cli.md
+  s_a76964380084ef::t_1341463be01b85 1-45
+docs/plans/083-windows-portability/assets/windows/FINDING-npm-ci-dirties-the-tree-on-windows.md
+  s_a76964380084ef::t_38a3e58af8b9c4 250-251,265-280
+  s_a76964380084ef::t_62160386c0d6bd 1,3-5,7-10,20-21,23,26-89,92-116,240-249,281-297
+  s_a76964380084ef::t_bda722a7f70422 252-264
+  s_a76964380084ef::t_100c2a994a4517 117-175,232-239
+  s_a76964380084ef::t_c16a0dce96fb12 176-231
+  s_a76964380084ef::t_5eed064c3e08ad 2,6,11-19,22,24-25,90-91
+docs/plans/083-windows-portability/assets/briefs/CODER-null-device.md
+  s_a76964380084ef::t_3bfa246c45acbe 1-142
+docs/plans/083-windows-portability/assets/windows/BRIEF-FINAL-REVIEW.md
+  s_a76964380084ef::t_a2a4aff765bc4e 1-67
+docs/plans/083-windows-portability/assets/windows/BRIEF-S1-product.md
+  s_a76964380084ef::t_72a225ed3e94a5 1-91
+docs/plans/083-windows-portability/assets/windows/BRIEF-S2-paths.md
+  s_a76964380084ef::t_f04772c80c7798 1-54
+docs/plans/083-windows-portability/assets/windows/BRIEF-S3-tests.md
+  s_a76964380084ef::t_61f7ea0e9137e7 1-64
+docs/plans/083-windows-portability/assets/windows/PLANS-SALVAGE.md
+  s_a76964380084ef::t_552ed059f183c9 1-68
+docs/plans/083-windows-portability/assets/windows/STREAM-CONTEXT.md
+  s_a76964380084ef::t_985d0ccfad5edc 1-103
+docs/plans/083-windows-portability/assets/windows/remote-23-failures.md
+  s_a76964380084ef::t_28bc68cb7c9ec5 1-81
+docs/plans/083-windows-portability/assets/windows/vm-082-measurement.md
+  s_a76964380084ef::t_a2e39dd605608c 1-241
+docs/plans/083-windows-portability/assets/windows/vm-082/vitest-results.json
+  s_a76964380084ef::t_c8de506211a143 1
+docs/plans/083-windows-portability/assets/windows/vm-082/vitest-results2.json
+  s_a76964380084ef::t_ff4c160655808e 1
+docs/plans/archive/073-gitai-collector-v1/assets/post-flight.md
+  s_a76964380084ef::t_c42a52ac769bb8 1-27
+docs/plans/archive/074-sandbox-attribution/assets/post-flight.md
+  s_a76964380084ef::t_6b0be2a416637b 1-30
+docs/plans/archive/075-windows-nudge-honesty/assets/post-flight.md
+  s_a76964380084ef::t_b2f89395bdaab8 1-23
+docs/plans/archive/076-commit-guidance-convergence/assets/post-flight.md
+  s_a76964380084ef::t_5ae4b868a660b2 1-23
+docs/plans/archive/077-windows-suite-portability/assets/post-flight.md
+  s_a76964380084ef::t_2d7424af30fb29 1-33
+docs/plans/archive/078-collector-install-host-pin/assets/post-flight.md
+  s_a76964380084ef::t_033563ed0dfe46 1-27
+docs/plans/archive/082-harness-hooks/assets/post-flight.md
+  s_a76964380084ef::t_75627f8707b9c1 1-33
+docs/plans/archive/fx009-cursor-write-strreplace/assets/post-flight.md
+  s_a76964380084ef::t_6ec3847af6f9ad 1-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a0448d9ce0bb4681e61d57781c0f6edf98521324",
+  "prompts": {},
+  "sessions": {
+    "s_6066df1c8c80ee": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "93825907-3aeb-4c43-9f58-99ae59f84f57",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
