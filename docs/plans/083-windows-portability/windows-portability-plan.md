@@ -146,6 +146,74 @@ Residual 11: `node-fs` 3, `fake-fs` 2 (**= 5, scope item 4, against a predicted 
 `backup-restore` 3, `doctor` 2, `composed-command` 1 (the last exempt timing row — a 30s wall on
 subprocess spawn cost, not a correctness defect).
 
+## MEASURED — 11 → 2, and the day-one trap finally caught — 2026-08-11
+
+```
+control  fd55fd4a : 394 files / 6047 collected / pass 5999 / FAIL 11 / skip 37
+SYMLINK  ba1aeda0 : 395 files / 6055 collected / pass 6018 / FAIL  2 / skip 35
+cleared 10 · still failing 1 · NEW 1
+```
+
+**Plan total: 107 → 28 → 11 → 2, across three commits touching seven product files.**
+
+Skips fell 37 → 35 exactly as predicted (down is correct — the two `config-writer` skips were
+converted to degrade). Collected rose to 6055/395 exactly as predicted, attributed with no file
+losing tests.
+
+**Degrade-instead-of-skip confirmed on an unelevated box**, seven rows, with the proof in the
+machine-readable name:
+
+> `PASSED  NodeFs confined copy REFUSES an out-of-tree SOURCE — the SYMLINK escape is not proven
+> here [DEGRADED — no symlink privilege on this host]`
+
+Passed, not skipped, not failed, reason carried in the JSON.
+
+**The "11 → 1" prediction missed: it is 2, and the extra is an arrival, not a survivor.**
+`exec-remote-telemetry-git.int` timed out at 30039ms — one of the three declared exempt timing
+families, oscillating 14 → 1 → 0 → 1 across runs, in a file this commit does not touch. Both
+remaining failures are **the same 30s wall** in the two files already identified as spawn-cost
+bound. The number was wrong; the character of the miss is exactly what was predicted for the
+survivor.
+
+### `dd-schema-fs.test.ts` has never collected — on any run, including wilson's
+
+The hazard pre-registered on day one **fired in all six runs and nothing caught it**:
+
+```
+Failed Suites 1 … Error: EPERM: operation not permitted, symlink   (setup hook, line 40)
+```
+
+Unelevated Windows cannot create the symlink, so **the whole file never collects** — its tests are
+not passed, not failed, not skipped: **absent**, while every reported number stays self-consistent.
+
+**Why the denominator guard was blind, and it is this plan's own defect class turned inward.** The
+guard compares collected totals **between two runs**. A file absent from **both sides cancels out
+of the subtraction**. It can only see a denominator that *moves*; it is structurally incapable of
+seeing a hole that *persists*. In the VM lane's own words: **"I built a RELATIVE check for an
+ABSOLUTE problem."** It printed "denominator STABLE" and "+8 attributed" four times and was correct
+every time **about the wrong quantity**.
+
+That is the same shape as `check:dd-docs` comparing the generator to itself, and as
+`toBe(nullDeviceForPlatform())` comparing the product to itself. **Three instances, one rule: a
+comparison between two things that share a flaw cannot report the flaw.**
+
+**The signal was in the output every run**: `Test Files 3 failed` beside `Tests 2 failed`. **A file
+failing with no test failing means the file never ran.** Two fields already printed, never
+reconciled against each other.
+
+**What it invalidates: nothing.** The file is absent on both sides of all four comparisons and
+constant across every run including wilson's, so `107 → 28 → 11 → 2` stands. **What it does mean:**
+every collected total in this plan is over a suite with **one file permanently missing on this
+host** — proportions sound, denominator with a known hole.
+
+**The fix is an absolute check**: assert `Failed Suites == 0`, or compare the collected file count
+against the repo's actual `*.test.ts` count. Never only run-to-run deltas.
+
+**And `dd-schema-fs` itself is now cheap to fix** — `test/support/symlink-capability.ts` landed in
+this very commit and its collection-time death is precisely what `trySymlink` prevents. **Expect
+the failure count to RISE when it lands**: a file that has never collected on Windows may carry
+failures nobody has ever seen. That is a gain, not a regression.
+
 ## Found and NOT fixed — carried forward deliberately
 
 Reported by `pij-defeated-peacock` while fixing the hooks cluster; each is outside that packet and
