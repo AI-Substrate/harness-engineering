@@ -151,13 +151,38 @@ jobs:
     needs: [rename-guard, build-test, package-smoke]
     if: always()
     steps:
-      - name: Verify required jobs passed
-        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+      - name: Verify every required job succeeded
+        id: verdict
+        env:
+          NEEDS_RESULTS: ${{ join(needs.*.result, ',') }}
         run: |
-          echo "One or more required jobs did not succeed."
+          set -euo pipefail
+          echo "needs results: ${NEEDS_RESULTS:-<none>}"
+          # ALLOW-LIST, NOT A DENY-LIST — this is load-bearing, do not "simplify"
+          # it back to `contains(needs.*.result, 'failure')`.
+          #
+          # That earlier shape asked "did anything fail or get cancelled?", and a
+          # SKIPPED need is neither — so it fell through to GREEN. That is the
+          # exact false-green this workflow refuses at the job level ("absent is
+          # safe; skipped is not"), reproduced inside the step that replaced it.
+          # Nothing skips these three jobs today (no `if:`, no path filter), so it
+          # was unreachable — but it becomes reachable the first time someone adds
+          # a path filter to save minutes, which is the motivation that produced
+          # this change in the first place.
+          #
+          # So: green ONLY when every result is literally `success`. That also
+          # fails closed against an empty needs list and against any result state
+          # GitHub adds in future, neither of which a deny-list would catch.
+          if [ -n "${NEEDS_RESULTS:-}" ] && ! printf '%s' "$NEEDS_RESULTS" | tr ',' '\n' | grep -qvx 'success'; then
+            echo "state=success" >> "$GITHUB_OUTPUT"
+            echo "desc=all required jobs succeeded" >> "$GITHUB_OUTPUT"
+            echo "All required jobs succeeded."
+            exit 0
+          fi
+          echo "state=failure" >> "$GITHUB_OUTPUT"
+          echo "desc=a required job did not succeed (${NEEDS_RESULTS:-no results})" >> "$GITHUB_OUTPUT"
+          echo "::error title=ci-required::a required job did not succeed (${NEEDS_RESULTS:-no results})"
           exit 1
-      - name: All required jobs passed
-        run: echo "All required jobs passed."
 
       # DO NOT DELETE THIS STEP AS "REDUNDANT WITH THE JOB". It is what makes a
       # manually-dispatched run able to gate a PR at all.
@@ -184,14 +209,15 @@ jobs:
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
-          FAILED: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+          STATE: ${{ steps.verdict.outputs.state }}
+          DESC: ${{ steps.verdict.outputs.desc }}
         run: |
           set -euo pipefail
-          if [ "$FAILED" = "true" ]; then
-            state=failure; desc="a required job failed or was cancelled"
-          else
-            state=success; desc="rename-guard + build-test (22,24) + package-smoke passed"
-          fi
+          # Single source of truth: the verdict step decided. If it died before
+          # writing an output, publish FAILURE — never fall through to green on
+          # missing information.
+          state="${STATE:-failure}"
+          desc="${DESC:-ci-required could not determine a verdict}"
           gh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state="$state" \
             -f context="ci-verdict" \
