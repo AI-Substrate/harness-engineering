@@ -1,0 +1,25 @@
+docs/plans/083-windows-portability/assets/windows/vm-082/README.md
+  s_a76964380084ef::t_29e022643fe3b9 1-23
+docs/plans/083-windows-portability/assets/windows/PROVENANCE.md
+  s_a76964380084ef::t_7e0a6e748f6be0 1-75
+docs/plans/083-windows-portability/assets/windows/vitest-results-control.json
+  s_a76964380084ef::t_e5594b7f8543ac 1
+docs/plans/083-windows-portability/assets/windows/vitest-results-timeout.json
+  s_a76964380084ef::t_a0672e110a9b72 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d5d3e6520b28f812c1fe4f590e9c7179e434674d",
+  "prompts": {},
+  "sessions": {
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
