@@ -1,0 +1,26 @@
+AGENTS.md
+  s_d184cde77eb56e::t_78c91cfb26570f 53-70,78-87
+  s_d184cde77eb56e::t_1de186a0e295a8 97-114
+  s_d184cde77eb56e::t_93dabf4a30a452 88
+harness/cli/src/services/docs/docs-content.ts
+  s_d184cde77eb56e::t_b3e9912fe21fed 58
+harness/cli/README.md
+  s_d184cde77eb56e::t_824f77c22c24dc 173-181
+  s_d184cde77eb56e::t_d8aff7f9e80ab8 193,199-201
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "6d2df71de849033ea6403ce21c694c76c2b5e859",
+  "prompts": {},
+  "sessions": {
+    "s_d184cde77eb56e": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "8708cfa5-d3e6-406b-adf7-91839e59fdcf",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
