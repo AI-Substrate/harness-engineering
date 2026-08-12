@@ -82,13 +82,31 @@ that holds, and would otherwise vanish quietly.
 **control**, not the fix — the delta would have to be re-established on the new base. That is the
 one-tree design working as intended, not a weakness in it.
 
-**Do not rebase this branch onto `main` yet.** Verified 2026-08-11: `858f9a0c` pins mermaid
-`11.16.0`; `origin/main` pins `11.16.1` (PR #163, which cleared 5 real advisories and was
-correctly merged). The Microsoft proxy feed this host uses has **not synced 11.16.1**, so `npm ci`
-on `main` fails E404 here — a **registry-sync gap on one host**, not a corrupt lockfile and not an
-unpublished package. Our lockfile is clean and needs no workaround. If anyone hits this, the
-sanctioned fix is a **working-copy pin only**: regenerating the lockfile would silently revert
-five security advisories for everyone, including CI, to route around a local feed gap.
+**Do not rebase this branch onto `main` yet.** `origin/main` carries mermaid `11.16.1` (PR #163,
+which cleared 5 real advisories and was correctly merged), and the Microsoft proxy feed this host
+uses has **not synced it** — so `npm ci` on `main` fails E404 here. A **registry-sync gap on one
+host**, not a corrupt lockfile and not an unpublished package. If anyone hits it, the sanctioned
+fix is a **working-copy pin only**: regenerating the lockfile would silently revert five security
+advisories for everyone, including CI, to route around a local feed gap.
+
+**Corrected 2026-08-12 — this branch does not "pin" anything, and the earlier wording here could
+have caused the opposite inference.** Measured against the merge-base `858f9a0c`: **s083 changes
+`package.json` and `package-lock.json` in ZERO files**; `main` changes both. So s083 is not
+holding an older mermaid deliberately — **it simply predates the bump**, and the whole divergence
+is `main` moving forward.
+
+Two consequences, and the second is the one that matters:
+
+- **Merging this branch cannot revert `main`'s bump.** Because the diff contains no lockfile
+  change, `main` stays at `11.16.1` through the merge. There is no silent dependency downgrade
+  hiding in this PR. (Independently checked by the prime seat before ruling, and re-verified here.)
+- The constraint is sturdier than "one careless install away". The declared range is `^11.15.0`,
+  which `11.16.0` satisfies, so **both `npm ci` and a plain `npm install` hold the lock**. It
+  re-floats only under `npm update`, a lockfile regeneration, or taking `main`.
+
+**The ruling stands; the mechanism behind it was mis-stated.** Do not take `main` into this
+worktree — but the reason is that `main` has acquired an unsyncable version, not that this branch
+holds something a rebase would lose.
 
 ## MEASURED — hooks clears 17 more: 28 → 11 — 2026-08-11
 
