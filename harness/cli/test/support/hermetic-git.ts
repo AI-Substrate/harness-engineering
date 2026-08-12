@@ -1,6 +1,5 @@
 import { spawnSync } from 'node:child_process';
 import { statSync } from 'node:fs';
-import { devNull } from 'node:os';
 
 /**
  * ONE hermetic environment for every fixture that drives REAL git.
@@ -82,7 +81,13 @@ export function hermeticGitEnv(
   Object.assign(env, GIT_TRACE2_DISABLED);
   if (opts.isolateGlobalConfig !== false) {
     Object.assign(env, FIXTURE_IDENTITY, {
-      GIT_CONFIG_GLOBAL: process.platform === 'win32' ? 'NUL' : devNull,
+      // The POSIX literal on EVERY platform, win32 included: git documents `/dev/null` as
+      // the way to skip a config level, and Git for Windows exits 128 on both `NUL` and
+      // `os.devNull`'s `\\.\nul` (measured on git 2.55.0.windows.3 — see
+      // `gitConfigNullPath` in src/adapters/git/exec-remote-telemetry-git.ts). This line
+      // spelled it `'NUL'` from #73 until plan 083; it survived rather than succeeded,
+      // because no Windows runner had ever exercised it.
+      GIT_CONFIG_GLOBAL: '/dev/null',
       GIT_CONFIG_NOSYSTEM: '1',
     });
   }

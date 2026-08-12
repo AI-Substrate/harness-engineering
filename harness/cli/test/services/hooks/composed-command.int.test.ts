@@ -315,7 +315,27 @@ describe('the command the INSTALLER composed is a command `fire` can actually RU
     // journal is what separates "ran" from "died before reaching our code" — and
     // one entry per composed command, so a single silent death is visible.
     expect(journal().length).toBe(composed.length);
-  });
+    // 120s, not the 30s floor — a SPAWN-COUNT budget, not a Windows exemption.
+    //
+    // This row spawns ~20 real CLI subprocesses (every supported agent x config
+    // file x event key) plus an install and a `git init`. Measured: ~3.35s on
+    // macOS, 54.2s on the Windows VM. Windows per-spawn cost is multiples of
+    // macOS, so the row exceeded the wall ON BUDGET, never on correctness — every
+    // assertion it makes was already passing when the clock ran out.
+    //
+    // vitest.config.ts chose 30s deliberately and its own reasoning points here:
+    // the contention is "this suite spawns processes constantly", NOT "this suite
+    // is on Windows", and it warns that a too-tight budget "fails cases whose
+    // assertions were never in doubt and hides the ones that were". So this is a
+    // PER-TEST raise on the spawn-heaviest row, with no platform branch — a
+    // win32-only guard would encode "Windows is the weird one", which is the
+    // wrong diagnosis attached to the right symptom.
+    //
+    // NOT SKIPPED, on purpose. This is the only end-to-end proof that the
+    // installed string executes verbatim and lands a journal entry; skipping it
+    // on the slow platform would mean the property is never proven on the
+    // platform most likely to break it.
+  }, 120_000);
 
   it('emits no option `fire` does not register — checked flag by flag', () => {
     /*

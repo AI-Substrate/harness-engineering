@@ -26,6 +26,23 @@ let home: string;
 const fs = new NodeFs();
 const env = () => undefined;
 
+/**
+ * The LOGICAL spelling of a native path — what an installed command carries.
+ *
+ * THE SPACE IS THE SUBJECT HERE; THE SEPARATOR IS NOT (plan 083). This row exists
+ * to prove that a path containing a SPACE survives quoting and comes back out
+ * intact, and it was asserting a second, unintended property alongside it: that the
+ * embedded path is backslashed. `embedBinaryPath` forward-slashes on purpose — the
+ * value goes into a shell command in another tool's config, where a backslash is an
+ * escape character — so on Windows the row failed on the separator, having never
+ * reached the question it was written to ask.
+ *
+ * Spelled out rather than imported from `binary-path.js`, so the expectation does
+ * not agree with the function it is testing by construction. It leaves spaces
+ * untouched, which is the point.
+ */
+const logical = (path: string): string => path.replace(/\\/g, '/');
+
 const cursor = () => {
   const spec = findAgent('cursor');
   if (spec === undefined) throw new Error('cursor missing from the matrix');
@@ -61,8 +78,12 @@ describe('a home directory containing a SPACE (dw-0015)', () => {
     };
     const command = doc.hooks.preToolUse[0].command;
 
-    expect(command.startsWith(`"${binary}"`)).toBe(true);
-    expect(extractBinaryPath(command)).toBe(binary);
+    expect(command.startsWith(`"${logical(binary)}"`)).toBe(true);
+    expect(extractBinaryPath(command)).toBe(logical(binary));
+    // The SPACE — the property this row is named for — survives the round trip
+    // whatever the separator did. Asserted on its own so a future separator change
+    // cannot take this row's real subject down with it.
+    expect(extractBinaryPath(command)).toContain(' ');
   });
 
   it('REMOVING THE QUOTING makes the path unrecoverable — the refusal', () => {

@@ -46,6 +46,19 @@ const CURSOR_BYTES = Buffer.from(
 );
 const CLAUDE_BYTES = Buffer.from('{\n  "note": "café ☕",\n  "hooks": {}\n}', 'utf8');
 
+/**
+ * The LOGICAL spelling of a native path — the shape the backup surfaces.
+ *
+ * `backup.copied`, the manifest `source`, and therefore `outcome.restored` /
+ * `outcome.deleted` are all paths this service SURFACES, and a surfaced path is
+ * forward-slashed on every OS by rule (`services/shared/posix-path.ts`), with the
+ * native `home` converted once at the boundary. Comparing against a native
+ * `path.join` asserts a shape the surface does not promise — invisibly, because the
+ * two spellings coincide on macOS. These rows failed only on Windows (plan 083).
+ */
+const logical = (path: string): string =>
+  path.replace(/\\/g, '/').replace(/^([a-z]):/, (_m, drive: string) => `${drive.toUpperCase()}:`);
+
 function makeDeps(home: string, envOverrides: Record<string, string> = {}) {
   return {
     fs: new NodeFs(),
@@ -94,7 +107,7 @@ describe('the backup is a restore point, and the restore is DEMONSTRATED (tk-000
 
     const outcome = restoreAgentConfigs(new NodeFs(), backup.dir as string);
     expect(outcome.failed).toEqual([]);
-    expect(outcome.restored).toContain(config);
+    expect(outcome.restored).toContain(logical(config));
     expect(readFileSync(config).equals(CURSOR_BYTES)).toBe(true);
   });
 
@@ -120,13 +133,13 @@ describe('the backup is a restore point, and the restore is DEMONSTRATED (tk-000
 
     const backup = backupOf({ CLAUDE_CONFIG_DIR: overrideDir });
     expect(backup.failed).toEqual([]);
-    expect(backup.copied).toContain(config);
+    expect(backup.copied).toContain(logical(config));
 
     writeFileSync(config, '{"clobbered":true}');
     const outcome = restoreAgentConfigs(new NodeFs(), backup.dir as string);
 
     expect(outcome.failed).toEqual([]);
-    expect(outcome.restored).toEqual([config]);
+    expect(outcome.restored).toEqual([logical(config)]);
     expect(readFileSync(config).equals(CLAUDE_BYTES)).toBe(true);
     // The wrong path the old inverse would have produced must NOT have been created.
     expect(existsSync(join(root, 'cfg', 'a', 'settings.json'))).toBe(false);
@@ -160,7 +173,7 @@ describe('the backup is a restore point, and the restore is DEMONSTRATED (tk-000
 
     const outcome = restoreAgentConfigs(new NodeFs(), dir);
     expect(outcome.failed).toEqual([]);
-    expect(outcome.deleted).toEqual([config]);
+    expect(outcome.deleted).toEqual([logical(config)]);
     expect(existsSync(config)).toBe(false);
   });
 

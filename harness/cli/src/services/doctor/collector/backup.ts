@@ -1,4 +1,5 @@
 import type { FsPort } from '../../../adapters/fs/fs-port.js';
+import { resolveInRepo, toPosix } from '../../shared/posix-path.js';
 import { AGENT_MARKERS, configPathsFor, detectAgents, UNDETECTED_INSTALLERS } from './agents.js';
 import type { CollectorDeps } from './types.js';
 
@@ -124,17 +125,46 @@ export function backupDirFor(home: string, nowIso: string): string {
  *
  * Two namespaces, and the split is what makes the map injective: a home-relative
  * `var/x` and an absolute `/var/x` are different files and land in different
- * subtrees. Within either namespace the stored path IS the source path, so no
- * character is substituted and nothing needs decoding.
+ * subtrees.
+ *
+ * THE DRIVE LETTER IS THE ONE SUBSTITUTION, AND IT IS NOT COSMETIC (plan 083).
+ * `files/abs/` used to keep the source path verbatim — which on Windows produced
+ * `files/abs/C:/Users/dev/cfg/settings.json`. **A `:` is a reserved character in a
+ * Windows path SEGMENT** (it is the drive separator, and NTFS reads it as an
+ * alternate data stream), so that is not a path that can be created: the `mkdirp`
+ * fails, or worse, `C:` is read as a drive-relative reference and the copy lands
+ * somewhere entirely unrelated to the backup. An off-home config — any
+ * `CLAUDE_CONFIG_DIR`/`GEMINI_CLI_HOME` pointing outside the home — is exactly the
+ * case that reaches it.
+ *
+ * So `C:/x` stores at `files/abs/C/x`: the drive becomes an ordinary segment.
+ * INJECTIVITY SURVIVES, and where it could not it REFUSES rather than corrupts —
+ * the caller compares `usedStored` and fails the entry if two sources ever claim
+ * one stored path. NOTHING NEEDS DECODING, because restore never inverts this:
+ * `manifest.json` records the ABSOLUTE source beside its stored location, and the
+ * restore reads `source` to decide where the bytes go.
  */
 export function storedPathFor(source: string, home: string): string {
-  const root = home.replace(/\/+$/, '');
-  if (source.startsWith(`${root}/`)) return `files/home/${source.slice(root.length + 1)}`;
-  return `files/abs/${source.replace(/^\/+/, '')}`;
+  // Both sides cross the boundary before they are compared: a caller may hand us a
+  // native `home` (plan 083). Without this the prefix test answers falsely on
+  // Windows and a home-relative config is filed under `files/abs/`, where restore
+  // looks for it in the wrong namespace.
+  const root = toPosix(home).replace(/\/+$/, '');
+  const src = toPosix(source);
+  if (src.startsWith(`${root}/`)) return `files/home/${src.slice(root.length + 1)}`;
+  return `files/abs/${src.replace(/^([A-Za-z]):\//, '$1/').replace(/^\/+/, '')}`;
 }
 
 export function backupAgentConfigs(deps: CollectorDeps): ConfigBackup {
-  const home = deps.host.home.replace(/\/+$/, '');
+  // CONVERTED AT THE BOUNDARY (plan 083). `deps.host.home` is NATIVE — it comes
+  // from `os.homedir()` — and every path built from it below is one this service
+  // SURFACES (`restored`, the manifest `source`) or COMPARES (`storedPathFor`).
+  // Interpolating it raw into `${home}/${rel}` produced a MIXED path on Windows,
+  // `C:\Users\dev/.cursor/hooks.json`, which Node's fs accepts — so the copy
+  // worked and only the comparison and the report were wrong. `storedPathFor`
+  // then matched it only because the mixed shape happened to put a `/` exactly
+  // where it looked for one: correct by coincidence. See services/shared/posix-path.ts.
+  const home = toPosix(deps.host.home).replace(/\/+$/, '');
   const takenAt = deps.clock.nowIso();
   const dir = backupDirFor(home, takenAt);
   const copied: string[] = [];
@@ -165,7 +195,24 @@ export function backupAgentConfigs(deps: CollectorDeps): ConfigBackup {
       continue;
     }
     for (const rel of sources) {
-      const source = rel.startsWith('/') ? rel : `${home}/${rel}`;
+      /*
+       * `resolveInRepo` RATHER THAN `rel.startsWith('/')` (plan 083).
+       *
+       * `configPathsFor` returns a home-RELATIVE key for an ordinary config and an
+       * ABSOLUTE logical path for one that lives outside the home — which is what an
+       * env override (`CLAUDE_CONFIG_DIR`, `GEMINI_CLI_HOME`) produces. The old test
+       * asked whether the string began with `/`, and **a logical Windows absolute is
+       * `C:/…`, which does not**. So every off-home config on Windows was treated as
+       * relative and anchored onto the home: `C:/Users/dev/home/C:/Users/dev/cfg/settings.json`.
+       * That path does not exist, so the file was silently recorded as ABSENT rather
+       * than copied — and "absent" is a restore INSTRUCTION meaning *delete this*.
+       * A backup that quietly resolves to nothing, then tells restore to remove the
+       * user's real config, is the worst available reading of this data.
+       *
+       * `resolveInRepo` is the repo's own answer to exactly this question and
+       * already treats a drive root as absolute (`services/shared/posix-path.ts`).
+       */
+      const source = resolveInRepo(rel, home);
       try {
         if (!deps.fs.exists(source)) {
           // Nothing to copy, but the ABSENCE is the restore instruction: if the

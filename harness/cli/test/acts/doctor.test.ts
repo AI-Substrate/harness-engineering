@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Command } from 'commander';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { registerDoctorAct } from '../../src/acts/doctor.js';
 import { FakeClock } from '../../src/adapters/clock/fake-clock.js';
 import { NodeHash } from '../../src/adapters/hash/node-hash.js';
@@ -13,7 +13,6 @@ import type { CollectorDeps } from '../../src/services/doctor/collector/types.js
 import type { HarnessVerb } from '../../src/services/extensions/contract.js';
 import type { VerbRegistry } from '../../src/services/extensions/registry.js';
 import { HOOK_MARKER } from '../../src/services/hooks/hook-marker.js';
-import { toPosix } from '../../src/services/shared/posix-path.js';
 import {
   FakeCollectorFs,
   FakeDownload,
@@ -99,8 +98,43 @@ function collectorDepsRecording(calls: string[]): CollectorDeps {
 const probe = new FakeSocketProbe({}, 'absent');
 
 describe('registerDoctorAct', () => {
+  /**
+   * THE SECOND HERMETIC SEAM — the HOME the report reads (plan 083).
+   *
+   * The `cursor-sandbox` row (#144) is emitted only when a Cursor marker exists in
+   * the host's home AND that machine's `permissions.json`/`sandbox.json` do not
+   * already permit the sandboxed command. With no fence, this suite read the REAL
+   * `$HOME`, so **the layer list depended on the personal Cursor configuration of
+   * whoever ran it**.
+   *
+   * MEASURED ON macOS, not inferred from the platform it was reported on: with
+   * `HOME` pointed at a directory containing an empty `.cursor/`, this file fails
+   * here with a thirteenth layer; with `HOME` pointed at an empty directory, it
+   * passes. It surfaced on a Windows VM only because that box is an ordinary
+   * Cursor install and this developer's Mac happens to carry a `permissions.json`
+   * that allowlists both commands. **It is not a Windows behaviour and it was never
+   * a reason to loosen the expected list** — an assertion relaxed here would have
+   * hidden a real host-dependence on every OS.
+   *
+   * `homedir()` is fenced as well as `$HOME`/`%USERPROFILE%`, because `NodeEnv.home`
+   * falls through to it — fencing only the variables would leave the fall-through
+   * reading the real machine on any host that unsets them.
+   *
+   * Same class as the `FakeSocketProbe` above and the auto-install default in
+   * `registerDoctorAct`: a unit test that behaves differently depending on the
+   * machine is not hermetic. That makes three in this one surface, which is why
+   * this is a fence rather than an expectation tweak.
+   */
+  let fencedHome: string;
+  beforeEach(() => {
+    fencedHome = mkdtempSync(join(tmpdir(), 'harness-doctor-home-'));
+    vi.stubEnv('HOME', fencedHome);
+    vi.stubEnv('USERPROFILE', fencedHome);
+  });
   afterEach(() => {
+    vi.unstubAllEnvs();
     vi.restoreAllMocks();
+    rmSync(fencedHome, { recursive: true, force: true });
   });
 
   // `parseAsync` since plan 074: doctor's report path awaits ONE ingress probe
@@ -204,25 +238,64 @@ describe('registerDoctorAct — CI hermeticity (plan 074 · ac-000a, review F006
     vi.restoreAllMocks();
   });
 
-  it('the INJECTED probe answers the ingress — no real socket is ever reached', async () => {
-    // The guard that would have caught F006. `GIT_CONFIG_GLOBAL` forces an
-    // af_unix target so the probe is definitely consulted, which makes the
-    // assertion independent of whatever this machine's git config says — and
-    // the socket path is one that does not exist, so a REAL probe would have
-    // been an actual `net.createConnection` against the filesystem.
+  /**
+   * A backslash is an ESCAPE CHARACTER inside a git config value, so a literal
+   * `\\.\pipe\x` must be written doubled or git mangles it. Applied to every
+   * target, which is a no-op for the POSIX one.
+   */
+  const gitEscape = (value: string): string => value.replace(/\\/g, '\\\\');
+
+  /**
+   * BOTH LIVE TRANSPORTS, ON EVERY HOST — and neither case is skipped (plan 083).
+   *
+   * This row used to build its af_unix target from a REAL temp directory, which on
+   * Windows is `C:/Users/…`. `resolveTrace2Target` requires a POSIX leading `/` for
+   * af_unix — deliberately, because af_unix is a POSIX transport and inventing
+   * Windows semantics for it would be a guess — so the fabricated target classified
+   * as `unconfigured`, nothing was `connectable`, and **the probe was never
+   * consulted at all**. The row then failed accusing `registerDoctorAct` of
+   * bypassing its injected seam, when the seam was never reached: an instrument
+   * measuring nothing, the same shape as a fault-injection fixture that never
+   * matches.
+   *
+   * The product was right and the FIXTURE was wrong. Windows' live transport is a
+   * NAMED PIPE, which `Trace2TargetPolicy` already treats as connectable for the
+   * stated reason that `net.createConnection({ path })` is the identical Node call
+   * for both.
+   *
+   * Classification is a pure function of the STRING, so both cases run on every
+   * host — no `skipIf`, no platform branch, and the Windows transport is covered by
+   * the gate that runs on every push rather than by a VM. The socket/pipe name is
+   * SYNTHETIC and absolute rather than a real temp path: it must not exist, so that
+   * a real probe would have been a genuine `net.createConnection` and the fake is
+   * demonstrably what answered.
+   */
+  const TRANSPORTS = [
+    {
+      label: 'af_unix socket (the POSIX transport)',
+      // Synthetic and POSIX-absolute, so it classifies identically on every host.
+      endpoint: '/harness-p074-doctor/never-listening.sock',
+      target: (endpoint: string) => `af_unix:stream:${endpoint}`,
+    },
+    {
+      label: 'Windows named pipe (the only transport git has there)',
+      endpoint: '\\\\.\\pipe\\harness-p074-never-listening',
+      target: (endpoint: string) => endpoint,
+    },
+  ] as const;
+
+  it.each(
+    TRANSPORTS,
+  )('the INJECTED probe answers the ingress over a $label — no real socket is ever reached', async ({
+    endpoint,
+    target,
+  }) => {
     const dir = mkdtempSync(join(tmpdir(), 'p074-doctor-'));
     const gitconfig = join(dir, 'gitconfig');
-    // toPosix, not join()'s raw output: a backslash is an ESCAPE CHARACTER inside a
-    // git config value, so a native Windows path here turns `\n` into a literal
-    // newline and git rejects the entire file (`fatal: bad config line 2`) — the
-    // probe is then never consulted, and the test fails accusing `registerDoctorAct`
-    // of bypassing its injected seam, which is the wrong component entirely (plan
-    // 108 B1). Git accepts forward slashes on Windows, so this is a no-op on POSIX.
-    const socket = toPosix(join(dir, 'never-listening.sock'));
-    writeFileSync(gitconfig, `[trace2]\n\teventTarget = af_unix:stream:${socket}\n`);
+    writeFileSync(gitconfig, `[trace2]\n\teventTarget = ${gitEscape(target(endpoint))}\n`);
     const previous = process.env.GIT_CONFIG_GLOBAL;
     process.env.GIT_CONFIG_GLOBAL = gitconfig;
-    const injected = new FakeSocketProbe({ [socket]: 'denied' });
+    const injected = new FakeSocketProbe({ [endpoint]: 'denied' });
 
     try {
       let code = -1;
@@ -236,7 +309,7 @@ describe('registerDoctorAct — CI hermeticity (plan 074 · ac-000a, review F006
       await expect(program.parseAsync(['node', 'harness', 'doctor'])).rejects.toThrow(/^exit:/);
 
       // The act used the injected seam, not `net.createConnection`.
-      expect(injected.calls).toEqual([socket]);
+      expect(injected.calls).toEqual([endpoint]);
       expect(code).toBe(0);
     } finally {
       if (previous === undefined) delete process.env.GIT_CONFIG_GLOBAL;

@@ -15,10 +15,7 @@ import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { FakeFs } from '../../../src/adapters/fs/fake-fs.js';
-import {
-  ExecRemoteTelemetryGit,
-  nullDeviceForPlatform,
-} from '../../../src/adapters/git/exec-remote-telemetry-git.js';
+import { ExecRemoteTelemetryGit } from '../../../src/adapters/git/exec-remote-telemetry-git.js';
 import type { RemoteRepository } from '../../../src/adapters/git/remote-telemetry-git-port.js';
 import { FakeHash } from '../../../src/adapters/hash/fake-hash.js';
 import { listPublishedTelemetry } from '../../../src/services/telemetry/remote-telemetry-service.js';
@@ -196,7 +193,10 @@ function safeReadinessEnvironment(): NodeJS.ProcessEnv {
   }
   return {
     ...env,
-    GIT_CONFIG_GLOBAL: process.platform === 'win32' ? 'NUL' : '/dev/null',
+    // The POSIX literal on EVERY platform, win32 included — git documents `/dev/null` as
+    // the way to skip a config level, and Git for Windows exits 128 on both `NUL` and
+    // `\\.\nul` (measured, git 2.55.0.windows.3; see `gitConfigNullPath`).
+    GIT_CONFIG_GLOBAL: '/dev/null',
     GIT_CONFIG_NOSYSTEM: '1',
     GIT_TERMINAL_PROMPT: '0',
     GCM_INTERACTIVE: 'never',
@@ -881,7 +881,21 @@ describe('ExecRemoteTelemetryGit — HTTPS credential discovery RED cluster A', 
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
-  });
+    // 120s, not the 30s floor — the same spawn-count budget as
+    // hooks/composed-command.int.test.ts, set to the SAME value so the two do not
+    // drift apart for no reason.
+    //
+    // This row drives many real `git` invocations to build and read back a
+    // credential-helper chain. Measured on the Windows VM at 30039ms against a
+    // 30000ms wall — 39 MILLISECONDS over — and it OSCILLATED across runs
+    // (this timing family moved 14 -> 1 -> 0 -> 1) precisely because it sits on
+    // the boundary. A row that passes or fails on machine load is reporting the
+    // load, not the code.
+    //
+    // NOT SKIPPED. The credential-leak assertions are the security-relevant part
+    // of this file; losing them on the slow platform is exactly the outcome a
+    // budget raise exists to avoid.
+  }, 120_000);
 
   /**
    * SKIPPED on win32, deliberately and by name (plan 077 · #108).
@@ -1549,9 +1563,10 @@ describe('ExecRemoteTelemetryGit — HTTPS credential lease RED cluster B', () =
         },
       }).advertiseTelemetryRefs(repository);
       expect(network?.args).not.toContain('credential.interactive=false');
-      // Host-correct on BOTH platforms: `devNull` here would be right on POSIX and wrong
-      // on win32, which is exactly the blindness that let #108 through.
-      expect(network?.env?.GIT_CONFIG_GLOBAL).toBe(nullDeviceForPlatform());
+      // A LITERAL, never `gitConfigNullPath()`. Comparing the product against itself
+      // cannot fail for any value the function returns — it would have followed the
+      // broken `'NUL'` silently, and would follow the next mistake just as quietly.
+      expect(network?.env?.GIT_CONFIG_GLOBAL).toBe('/dev/null');
     }
     expect(queries).toBe(0);
     assertNoCredentialLeak(beforeTemps);

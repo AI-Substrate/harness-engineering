@@ -33,6 +33,20 @@ const CLI = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'bin
 
 let home: string;
 
+/**
+ * The LOGICAL spelling of a native path — the shape the CLI reports.
+ *
+ * Every path this file compares against came back OUT of the real bin: the restore
+ * report's `restored`, the install record's `entries[].path`, uninstall's
+ * `untouched[].path`. A path a service surfaces or compares is forward-slashed on
+ * EVERY OS by rule (`services/shared/posix-path.ts`), with `home` converted once at
+ * the boundary — so a native `path.join` is the wrong side of the comparison. On
+ * macOS the two spellings coincide, which is why these rows passed here and failed
+ * only on Windows (plan 083).
+ */
+const logical = (path: string): string =>
+  path.replace(/\\/g, '/').replace(/^([a-z]):/, (_m, drive: string) => `${drive.toUpperCase()}:`);
+
 const run = (args: string[]): string =>
   execFileSync(process.execPath, [CLI, 'hooks', ...args], {
     encoding: 'utf8',
@@ -192,7 +206,7 @@ describe('`harness hooks restore` — the recovery verb, through the real bin', 
 
     expect(code).toBe(0);
     expect(report.ok).toBe(true);
-    expect(report.restored).toContain(config);
+    expect(report.restored).toContain(logical(config));
     expect(readFileSync(config).equals(original)).toBe(true);
   });
 
@@ -469,7 +483,7 @@ describe('provenance is pruned on NO-LONGER-OURS, not on WE-REMOVED-IT', () => {
       (JSON.parse(readFileSync(recordPath, 'utf8')) as { entries: { path: string }[] }).entries.map(
         (e) => e.path,
       );
-    expect(entriesOf()).toContain(config);
+    expect(entriesOf()).toContain(logical(config));
 
     // Out of band: the user (or a recovery) puts the file back by hand.
     writeFileSync(config, before);
@@ -478,10 +492,10 @@ describe('provenance is pruned on NO-LONGER-OURS, not on WE-REMOVED-IT', () => {
       untouched: { path: string }[];
       removed: unknown[];
     };
-    expect(report.untouched.map((u) => u.path)).toContain(config);
+    expect(report.untouched.map((u) => u.path)).toContain(logical(config));
     expect(report.removed).toEqual([]);
     // The record no longer claims a file that carries nothing of ours.
-    expect(entriesOf()).not.toContain(config);
+    expect(entriesOf()).not.toContain(logical(config));
   });
 });
 

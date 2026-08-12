@@ -58,6 +58,19 @@ const present = (marker: string) => mkdirSync(join(home, marker), { recursive: t
 const read = (path: string) => readFileSync(path, 'utf8');
 
 /**
+ * One spelling for a path, so a FIXTURE cannot be disarmed by canonicalisation.
+ *
+ * The fault-injection fixtures in this file decide whether to inject by looking at
+ * the path they were handed. That makes their correctness a path-comparison
+ * problem, and this file has now been bitten by it twice from two platforms — see
+ * the peer-rewrite fixture below. A fixture that fails to match does not fail; it
+ * silently injects nothing, the operation succeeds, and the row reports a green
+ * that means the opposite of what it appears to mean.
+ */
+const logical = (path: string): string =>
+  path.replace(/\\/g, '/').replace(/^([a-z]):/, (_m, drive: string) => `${drive.toUpperCase()}:`);
+
+/**
  * An fs that behaves EXACTLY like the real one except where overridden.
  *
  * `Object.create`, deliberately, and not `{ ...fs }`. A spread of a class instance
@@ -184,7 +197,7 @@ describe('F2 — a failure on the SECOND file must not strand the first', () => 
   const failSecondFile = (): FsPort =>
     derive({
       writeText: (p: string, text: string) => {
-        if (p === second()) throw new Error(`EACCES: permission denied, open '${p}'`);
+        if (p === logical(second())) throw new Error(`EACCES: permission denied, open '${p}'`);
         fs.writeText(p, text);
       },
     });
@@ -242,7 +255,7 @@ describe('F2 — a failure on the SECOND file must not strand the first', () => 
     present('.codeium');
     const stubborn = derive({
       writeText: (p: string, text: string) => {
-        if (p === second()) throw new Error(`EACCES: permission denied, open '${p}'`);
+        if (p === logical(second())) throw new Error(`EACCES: permission denied, open '${p}'`);
         fs.writeText(p, text);
       },
       // The rollback of the first file cannot complete either.
@@ -254,10 +267,10 @@ describe('F2 — a failure on the SECOND file must not strand the first', () => 
     const report = installHooks(deps({ fs: stubborn }));
     const reason = report.failed.find((f) => f.agent === 'windsurf')?.reason ?? '';
 
-    expect(reason).toContain(first());
+    expect(reason).toContain(logical(first()));
     expect(reason).toContain('harness hooks uninstall');
     const record = read(join(home, '.harness', 'hooks', 'install-record.json'));
-    expect(record).toContain(first());
+    expect(record).toContain(logical(first()));
   });
 
   it('installs BOTH files when nothing fails — the counter-row', () => {
@@ -521,7 +534,7 @@ describe('F2 x F3 — a rollback must not revert a PEER agent sharing the file',
 
     const failSecond = derive({
       writeText: (p: string, text: string) => {
-        if (p === secondFile()) throw new Error('EACCES: permission denied');
+        if (p === logical(secondFile())) throw new Error('EACCES: permission denied');
         fs.writeText(p, text);
       },
     });
@@ -557,6 +570,7 @@ describe('F2 x F3 — a rollback must not revert a PEER agent sharing the file',
     installHooks(deps({ binary: LEGACY_BINARY }));
 
     let probed = false;
+    let peerRewrote = false;
     const meddling = derive({
       writeText: (p: string, text: string) => {
         if (p.endsWith('install-record.json')) {
@@ -571,19 +585,45 @@ describe('F2 x F3 — a rollback must not revert a PEER agent sharing the file',
         /*
          * A peer rewrites the shared file between our write and our compensation.
          *
-         * MATCHED BY SUFFIX, NOT BY EQUALITY. `writeThroughSymlink` resolves an
-         * EXISTING path through `realpath`, and on macOS that turns
-         * `/var/folders/...` into `/private/var/folders/...` — so a `p === config`
-         * fixture silently never fires and the row passes without ever testing
-         * anything. It is the same family as the spread-of-a-class-instance trap
-         * above: an instrument that quietly measures nothing.
+         * MATCHED BY SUFFIX, NOT BY EQUALITY, AND SEPARATOR-AGNOSTICALLY.
+         * `writeThroughSymlink` resolves an EXISTING path through `realpath`, which
+         * rewrites the path in two platform-specific ways — and BOTH of them have
+         * now silently disarmed this fixture:
+         *
+         *   - macOS turns `/var/folders/...` into `/private/var/folders/...`, so a
+         *     `p === config` fixture never fires. That is why this is a suffix match.
+         *   - Windows returns a NATIVE path, so `.cursor\hooks.json` never matched
+         *     the forward-slashed suffix and the fixture never fired THERE either —
+         *     the compensation ran unopposed, reported `rolled back`, and the row
+         *     failed on Windows only (plan 083).
+         *
+         * The same trap twice, from two directions, on the same line: an instrument
+         * that quietly measures nothing. Comparing in one spelling is what fixes it,
+         * so neither platform's canonicalisation can disarm the fixture again.
          */
-        if (p.endsWith('.cursor/hooks.json')) fs.writeText(p, `${text}\n`);
+        if (logical(p).endsWith('.cursor/hooks.json')) {
+          peerRewrote = true;
+          fs.writeText(p, `${text}\n`);
+        }
       },
     });
 
     const report = installHooks(deps({ fs: meddling }));
     const reason = report.failed.find((f) => f.agent === 'cursor')?.reason ?? '';
+
+    /*
+     * THE FIXTURE MUST HAVE FIRED — asserted before anything it enables.
+     *
+     * Twice now this row has been disarmed by a `realpath` rewrite it did not
+     * anticipate, and BOTH times the symptom was an assertion further down failing
+     * for a reason that had nothing to do with the contract. Without this line the
+     * third occurrence looks like a product regression and costs another
+     * investigation. `peerRewrote` is what actually happened, not what we assumed.
+     */
+    expect(
+      peerRewrote,
+      'the peer-rewrite fixture never fired — nothing meddled with the file, so this row proves NOTHING about the still-ours check',
+    ).toBe(true);
 
     expect(reason).not.toContain('rolled back');
     expect(reason).toContain('by hand');
@@ -597,7 +637,7 @@ describe('F2 x F3 — a rollback must not revert a PEER agent sharing the file',
      * A CONTRACT IS ENFORCED BY A ROW OR IT IS PROSE — my own log entry, arriving
      * in my own round, on the fourth occurrence in this surface.
      */
-    expect(reason).toContain(config);
+    expect(reason).toContain(logical(config));
   });
 
   it('REFUSES to restore — and says so — when the file moved under it', () => {
@@ -615,10 +655,10 @@ describe('F2 x F3 — a rollback must not revert a PEER agent sharing the file',
     present('.cursor');
     const meddling = derive({
       writeText: (p: string, text: string) => {
-        if (p === secondFile()) throw new Error('EACCES: permission denied');
+        if (p === logical(secondFile())) throw new Error('EACCES: permission denied');
         fs.writeText(p, text);
         // A third party rewrites the file between our commit and our rollback.
-        if (p === shared()) fs.writeText(p, `${text}\n`);
+        if (p === logical(shared())) fs.writeText(p, `${text}\n`);
       },
     });
 
@@ -629,7 +669,7 @@ describe('F2 x F3 — a rollback must not revert a PEER agent sharing the file',
       stranded = (error as PartialInstallError).stranded?.map((o) => o.path) ?? [];
     }
 
-    expect(stranded).toEqual([shared()]);
+    expect(stranded).toEqual([logical(shared())]);
   });
 });
 

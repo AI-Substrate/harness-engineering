@@ -4,77 +4,103 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
-  nullDeviceForPlatform,
+  gitConfigNullPath,
   safeCredentialConfigEnvironment,
   safeGitEnvironment,
 } from '../../../src/adapters/git/exec-remote-telemetry-git.js';
 
 /**
- * The null-device spelling handed to `GIT_CONFIG_GLOBAL` (plan 077 · #108).
+ * The path handed to `GIT_CONFIG_GLOBAL` (plan 083 · defect 1; was plan 077 · #108).
  *
- * ## Why this file exists, and what it can and cannot prove
+ * ## What this file got wrong, and what it now asserts
  *
- * `GIT_CONFIG_GLOBAL` is the isolation boundary for the remote-telemetry adapter: it is
- * what stops a fixture git run from reading the operator's real global config. The value
- * used to be `os.devNull`, which is `/dev/null` on POSIX but the DEVICE path `\\.\nul` on
- * win32.
+ * Its previous case read *"maps win32 to NUL and every other platform to os.devNull"* —
+ * **and it passed on every machine that ever ran it**, because on Linux and macOS the
+ * win32 branch was never executed. The suite defended the broken constant. Both values
+ * this repo has emitted (`'NUL'`, and `os.devNull` = `\\.\nul`) make Git for Windows exit
+ * 128 on every verb, so `ExecRemoteTelemetryGit` was inoperative on Windows — roughly two
+ * thirds of the Windows suite's failures, from one constant.
  *
- * ## SIMULATED win32 — every case below runs on the host's real platform
+ * So every case below asserts a **LITERAL**, and drives the **win32 path on every host**
+ * via the injected `platform` argument. Two consequences worth stating:
  *
- * The platform is INJECTED, never stubbed (the shape used by `NodeBackground` and
- * `resolveSpawn`). Nothing here executes on Windows and nothing here runs git. Every
- * win32 expectation is EXPECTED, UNVERIFIED — nobody on this side has a Windows host.
+ * - Nothing here may compare the product against itself. `toBe(gitConfigNullPath())`
+ *   cannot fail for any value the function returns; it would have followed `'NUL'`
+ *   silently. A derived expectation cannot detect drift in the thing it derives from.
+ * - These cases will FAIL, on a Mac, the moment anyone reintroduces platform variance —
+ *   which is the property that was unassertable before and is the reason
+ *   `gitConfigNullPath` still accepts a `platform` it ignores.
  *
- * ## The claim split, stated plainly
+ * ## Why `/dev/null` on Windows is not a POSIX assumption
  *
- * (i) `os.devNull` is `\\.\nul` on win32 and `/dev/null` elsewhere — documented Node
- *     behaviour, and the negative controls below assert the POSIX half directly.
- * (ii) git REJECTS `\\.\nul` as a config path and ACCEPTS `NUL` — NOT ours. It is the
- *     downstream consumer's, taken from a comment in their fork, which they said they
- *     could not date or trace to a changelog. It is not restated here as measurement.
+ * git's `Documentation/git.adoc`, under `GIT_CONFIG_GLOBAL`/`GIT_CONFIG_SYSTEM`: *"Can be
+ * set to `/dev/null` to skip reading configuration files of the respective level."* It is
+ * a documented contract of the variable — git reads the string, it does not open a device
+ * — and it is what we measured working (exit 0, isolated, positive control) on Windows 11
+ * build 26100 with git 2.55.0.windows.3 on 2026-08-11.
  *
- * These tests assert (i) and the wiring. They CANNOT assert (ii): a simulated-win32 test
- * asserts the STRING WE EMIT, not git's reaction to it. So if (ii) is wrong, we have
- * swapped a device path git rejects for a device path git rejects differently, and every
- * one of these cases still passes. The consumer's next Windows run is the only instrument
- * that closes that gap. The honest ceiling is "we now emit the spelling git is reported to
- * accept", NOT "isolation is restored on Windows".
+ * ## The ceiling, stated plainly
  *
- * Do not read `test/support/hermetic-git.ts` (which has spelled it `'NUL'` since #73) as
- * corroboration of (ii). As far as we can tell it has never been exercised on a Windows
- * runner, so it has survived rather than succeeded. It shows someone here believed it.
+ * These are still SIMULATED-win32 cases: the platform is injected, never stubbed, nothing
+ * here executes on Windows and nothing here runs git. They assert the STRING WE EMIT. The
+ * proof that git ACCEPTS it is the Windows VM run, not this file. Honest ceiling: "we emit
+ * the documented, Windows-measured value on every platform", not "isolation is proven from
+ * here".
+ *
+ * The filename still says "null-device". Kept deliberately: it is the known address of
+ * this defect. The product name was not — `nullDeviceForPlatform` is half the reason
+ * someone reached for a Windows null device in the first place, so that one is gone.
  */
-describe('null device for GIT_CONFIG_GLOBAL (win32 SIMULATED via injected platform)', () => {
-  it('maps win32 to NUL and every other platform to os.devNull', () => {
-    expect(nullDeviceForPlatform('win32')).toBe('NUL');
-    // Negative controls — these are what let this file return the contrary answer on a
-    // POSIX host, so the mapping is a real branch rather than a constant.
-    expect(nullDeviceForPlatform('linux')).toBe(devNull);
-    expect(nullDeviceForPlatform('darwin')).toBe(devNull);
-    expect(nullDeviceForPlatform('linux')).not.toBe('NUL');
+describe('GIT_CONFIG_GLOBAL null path (win32 SIMULATED via injected platform)', () => {
+  it('is the literal /dev/null on win32 too — no platform variance at all', () => {
+    expect(gitConfigNullPath('win32')).toBe('/dev/null');
+    expect(gitConfigNullPath('linux')).toBe('/dev/null');
+    expect(gitConfigNullPath('darwin')).toBe('/dev/null');
+    // The two values that measured exit 128 on Git for Windows, named so a revert is loud.
+    expect(gitConfigNullPath('win32')).not.toBe('NUL');
+    expect(gitConfigNullPath('win32')).not.toBe('\\\\.\\nul');
+    // Every platform node knows about, one value. `devNull` is asserted AGAINST here, not
+    // with: on win32 it is `\\.\nul`, and that is precisely what must not come back.
+    for (const platform of [
+      'aix',
+      'android',
+      'darwin',
+      'freebsd',
+      'linux',
+      'openbsd',
+      'sunos',
+      'win32',
+    ] as const) {
+      expect(gitConfigNullPath(platform)).toBe('/dev/null');
+    }
+    // A guard on the guard, host-correct on BOTH platforms: `os.devNull` is '/dev/null'
+    // here and the DEVICE path '\\.\nul' on Windows. So a case that asserted
+    // `toBe(devNull)` would be indistinguishable from a correct one on this machine and
+    // silently wrong on the only machine that matters — which is how #108 survived.
+    expect(devNull).toBe(process.platform === 'win32' ? '\\\\.\\nul' : '/dev/null');
   });
 
   /**
    * BOTH product sites, asserted separately and by name. One site fixed with a sibling
-   * left behind is the defect shape this thread keeps hitting, so neither site is allowed
+   * left behind is the defect shape this plan keeps hitting, so neither site is allowed
    * to be proven only by implication from the other.
    */
-  it('site 1 of 2 — safeGitEnvironment falls back to the platform null device', () => {
-    expect(safeGitEnvironment(undefined, 'win32').GIT_CONFIG_GLOBAL).toBe('NUL');
-    expect(safeGitEnvironment(undefined, 'linux').GIT_CONFIG_GLOBAL).toBe(devNull);
+  it('site 1 of 2 — safeGitEnvironment falls back to the literal /dev/null on win32', () => {
+    expect(safeGitEnvironment(undefined, 'win32').GIT_CONFIG_GLOBAL).toBe('/dev/null');
+    expect(safeGitEnvironment(undefined, 'linux').GIT_CONFIG_GLOBAL).toBe('/dev/null');
   });
 
-  it('site 2 of 2 — safeCredentialConfigEnvironment(materializing) uses the same device', () => {
-    expect(safeCredentialConfigEnvironment(true, 'win32').GIT_CONFIG_GLOBAL).toBe('NUL');
-    expect(safeCredentialConfigEnvironment(true, 'linux').GIT_CONFIG_GLOBAL).toBe(devNull);
+  it('site 2 of 2 — safeCredentialConfigEnvironment(materializing) uses the same path', () => {
+    expect(safeCredentialConfigEnvironment(true, 'win32').GIT_CONFIG_GLOBAL).toBe('/dev/null');
+    expect(safeCredentialConfigEnvironment(true, 'linux').GIT_CONFIG_GLOBAL).toBe('/dev/null');
   });
 
-  it('leaves the non-null-device behaviour of both sites unchanged', () => {
-    // A real credential config path still wins over the null device, on either platform.
+  it('leaves the non-null-path behaviour of both sites unchanged', () => {
+    // A real credential config path still wins over the null path, on either platform.
     const leased = 'C:/tmp/harness-git-credential-xyz/credentials.gitconfig';
     expect(safeGitEnvironment(leased, 'win32').GIT_CONFIG_GLOBAL).toBe(leased);
     expect(safeGitEnvironment(leased, 'linux').GIT_CONFIG_GLOBAL).toBe(leased);
-    // Not materializing → the key is absent entirely, not set to a null device.
+    // Not materializing → the key is absent entirely, not set to a null path.
     expect(safeCredentialConfigEnvironment(false, 'win32')).not.toHaveProperty('GIT_CONFIG_GLOBAL');
     // The rest of the isolation envelope is untouched by the platform argument.
     for (const platform of ['win32', 'linux'] as const) {
@@ -88,14 +114,15 @@ describe('null device for GIT_CONFIG_GLOBAL (win32 SIMULATED via injected platfo
    *
    * The two cases above name the two sites that exist today; they say nothing about a
    * third one added tomorrow. This reads the adapter source and requires every executable
-   * `GIT_CONFIG_GLOBAL` line to route through `nullDeviceForPlatform` rather than touch
-   * `devNull` directly. Comment lines are excluded, so prose about `os.devNull` — such as
-   * the note above `nullDeviceForPlatform` itself — does not trip it.
+   * `GIT_CONFIG_GLOBAL` line to route through `gitConfigNullPath`, with neither rejected
+   * spelling anywhere in the executable text. Comment lines are excluded, so the prose
+   * above `gitConfigNullPath` — which must name `os.devNull` and `'NUL'` to explain why
+   * they are wrong — does not trip it.
    *
    * It is a source-text check, so it proves a spelling and not a behaviour. That is the
    * point: the behaviour is unmeasurable from this hardware, and the spelling is not.
    */
-  it('no other GIT_CONFIG_GLOBAL site in the adapter reaches os.devNull directly', () => {
+  it('no GIT_CONFIG_GLOBAL site in the adapter reaches a Windows null device', () => {
     const source = readFileSync(
       join(
         dirname(fileURLToPath(import.meta.url)),
@@ -103,14 +130,36 @@ describe('null device for GIT_CONFIG_GLOBAL (win32 SIMULATED via injected platfo
       ),
       'utf8',
     );
-    const executable = source
-      .split('\n')
-      .filter((line) => !/^\s*(?:\/\/|\/\*|\*)/.test(line))
-      .filter((line) => line.includes('GIT_CONFIG_GLOBAL'));
-    expect(executable.length).toBeGreaterThanOrEqual(2);
-    expect(executable.filter((line) => /\bdevNull\b/.test(line))).toEqual([]);
-    for (const line of executable) {
-      expect(line).toMatch(/nullDeviceForPlatform/);
+    const executableLines = source.split('\n').filter((line) => !/^\s*(?:\/\/|\/\*|\*)/.test(line));
+    // Neither rejected spelling may appear in executable text ANYWHERE in the adapter —
+    // not just on a GIT_CONFIG_GLOBAL line. `os.devNull` is win32's `\\.\nul`, and the
+    // import going away is what stops it coming back by autocomplete.
+    expect(executableLines.filter((line) => /\bdevNull\b/.test(line))).toEqual([]);
+    expect(executableLines.filter((line) => /'NUL'|"NUL"/.test(line))).toEqual([]);
+    const configSites = executableLines.filter((line) => line.includes('GIT_CONFIG_GLOBAL'));
+    expect(configSites.length).toBeGreaterThanOrEqual(2);
+    for (const line of configSites) {
+      expect(line).toMatch(/gitConfigNullPath/);
+    }
+  });
+
+  /**
+   * The two test-side siblings. A product-only fix leaves them emitting the value git
+   * rejects, and they are the fixture environment for a large part of the suite — on
+   * Windows they take real git down with them. Asserted as source text because both are
+   * inline object literals inside helpers this file cannot call platform-wise.
+   */
+  it('the test-side siblings emit the same literal, on every platform', () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    for (const relative of [
+      '../../support/hermetic-git.ts',
+      './exec-remote-telemetry-git.int.test.ts',
+    ]) {
+      const lines = readFileSync(join(here, relative), 'utf8')
+        .split('\n')
+        .filter((line) => !/^\s*(?:\/\/|\/\*|\*)/.test(line))
+        .filter((line) => /GIT_CONFIG_GLOBAL:/.test(line));
+      expect(lines.filter((line) => /'NUL'|"NUL"|\bdevNull\b/.test(line))).toEqual([]);
     }
   });
 });
