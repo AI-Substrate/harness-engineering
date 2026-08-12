@@ -43,6 +43,46 @@ This repo HAS its own governance doc at `.harness/engineering-harness.md` (hand-
 
 - Run the composite gate **`harness checks`** yourself before declaring work done — tests+coverage, biome, typecheck, the docs/flows/telemetry drift guards, and arch/skills/markdown/windows-check, in one envelope. (`just checks` builds first, then runs it.) **CI + branch protection are the authoritative gate.**
 
+### CI does NOT auto-run on a PR-branch push — you must dispatch it
+
+Pushing to a PR branch starts **no** workflow. `.github/workflows/ci.yml` triggers on
+`workflow_dispatch` and on pushes to `main` only; the `pull_request` trigger was removed
+because every WIP push was paying for the full Node 22 + Node 24 matrix plus package-smoke,
+and with many concurrent seats that was the largest Actions line item in the repo.
+
+**Nothing was loosened.** `ci-verdict` is a **required status check** on `main`, so a head
+SHA that has never been dispatched has no verdict and the PR reads *Expected — waiting for
+status to be reported*: unmergeable. Ask for the verdict when you want it:
+
+```bash
+just ci                                # dispatch on the current branch
+gh workflow run ci.yml --ref <branch>  # …or any branch
+gh run list --workflow=ci.yml --branch <branch>   # watch
+```
+
+**Why the required check is `ci-verdict` and not the `ci-required` job.** A
+`workflow_dispatch` check suite is **excluded from the commit's `statusCheckRollup`**, and
+rulesets evaluate the rollup — so a dispatched run's check runs can never satisfy a required
+check, however green they are. (Measured on sha `803ff983`: all five check runs present and
+successful via `/commits/<sha>/check-runs`, the suite even listing `pull_requests: [166]`,
+yet `statusCheckRollup` was `null` and the PR sat BLOCKED. The same query on a
+`pull_request`-event sha returned a SUCCESS rollup.) A commit **status** *is* rollup-eligible
+regardless of event, so the `ci-required` job publishes its verdict as the `ci-verdict`
+status and the ruleset requires that. The rule is pinned to the GitHub Actions app, so a
+human cannot hand-post a green verdict with `gh api .../statuses/<sha>`.
+
+Two consequences that bite if you forget them:
+
+- **CI tests the sha on the REMOTE**, and the verdict binds to *that* sha — dispatch with
+  unpushed commits and you get a green verdict against code you did not write. `just ci`
+  refuses when `origin/<branch>` and your HEAD disagree; a bare `gh workflow run` will not.
+- **Every new commit re-blocks the PR.** That is the design, not a bug — dispatch again once
+  you have stopped pushing.
+
+Do **not** "fix" any of this by restoring `pull_request` with a job-level `if:` guard. A job
+skipped by `if:` reports as **skipped**, and branch protection counts skipped as **success** —
+that shape lets an untested PR merge. An absent check blocks; a skipped check does not.
+
 ### Never `git stash` in this repo — measure against a ref instead
 
 **The stash stack is SHARED across every worktree** (34 of them, 13 concurrent seats, one `refs/stash`). A `stash`/`pop` pair races every other seat, and the loser silently inherits someone else's uncommitted work into a tree they are about to commit from. **A bad pop is indistinguishable from legitimate work in progress** — no error, no marker, just modified tracked files beside your own edits.

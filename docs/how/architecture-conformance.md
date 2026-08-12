@@ -13,7 +13,7 @@ encoded as 7 dependency-cruiser rules at
 [`.dependency-cruiser.cjs`](../../.dependency-cruiser.cjs), and the
 [`harness arch-check`](../../.harness/extensions/arch-check/extension.ts)
 exemplar extension turns them into a command the agent runs — yes or no, no
-guessing — on every run and every PR.
+guessing — on every run and on every dispatched CI run.
 
 The rule file is **encoded team memory** ("encode the fix, not the memory" —
 [intro to harness](../harness-presentations/missing-layer-101/intro-to-harness.md)): instead of a
@@ -91,7 +91,7 @@ naming convention that locates it.
 Severities are the ramp from *visible* to *blocking*:
 
 - **`warn`** — violation surfaces as a `degraded` envelope (exit 0) + a CI
-  `::warning::` annotation. Visible on every PR, blocks nothing.
+  `::warning::` annotation. Visible on every CI run, blocks nothing.
 - **`error`** — violation becomes an `error` envelope (exit 1) and a red
   build.
 

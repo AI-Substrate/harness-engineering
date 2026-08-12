@@ -255,6 +255,31 @@ checks:
     npm run build
     node harness/cli/bin/harness.js checks
 
+# Dispatch CI on a branch. CI NO LONGER auto-runs on a PR-branch push (see the
+# `on:` block in .github/workflows/ci.yml) — the required `ci-verdict` status is
+# absent until someone asks for it, so an untested PR stays unmergeable.
+#
+# The footgun this recipe exists to close: `workflow_dispatch` tests the sha that
+# is ON THE REMOTE, not the one in your working tree, and the verdict binds to
+# THAT sha. Dispatch with unpushed commits and you get a green verdict against
+# code you did not write — so this refuses when they disagree.
+#
+# Dispatch CI on a branch (default: current) — CI does not auto-run on push.
+ci ref="":
+    @r="{{ref}}"; r="${r:-$(git rev-parse --abbrev-ref HEAD)}"; \
+    head="$(git rev-parse --abbrev-ref HEAD)"; \
+    git fetch --quiet origin "$r" 2>/dev/null \
+      || { echo "no origin/$r — push the branch first: git push -u origin $r"; exit 1; }; \
+    remote="$(git rev-parse FETCH_HEAD)"; \
+    if [ "$r" = "$head" ] && [ "$(git rev-parse HEAD)" != "$remote" ]; then \
+      echo "REFUSING: local HEAD $(git rev-parse --short HEAD) != origin/$r $(git rev-parse --short FETCH_HEAD)."; \
+      echo "CI would test the remote sha and the required check would bind to it. Push first."; \
+      exit 1; \
+    fi; \
+    echo "==> dispatching CI on $r @ $(git rev-parse --short FETCH_HEAD)"; \
+    gh workflow run ci.yml --ref "$r"; \
+    echo "==> watch: gh run list --workflow=ci.yml --branch $r"
+
 # Generate a fresh throwaway test repo (for real agent/manual extension testing); prints its path.
 test-repo dest="":
     @bash scripts/new-test-repo.sh "{{dest}}"
