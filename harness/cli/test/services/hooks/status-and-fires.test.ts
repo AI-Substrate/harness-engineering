@@ -359,3 +359,75 @@ describe('status is the FIRST caller of compact() — the rotation fix, live (dw
     expect(fireSummary(deps()).total).toBe(before);
   });
 });
+
+describe('a binary path that will not SURVIVE is refused, not installed (plan 084)', () => {
+  /*
+  Test Doc:
+  - Why: three measured hazards, on three machines, all shipped as healthy installs.
+    An npx cache in a WSL devcontainer (`_npx/<hash>/node_modules/.bin/harness`,
+    garbage-collected by npm and erased by a container rebuild); this host's own
+    copilot hook pointing into a worktree ~145 commits divergent from main; and the
+    live Cursor hook in plan 082's own note pointing into untracked `scratch/`.
+  - What made it invisible: a hook exits 0 and prints nothing by design, so when the
+    target disappears NOTHING reports it. `binaryResolves` only turns red after the
+    damage is done, and `looksLikeInstalledBinary` — the predicate written to catch
+    exactly this — had ZERO production callers for the whole of plan 082.
+  - Contract: refused BEFORE any config is written, naming the segment; the escape
+    hatch works and is named in the refusal; and an already-installed transient path
+    is visible in status ahead of the failure rather than after it.
+  */
+  const TRANSIENT = '/home/vscode/.npm/_npx/fa7ab31a908e11f6/node_modules/.bin/harness';
+  const allowDev = (name: string) => (name === 'HARNESS_HOOKS_ALLOW_DEV_BINARY' ? '1' : undefined);
+
+  beforeEach(() => mkdirSync(join(home, '.cursor'), { recursive: true }));
+
+  it('REFUSES, names the offending segment, and writes NOTHING', () => {
+    const report = installHooks(deps({ binary: `"${TRANSIENT}"` }));
+
+    expect(report.transientBinary).toBe(true);
+    // The SEGMENT, not just a verdict — it is the diagnosis the operator acts on.
+    expect(report.transientBinaryDetail).toContain('_npx');
+    expect(report.transientBinaryDetail).toContain(TRANSIENT);
+    // The refusal must carry its own way out, or an operator who means it is stuck.
+    expect(report.transientBinaryDetail).toContain('HARNESS_HOOKS_ALLOW_DEV_BINARY=1');
+
+    // NOTHING WAS ATTEMPTED. Refusing while still reporting installs would be the
+    // same silent-success shape this exists to remove.
+    expect(report.installed).toEqual([]);
+    expect(report.failed).toEqual([]);
+    expect(existsSync(join(home, '.cursor', 'hooks.json'))).toBe(false);
+  });
+
+  it('the named escape hatch actually installs — the refusal is a filter, not a wall', () => {
+    // The positive control. A guard that refused unconditionally would pass the row
+    // above while making this repo unable to dogfood its own hooks from a worktree.
+    const report = installHooks(deps({ binary: `"${TRANSIENT}"`, env: allowDev }));
+
+    expect(report.transientBinary).toBe(false);
+    expect(report.installed.length).toBeGreaterThan(0);
+    expect(existsSync(join(home, '.cursor', 'hooks.json'))).toBe(true);
+  });
+
+  it('STATUS names a transient path that is still present — before it vanishes', () => {
+    installHooks(deps({ binary: `"${TRANSIENT}"`, env: allowDev }));
+    const cursor = statusHooks(deps()).find((r) => r.agent === 'cursor');
+
+    expect(cursor?.transientBinarySegment).toBe('_npx');
+    // AND the gap that makes this field necessary: `binaryState` is about existence
+    // NOW. Here the path does not exist so it reads `unresolvable` — but on the day
+    // it was installed it read `resolves`, green, while already doomed. The two
+    // fields answer different questions and neither substitutes for the other.
+    expect(cursor?.binaryState).toBe('unresolvable');
+  });
+
+  it('a DURABLE install reports no segment — the field is not always-on', () => {
+    const bin = join(home, 'bin', 'harness');
+    mkdirSync(join(home, 'bin'), { recursive: true });
+    writeFileSync(bin, '#!/bin/sh\n');
+    installHooks(deps({ binary: `"${bin}"` }));
+
+    const cursor = statusHooks(deps()).find((r) => r.agent === 'cursor');
+    expect(cursor?.transientBinarySegment).toBeUndefined();
+    expect(cursor?.binaryState).toBe('resolves');
+  });
+});

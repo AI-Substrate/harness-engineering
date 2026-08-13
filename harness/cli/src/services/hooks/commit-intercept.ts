@@ -42,6 +42,8 @@ export interface HookJournal {
   record(entry: {
     at: string;
     phase: HookPhase;
+    /** The agent slug whose hook fired — see {@link JournalEntry.agent}. */
+    agent: string;
     /** `null` only for a payload so malformed it never named a repository. */
     repoRoot: string | null;
     outcome: FireOutcome;
@@ -55,6 +57,15 @@ export interface CommitInterceptDeps {
   clock: Clock;
   emitter: CommitEmitter;
   journal: HookJournal;
+  /**
+   * WHICH AGENT this intercept is firing for, carried onto every journal record.
+   *
+   * A CONSTRUCTOR DEP, not a `fire()` argument: one intercept serves one agent's
+   * hook invocation, so the agent cannot vary per call — and making it a parameter
+   * would let a caller pass a different one for PRE than for POST, which would
+   * corrupt attribution in precisely the records meant to fix it.
+   */
+  agent: string;
 }
 
 /**
@@ -90,6 +101,7 @@ export class CommitIntercept {
     try {
       this.deps.journal.record({
         at: this.deps.clock.nowIso(),
+        agent: this.deps.agent,
         phase,
         repoRoot,
         outcome,

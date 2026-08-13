@@ -5,7 +5,7 @@ import { detectAgents, UNDETECTED_INSTALLERS } from '../doctor/collector/agents.
 import { BACKUP_MANIFEST_NAME, restoreAgentConfigs } from '../doctor/collector/backup.js';
 import type { AgentSpec } from './agent-matrix.js';
 import { AGENT_MATRIX, eventKeys, resolveConfigFiles } from './agent-matrix.js';
-import { extractBinaryPath, extractInterpreterPath } from './binary-path.js';
+import { extractBinaryPath, extractInterpreterPath, transientSegment } from './binary-path.js';
 import { writeThroughSymlink } from './config-writer.js';
 import { unacceptedOptions } from './fire-options.js';
 import { FileHookJournal } from './hook-journal.js';
@@ -199,6 +199,19 @@ export interface InstallReport {
   /** Present only when opted out: which variable, which value, and what to do. */
   optedOutDetail?: string;
   /**
+   * Nothing was attempted because the invocation names a path that will not
+   * survive — an npx cache, a worktree, a source checkout, `scratch/`.
+   *
+   * ITS OWN FIELD, not folded into {@link InstallReport.refused}. That list means
+   * *we have no writer for this agent*, a stated design limit with nothing to do
+   * about it. This means *we have a writer, and the path we would write is a lie*,
+   * which is an action item and applies to EVERY agent at once — so it is a
+   * property of the run, exactly like {@link InstallReport.optedOut}.
+   */
+  transientBinary: boolean;
+  /** Present only when refused: which segment, which path, and what to do. */
+  transientBinaryDetail?: string;
+  /**
    * `change` travels with each entry because collapsing it is how a no-op read
    * as an install: `InstallChange` has four values precisely so the caller can
    * see half-working (its own docstring, dw-0014), and the one consumer that had
@@ -243,6 +256,40 @@ export function installHooks(deps: HooksDeps): InstallReport {
     return {
       optedOut: true,
       optedOutDetail: optOutNotice(deps.env),
+      transientBinary: false,
+      installed: [],
+      refused: [],
+      refusedUpgrades: [],
+      failed: [],
+    };
+  }
+
+  /*
+   * ASKED BEFORE THE FIRST CONFIG IS TOUCHED, for the same reason the record probe
+   * below is: refusing is free while nothing has been written.
+   *
+   * THE PATH IS THE INSTALL. A hook entry is nothing but an invocation string, so a
+   * path that will not survive is not a lesser install — it is a config that names
+   * a program which will not be there, written into a user's agent, reported as
+   * healthy, and failing in SILENCE because the hook contract is exit-0.
+   *
+   * REFUSED RATHER THAN REPAIRED. We do not substitute a path we think is better:
+   * where harness is supposed to live when it is hooked is a product decision, and
+   * guessing one here is the same class of error as writing this one.
+   *
+   * THE ESCAPE HATCH IS DELIBERATE AND NAMED. This repo installs its own hooks from
+   * a worktree while dogfooding, which this check correctly refuses — so there is
+   * an opt-in, it is an env var (doctor installs too, and a CLI flag would not
+   * reach that call site), and the refusal message names it. An operator who means
+   * it can proceed; nobody gets there by accident.
+   */
+  const script = extractBinaryPath(deps.binary) ?? deps.binary;
+  const segment = transientSegment(script);
+  if (segment !== null && deps.env('HARNESS_HOOKS_ALLOW_DEV_BINARY') !== '1') {
+    return {
+      optedOut: false,
+      transientBinary: true,
+      transientBinaryDetail: `refusing to install: the hook would invoke ${script}, which is under \`${segment}\` and will not survive (an npx cache is garbage-collected, a worktree moves, a checkout is cleaned). A hook exits 0 and prints nothing, so when that path goes the failure is silent. Install harness durably and re-run, or set HARNESS_HOOKS_ALLOW_DEV_BINARY=1 to install this path anyway.`,
       installed: [],
       refused: [],
       refusedUpgrades: [],
@@ -333,7 +380,7 @@ export function installHooks(deps: HooksDeps): InstallReport {
       });
     }
   }
-  return { optedOut: false, installed, refused, refusedUpgrades, failed };
+  return { optedOut: false, transientBinary: false, installed, refused, refusedUpgrades, failed };
 }
 
 /**
@@ -534,6 +581,19 @@ export interface StatusReport extends AgentReport {
   binaryResolves?: boolean;
   configuredBinary?: string;
   /**
+   * The path segment that makes the configured invocation NON-DURABLE, or absent
+   * when nothing does — `node_modules`, `_npx`, `worktrees`, `scratch`, `src`, `dist`.
+   *
+   * SEPARATE FROM {@link StatusReport.binaryResolves}, and the gap between them is
+   * the whole point. `binaryResolves` asks *is the file there RIGHT NOW*, which is
+   * green for every one of these paths on the day it was installed and only turns
+   * red once the damage is done. This asks *will it be there tomorrow* — the npx
+   * cache npm has not collected yet, the worktree nobody has moved yet. A hook
+   * exits 0 and prints nothing, so `unresolvable` gets discovered by someone
+   * wondering why months of telemetry are missing. This is discoverable first.
+   */
+  transientBinarySegment?: string;
+  /**
    * Three states, never a boolean (dw-0027). `absent` and `unresolvable` are
    * different diagnoses — "we never installed" versus "we installed and the target
    * is gone" — and a boolean forces the reader to infer which, from a field that
@@ -599,12 +659,17 @@ export function statusHooks(deps: HooksDeps): StatusReport[] {
     // one would report health for a set it had not examined.
     const unaccepted = [...new Set(ourCommands(deps, spec).flatMap(unacceptedOptions))];
     const resolves = deps.fs.exists(configured);
+    // The CONFIGURED path, not the running one: status reports on what is on disk
+    // in the user's agent, which may have been written by a different harness on a
+    // different day — which is exactly the case that produced this field.
+    const transient = transientSegment(configured);
     const execution = probeExecution(deps, spec);
     return {
       ...report,
       files,
       configuredBinary: configured,
       binaryResolves: resolves,
+      ...(transient === null ? {} : { transientBinarySegment: transient }),
       binaryState: resolves ? 'resolves' : 'unresolvable',
       commandState: unaccepted.length === 0 ? 'accepted' : 'unknown-options',
       ...(unaccepted.length === 0 ? {} : { unacceptedOptions: unaccepted }),

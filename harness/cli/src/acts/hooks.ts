@@ -309,6 +309,7 @@ async function fire(deps: HooksActDeps, agent: string, opts: FireOpts): Promise<
     if (payload.unparseable !== null) {
       file.record({
         at: deps.clock.nowIso(),
+        agent,
         phase,
         repoRoot: null,
         outcome: { kind: 'unparseable', ...payload.unparseable },
@@ -341,9 +342,13 @@ async function fire(deps: HooksActDeps, agent: string, opts: FireOpts): Promise<
         process.pid,
       ),
       journal,
+      // The agent slug the verb was invoked with. It was ALWAYS in scope here and
+      // was discarded on this exact line (`void agent;`), which is why 1,578
+      // journal records on this host name no agent and cannot answer the one
+      // question the journal exists to answer: did THIS agent's hook ever fire?
+      agent,
     });
 
-    void agent;
     await intercept.fire(phase, repoRoot, payload.command);
   } catch {
     // The last line of defence. Nothing may escape into the agent's tool call —

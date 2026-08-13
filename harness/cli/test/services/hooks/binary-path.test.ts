@@ -8,9 +8,9 @@ import {
   embedBinaryPath,
   extractBinaryPath,
   extractInterpreterPath,
-  looksLikeInstalledBinary,
   normaliseBinaryPath,
   quoteForShell,
+  transientSegment,
 } from '../../../src/services/hooks/binary-path.js';
 import { installStrategyA } from '../../../src/services/hooks/install-strategy-a.js';
 
@@ -136,23 +136,42 @@ describe('the path round-trips OUT of the command string (dw-0016)', () => {
 
 describe('the written path is ABSOLUTE and points at an install (dw-0017)', () => {
   it.each([
-    ['a scratch path — the MEASURED hazard on this machine', '/Users/x/repo/scratch/probe.mjs'],
-    ['a source tree', '/Users/x/repo/src/index.ts'],
-    ['a build output', '/Users/x/repo/dist/index.js'],
-    ['inside node_modules', '/Users/x/repo/node_modules/.bin/harness'],
-    ['a worktree', '/Users/x/worktrees/branch/bin/harness'],
-    ['a RELATIVE path', 'bin/harness'],
-    ['a bare name', 'harness'],
-  ])('REFUSES %s', (_name, path) => {
+    [
+      'a scratch path — the MEASURED hazard on this machine',
+      '/Users/x/repo/scratch/probe.mjs',
+      'scratch',
+    ],
+    ['a source tree', '/Users/x/repo/src/index.ts', 'src'],
+    ['a build output', '/Users/x/repo/dist/index.js', 'dist'],
+    ['inside node_modules', '/Users/x/repo/node_modules/.bin/harness', 'node_modules'],
+    ['a worktree', '/Users/x/worktrees/branch/bin/harness', 'worktrees'],
+    [
+      "an npx cache — the MEASURED hazard in Jordan's WSL devcontainer",
+      '/home/vscode/.npm/_npx/fa7ab31a908e11f6/node_modules/.bin/harness',
+      '_npx',
+    ],
+    [
+      "the mac-validation worktree — the MEASURED hazard in this host's OWN copilot config",
+      '/Users/jordanknight/substrate/harness-engineering-worktrees/mac-validation/harness/cli/bin/harness.js',
+      'harness-engineering-worktrees',
+    ],
+    ['a RELATIVE path', 'bin/harness', '<relative>'],
+    ['a bare name', 'harness', '<relative>'],
+  ])('REFUSES %s, NAMING the segment', (_name, path, segment) => {
     /*
     Test Doc:
-    - Why: dw-0017. The live Cursor hook on this machine points into untracked
-      scratch/ — measured, not imagined. Such a hook works for one person and breaks
-      silently when that tree is cleaned. Absolute is necessary and NOT sufficient:
-      the scratch path is absolute too.
-    - Contract: refused.
+    - Why: dw-0017, and three measured hazards rather than one. The live Cursor hook
+      pointed into untracked scratch/; this host's copilot hook points into a
+      worktree ~145 commits divergent from main; Jordan's WSL hook points into an
+      npx cache npm garbage-collects. Each works for one person on one day and then
+      fails SILENTLY, because a hook exits 0 and prints nothing.
+    - Contract: refused, AND the offending segment is named. The verdict alone sends
+      an operator looking; the segment IS the diagnosis, and it is what the refusal
+      message quotes back to them.
+    - Absolute is necessary and NOT sufficient: every rejected path above except the
+      last two is absolute.
     */
-    expect(looksLikeInstalledBinary(path)).toBe(false);
+    expect(transientSegment(path)).toBe(segment);
   });
 
   it.each([
@@ -160,10 +179,14 @@ describe('the written path is ABSOLUTE and points at an install (dw-0017)', () =
     ['a user install', '/Users/ada/.local/bin/harness'],
     ['a Windows install', 'C:/Program Files/harness/harness.exe'],
     ['an install path containing a space', '/Users/ada lovelace/.local/bin/harness'],
+    [
+      "git-ai's own install location — the peer that gets this right",
+      '/Users/ada/.git-ai/bin/git-ai',
+    ],
   ])('ACCEPTS %s', (_name, path) => {
     // The positive control: a predicate that refused everything would pass every
     // row above while making installation impossible.
-    expect(looksLikeInstalledBinary(path)).toBe(true);
+    expect(transientSegment(path)).toBeNull();
   });
 });
 
@@ -203,7 +226,7 @@ describe('Windows normalisation — EXPECTED-UNVERIFIED, not measured (dw-0018)'
     const raw = '\\\\?\\C:\\Program Files\\harness\\harness.exe';
     const normalised = normaliseBinaryPath(raw);
 
-    expect(looksLikeInstalledBinary(normalised)).toBe(true);
+    expect(transientSegment(normalised)).toBeNull();
     expect(extractBinaryPath(`${embedBinaryPath(raw)} hooks fire cursor`)).toBe(normalised);
   });
 
