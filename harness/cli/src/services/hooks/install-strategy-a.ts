@@ -705,34 +705,68 @@ function upgradeLegacyEntries(
 
 /**
  * What an installed command must NAME to be current, or `null` when this binary
- * cannot say (it names no interpreter itself, so it cannot demand one).
+ * cannot say.
+ *
+ * TWO SHAPES, BECAUSE THIS BINARY NOW WRITES TWO. Since plan 085 a fresh install
+ * names the shipped WRAPPER as a single token and lets it resolve an interpreter at
+ * FIRE time; before that it named an absolute interpreter captured at INSTALL time.
+ *
+ * THE WRAPPER SHAPE IS WHY THIS FUNCTION HAD TO CHANGE, AND THE FAILURE WAS SILENT.
+ * The old rule was "current means it names an interpreter". A wrapper command names
+ * none, so `requiredInvocationParts` returned `null`, `upgradeLegacyEntries` returned
+ * immediately, and the ENTIRE upgrade path went inert the moment the wrapper shipped
+ * — reinstating, exactly, the failure the paragraph above it warns about: a user
+ * re-runs `hooks install`, is told `already-present`, and keeps the command that
+ * cannot execute. A control defeated by removing its caller, which is not a
+ * different bug from having no control.
  */
-function requiredInvocationParts(binary: string): { flags: readonly string[] } | null {
+type WantedInvocation =
+  | { readonly kind: 'wrapper' }
+  | { readonly kind: 'interpreter'; readonly flags: readonly string[] };
+
+function requiredInvocationParts(binary: string): WantedInvocation | null {
+  if (namesWrapper(binary)) return { kind: 'wrapper' };
   if (extractInterpreterPath(binary) === null) return null;
-  return { flags: INTERPRETER_FLAGS.filter((flag) => binary.includes(flag)) };
+  return { kind: 'interpreter', flags: INTERPRETER_FLAGS.filter((flag) => binary.includes(flag)) };
+}
+
+/**
+ * Is the first token one of our shipped wrappers?
+ *
+ * BY BASENAME, NEVER BY FULL PATH — the deliberate looseness this file already
+ * demands. A global install, an npx run and a dev checkout name three different
+ * absolute paths and all three are correct, so a path comparison would rewrite every
+ * config on every run for two users sharing a machine. Both twins count: Windows
+ * entries carry the `.ps1` in their `powershell` field, and an entry is judged by
+ * every command in it.
+ */
+function namesWrapper(command: string): boolean {
+  const first = commandTokens(command)[0] ?? '';
+  return first.endsWith('harness-hook.sh') || first.endsWith('harness-hook.ps1');
 }
 
 /**
  * Does this installed command already carry the invocation this binary writes?
  *
- * TWO STRUCTURAL QUESTIONS, AND DELIBERATELY NOT STRING EQUALITY. It asks whether
- * the command names an INTERPRETER (the F008 repair: a bare `.js` first token is
- * dispatched to WScript.exe on Windows, so those entries cannot run our code) and
- * whether it carries the interpreter FLAGS this binary now requires (the F010 F5
- * repair: without `--no-warnings` a hostile `NO_COLOR`/`FORCE_COLOR` pair makes
- * Node speak inside an agent's tool loop). Generalising from the first to both is
- * what makes a repair reach the installs that ALREADY EXIST instead of only new
- * ones — the whole reason the upgrade path exists.
+ * STRUCTURAL QUESTIONS, DELIBERATELY NOT STRING EQUALITY. For the wrapper shape it
+ * asks whether the command's first token IS a wrapper — which is false for every
+ * pre-085 entry, so those get rewritten and the fix finally reaches installs that
+ * already exist. For the legacy shape it asks whether the command names an
+ * INTERPRETER (the F008 repair: a bare `.js` first token is dispatched to WScript.exe
+ * on Windows, so those entries cannot run our code) and whether it carries the
+ * interpreter FLAGS this binary now requires (the F010 F5 repair: without
+ * `--no-warnings` a hostile `NO_COLOR`/`FORCE_COLOR` pair makes Node speak inside an
+ * agent's tool loop).
  *
- * IT MUST NOT BECOME `command === whatWeWouldWrite`. The BINARY PATH LEGITIMATELY
- * DIFFERS BETWEEN INSTALLS — a global install, an npx run and a dev checkout all
- * name different paths, and all three are correct — so string equality would
- * rewrite every config on every run for two users sharing a machine. And churn is
- * not merely noisy here: `installHooks` compensates a failed provenance write by
- * undoing "what THIS run wrote", so a needless rewrite hands the compensation a
- * healthy hook to undo.
+ * IT MUST NOT BECOME `command === whatWeWouldWrite`. THE BINARY PATH LEGITIMATELY
+ * DIFFERS BETWEEN INSTALLS, so string equality would churn every config on every run.
+ * And churn is not merely noisy here: `installHooks` compensates a failed provenance
+ * write by undoing "what THIS run wrote", so a needless rewrite hands the
+ * compensation a healthy hook to undo. Both branches below are therefore stable
+ * once satisfied: rewrite once, then read as current forever.
  */
-function invocationIsCurrent(command: string, wanted: { flags: readonly string[] }): boolean {
+function invocationIsCurrent(command: string, wanted: WantedInvocation): boolean {
+  if (wanted.kind === 'wrapper') return namesWrapper(command);
   if (extractInterpreterPath(command) === null) return false;
   const tokens = commandTokens(command);
   return wanted.flags.every((flag) => tokens.includes(flag));
