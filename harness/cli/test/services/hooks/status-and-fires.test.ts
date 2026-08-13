@@ -412,10 +412,18 @@ describe('a binary path that will not SURVIVE is refused, not installed (plan 08
     installHooks(deps({ binary: `"${TRANSIENT}"`, env: allowDev }));
     const cursor = statusHooks(deps()).find((r) => r.agent === 'cursor');
 
+    // The segment check is pure string work and holds on any machine.
     expect(cursor?.transientBinarySegment).toBe('_npx');
-    // AND the gap that makes this field necessary: `binaryState` is about existence
-    // NOW. Here the path does not exist so it reads `unresolvable` — but on the day
-    // it was installed it read `resolves`, green, while already doomed. The two
+
+    // The `unresolvable` half is NOT pure string work — it depends on this path
+    // being absent from the machine running the suite. TRANSIENT is kept verbatim
+    // because it is the real measured WSL path and that is worth reading, so the
+    // assumption is MEASURED rather than trusted. Naming an absolute path and
+    // assuming its state is what turned this file red on CI once already.
+    expect(existsSync(TRANSIENT)).toBe(false);
+    // AND the gap that makes the segment field necessary: `binaryState` is about
+    // existence NOW. Here the path is gone so it reads `unresolvable` — but on the
+    // day it was installed it read `resolves`, green, while already doomed. The two
     // fields answer different questions and neither substitutes for the other.
     expect(cursor?.binaryState).toBe('unresolvable');
   });
@@ -580,7 +588,27 @@ describe('the INTERPRETER is half the invocation, and it is the half that moves 
 
   it('a MISSING interpreter makes the hook unresolvable, even with the script present', () => {
     const script = presentScript();
-    installWith('/usr/local/bin/node', script);
+    /*
+     * ABSENCE IS CONSTRUCTED AND MEASURED, NEVER NAMED.
+     *
+     * This row first hardcoded `/usr/local/bin/node` as "the missing interpreter".
+     * That path is absent on the dev Mac and PRESENT on GitHub's ubuntu runner, so
+     * the assertion inverted and CI failed — a test asserting a fact about a
+     * machine rather than about the code.
+     *
+     * It is the MIRROR of the defect this very commit fixes. `command-runs.test.ts`
+     * named the same path as PRESENT and passed for years because nothing checked
+     * the interpreter; this named it ABSENT and passed locally for the same reason.
+     * One root error in both directions: AN ABSOLUTE MACHINE PATH IS NOT A STATE —
+     * present and absent are decided by the machine, not by the string.
+     *
+     * The tell was already three lines below, on the other half of the same
+     * assertion: the script's presence was guarded with `existsSync` and the
+     * interpreter's absence was assumed. Same discipline, applied to one side only.
+     */
+    const absentNode = join(home, 'nodebin', 'no-such-node');
+    expect(existsSync(absentNode)).toBe(false);
+    installWith(absentNode, script);
 
     const row = cursor();
     // The script really is there — otherwise this passes for the wrong reason and
@@ -588,7 +616,7 @@ describe('the INTERPRETER is half the invocation, and it is the half that moves 
     expect(existsSync(script)).toBe(true);
     expect(row?.configuredBinary).toBe(script);
 
-    expect(row?.configuredInterpreter).toBe('/usr/local/bin/node');
+    expect(row?.configuredInterpreter).toBe(absentNode);
     expect(row?.interpreterResolves).toBe(false);
     expect(row?.binaryResolves).toBe(false);
     expect(row?.binaryState).toBe('unresolvable');
