@@ -48,6 +48,32 @@ export const FIRE_OPTIONS: readonly FireOption[] = [
     flags: '--hook-input <source>',
     description: 'where the payload comes from; only `stdin` is supported',
   },
+  /*
+   * WHY A FILE PATH EXISTS BESIDE STDIN, ON ONE PLATFORM ONLY.
+   *
+   * MEASURED on Windows PowerShell 5.1: a payload piped into `harness-hook.ps1`
+   * does NOT survive the extra `.ps1 -> node` hop. Copilot sends it (captured:
+   * 299 bytes PRE, 423 POST), the wrapper's args arrive intact, node starts, and
+   * stdin arrives EMPTY. `repoRoot` is then null, the repo guard returns, and the
+   * fire is silent: exit 0, no stderr, not one journal line. Reproduced with the
+   * wrapper alone, no agent involved, inside a real git repo.
+   *
+   * The wrapper therefore spills stdin to a temp file BYTE FOR BYTE and names it
+   * here. It does NOT pipe: PowerShell 5.1 re-encodes a piped string (UTF-16LE
+   * when it redirects, ASCII `$OutputEncoding` when it writes to a native
+   * command), which would corrupt any non-ASCII payload AND destroy the wire
+   * bytes that `UnparseableDetail.headHex` exists to report. A hop that silently
+   * "fixes" a BOM is the same class of defect as the one this whole plan removes.
+   *
+   * POSIX is unaffected and keeps using stdin — the `.sh` twin passes it through
+   * correctly (measured on macOS and Linux). The asymmetry is the platform's, not
+   * a preference.
+   */
+  {
+    flags: '--hook-input-file <path>',
+    description:
+      'read the payload from this file instead of stdin; takes precedence over --hook-input',
+  },
   {
     flags: '--hook-owner [marker]',
     description:

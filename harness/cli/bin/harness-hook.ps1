@@ -243,5 +243,41 @@ if ($CheckMode) {
   exit 0
 }
 
-& $Resolved --no-warnings $Script @args
-exit $LASTEXITCODE
+# STDIN DOES NOT SURVIVE THIS HOP ON WINDOWS POWERSHELL 5.1, SO WE DO NOT ASK IT TO.
+#
+# MEASURED, wrapper alone in a real git repo, no agent involved: Copilot's payload
+# reaches this script (299 bytes PRE / 423 POST, captured), the args arrive intact,
+# node starts - and node's stdin is EMPTY. The CLI then finds no repoRoot, returns at
+# the repo guard, and writes nothing: exit 0, no stderr, zero journal lines. That
+# silence read as "the hook never fired" and cost a day of platform archaeology.
+#
+# WE DO NOT PIPE, EITHER. `$payload | & node` re-encodes: PowerShell 5.1 redirects as
+# UTF-16LE and writes to native commands using $OutputEncoding, which defaults to
+# ASCII - so every non-ASCII byte becomes `?`, and the wire bytes that the CLI's
+# `headHex` exists to name would be destroyed by the very hop meant to deliver them.
+# A BOM that silently "fixes" itself in transit is the class of defect this plan removes.
+#
+# So: copy the raw stream to a temp file and name it. Byte for byte, no decode.
+if ([Console]::IsInputRedirected) {
+  $Spill = [System.IO.Path]::Combine(
+    [System.IO.Path]::GetTempPath(),
+    "harness-hook-$([Guid]::NewGuid().ToString('N')).payload")
+  try {
+    $StdIn = [Console]::OpenStandardInput()
+    $Out = [System.IO.File]::Create($Spill)
+    try { $StdIn.CopyTo($Out) } finally { $Out.Dispose() }
+    & $Resolved --no-warnings $Script @args --hook-input-file $Spill
+    $Code = $LASTEXITCODE
+  } finally {
+    # The hook leaves no trace. Best-effort by design: a failure to clean up must
+    # never become an agent-visible error (`$ErrorActionPreference` is already
+    # SilentlyContinue, and `-Force` covers a read-only temp).
+    Remove-Item -LiteralPath $Spill -Force -ErrorAction SilentlyContinue
+  }
+} else {
+  # No redirected stdin - a hand-run or a probe. Reading it would BLOCK on a console,
+  # which inside an agent's tool loop is worse than any silence.
+  & $Resolved --no-warnings $Script @args
+  $Code = $LASTEXITCODE
+}
+exit $Code

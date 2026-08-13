@@ -199,11 +199,19 @@ function journal(): Record<string, unknown>[] {
 function runArgv(
   argv: string[],
   envOver: NodeJS.ProcessEnv = {},
+  /**
+   * What arrives on stdin. Overridden ONLY by the spill rows, which must prove the
+   * payload was read from the FILE — a default payload on stdin would let them pass
+   * on a build where `--hook-input-file` is ignored entirely.
+   */
+  inputOver?: string,
 ): { status: number | null; stdout: string; stderr: string } {
-  const payload = JSON.stringify({
-    tool_name: 'Shell',
-    tool_input: { cwd: repo, command: 'git status' },
-  });
+  const payload =
+    inputOver ??
+    JSON.stringify({
+      tool_name: 'Shell',
+      tool_input: { cwd: repo, command: 'git status' },
+    });
   const result = spawnSync(argv[0], argv.slice(1), {
     cwd: repo,
     encoding: 'utf8',
@@ -570,5 +578,75 @@ describe('the silent contract survives an environment we do not control (plan 08
     runArgv(argvOf(command), { NO_COLOR: '1', FORCE_COLOR: '1' });
 
     expect(journal().length).toBe(1);
+  });
+});
+
+describe('`--hook-input-file`: the payload the WINDOWS wrapper spills (plan 085)', () => {
+  /*
+   * WHY THESE ROWS LIVE IN *THIS* FILE.
+   *
+   * This is the file that exists because a flag one side COMPOSED was a flag the
+   * other side did not DECLARE, and commander exited 1 before our code ran — on
+   * every machine, invisibly. `harness-hook.ps1` now composes `--hook-input-file`
+   * at fire time, which is the same shape of risk with a narrower blast radius:
+   * it would fail on Windows only, inside an agent's tool loop, silently.
+   *
+   * MEASURED CAUSE (wrapper alone, real repo, no agent): on Windows PowerShell 5.1
+   * a payload piped into the `.ps1` does not survive the hop to node. Copilot sends
+   * it, args arrive intact, node starts, stdin is EMPTY — so `repoRoot` is null, the
+   * repo guard returns, and nothing is journalled. The wrapper therefore spills
+   * stdin to a file byte-for-byte and names it here.
+   */
+
+  it('reads the payload from the FILE when stdin is empty — the Windows contract', () => {
+    /*
+    Test Doc:
+    - Why: the whole point of the flag. If it were ignored, this fire would see an
+      empty stdin, find no repoRoot and journal NOTHING — which is precisely the
+      silent zero observed on Windows.
+    - Contract: exit 0, and a journal entry naming the repo the FILE described.
+    - Note the deliberately EMPTY stdin: a default payload there would let this row
+      pass against a build that never reads the file.
+    */
+    const spill = join(dir, 'payload.json');
+    writeFileSync(
+      spill,
+      JSON.stringify({ tool_name: 'Bash', tool_input: { cwd: repo, command: 'git status' } }),
+    );
+
+    const { status } = runArgv(
+      [process.execPath, CLI, 'hooks', 'fire', 'github-copilot', '--phase', 'pre', '--hook-input', 'stdin', '--hook-input-file', spill],
+      {},
+      '',
+    );
+
+    expect(status, 'the exit-0 contract holds on every path').toBe(0);
+    const entries = journal();
+    expect(entries.length, 'the file payload must reach the journal').toBe(1);
+    expect(entries[0].repoRoot).toBe(repo);
+  });
+
+  it('JOURNALS a named spill it cannot read, rather than passing over it in silence', () => {
+    /*
+    Test Doc:
+    - Why: every other empty payload is a legitimate quiet skip; this one is not.
+      The wrapper wrote a file and said so, and it is gone by the time we look —
+      treating that as "no payload" would return at the repo guard and rebuild the
+      exact silent zero this plan spent a day chasing, one layer further in.
+    - Contract: exit 0 (never break the tool call), and a `failed` record naming
+      `payload-file-unreadable`.
+    - Mutation: delete the guard in `acts/hooks.ts` and this row goes red while the
+      row above stays green — the two are not redundant.
+    */
+    const { status } = runArgv(
+      [process.execPath, CLI, 'hooks', 'fire', 'github-copilot', '--phase', 'pre', '--hook-input', 'stdin', '--hook-input-file', join(dir, 'was-never-written.json')],
+      {},
+      '',
+    );
+
+    expect(status).toBe(0);
+    const entries = journal();
+    expect(entries.length, 'an unreadable spill is a FINDING, not a skip').toBe(1);
+    expect(entries[0].outcome).toEqual({ kind: 'failed', cause: 'payload-file-unreadable' });
   });
 });

@@ -49,6 +49,12 @@ interface FireOpts {
   phase?: string;
   hookInput?: string;
   /**
+   * A byte-exact spill of the payload, written by the Windows wrapper because
+   * PowerShell 5.1 does not carry stdin across the `.ps1 -> node` hop. Takes
+   * precedence over {@link hookInput}; see `fire-options.ts` for the measurement.
+   */
+  hookInputFile?: string;
+  /**
    * PROVENANCE, NOT BEHAVIOUR. The marker the installer embeds so uninstall can
    * recognise its own entry. `fire` accepts it and does nothing with it, and a
    * test pins that: if it ever started changing what `fire` does, the installed
@@ -322,11 +328,50 @@ async function fire(deps: HooksActDeps, agent: string, opts: FireOpts): Promise<
     const home = deps.env.home();
     if (home === undefined) return;
 
-    const raw = opts.hookInput === 'stdin' ? await readStdin() : null;
+    /*
+     * The spill file takes precedence over stdin, because a wrapper that wrote one
+     * has ALREADY consumed stdin to produce it — falling back would read an empty
+     * pipe and call it "no payload".
+     *
+     * Read as BYTES and no-follow: the parser's whole diagnostic value is that it
+     * describes the wire bytes rather than a decoding of them, and the path comes
+     * from a world-writable temp directory, so following a symlink out of it is a
+     * capability we simply never need.
+     */
+    const spill = opts.hookInputFile ?? null;
+    const spilled = spill === null ? null : deps.fs.readBytesNoFollow(spill);
+    const raw =
+      spill !== null
+        ? spilled === null
+          ? null
+          : Buffer.from(spilled)
+        : opts.hookInput === 'stdin'
+          ? await readStdin()
+          : null;
     const payload = parseHookPayload(raw);
 
     const dir = hookStateDir(home);
     const file = new FileHookJournal(deps.fs, hookJournalPath(home), dir);
+
+    /*
+     * A NAMED SPILL THAT CANNOT BE READ IS THE ONE THING WE MUST NOT PASS OVER.
+     *
+     * Everything else that yields an empty payload is a legitimate quiet skip. This
+     * is not: the wrapper wrote a file, said so on the command line, and it is gone
+     * or unreadable by the time we look. Treated as "no payload" it would return at
+     * the repo guard and reproduce EXACTLY the silent zero that cost this plan a
+     * day on Windows — one layer further in, and this time in code that knew better.
+     */
+    if (spill !== null && spilled === null) {
+      file.record({
+        at: deps.clock.nowIso(),
+        phase,
+        agent,
+        repoRoot: null,
+        outcome: { kind: 'failed', cause: 'payload-file-unreadable' },
+      });
+      return;
+    }
 
     /*
      * THE JOURNAL IS CONSTRUCTED BEFORE THE GUARDS BELOW, AND THAT ORDER IS THE FIX.
