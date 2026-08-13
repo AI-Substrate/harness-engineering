@@ -1,0 +1,18 @@
+harness/cli/src/services/hooks/hooks-verbs.ts
+  h_9e71e8b09f7cf2 286-288,290-295,300,590-606,702-703,717-723,727-728,735-736,817-844,846-848
+harness/cli/test/services/hooks/command-runs.test.ts
+  h_9e71e8b09f7cf2 67-83,101-103,105,107-109
+harness/cli/test/services/hooks/status-and-fires.test.ts
+  h_9e71e8b09f7cf2 549-625
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "989bfdbad298618e172a965a3167608ee3af09cd",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
