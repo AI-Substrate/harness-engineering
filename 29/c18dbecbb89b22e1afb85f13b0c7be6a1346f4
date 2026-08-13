@@ -1,0 +1,16 @@
+harness/cli/bin/harness-hook.ps1
+  h_9e71e8b09f7cf2 1-207
+harness/cli/bin/harness-hook.sh
+  h_9e71e8b09f7cf2 1-274
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "29c18dbecbb89b22e1afb85f13b0c7be6a1346f4",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
