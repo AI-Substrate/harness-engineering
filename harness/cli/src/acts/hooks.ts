@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import type { Command } from 'commander';
 import type { Clock } from '../adapters/clock/clock-port.js';
 import type { EnvPort } from '../adapters/env/env-port.js';
@@ -271,8 +272,25 @@ export function hooksDepsFor(
  */
 function hookInvocation(fs: FsPort): string {
   const script = process.argv[1] ?? 'harness';
-  const wrapper = script.replace(/harness\.js$/, 'harness-hook.sh');
-  if (wrapper !== script && fs.exists(wrapper)) return embedBinaryPath(wrapper);
+  /*
+   * DERIVED FROM THIS MODULE'S OWN LOCATION, NOT FROM `process.argv[1]`.
+   *
+   * argv[1] is whatever the user INVOKED, and in a real install that is the npm bin
+   * shim — `<prefix>/bin/harness` — not `<pkg>/harness/cli/bin/harness.js`. A first
+   * version swapped `harness.js` for `harness-hook.sh` in argv[1]; the pattern never
+   * matched a shim, so every real install silently fell back to the old
+   * interpreter+script pair while emitting no error at all.
+   *
+   * IT PASSED LOCALLY BECAUSE I TESTED IT WRONG. Running `node harness/cli/bin/
+   * harness.js` from a checkout gives an argv[1] that DOES end in `harness.js`, so
+   * the swap worked on my machine and nowhere else. Caught by a peer installing the
+   * real tarball and reading the emitted entry — the install shape I never used.
+   *
+   * This module sits at `harness/cli/{src,dist}/acts/hooks.*`, so `../../bin/` is the
+   * wrapper directory from either build, independent of how the CLI was entered.
+   */
+  const wrapper = fileURLToPath(new URL('../../bin/harness-hook.sh', import.meta.url));
+  if (fs.exists(wrapper)) return embedBinaryPath(wrapper);
   // The interpreter and the script, both quoted — one form on every platform, so the
   // string shipped to Windows users is the string every macOS gate run exercises.
   return embedInvocation(process.execPath, script);
