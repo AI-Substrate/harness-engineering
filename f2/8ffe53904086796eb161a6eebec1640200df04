@@ -1,0 +1,14 @@
+harness/cli/test/services/hooks/composed-command.int.test.ts
+  h_9e71e8b09f7cf2 618-630,654-666
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f28ffe53904086796eb161a6eebec1640200df04",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
