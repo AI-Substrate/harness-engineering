@@ -244,6 +244,24 @@ Every Windows claim in this phase is labelled EXPECTED-UNVERIFIED. None is state
    `{ command, powershell, type }`. Copilot parses hook files in **native code**, so the schema is not
    readable from its JS bundle. We ship `type: "command"` — matching the only working example on this
    machine — and deliberately do **not** invent the `powershell` variant.
+
+   > **SUPERSEDED 2026-08-13 — the last clause is no longer true of shipped code.** We now **do**
+   > emit the `powershell` variant for github-copilot, unconditionally on every platform. The
+   > position reversed in `a26e663c` (#108 → PR #118), **after** this plan was archived, and this
+   > paragraph was never amended. The live authority is `agent-matrix.ts:295-300` (the row and its
+   > reasoning), `install-strategy-a.ts:340-356` (the emitter), and
+   > `test/support/writer-shape-parity.ts:252-258` (which pins our entry against git-ai's, so the
+   > field cannot be dropped without that test going red).
+   >
+   > The **unreadable-schema** sentence above still stands, and Q1 below is still **unanswered** —
+   > we do not know whether copilot requires the field or ever prefers it over `command`. What is
+   > newly established (read from git-ai's source, 2026-08-13): `checkpoint_hook`
+   > (`github_copilot.rs:59-69`) is a single unconditional `json!` literal, there is **no
+   > `cfg(windows)` anywhere in that file**, and `normalize_windows_path_for_shell` keys off a
+   > **drive letter, not the platform** — so git-ai emits `powershell` with POSIX paths on Linux and
+   > WSL too. Our unconditional emission matches it. **One divergence it does not cover:** git-ai is
+   > a single native binary, so its form is always `& '<one path>' <args>`; our interpreter-first
+   > invocation emits `& '<node>' '<script>' <args>`, a shape no worked example exists for.
 3. **Path normalisation is simulated, not run.** The `\\?\` prefix strip and the `C:\x\y.exe` →
    `C:/x/y.exe` conversion are asserted against synthesised win32 inputs on macOS. They prove the
    transformation; they do not prove the platform.
