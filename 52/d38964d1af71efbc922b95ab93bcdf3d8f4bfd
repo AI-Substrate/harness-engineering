@@ -1,0 +1,19 @@
+docs/plans/archive/082-harness-hooks/assets/platform-findings.md
+  s_a76964380084ef::t_e9251a02da5a02 247-264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "52d38964d1af71efbc922b95ab93bcdf3d8f4bfd",
+  "prompts": {},
+  "sessions": {
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
