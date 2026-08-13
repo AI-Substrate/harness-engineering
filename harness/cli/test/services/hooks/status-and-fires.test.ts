@@ -430,4 +430,41 @@ describe('a binary path that will not SURVIVE is refused, not installed (plan 08
     expect(cursor?.transientBinarySegment).toBeUndefined();
     expect(cursor?.binaryState).toBe('resolves');
   });
+
+  it('with the run-wide opt-in REMOVED, the guard still refuses — its DEFAULT state', () => {
+    /*
+    Test Doc:
+    - Why: `vitest.config.ts` sets HARNESS_HOOKS_ALLOW_DEV_BINARY=1 for the WHOLE
+      run, because the suite drives the real bin from whatever checkout it sits in
+      and would otherwise be location-dependent. The cost is that the guard is OFF
+      for all 6,060 tests, so every future test of install behaviour inherits the
+      bypass silently and nothing would notice if the guard rotted. This is the one
+      place the DEFAULT (var absent) is asserted, deliberately, so it stays covered.
+    - Contract: with the variable genuinely absent from the process environment, a
+      transient path is refused.
+    - Why the env is read through `process.env` here and a FIXTURE path is used for
+      the binary: reading the real environment is the point (a stubbed reader would
+      re-introduce exactly the bypass under test), while a fixture binary keeps the
+      row location-INDEPENDENT — asserting through the real bin would pass in a
+      worktree and fail in the root checkout, which is the defect, not the test.
+    */
+    const saved = process.env.HARNESS_HOOKS_ALLOW_DEV_BINARY;
+    delete process.env.HARNESS_HOOKS_ALLOW_DEV_BINARY;
+    try {
+      // The suite's own bypass really is gone for the duration — otherwise this
+      // row passes vacuously, which is the failure mode it exists to prevent.
+      expect(process.env.HARNESS_HOOKS_ALLOW_DEV_BINARY).toBeUndefined();
+
+      const report = installHooks(
+        deps({ binary: `"${TRANSIENT}"`, env: (name) => process.env[name] }),
+      );
+
+      expect(report.transientBinary).toBe(true);
+      expect(report.installed).toEqual([]);
+      expect(existsSync(join(home, '.cursor', 'hooks.json'))).toBe(false);
+    } finally {
+      if (saved === undefined) delete process.env.HARNESS_HOOKS_ALLOW_DEV_BINARY;
+      else process.env.HARNESS_HOOKS_ALLOW_DEV_BINARY = saved;
+    }
+  });
 });
