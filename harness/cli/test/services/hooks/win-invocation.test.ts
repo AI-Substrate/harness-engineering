@@ -143,7 +143,11 @@ describe('the emitted command NAMES THE INTERPRETER (row 1)', () => {
       invokes node with no script, or invokes the script with no interpreter —
       and it is a second command string, so the fix to the first does not reach
       it.
-    - Contract: `& '<node>' '<script>' hooks fire …`.
+    - Contract: `& '<node>' --no-warnings '<script>' hooks fire …` — BOTH paths, and
+      the interpreter's FLAGS too. The flags were dropped here while `command`
+      carried them, so one entry held two strings that ran different commands. A
+      hook's stdout is parsed by the agent, so a stray Node warning is not cosmetic,
+      and it is the same defect shape as the path arithmetic above, one field over.
     */
     const invocation = embedInvocation(NODE_WIN, SCRIPT_WIN);
     const entry = buildEntry(spec('github-copilot'), invocation, 'post') as {
@@ -151,12 +155,12 @@ describe('the emitted command NAMES THE INTERPRETER (row 1)', () => {
       powershell?: string;
     };
     expect(entry.powershell).toBe(
-      `& '${NODE_WIN}' '${SCRIPT_WIN}' hooks fire github-copilot --phase post --hook-input stdin --hook-owner ai-substrate-harness-hook-v1`,
+      `& '${NODE_WIN}' --no-warnings '${SCRIPT_WIN}' hooks fire github-copilot --phase post --hook-input stdin --hook-owner ai-substrate-harness-hook-v1`,
     );
   });
 });
 
-describe('status must stat OUR SCRIPT, never the interpreter (the false green)', () => {
+describe('`configuredBinary` is OUR SCRIPT, and the interpreter is stat`d SEPARATELY', () => {
   it('extracts the script from a two-part invocation', () => {
     /*
     Test Doc:
@@ -167,6 +171,13 @@ describe('status must stat OUR SCRIPT, never the interpreter (the false green)',
       green light that cannot go red, which is worse than the bug it hides.
     - Contract: the SCRIPT comes back out, and the interpreter is available
       separately rather than silently discarded.
+    - UPDATED (plan 084): this describe was named "status must stat OUR SCRIPT,
+      NEVER the interpreter", which is now half true and would mislead. Status
+      stats BOTH — `binaryResolves` is the conjunction and `interpreterResolves`
+      reports the second half — because an entry whose node had moved reported
+      `resolves` on a real machine while every fire died. The rule above survives
+      intact and is why the two are separate fields: `configuredBinary` must stay
+      the script, since a lone node stat is the green that cannot go red.
     */
     const command = hookCommand(embedInvocation(NODE_WIN, SCRIPT_WIN), 'cursor', 'post');
     expect(extractBinaryPath(command)).toBe(SCRIPT_WIN);

@@ -145,4 +145,34 @@ describe('what WE write conforms to the published contract', () => {
       copilotSchemaViolations(emitted('"/usr/local/bin/node" --no-warnings "/opt/h/harness.js"')),
     ).toEqual([]);
   });
+
+  it('the posix and powershell strings are EQUIVALENT — same interpreter flags', () => {
+    /*
+    Test Doc:
+    - Why: `command` carried `--no-warnings` and the powershell reconstruction did
+      not, so the two fields IN ONE ENTRY ran different commands — the posix one
+      silenced Node's warnings and the Windows one did not. A hook's stdout is parsed
+      by the agent, so a stray warning is not cosmetic. Same defect shape as
+      reconstructing the path was (F008), one field over.
+    - Contract: whatever flags the interpreter is given, BOTH strings carry them.
+      Asserted on the flags rather than on string equality, because the two forms are
+      legitimately different (`"x" a` vs `& 'x' a`) — only the semantics must match.
+    */
+    const doc = emitted('"/usr/local/bin/node" --no-warnings "/opt/h/harness.js"') as {
+      hooks: Record<string, Record<string, unknown>[]>;
+    };
+
+    for (const entries of Object.values(doc.hooks)) {
+      for (const entry of entries) {
+        const posix = entry.command as string;
+        const pwsh = entry.powershell as string;
+        expect(posix).toContain('--no-warnings');
+        // The half that was missing: the flag was dropped on the way to powershell.
+        expect(pwsh).toContain('--no-warnings');
+        // And it belongs to the INTERPRETER, before the script — a flag after the
+        // script path would reach our CLI as an argument instead.
+        expect(pwsh.indexOf('--no-warnings')).toBeLessThan(pwsh.indexOf('harness.js'));
+      }
+    }
+  });
 });

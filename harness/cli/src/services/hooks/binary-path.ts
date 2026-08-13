@@ -315,13 +315,25 @@ const WORKTREE_SUFFIX = 'worktrees';
 /**
  * Directory names that mean "someone's working tree or a cache", never an install.
  *
- * `_npx` is here even though every npx path also carries `node_modules`: it is the
- * segment that explains WHY the target vanished, and a message naming the cache is
- * worth more to the reader than one naming its interior.
+ * `node_modules` IS DELIBERATELY ABSENT, and it was here until it was measured. It
+ * looks like the obvious entry and it refuses the two most normal ways to consume us:
+ *
+ *   npm i -g   ->  <prefix>/lib/node_modules/@ai-substrate/engineering-harness/…
+ *   npm i -D   ->  <project>/node_modules/.bin/harness
+ *
+ * The first is THE PAVED PATH. A rule that refuses it does not harden the install, it
+ * abolishes it — `harness hooks install` would have refused every global install on
+ * every machine, which is a worse failure than the one this guard exists to prevent.
+ * Both paths are durable: npm replaces a global package's contents IN PLACE on
+ * upgrade, and a project's `node_modules` lives exactly as long as the project.
+ *
+ * Nothing is lost by dropping it. An npx cache is caught by `_npx`, which every such
+ * path carries, and which names the actual reason the target vanishes; a worktree's
+ * `node_modules` is caught by the worktree suffix. `node_modules` was catching those
+ * two cases by coincidence and the paved path on purpose.
  */
 const DEV_TREE_SEGMENTS: Record<string, true> = {
   scratch: true,
-  node_modules: true,
   _npx: true,
   src: true,
   dist: true,

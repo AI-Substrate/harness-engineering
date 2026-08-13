@@ -348,10 +348,25 @@ export function buildEntry(
     // `& '<path>'` with embedded single quotes doubled — powershell's own escaping,
     // and the form git-ai writes (github_copilot.rs:59-69).
     const psQuote = (path: string) => `'${path.replace(/'/g, "''")}'`;
+    /*
+     * THE INTERPRETER FLAGS TRAVEL WITH THE INTERPRETER, on both strings.
+     *
+     * They did not. `command` carried `--no-warnings` and this reconstruction
+     * dropped it, so the two fields IN ONE ENTRY ran different commands — the posix
+     * one silenced Node's warnings and the Windows one did not. A hook's stdout is
+     * parsed by the agent, so a stray warning is not cosmetic; and a divergence
+     * between two strings that are supposed to be the same command is the same
+     * defect shape as reconstructing the path was (F008), one field over.
+     *
+     * Rebuilt from INTERPRETER_FLAGS rather than re-parsed out of `command`, so
+     * there is one definition of what the interpreter is given and both strings read
+     * it. Re-parsing would have re-created the divergence the moment a flag changed.
+     */
+    const flags = INTERPRETER_FLAGS.length === 0 ? '' : ` ${INTERPRETER_FLAGS.join(' ')}`;
     const invocation =
       interpreter === null
         ? `& ${psQuote(script)}`
-        : `& ${psQuote(interpreter)} ${psQuote(script)}`;
+        : `& ${psQuote(interpreter)}${flags} ${psQuote(script)}`;
     Object.assign(extras, { powershell: `${invocation} ${hookArgs(spec.agent, phase)}` });
   }
 

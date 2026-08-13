@@ -143,7 +143,6 @@ describe('the written path is ABSOLUTE and points at an install (dw-0017)', () =
     ],
     ['a source tree', '/Users/x/repo/src/index.ts', 'src'],
     ['a build output', '/Users/x/repo/dist/index.js', 'dist'],
-    ['inside node_modules', '/Users/x/repo/node_modules/.bin/harness', 'node_modules'],
     ['a worktree', '/Users/x/worktrees/branch/bin/harness', 'worktrees'],
     [
       "an npx cache — the MEASURED hazard in Jordan's WSL devcontainer",
@@ -186,6 +185,30 @@ describe('the written path is ABSOLUTE and points at an install (dw-0017)', () =
   ])('ACCEPTS %s', (_name, path) => {
     // The positive control: a predicate that refused everything would pass every
     // row above while making installation impossible.
+    expect(transientSegment(path)).toBeNull();
+  });
+
+  it.each([
+    [
+      'a GLOBAL npm install — THE PAVED PATH',
+      '/Users/ada/.npm-global/lib/node_modules/@ai-substrate/engineering-harness/harness/cli/bin/harness.js',
+    ],
+    ['a local devDependency', '/Users/ada/project/node_modules/.bin/harness'],
+  ])('ACCEPTS %s — `node_modules` alone is NOT transient', (_name, path) => {
+    /*
+    Test Doc:
+    - Why: `node_modules` was in the refusal set and looked obviously right. It is
+      not. It refuses the two most normal ways to consume this package, and the
+      first of them is the paved path — a rule that refuses `npm i -g` does not
+      harden the install, it ABOLISHES it. Measured before removal: both rows below
+      were refused, so `harness hooks install` would have refused every global
+      install on every machine.
+    - Contract: both are durable and both are accepted. npm replaces a global
+      package's contents IN PLACE on upgrade, and a project's `node_modules` lives
+      exactly as long as the project.
+    - Nothing is lost: the npx row above still refuses, because every npx path
+      carries `_npx` — which also names the real reason the target vanishes.
+    */
     expect(transientSegment(path)).toBeNull();
   });
 });
