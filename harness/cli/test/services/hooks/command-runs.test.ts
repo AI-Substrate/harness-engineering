@@ -64,6 +64,23 @@ const realScript = () => {
   return path;
 };
 
+/**
+ * An interpreter path that EXISTS, for the same reason {@link realScript} does.
+ *
+ * `binaryState` is the conjunction of BOTH halves of the invocation (plan 084), so a
+ * row asserting `resolves` has to supply a real interpreter as well as a real
+ * script. Before that change the hardcoded `/usr/local/bin/node` below was never
+ * checked, so it did not matter that it does not exist on this machine — which is a
+ * small live instance of the very defect: a fixture claiming a resolvable hook while
+ * naming an interpreter that was not there.
+ */
+const realInterpreter = () => {
+  const path = join(home, 'bin', 'node');
+  mkdirSync(join(home, 'bin'), { recursive: true });
+  writeFileSync(path, '#!/bin/sh\n');
+  return path;
+};
+
 beforeEach(() => {
   home = mkdtempSync(join(tmpdir(), 'harness-runs-'));
 });
@@ -81,12 +98,15 @@ describe('executionState — the check that would have caught this (row 3)', () 
       states an operator reads as working.
     */
     const script = realScript();
+    // BOTH halves real, so `binaryState` genuinely cannot excuse the row below —
+    // which is the whole point of this fixture and now requires the interpreter too.
+    const node = realInterpreter();
     const { probe } = fakeProbe({ ok: true, evidence: false });
-    installed({ binary: embedInvocation('/usr/local/bin/node', script), probe });
+    installed({ binary: embedInvocation(node, script), probe });
 
-    const row = statusHooks(
-      deps({ binary: embedInvocation('/usr/local/bin/node', script), probe }),
-    ).find((r) => r.agent === 'cursor');
+    const row = statusHooks(deps({ binary: embedInvocation(node, script), probe })).find(
+      (r) => r.agent === 'cursor',
+    );
 
     expect(row?.binaryState).toBe('resolves');
     expect(row?.executionState).toBe('inert');

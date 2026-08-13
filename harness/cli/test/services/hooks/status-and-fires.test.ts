@@ -546,3 +546,80 @@ describe('firesObserved — did the AGENT call us, as opposed to can WE run (pla
     expect(row?.firesObserved).toEqual({ total: 1, failed: 0, lastAt: 'T-cursor-recorded' });
   });
 });
+
+describe('the INTERPRETER is half the invocation, and it is the half that moves (plan 084)', () => {
+  /*
+  Test Doc:
+  - Why: MEASURED in a WSL devcontainer 2026-08-13. The hook entry named
+    `/usr/local/bin/node`; node was actually nvm-managed at
+    `/usr/local/share/nvm/versions/node/v24.19.0/bin/node`. The SCRIPT was present
+    the whole time, so `binaryResolves` — which read the script alone — reported
+    true and `binaryState` reported `resolves`. Green on every field, dead on every
+    fire. git-ai's hook on the same box was dead the same way
+    (`/home/vscode/.git-ai/bin/git-ai` absent), so this is not ours alone: it is
+    what capturing an absolute interpreter path at install time costs on a machine
+    whose toolchain moves.
+  - Contract: `binaryResolves` is the CONJUNCTION of both halves, and the report
+    says WHICH half is missing rather than making the reader guess.
+  - An interpreter path is the least stable thing in the entry: `nvm use` repoints
+    it, `nvm uninstall` deletes the version directory, a homebrew upgrade retires
+    `/opt/homebrew/Cellar/node/<version>/…` (this host's own hook names one).
+  */
+  const installWith = (interpreter: string, script: string) => {
+    mkdirSync(join(home, '.cursor'), { recursive: true });
+    installHooks(deps({ binary: `"${interpreter}" --no-warnings "${script}"` }));
+  };
+  const cursor = () => statusHooks(deps()).find((r) => r.agent === 'cursor');
+
+  const presentScript = () => {
+    const script = join(home, 'app', 'harness.js');
+    mkdirSync(join(home, 'app'), { recursive: true });
+    writeFileSync(script, '#!/usr/bin/env node\n');
+    return script;
+  };
+
+  it('a MISSING interpreter makes the hook unresolvable, even with the script present', () => {
+    const script = presentScript();
+    installWith('/usr/local/bin/node', script);
+
+    const row = cursor();
+    // The script really is there — otherwise this passes for the wrong reason and
+    // proves nothing about the interpreter.
+    expect(existsSync(script)).toBe(true);
+    expect(row?.configuredBinary).toBe(script);
+
+    expect(row?.configuredInterpreter).toBe('/usr/local/bin/node');
+    expect(row?.interpreterResolves).toBe(false);
+    expect(row?.binaryResolves).toBe(false);
+    expect(row?.binaryState).toBe('unresolvable');
+  });
+
+  it('BOTH present resolves — the positive control', () => {
+    const script = presentScript();
+    const node = join(home, 'nodebin', 'node');
+    mkdirSync(join(home, 'nodebin'), { recursive: true });
+    writeFileSync(node, '#!/bin/sh\n');
+    installWith(node, script);
+
+    const row = cursor();
+    expect(row?.interpreterResolves).toBe(true);
+    expect(row?.binaryResolves).toBe(true);
+    expect(row?.binaryState).toBe('resolves');
+  });
+
+  it('a single-binary invocation reports NO interpreter rather than a false one', () => {
+    // git-ai's shape, and our own when the bin is directly executable. An absent
+    // field is the honest answer; `interpreterResolves: true` would assert a
+    // successful check of something that was never checked.
+    const bin = join(home, 'bin', 'harness');
+    mkdirSync(join(home, 'bin'), { recursive: true });
+    mkdirSync(join(home, '.cursor'), { recursive: true });
+    writeFileSync(bin, '#!/bin/sh\n');
+    installHooks(deps({ binary: `"${bin}"` }));
+
+    const row = cursor();
+    expect(row?.configuredInterpreter).toBeUndefined();
+    expect(row?.interpreterResolves).toBeUndefined();
+    expect(row?.binaryState).toBe('resolves');
+  });
+});

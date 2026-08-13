@@ -283,13 +283,21 @@ export function installHooks(deps: HooksDeps): InstallReport {
    * reach that call site), and the refusal message names it. An operator who means
    * it can proceed; nobody gets there by accident.
    */
+  // BOTH HALVES ARE CHECKED, and the interpreter is the one that actually moves.
+  // A guard that read only the script would have passed the WSL entry that started
+  // this: its script was fine and its `node` was gone.
   const script = extractBinaryPath(deps.binary) ?? deps.binary;
-  const segment = transientSegment(script);
+  const interpreter = extractInterpreterPath(deps.binary);
+  const offender =
+    transientSegment(script) === null && interpreter !== null
+      ? ([interpreter, transientSegment(interpreter)] as const)
+      : ([script, transientSegment(script)] as const);
+  const [offendingPath, segment] = offender;
   if (segment !== null && deps.env('HARNESS_HOOKS_ALLOW_DEV_BINARY') !== '1') {
     return {
       optedOut: false,
       transientBinary: true,
-      transientBinaryDetail: `refusing to install: the hook would invoke ${script}, which is under \`${segment}\` and will not survive (an npx cache is garbage-collected, a worktree moves, a checkout is cleaned). A hook exits 0 and prints nothing, so when that path goes the failure is silent. Install harness durably and re-run, or set HARNESS_HOOKS_ALLOW_DEV_BINARY=1 to install this path anyway.`,
+      transientBinaryDetail: `refusing to install: the hook would invoke ${offendingPath}, which is under \`${segment}\` and will not survive (an npx cache is garbage-collected, a worktree moves, a checkout is cleaned). A hook exits 0 and prints nothing, so when that path goes the failure is silent. Install harness durably and re-run, or set HARNESS_HOOKS_ALLOW_DEV_BINARY=1 to install this path anyway.`,
       installed: [],
       refused: [],
       refusedUpgrades: [],
@@ -580,6 +588,23 @@ export interface StatusReport extends AgentReport {
   /** Config files we would write, and whether each exists. */
   files: { path: string; exists: boolean }[];
   /**
+   * The INTERPRETER the installed entry names, and whether it resolves — absent for
+   * a single-binary invocation that names none.
+   *
+   * SEPARATE FROM {@link StatusReport.configuredBinary}, because the two fail
+   * independently and the interpreter fails far more often. `binaryResolves` used to
+   * describe the SCRIPT alone, so an entry whose `node` had moved reported
+   * `resolves` — green on every field, dead on every fire. Measured in a WSL
+   * devcontainer 2026-08-13: the entry named `/usr/local/bin/node` while node lived
+   * at `/usr/local/share/nvm/versions/node/v24.19.0/bin/node`, and the script was
+   * present throughout.
+   *
+   * `binaryResolves` is now the CONJUNCTION — both halves must exist for the command
+   * to run — and these two fields say which half is missing.
+   */
+  configuredInterpreter?: string;
+  interpreterResolves?: boolean;
+  /**
    * The binary the installed entry points at, and whether it RESOLVES.
    *
    * An entry naming a file that no longer exists is indistinguishable from a
@@ -674,7 +699,8 @@ export function statusHooks(deps: HooksDeps): StatusReport[] {
       path,
       exists: deps.fs.exists(path),
     }));
-    const configured = configuredBinaryFor(deps, spec);
+    const invocation = configuredInvocationFor(deps, spec);
+    const configured = invocation?.script ?? null;
     if (configured === null)
       return {
         ...report,
@@ -688,17 +714,26 @@ export function statusHooks(deps: HooksDeps): StatusReport[] {
     // and each agent writes a pre and a post command, so a check that looked at
     // one would report health for a set it had not examined.
     const unaccepted = [...new Set(ourCommands(deps, spec).flatMap(unacceptedOptions))];
-    const resolves = deps.fs.exists(configured);
+    // BOTH HALVES must exist for the command to run. Checking only the script is
+    // what reported a healthy hook on a box where `node` had moved (see
+    // `configuredInvocationFor`).
+    const scriptResolves = deps.fs.exists(configured);
+    const interpreter = invocation?.interpreter ?? null;
+    const interpreterResolves = interpreter === null ? null : deps.fs.exists(interpreter);
+    const resolves = scriptResolves && interpreterResolves !== false;
     // The CONFIGURED path, not the running one: status reports on what is on disk
     // in the user's agent, which may have been written by a different harness on a
     // different day — which is exactly the case that produced this field.
-    const transient = transientSegment(configured);
+    const transient =
+      transientSegment(configured) ?? (interpreter === null ? null : transientSegment(interpreter));
     const execution = probeExecution(deps, spec);
     return {
       ...report,
       files,
       configuredBinary: configured,
       binaryResolves: resolves,
+      ...(interpreter === null ? {} : { configuredInterpreter: interpreter }),
+      ...(interpreterResolves === null ? {} : { interpreterResolves }),
       ...(transient === null ? {} : { transientBinarySegment: transient }),
       binaryState: resolves ? 'resolves' : 'unresolvable',
       commandState: unaccepted.length === 0 ? 'accepted' : 'unknown-options',
@@ -779,10 +814,38 @@ function isInstalled(deps: HooksDeps, spec: AgentSpec): boolean {
   return ourCommands(deps, spec).length > 0;
 }
 
-/** The binary path our installed entry names, or `null` when we are not installed. */
-function configuredBinaryFor(deps: HooksDeps, spec: AgentSpec): string | null {
+/**
+ * BOTH HALVES of the invocation our installed entry names — `null` when we are not
+ * installed, and `interpreter: null` for a single-binary invocation that names none.
+ *
+ * THE INTERPRETER WAS NEVER CHECKED, AND THAT IS WHAT MADE THE FAILURE INVISIBLE
+ * (plan 084). This read `extractBinaryPath` alone, which returns the SCRIPT, so
+ * status reported `binaryState: 'resolves'` — green, healthy, nothing to see — for
+ * an entry whose `node` was gone. Both halves must exist for the command to run,
+ * so both halves are read.
+ *
+ * MEASURED, in Jordan's WSL devcontainer 2026-08-13: the entry named
+ * `/usr/local/bin/node`, while node was actually nvm-managed at
+ * `/usr/local/share/nvm/versions/node/v24.19.0/bin/node`. The script was present the
+ * whole time. git-ai's hook on the same box was dead for the identical reason —
+ * `/home/vscode/.git-ai/bin/git-ai` absent — so this is not a copilot problem and
+ * not ours alone: it is what capturing an absolute interpreter path at install time
+ * costs on any machine whose toolchain moves.
+ *
+ * AN INTERPRETER PATH IS THE LEAST STABLE THING IN THE ENTRY. `nvm use` repoints it,
+ * `nvm uninstall` deletes the version directory outright, a homebrew upgrade retires
+ * `/opt/homebrew/Cellar/node/<version>/…` (this host's own hook names one), and a
+ * devcontainer rebuild can swap a system node for an nvm one. The script survives
+ * all four.
+ */
+function configuredInvocationFor(
+  deps: HooksDeps,
+  spec: AgentSpec,
+): { script: string; interpreter: string | null } | null {
   const [command] = ourCommands(deps, spec);
-  return command === undefined ? null : extractBinaryPath(command);
+  if (command === undefined) return null;
+  const script = extractBinaryPath(command);
+  return script === null ? null : { script, interpreter: extractInterpreterPath(command) };
 }
 
 /**
