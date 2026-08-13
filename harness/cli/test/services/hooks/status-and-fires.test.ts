@@ -651,3 +651,48 @@ describe('the INTERPRETER is half the invocation, and it is the half that moves 
     expect(row?.binaryState).toBe('resolves');
   });
 });
+
+describe('a wrapper entry is INVOKED, not stat`d (plan 085)', () => {
+  /*
+  Test Doc:
+  - Why: the wrapper moves the false green up one layer. `fs.exists` on a wrapper
+    answers "is the file there"; a wrapper that IS there and cannot find an
+    interpreter is exactly the state this whole plan exists to stop reporting as
+    healthy. Statting it would have rebuilt the defect the plan removed.
+  - Contract: when the check reports failure, `binaryState` is `unresolvable` even
+    though the wrapper file exists and stats fine.
+  */
+  const wrapperBinary = () => {
+    const w = join(home, 'bin', 'harness-hook.sh');
+    mkdirSync(join(home, 'bin'), { recursive: true });
+    writeFileSync(w, '#!/bin/sh\nexit 0\n');
+    return `"${w}"`;
+  };
+
+  it('a wrapper that EXISTS but resolves nothing is NOT healthy', () => {
+    mkdirSync(join(home, '.cursor'), { recursive: true });
+    const binary = wrapperBinary();
+    installHooks(deps({ binary }));
+
+    const row = statusHooks(deps({ checkWrapper: () => ({ ok: false, step: 'none' }) })).find(
+      (r) => r.agent === 'cursor',
+    );
+
+    // The file is present — a stat-based check would report healthy here.
+    expect(existsSync(join(home, 'bin', 'harness-hook.sh'))).toBe(true);
+    expect(row?.binaryState).toBe('unresolvable');
+    expect(row?.wrapperResolution).toEqual({ ok: false, step: 'none' });
+  });
+
+  it('and reports WHICH tier resolved it when it works', () => {
+    mkdirSync(join(home, '.cursor'), { recursive: true });
+    installHooks(deps({ binary: wrapperBinary() }));
+
+    const row = statusHooks(
+      deps({ checkWrapper: () => ({ ok: true, step: 'path', interpreter: '/x/node' }) }),
+    ).find((r) => r.agent === 'cursor');
+
+    expect(row?.binaryState).toBe('resolves');
+    expect(row?.wrapperResolution?.step).toBe('path');
+  });
+});

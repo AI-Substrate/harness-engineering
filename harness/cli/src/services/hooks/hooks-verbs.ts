@@ -145,6 +145,16 @@ export function optOutNotice(env: (name: string) => string | undefined): string 
     : base;
 }
 
+/** What the wrapper's own check mode reported. See {@link HooksDeps.checkWrapper}. */
+export interface WrapperResolution {
+  /** Did it find a usable interpreter? (`--harness-hook-check` exited 0.) */
+  ok: boolean;
+  /** Which tier resolved it — `path`, `relative-to-self`, `manager-shim`, … or `none`. */
+  step: string;
+  /** The interpreter it would use, when there is one. */
+  interpreter?: string;
+}
+
 export interface HooksDeps {
   fs: FsPort;
   home: string;
@@ -156,6 +166,12 @@ export interface HooksDeps {
    * 'unchecked'` — an honest "we did not look", never a green.
    */
   probe?: InvocationProbe;
+  /**
+   * INVOKE a shipped wrapper's check mode. Absent ⇒ the wrapper is stat'd instead,
+   * which is the weaker answer and is why this is injected rather than optional in
+   * practice: statting reports healthy for a wrapper that cannot find an interpreter.
+   */
+  checkWrapper?: (wrapper: string) => WrapperResolution;
 }
 
 /** Every agent we know about, with what we can say about each. */
@@ -727,15 +743,30 @@ export function statusHooks(deps: HooksDeps): StatusReport[] {
     const transient =
       transientSegment(configured) ?? (interpreter === null ? null : transientSegment(interpreter));
     const execution = probeExecution(deps, spec);
+    /*
+     * A WRAPPER ENTRY IS INVOKED, NOT STAT'D.
+     *
+     * `fs.exists` on a wrapper answers "is the file there", and a wrapper that is
+     * there but cannot find an interpreter reports healthy — the exact false green
+     * this plan removed one layer down, rebuilt one layer up. Its check mode resolves
+     * in pure shell and starts no node, so this costs a fork rather than a CLI boot,
+     * which is why it is on by default where `probeExecution` is opt-in.
+     */
+    const wrapper = configured.endsWith('harness-hook.sh') ? configured : null;
+    const wrapperCheck =
+      wrapper === null || deps.checkWrapper === undefined ? null : deps.checkWrapper(wrapper);
     return {
       ...report,
       files,
       configuredBinary: configured,
-      binaryResolves: resolves,
+      binaryResolves: wrapperCheck === null ? resolves : wrapperCheck.ok,
+      ...(wrapperCheck === null ? {} : { wrapperResolution: wrapperCheck }),
       ...(interpreter === null ? {} : { configuredInterpreter: interpreter }),
       ...(interpreterResolves === null ? {} : { interpreterResolves }),
       ...(transient === null ? {} : { transientBinarySegment: transient }),
-      binaryState: resolves ? 'resolves' : 'unresolvable',
+      binaryState: (wrapperCheck === null ? resolves : wrapperCheck.ok)
+        ? 'resolves'
+        : 'unresolvable',
       commandState: unaccepted.length === 0 ? 'accepted' : 'unknown-options',
       ...(unaccepted.length === 0 ? {} : { unacceptedOptions: unaccepted }),
       ...execution,

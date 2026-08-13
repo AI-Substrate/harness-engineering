@@ -1,6 +1,7 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { hooksDepsFor } from '../../../src/acts/hooks.js';
 import { NodeFs } from '../../../src/adapters/fs/node-fs.js';
@@ -231,9 +232,29 @@ describe('the PRODUCTION composition, not a re-derivation (F008 review F3)', () 
    * two paths we embed are the running interpreter and the running script, taken
    * from the process rather than reconstructed.
    */
-  it('names the RUNNING interpreter and the RUNNING script', () => {
+  it('names the shipped WRAPPER, or the running interpreter+script when there is none', () => {
+    /*
+    Test Doc:
+    - UPDATED (plan 085). This pinned the interpreter+script pair exactly, so it
+      failed the moment install began preferring the wrapper — a fixture correctly
+      refusing a contract change rather than a regression.
+    - The pair is still the FALLBACK and still asserted below, because a tree without
+      the wrapper must keep working. What must never happen is naming neither.
+    - The composition is read from the PRODUCTION path (`hooksDepsFor`) rather than
+      re-derived here: a re-derivation tests the test.
+    */
     const deps = hooksDepsFor(new NodeFs(), home, { get: () => undefined });
     expect(deps).not.toBeNull();
+
+    const wrapper = fileURLToPath(new URL('../../../bin/harness-hook.sh', import.meta.url));
+    if (existsSync(wrapper)) {
+      // The wrapper ships in this tree, so the production path must name it — one
+      // token, no interpreter, because the wrapper resolves that when the hook fires.
+      expect(deps?.binary).toBe(quoteForShell(normaliseBinaryPath(wrapper)));
+      expect(extractInterpreterPath(`${deps?.binary} hooks fire cursor`)).toBeNull();
+      return;
+    }
+
     expect(deps?.binary).toBe(
       `${quoteForShell(normaliseBinaryPath(process.execPath))} --no-warnings ${quoteForShell(
         normaliseBinaryPath(process.argv[1] ?? 'harness'),

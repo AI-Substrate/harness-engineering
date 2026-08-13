@@ -1,14 +1,16 @@
+import { fileURLToPath } from 'node:url';
 import type { Command } from 'commander';
 import type { Clock } from '../adapters/clock/clock-port.js';
 import type { EnvPort } from '../adapters/env/env-port.js';
 import { HOOK_SELF_TEST_MARKER } from '../adapters/exec/invocation-probe-port.js';
 import { spawnInvocationProbe } from '../adapters/exec/spawn-invocation-probe.js';
+import { spawnWrapperCheck } from '../adapters/exec/spawn-wrapper-check.js';
 import type { FsPort } from '../adapters/fs/fs-port.js';
 import { ExecGit } from '../adapters/git/exec-git.js';
 import { ExecGitAttribution } from '../adapters/git/exec-git-attribution.js';
 import { NodeHash } from '../adapters/hash/node-hash.js';
 import { NodeSocketProbe } from '../adapters/net/node-socket-probe.js';
-import { embedInvocation } from '../services/hooks/binary-path.js';
+import { embedBinaryPath, embedInvocation } from '../services/hooks/binary-path.js';
 import {
   CommitIntercept,
   type HookJournal,
@@ -46,6 +48,12 @@ export interface HooksActDeps {
 interface FireOpts {
   phase?: string;
   hookInput?: string;
+  /**
+   * A byte-exact spill of the payload, written by the Windows wrapper because
+   * PowerShell 5.1 does not carry stdin across the `.ps1 -> node` hop. Takes
+   * precedence over {@link hookInput}; see `fire-options.ts` for the measurement.
+   */
+  hookInputFile?: string;
   /**
    * PROVENANCE, NOT BEHAVIOUR. The marker the installer embeds so uninstall can
    * recognise its own entry. `fire` accepts it and does nothing with it, and a
@@ -244,12 +252,54 @@ export function hooksDepsFor(
     fs,
     home: home.replace(/\\/g, '/').replace(/\/+$/, ''),
     env: (name) => env.get(name),
-    // The INVOCATION the hook command names — interpreter and script, resolved,
-    // normalised and ALWAYS quoted. One form on every platform: the string
-    // shipped to Windows users is then the string every macOS gate run
-    // exercises, and that divergence is what let F008 live.
-    binary: embedInvocation(process.execPath, process.argv[1] ?? 'harness'),
+    binary: hookInvocation(fs),
+    // Injected, not imported by the service: statting a wrapper reports healthy for
+    // one that cannot find an interpreter, so status INVOKES it (plan 085).
+    checkWrapper: spawnWrapperCheck,
   };
+}
+
+/**
+ * WHAT THE HOOK ENTRY WILL NAME — the shipped wrapper when it is there, and the raw
+ * interpreter+script pair when it is not.
+ *
+ * THE WRAPPER IS PREFERRED BECAUSE THE INTERPRETER PATH IS THE THING THAT MOVES.
+ * Naming `<node> <script>` bakes an absolute interpreter captured at install time,
+ * and that is the measured defect: a devcontainer entry named `/usr/local/bin/node`
+ * while node was nvm-managed elsewhere, and every fire died in silence. The wrapper
+ * resolves the interpreter when the hook FIRES, so the entry survives a toolchain
+ * that moves under it.
+ *
+ * IT IS PROBED, NEVER ASSUMED. `harness/cli/bin` is in `package.json#files`, so an
+ * installed copy has it — but a hand-assembled tree, a partial copy, or a future
+ * packaging change might not, and an entry naming a wrapper that is not there is
+ * exactly the class being removed. If it is absent we fall back to the pair, which
+ * still works; the fallback is a lesser install, not a broken one.
+ */
+function hookInvocation(fs: FsPort): string {
+  const script = process.argv[1] ?? 'harness';
+  /*
+   * DERIVED FROM THIS MODULE'S OWN LOCATION, NOT FROM `process.argv[1]`.
+   *
+   * argv[1] is whatever the user INVOKED, and in a real install that is the npm bin
+   * shim — `<prefix>/bin/harness` — not `<pkg>/harness/cli/bin/harness.js`. A first
+   * version swapped `harness.js` for `harness-hook.sh` in argv[1]; the pattern never
+   * matched a shim, so every real install silently fell back to the old
+   * interpreter+script pair while emitting no error at all.
+   *
+   * IT PASSED LOCALLY BECAUSE I TESTED IT WRONG. Running `node harness/cli/bin/
+   * harness.js` from a checkout gives an argv[1] that DOES end in `harness.js`, so
+   * the swap worked on my machine and nowhere else. Caught by a peer installing the
+   * real tarball and reading the emitted entry — the install shape I never used.
+   *
+   * This module sits at `harness/cli/{src,dist}/acts/hooks.*`, so `../../bin/` is the
+   * wrapper directory from either build, independent of how the CLI was entered.
+   */
+  const wrapper = fileURLToPath(new URL('../../bin/harness-hook.sh', import.meta.url));
+  if (fs.exists(wrapper)) return embedBinaryPath(wrapper);
+  // The interpreter and the script, both quoted — one form on every platform, so the
+  // string shipped to Windows users is the string every macOS gate run exercises.
+  return embedInvocation(process.execPath, script);
 }
 
 /** Run one read/write verb and print it. Never throws out of the action. */
@@ -278,11 +328,50 @@ async function fire(deps: HooksActDeps, agent: string, opts: FireOpts): Promise<
     const home = deps.env.home();
     if (home === undefined) return;
 
-    const raw = opts.hookInput === 'stdin' ? await readStdin() : null;
+    /*
+     * The spill file takes precedence over stdin, because a wrapper that wrote one
+     * has ALREADY consumed stdin to produce it — falling back would read an empty
+     * pipe and call it "no payload".
+     *
+     * Read as BYTES and no-follow: the parser's whole diagnostic value is that it
+     * describes the wire bytes rather than a decoding of them, and the path comes
+     * from a world-writable temp directory, so following a symlink out of it is a
+     * capability we simply never need.
+     */
+    const spill = opts.hookInputFile ?? null;
+    const spilled = spill === null ? null : deps.fs.readBytesNoFollow(spill);
+    const raw =
+      spill !== null
+        ? spilled === null
+          ? null
+          : Buffer.from(spilled)
+        : opts.hookInput === 'stdin'
+          ? await readStdin()
+          : null;
     const payload = parseHookPayload(raw);
 
     const dir = hookStateDir(home);
     const file = new FileHookJournal(deps.fs, hookJournalPath(home), dir);
+
+    /*
+     * A NAMED SPILL THAT CANNOT BE READ IS THE ONE THING WE MUST NOT PASS OVER.
+     *
+     * Everything else that yields an empty payload is a legitimate quiet skip. This
+     * is not: the wrapper wrote a file, said so on the command line, and it is gone
+     * or unreadable by the time we look. Treated as "no payload" it would return at
+     * the repo guard and reproduce EXACTLY the silent zero that cost this plan a
+     * day on Windows — one layer further in, and this time in code that knew better.
+     */
+    if (spill !== null && spilled === null) {
+      file.record({
+        at: deps.clock.nowIso(),
+        phase,
+        agent,
+        repoRoot: null,
+        outcome: { kind: 'failed', cause: 'payload-file-unreadable' },
+      });
+      return;
+    }
 
     /*
      * THE JOURNAL IS CONSTRUCTED BEFORE THE GUARDS BELOW, AND THAT ORDER IS THE FIX.

@@ -454,3 +454,71 @@ describe('the repair reaches installs that ALREADY EXIST (plan 082 F010 F5)', ()
     expect(readFileSync(cursorConfig(), 'utf8')).toBe(before);
   });
 });
+
+/**
+ * THE THIRD SHAPE (plan 085) — and this file's own rule caught it.
+ *
+ * The header above states it: "a shape change is never done until the READER has
+ * been asked what it does with both." Plan 085 introduced a third command shape —
+ * the shipped WRAPPER as a single token, resolving an interpreter at FIRE time —
+ * and one reader was not asked: the CURRENCY predicate that decides whether an
+ * installed entry needs upgrading.
+ *
+ * IT FAILED SILENT, AND TOTAL. `requiredInvocationParts` returned `null` for any
+ * binary naming no interpreter, so the moment the wrapper shipped, the entire
+ * upgrade path returned immediately for every agent, on every run. Every existing
+ * install — every machine in the fleet — would have kept its pre-wrapper command
+ * forever while `hooks install` cheerfully reported `already-present`. That is the
+ * exact failure the upgrade path was WRITTEN to prevent, reintroduced by removing
+ * its caller rather than by changing its logic.
+ */
+describe('an INTERPRETER-form entry is upgraded to the WRAPPER form (plan 085)', () => {
+  /** What we write SINCE 085 — the shipped wrapper, one token, no interpreter. */
+  const wrapperBinary = () => embedBinaryPath(join(home, 'bin', 'harness-hook.sh'));
+
+  it('rewrites a pre-wrapper entry, exactly one per key, naming the wrapper', () => {
+    /*
+    Test Doc:
+    - Why: without this the wrapper reaches nobody who already has hooks installed —
+      which is everyone it was built for. The interpreter-form entry is CURRENT under
+      the old rule (it names an interpreter), so it short-circuits as already-present.
+    - Contract: one entry per event key afterwards, each naming the wrapper.
+    */
+    installHooks(deps());
+    expect(extractInterpreterPath(readCursor().hooks.preToolUse[0].command)).toBe(NODE);
+
+    installHooks(deps({ binary: wrapperBinary() }));
+
+    const after = readCursor();
+    expect(after.hooks.preToolUse.length).toBe(1);
+    expect(after.hooks.postToolUse.length).toBe(1);
+    for (const entry of [...after.hooks.preToolUse, ...after.hooks.postToolUse]) {
+      expect(
+        extractBinaryPath(entry.command)?.endsWith('harness-hook.sh'),
+        'the upgraded entry must name the wrapper',
+      ).toBe(true);
+    }
+  });
+
+  it('does NOT churn once it already names a wrapper — a DIFFERENT path is still current', () => {
+    /*
+    Test Doc:
+    - Why: the counter-row, and it pins the looseness on purpose. A global install, an
+      npx run and a dev checkout name three different absolute wrapper paths and all
+      three are correct, so currency must be judged structurally. String equality here
+      would rewrite every config on every run for two users sharing a machine — and
+      `installHooks` compensates a failed provenance write by undoing "what THIS run
+      wrote", so needless churn hands the compensation a healthy hook to undo.
+    - Contract: `alreadyPresent`, and a byte-identical file, even though the binary
+      offered on the second run is a wrapper at a DIFFERENT path.
+    */
+    installHooks(deps({ binary: wrapperBinary() }));
+    const before = readFileSync(cursorConfig(), 'utf8');
+
+    const elsewhere = embedBinaryPath(join(home, 'other-prefix', 'harness-hook.sh'));
+    const outcomes = installStrategyA(fs, cursor(), home, () => undefined, elsewhere);
+
+    expect(outcomes.every((o) => o.alreadyPresent)).toBe(true);
+    expect(readFileSync(cursorConfig(), 'utf8')).toBe(before);
+  });
+});

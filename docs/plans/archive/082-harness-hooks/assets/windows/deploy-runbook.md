@@ -30,10 +30,25 @@ npm pack --pack-destination /Users/jordanknight/substrate/harness-engineering/sc
 mv scratch/win/ai-substrate-engineering-harness-0.13.0.tgz scratch/win/harness-fix.tgz
 ```
 
-> **BUILD BEFORE PACK, ALWAYS.** `package.json` ships `harness/cli/dist`, and `npm pack` does
-> **not** build. A stale `dist` packs **silently** — you install yesterday's code carrying
+> **BUILD BEFORE PACK, ALWAYS.** ~~`package.json` ships `harness/cli/dist`, and `npm pack` does
+> **not** build.~~ A stale `dist` packs **silently** — you install yesterday's code carrying
 > today's version number, and since the version cannot tell you apart (see the trap above), the
 > deception is total. This is why step 1 verifies by behaviour.
+>
+> **CORRECTED 2026-08-13 — THE ADVICE IS RIGHT, THE MECHANISM IS WRONG.** `npm pack` **does**
+> build in this repo: `package.json` declares `prepare: npm run build`, npm runs `prepare`
+> before `pack`, and `npm pack --dry-run` shows it firing (`> prepare` → `> build` → `tsc`).
+> There is no `prepack`/`prepublishOnly`. So a stale `dist` does **not** pack silently via a
+> plain `npm pack`.
+>
+> It still can if the lifecycle is bypassed — `npm pack --ignore-scripts`, or any path that
+> skips lifecycle scripts — and the underlying hazard is real and recorded elsewhere: three
+> different builds answered `0.13.0` this week, so a tarball's version tells you nothing about
+> its contents. **Keep building first; it costs nothing and removes a class of doubt.** Just do
+> not carry the reason, because it is false and it propagates: this paragraph is where the
+> claim was inherited from on 2026-08-13, repeated verbatim into peer instructions before it
+> was checked. (Release is independent either way — `.github/workflows/release.yml` runs
+> `npm ci` then `npm run build` explicitly.)
 
 ## 1. Install into the guest, and PROVE it is the fixed code
 
