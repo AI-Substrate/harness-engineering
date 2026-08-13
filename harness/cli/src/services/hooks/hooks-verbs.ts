@@ -8,7 +8,7 @@ import { AGENT_MATRIX, eventKeys, resolveConfigFiles } from './agent-matrix.js';
 import { extractBinaryPath, extractInterpreterPath, transientSegment } from './binary-path.js';
 import { writeThroughSymlink } from './config-writer.js';
 import { unacceptedOptions } from './fire-options.js';
-import { FileHookJournal } from './hook-journal.js';
+import { FileHookJournal, type JournalEntry } from './hook-journal.js';
 import { commandAgent, entryCommands, isOwnedByUs } from './hook-marker.js';
 import { hookJournalPath, hookStateDir } from './hook-payload.js';
 import {
@@ -568,6 +568,14 @@ export interface FireSummary {
   unreadable: { at: string; rawLen: number; headHex: string }[];
 }
 
+/** What the journal observed for one agent — see {@link observedFires}. */
+export interface ObservedFires {
+  total: number;
+  failed: number;
+  /** ISO timestamp of the most recent fire, or `null` when there were none. */
+  lastAt: string | null;
+}
+
 export interface StatusReport extends AgentReport {
   /** Config files we would write, and whether each exists. */
   files: { path: string; exists: boolean }[];
@@ -626,9 +634,31 @@ export interface StatusReport extends AgentReport {
    * "one of them is broken" is not a fact anyone can act on.
    */
   inertCommands?: string[];
+  /**
+   * What the journal says THIS agent's hook actually did — `null` when the journal
+   * cannot answer for anyone. See {@link observedFires}; NULL IS NOT ZERO.
+   *
+   * Read it BESIDE `executionState`, never instead of it: that one proves our
+   * command is invocable, this one proves the agent invoked it. An installed,
+   * resolvable, probe-passing hook that no agent has ever called is green on every
+   * other field here and is doing nothing.
+   */
+  firesObserved?: ObservedFires | null;
 }
 
 export function statusHooks(deps: HooksDeps): StatusReport[] {
+  /*
+   * READ ONCE, OUTSIDE THE MAP. `listAgents` yields eleven rows and the journal is
+   * a single append-only file bounded at 500 records; re-reading and re-parsing it
+   * per agent would be eleven reads of the same bytes to answer eleven questions
+   * about one file. `fireSummary` owns compaction — this is a pure read.
+   */
+  const journalEntries = new FileHookJournal(
+    deps.fs,
+    hookJournalPath(deps.home),
+    hookStateDir(deps.home),
+  ).read();
+
   return listAgents(deps).map((report) => {
     const spec = AGENT_MATRIX.find((s) => s.agent === report.agent);
     if (spec === undefined)
@@ -674,6 +704,7 @@ export function statusHooks(deps: HooksDeps): StatusReport[] {
       commandState: unaccepted.length === 0 ? 'accepted' : 'unknown-options',
       ...(unaccepted.length === 0 ? {} : { unacceptedOptions: unaccepted }),
       ...execution,
+      firesObserved: observedFires(journalEntries, spec.agent),
     };
   });
 }
@@ -816,6 +847,40 @@ function ourCommands(deps: HooksDeps, spec: AgentSpec): string[] {
     }
   }
   return out;
+}
+
+/**
+ * What the journal says THIS agent's hook actually did — or `null` when the journal
+ * cannot answer for anyone (plan 084).
+ *
+ * A DIFFERENT CLAIM FROM {@link StatusReport.executionState}, and they must not be
+ * merged. `executionState` answers *is OUR command invocable* — it spawns our binary
+ * and looks for our sentinel. This answers *did THE AGENT ever call us*. A hook can
+ * be perfectly invocable and never invoked, which is indistinguishable from a
+ * working one on every other field this report carries. Folding them into one green
+ * would rebuild the defect this plan exists to remove: an indicator that cannot tell
+ * "we work" from "we are being used".
+ *
+ * NULL IS NOT ZERO, and the distinction is the whole reason this returns an object
+ * instead of a count. `null` means THE INSTRUMENT CANNOT ANSWER: either the journal
+ * is empty, or every record in it predates the `agent` field and is unattributable.
+ * Zero means the instrument works — other agents' fires are attributed in the same
+ * file — and this agent has genuinely never fired. Rendering the first as `0` would
+ * report "never fired" for an agent that may have fired thousands of times before
+ * 2026-08-13, which is precisely the false certainty the attribution gap created.
+ */
+function observedFires(entries: readonly JournalEntry[], agent: string): ObservedFires | null {
+  const attributed = entries.filter((entry) => typeof entry.agent === 'string');
+  // Not one attributable record anywhere: the file cannot speak about ANY agent, so
+  // it must not be read as evidence about this one.
+  if (attributed.length === 0) return null;
+
+  const mine = attributed.filter((entry) => entry.agent === agent);
+  return {
+    total: mine.length,
+    failed: mine.filter((entry) => entry.outcome.kind === 'failed').length,
+    lastAt: mine.at(-1)?.at ?? null,
+  };
 }
 
 const stripComments = (text: string): string =>

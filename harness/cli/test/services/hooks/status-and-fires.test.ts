@@ -468,3 +468,81 @@ describe('a binary path that will not SURVIVE is refused, not installed (plan 08
     }
   });
 });
+
+describe('firesObserved — did the AGENT call us, as opposed to can WE run (plan 084)', () => {
+  /*
+  Test Doc:
+  - Why: every other field on the status report describes the FILE WE WROTE.
+    `executionState` is the one dynamic field and it answers a different question —
+    it spawns our binary and looks for our sentinel, proving our command is
+    invocable. An installed, resolvable, probe-passing hook that no agent has ever
+    called is green on every field and is doing nothing. That is the shape this
+    stream keeps finding, so the two claims are kept apart on purpose.
+  - Contract: NULL means the instrument cannot answer; ZERO means it can and this
+    agent never fired. Collapsing them would report "never fired" for an agent that
+    may have fired thousands of times before the `agent` field existed.
+  */
+  const install = () => {
+    mkdirSync(join(home, '.cursor'), { recursive: true });
+    installHooks(deps());
+  };
+  const cursor = () => statusHooks(deps()).find((r) => r.agent === 'cursor');
+  const record = (agent: string | undefined, kind: 'recorded' | 'failed' = 'recorded') => ({
+    at: `T-${agent ?? 'none'}-${kind}`,
+    ...(agent === undefined ? {} : { agent }),
+    phase: 'post' as const,
+    repoRoot: '/repo',
+    outcome: kind === 'failed' ? { kind, cause: 'x' } : { kind: 'recorded', phase: 'pre' },
+  });
+
+  it('NULL when the journal is empty — no evidence is not evidence of none', () => {
+    install();
+    expect(cursor()?.firesObserved).toBeNull();
+  });
+
+  it('NULL when every record predates the agent field — the 1,578 unattributable rows', () => {
+    // The exact state of this host before plan 084: a full journal that cannot say
+    // who fired. Reporting 0 here would be a confident, wrong answer.
+    install();
+    writeJournal([record(undefined), record(undefined), record(undefined)]);
+    expect(cursor()?.firesObserved).toBeNull();
+  });
+
+  it('ZERO when the journal CAN attribute and this agent never fired', () => {
+    // The instrument demonstrably works — another agent's fires are attributed in
+    // the same file — so silence about cursor is a real finding, not a blind spot.
+    install();
+    writeJournal([record('github-copilot'), record('github-copilot')]);
+    expect(cursor()?.firesObserved).toEqual({ total: 0, failed: 0, lastAt: null });
+  });
+
+  it('counts only THIS agent, separates failures, and carries the latest timestamp', () => {
+    install();
+    writeJournal([
+      record('github-copilot'),
+      record('cursor'),
+      record('cursor', 'failed'),
+      record('claude-code'),
+    ]);
+    expect(cursor()?.firesObserved).toEqual({
+      total: 2,
+      failed: 1,
+      lastAt: 'T-cursor-failed',
+    });
+  });
+
+  it('is INDEPENDENT of executionState — the two answer different questions', () => {
+    /*
+    The load-bearing row. No probe is injected, so `executionState` is `unchecked`
+    — an honest "we did not look at whether our command runs". Meanwhile the
+    journal proves the agent HAS called us. A single merged indicator could not
+    represent that pair, and merging them is what would rebuild the defect.
+    */
+    install();
+    writeJournal([record('cursor')]);
+    const row = cursor();
+
+    expect(row?.executionState).toBe('unchecked');
+    expect(row?.firesObserved).toEqual({ total: 1, failed: 0, lastAt: 'T-cursor-recorded' });
+  });
+});
