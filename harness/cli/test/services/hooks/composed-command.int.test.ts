@@ -615,7 +615,19 @@ describe('`--hook-input-file`: the payload the WINDOWS wrapper spills (plan 085)
     );
 
     const { status } = runArgv(
-      [process.execPath, CLI, 'hooks', 'fire', 'github-copilot', '--phase', 'pre', '--hook-input', 'stdin', '--hook-input-file', spill],
+      [
+        process.execPath,
+        CLI,
+        'hooks',
+        'fire',
+        'github-copilot',
+        '--phase',
+        'pre',
+        '--hook-input',
+        'stdin',
+        '--hook-input-file',
+        spill,
+      ],
       {},
       '',
     );
@@ -639,7 +651,19 @@ describe('`--hook-input-file`: the payload the WINDOWS wrapper spills (plan 085)
       row above stays green — the two are not redundant.
     */
     const { status } = runArgv(
-      [process.execPath, CLI, 'hooks', 'fire', 'github-copilot', '--phase', 'pre', '--hook-input', 'stdin', '--hook-input-file', join(dir, 'was-never-written.json')],
+      [
+        process.execPath,
+        CLI,
+        'hooks',
+        'fire',
+        'github-copilot',
+        '--phase',
+        'pre',
+        '--hook-input',
+        'stdin',
+        '--hook-input-file',
+        join(dir, 'was-never-written.json'),
+      ],
       {},
       '',
     );
