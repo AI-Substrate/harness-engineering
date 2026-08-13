@@ -44,9 +44,20 @@
  * that happen to have a file here (firebender has none), and an installed file
  * records one run of one writer rather than that writer's rule.
  *
- * It is a weaker method than reading each AGENT's own loader would be — and that is
- * not available: several parse their configs in native code. Upstream parity is the
- * best evidence obtainable here, and naming it as such is the point of F3.
+ * It is a weaker method than reading each AGENT's own loader would be — and for most
+ * agents here that is still not available: several parse their configs in native
+ * code.
+ *
+ * BUT "NOT IN THE BUNDLE" WAS NEVER "UNKNOWABLE", AND FOR COPILOT IT IS NOW WIRED UP
+ * (plan 084). This file used to be the last word on github-copilot, and a
+ * differential check between two writers that share an assumption cannot see the
+ * assumption: we and git-ai both emit `{command, type, powershell}` and NEITHER emits
+ * `bash`, so parity here reports agreement whatever copilot requires. GitHub
+ * publishes the whole hook schema —
+ * https://docs.github.com/en/copilot/reference/hooks-reference — and
+ * `copilot-published-schema.ts` now checks our emitted document against the VENDOR's
+ * contract. For github-copilot, THAT file is the authority and this one is
+ * corroboration; keep them both, and never let a green here stand in for one there.
  *
  * Citations are `<file>:<line>` in `git-ai/src/mdm/agents/`, per agent, so the claim
  * is checkable rather than remembered.

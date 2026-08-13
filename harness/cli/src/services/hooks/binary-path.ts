@@ -258,23 +258,88 @@ function readToken(input: string): { token: string; rest: string } | null {
 }
 
 /**
- * Does this path look like a real installed binary rather than a working tree?
+ * WHICH path segment makes this invocation non-durable, or `null` when none does.
  *
- * MEASURED HAZARD, not a hypothetical: the live Cursor hook on this machine points
- * into untracked `scratch/`. A hook pointing at a source checkout or a scratch
- * directory works for exactly one person and breaks silently when that tree moves.
- * Absolute is necessary and not sufficient — `/Users/x/repo/scratch/probe.mjs` is
- * absolute too.
+ * THE REASON, NOT JUST THE VERDICT, because the verdict alone is unactionable. A
+ * refusal that says "this path will not survive" sends the operator looking; one
+ * that says "it is under `node_modules`" is already the diagnosis.
+ *
+ * A NON-ABSOLUTE PATH IS NON-DURABLE FOR A DIFFERENT REASON and says so: it
+ * resolves against a working directory the hook subprocess does not control.
+ *
+ * THE HAZARD IS MEASURED, THREE TIMES OVER, on three machines:
+ *   - `/home/vscode/.npm/_npx/<hash>/node_modules/.bin/harness` — a WSL
+ *     devcontainer. An npx cache entry: npm garbage-collects it and a container
+ *     rebuild erases it outright.
+ *   - `…/harness-engineering-worktrees/mac-validation/harness/cli/bin/harness.js`
+ *     — this host, a worktree ~145 commits divergent from main. The hook ran a
+ *     different harness from the one on PATH, and nothing reported it.
+ *   - the live Cursor hook pointing into untracked `scratch/` — plan 082's own
+ *     note, which named this class and then never wired the check up.
+ *
+ * Each one works for exactly the person who installed it, on the day they did,
+ * and then fails SILENTLY — the hook contract is exit-0-and-say-nothing, so a
+ * vanished target produces no error anywhere. That is why this is refused at
+ * install time rather than reported afterwards.
  */
-export function looksLikeInstalledBinary(path: string): boolean {
+export function transientSegment(path: string): string | null {
   const normalised = normaliseBinaryPath(path);
-  if (!isAbsolutePath(normalised)) return false;
-  const segments = normalised.split('/');
-  return !segments.some((segment) => DEV_TREE_SEGMENTS.has(segment));
+  if (!isAbsolutePath(normalised)) return '<relative>';
+  return (
+    normalised
+      .split('/')
+      .find(
+        (segment) => DEV_TREE_SEGMENTS[segment] === true || segment.endsWith(WORKTREE_SUFFIX),
+      ) ?? null
+  );
 }
 
-/** Directory names that mean "someone's working tree", never an install. */
-const DEV_TREE_SEGMENTS = new Set(['scratch', 'node_modules', 'src', 'dist', '.git', 'worktrees']);
+/**
+ * A worktree container is matched by SUFFIX, and an exact match is not enough —
+ * measured.
+ *
+ * This host's own copilot hook names
+ * `…/harness-engineering-worktrees/mac-validation/harness/cli/bin/harness.js`. The
+ * segment is `harness-engineering-worktrees`, so the exact-match rule this file
+ * shipped with would have waved it through — while that tree sat ~145 commits
+ * divergent from main, serving every hook fire on the machine.
+ *
+ * KNOWN BLIND SPOT, stated rather than papered over: a git worktree can be created
+ * at ANY path, and a directory called `~/dev/wt-3` is undetectable from the string
+ * alone. This rule catches the convention, not the mechanism. The install-time
+ * refusal is therefore a filter, never a proof — which is why status reports the
+ * segment as its own field instead of claiming a durable install.
+ */
+const WORKTREE_SUFFIX = 'worktrees';
+
+/**
+ * Directory names that mean "someone's working tree or a cache", never an install.
+ *
+ * `node_modules` IS DELIBERATELY ABSENT, and it was here until it was measured. It
+ * looks like the obvious entry and it refuses the two most normal ways to consume us:
+ *
+ *   npm i -g   ->  <prefix>/lib/node_modules/@ai-substrate/engineering-harness/…
+ *   npm i -D   ->  <project>/node_modules/.bin/harness
+ *
+ * The first is THE PAVED PATH. A rule that refuses it does not harden the install, it
+ * abolishes it — `harness hooks install` would have refused every global install on
+ * every machine, which is a worse failure than the one this guard exists to prevent.
+ * Both paths are durable: npm replaces a global package's contents IN PLACE on
+ * upgrade, and a project's `node_modules` lives exactly as long as the project.
+ *
+ * Nothing is lost by dropping it. An npx cache is caught by `_npx`, which every such
+ * path carries, and which names the actual reason the target vanishes; a worktree's
+ * `node_modules` is caught by the worktree suffix. `node_modules` was catching those
+ * two cases by coincidence and the paved path on purpose.
+ */
+const DEV_TREE_SEGMENTS: Record<string, true> = {
+  scratch: true,
+  _npx: true,
+  src: true,
+  dist: true,
+  '.git': true,
+  worktrees: true,
+};
 
 /** POSIX `/x` or Windows `C:/x` — both after normalisation. */
 export const isAbsolutePath = (path: string): boolean =>

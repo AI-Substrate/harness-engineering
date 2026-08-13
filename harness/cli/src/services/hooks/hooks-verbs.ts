@@ -5,10 +5,10 @@ import { detectAgents, UNDETECTED_INSTALLERS } from '../doctor/collector/agents.
 import { BACKUP_MANIFEST_NAME, restoreAgentConfigs } from '../doctor/collector/backup.js';
 import type { AgentSpec } from './agent-matrix.js';
 import { AGENT_MATRIX, eventKeys, resolveConfigFiles } from './agent-matrix.js';
-import { extractBinaryPath, extractInterpreterPath } from './binary-path.js';
+import { extractBinaryPath, extractInterpreterPath, transientSegment } from './binary-path.js';
 import { writeThroughSymlink } from './config-writer.js';
 import { unacceptedOptions } from './fire-options.js';
-import { FileHookJournal } from './hook-journal.js';
+import { FileHookJournal, type JournalEntry } from './hook-journal.js';
 import { commandAgent, entryCommands, isOwnedByUs } from './hook-marker.js';
 import { hookJournalPath, hookStateDir } from './hook-payload.js';
 import {
@@ -199,6 +199,19 @@ export interface InstallReport {
   /** Present only when opted out: which variable, which value, and what to do. */
   optedOutDetail?: string;
   /**
+   * Nothing was attempted because the invocation names a path that will not
+   * survive — an npx cache, a worktree, a source checkout, `scratch/`.
+   *
+   * ITS OWN FIELD, not folded into {@link InstallReport.refused}. That list means
+   * *we have no writer for this agent*, a stated design limit with nothing to do
+   * about it. This means *we have a writer, and the path we would write is a lie*,
+   * which is an action item and applies to EVERY agent at once — so it is a
+   * property of the run, exactly like {@link InstallReport.optedOut}.
+   */
+  transientBinary: boolean;
+  /** Present only when refused: which segment, which path, and what to do. */
+  transientBinaryDetail?: string;
+  /**
    * `change` travels with each entry because collapsing it is how a no-op read
    * as an install: `InstallChange` has four values precisely so the caller can
    * see half-working (its own docstring, dw-0014), and the one consumer that had
@@ -243,6 +256,48 @@ export function installHooks(deps: HooksDeps): InstallReport {
     return {
       optedOut: true,
       optedOutDetail: optOutNotice(deps.env),
+      transientBinary: false,
+      installed: [],
+      refused: [],
+      refusedUpgrades: [],
+      failed: [],
+    };
+  }
+
+  /*
+   * ASKED BEFORE THE FIRST CONFIG IS TOUCHED, for the same reason the record probe
+   * below is: refusing is free while nothing has been written.
+   *
+   * THE PATH IS THE INSTALL. A hook entry is nothing but an invocation string, so a
+   * path that will not survive is not a lesser install — it is a config that names
+   * a program which will not be there, written into a user's agent, reported as
+   * healthy, and failing in SILENCE because the hook contract is exit-0.
+   *
+   * REFUSED RATHER THAN REPAIRED. We do not substitute a path we think is better:
+   * where harness is supposed to live when it is hooked is a product decision, and
+   * guessing one here is the same class of error as writing this one.
+   *
+   * THE ESCAPE HATCH IS DELIBERATE AND NAMED. This repo installs its own hooks from
+   * a worktree while dogfooding, which this check correctly refuses — so there is
+   * an opt-in, it is an env var (doctor installs too, and a CLI flag would not
+   * reach that call site), and the refusal message names it. An operator who means
+   * it can proceed; nobody gets there by accident.
+   */
+  // BOTH HALVES ARE CHECKED, and the interpreter is the one that actually moves.
+  // A guard that read only the script would have passed the WSL entry that started
+  // this: its script was fine and its `node` was gone.
+  const script = extractBinaryPath(deps.binary) ?? deps.binary;
+  const interpreter = extractInterpreterPath(deps.binary);
+  const offender =
+    transientSegment(script) === null && interpreter !== null
+      ? ([interpreter, transientSegment(interpreter)] as const)
+      : ([script, transientSegment(script)] as const);
+  const [offendingPath, segment] = offender;
+  if (segment !== null && deps.env('HARNESS_HOOKS_ALLOW_DEV_BINARY') !== '1') {
+    return {
+      optedOut: false,
+      transientBinary: true,
+      transientBinaryDetail: `refusing to install: the hook would invoke ${offendingPath}, which is under \`${segment}\` and will not survive (an npx cache is garbage-collected, a worktree moves, a checkout is cleaned). A hook exits 0 and prints nothing, so when that path goes the failure is silent. Install harness durably and re-run, or set HARNESS_HOOKS_ALLOW_DEV_BINARY=1 to install this path anyway.`,
       installed: [],
       refused: [],
       refusedUpgrades: [],
@@ -333,7 +388,7 @@ export function installHooks(deps: HooksDeps): InstallReport {
       });
     }
   }
-  return { optedOut: false, installed, refused, refusedUpgrades, failed };
+  return { optedOut: false, transientBinary: false, installed, refused, refusedUpgrades, failed };
 }
 
 /**
@@ -521,9 +576,34 @@ export interface FireSummary {
   unreadable: { at: string; rawLen: number; headHex: string }[];
 }
 
+/** What the journal observed for one agent — see {@link observedFires}. */
+export interface ObservedFires {
+  total: number;
+  failed: number;
+  /** ISO timestamp of the most recent fire, or `null` when there were none. */
+  lastAt: string | null;
+}
+
 export interface StatusReport extends AgentReport {
   /** Config files we would write, and whether each exists. */
   files: { path: string; exists: boolean }[];
+  /**
+   * The INTERPRETER the installed entry names, and whether it resolves — absent for
+   * a single-binary invocation that names none.
+   *
+   * SEPARATE FROM {@link StatusReport.configuredBinary}, because the two fail
+   * independently and the interpreter fails far more often. `binaryResolves` used to
+   * describe the SCRIPT alone, so an entry whose `node` had moved reported
+   * `resolves` — green on every field, dead on every fire. Measured in a WSL
+   * devcontainer 2026-08-13: the entry named `/usr/local/bin/node` while node lived
+   * at `/usr/local/share/nvm/versions/node/v24.19.0/bin/node`, and the script was
+   * present throughout.
+   *
+   * `binaryResolves` is now the CONJUNCTION — both halves must exist for the command
+   * to run — and these two fields say which half is missing.
+   */
+  configuredInterpreter?: string;
+  interpreterResolves?: boolean;
   /**
    * The binary the installed entry points at, and whether it RESOLVES.
    *
@@ -533,6 +613,19 @@ export interface StatusReport extends AgentReport {
    */
   binaryResolves?: boolean;
   configuredBinary?: string;
+  /**
+   * The path segment that makes the configured invocation NON-DURABLE, or absent
+   * when nothing does — `node_modules`, `_npx`, `worktrees`, `scratch`, `src`, `dist`.
+   *
+   * SEPARATE FROM {@link StatusReport.binaryResolves}, and the gap between them is
+   * the whole point. `binaryResolves` asks *is the file there RIGHT NOW*, which is
+   * green for every one of these paths on the day it was installed and only turns
+   * red once the damage is done. This asks *will it be there tomorrow* — the npx
+   * cache npm has not collected yet, the worktree nobody has moved yet. A hook
+   * exits 0 and prints nothing, so `unresolvable` gets discovered by someone
+   * wondering why months of telemetry are missing. This is discoverable first.
+   */
+  transientBinarySegment?: string;
   /**
    * Three states, never a boolean (dw-0027). `absent` and `unresolvable` are
    * different diagnoses — "we never installed" versus "we installed and the target
@@ -566,9 +659,31 @@ export interface StatusReport extends AgentReport {
    * "one of them is broken" is not a fact anyone can act on.
    */
   inertCommands?: string[];
+  /**
+   * What the journal says THIS agent's hook actually did — `null` when the journal
+   * cannot answer for anyone. See {@link observedFires}; NULL IS NOT ZERO.
+   *
+   * Read it BESIDE `executionState`, never instead of it: that one proves our
+   * command is invocable, this one proves the agent invoked it. An installed,
+   * resolvable, probe-passing hook that no agent has ever called is green on every
+   * other field here and is doing nothing.
+   */
+  firesObserved?: ObservedFires | null;
 }
 
 export function statusHooks(deps: HooksDeps): StatusReport[] {
+  /*
+   * READ ONCE, OUTSIDE THE MAP. `listAgents` yields eleven rows and the journal is
+   * a single append-only file bounded at 500 records; re-reading and re-parsing it
+   * per agent would be eleven reads of the same bytes to answer eleven questions
+   * about one file. `fireSummary` owns compaction — this is a pure read.
+   */
+  const journalEntries = new FileHookJournal(
+    deps.fs,
+    hookJournalPath(deps.home),
+    hookStateDir(deps.home),
+  ).read();
+
   return listAgents(deps).map((report) => {
     const spec = AGENT_MATRIX.find((s) => s.agent === report.agent);
     if (spec === undefined)
@@ -584,7 +699,8 @@ export function statusHooks(deps: HooksDeps): StatusReport[] {
       path,
       exists: deps.fs.exists(path),
     }));
-    const configured = configuredBinaryFor(deps, spec);
+    const invocation = configuredInvocationFor(deps, spec);
+    const configured = invocation?.script ?? null;
     if (configured === null)
       return {
         ...report,
@@ -598,17 +714,32 @@ export function statusHooks(deps: HooksDeps): StatusReport[] {
     // and each agent writes a pre and a post command, so a check that looked at
     // one would report health for a set it had not examined.
     const unaccepted = [...new Set(ourCommands(deps, spec).flatMap(unacceptedOptions))];
-    const resolves = deps.fs.exists(configured);
+    // BOTH HALVES must exist for the command to run. Checking only the script is
+    // what reported a healthy hook on a box where `node` had moved (see
+    // `configuredInvocationFor`).
+    const scriptResolves = deps.fs.exists(configured);
+    const interpreter = invocation?.interpreter ?? null;
+    const interpreterResolves = interpreter === null ? null : deps.fs.exists(interpreter);
+    const resolves = scriptResolves && interpreterResolves !== false;
+    // The CONFIGURED path, not the running one: status reports on what is on disk
+    // in the user's agent, which may have been written by a different harness on a
+    // different day — which is exactly the case that produced this field.
+    const transient =
+      transientSegment(configured) ?? (interpreter === null ? null : transientSegment(interpreter));
     const execution = probeExecution(deps, spec);
     return {
       ...report,
       files,
       configuredBinary: configured,
       binaryResolves: resolves,
+      ...(interpreter === null ? {} : { configuredInterpreter: interpreter }),
+      ...(interpreterResolves === null ? {} : { interpreterResolves }),
+      ...(transient === null ? {} : { transientBinarySegment: transient }),
       binaryState: resolves ? 'resolves' : 'unresolvable',
       commandState: unaccepted.length === 0 ? 'accepted' : 'unknown-options',
       ...(unaccepted.length === 0 ? {} : { unacceptedOptions: unaccepted }),
       ...execution,
+      firesObserved: observedFires(journalEntries, spec.agent),
     };
   });
 }
@@ -683,10 +814,38 @@ function isInstalled(deps: HooksDeps, spec: AgentSpec): boolean {
   return ourCommands(deps, spec).length > 0;
 }
 
-/** The binary path our installed entry names, or `null` when we are not installed. */
-function configuredBinaryFor(deps: HooksDeps, spec: AgentSpec): string | null {
+/**
+ * BOTH HALVES of the invocation our installed entry names — `null` when we are not
+ * installed, and `interpreter: null` for a single-binary invocation that names none.
+ *
+ * THE INTERPRETER WAS NEVER CHECKED, AND THAT IS WHAT MADE THE FAILURE INVISIBLE
+ * (plan 084). This read `extractBinaryPath` alone, which returns the SCRIPT, so
+ * status reported `binaryState: 'resolves'` — green, healthy, nothing to see — for
+ * an entry whose `node` was gone. Both halves must exist for the command to run,
+ * so both halves are read.
+ *
+ * MEASURED, in Jordan's WSL devcontainer 2026-08-13: the entry named
+ * `/usr/local/bin/node`, while node was actually nvm-managed at
+ * `/usr/local/share/nvm/versions/node/v24.19.0/bin/node`. The script was present the
+ * whole time. git-ai's hook on the same box was dead for the identical reason —
+ * `/home/vscode/.git-ai/bin/git-ai` absent — so this is not a copilot problem and
+ * not ours alone: it is what capturing an absolute interpreter path at install time
+ * costs on any machine whose toolchain moves.
+ *
+ * AN INTERPRETER PATH IS THE LEAST STABLE THING IN THE ENTRY. `nvm use` repoints it,
+ * `nvm uninstall` deletes the version directory outright, a homebrew upgrade retires
+ * `/opt/homebrew/Cellar/node/<version>/…` (this host's own hook names one), and a
+ * devcontainer rebuild can swap a system node for an nvm one. The script survives
+ * all four.
+ */
+function configuredInvocationFor(
+  deps: HooksDeps,
+  spec: AgentSpec,
+): { script: string; interpreter: string | null } | null {
   const [command] = ourCommands(deps, spec);
-  return command === undefined ? null : extractBinaryPath(command);
+  if (command === undefined) return null;
+  const script = extractBinaryPath(command);
+  return script === null ? null : { script, interpreter: extractInterpreterPath(command) };
 }
 
 /**
@@ -751,6 +910,40 @@ function ourCommands(deps: HooksDeps, spec: AgentSpec): string[] {
     }
   }
   return out;
+}
+
+/**
+ * What the journal says THIS agent's hook actually did — or `null` when the journal
+ * cannot answer for anyone (plan 084).
+ *
+ * A DIFFERENT CLAIM FROM {@link StatusReport.executionState}, and they must not be
+ * merged. `executionState` answers *is OUR command invocable* — it spawns our binary
+ * and looks for our sentinel. This answers *did THE AGENT ever call us*. A hook can
+ * be perfectly invocable and never invoked, which is indistinguishable from a
+ * working one on every other field this report carries. Folding them into one green
+ * would rebuild the defect this plan exists to remove: an indicator that cannot tell
+ * "we work" from "we are being used".
+ *
+ * NULL IS NOT ZERO, and the distinction is the whole reason this returns an object
+ * instead of a count. `null` means THE INSTRUMENT CANNOT ANSWER: either the journal
+ * is empty, or every record in it predates the `agent` field and is unattributable.
+ * Zero means the instrument works — other agents' fires are attributed in the same
+ * file — and this agent has genuinely never fired. Rendering the first as `0` would
+ * report "never fired" for an agent that may have fired thousands of times before
+ * 2026-08-13, which is precisely the false certainty the attribution gap created.
+ */
+function observedFires(entries: readonly JournalEntry[], agent: string): ObservedFires | null {
+  const attributed = entries.filter((entry) => typeof entry.agent === 'string');
+  // Not one attributable record anywhere: the file cannot speak about ANY agent, so
+  // it must not be read as evidence about this one.
+  if (attributed.length === 0) return null;
+
+  const mine = attributed.filter((entry) => entry.agent === agent);
+  return {
+    total: mine.length,
+    failed: mine.filter((entry) => entry.outcome.kind === 'failed').length,
+    lastAt: mine.at(-1)?.at ?? null,
+  };
 }
 
 const stripComments = (text: string): string =>

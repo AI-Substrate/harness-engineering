@@ -160,6 +160,66 @@ describe('hooks fire — every failure path exits 0 and stays silent (dw-0018, d
       rmSync(home, { recursive: true, force: true });
     }
   });
+
+  it('EVERY journal record names the agent that fired it (plan 084)', () => {
+    /*
+    Test Doc:
+    - Why: the agent slug is a REQUIRED CLI argument of `hooks fire`, it was in
+      scope in the act, and it was discarded by `void agent;` on the line
+      immediately above the call that journals. So every record ever written was
+      produced by a process that KNEW the answer and dropped it. Measured on this
+      host 2026-08-13: 1,578 records, all `{at, phase, repoRoot, outcome}`, and the
+      question "has github-copilot's hook EVER fired?" was unanswerable from the
+      only evidence we keep.
+    - Contract: both journalling paths attribute. The act's own `unparseable`
+      record AND the intercept's records carry the slug the verb was invoked with.
+    - Quality Contribution: drives the REAL bin with TWO DIFFERENT agents, so a
+      hardcoded slug fails rather than passing by coincidence — the defect being
+      fixed was precisely a value that was present and not carried.
+    */
+    const home = mkdtempSync(join(tmpdir(), 'harness-hookagent-'));
+    const repo = join(home, 'repo');
+    try {
+      const run = (agent: string, phase: 'pre' | 'post', payload: string, cwd: string) =>
+        execFileSync(
+          process.execPath,
+          [CLI, 'hooks', 'fire', agent, '--phase', phase, '--hook-input', 'stdin'],
+          { cwd, encoding: 'utf8', input: payload, env: { ...hermeticGitEnv(), HOME: home } },
+        );
+
+      // PATH ONE — the act's own record, written before the repo guards.
+      run('github-copilot', 'post', '{ not json at all', home);
+
+      // PATH TWO — the intercept's records, written after them.
+      execFileSync('git', ['init', '-q', '-b', 'main', repo], { env: hermeticGitEnv() });
+      const git = (args: string[]): string =>
+        execFileSync('git', args, { cwd: repo, encoding: 'utf8', env: hermeticGitEnv() }).trim();
+      writeFileSync(join(repo, 'a.txt'), 'a\n');
+      git(['add', 'a.txt']);
+      git(['commit', '-qm', 'base']);
+      const payload = JSON.stringify({
+        tool_name: 'Shell',
+        tool_input: { cwd: repo, command: 'git commit -m "x"' },
+      });
+      run('cursor', 'pre', payload, repo);
+
+      const entries = journal(home) as { agent?: string; outcome?: { kind?: string } }[];
+      const unparseable = entries.filter((e) => e.outcome?.kind === 'unparseable');
+      const intercepted = entries.filter((e) => e.outcome?.kind !== 'unparseable');
+
+      // Both paths present — otherwise a green here would be vacuous.
+      expect(unparseable.length).toBeGreaterThan(0);
+      expect(intercepted.length).toBeGreaterThan(0);
+
+      expect(unparseable.every((e) => e.agent === 'github-copilot')).toBe(true);
+      expect(intercepted.every((e) => e.agent === 'cursor')).toBe(true);
+      // NOT ONE record may be unattributable. `every` above tolerates an empty set;
+      // this is the assertion that no record slipped through with the field absent.
+      expect(entries.every((e) => typeof e.agent === 'string' && e.agent.length > 0)).toBe(true);
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
 });
 
 /**

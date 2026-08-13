@@ -70,6 +70,26 @@ export interface JournalEntry {
   at: string;
   phase: HookPhase;
   /**
+   * WHICH AGENT'S HOOK FIRED — the slug the verb was invoked with
+   * (`harness hooks fire <agent> …`), so `github-copilot` and `cursor` are
+   * separable in the record.
+   *
+   * IT WAS ALWAYS IN SCOPE AND EXPLICITLY DISCARDED. The fire act took `agent` as
+   * a parameter and wrote `void agent;` one line above the call that journals, so
+   * every record on disk described a fire with no way to attribute it. Measured
+   * 2026-08-13: 1,578 records on this host, every one of them
+   * `{at, phase, repoRoot, outcome}` — and the question "has copilot's hook ever
+   * fired even once?" was unanswerable from the only evidence we keep.
+   *
+   * REQUIRED, not optional. An optional field would let a caller that forgets it
+   * keep writing unattributable records, which is the exact failure being closed;
+   * the type is what makes the omission impossible rather than merely unlikely.
+   * Records written before this field existed simply lack it, and a reader must
+   * treat an absent `agent` as "unattributable, from before 2026-08-13", never as
+   * a match for any agent.
+   */
+  agent: string;
+  /**
    * The repository the fire concerned — `null` ONLY for an `unparseable` outcome,
    * where the document never named one. Every other outcome has a repo by
    * construction, because the guards it passed required one.

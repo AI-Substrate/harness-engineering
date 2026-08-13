@@ -133,6 +133,30 @@ export default defineConfig({
       GIT_TRACE2: '0',
       GIT_TRACE2_EVENT: '0',
       GIT_TRACE2_PERF: '0',
+      /*
+       * THE SUITE ALWAYS INSTALLS FROM A DEV TREE, so it must opt into the
+       * transient-binary refusal (plan 084) rather than trip over it.
+       *
+       * `hooks install` refuses a binary path under `node_modules`, `_npx`,
+       * `scratch`, `src`, `dist` or a `*worktrees` container, because such a path
+       * works for one person on one day and then fails SILENTLY — the hook contract
+       * is exit-0-and-print-nothing, so a vanished target reports nowhere. Every
+       * integration fixture here drives the REAL bin, whose path is whatever
+       * checkout the suite is running from.
+       *
+       * WITHOUT THIS THE SUITE IS LOCATION-DEPENDENT, which is worse than either
+       * outcome: it passes in a plain checkout (`…/harness-engineering/harness/cli/
+       * bin/harness.js`, no transient segment) and fails in a worktree
+       * (`…/harness-engineering-worktrees/<branch>/…`) — a green that depends on
+       * where the developer happens to be standing. Measured: 20 tests across three
+       * int files, red in a worktree and green in the root checkout, same commit.
+       *
+       * It is declared HERE for the reason the trace2 keys above are: hermeticity
+       * that must be opted into is hermeticity the next fixture will lack. The
+       * refusal itself is proven in `status-and-fires.test.ts`, which sets and
+       * unsets this deliberately rather than inheriting it.
+       */
+      HARNESS_HOOKS_ALLOW_DEV_BINARY: '1',
     },
     coverage: {
       provider: 'v8',

@@ -359,3 +359,295 @@ describe('status is the FIRST caller of compact() — the rotation fix, live (dw
     expect(fireSummary(deps()).total).toBe(before);
   });
 });
+
+describe('a binary path that will not SURVIVE is refused, not installed (plan 084)', () => {
+  /*
+  Test Doc:
+  - Why: three measured hazards, on three machines, all shipped as healthy installs.
+    An npx cache in a WSL devcontainer (`_npx/<hash>/node_modules/.bin/harness`,
+    garbage-collected by npm and erased by a container rebuild); this host's own
+    copilot hook pointing into a worktree ~145 commits divergent from main; and the
+    live Cursor hook in plan 082's own note pointing into untracked `scratch/`.
+  - What made it invisible: a hook exits 0 and prints nothing by design, so when the
+    target disappears NOTHING reports it. `binaryResolves` only turns red after the
+    damage is done, and `looksLikeInstalledBinary` — the predicate written to catch
+    exactly this — had ZERO production callers for the whole of plan 082.
+  - Contract: refused BEFORE any config is written, naming the segment; the escape
+    hatch works and is named in the refusal; and an already-installed transient path
+    is visible in status ahead of the failure rather than after it.
+  */
+  const TRANSIENT = '/home/vscode/.npm/_npx/fa7ab31a908e11f6/node_modules/.bin/harness';
+  const allowDev = (name: string) => (name === 'HARNESS_HOOKS_ALLOW_DEV_BINARY' ? '1' : undefined);
+
+  beforeEach(() => mkdirSync(join(home, '.cursor'), { recursive: true }));
+
+  it('REFUSES, names the offending segment, and writes NOTHING', () => {
+    const report = installHooks(deps({ binary: `"${TRANSIENT}"` }));
+
+    expect(report.transientBinary).toBe(true);
+    // The SEGMENT, not just a verdict — it is the diagnosis the operator acts on.
+    expect(report.transientBinaryDetail).toContain('_npx');
+    expect(report.transientBinaryDetail).toContain(TRANSIENT);
+    // The refusal must carry its own way out, or an operator who means it is stuck.
+    expect(report.transientBinaryDetail).toContain('HARNESS_HOOKS_ALLOW_DEV_BINARY=1');
+
+    // NOTHING WAS ATTEMPTED. Refusing while still reporting installs would be the
+    // same silent-success shape this exists to remove.
+    expect(report.installed).toEqual([]);
+    expect(report.failed).toEqual([]);
+    expect(existsSync(join(home, '.cursor', 'hooks.json'))).toBe(false);
+  });
+
+  it('the named escape hatch actually installs — the refusal is a filter, not a wall', () => {
+    // The positive control. A guard that refused unconditionally would pass the row
+    // above while making this repo unable to dogfood its own hooks from a worktree.
+    const report = installHooks(deps({ binary: `"${TRANSIENT}"`, env: allowDev }));
+
+    expect(report.transientBinary).toBe(false);
+    expect(report.installed.length).toBeGreaterThan(0);
+    expect(existsSync(join(home, '.cursor', 'hooks.json'))).toBe(true);
+  });
+
+  it('STATUS names a transient path that is still present — before it vanishes', () => {
+    installHooks(deps({ binary: `"${TRANSIENT}"`, env: allowDev }));
+    const cursor = statusHooks(deps()).find((r) => r.agent === 'cursor');
+
+    // The segment check is pure string work and holds on any machine.
+    expect(cursor?.transientBinarySegment).toBe('_npx');
+
+    // The `unresolvable` half is NOT pure string work — it depends on this path
+    // being absent from the machine running the suite. TRANSIENT is kept verbatim
+    // because it is the real measured WSL path and that is worth reading, so the
+    // assumption is MEASURED rather than trusted. Naming an absolute path and
+    // assuming its state is what turned this file red on CI once already.
+    expect(existsSync(TRANSIENT)).toBe(false);
+    // AND the gap that makes the segment field necessary: `binaryState` is about
+    // existence NOW. Here the path is gone so it reads `unresolvable` — but on the
+    // day it was installed it read `resolves`, green, while already doomed. The two
+    // fields answer different questions and neither substitutes for the other.
+    expect(cursor?.binaryState).toBe('unresolvable');
+  });
+
+  it('a DURABLE install reports no segment — the field is not always-on', () => {
+    const bin = join(home, 'bin', 'harness');
+    mkdirSync(join(home, 'bin'), { recursive: true });
+    writeFileSync(bin, '#!/bin/sh\n');
+    installHooks(deps({ binary: `"${bin}"` }));
+
+    const cursor = statusHooks(deps()).find((r) => r.agent === 'cursor');
+    expect(cursor?.transientBinarySegment).toBeUndefined();
+    expect(cursor?.binaryState).toBe('resolves');
+  });
+
+  it('with the run-wide opt-in REMOVED, the guard still refuses — its DEFAULT state', () => {
+    /*
+    Test Doc:
+    - Why: `vitest.config.ts` sets HARNESS_HOOKS_ALLOW_DEV_BINARY=1 for the WHOLE
+      run, because the suite drives the real bin from whatever checkout it sits in
+      and would otherwise be location-dependent. The cost is that the guard is OFF
+      for all 6,060 tests, so every future test of install behaviour inherits the
+      bypass silently and nothing would notice if the guard rotted. This is the one
+      place the DEFAULT (var absent) is asserted, deliberately, so it stays covered.
+    - Contract: with the variable genuinely absent from the process environment, a
+      transient path is refused.
+    - Why the env is read through `process.env` here and a FIXTURE path is used for
+      the binary: reading the real environment is the point (a stubbed reader would
+      re-introduce exactly the bypass under test), while a fixture binary keeps the
+      row location-INDEPENDENT — asserting through the real bin would pass in a
+      worktree and fail in the root checkout, which is the defect, not the test.
+    */
+    const saved = process.env.HARNESS_HOOKS_ALLOW_DEV_BINARY;
+    delete process.env.HARNESS_HOOKS_ALLOW_DEV_BINARY;
+    try {
+      // The suite's own bypass really is gone for the duration — otherwise this
+      // row passes vacuously, which is the failure mode it exists to prevent.
+      expect(process.env.HARNESS_HOOKS_ALLOW_DEV_BINARY).toBeUndefined();
+
+      const report = installHooks(
+        deps({ binary: `"${TRANSIENT}"`, env: (name) => process.env[name] }),
+      );
+
+      expect(report.transientBinary).toBe(true);
+      expect(report.installed).toEqual([]);
+      expect(existsSync(join(home, '.cursor', 'hooks.json'))).toBe(false);
+    } finally {
+      if (saved === undefined) delete process.env.HARNESS_HOOKS_ALLOW_DEV_BINARY;
+      else process.env.HARNESS_HOOKS_ALLOW_DEV_BINARY = saved;
+    }
+  });
+});
+
+describe('firesObserved — did the AGENT call us, as opposed to can WE run (plan 084)', () => {
+  /*
+  Test Doc:
+  - Why: every other field on the status report describes the FILE WE WROTE.
+    `executionState` is the one dynamic field and it answers a different question —
+    it spawns our binary and looks for our sentinel, proving our command is
+    invocable. An installed, resolvable, probe-passing hook that no agent has ever
+    called is green on every field and is doing nothing. That is the shape this
+    stream keeps finding, so the two claims are kept apart on purpose.
+  - Contract: NULL means the instrument cannot answer; ZERO means it can and this
+    agent never fired. Collapsing them would report "never fired" for an agent that
+    may have fired thousands of times before the `agent` field existed.
+  */
+  const install = () => {
+    mkdirSync(join(home, '.cursor'), { recursive: true });
+    installHooks(deps());
+  };
+  const cursor = () => statusHooks(deps()).find((r) => r.agent === 'cursor');
+  const record = (agent: string | undefined, kind: 'recorded' | 'failed' = 'recorded') => ({
+    at: `T-${agent ?? 'none'}-${kind}`,
+    ...(agent === undefined ? {} : { agent }),
+    phase: 'post' as const,
+    repoRoot: '/repo',
+    outcome: kind === 'failed' ? { kind, cause: 'x' } : { kind: 'recorded', phase: 'pre' },
+  });
+
+  it('NULL when the journal is empty — no evidence is not evidence of none', () => {
+    install();
+    expect(cursor()?.firesObserved).toBeNull();
+  });
+
+  it('NULL when every record predates the agent field — the 1,578 unattributable rows', () => {
+    // The exact state of this host before plan 084: a full journal that cannot say
+    // who fired. Reporting 0 here would be a confident, wrong answer.
+    install();
+    writeJournal([record(undefined), record(undefined), record(undefined)]);
+    expect(cursor()?.firesObserved).toBeNull();
+  });
+
+  it('ZERO when the journal CAN attribute and this agent never fired', () => {
+    // The instrument demonstrably works — another agent's fires are attributed in
+    // the same file — so silence about cursor is a real finding, not a blind spot.
+    install();
+    writeJournal([record('github-copilot'), record('github-copilot')]);
+    expect(cursor()?.firesObserved).toEqual({ total: 0, failed: 0, lastAt: null });
+  });
+
+  it('counts only THIS agent, separates failures, and carries the latest timestamp', () => {
+    install();
+    writeJournal([
+      record('github-copilot'),
+      record('cursor'),
+      record('cursor', 'failed'),
+      record('claude-code'),
+    ]);
+    expect(cursor()?.firesObserved).toEqual({
+      total: 2,
+      failed: 1,
+      lastAt: 'T-cursor-failed',
+    });
+  });
+
+  it('is INDEPENDENT of executionState — the two answer different questions', () => {
+    /*
+    The load-bearing row. No probe is injected, so `executionState` is `unchecked`
+    — an honest "we did not look at whether our command runs". Meanwhile the
+    journal proves the agent HAS called us. A single merged indicator could not
+    represent that pair, and merging them is what would rebuild the defect.
+    */
+    install();
+    writeJournal([record('cursor')]);
+    const row = cursor();
+
+    expect(row?.executionState).toBe('unchecked');
+    expect(row?.firesObserved).toEqual({ total: 1, failed: 0, lastAt: 'T-cursor-recorded' });
+  });
+});
+
+describe('the INTERPRETER is half the invocation, and it is the half that moves (plan 084)', () => {
+  /*
+  Test Doc:
+  - Why: MEASURED in a WSL devcontainer 2026-08-13. The hook entry named
+    `/usr/local/bin/node`; node was actually nvm-managed at
+    `/usr/local/share/nvm/versions/node/v24.19.0/bin/node`. The SCRIPT was present
+    the whole time, so `binaryResolves` — which read the script alone — reported
+    true and `binaryState` reported `resolves`. Green on every field, dead on every
+    fire. git-ai's hook on the same box was dead the same way
+    (`/home/vscode/.git-ai/bin/git-ai` absent), so this is not ours alone: it is
+    what capturing an absolute interpreter path at install time costs on a machine
+    whose toolchain moves.
+  - Contract: `binaryResolves` is the CONJUNCTION of both halves, and the report
+    says WHICH half is missing rather than making the reader guess.
+  - An interpreter path is the least stable thing in the entry: `nvm use` repoints
+    it, `nvm uninstall` deletes the version directory, a homebrew upgrade retires
+    `/opt/homebrew/Cellar/node/<version>/…` (this host's own hook names one).
+  */
+  const installWith = (interpreter: string, script: string) => {
+    mkdirSync(join(home, '.cursor'), { recursive: true });
+    installHooks(deps({ binary: `"${interpreter}" --no-warnings "${script}"` }));
+  };
+  const cursor = () => statusHooks(deps()).find((r) => r.agent === 'cursor');
+
+  const presentScript = () => {
+    const script = join(home, 'app', 'harness.js');
+    mkdirSync(join(home, 'app'), { recursive: true });
+    writeFileSync(script, '#!/usr/bin/env node\n');
+    return script;
+  };
+
+  it('a MISSING interpreter makes the hook unresolvable, even with the script present', () => {
+    const script = presentScript();
+    /*
+     * ABSENCE IS CONSTRUCTED AND MEASURED, NEVER NAMED.
+     *
+     * This row first hardcoded `/usr/local/bin/node` as "the missing interpreter".
+     * That path is absent on the dev Mac and PRESENT on GitHub's ubuntu runner, so
+     * the assertion inverted and CI failed — a test asserting a fact about a
+     * machine rather than about the code.
+     *
+     * It is the MIRROR of the defect this very commit fixes. `command-runs.test.ts`
+     * named the same path as PRESENT and passed for years because nothing checked
+     * the interpreter; this named it ABSENT and passed locally for the same reason.
+     * One root error in both directions: AN ABSOLUTE MACHINE PATH IS NOT A STATE —
+     * present and absent are decided by the machine, not by the string.
+     *
+     * The tell was already three lines below, on the other half of the same
+     * assertion: the script's presence was guarded with `existsSync` and the
+     * interpreter's absence was assumed. Same discipline, applied to one side only.
+     */
+    const absentNode = join(home, 'nodebin', 'no-such-node');
+    expect(existsSync(absentNode)).toBe(false);
+    installWith(absentNode, script);
+
+    const row = cursor();
+    // The script really is there — otherwise this passes for the wrong reason and
+    // proves nothing about the interpreter.
+    expect(existsSync(script)).toBe(true);
+    expect(row?.configuredBinary).toBe(script);
+
+    expect(row?.configuredInterpreter).toBe(absentNode);
+    expect(row?.interpreterResolves).toBe(false);
+    expect(row?.binaryResolves).toBe(false);
+    expect(row?.binaryState).toBe('unresolvable');
+  });
+
+  it('BOTH present resolves — the positive control', () => {
+    const script = presentScript();
+    const node = join(home, 'nodebin', 'node');
+    mkdirSync(join(home, 'nodebin'), { recursive: true });
+    writeFileSync(node, '#!/bin/sh\n');
+    installWith(node, script);
+
+    const row = cursor();
+    expect(row?.interpreterResolves).toBe(true);
+    expect(row?.binaryResolves).toBe(true);
+    expect(row?.binaryState).toBe('resolves');
+  });
+
+  it('a single-binary invocation reports NO interpreter rather than a false one', () => {
+    // git-ai's shape, and our own when the bin is directly executable. An absent
+    // field is the honest answer; `interpreterResolves: true` would assert a
+    // successful check of something that was never checked.
+    const bin = join(home, 'bin', 'harness');
+    mkdirSync(join(home, 'bin'), { recursive: true });
+    mkdirSync(join(home, '.cursor'), { recursive: true });
+    writeFileSync(bin, '#!/bin/sh\n');
+    installHooks(deps({ binary: `"${bin}"` }));
+
+    const row = cursor();
+    expect(row?.configuredInterpreter).toBeUndefined();
+    expect(row?.interpreterResolves).toBeUndefined();
+    expect(row?.binaryState).toBe('resolves');
+  });
+});
