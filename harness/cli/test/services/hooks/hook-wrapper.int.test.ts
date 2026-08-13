@@ -204,3 +204,39 @@ describe('a failure that cannot run node still reports itself', () => {
     ).toContain('no-interpreter');
   });
 });
+
+/**
+ * A STATIC GUARD ON THE .PS1, IN A FILE THAT OTHERWISE COVERS ONLY THE .SH.
+ *
+ * This asserts nothing about PowerShell's behaviour — it asserts a TEXTUAL property,
+ * which is dialect-independent and therefore honest to check from here. The behaviour
+ * behind it was measured on a real host and is written up in the wrapper itself.
+ *
+ * WHAT IT PROTECTS. Merely MENTIONING `$input` in a PowerShell script makes the runtime
+ * pre-read stdin into the pipeline before the script runs, so `[Console]::OpenStandardInput()`
+ * then reads ZERO bytes. It binds at PARSE time: a branch that never executes drains the
+ * stream just as thoroughly as one that does. Measured — two scripts differing only by
+ * `if ($false) { $null = @($input) }` read 24 bytes and 0 bytes respectively.
+ *
+ * That is a one-line, plausible-looking edit that silently empties every hook payload on
+ * Windows and CANNOT be caught by any POSIX row here, by review, or by a green macOS
+ * end-to-end run. It already happened once, mid-fix. So it is encoded instead of trusted
+ * to memory.
+ */
+describe('the PowerShell wrapper never mentions `$input` (measured stdin-drain hazard)', () => {
+  it('contains no `$input` outside comments — a dead reference would empty every payload', () => {
+    const source = readFileSync(join(BIN, 'harness-hook.ps1'), 'utf8');
+    const offenders = source
+      .split(/\r?\n/)
+      .map((line, index) => ({ line, number: index + 1 }))
+      // Comments are safe — verified on a real host: `$input` named in a comment
+      // leaves the OS stream intact (24 bytes, same as a file that never names it).
+      .map((row) => ({ ...row, code: row.line.split('#')[0] }))
+      .filter((row) => /\$input\b/i.test(row.code));
+
+    expect(
+      offenders.map((row) => `${row.number}: ${row.line.trim()}`),
+      'a `$input` reference anywhere in this file empties stdin at parse time',
+    ).toEqual([]);
+  });
+});

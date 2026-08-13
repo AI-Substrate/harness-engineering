@@ -258,6 +258,32 @@ if ($CheckMode) {
 # A BOM that silently "fixes" itself in transit is the class of defect this plan removes.
 #
 # So: copy the raw stream to a temp file and name it. Byte for byte, no decode.
+#
+# `$input` MUST NOT APPEAR ANYWHERE IN THIS FILE, AND THE REASON IS NOT STYLE.
+#
+# MEASURED, and it is the strangest thing this plan found: merely MENTIONING `$input`
+# makes PowerShell pre-read stdin into the pipeline before the script runs, so
+# [Console]::OpenStandardInput() then reads ZERO bytes. Two scripts, identical but for
+# one line that NEVER EXECUTES:
+#
+#   $s = [Console]::OpenStandardInput(); $m = New-Object System.IO.MemoryStream
+#   $s.CopyTo($m); Write-Output $m.Length
+#                                                       -> 24 bytes
+#   ...same, plus:  if ($false) { $null = @($input) }    ->  0 bytes
+#
+# It is bound at parse time, not at execution, so a dead branch drains the stream just
+# as thoroughly as a live one. This cost a green end-to-end run: the fallback was added
+# to cover a pipeline shape and silently broke the shape that already worked.
+#
+# The two sources are therefore MUTUALLY EXCLUSIVE - byte-exact OS stream, or `$input`,
+# never both - and the OS stream wins: it is what a REAL agent uses (proven on Windows,
+# where an instrumented shim read copilot's payload through [Console]::In), and it is the
+# only one that preserves the wire bytes the parser exists to describe.
+#
+# CONSEQUENCE FOR ANYONE TESTING THIS BY HAND: `Get-Content x | & harness-hook.ps1` is a
+# POWERSHELL pipeline, not an OS redirect, and on 5.1 it leaves IsInputRedirected FALSE -
+# so it reproduces nothing and reports a false failure. Use an OS-level redirect, e.g.
+#   cmd /c "powershell -NoProfile -File harness-hook.ps1 <args> < payload.json"
 if ([Console]::IsInputRedirected) {
   $Spill = [System.IO.Path]::Combine(
     [System.IO.Path]::GetTempPath(),
@@ -275,8 +301,8 @@ if ([Console]::IsInputRedirected) {
     Remove-Item -LiteralPath $Spill -Force -ErrorAction SilentlyContinue
   }
 } else {
-  # No redirected stdin - a hand-run or a probe. Reading it would BLOCK on a console,
-  # which inside an agent's tool loop is worse than any silence.
+  # No redirected stdin - a hand-run or a probe. Reading a console would BLOCK, which
+  # inside an agent's tool loop is worse than any silence.
   & $Resolved --no-warnings $Script @args
   $Code = $LASTEXITCODE
 }
