@@ -297,8 +297,20 @@ describe('the command the INSTALLER composed is a command `fire` can actually RU
       // The invocation is PATHS plus INTERPRETER FLAGS (F010 F5). A flag is not a
       // file, so only the paths are stat-able — and the count is asserted so this
       // cannot degrade into checking nothing once everything is filtered out.
+      //
+      // ONE PATH OR TWO, and which one is the point (plan 085). The installer now
+      // prefers the shipped WRAPPER — a single token that resolves the interpreter
+      // when the hook fires — and falls back to the interpreter+script pair when no
+      // wrapper is present. Both are legal; naming NEITHER is not, which is what the
+      // count still guards. Asserting a bare `2` here pinned the pair specifically,
+      // so it failed the moment the wrapper shipped: correct behaviour from a fixture
+      // that had outlived its contract.
       const paths = argv.slice(0, verbAt).filter((token) => !token.startsWith('-'));
-      expect(paths.length, `${where}: the invocation must name interpreter and script`).toBe(2);
+      const wrapped = paths.length === 1 && paths[0]?.endsWith('harness-hook.sh') === true;
+      expect(
+        wrapped || paths.length === 2,
+        `${where}: the invocation must name the wrapper, or interpreter and script`,
+      ).toBe(true);
       for (const token of paths) {
         expect(existsSync(token), `${where}: composed invocation token ${token} must exist`).toBe(
           true,

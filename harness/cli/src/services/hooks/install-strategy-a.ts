@@ -349,24 +349,38 @@ export function buildEntry(
     // and the form git-ai writes (github_copilot.rs:59-69).
     const psQuote = (path: string) => `'${path.replace(/'/g, "''")}'`;
     /*
+     * WHEN THE COMMAND NAMES OUR WRAPPER, POWERSHELL NAMES ITS TWIN — never the same
+     * file. `harness-hook.sh` is POSIX shell and cannot run on a Windows host; the
+     * `.ps1` beside it is the same resolution logic in the other dialect.
+     *
+     * They are DELIBERATELY not inferred from one another beyond this path swap.
+     * npm's own `cmd-shim` has divergent resolution between its `.cmd` and `.ps1`
+     * variants (npm/cmd-shim#51), and our own Windows run found four defects in the
+     * `.ps1` that its POSIX twin did not have — quote stripping, a literal backtick-t,
+     * a .NET Core-only overload, and a null-binding conversion. Two files, tested
+     * separately, sharing only a name.
+     */
+    const wrapperPs = script.endsWith('harness-hook.sh')
+      ? script.replace(/harness-hook\.sh$/, 'harness-hook.ps1')
+      : null;
+    /*
      * THE INTERPRETER FLAGS TRAVEL WITH THE INTERPRETER, on both strings.
      *
      * They did not. `command` carried `--no-warnings` and this reconstruction
      * dropped it, so the two fields IN ONE ENTRY ran different commands — the posix
      * one silenced Node's warnings and the Windows one did not. A hook's stdout is
-     * parsed by the agent, so a stray warning is not cosmetic; and a divergence
-     * between two strings that are supposed to be the same command is the same
-     * defect shape as reconstructing the path was (F008), one field over.
+     * parsed by the agent, so a stray warning is not cosmetic.
      *
-     * Rebuilt from INTERPRETER_FLAGS rather than re-parsed out of `command`, so
-     * there is one definition of what the interpreter is given and both strings read
-     * it. Re-parsing would have re-created the divergence the moment a flag changed.
+     * Moot for a wrapper entry, which names no interpreter at all — the wrapper owns
+     * the flags now. Kept for the fallback pair, which still emits both parts.
      */
     const flags = INTERPRETER_FLAGS.length === 0 ? '' : ` ${INTERPRETER_FLAGS.join(' ')}`;
     const invocation =
-      interpreter === null
-        ? `& ${psQuote(script)}`
-        : `& ${psQuote(interpreter)}${flags} ${psQuote(script)}`;
+      wrapperPs !== null
+        ? `& ${psQuote(wrapperPs)}`
+        : interpreter === null
+          ? `& ${psQuote(script)}`
+          : `& ${psQuote(interpreter)}${flags} ${psQuote(script)}`;
     Object.assign(extras, { powershell: `${invocation} ${hookArgs(spec.agent, phase)}` });
   }
 
