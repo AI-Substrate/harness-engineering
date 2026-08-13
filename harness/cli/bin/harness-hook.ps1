@@ -46,7 +46,12 @@ function Write-Failure([string]$reason) {
   # project has already paid for once. Separate file, trivial fixed fields.
   try {
     New-Item -ItemType Directory -Force -Path $StateDir | Out-Null
-    $line = '{0}`tno-interpreter`t{1}`t{2}' -f `
+    # DOUBLE-QUOTED, because PowerShell does NOT process backtick escapes inside
+    # SINGLE quotes - a single-quoted "`t" is a literal backtick followed by a t.
+    # Measured on Windows: the recorded line read `2026-08-13T15:39:44Z`tno-interpreter`
+    # verbatim, so the one field separator in the one file that reports a total
+    # failure to find node was itself broken.
+    $line = "{0}`tno-interpreter`t{1}`t{2}" -f `
       (Get-Date -Format 'yyyy-MM-ddTHH:mm:ssZ'), $reason, $env:PATH
     Add-Content -Path $FailLog -Value $line -Encoding ASCII
   } catch { }
@@ -56,10 +61,19 @@ function Test-Usable([string]$candidate) {
   if ([string]::IsNullOrWhiteSpace($candidate)) { return $false }
   if (-not (Test-Path -LiteralPath $candidate)) { return $false }
   try {
-    $v = & $candidate -e 'process.stdout.write(String(process.versions.node.split(".")[0]))' 2>$null
-    if ([string]::IsNullOrWhiteSpace($v)) { return $false }
-    if ([int]$v -lt $MinNode) { return $false }
-    $script:ResolvedVersion = $v
+    # `--version`, NOT `-e '<script>'`. MEASURED on Windows PowerShell 5.1: it strips
+    # the inner double quotes when passing an argument to a native binary, so
+    # `-e '...split(".")[0]...'` reached node as `.split(.)[0]` and died with
+    # `SyntaxError: Unexpected token '.'`. Every candidate then failed this check, so
+    # THE WRAPPER RESOLVED NOTHING ON WINDOWS - and it failed quietly, falling through
+    # to the failure recorder and exiting 0, which is correct behaviour concealing a
+    # total failure to work. Caught only by executing it on Windows; it parsed clean
+    # and was ASCII-verified on a Mac.
+    $raw = & $candidate --version 2>$null
+    if ($raw -notmatch '^v?(\d+)\.') { return $false }
+    $major = $Matches[1]
+    if ([int]$major -lt $MinNode) { return $false }
+    $script:ResolvedVersion = $major
     return $true
   } catch { return $false }
 }

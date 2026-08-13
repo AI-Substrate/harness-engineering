@@ -82,10 +82,26 @@ record_failure() {
 }
 
 # usable <path> - is this a node we can actually run, and new enough?
+#
+# `node --version` RATHER THAN `node -e '<script>'`, and the reason is a measured
+# Windows failure in the PowerShell twin: PS 5.1 strips the inner double quotes when
+# passing an argument to a native binary, so `-e '...split(".")[0]...'` reached node
+# as `.split(.)[0]` and died with `SyntaxError: Unexpected token '.'`. Every
+# candidate therefore failed the check, the wrapper resolved NOTHING on Windows, and
+# it did so quietly - it fell through to the failure recorder and exited 0, which is
+# correct behaviour hiding a total failure to work.
+#
+# `--version` needs no quoting in any shell, starts no script, and answers the only
+# question being asked. The POSIX side was never broken by this, but it is changed
+# too: two dialects agreeing by construction beats two dialects agreeing by luck, and
+# a probe that cannot be broken by quoting rules cannot be broken by the NEXT shell
+# either.
 usable() {
   [ -n "${1:-}" ] || return 1
   [ -x "$1" ] || return 1
-  _v=$("$1" -e 'process.stdout.write(String(process.versions.node.split(".")[0]))' 2>/dev/null) || return 1
+  _v=$("$1" --version 2>/dev/null) || return 1
+  _v=${_v#v}        # v24.19.0 -> 24.19.0
+  _v=${_v%%.*}      #           -> 24
   [ -n "$_v" ] || return 1
   [ "$_v" -ge "$HARNESS_MIN_NODE" ] 2>/dev/null || return 1
   RESOLVED_VERSION="$_v"
@@ -107,7 +123,7 @@ RESOLVED_STEP=""
 RESOLVED_VERSION=""
 # Tracked SEPARATELY from RESOLVED_STEP, and that separation is the point: the cache
 # stores the step that ORIGINALLY resolved the interpreter (`path`, `manager-shim`,
-# …) and we must preserve it, because "which step is earning its keep across the
+# etc) and we must preserve it, because "which step is earning its keep across the
 # fleet" is the question that decides whether the unprecedented steps survive. A
 # first attempt reused RESOLVED_STEP to mean both "how was it found" and "was it
 # cached", so a cache hit never looked like one and the file was rewritten on EVERY
