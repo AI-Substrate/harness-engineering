@@ -50,15 +50,41 @@ Pushing to a PR branch starts **no** workflow. `.github/workflows/ci.yml` trigge
 because every WIP push was paying for the full Node 22 + Node 24 matrix plus package-smoke,
 and with many concurrent seats that was the largest Actions line item in the repo.
 
-**Nothing was loosened.** `ci-verdict` is a **required status check** on `main`, so a head
-SHA that has never been dispatched has no verdict and the PR reads *Expected — waiting for
-status to be reported*: unmergeable. Ask for the verdict when you want it:
+**Nothing was loosened — but check which half is live.** The `ci-required` job publishes a
+`ci-verdict` commit status, and the intent is that `ci-verdict` be a **required** status
+check on `main`, so a head SHA that has never been dispatched has no verdict and the PR
+reads *Expected — waiting for status to be reported*: unmergeable.
+
+> **Enforcement status: the pin is NOT yet applied.** The `main` ruleset carries no
+> `required_status_checks` rule, so today nothing blocks a merge on CI — that hole predates
+> this change (the old branch-protection object that required a check was replaced by a
+> ruleset that dropped it). Do not trust this paragraph; ask the repo:
+>
+> ```bash
+> gh api repos/AI-Substrate/harness-engineering/rules/branches/main --jq '[.[].type]'
+> ```
+>
+> `required_status_checks` present ⇒ enforced. Absent ⇒ CI is advisory and a red PR can be
+> merged by anyone who doesn't look.
+
+Ask for the verdict when you want it:
 
 ```bash
 just ci                                # dispatch on the current branch
 gh workflow run ci.yml --ref <branch>  # …or any branch
 gh run list --workflow=ci.yml --branch <branch>   # watch
 ```
+
+**Before pinning `ci-verdict`, check the publisher's PRESENCE on every open PR head** — a
+branch that predates the publisher cannot emit the context at all, so pinning would leave it
+blocked with no reachable green:
+
+```bash
+git show <ref>:.github/workflows/ci.yml | grep -c ci-verdict   # must be non-zero, every PR
+```
+
+Derive from the property you need (*emits `ci-verdict`*), never the proxy (*has taken
+main*) — a branch can be legitimately unable to take main.
 
 **Why the required check is `ci-verdict` and not the `ci-required` job.** A
 `workflow_dispatch` check suite is **excluded from the commit's `statusCheckRollup`**, and
@@ -68,8 +94,24 @@ successful via `/commits/<sha>/check-runs`, the suite even listing `pull_request
 yet `statusCheckRollup` was `null` and the PR sat BLOCKED. The same query on a
 `pull_request`-event sha returned a SUCCESS rollup.) A commit **status** *is* rollup-eligible
 regardless of event, so the `ci-required` job publishes its verdict as the `ci-verdict`
-status and the ruleset requires that. The rule is pinned to the GitHub Actions app, so a
-human cannot hand-post a green verdict with `gh api .../statuses/<sha>`.
+status and the ruleset requires that. The rule is pinned to the GitHub Actions app
+(`integration_id: 15368` — *not* `41898282`, which is the `github-actions[bot]` **user** id),
+so a human cannot hand-post a green verdict with `gh api .../statuses/<sha>`.
+
+**Dependabot cannot satisfy this check on its own.** Dependabot opens PRs but cannot dispatch
+a workflow, and nothing runs on its branches, so every dependabot PR needs someone to run
+`gh workflow run ci.yml --ref <head>` before it can ever merge.
+
+> **The failure mode is silence, not an error.** A dependabot PR that is permanently
+> unmergeable looks exactly like a dependabot PR nobody has got round to. A quiet queue is
+> not evidence of a calm one — if the security queue looks idle, check whether anything has
+> been *dispatched*, not whether anything is red.
+
+Auto-merge would hide this completely: it would wait forever on a check nothing triggers.
+That needs two deliberate acts today — the repo setting **`allow_auto_merge` is `false`**, so
+per-PR auto-merge cannot be enabled until someone flips it. **If you are the one flipping it,
+this paragraph is the consequence you are taking on**; pair it with a dispatcher for
+dependabot heads (one `gh workflow run` per PR) or the queue stalls in silence.
 
 Two consequences that bite if you forget them:
 
