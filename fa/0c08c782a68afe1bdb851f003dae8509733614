@@ -1,0 +1,22 @@
+harness/cli/src/services/hooks/binary-path.ts
+  h_9e71e8b09f7cf2 318-333
+harness/cli/src/services/hooks/install-strategy-a.ts
+  h_9e71e8b09f7cf2 351-365,369
+harness/cli/test/services/hooks/binary-path.test.ts
+  h_9e71e8b09f7cf2 190-213
+harness/cli/test/services/hooks/copilot-vendor-contract.test.ts
+  h_9e71e8b09f7cf2 148-177
+harness/cli/test/services/hooks/win-invocation.test.ts
+  h_9e71e8b09f7cf2 146-150,158,163,174-180
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "fa0c08c782a68afe1bdb851f003dae8509733614",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
