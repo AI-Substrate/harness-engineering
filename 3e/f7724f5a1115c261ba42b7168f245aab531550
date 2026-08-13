@@ -1,0 +1,14 @@
+harness/cli/test/services/hooks/status-and-fires.test.ts
+  h_9e71e8b09f7cf2 415,417-426,591-611,619
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "3ef7724f5a1115c261ba42b7168f245aab531550",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
