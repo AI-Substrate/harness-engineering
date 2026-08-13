@@ -1,0 +1,46 @@
+harness/cli/src/acts/hooks.ts
+  h_9e71e8b09f7cf2 312,345-349
+harness/cli/src/services/hooks/binary-path.ts
+  h_9e71e8b09f7cf2 261,263-283,285,287-294,297-317,318-333,334-336,337-342
+harness/cli/src/services/hooks/commit-intercept.ts
+  h_9e71e8b09f7cf2 45-46,60-68,104
+harness/cli/src/services/hooks/hook-journal.ts
+  h_9e71e8b09f7cf2 72-91
+harness/cli/src/services/hooks/hooks-verbs.ts
+  h_9e71e8b09f7cf2 8,11,201-213,259-285,286-288,289,290-295,296-299,300,391,579-586,590-606,616-628,662-671,675-686,702-703,717-723,724-726,727-728,735-736,737,742,817-844,846-848,915-948
+harness/cli/test/services/hooks/binary-path.test.ts
+  h_9e71e8b09f7cf2 13,139-145,146-159,162-171,173,181-184,188,190-213,252
+harness/cli/test/services/hooks/hooks-verb.int.test.ts
+  h_9e71e8b09f7cf2 163-222
+harness/cli/test/services/hooks/status-and-fires.test.ts
+  h_9e71e8b09f7cf2 362-414,415,416,417-426,427-440,441-477,479-556,557-590,591-611,612-618,619,620-653,653
+harness/cli/vitest.config.ts
+  h_9e71e8b09f7cf2 136-159
+harness/cli/test/services/hooks/copilot-vendor-contract.test.ts
+  h_9e71e8b09f7cf2 1-147,148-177,178
+harness/cli/test/support/copilot-published-schema.ts
+  h_9e71e8b09f7cf2 1-171
+harness/cli/test/support/writer-shape-parity.ts
+  h_9e71e8b09f7cf2 47-60
+harness/cli/test/services/hooks/command-runs.test.ts
+  h_9e71e8b09f7cf2 67-83,101-103,105,107-109
+harness/cli/src/services/hooks/install-strategy-a.ts
+  h_9e71e8b09f7cf2 351-365,369
+harness/cli/test/services/hooks/win-invocation.test.ts
+  h_9e71e8b09f7cf2 146-150,158,163,174-180
+harness/cli/bin/harness-hook.ps1
+  h_9e71e8b09f7cf2 1-207
+harness/cli/bin/harness-hook.sh
+  h_9e71e8b09f7cf2 1-274
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "570c05e3176628f958bec0ab30a9aff7f53b33dc",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}

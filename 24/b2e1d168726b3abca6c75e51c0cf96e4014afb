@@ -1,0 +1,16 @@
+harness/cli/src/adapters/exec/spawn-wrapper-check.ts
+  h_9e71e8b09f7cf2 19-36,38-39
+harness/cli/test/services/hooks/win-invocation.test.ts
+  h_9e71e8b09f7cf2 1,4,235-245,248-257
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "24b2e1d168726b3abca6c75e51c0cf96e4014afb",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}

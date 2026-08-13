@@ -1,0 +1,19 @@
+harness/cli/src/services/hooks/install-strategy-a.ts
+  s_4d378daeeb48c1::t_70dd9776a7dad7 708-721,723-728,730-745,751-759,761-766,768-769
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "61f2cfb165fc70ae698da036644485b69d996505",
+  "prompts": {},
+  "sessions": {
+    "s_4d378daeeb48c1": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019ff98f-ab9f-781a-94af-1fa30f37fa19",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}

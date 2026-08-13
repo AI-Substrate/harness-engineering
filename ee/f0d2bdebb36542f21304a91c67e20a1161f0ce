@@ -1,0 +1,16 @@
+harness/cli/bin/harness-hook.ps1
+  h_9e71e8b09f7cf2 261-286,304-305
+harness/cli/test/services/hooks/hook-wrapper.int.test.ts
+  h_9e71e8b09f7cf2 207-242
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "eef0d2bdebb36542f21304a91c67e20a1161f0ce",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}

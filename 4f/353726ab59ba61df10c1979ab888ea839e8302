@@ -1,0 +1,19 @@
+harness/cli/src/acts/hooks.ts
+  s_9fbe1c00496faf::t_37596484614cb6 1,275-293
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "4f353726ab59ba61df10c1979ab888ea839e8302",
+  "prompts": {},
+  "sessions": {
+    "s_9fbe1c00496faf": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "019ff990-0bbb-7158-ad8e-f6f7b1d5bed9",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}

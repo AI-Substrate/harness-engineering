@@ -1,0 +1,24 @@
+harness/cli/src/acts/hooks.ts
+  h_9e71e8b09f7cf2 6,12,248-251,255-280
+harness/cli/src/adapters/exec/spawn-wrapper-check.ts
+  h_9e71e8b09f7cf2 1-37
+harness/cli/src/services/hooks/hooks-verbs.ts
+  h_9e71e8b09f7cf2 148-157,169-174,746-757,762-763,767-769
+harness/cli/src/services/hooks/install-strategy-a.ts
+  h_9e71e8b09f7cf2 351-365,372,374-375,379-383
+harness/cli/test/services/hooks/composed-command.int.test.ts
+  h_9e71e8b09f7cf2 300-307,309-313
+harness/cli/test/services/hooks/status-and-fires.test.ts
+  h_9e71e8b09f7cf2 654-698
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "15840c6c03ac91d3247f326eeb92e303c6e3ee34",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
