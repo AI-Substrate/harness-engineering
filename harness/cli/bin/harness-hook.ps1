@@ -181,6 +181,28 @@ if (-not $Resolved) {
 # Atomic write - hooks fire in parallel (082 measured 3 concurrent tool calls, ~38
 # invocations per run), so a partial write from one process must never be read by
 # another. Skipped entirely on a cache hit: the warm path is read-only.
+#
+# THE SWAP IS DONE IN TWO BRANCHES BECAUSE THE ONE-LINER IS NOT PORTABLE. The obvious
+# form, [System.IO.File]::Move($tmp, $Cache, $true), takes a THREE-ARGUMENT overload
+# that only exists on .NET Core 3.0+. Windows PowerShell 5.1 runs on .NET Framework
+# and has only the two-argument Move, so it threw
+#   Cannot find an overload for "Move" and the argument count: "3".
+# and the catch below swallowed it: NO CACHE WAS EVER WRITTEN ON WINDOWS, silently,
+# while every other behaviour looked correct. Measured on a real Windows 11 host; pwsh
+# 7 on macOS has the overload, so a Mac could not see it.
+#
+# Move (2-arg) is atomic within a volume but REFUSES an existing destination; Replace
+# is atomic AND overwrites but REQUIRES one. Try the create case first and fall back,
+# rather than testing for existence: a Test-Path would leave a window in which another
+# concurrent fire creates the file between the check and the move.
+#
+# [NullString]::Value, NOT $null, for Replace's backup argument. PowerShell converts
+# $null to an EMPTY STRING when binding a .NET string parameter, and .NET rejects it:
+#   The value cannot be an empty string. (Parameter 'path')
+# So the fallback branch threw, the outer catch swallowed it, and the cache was still
+# never written - the SAME silent-swallow shape as the overload bug this block was
+# being fixed for, reintroduced by its own fix. Caught because the fix was executed
+# rather than reasoned about.
 if (-not $FromCache) {
   try {
     New-Item -ItemType Directory -Force -Path $StateDir | Out-Null
@@ -192,7 +214,11 @@ if (-not $FromCache) {
       ("at=" + (Get-Date -Format 'yyyy-MM-ddTHH:mm:ssZ'))
     ) -join "`n"
     [System.IO.File]::WriteAllText($tmp, $body + "`n", [System.Text.ASCIIEncoding]::new())
-    [System.IO.File]::Move($tmp, $Cache, $true)
+    try {
+      [System.IO.File]::Move($tmp, $Cache)
+    } catch {
+      [System.IO.File]::Replace($tmp, $Cache, [NullString]::Value)
+    }
   } catch { try { Remove-Item -LiteralPath $tmp -Force } catch { } }
 }
 
