@@ -10,7 +10,11 @@ import { ExecGit } from '../adapters/git/exec-git.js';
 import { ExecGitAttribution } from '../adapters/git/exec-git-attribution.js';
 import { NodeHash } from '../adapters/hash/node-hash.js';
 import { NodeSocketProbe } from '../adapters/net/node-socket-probe.js';
-import { embedBinaryPath, embedInvocation } from '../services/hooks/binary-path.js';
+import {
+  embedBinaryPath,
+  embedInvocation,
+  embedPowershellWrapper,
+} from '../services/hooks/binary-path.js';
 import {
   CommitIntercept,
   type HookJournal,
@@ -276,7 +280,7 @@ export function hooksDepsFor(
  * exactly the class being removed. If it is absent we fall back to the pair, which
  * still works; the fallback is a lesser install, not a broken one.
  */
-function hookInvocation(fs: FsPort): string {
+export function hookInvocation(fs: FsPort, platform: NodeJS.Platform = process.platform): string {
   const script = process.argv[1] ?? 'harness';
   /*
    * DERIVED FROM THIS MODULE'S OWN LOCATION, NOT FROM `process.argv[1]`.
@@ -295,8 +299,47 @@ function hookInvocation(fs: FsPort): string {
    * This module sits at `harness/cli/{src,dist}/acts/hooks.*`, so `../../bin/` is the
    * wrapper directory from either build, independent of how the CLI was entered.
    */
-  const wrapper = fileURLToPath(new URL('../../bin/harness-hook.sh', import.meta.url));
-  if (fs.exists(wrapper)) return embedBinaryPath(wrapper);
+  /*
+   * THE FIRST TOKEN MUST BE A NATIVE EXECUTABLE. THAT IS THE WHOLE INVARIANT.
+   *
+   * MEASURED ON THE WINDOWS VM (plan 088), each shape spawned two ways:
+   *
+   *   bare `harness-hook.sh`   direct: status null, EFTYPE   via shell: EXIT 0, A LIE
+   *   bare `harness-hook.cmd`  direct: status null, EINVAL    via shell: exit 0, ran
+   *   `powershell.exe -File …` direct: exit 0, resolved       via shell: exit 0, resolved
+   *
+   * `command` is the field EVERY agent reads. Shipping the `.sh` there gave four of
+   * five agents a hook that cannot execute on Windows, while only github-copilot
+   * escaped — it reads the separate `powershell` field and got the `.ps1`.
+   *
+   * AND THE FAILURE IS INVISIBLE BY CONSTRUCTION. A hook's contract is exit 0 and
+   * print nothing, so a hook that cannot run is byte-for-byte indistinguishable from
+   * one that is not installed: no error, no log line, nothing in `fires.jsonl`. Worse
+   * than silence, a SHELL caller gets exit 0 from the `.sh` because Windows resolves
+   * it through the `sh_auto_file` association to `git-bash.exe`, which returns
+   * success having done none of our work.
+   *
+   * A `.cmd` DOES NOT FIX IT, which is why this is not the obvious answer: Node
+   * refuses to spawn `.cmd`/`.bat` without `shell: true` (CVE-2024-27980), so a bare
+   * `.cmd` is EINVAL for exactly the callers a bare `.sh` is EFTYPE for. It is a
+   * script the shell interprets, not a native executable.
+   *
+   * WE TOOK PARITY FROM git-ai AND COPIED THE WRONG PROPERTY. It writes a `powershell`
+   * field for this agent and we matched that — but its `command` is a native `.exe`,
+   * runnable everywhere, and THAT is what made it immune. When you take parity from
+   * another implementation, name the properties you are relying on; the ones you do
+   * not name are the ones you do not copy.
+   *
+   * No `-ExecutionPolicy` flag, deliberately: measured on that box the effective
+   * policy is `RemoteSigned`, under which our locally-installed (zone-unmarked)
+   * `.ps1` runs clean. Adding `Bypass` would be a security posture nobody asked for.
+   */
+  const wrapperSh = fileURLToPath(new URL('../../bin/harness-hook.sh', import.meta.url));
+  if (platform === 'win32') {
+    const wrapperPs = fileURLToPath(new URL('../../bin/harness-hook.ps1', import.meta.url));
+    if (fs.exists(wrapperPs)) return embedPowershellWrapper(wrapperPs);
+  }
+  if (fs.exists(wrapperSh)) return embedBinaryPath(wrapperSh);
   // The interpreter and the script, both quoted — one form on every platform, so the
   // string shipped to Windows users is the string every macOS gate run exercises.
   return embedInvocation(process.execPath, script);

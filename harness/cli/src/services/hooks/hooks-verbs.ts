@@ -752,7 +752,15 @@ export function statusHooks(deps: HooksDeps): StatusReport[] {
      * in pure shell and starts no node, so this costs a fork rather than a CLI boot,
      * which is why it is on by default where `probeExecution` is opt-in.
      */
-    const wrapper = configured.endsWith('harness-hook.sh') ? configured : null;
+    // BOTH TWINS (plan 088). Windows entries name `harness-hook.ps1`; POSIX entries
+    // name `harness-hook.sh`. `spawnWrapperCheck` already routes a `.ps1` through
+    // `powershell -NoProfile -File`, so the only thing that was missing was
+    // recognising it here — a `.sh`-only test meant every Windows entry skipped the
+    // invoke-don't-stat check and fell back to the stat that cannot see a broken one.
+    const wrapper =
+      configured.endsWith('harness-hook.sh') || configured.endsWith('harness-hook.ps1')
+        ? configured
+        : null;
     const wrapperCheck =
       wrapper === null || deps.checkWrapper === undefined ? null : deps.checkWrapper(wrapper);
     return {
