@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
+import { BIOME_CAPABLE } from '../../../support/biome-capability.js';
 
 /**
  * tk-7164 / dw-0007 — the baked-docs drift gate, proven BOTH ways.
@@ -112,15 +113,26 @@ describe('dw-0007 — the baked dd-docs drift gate is green both ways', () => {
     expect(result.drifted).toBe(true);
   });
 
-  it('runs clean against the REAL repository — the gate the composite check runs', () => {
-    // The end-to-end twin: the actual script, the actual tree, no fixture. It is
-    // the assertion `just checks` makes on every commit, held here too so a
-    // failure is attributable to the docs rather than to a whole gate run.
-    const result = execFileSync(process.execPath, ['scripts/check-dd-docs.mjs'], {
-      cwd: REPO_ROOT,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-    expect(result).toBeDefined();
-  });
+  it.runIf(BIOME_CAPABLE)(
+    'runs clean against the REAL repository — the gate the composite check runs',
+    () => {
+      // The end-to-end twin: the actual script, the actual tree, no fixture. It is
+      // the assertion `just checks` makes on every commit, held here too so a
+      // failure is attributable to the docs rather than to a whole gate run.
+      //
+      // GATED ON BIOME ACTUALLY RUNNING, because this row shells out to it via
+      // `check-dd-docs.mjs`, and biome 2.5.2-2.5.7 crashes on win32-arm64 with an
+      // EMPTY stdout and stderr (upstream biomejs/biome#11242). On that host the row
+      // went red for a reason with nothing to do with docs drift. The three rows above
+      // use temp fixtures and stay live on EVERY platform, so the gate's both-ways
+      // proof is not lost here - only this end-to-end twin steps aside, and only where
+      // the tool it depends on cannot execute at all.
+      const result = execFileSync(process.execPath, ['scripts/check-dd-docs.mjs'], {
+        cwd: REPO_ROOT,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      expect(result).toBeDefined();
+    },
+  );
 });

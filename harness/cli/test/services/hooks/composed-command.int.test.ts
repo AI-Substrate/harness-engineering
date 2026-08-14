@@ -11,6 +11,7 @@ import {
   HOOK_MARKER_FLAG,
 } from '../../../src/services/hooks/hook-marker.js';
 import { hermeticGitEnv } from '../../support/hermetic-git.js';
+import { POSIX_SHELL } from '../../support/posix-shell.js';
 
 /**
  * THE PRODUCER AND THE CONSUMER, MEETING (plan 082, post-phase-3 defect F004).
@@ -262,9 +263,36 @@ beforeEach(() => {
 });
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
+/**
+ * WHY FIVE ROWS IN THIS FILE ARE GATED ON A POSIX SHELL — and why the rest are not.
+ *
+ * The gated rows SPAWN THE INSTALLED COMMAND STRING, and since #172 its first token is
+ * `harness-hook.sh`. `spawnSync` of a POSIX shell script on Windows never starts a
+ * process: `status` comes back `null`, so every `toBe(0)` in them fails for a reason
+ * that has nothing to do with the property under test. Measured on the VM at
+ * `3e4b148a` - 5 of 10 rows here, alongside 7 in `hook-wrapper.int.test.ts`, all one
+ * cause.
+ *
+ * THE OTHER ROWS STAY LIVE ON EVERY PLATFORM, deliberately, and that is the whole
+ * shape of this change. They pass on Windows today because they build their argv as
+ * `[process.execPath, CLI, ...]` - supplying the interpreter themselves rather than
+ * asking the host to dispatch a script - or because they assert the composed argv's
+ * SHAPE without running it at all (every token exists, the `hooks` verb is reached).
+ * So Windows keeps real coverage of what this file is for: that the installer composes
+ * a command whose every token is present and whose options `fire` actually declares.
+ *
+ * WHAT IS NO LONGER ASKED ON WINDOWS, so nobody reads the green as more than it is:
+ * whether that composed string can EXECUTE there. It cannot be asked from here without
+ * a shell, and it is open in **#173** - six of seven agents get `command` = a bare
+ * `harness-hook.sh` path on Windows, executability unmeasured. **#174** covers the
+ * `.ps1` twin having no execution coverage anywhere. Both were held out of plan 087 by
+ * scope ruling, not resolved.
+ */
 describe('the command the INSTALLER composed is a command `fire` can actually RUN (F004)', () => {
-  it('executes the installed string verbatim: exit 0, silent, and a journal entry', () => {
-    /*
+  it.runIf(POSIX_SHELL)(
+    'executes the installed string verbatim: exit 0, silent, and a journal entry',
+    () => {
+      /*
     Test Doc:
     - Why: F004. The shipped hook had never fired on any machine. The installer
       emitted `--hook-owner`, which `fire` did not register, so commander exited 1
@@ -277,85 +305,87 @@ describe('the command the INSTALLER composed is a command `fire` can actually RU
     - Quality Contribution: this is the only row in the suite where the producer of
       the command string and its consumer are the same string.
     */
-    const composed = composedCommands();
-    // Every supported agent, every config file, every event key. A count assertion
-    // so a fixture that silently stopped detecting an agent reads as a failure
-    // rather than as a pass.
-    //
-    // DERIVED FROM THE MATRIX, not written down. It used to be `AGENT_CONFIGS × 2`,
-    // which assumed two events per agent and that every known agent is installed —
-    // BOTH became false in plan 082 F005 (windsurf dispatches on five cascade
-    // events, and firebender is deliberately held out). A literal here would have
-    // had to be re-derived by hand at exactly the moment the shapes changed.
-    expect(composed.length, 'the installer wrote a command for every agent×file×event').toBe(
-      expectedCommandCount(),
-    );
-
-    for (const { agent, phase, command } of composed) {
-      const argv = argvOf(command);
-      const where = `${agent} ${phase}`;
-      // EVERY token of the invocation must exist, not just the first (F008).
-      // Derived INDEPENDENTLY, in keeping with this file's stance: the invocation
-      // is whatever precedes the literal `hooks` verb. Checking only argv[0] once
-      // that token is `node` asks whether Node exists on a machine that is
-      // running Node — a check that cannot fail, occupying the slot where a check
-      // should be.
-      const verbAt = argv.indexOf('hooks');
-      expect(verbAt, `${where}: the command must reach the hooks verb`).toBeGreaterThan(0);
-      // The invocation is PATHS plus INTERPRETER FLAGS (F010 F5). A flag is not a
-      // file, so only the paths are stat-able — and the count is asserted so this
-      // cannot degrade into checking nothing once everything is filtered out.
+      const composed = composedCommands();
+      // Every supported agent, every config file, every event key. A count assertion
+      // so a fixture that silently stopped detecting an agent reads as a failure
+      // rather than as a pass.
       //
-      // ONE PATH OR TWO, and which one is the point (plan 085). The installer now
-      // prefers the shipped WRAPPER — a single token that resolves the interpreter
-      // when the hook fires — and falls back to the interpreter+script pair when no
-      // wrapper is present. Both are legal; naming NEITHER is not, which is what the
-      // count still guards. Asserting a bare `2` here pinned the pair specifically,
-      // so it failed the moment the wrapper shipped: correct behaviour from a fixture
-      // that had outlived its contract.
-      const paths = argv.slice(0, verbAt).filter((token) => !token.startsWith('-'));
-      const wrapped = paths.length === 1 && paths[0]?.endsWith('harness-hook.sh') === true;
-      expect(
-        wrapped || paths.length === 2,
-        `${where}: the invocation must name the wrapper, or interpreter and script`,
-      ).toBe(true);
-      for (const token of paths) {
-        expect(existsSync(token), `${where}: composed invocation token ${token} must exist`).toBe(
-          true,
-        );
+      // DERIVED FROM THE MATRIX, not written down. It used to be `AGENT_CONFIGS × 2`,
+      // which assumed two events per agent and that every known agent is installed —
+      // BOTH became false in plan 082 F005 (windsurf dispatches on five cascade
+      // events, and firebender is deliberately held out). A literal here would have
+      // had to be re-derived by hand at exactly the moment the shapes changed.
+      expect(composed.length, 'the installer wrote a command for every agent×file×event').toBe(
+        expectedCommandCount(),
+      );
+
+      for (const { agent, phase, command } of composed) {
+        const argv = argvOf(command);
+        const where = `${agent} ${phase}`;
+        // EVERY token of the invocation must exist, not just the first (F008).
+        // Derived INDEPENDENTLY, in keeping with this file's stance: the invocation
+        // is whatever precedes the literal `hooks` verb. Checking only argv[0] once
+        // that token is `node` asks whether Node exists on a machine that is
+        // running Node — a check that cannot fail, occupying the slot where a check
+        // should be.
+        const verbAt = argv.indexOf('hooks');
+        expect(verbAt, `${where}: the command must reach the hooks verb`).toBeGreaterThan(0);
+        // The invocation is PATHS plus INTERPRETER FLAGS (F010 F5). A flag is not a
+        // file, so only the paths are stat-able — and the count is asserted so this
+        // cannot degrade into checking nothing once everything is filtered out.
+        //
+        // ONE PATH OR TWO, and which one is the point (plan 085). The installer now
+        // prefers the shipped WRAPPER — a single token that resolves the interpreter
+        // when the hook fires — and falls back to the interpreter+script pair when no
+        // wrapper is present. Both are legal; naming NEITHER is not, which is what the
+        // count still guards. Asserting a bare `2` here pinned the pair specifically,
+        // so it failed the moment the wrapper shipped: correct behaviour from a fixture
+        // that had outlived its contract.
+        const paths = argv.slice(0, verbAt).filter((token) => !token.startsWith('-'));
+        const wrapped = paths.length === 1 && paths[0]?.endsWith('harness-hook.sh') === true;
+        expect(
+          wrapped || paths.length === 2,
+          `${where}: the invocation must name the wrapper, or interpreter and script`,
+        ).toBe(true);
+        for (const token of paths) {
+          expect(existsSync(token), `${where}: composed invocation token ${token} must exist`).toBe(
+            true,
+          );
+        }
+
+        const run = runArgv(argv);
+        expect(run.stderr, `${where}: the hook must print nothing an agent can see`).toBe('');
+        expect(run.stdout, `${where}: the hook must print nothing an agent can see`).toBe('');
+        expect(run.status, `${where}: the exit-0 contract, on the string we ship`).toBe(0);
       }
 
-      const run = runArgv(argv);
-      expect(run.stderr, `${where}: the hook must print nothing an agent can see`).toBe('');
-      expect(run.stdout, `${where}: the hook must print nothing an agent can see`).toBe('');
-      expect(run.status, `${where}: the exit-0 contract, on the string we ship`).toBe(0);
-    }
-
-    // Exit 0 is unconditional by design, so it proves nothing on its own. The
-    // journal is what separates "ran" from "died before reaching our code" — and
-    // one entry per composed command, so a single silent death is visible.
-    expect(journal().length).toBe(composed.length);
-    // 120s, not the 30s floor — a SPAWN-COUNT budget, not a Windows exemption.
-    //
-    // This row spawns ~20 real CLI subprocesses (every supported agent x config
-    // file x event key) plus an install and a `git init`. Measured: ~3.35s on
-    // macOS, 54.2s on the Windows VM. Windows per-spawn cost is multiples of
-    // macOS, so the row exceeded the wall ON BUDGET, never on correctness — every
-    // assertion it makes was already passing when the clock ran out.
-    //
-    // vitest.config.ts chose 30s deliberately and its own reasoning points here:
-    // the contention is "this suite spawns processes constantly", NOT "this suite
-    // is on Windows", and it warns that a too-tight budget "fails cases whose
-    // assertions were never in doubt and hides the ones that were". So this is a
-    // PER-TEST raise on the spawn-heaviest row, with no platform branch — a
-    // win32-only guard would encode "Windows is the weird one", which is the
-    // wrong diagnosis attached to the right symptom.
-    //
-    // NOT SKIPPED, on purpose. This is the only end-to-end proof that the
-    // installed string executes verbatim and lands a journal entry; skipping it
-    // on the slow platform would mean the property is never proven on the
-    // platform most likely to break it.
-  }, 120_000);
+      // Exit 0 is unconditional by design, so it proves nothing on its own. The
+      // journal is what separates "ran" from "died before reaching our code" — and
+      // one entry per composed command, so a single silent death is visible.
+      expect(journal().length).toBe(composed.length);
+      // 120s, not the 30s floor — a SPAWN-COUNT budget, not a Windows exemption.
+      //
+      // This row spawns ~20 real CLI subprocesses (every supported agent x config
+      // file x event key) plus an install and a `git init`. Measured: ~3.35s on
+      // macOS, 54.2s on the Windows VM. Windows per-spawn cost is multiples of
+      // macOS, so the row exceeded the wall ON BUDGET, never on correctness — every
+      // assertion it makes was already passing when the clock ran out.
+      //
+      // vitest.config.ts chose 30s deliberately and its own reasoning points here:
+      // the contention is "this suite spawns processes constantly", NOT "this suite
+      // is on Windows", and it warns that a too-tight budget "fails cases whose
+      // assertions were never in doubt and hides the ones that were". So this is a
+      // PER-TEST raise on the spawn-heaviest row, with no platform branch — a
+      // win32-only guard would encode "Windows is the weird one", which is the
+      // wrong diagnosis attached to the right symptom.
+      //
+      // NOT SKIPPED, on purpose. This is the only end-to-end proof that the
+      // installed string executes verbatim and lands a journal entry; skipping it
+      // on the slow platform would mean the property is never proven on the
+      // platform most likely to break it.
+    },
+    120_000,
+  );
 
   it('emits no option `fire` does not register — checked flag by flag', () => {
     /*
@@ -410,8 +440,10 @@ describe('the command the INSTALLER composed is a command `fire` can actually RU
     }
   });
 
-  it('treats the marker as PROVENANCE, not behaviour: same outcome with and without it', () => {
-    /*
+  it.runIf(POSIX_SHELL)(
+    'treats the marker as PROVENANCE, not behaviour: same outcome with and without it',
+    () => {
+      /*
     Test Doc:
     - Why: the flag exists so uninstall can recognise its own entry. If `fire` ever
       started BEHAVING differently because of it, the installed command and every
@@ -422,37 +454,40 @@ describe('the command the INSTALLER composed is a command `fire` can actually RU
       stripped; the journal entry each produces is identical apart from the fields
       that are per-run by construction.
     */
-    const { command } = cursorCommands().find((c) => c.phase === 'preToolUse') as Composed;
-    const withMarker = argvOf(command);
-    const markerAt = withMarker.indexOf(HOOK_MARKER_FLAG);
-    expect(markerAt, 'the composed command carries the marker flag').toBeGreaterThan(-1);
-    const withoutMarker = [...withMarker];
-    withoutMarker.splice(markerAt, 2);
+      const { command } = cursorCommands().find((c) => c.phase === 'preToolUse') as Composed;
+      const withMarker = argvOf(command);
+      const markerAt = withMarker.indexOf(HOOK_MARKER_FLAG);
+      expect(markerAt, 'the composed command carries the marker flag').toBeGreaterThan(-1);
+      const withoutMarker = [...withMarker];
+      withoutMarker.splice(markerAt, 2);
 
-    const first = runArgv(withMarker);
-    const afterMarker = journal();
-    const second = runArgv(withoutMarker);
-    const afterBoth = journal();
+      const first = runArgv(withMarker);
+      const afterMarker = journal();
+      const second = runArgv(withoutMarker);
+      const afterBoth = journal();
 
-    expect(first.status).toBe(0);
-    expect(second.status).toBe(0);
-    expect(afterMarker.length, 'the marked run journalled').toBe(1);
-    expect(afterBoth.length, 'the unmarked run journalled too').toBe(2);
+      expect(first.status).toBe(0);
+      expect(second.status).toBe(0);
+      expect(afterMarker.length, 'the marked run journalled').toBe(1);
+      expect(afterBoth.length, 'the unmarked run journalled too').toBe(2);
 
-    // Per-run by construction: the clock and the identity of the firing process.
-    const shape = (entry: Record<string, unknown>): Record<string, unknown> => {
-      const { at, timestamp, id, pid, ...rest } = entry;
-      void at;
-      void timestamp;
-      void id;
-      void pid;
-      return rest;
-    };
-    expect(shape(afterBoth[1])).toEqual(shape(afterBoth[0]));
-  });
+      // Per-run by construction: the clock and the identity of the firing process.
+      const shape = (entry: Record<string, unknown>): Record<string, unknown> => {
+        const { at, timestamp, id, pid, ...rest } = entry;
+        void at;
+        void timestamp;
+        void id;
+        void pid;
+        return rest;
+      };
+      expect(shape(afterBoth[1])).toEqual(shape(afterBoth[0]));
+    },
+  );
 
-  it('survives an option it does NOT declare: still exit 0, still silent, still journals', () => {
-    /*
+  it.runIf(POSIX_SHELL)(
+    'survives an option it does NOT declare: still exit 0, still silent, still journals',
+    () => {
+      /*
     Test Doc:
     - Why: registering `--hook-owner` fixes ONE flag. The exit-0 contract claims
       "every path" — and argument parsing was not one of them, which is how a
@@ -463,15 +498,16 @@ describe('the command the INSTALLER composed is a command `fire` can actually RU
       nothing, and REACHES the journal — the last of those being the one that
       separates "tolerated" from "died quietly", since exit 0 is unconditional.
     */
-    const { command } = cursorCommands().find((c) => c.phase === 'preToolUse') as Composed;
-    const argv = [...argvOf(command), '--a-flag-from-the-future', 'whatever'];
+      const { command } = cursorCommands().find((c) => c.phase === 'preToolUse') as Composed;
+      const argv = [...argvOf(command), '--a-flag-from-the-future', 'whatever'];
 
-    const run = runArgv(argv);
-    expect(run.stderr).toBe('');
-    expect(run.stdout).toBe('');
-    expect(run.status).toBe(0);
-    expect(journal().length, 'tolerance means it RAN, not that it exited quietly').toBe(1);
-  });
+      const run = runArgv(argv);
+      expect(run.stderr).toBe('');
+      expect(run.stdout).toBe('');
+      expect(run.status).toBe(0);
+      expect(journal().length, 'tolerance means it RAN, not that it exited quietly').toBe(1);
+    },
+  );
 });
 
 describe('`hooks status` can see that the ARGUMENTS are rejected, not just that the binary is there', () => {
@@ -540,8 +576,10 @@ describe('`hooks status` can see that the ARGUMENTS are rejected, not just that 
 });
 
 describe('the silent contract survives an environment we do not control (plan 082 F010 F5)', () => {
-  it('prints NOTHING with both NO_COLOR and FORCE_COLOR set — the pair Node warns about', () => {
-    /*
+  it.runIf(POSIX_SHELL)(
+    'prints NOTHING with both NO_COLOR and FORCE_COLOR set — the pair Node warns about',
+    () => {
+      /*
     Test Doc:
     - Why: `fire` runs inside an agent's tool loop under an exit-0-AND-SILENT
       contract, and since F008 the installed command launches Node DIRECTLY. Node
@@ -555,30 +593,34 @@ describe('the silent contract survives an environment we do not control (plan 08
       so this row reproduces the defect on any machine instead of only on the
       machines that happen to be configured for it.
     */
-    const { command } = cursorCommands().find((c) => c.phase === 'preToolUse') as Composed;
-    const run = runArgv(argvOf(command), { NO_COLOR: '1', FORCE_COLOR: '1' });
+      const { command } = cursorCommands().find((c) => c.phase === 'preToolUse') as Composed;
+      const run = runArgv(argvOf(command), { NO_COLOR: '1', FORCE_COLOR: '1' });
 
-    expect(run.stderr, 'a startup warning is still output an agent can see').toBe('');
-    expect(run.stdout).toBe('');
-    expect(run.status).toBe(0);
-    // Exit 0 carries no information by design, so silence alone could mean the
-    // process died before reaching us. The journal is what separates the two.
-    expect(journal().length, 'silent must mean it RAN, not that it never started').toBe(1);
-  });
+      expect(run.stderr, 'a startup warning is still output an agent can see').toBe('');
+      expect(run.stdout).toBe('');
+      expect(run.status).toBe(0);
+      // Exit 0 carries no information by design, so silence alone could mean the
+      // process died before reaching us. The journal is what separates the two.
+      expect(journal().length, 'silent must mean it RAN, not that it never started').toBe(1);
+    },
+  );
 
-  it('still REACHES our code under that environment — silence is not the only property', () => {
-    /*
+  it.runIf(POSIX_SHELL)(
+    'still REACHES our code under that environment — silence is not the only property',
+    () => {
+      /*
     Test Doc:
     - Why: the counter-row for the obvious wrong fix. Redirecting or swallowing the
       hook's output would satisfy the row above while breaking everything the hook
       is for, and exit 0 could not tell you.
     - Contract: the journal records a fire under the hostile environment.
     */
-    const { command } = cursorCommands().find((c) => c.phase === 'preToolUse') as Composed;
-    runArgv(argvOf(command), { NO_COLOR: '1', FORCE_COLOR: '1' });
+      const { command } = cursorCommands().find((c) => c.phase === 'preToolUse') as Composed;
+      runArgv(argvOf(command), { NO_COLOR: '1', FORCE_COLOR: '1' });
 
-    expect(journal().length).toBe(1);
-  });
+      expect(journal().length).toBe(1);
+    },
+  );
 });
 
 describe('`--hook-input-file`: the payload the WINDOWS wrapper spills (plan 085)', () => {
