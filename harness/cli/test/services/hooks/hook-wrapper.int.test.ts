@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { POSIX_SHELL } from '../../support/posix-shell.js';
 
 /**
  * THE POSIX HOOK WRAPPER, exercised as a program rather than reasoned about.
@@ -25,6 +26,14 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
  * is a separate dialect with separate resolution, and npm's own `cmd-shim` diverges
  * between its `.cmd` and `.ps1` variants (npm/cmd-shim#51) - the reference
  * implementation of this exact pattern does not have parity between its own shells.
+ *
+ * THAT SENTENCE IS NOW ENFORCED, AND FOR YEARS IT WAS NOT. It sat here as prose while
+ * `run()` handed the script to `/bin/sh` unconditionally, so on Windows the spawn
+ * ENOENT'd, the catch coerced a null status to -1, and all seven behavioural rows went
+ * red on a platform the file itself declared out of scope. Measured on the VM at
+ * `3e4b148a`; reproduced independently on a second Windows box. The gate is
+ * {@link ../../support/posix-shell.ts}, and it degrades rather than going dark - see the
+ * final describe, which runs everywhere.
  */
 
 const BIN = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'bin');
@@ -77,7 +86,7 @@ beforeEach(() => {
 });
 afterEach(() => rmSync(home, { recursive: true, force: true }));
 
-describe('the hook wrapper resolves an interpreter at fire time', () => {
+describe.runIf(POSIX_SHELL)('the hook wrapper resolves an interpreter at fire time', () => {
   it('runs the CLI and records WHICH STEP resolved it', () => {
     const result = run(['--version']);
     expect(result.status).toBe(0);
@@ -118,7 +127,7 @@ describe('the hook wrapper resolves an interpreter at fire time', () => {
   });
 });
 
-describe('the same broken state exits 1 to a CHECKER and 0 to a FIRE', () => {
+describe.runIf(POSIX_SHELL)('the same broken state exits 1 to a CHECKER and 0 to a FIRE', () => {
   /*
   Test Doc:
   - Why: THIS ASYMMETRY IS DELIBERATE AND IT LOOKS LIKE A BUG. A later author tidying
@@ -161,7 +170,7 @@ describe('the same broken state exits 1 to a CHECKER and 0 to a FIRE', () => {
   });
 });
 
-describe('a failure that cannot run node still reports itself', () => {
+describe.runIf(POSIX_SHELL)('a failure that cannot run node still reports itself', () => {
   it('records to its own log, and NEVER to the fire journal', () => {
     /*
     Test Doc:
@@ -237,6 +246,79 @@ describe('the PowerShell wrapper never mentions `$input` (measured stdin-drain h
     expect(
       offenders.map((row) => `${row.number}: ${row.line.trim()}`),
       'a `$input` reference anywhere in this file empties stdin at parse time',
+    ).toEqual([]);
+  });
+});
+
+/**
+ * WHAT THIS FILE STILL PROVES ON A HOST WITH NO POSIX SHELL — the degrade half.
+ *
+ * These rows run EVERYWHERE, deliberately. Three of the describes above are gated on
+ * {@link POSIX_SHELL} because they must start `/bin/sh`; if that were the whole change
+ * this file would go fully dark on Windows, and a dark file teaches the next author
+ * that the platform is out of scope. That is the exact defect being repaired here: the
+ * boundary was stated at the top of this file and enforced nowhere, so it read as a
+ * disclaimer rather than a contract.
+ *
+ * So the properties that DO NOT need a shell are asserted on every platform. They are
+ * weaker than running the thing, and they are not nothing: a missing wrapper, a BOM, or
+ * a `.ps1` that stopped shipping beside its twin are all live regressions that would
+ * otherwise reach Windows users through a green run.
+ *
+ * WHAT THESE ROWS DO NOT PROVE, and where that lives instead. They say nothing about
+ * whether either wrapper RUNS on Windows. Both questions are open and both were held
+ * out of plan 087 by scope ruling rather than resolved: **#173** (six of seven agents
+ * get `command` = a bare `harness-hook.sh` path on Windows, executability unmeasured)
+ * and **#174** (`harness-hook.ps1` has no execution coverage anywhere). If you came here
+ * because Windows is green and wondered whether that means the wrapper works there:
+ * it does not, and those two issues are why.
+ */
+describe('both wrappers ship, on every platform (no shell required)', () => {
+  const wrappers = [
+    ['harness-hook.sh', WRAPPER],
+    ['harness-hook.ps1', join(BIN, 'harness-hook.ps1')],
+  ] as const;
+
+  it.each(wrappers)('%s is present and non-empty beside its twin', (_name, path) => {
+    /*
+    Test Doc:
+    - Why: the entry a hook config names is one of these two files. `package.json#files`
+      ships `harness/cli/bin`, but a packaging change is exactly the kind of edit that
+      looks harmless and removes a file nobody executes in CI on the platform that needs
+      it. An entry naming a wrapper that is not there is the silent-failure class this
+      whole plan exists to remove.
+    - Contract: both files exist and carry content, whatever host this runs on.
+    */
+    expect(readFileSync(path, 'utf8').length).toBeGreaterThan(0);
+  });
+
+  it.each(wrappers)('%s is ASCII with no BOM', (_name, path) => {
+    /*
+    Test Doc:
+    - Why: MEASURED this week, twice. PowerShell 5.1's `Set-Content -Encoding UTF8`
+      writes a BOM, and a BOM at the head of a script breaks parsing on the host that
+      reads it — the same class that broke a fixture mid-investigation. A non-ASCII byte
+      in a file staged for a Windows guest produces a PARSER error naming the WRONG
+      line and blaming quoting, which costs an hour before anyone suspects encoding.
+    - Contract: no BOM, and no byte outside printable ASCII plus tab/CR/LF. Asserted on
+      BYTES, never on a decoded string — a text-mode read is what hides this.
+    */
+    const bytes = readFileSync(path);
+    expect(
+      bytes.subarray(0, 3).equals(Buffer.from([0xef, 0xbb, 0xbf])),
+      `${_name} starts with a UTF-8 BOM`,
+    ).toBe(false);
+
+    const offenders = [...bytes]
+      .map((byte, index) => ({ byte, index }))
+      .filter(
+        ({ byte }) =>
+          byte > 0x7e || (byte < 0x20 && byte !== 0x09 && byte !== 0x0a && byte !== 0x0d),
+      );
+
+    expect(
+      offenders.slice(0, 5).map(({ byte, index }) => `byte ${index} = 0x${byte.toString(16)}`),
+      `${_name} carries non-ASCII bytes`,
     ).toEqual([]);
   });
 });
