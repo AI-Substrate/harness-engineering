@@ -1,0 +1,23 @@
+harness/cli/test/services/hooks/verbs-e2e.int.test.ts
+  s_a76964380084ef::t_372596fdd8fb30 9,107-122
+harness/cli/test/services/hooks/win-command-executable.test.ts
+  s_a76964380084ef::t_086197a9c2f0f3 4-8,118-133
+harness/cli/test/services/hooks/win-invocation.test.ts
+  s_a76964380084ef::t_c4fdf75da46280 249-263,265-268,270-272
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "fe4a7bccacfa238a6436a2a5097835d7d9759d67",
+  "prompts": {},
+  "sessions": {
+    "s_a76964380084ef": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ac636c44-4f8c-46ee-9404-05cb34298161",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
