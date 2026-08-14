@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { hookInvocation } from '../../../src/acts/hooks.js';
 import { AGENT_MATRIX } from '../../../src/services/hooks/agent-matrix.js';
+import {
+  extractBinaryPath,
+  extractInterpreterPath,
+  normaliseBinaryPath,
+} from '../../../src/services/hooks/binary-path.js';
 import { commandTokens } from '../../../src/services/hooks/hook-marker.js';
 import { buildEntry } from '../../../src/services/hooks/install-strategy-a.js';
 
@@ -110,8 +115,22 @@ describe('the emitted command starts with something the platform can EXECUTE', (
      * The property that is true on every host: the first token is the INTERPRETER
      * (a real binary by construction), never the script.
      */
-    expect(firstTokenOf(command).replace(/^"|"$/g, '')).toBe(process.execPath);
-    expect(firstTokenOf(command).toLowerCase()).not.toMatch(/\.js"?$/);
+    // Read through the QUOTE-AWARE extractor, never by splitting on whitespace:
+    // `process.execPath` on Windows is `C:\Program Files\nodejs\node.exe`, which
+    // contains a SPACE, and the naive split reported `C:/Program` as the first token.
+    // Normalised, because that is the form we embed on every platform.
+    expect(extractInterpreterPath(command)).toBe(normaliseBinaryPath(process.execPath));
+    /*
+     * THE F008 PROPERTY: the leading token is the INTERPRETER, never the script.
+     *
+     * A bare `.js` first token is dispatched by FILE ASSOCIATION to WScript.exe, which
+     * opens our ES module, cannot run it, and EXITS 0 - the same silent-success shape
+     * as the `.sh` this plan removes. Asserted as "the two tokens are DIFFERENT paths",
+     * not as "the script is not a .js": under vitest `process.argv[1]` is the runner's
+     * own `forks.js`, so an extension check here grades the TEST RUNNER rather than the
+     * product, and went red for that reason.
+     */
+    expect(extractBinaryPath(command)).not.toBe(extractInterpreterPath(command));
   });
 
   it.each(
