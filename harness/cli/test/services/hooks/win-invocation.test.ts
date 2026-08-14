@@ -246,12 +246,30 @@ describe('the PRODUCTION composition, not a re-derivation (F008 review F3)', () 
     const deps = hooksDepsFor(new NodeFs(), home, { get: () => undefined });
     expect(deps).not.toBeNull();
 
-    const wrapper = fileURLToPath(new URL('../../../bin/harness-hook.sh', import.meta.url));
+    /*
+     * TWO WRAPPER SHAPES, ONE PER PLATFORM (plan 088).
+     *
+     * POSIX names the `.sh` as a single token. Windows CANNOT: a bare script path is
+     * not executable there - measured, `.sh` direct-spawns EFTYPE and via a shell
+     * resolves through the `sh_auto_file` association to `git-bash.exe`, which exits 0
+     * having done none of our work. So the Windows command leads with a NATIVE
+     * EXECUTABLE and names the `.ps1` behind `-File`.
+     *
+     * Both shapes share the property this row exists to pin: the command names our
+     * WRAPPER and configures NO interpreter, because the wrapper resolves one at fire
+     * time. That is asserted identically on both branches.
+     */
+    const wrapperName = process.platform === 'win32' ? 'harness-hook.ps1' : 'harness-hook.sh';
+    const wrapper = fileURLToPath(new URL(`../../../bin/${wrapperName}`, import.meta.url));
     if (existsSync(wrapper)) {
-      // The wrapper ships in this tree, so the production path must name it — one
-      // token, no interpreter, because the wrapper resolves that when the hook fires.
-      expect(deps?.binary).toBe(quoteForShell(normaliseBinaryPath(wrapper)));
+      const embedded = quoteForShell(normaliseBinaryPath(wrapper));
+      expect(deps?.binary).toBe(
+        process.platform === 'win32' ? `powershell.exe -NoProfile -File ${embedded}` : embedded,
+      );
       expect(extractInterpreterPath(`${deps?.binary} hooks fire cursor`)).toBeNull();
+      expect(extractBinaryPath(`${deps?.binary} hooks fire cursor`)).toBe(
+        normaliseBinaryPath(wrapper),
+      );
       return;
     }
 

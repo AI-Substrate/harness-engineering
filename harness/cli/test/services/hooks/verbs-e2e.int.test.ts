@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { NodeFs } from '../../../src/adapters/fs/node-fs.js';
 import { backupAgentConfigs } from '../../../src/services/doctor/collector/backup.js';
+import { extractBinaryPath } from '../../../src/services/hooks/binary-path.js';
 import { HOOK_MARKER } from '../../../src/services/hooks/hook-marker.js';
 import { hermeticGitEnv } from '../../support/hermetic-git.js';
 
@@ -103,10 +104,22 @@ describe('`harness hooks install` — and the binary it actually writes', () => 
 
     expect(command).toContain(HOOK_MARKER);
     // The binary is quoted, and what it names is a real file.
-    expect(command.startsWith('"')).toBe(true);
-    const binary = command.slice(1, command.indexOf('"', 1));
-    expect(binary.length).toBeGreaterThan(0);
-    expect(readFileSync(binary, 'utf8').length).toBeGreaterThan(0);
+    /*
+     * READ THE PATH THROUGH THE EXTRACTOR, NOT BY SLICING TO THE FIRST QUOTE.
+     *
+     * UPDATED (plan 088). The old form assumed `command` always BEGINS with a quoted
+     * path. On Windows it now begins with `powershell.exe`, because a bare script path
+     * there is not executable - so the slice returned the wrong span and this row went
+     * red on the platform the change exists for. The property it was written to defend
+     * is unchanged and is asserted below: whatever path the command names, that file
+     * EXISTS. A hook naming a path that is not there is inert, and hooks exit 0 by
+     * design, so nothing would report it.
+     */
+    const binary = extractBinaryPath(command);
+    expect(binary, `no binary path in: ${command}`).not.toBeNull();
+    expect(readFileSync(binary as string, 'utf8').length).toBeGreaterThan(0);
+    // The path is still QUOTED wherever it sits - `home` contains spaces by design.
+    expect(command).toContain(`"${binary}"`);
   });
 
   it('is idempotent through the REAL bin — a second install changes nothing', () => {

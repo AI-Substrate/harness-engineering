@@ -1,3 +1,5 @@
+import { commandTokens } from './hook-marker.js';
+
 /**
  * THE BINARY PATH — resolve, normalise, quote, and read back out (plan 082 tk-0006).
  *
@@ -54,6 +56,36 @@ export const quoteForShell = (path: string): string => `"${path.replace(/"/g, '\
 
 /** Normalise and quote in one step — what gets embedded in a hook command. */
 export const embedBinaryPath = (path: string): string => quoteForShell(normaliseBinaryPath(path));
+
+/**
+ * THE WINDOWS `command`: a NATIVE EXECUTABLE first, then our PowerShell wrapper.
+ *
+ * MEASURED on the Windows VM (plan 088). `command` is the field every agent reads,
+ * and a bare script path there is not runnable:
+ *
+ *   bare `harness-hook.sh`   direct spawn: EFTYPE   via a shell: EXIT 0 AND A LIE
+ *   bare `harness-hook.cmd`  direct spawn: EINVAL   via a shell: exit 0
+ *   `powershell.exe -File …` direct spawn: exit 0   via a shell: exit 0
+ *
+ * The `.sh` via a shell resolves through the `sh_auto_file` association to
+ * `git-bash.exe`, which returns SUCCESS having done none of our work — and since a
+ * hook's contract is exit 0 and silence, that is indistinguishable from a working
+ * hook. `.cmd` is no escape: Node refuses `.cmd`/`.bat` without `shell: true`
+ * (CVE-2024-27980), so it fails the same class of caller one step further along.
+ *
+ * A BARE NAME, NOT AN ABSOLUTE SYSTEM32 PATH, and that is measured rather than
+ * assumed — this whole plan began with a first token naming something absent, so the
+ * question was asked directly. `powershell.exe` resolved **with `PATH` deleted
+ * entirely** (CreateProcess searches the system directory before `PATH`), and a first
+ * token that genuinely does not exist fails LOUDLY with `ENOENT`, never quietly with
+ * exit 0. Baking an absolute path would re-introduce exactly what plan 085 removed.
+ *
+ * NO `-ExecutionPolicy` FLAG. The box's effective policy is `RemoteSigned`, under
+ * which our zone-unmarked, npm-installed `.ps1` runs clean. `Bypass` would be a
+ * security posture nobody asked for.
+ */
+export const embedPowershellWrapper = (path: string): string =>
+  `powershell.exe -NoProfile -File ${quoteForShell(normaliseBinaryPath(path))}`;
 
 /**
  * THE INVOCATION — the interpreter AND the script, both normalised, both quoted.
@@ -143,7 +175,37 @@ export const INTERPRETER_FLAGS: readonly string[] = ['--no-warnings'];
  * never a guess, because a wrong path stats false and reports a healthy install as
  * broken.
  */
+/**
+ * The shipped WRAPPER a command names, at ANY token position, or `null`.
+ *
+ * Plan 088. Both wrapper shapes must answer the same question. The POSIX command
+ * names the wrapper FIRST (`"…/harness-hook.sh" hooks fire …`); the Windows command
+ * names a native executable first and the wrapper FOURTH
+ * (`powershell.exe -NoProfile -File "…/harness-hook.ps1"`), because `command` must
+ * start with something Windows can actually execute.
+ *
+ * WITHOUT THIS, STATUS LIES ABOUT THE WINDOWS ENTRY. `extractBinaryPath` reads the
+ * leading two tokens, so it returned `powershell.exe` — a bare name, which `fs.exists`
+ * cannot find — and every correct Windows install would have reported
+ * `binaryState: unresolvable`. A false RED this time rather than a false green, but
+ * the same defect: a reader answering about a shape it was not taught.
+ */
+export function extractWrapperPath(command: string): string | null {
+  const tokens = commandTokens(command);
+  return (
+    tokens.find(
+      (token) => token.endsWith('harness-hook.sh') || token.endsWith('harness-hook.ps1'),
+    ) ?? null
+  );
+}
+
 export function extractBinaryPath(command: string): string | null {
+  // A WRAPPER ENTRY NAMES THE WRAPPER, wherever it sits (plan 088). On Windows the
+  // leading token is `powershell.exe` and the thing this command actually RUNS is the
+  // `.ps1` behind `-File`, so reading only the leading pair reports the interpreter as
+  // if it were our binary.
+  const wrapper = extractWrapperPath(command);
+  if (wrapper !== null) return wrapper;
   const [first, second] = leadingTokens(command);
   if (first === null) return null;
   return isPathLike(second) ? second : first;
@@ -158,6 +220,14 @@ export function extractBinaryPath(command: string): string | null {
  * interpreter that was never configured.
  */
 export function extractInterpreterPath(command: string): string | null {
+  /*
+   * A WRAPPER ENTRY CONFIGURES NO INTERPRETER — that is its entire purpose (plan 085).
+   * It resolves one at FIRE time, so there is nothing here for status to stat.
+   * Reporting `powershell.exe` would be worse than nothing: status would `fs.exists` a
+   * bare name, fail, and call a correct install unresolvable. Health for these entries
+   * comes from INVOKING the wrapper's check mode, never from stat.
+   */
+  if (extractWrapperPath(command) !== null) return null;
   const [first, second] = leadingTokens(command);
   if (first === null) return null;
   return isPathLike(second) ? first : null;

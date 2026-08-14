@@ -741,8 +741,17 @@ function requiredInvocationParts(binary: string): WantedInvocation | null {
  * every command in it.
  */
 function namesWrapper(command: string): boolean {
-  const first = commandTokens(command)[0] ?? '';
-  return first.endsWith('harness-hook.sh') || first.endsWith('harness-hook.ps1');
+  /*
+   * ANY TOKEN, NOT ONLY THE FIRST (plan 088). The Windows command is
+   * `powershell.exe -NoProfile -File "…harness-hook.ps1"`, so the wrapper is the
+   * FOURTH token there and the first is a native executable — which is the point of
+   * that shape. Reading only `tokens[0]` classified every Windows entry as
+   * NOT-a-wrapper, which would have sent `requiredInvocationParts` down the
+   * interpreter branch and rewritten a correct entry on every run.
+   */
+  return commandTokens(command).some(
+    (token) => token.endsWith('harness-hook.sh') || token.endsWith('harness-hook.ps1'),
+  );
 }
 
 /**
