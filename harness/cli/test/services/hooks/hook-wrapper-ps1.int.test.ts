@@ -202,17 +202,21 @@ describe.runIf(POWERSHELL)('the PowerShell hook wrapper, executed', () => {
       LIKE — a signal indistinguishable from health, which is worse than no signal and
       is the exact defect class this wrapper was written to end.
     - Contract: a swallowed fire failure appends a `cli-failed` line carrying the exit
-      code and agent slug, AND the stdin spill file is still deleted on the
-      always-exit-0 path.
+      code, the agent slug, and THE INTERPRETER THAT RAN, AND the stdin spill file is
+      still deleted on the always-exit-0 path.
     - Usage Notes: the kind is the second tab-separated field; the pre-node
       `no-interpreter` lines keep the same shape. The spill assertion reads the path out
       of the child's own argv, so it checks the actual file the wrapper created rather
       than a reconstruction of it.
     - Quality Contribution: catches a future simplification that keeps the swallow and
       drops the record, and catches a fire path that exits before its `finally` can
-      clean up the temp — the hook must leave no trace.
+      clean up the temp — the hook must leave no trace. The exact match on field 4
+      catches a revert to logging `$env:PATH`, MEASURED at ~500 characters per line on
+      a real 5.1 host and disclosing environment detail on a log that grows twice per
+      tool call.
     - Worked Example: fire against the broken CLI → `…\tcli-failed\texit=23
-      agent=github-copilot\t…`, and the named spill path no longer exists.
+      agent=github-copilot\tC:\\Program Files\\nodejs\\node.exe`, and the named spill
+      path no longer exists.
     */
       const fired = fire(['hooks', 'fire', 'github-copilot', '--phase', 'pre']);
       expect(fired.status).toBe(0);
@@ -221,6 +225,7 @@ describe.runIf(POWERSHELL)('the PowerShell hook wrapper, executed', () => {
       expect(fields[1]).toBe('cli-failed');
       expect(fields[2]).toContain(`exit=${FAKE_EXIT_CODE}`);
       expect(fields[2]).toContain('agent=github-copilot');
+      expect(fields[3]).toBe(broken.resolvedInterpreter());
 
       const argv = broken.childArgv() ?? [];
       const spill = argv[argv.indexOf('--hook-input-file') + 1];

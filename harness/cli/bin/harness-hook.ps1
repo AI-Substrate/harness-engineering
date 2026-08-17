@@ -38,7 +38,7 @@ $FailLog  = Join-Path $StateDir 'interpreter-failures.log'
 
 $MinNode = 22
 
-function Write-Failure([string]$kind, [string]$reason) {
+function Write-Failure([string]$kind, [string]$reason, [string]$context) {
   # Recorded HERE because when the no-interpreter path runs there is by definition no
   # node, so nothing written in TypeScript could report it. Deliberately NOT the fire
   # journal: fires.jsonl has exactly one writer and one schema, and a second writer in
@@ -48,7 +48,14 @@ function Write-Failure([string]$kind, [string]$reason) {
   # THE KIND IS A PARAMETER AS OF #180, for the reason written up in the POSIX twin:
   # once the fire path swallows the child's streams, this file is the ONLY place a
   # post-node boot failure can be seen at all. Field shape is unchanged
-  # (`<utc>`t`<kind>`t`<reason>`t`<PATH>`), so existing no-interpreter lines still parse.
+  # (`<utc>`t`<kind>`t`<reason>`t`<context>`), so existing no-interpreter lines parse.
+  #
+  # THE FOURTH FIELD IS PER-KIND CONTEXT. `no-interpreter` passes $env:PATH, because
+  # the path we searched IS the evidence when nothing was found. `cli-failed` passes
+  # the resolved interpreter instead: node was found, so PATH answers nothing, while
+  # the binary that ran is what reproduces the failure. MEASURED on Windows PowerShell
+  # 5.1 - a cli-failed line carrying the full machine PATH ran to ~500 characters, and
+  # a hook fires twice per tool call.
   try {
     New-Item -ItemType Directory -Force -Path $StateDir | Out-Null
     # DOUBLE-QUOTED, because PowerShell does NOT process backtick escapes inside
@@ -57,7 +64,7 @@ function Write-Failure([string]$kind, [string]$reason) {
     # verbatim, so the one field separator in the one file that reports a total
     # failure to find node was itself broken.
     $line = "{0}`t{1}`t{2}`t{3}" -f `
-      (Get-Date -Format 'yyyy-MM-ddTHH:mm:ssZ'), $kind, $reason, $env:PATH
+      (Get-Date -Format 'yyyy-MM-ddTHH:mm:ssZ'), $kind, $reason, $context
     Add-Content -Path $FailLog -Value $line -Encoding ASCII
   } catch { }
 }
@@ -210,7 +217,7 @@ $FireMode = ($args.Count -gt 1 -and $args[0] -eq 'hooks' -and $args[1] -eq 'fire
 $FireAgent = if ($args.Count -gt 2) { $args[2] } else { 'unknown' }
 
 if (-not $Resolved) {
-  Write-Failure 'no-interpreter' "no usable node >= $MinNode"
+  Write-Failure 'no-interpreter' "no usable node >= $MinNode" $env:PATH
   # CHECK MODE IS THE ONE CALLER TOLD THE TRUTH BY EXIT CODE. `hooks status` is an
   # operator asking a question; a hook fire is an agent mid-tool-call. Silence is the
   # right answer to the agent and the wrong answer to the person.
@@ -354,7 +361,7 @@ if ([Console]::IsInputRedirected) {
       # See the POSIX twin for why swallowing without recording rebuilds the defect one
       # layer up. `fire` is contractually exit-0-always, so a non-zero here cannot mean
       # "the hook declined" - only that the CLI failed to run. Zero writes when healthy.
-      if ($LASTEXITCODE -ne 0) { Write-Failure 'cli-failed' "exit=$LASTEXITCODE agent=$FireAgent" }
+      if ($LASTEXITCODE -ne 0) { Write-Failure 'cli-failed' "exit=$LASTEXITCODE agent=$FireAgent" $Resolved }
     } else {
       & $Resolved --no-warnings $Script @args --hook-input-file $Spill
       $Code = $LASTEXITCODE
@@ -368,7 +375,7 @@ if ([Console]::IsInputRedirected) {
     # produced by the wrapper's own plumbing rather than by the CLI. The operator path
     # rethrows, unchanged: a person still sees the error and the non-zero exit.
     if (-not $FireMode) { throw }
-    Write-Failure 'cli-failed' "$($_.Exception.GetType().Name) agent=$FireAgent"
+    Write-Failure 'cli-failed' "$($_.Exception.GetType().Name) agent=$FireAgent" $Resolved
   } finally {
     # The hook leaves no trace. Best-effort by design: a failure to clean up must
     # never become an agent-visible error (`$ErrorActionPreference` is already
@@ -383,14 +390,14 @@ if ([Console]::IsInputRedirected) {
   try {
     if ($FireMode) {
       & $Resolved --no-warnings $Script @args *> $null
-      if ($LASTEXITCODE -ne 0) { Write-Failure 'cli-failed' "exit=$LASTEXITCODE agent=$FireAgent" }
+      if ($LASTEXITCODE -ne 0) { Write-Failure 'cli-failed' "exit=$LASTEXITCODE agent=$FireAgent" $Resolved }
     } else {
       & $Resolved --no-warnings $Script @args
       $Code = $LASTEXITCODE
     }
   } catch {
     if (-not $FireMode) { throw }
-    Write-Failure 'cli-failed' "$($_.Exception.GetType().Name) agent=$FireAgent"
+    Write-Failure 'cli-failed' "$($_.Exception.GetType().Name) agent=$FireAgent" $Resolved
   }
 }
 exit $Code

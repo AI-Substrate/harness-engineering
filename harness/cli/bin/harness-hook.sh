@@ -80,9 +80,19 @@ HARNESS_MIN_NODE=22
 # process that writes it is the process that died). MEASURED on a fenced HOME: after
 # such a fire the state dir contained the interpreter cache and nothing else.
 #
-# Fields are `<utc>\t<kind>\t<reason>\t<PATH>` - unchanged shape, so the existing
+# Fields are `<utc>\t<kind>\t<reason>\t<context>` - unchanged shape, so the existing
 # `no-interpreter` lines still parse. Nothing in src/ reads this file (only tests do),
 # so a new kind breaks no reader.
+#
+# THE FOURTH FIELD IS PER-KIND CONTEXT, NOT ALWAYS $PATH, and that distinction was
+# bought on a real Windows host. `no-interpreter` means we searched and found nothing,
+# so the PATH we searched IS the evidence. `cli-failed` means we FOUND a node and the
+# CLI died anyway - PATH answers a question nobody is asking, while the interpreter
+# that actually ran is what reproduces the failure. MEASURED on Windows PowerShell
+# 5.1: a `cli-failed` line carrying the full machine PATH ran to ~500 characters, and
+# a hook fires twice per tool call, so a persistently broken CLI would grow this log
+# fast while embedding environment detail in every line. Short, useful, and less
+# disclosing all point the same way.
 # ---------------------------------------------------------------------------
 record_failure() {
   mkdir -p "$HARNESS_STATE_DIR" 2>/dev/null || return 0
@@ -90,7 +100,7 @@ record_failure() {
     "$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo unknown)" \
     "${1:-unknown}" \
     "${2:-}" \
-    "${PATH:-}" \
+    "${3:-}" \
     >>"$HARNESS_FAILLOG" 2>/dev/null || true
 }
 
@@ -255,7 +265,7 @@ if [ -z "$RESOLVED" ]; then
   # operator asking a question, not an agent mid-tool-call, so it is the one caller
   # that MUST be told the truth by exit code. Silence is the right answer to an agent
   # and the wrong answer to a person.
-  record_failure no-interpreter "no usable node >= $HARNESS_MIN_NODE"
+  record_failure no-interpreter "no usable node >= $HARNESS_MIN_NODE" "${PATH:-}"
   if [ "${1:-}" = "--harness-hook-check" ]; then
     echo "step=none"
     exit 1
@@ -358,7 +368,11 @@ if [ "${1:-}" = "hooks" ] && [ "${2:-}" = "fire" ]; then
   # can only mean the CLI itself failed to run. Zero writes on the happy path.
   # A persistently broken CLI does append per fire; that unbounded-growth exposure is
   # the same one the no-interpreter kind above has always carried.
-  [ "$_status" -eq 0 ] || record_failure cli-failed "exit=$_status agent=${3:-unknown}"
+  # The fourth field is the INTERPRETER, not $PATH: node was found, so the PATH we
+  # searched is not the evidence - the binary that ran is, and it is what reproduces
+  # the failure by hand. It is also ~500 characters shorter per line on a real
+  # machine, on a log that grows twice per tool call while a CLI stays broken.
+  [ "$_status" -eq 0 ] || record_failure cli-failed "exit=$_status agent=${3:-unknown}" "$RESOLVED"
 
   exit 0
 fi

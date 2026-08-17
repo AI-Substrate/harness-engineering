@@ -99,6 +99,14 @@ export interface BrokenCli {
   readonly home: string;
   /** Where the wrappers write their failure log inside {@link home}. */
   readonly failureLog: string;
+  /**
+   * The interpreter the wrapper resolved and cached, read back from its own cache.
+   *
+   * Lets a row assert the failure record's context field EXACTLY rather than by
+   * pattern — and an exact match is what proves the field is the interpreter and not,
+   * say, the whole `PATH`.
+   */
+  resolvedInterpreter(): string | null;
   /** The argv the fake CLI saw, or `null` if it NEVER RAN. */
   childArgv(): string[] | null;
   /** Hex of the payload the wrapper delivered by file, or `null` if none was named. */
@@ -142,6 +150,14 @@ export function stageBrokenCli(wrapperFile: 'harness-hook.sh' | 'harness-hook.ps
     wrapper,
     home,
     failureLog: join(home, '.harness', 'hooks', 'interpreter-failures.log'),
+    resolvedInterpreter: () => {
+      const cache = join(home, '.harness', 'hooks', 'interpreter');
+      if (!existsSync(cache)) return null;
+      const line = readFileSync(cache, 'utf8')
+        .split(/\r?\n/)
+        .find((row) => row.startsWith('path='));
+      return line === undefined ? null : line.slice('path='.length);
+    },
     childArgv: () => {
       const raw = read('child-argv.json');
       return raw === null ? null : (JSON.parse(raw) as string[]);

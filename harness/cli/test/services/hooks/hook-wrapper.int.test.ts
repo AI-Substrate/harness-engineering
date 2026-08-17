@@ -357,16 +357,19 @@ describe.runIf(POSIX_SHELL)('a CLI that BOOTS AND THEN FAILS never denies the ag
       worse than a missing one, and it is the exact defect class this wrapper was
       written to end — so swallowing without recording would rebuild it one layer up.
     - Contract: a swallowed fire failure appends a `cli-failed` line to
-      `interpreter-failures.log`, carrying the child's exit code and the agent slug.
-      A healthy fire writes nothing.
+      `interpreter-failures.log`, carrying the child's exit code, the agent slug, and
+      THE INTERPRETER THAT RAN. A healthy fire writes nothing.
     - Usage Notes: the kind is the SECOND tab-separated field; `no-interpreter` lines
       from the pre-node branch keep the same shape, so both parse the same way.
       Nothing in `src/` reads this file, so the new kind breaks no reader.
     - Quality Contribution: catches a future "simplification" that keeps the exit-0
       swallow and drops the record, which would leave the failure invisible on every
-      surface.
+      surface. The exact match on field 4 also catches a revert to logging `$PATH`
+      here — MEASURED on Windows PowerShell 5.1 at ~500 characters per line, on a log
+      that grows twice per tool call while a CLI stays broken, and answering a question
+      nobody is asking once node has already been found.
     - Worked Example: fire against the broken CLI → log line
-      `2026-…Z\tcli-failed\texit=23 agent=github-copilot\t/usr/bin:…`.
+      `2026-…Z\tcli-failed\texit=23 agent=github-copilot\t/opt/homebrew/bin/node`.
     */
     fire(['hooks', 'fire', 'github-copilot', '--phase', 'pre']);
 
@@ -375,6 +378,7 @@ describe.runIf(POSIX_SHELL)('a CLI that BOOTS AND THEN FAILS never denies the ag
     expect(fields[1]).toBe('cli-failed');
     expect(fields[2]).toContain(`exit=${FAKE_EXIT_CODE}`);
     expect(fields[2]).toContain('agent=github-copilot');
+    expect(fields[3]).toBe(broken.resolvedInterpreter());
   });
 });
 
