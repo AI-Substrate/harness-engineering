@@ -38,12 +38,17 @@ $FailLog  = Join-Path $StateDir 'interpreter-failures.log'
 
 $MinNode = 22
 
-function Write-Failure([string]$reason) {
-  # Recorded HERE because when this runs there is by definition no node, so nothing
-  # written in TypeScript could report it. Deliberately NOT the fire journal:
-  # fires.jsonl has exactly one writer and one schema, and a second writer in another
-  # language with no contract between them is the writer-shape defect class this
+function Write-Failure([string]$kind, [string]$reason) {
+  # Recorded HERE because when the no-interpreter path runs there is by definition no
+  # node, so nothing written in TypeScript could report it. Deliberately NOT the fire
+  # journal: fires.jsonl has exactly one writer and one schema, and a second writer in
+  # another language with no contract between them is the writer-shape defect class this
   # project has already paid for once. Separate file, trivial fixed fields.
+  #
+  # THE KIND IS A PARAMETER AS OF #180, for the reason written up in the POSIX twin:
+  # once the fire path swallows the child's streams, this file is the ONLY place a
+  # post-node boot failure can be seen at all. Field shape is unchanged
+  # (`<utc>`t`<kind>`t`<reason>`t`<PATH>`), so existing no-interpreter lines still parse.
   try {
     New-Item -ItemType Directory -Force -Path $StateDir | Out-Null
     # DOUBLE-QUOTED, because PowerShell does NOT process backtick escapes inside
@@ -51,8 +56,8 @@ function Write-Failure([string]$reason) {
     # Measured on Windows: the recorded line read `2026-08-13T15:39:44Z`tno-interpreter`
     # verbatim, so the one field separator in the one file that reports a total
     # failure to find node was itself broken.
-    $line = "{0}`tno-interpreter`t{1}`t{2}" -f `
-      (Get-Date -Format 'yyyy-MM-ddTHH:mm:ssZ'), $reason, $env:PATH
+    $line = "{0}`t{1}`t{2}`t{3}" -f `
+      (Get-Date -Format 'yyyy-MM-ddTHH:mm:ssZ'), $kind, $reason, $env:PATH
     Add-Content -Path $FailLog -Value $line -Encoding ASCII
   } catch { }
 }
@@ -169,8 +174,43 @@ if (-not $Resolved) {
 
 $CheckMode = ($args.Count -gt 0 -and $args[0] -eq '--harness-hook-check')
 
+# FIRE MODE - the failure branch that starts AFTER node does (#180).
+#
+# Everything above covers the case where NO interpreter is found: exit 0 to a fire,
+# exit 1 to a checker. It covers nothing that happens once node STARTS. The two call
+# sites at the foot of this file captured $LASTEXITCODE and exited with it, so an
+# interpreter that resolves and then cannot boot the CLI - a half-written dist/, a
+# bad import, a parse error - reached the agent as a NON-ZERO PRE-TOOL HOOK, which
+# every agent reads as a DENIAL of the tool call.
+#
+# THE WINDOWS BLAST RADIUS IS EVERY AGENT, NOT ONE, AND IT ONLY BECAME SO AT 9d3ea8e4.
+# Before that commit this file was reachable by github-copilot alone, through its
+# `powershell` field. Since #177 the Windows `command` for ALL FIVE agents is
+# `powershell.exe -NoProfile -File harness-hook.ps1`, so a boot-failure leak in THIS
+# dialect blocks tool calls for claude-code, cursor, gemini, droid and windsurf too.
+# That is why this dialect is fixed in the same change as its POSIX twin rather than
+# after it.
+#
+# THE SUPPRESSION IS NOT NEW POLICY. `acts/hooks.ts` already declares fire "EXIT 0,
+# ALWAYS, AND SILENT" on every path; this is the last layer that can still honour
+# that when the CLI is too broken to honour it itself. A fire's observable is the
+# journal, never stdout, so nothing legitimate is discarded.
+#
+# SCOPED BY THE FIRST TWO ARGUMENTS, AND THE NARROWNESS IS THE POINT: swallowing
+# unconditionally would be simpler and would silently kill `hooks status` and
+# `--harness-hook-check`, the surfaces whose whole job is to report that something
+# is wrong. Agent gets silence, operator gets the truth.
+$FireMode = ($args.Count -gt 1 -and $args[0] -eq 'hooks' -and $args[1] -eq 'fire')
+
+# The agent slug, for the failure record below. `hooks fire <agent> --phase ...`, so
+# it is args[2] when present. Computed here rather than inline because a missing index
+# inside an expandable string yields an empty field, and an unlabelled empty field in a
+# fixed-format log is the kind of thing that gets read as "no agent" rather than "we
+# did not know".
+$FireAgent = if ($args.Count -gt 2) { $args[2] } else { 'unknown' }
+
 if (-not $Resolved) {
-  Write-Failure "no usable node >= $MinNode"
+  Write-Failure 'no-interpreter' "no usable node >= $MinNode"
   # CHECK MODE IS THE ONE CALLER TOLD THE TRUTH BY EXIT CODE. `hooks status` is an
   # operator asking a question; a hook fire is an agent mid-tool-call. Silence is the
   # right answer to the agent and the wrong answer to the person.
@@ -284,6 +324,15 @@ if ($CheckMode) {
 # POWERSHELL pipeline, not an OS redirect, and on 5.1 it leaves IsInputRedirected FALSE -
 # so it reproduces nothing and reports a false failure. Use an OS-level redirect, e.g.
 #   cmd /c "powershell -NoProfile -File harness-hook.ps1 <args> < payload.json"
+
+# $Code STARTS AT 0 AND ONLY THE OPERATOR PATH OVERWRITES IT. That is the whole
+# fail-open mechanism, expressed as a default rather than as a branch: every way of
+# leaving this file without an explicit operator-path assignment - a child that
+# exits non-zero, a child that never starts, a .NET exception out of the spill -
+# lands on `exit 0`. A later author adding a third invocation shape inherits the
+# safe answer instead of having to remember it.
+$Code = 0
+
 if ([Console]::IsInputRedirected) {
   $Spill = [System.IO.Path]::Combine(
     [System.IO.Path]::GetTempPath(),
@@ -292,18 +341,56 @@ if ([Console]::IsInputRedirected) {
     $StdIn = [Console]::OpenStandardInput()
     $Out = [System.IO.File]::Create($Spill)
     try { $StdIn.CopyTo($Out) } finally { $Out.Dispose() }
-    & $Resolved --no-warnings $Script @args --hook-input-file $Spill
-    $Code = $LASTEXITCODE
+    # `*> $null` IS A REDIRECTION, NOT A PIPELINE, AND THAT DISTINCTION IS LOAD-BEARING
+    # HERE. The header above forbids piping the payload because PS 5.1 re-encodes
+    # across a pipeline (UTF-16LE in, $OutputEncoding=ASCII out) and would destroy the
+    # wire bytes this spill exists to preserve. A redirection operator changes where
+    # the child's OUTPUT goes and touches neither its stdin nor its argument binding -
+    # and on this branch stdin has already been drained to $Spill and named by
+    # `--hook-input-file`, so there is nothing left for it to disturb. Do NOT "simplify"
+    # either of these to `| Out-Null`.
+    if ($FireMode) {
+      & $Resolved --no-warnings $Script @args --hook-input-file $Spill *> $null
+      # See the POSIX twin for why swallowing without recording rebuilds the defect one
+      # layer up. `fire` is contractually exit-0-always, so a non-zero here cannot mean
+      # "the hook declined" - only that the CLI failed to run. Zero writes when healthy.
+      if ($LASTEXITCODE -ne 0) { Write-Failure 'cli-failed' "exit=$LASTEXITCODE agent=$FireAgent" }
+    } else {
+      & $Resolved --no-warnings $Script @args --hook-input-file $Spill
+      $Code = $LASTEXITCODE
+    }
+  } catch {
+    # A FIRE SWALLOWS ITS OWN FAILURES TOO. $ErrorActionPreference = 'SilentlyContinue'
+    # does NOT suppress a TERMINATING error, and two live ones reach here: `&` on a
+    # $Resolved that vanished between Test-Usable and this line throws
+    # CommandNotFoundException, and the spill throws IOException on a full or
+    # unwritable temp. Either would end the script at exit 1 - a denied tool call
+    # produced by the wrapper's own plumbing rather than by the CLI. The operator path
+    # rethrows, unchanged: a person still sees the error and the non-zero exit.
+    if (-not $FireMode) { throw }
+    Write-Failure 'cli-failed' "$($_.Exception.GetType().Name) agent=$FireAgent"
   } finally {
     # The hook leaves no trace. Best-effort by design: a failure to clean up must
     # never become an agent-visible error (`$ErrorActionPreference` is already
-    # SilentlyContinue, and `-Force` covers a read-only temp).
+    # SilentlyContinue, and `-Force` covers a read-only temp). `finally` runs on the
+    # fire path and the operator path alike, so the always-exit-0 branch above does
+    # not leak the spill.
     Remove-Item -LiteralPath $Spill -Force -ErrorAction SilentlyContinue
   }
 } else {
   # No redirected stdin - a hand-run or a probe. Reading a console would BLOCK, which
   # inside an agent's tool loop is worse than any silence.
-  & $Resolved --no-warnings $Script @args
-  $Code = $LASTEXITCODE
+  try {
+    if ($FireMode) {
+      & $Resolved --no-warnings $Script @args *> $null
+      if ($LASTEXITCODE -ne 0) { Write-Failure 'cli-failed' "exit=$LASTEXITCODE agent=$FireAgent" }
+    } else {
+      & $Resolved --no-warnings $Script @args
+      $Code = $LASTEXITCODE
+    }
+  } catch {
+    if (-not $FireMode) { throw }
+    Write-Failure 'cli-failed' "$($_.Exception.GetType().Name) agent=$FireAgent"
+  }
 }
 exit $Code
