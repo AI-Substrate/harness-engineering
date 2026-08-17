@@ -1,0 +1,31 @@
+harness/cli/test/services/hooks/hook-wrapper.int.test.ts
+  s_3dd00f2e857194::t_d72f2b73acbbc9 360-361,367-370,372,381
+harness/cli/bin/harness-hook.sh
+  s_3dd00f2e857194::t_b95f21e4dc170a 83,86-95,103
+  s_3dd00f2e857194::t_d5bc40557d254f 371-375
+  s_3dd00f2e857194::t_6af29976ab4e59 268
+harness/cli/bin/harness-hook.ps1
+  s_3dd00f2e857194::t_03381bd495b9bb 220,364,378,393,400
+  s_3dd00f2e857194::t_dcd8e35c555188 41,51-58,67
+harness/cli/test/services/hooks/hook-wrapper-ps1.int.test.ts
+  s_3dd00f2e857194::t_f33ae030378124 205-206,213-216,218-219,228
+harness/cli/test/support/broken-cli-fixture.ts
+  s_3dd00f2e857194::t_998c3800c58776 102-109
+  s_3dd00f2e857194::t_6b019bf827da93 153-160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "22bdbea3776a8a40b94faaa4b59999ec7b204a33",
+  "prompts": {},
+  "sessions": {
+    "s_3dd00f2e857194": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "432a1904-822e-4d4b-bdef-9b8e9a2191d1",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
