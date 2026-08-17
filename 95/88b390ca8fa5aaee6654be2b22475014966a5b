@@ -1,0 +1,19 @@
+harness/cli/test/support/posix-shell.ts
+  s_3dd00f2e857194::t_cec5432c85b90b 48-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "9588b390ca8fa5aaee6654be2b22475014966a5b",
+  "prompts": {},
+  "sessions": {
+    "s_3dd00f2e857194": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "432a1904-822e-4d4b-bdef-9b8e9a2191d1",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
