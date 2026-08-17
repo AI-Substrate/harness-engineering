@@ -1,0 +1,39 @@
+harness/cli/bin/harness-hook.sh
+  s_3dd00f2e857194::t_e36442d792f0c0 363-365
+  s_3dd00f2e857194::t_6de4adb0dee7c3 74-85,89,91-92,258,303-362
+harness/cli/test/services/hooks/hook-wrapper.int.test.ts
+  s_3dd00f2e857194::t_6700d316b9e665 15-22
+  s_3dd00f2e857194::t_8f270f14c3f64f 433-440
+  s_3dd00f2e857194::t_7a1cc57911d29e 1
+  s_3dd00f2e857194::t_28484214f35985 280-288
+  s_3dd00f2e857194::t_d94a360b647149 226-279,289-380
+  s_3dd00f2e857194::t_e438fd102388d5 225
+harness/cli/test/services/hooks/hook-wrapper-ps1.int.test.ts
+  s_3dd00f2e857194::t_28484214f35985 130-131,147,149-154,178-181
+  s_3dd00f2e857194::t_bdd5904100550c 1-129,132-146,148,155-177,182-266
+harness/cli/test/support/powershell-shell.ts
+  s_3dd00f2e857194::t_0de48535f7a6c6 1-132
+harness/cli/test/support/broken-cli-fixture.ts
+  s_3dd00f2e857194::t_eb83ec4954ab90 106-112
+  s_3dd00f2e857194::t_28484214f35985 1-9
+  s_3dd00f2e857194::t_56c4b4569eec93 150,153-166
+  s_3dd00f2e857194::t_1f716b23651515 10-105,113-149,151-152,167-189
+harness/cli/bin/harness-hook.ps1
+  s_3dd00f2e857194::t_6de4adb0dee7c3 41-45,47-51,59-60,177-211,213,327-335,344-371,375-377,383-394
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f4b241dad862dac59c2a8401fecc624a4807657c",
+  "prompts": {},
+  "sessions": {
+    "s_3dd00f2e857194": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "432a1904-822e-4d4b-bdef-9b8e9a2191d1",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
