@@ -35,6 +35,12 @@ export type HooksInstallStatus =
   | 'installed'
   | 'skipped-trace2'
   | 'skipped-skills'
+  /**
+   * The digest-verified binary cannot execute on this machine, so the vendor
+   * command was never invoked (plan 082 · F007). A refusal, not a failure — see
+   * `HooksStage` in install.ts for why the two must not be one word.
+   */
+  | 'binary-unusable'
   | 'unverified'
   | 'failed'
   | 'not-attempted';
@@ -104,8 +110,31 @@ export interface CollectorState {
   hooks: {
     status: HooksInstallStatus;
     at: string | null;
-    /** Agents git-ai reported hooks for, from its `install-hooks` output. */
+    /**
+     * Agents whose hook install we can EVIDENCE — a config file we watched get
+     * created or change across the invocation (`evidence.ts`). This is the number
+     * the report may stand behind.
+     */
     agents: string[];
+    /**
+     * Agents git-ai NAMED, from its `install-hooks` output or (when that yields
+     * nothing parseable) our marker scan. A superset of `agents`, and a CLAIM
+     * rather than a measurement.
+     *
+     * IT EXISTS TO STOP THE HONEST NUMBER CAUSING A DISHONEST ONE. Narrowing
+     * `agents` to the evidenced set is right for reporting, but
+     * `agentsMissingHooks` computes `detected − covered`, and feeding it the
+     * narrow set turns every hooked-but-unevidenced agent into a reported GAP —
+     * "Gemini is NOT instrumented" about an agent that is. That would replace an
+     * overclaim with an underclaim and drive the automatic re-check to re-run
+     * `install-hooks` forever chasing agents it already hooked.
+     *
+     * So: the gap is computed against what was claimed (never invent a gap), and
+     * the report shows what was evidenced (never invent coverage). Optional
+     * because states written before plan 077 do not carry it; readers fall back
+     * to `agents`, which is what those states meant by it.
+     */
+    claimed?: string[];
     detail: string;
   };
   /**
@@ -206,4 +235,18 @@ export function recordTrace2Observation(
     ...state,
     trace2: [observation, ...state.trace2].slice(0, TRACE2_HISTORY_LIMIT),
   };
+}
+
+/**
+ * What the hook install CLAIMED to cover — the set a coverage GAP is computed
+ * against, never the set a report boasts about.
+ *
+ * One accessor rather than `state.hooks.claimed ?? state.hooks.agents` repeated
+ * at each site, because the fallback is the whole compatibility story: a state
+ * written before plan 077 has no `claimed`, and what those states meant by
+ * `agents` was the claim. Spelling that out five times is five chances to get it
+ * backwards, and getting it backwards invents a coverage gap.
+ */
+export function claimedHookAgents(state: CollectorState): string[] {
+  return state.hooks.claimed ?? state.hooks.agents;
 }

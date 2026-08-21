@@ -1,0 +1,416 @@
+import { commandTokens } from './hook-marker.js';
+
+/**
+ * THE BINARY PATH — resolve, normalise, quote, and read back out (plan 082 tk-0006).
+ *
+ * The hook we install is a SHELL COMMAND STRING, so the binary path has to survive
+ * a round trip through it. Four properties, and they are not independent — each one
+ * exists because the previous one made it possible to get wrong:
+ *
+ * 1. **ABSOLUTE.** A relative path resolves against the agent's cwd, which is
+ *    whatever directory the user happened to open. It must also point at an
+ *    INSTALLED binary — MEASURED HAZARD: the live hook on this machine points into
+ *    an untracked `scratch/` directory, so it works only for the person who wrote it
+ *    and breaks silently the moment that tree is cleaned.
+ * 2. **WINDOWS-NORMALISED.** Strip the `\\?\` extended-length prefix that
+ *    `realpath` can return, and turn `C:\x\y.exe` into `C:/x/y.exe`. git-ai
+ *    normalises in only 3 of its 15 installers.
+ * 3. **ALWAYS QUOTED.** Seven of git-ai's installers interpolate an unquoted path;
+ *    only Copilot and Cline quote. A path containing a space then produces a broken
+ *    hook — and the failure is INVISIBLE until a user whose home directory has a
+ *    space in it installs, which is why it needs an assertion rather than a
+ *    rationale.
+ * 4. **EXTRACTABLE AGAIN.** `status` has to stat the configured binary, which means
+ *    getting a quoted, possibly space-bearing, possibly forward-slashed path back
+ *    OUT of a command string. The naive `split(' ')[0]` returns a leading quote,
+ *    stats false, and reports every healthy install as broken.
+ */
+
+/** The `\\?\` extended-length prefix Windows `realpath` can return. */
+const WINDOWS_EXTENDED_PREFIX = /^\\\\\?\\/;
+
+/**
+ * Normalise a resolved path for embedding in a hook command.
+ *
+ * Strips the extended-length prefix and converts backslashes to forward slashes.
+ * Forward slashes are correct on Windows for this purpose — the shell and Node both
+ * accept them — and they remove an entire class of escaping bugs, because a
+ * backslash inside a double-quoted string is an escape character on POSIX shells.
+ */
+export function normaliseBinaryPath(path: string): string {
+  return path.replace(WINDOWS_EXTENDED_PREFIX, '').replace(/\\/g, '/');
+}
+
+/**
+ * Quote a path for a shell command — ALWAYS, not only when it contains a space.
+ *
+ * Unconditional on purpose. "Quote if it looks like it needs it" is a predicate that
+ * has to be right about every character a filesystem allows, and it is wrong the
+ * first time someone's username contains a character nobody thought of. Quoting
+ * always is one rule with no exceptions to get wrong.
+ *
+ * An embedded double quote is escaped rather than rejected: a path can legally
+ * contain one on POSIX.
+ */
+export const quoteForShell = (path: string): string => `"${path.replace(/"/g, '\\"')}"`;
+
+/** Normalise and quote in one step — what gets embedded in a hook command. */
+export const embedBinaryPath = (path: string): string => quoteForShell(normaliseBinaryPath(path));
+
+/**
+ * THE WINDOWS `command`: a NATIVE EXECUTABLE first, then our PowerShell wrapper.
+ *
+ * MEASURED on the Windows VM (plan 088). `command` is the field every agent reads,
+ * and a bare script path there is not runnable:
+ *
+ *   bare `harness-hook.sh`   direct spawn: EFTYPE   via a shell: EXIT 0 AND A LIE
+ *   bare `harness-hook.cmd`  direct spawn: EINVAL   via a shell: exit 0
+ *   `powershell.exe -File …` direct spawn: exit 0   via a shell: exit 0
+ *
+ * The `.sh` via a shell resolves through the `sh_auto_file` association to
+ * `git-bash.exe`, which returns SUCCESS having done none of our work — and since a
+ * hook's contract is exit 0 and silence, that is indistinguishable from a working
+ * hook. `.cmd` is no escape: Node refuses `.cmd`/`.bat` without `shell: true`
+ * (CVE-2024-27980), so it fails the same class of caller one step further along.
+ *
+ * A BARE NAME, NOT AN ABSOLUTE SYSTEM32 PATH, and that is measured rather than
+ * assumed — this whole plan began with a first token naming something absent, so the
+ * question was asked directly. `powershell.exe` resolved **with `PATH` deleted
+ * entirely** (CreateProcess searches the system directory before `PATH`), and a first
+ * token that genuinely does not exist fails LOUDLY with `ENOENT`, never quietly with
+ * exit 0. Baking an absolute path would re-introduce exactly what plan 085 removed.
+ *
+ * NO `-ExecutionPolicy` FLAG. The box's effective policy is `RemoteSigned`, under
+ * which our zone-unmarked, npm-installed `.ps1` runs clean. `Bypass` would be a
+ * security posture nobody asked for.
+ */
+export const embedPowershellWrapper = (path: string): string =>
+  `powershell.exe -NoProfile -File ${quoteForShell(normaliseBinaryPath(path))}`;
+
+/**
+ * THE INVOCATION — the interpreter AND the script, both normalised, both quoted.
+ *
+ * MEASURED ON A WINDOWS 11 GUEST, 2026-08-10 (plan 082, F008):
+ *
+ *   .js=JSFile
+ *   JSFile=C:\Windows\System32\WScript.exe "%1" %*
+ *
+ * A bare `.js` path as the first token of a command is dispatched by FILE
+ * ASSOCIATION to Windows Script Host — not Node. WScript opened our ES module,
+ * could not execute it, and EXITED 0. The exact command from `hooks.json` moved
+ * the fires journal 2 -> 2 lines; the identical command with `node` in front
+ * moved it 2 -> 3. Every hook we ever installed on Windows was decorative, and
+ * F005's entry shapes and F006's relay were both correct and both unreachable,
+ * because the process carrying them was not our program.
+ *
+ * THE ORIGINAL RATIONALE SURVIVES INTACT — it was the CONCLUSION that was
+ * POSIX-only. "The path written into a user's config IS the running binary and
+ * no caller can supply a truthful substitute" is still why we use
+ * `process.argv[1]`; `process.execPath` is the same kind of fact about the same
+ * running process. A truthful PAIR rather than a truthful single. No PATH lookup
+ * (a hook subprocess may not inherit the user's PATH), no guess at where npm put
+ * a `.cmd` shim (a dev checkout has none, so shim-resolution would silently
+ * regress the dogfood machine), correct under global install, npx, and a
+ * relocated node alike.
+ *
+ * ONE FORM ON EVERY PLATFORM, deliberately. An explicit interpreter is correct
+ * on POSIX too — it removes the shebang from the trust chain — and one form
+ * means the string shipped to Windows users is the string every macOS gate run
+ * exercises. The divergence is what let this defect live for the life of the
+ * feature.
+ *
+ * The self-invocation case (`script === interpreter`, i.e. a single-file
+ * executable) collapses to one token rather than naming the binary twice.
+ */
+export function embedInvocation(interpreter: string, script: string): string {
+  const node = normaliseBinaryPath(interpreter);
+  const target = normaliseBinaryPath(script);
+  if (node === target || target === '') return embedBinaryPath(node);
+  return `${quoteForShell(node)} ${INTERPRETER_FLAGS.join(' ')} ${quoteForShell(target)}`;
+}
+
+/**
+ * Flags the composed invocation gives the INTERPRETER, before the script.
+ *
+ * `--no-warnings` DEFENDS THE SILENT CONTRACT AGAINST AN ENVIRONMENT WE DO NOT
+ * CONTROL (plan 082 F010 F5). `fire` runs inside an agent's tool loop and must
+ * print nothing an agent can see; since F008 the command launches Node directly,
+ * and Node writes `Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR'
+ * env being set.` to stderr AT STARTUP — before a line of our code runs, so no
+ * discipline inside `fire` can suppress it. MEASURED on node v24.7.0, and found by
+ * a reviewer in a real environment rather than a constructed one.
+ *
+ * WHAT IT HIDES, stated plainly because a suppression that is not reasoned about
+ * is a defect waiting: every process warning for the hook process — deprecations,
+ * experimental-feature notices, MaxListenersExceeded. We accept that HERE and only
+ * here, because this is the one process contractually forbidden from speaking, and
+ * a warning it cannot deliver has nowhere useful to go: it lands mid-tool-call in
+ * an agent's transcript, where it is noise at best and a corrupted turn at worst.
+ * The same code runs under the ordinary CLI, and under every test, with warnings
+ * ON — so the surface is not lost, only moved to where someone can read it.
+ *
+ * A LIST, so `upgradeLegacyEntries` can ask whether an installed command carries
+ * what this binary now requires. That is what makes the fix reach the installs
+ * that already exist rather than only new ones.
+ */
+export const INTERPRETER_FLAGS: readonly string[] = ['--no-warnings'];
+
+/**
+ * Pull the binary path back OUT of a hook command string.
+ *
+ * The inverse of {@link embedBinaryPath}, and the reason `status` can stat what it
+ * configured. Handles the quoted form (including spaces, which is the whole point)
+ * and tolerates an unquoted first token so a hand-edited entry is still readable.
+ *
+ * INTERPRETER-AWARE SINCE F008, and this is the single most dangerous edge in
+ * that change. This function returns what `status` STATS. Once the command names
+ * `node` first, a reader that still took token one would stat `node.exe` — which
+ * exists on every machine capable of running this code. `binaryState` would then
+ * report `resolves` UNCONDITIONALLY: a green light that cannot go red, which is
+ * strictly worse than the bug it was hiding. So the SCRIPT is what comes back
+ * out, and the interpreter is available by name from
+ * {@link extractInterpreterPath} rather than silently discarded.
+ *
+ * Returns `null` when the command does not start with a path we can identify —
+ * never a guess, because a wrong path stats false and reports a healthy install as
+ * broken.
+ */
+/**
+ * The shipped WRAPPER a command names, at ANY token position, or `null`.
+ *
+ * Plan 088. Both wrapper shapes must answer the same question. The POSIX command
+ * names the wrapper FIRST (`"…/harness-hook.sh" hooks fire …`); the Windows command
+ * names a native executable first and the wrapper FOURTH
+ * (`powershell.exe -NoProfile -File "…/harness-hook.ps1"`), because `command` must
+ * start with something Windows can actually execute.
+ *
+ * WITHOUT THIS, STATUS LIES ABOUT THE WINDOWS ENTRY. `extractBinaryPath` reads the
+ * leading two tokens, so it returned `powershell.exe` — a bare name, which `fs.exists`
+ * cannot find — and every correct Windows install would have reported
+ * `binaryState: unresolvable`. A false RED this time rather than a false green, but
+ * the same defect: a reader answering about a shape it was not taught.
+ */
+export function extractWrapperPath(command: string): string | null {
+  const tokens = commandTokens(command);
+  return (
+    tokens.find(
+      (token) => token.endsWith('harness-hook.sh') || token.endsWith('harness-hook.ps1'),
+    ) ?? null
+  );
+}
+
+export function extractBinaryPath(command: string): string | null {
+  // A WRAPPER ENTRY NAMES THE WRAPPER, wherever it sits (plan 088). On Windows the
+  // leading token is `powershell.exe` and the thing this command actually RUNS is the
+  // `.ps1` behind `-File`, so reading only the leading pair reports the interpreter as
+  // if it were our binary.
+  const wrapper = extractWrapperPath(command);
+  if (wrapper !== null) return wrapper;
+  const [first, second] = leadingTokens(command);
+  if (first === null) return null;
+  return isPathLike(second) ? second : first;
+}
+
+/**
+ * The INTERPRETER a command names, or `null` when it names none.
+ *
+ * `null` is a real answer and not a failure: a hand-edited entry, or any config
+ * written before F008, carries the one-token form. Reporting that honestly is
+ * what lets `status` say "this install predates the fix" instead of guessing an
+ * interpreter that was never configured.
+ */
+export function extractInterpreterPath(command: string): string | null {
+  /*
+   * A WRAPPER ENTRY CONFIGURES NO INTERPRETER — that is its entire purpose (plan 085).
+   * It resolves one at FIRE time, so there is nothing here for status to stat.
+   * Reporting `powershell.exe` would be worse than nothing: status would `fs.exists` a
+   * bare name, fail, and call a correct install unresolvable. Health for these entries
+   * comes from INVOKING the wrapper's check mode, never from stat.
+   */
+  if (extractWrapperPath(command) !== null) return null;
+  const [first, second] = leadingTokens(command);
+  if (first === null) return null;
+  return isPathLike(second) ? first : null;
+}
+
+/**
+ * Is this token a PATH rather than a subcommand?
+ *
+ * The structural rule, chosen over a name test (`basename === 'node'`) on
+ * purpose: a name test has to be right about every interpreter anyone might
+ * legitimately configure — `node`, `node.exe`, a version-managed shim, a future
+ * runtime — and it is wrong the first time it meets one it does not know. Our
+ * command shape is `<invocation> hooks fire <agent> …`, so the question that
+ * actually decides it is whether the second token is a path or the literal verb
+ * `hooks`. A separator answers that without knowing any interpreter's name.
+ */
+const isPathLike = (token: string | null): token is string =>
+  token !== null && token.length > 0 && (token.includes('/') || /^[A-Za-z]:/.test(token));
+
+/**
+ * The first two whitespace-separated tokens, with quoting honoured.
+ *
+ * ONE tokenizer for both readers, so "where does the first token end" cannot be
+ * answered two different ways — the split-on-space version of this question is
+ * the naive extractor that returns `"/Users/ada` and reports every healthy
+ * install broken.
+ */
+/**
+ * The first two PATH-BEARING tokens, with quoting honoured and interpreter FLAGS
+ * skipped.
+ *
+ * ONE tokenizer for both readers, so "where does the first token end" cannot be
+ * answered two different ways — the split-on-space version of this question is
+ * the naive extractor that returns `"/Users/ada` and reports every healthy
+ * install broken.
+ *
+ * FLAGS ARE SKIPPED BETWEEN THEM, AND THAT IS LOAD-BEARING (plan 082 F010 F5).
+ * The invocation now carries `--no-warnings` between the interpreter and the
+ * script. A reader that still asked "is token TWO a path" would answer NO for
+ * every command we ship, and both callers would then be wrong in the worst
+ * available direction: {@link extractInterpreterPath} would report `null`, so
+ * every current entry reads as PRE-F008 LEGACY and the upgrade path rewrites
+ * every config on every run — churn that, through the install compensation, can
+ * uninstall a healthy hook to make up for an unrelated failure. And
+ * {@link extractBinaryPath} would return the INTERPRETER, so `status` stats
+ * `node` on a machine that is by definition running node: a green light that
+ * cannot go red, which F008 already established is strictly worse than the bug it
+ * hides.
+ *
+ * ONLY leading `-` tokens are skipped, and only BEFORE the second path. Our shape
+ * is `<interpreter> [flags] <script> hooks fire …`, so scanning stops at the
+ * first token that is neither a flag nor a path — the literal verb `hooks` — and
+ * a bare-script command therefore still reports NO interpreter, which is what
+ * keeps the Windows repair firing.
+ */
+function leadingTokens(command: string): [string | null, string | null] {
+  const tokens: string[] = [];
+  let rest = command;
+  for (;;) {
+    const read = readToken(rest);
+    if (read === null) break;
+    rest = read.rest;
+    if (read.token.startsWith('-')) {
+      // A command whose FIRST token is a flag names no binary we can identify —
+      // never guess, because a wrong path stats false and reports a healthy
+      // install as broken. Later flags are part of the invocation and are skipped.
+      if (tokens.length === 0) return [null, null];
+      continue;
+    }
+    tokens.push(read.token);
+    if (tokens.length === 2) break;
+  }
+  return [tokens[0] ?? null, tokens[1] ?? null];
+}
+
+function readToken(input: string): { token: string; rest: string } | null {
+  const trimmed = input.trimStart();
+  if (trimmed.length === 0) return null;
+
+  if (trimmed.startsWith('"')) {
+    // Walk to the closing quote, honouring \" so an escaped quote does not end it.
+    let out = '';
+    for (let i = 1; i < trimmed.length; i += 1) {
+      const char = trimmed[i];
+      if (char === '\\' && trimmed[i + 1] === '"') {
+        out += '"';
+        i += 1;
+        continue;
+      }
+      if (char === '"') return out.length > 0 ? { token: out, rest: trimmed.slice(i + 1) } : null;
+      out += char;
+    }
+    return null; // unterminated quote — not a path we can identify
+  }
+
+  const token = trimmed.split(/\s+/)[0];
+  return token.length > 0 ? { token, rest: trimmed.slice(token.length) } : null;
+}
+
+/**
+ * WHICH path segment makes this invocation non-durable, or `null` when none does.
+ *
+ * THE REASON, NOT JUST THE VERDICT, because the verdict alone is unactionable. A
+ * refusal that says "this path will not survive" sends the operator looking; one
+ * that says "it is under `node_modules`" is already the diagnosis.
+ *
+ * A NON-ABSOLUTE PATH IS NON-DURABLE FOR A DIFFERENT REASON and says so: it
+ * resolves against a working directory the hook subprocess does not control.
+ *
+ * THE HAZARD IS MEASURED, THREE TIMES OVER, on three machines:
+ *   - `/home/vscode/.npm/_npx/<hash>/node_modules/.bin/harness` — a WSL
+ *     devcontainer. An npx cache entry: npm garbage-collects it and a container
+ *     rebuild erases it outright.
+ *   - `…/harness-engineering-worktrees/mac-validation/harness/cli/bin/harness.js`
+ *     — this host, a worktree ~145 commits divergent from main. The hook ran a
+ *     different harness from the one on PATH, and nothing reported it.
+ *   - the live Cursor hook pointing into untracked `scratch/` — plan 082's own
+ *     note, which named this class and then never wired the check up.
+ *
+ * Each one works for exactly the person who installed it, on the day they did,
+ * and then fails SILENTLY — the hook contract is exit-0-and-say-nothing, so a
+ * vanished target produces no error anywhere. That is why this is refused at
+ * install time rather than reported afterwards.
+ */
+export function transientSegment(path: string): string | null {
+  const normalised = normaliseBinaryPath(path);
+  if (!isAbsolutePath(normalised)) return '<relative>';
+  return (
+    normalised
+      .split('/')
+      .find(
+        (segment) => DEV_TREE_SEGMENTS[segment] === true || segment.endsWith(WORKTREE_SUFFIX),
+      ) ?? null
+  );
+}
+
+/**
+ * A worktree container is matched by SUFFIX, and an exact match is not enough —
+ * measured.
+ *
+ * This host's own copilot hook names
+ * `…/harness-engineering-worktrees/mac-validation/harness/cli/bin/harness.js`. The
+ * segment is `harness-engineering-worktrees`, so the exact-match rule this file
+ * shipped with would have waved it through — while that tree sat ~145 commits
+ * divergent from main, serving every hook fire on the machine.
+ *
+ * KNOWN BLIND SPOT, stated rather than papered over: a git worktree can be created
+ * at ANY path, and a directory called `~/dev/wt-3` is undetectable from the string
+ * alone. This rule catches the convention, not the mechanism. The install-time
+ * refusal is therefore a filter, never a proof — which is why status reports the
+ * segment as its own field instead of claiming a durable install.
+ */
+const WORKTREE_SUFFIX = 'worktrees';
+
+/**
+ * Directory names that mean "someone's working tree or a cache", never an install.
+ *
+ * `node_modules` IS DELIBERATELY ABSENT, and it was here until it was measured. It
+ * looks like the obvious entry and it refuses the two most normal ways to consume us:
+ *
+ *   npm i -g   ->  <prefix>/lib/node_modules/@ai-substrate/engineering-harness/…
+ *   npm i -D   ->  <project>/node_modules/.bin/harness
+ *
+ * The first is THE PAVED PATH. A rule that refuses it does not harden the install, it
+ * abolishes it — `harness hooks install` would have refused every global install on
+ * every machine, which is a worse failure than the one this guard exists to prevent.
+ * Both paths are durable: npm replaces a global package's contents IN PLACE on
+ * upgrade, and a project's `node_modules` lives exactly as long as the project.
+ *
+ * Nothing is lost by dropping it. An npx cache is caught by `_npx`, which every such
+ * path carries, and which names the actual reason the target vanishes; a worktree's
+ * `node_modules` is caught by the worktree suffix. `node_modules` was catching those
+ * two cases by coincidence and the paved path on purpose.
+ */
+const DEV_TREE_SEGMENTS: Record<string, true> = {
+  scratch: true,
+  _npx: true,
+  src: true,
+  dist: true,
+  '.git': true,
+  worktrees: true,
+};
+
+/** POSIX `/x` or Windows `C:/x` — both after normalisation. */
+export const isAbsolutePath = (path: string): boolean =>
+  path.startsWith('/') || /^[A-Za-z]:\//.test(path);

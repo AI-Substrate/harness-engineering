@@ -57,7 +57,7 @@ npm run check:telemetry-fixtures    # drift guard — fails non-zero if a golden
 
 ## Full runbook + governance
 
-- **Capture → scrub → review → promote runbook**: [`docs/how/telemetry-fixtures.md`](../../../docs/how/telemetry-fixtures.md)
+- **Capture → scrub → review → promote runbook**: [`docs/how/telemetry/fixtures.md`](../../../docs/how/telemetry/fixtures.md)
   — the per-surface capture steps, the cursor on-disk path, and the non-skippable
   manual-review checklist.
 - **Why committing scrubbed session content is allowed**: the Deviation Ledger entry

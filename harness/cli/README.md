@@ -163,25 +163,39 @@ Ports & Adapters (Hexagonal): a thin commander **entrypoint** (`index.ts` → `a
 
 ## Continuous Integration & Release
 
-CI runs on every pull request and on pushes to `main` (`.github/workflows/ci.yml`):
+CI is **manual on branches** and automatic only on `main` (`.github/workflows/ci.yml`). Pushing to a PR branch does **not** start a run — you ask for the verdict when you want it:
+
+```bash
+just ci                                # dispatch CI on the current branch
+gh workflow run ci.yml --ref <branch>  # …or any branch
+```
+
+This costs nothing in rigour — provided the pin is applied. The `ci-required` job publishes a `ci-verdict` commit status, and the intent is that `ci-verdict` be a **required** status check on `main`: a head SHA that has never been dispatched then has no verdict at all, GitHub reports *Expected — waiting for status to be reported*, and the PR is unmergeable. Push another commit after dispatching and the PR blocks again: the verdict is pinned to the SHA that was actually tested. (The trigger is *removed* rather than gated with a job-level `if:` on purpose — a job skipped by `if:` reports as **skipped**, which branch protection counts as **success**, so that shape would let an untested PR merge.)
+
+> **Check whether the pin is live before relying on it** — it is a repo setting, not part of this workflow, and the two can drift:
+>
+> ```bash
+> gh api repos/AI-Substrate/harness-engineering/rules/branches/main --jq '[.[].type]'
+> ```
+>
+> `required_status_checks` absent ⇒ CI is advisory and a red PR can be merged by anyone who doesn't look.
+
+Jobs:
 
 - **`build-test`** — Node 22 & 24 matrix: `npm ci` → Biome check → build → `tsc --noEmit` → `vitest run --coverage` → `npm audit` (advisory). Coverage prints a text summary and uploads `harness/cli/coverage/lcov.info` as an artifact.
 - **`package-smoke`** — packs the tarball, installs it into a clean temp project with `--omit=dev`, drops a real `.harness/extensions/hello/extension.ts` package fixture, and asserts the installed `harness` bin discovers + jiti-loads the verb and runs it (proving jiti resolves as a runtime dependency), plus a flat `legacy.ts` file is rejected with `E143` — the npx/bin-symlink + extension contract end-to-end.
-- **`ci-required`** — a stable aggregation job that fails if any required job failed. Branch protection requires this one matrix-independent check.
+- **`ci-required`** — a stable aggregation job that fails if any required job failed, and publishes its verdict as the `ci-verdict` **commit status**.
+
+**Why the required check is a status, not the job.** A `workflow_dispatch` check suite is excluded from the commit's `statusCheckRollup`, and rulesets evaluate the rollup — so a dispatched run's check runs cannot satisfy a required check however green they are. A commit **status** *is* rollup-eligible regardless of event, so `ci-required` posts one. The ruleset pins the required context to the GitHub Actions app, so a human cannot hand-post a green verdict.
 
 **Releases** are automated with `release-please` (`.github/workflows/release.yml`, `release-please-config.json`, `.release-please-manifest.json`): conventional commits on `main` open a Release PR that bumps the version and updates `CHANGELOG.md`; merging it tags a semver release **and the `publish` job pushes `@ai-substrate/engineering-harness` to the public npm registry with provenance** (gated on release-please actually cutting a release). A branch-dispatchable **canary** job proves the publish + **anonymous-install** path before merge (push a `canary/**` branch, or `workflow_dispatch` once the workflow is on `main`). Install from npm — see *Install / run* above.
 
-**Branch protection** on `main` requires the `ci-required` check to pass before merge. Applied with (requires repo admin):
+**Branch protection** on `main` is a repo **ruleset** (`main`). It requires a PR; the `ci-verdict` status check is intended to be required alongside it (pinned to the GitHub Actions app, `integration_id: 15368`). Inspect what is actually enforced with:
 
 ```bash
-gh api -X PUT repos/AI-Substrate/harness-engineering/branches/main/protection --input - <<'JSON'
-{
-  "required_status_checks": { "strict": false, "contexts": ["ci-required"] },
-  "enforce_admins": false,
-  "required_pull_request_reviews": null,
-  "restrictions": null
-}
-JSON
+gh api repos/AI-Substrate/harness-engineering/rules/branches/main
 ```
 
-Verify with `gh api repos/AI-Substrate/harness-engineering/branches/main/protection`.
+The status-check rule is what makes the manual trigger safe; do not remove it without also restoring an automatic trigger. Before adding it, confirm every open PR head can *emit* the context — `git show <ref>:.github/workflows/ci.yml | grep -c ci-verdict` — or a branch that predates the publisher becomes unmergeable with no reachable green.
+
+**Dependabot cannot dispatch a workflow**, so once the check is required each dependabot PR needs a manual `gh workflow run ci.yml --ref <head>` before it can merge. The failure mode is silence: a permanently unmergeable PR looks exactly like one nobody has got round to. Repo-level `allow_auto_merge` is `false`; enabling it without a dispatcher for dependabot heads would stall that queue indefinitely.

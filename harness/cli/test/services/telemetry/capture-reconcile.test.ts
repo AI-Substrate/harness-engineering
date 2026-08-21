@@ -581,8 +581,19 @@ describe('a recovered lane never inherits the recovery process\u2019s environmen
     const configRoot = join(tmp, '.claude');
     // The path LIVE discovery would derive, so both modes read the same file and
     // the only difference between them is where the answer came from.
+    //
+    // Built the way `candidatePath` builds it — `<configRoot>/projects/<key>/
+    // <id>.jsonl`, interpolated with FORWARD slashes and the config root left
+    // native — rather than with `join`. That is not cosmetic: the reconcile read
+    // (`readTranscriptAt`) recovers its containment root by matching the marker's
+    // recorded path against `/^(.*)\/projects\/[^/]+\/([^/]+)\.jsonl$/`, and a
+    // `join`-built path is all back-slashes on win32, so the layout never matched,
+    // the read returned `unresolved`, and `tokens` came back undefined
+    // (plan 077 · #108). The product records the interpolated form, so this is the
+    // path a real marker carries — on POSIX the two spellings are identical, which
+    // is why it went unnoticed. EXPECTED, UNVERIFIED: nobody here has a Windows box.
     const projectKey = repo.replace(/[^A-Za-z0-9]/g, '-');
-    const path = join(configRoot, 'projects', projectKey, `${SESSION}.jsonl`);
+    const path = `${configRoot.replace(/[\\/]+$/, '')}/projects/${projectKey}/${SESSION}.jsonl`;
     mkdirSync(join(configRoot, 'projects', projectKey), { recursive: true });
     writeFileSync(
       path,

@@ -1,7 +1,7 @@
 {
   "name": "@ai-substrate/engineering-harness",
   "version": "0.13.0",
-  "description": "Starter Harness CLI Core — the agent-friendly front door to this repo's engineering harness.",
+  "description": "Starter Harness CLI Core \u2014 the agent-friendly front door to this repo's engineering harness.",
   "type": "module",
   "repository": {
     "type": "git",
@@ -53,17 +53,18 @@
     "@ai-substrate/dd": "github:AI-Substrate/dd#a37a20ecf12342275a9d81b4cf8835302de8e9e0",
     "commander": "^15.0.0",
     "jiti": "2.7.0",
+    "jsonc-parser": "3.3.1",
     "picomatch": "^4.0.5"
   },
   "optionalDependencies": {
-    "ink": "^5.2.1",
-    "react": "^18.3.1"
+    "ink": "^7.1.1",
+    "react": "^19.2.8"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.0",
     "@types/node": "^26",
     "@vitest/coverage-v8": "^4.1.8",
-    "dependency-cruiser": "^17.4.3",
+    "dependency-cruiser": "^18.1.0",
     "jsdom": "^29.1.1",
     "markdownlint-cli2": "^0.23.0",
     "mermaid": "^11.15.0",

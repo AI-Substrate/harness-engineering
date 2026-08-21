@@ -11,9 +11,9 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { createServer } from 'node:net';
-import { devNull, tmpdir } from 'node:os';
+import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { FakeFs } from '../../../src/adapters/fs/fake-fs.js';
 import { ExecRemoteTelemetryGit } from '../../../src/adapters/git/exec-remote-telemetry-git.js';
 import type { RemoteRepository } from '../../../src/adapters/git/remote-telemetry-git-port.js';
@@ -50,8 +50,13 @@ const git = (cwd: string, args: string[]): string =>
  *
  * Set once for the file rather than sprinkled per case: the property is true of
  * the whole file, and a per-case number invites the next author to guess.
+ *
+ * The number itself now lives in `vitest.config.ts` as a 30s GLOBAL floor (plan
+ * 077 · tk-0101): a downstream consumer measured the 5s default manufacturing
+ * ~30% of their Windows failures, so every file gets the allowance this one
+ * asked for. A local `vi.setConfig({ testTimeout: 20_000 })` here would now be a
+ * DOWNGRADE below that floor, so this file states its reason and defers.
  */
-vi.setConfig({ testTimeout: 20_000, hookTimeout: 30_000 });
 
 /**
  * A PRIVATE temp namespace for this file (tk-7173 / DL-008 / COORD-001).
@@ -85,12 +90,37 @@ process.env.TMPDIR = PRIVATE_TMP_NAMESPACE;
 process.env.TMP = PRIVATE_TMP_NAMESPACE;
 process.env.TEMP = PRIVATE_TMP_NAMESPACE;
 
-afterAll(() => {
+/**
+ * `rmSync` for TEARDOWN only, tolerant of a lingering Windows handle (plan 108
+ * B3): `git daemon` can hold a file handle open for a brief window AFTER its
+ * process has already exited (`TestGitDaemonManager.stop()` confirms exit via
+ * `waitForExit` before any teardown ever runs this), and Windows refuses the
+ * delete with EPERM until the OS actually releases it. A teardown failure must
+ * never fail a case whose own assertions already passed, so this retries
+ * briefly — the process is already gone, so the handle release is imminent —
+ * and tolerates EPERM once retries are exhausted rather than failing the run
+ * over it. Any OTHER error code is a real problem and still throws.
+ */
+async function rmTeardown(path: string, retries = 5, delayMs = 100): Promise<void> {
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    try {
+      rmSync(path, { recursive: true, force: true });
+      return;
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException | undefined)?.code;
+      if (code !== 'EPERM') throw err;
+      if (attempt === retries) return;
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+}
+
+afterAll(async () => {
   for (const [name, value] of Object.entries(AMBIENT_TMP_ENV)) {
     if (value === undefined) delete process.env[name];
     else process.env[name] = value;
   }
-  rmSync(PRIVATE_TMP_NAMESPACE, { recursive: true, force: true });
+  await rmTeardown(PRIVATE_TMP_NAMESPACE);
 });
 
 /**
@@ -163,7 +193,10 @@ function safeReadinessEnvironment(): NodeJS.ProcessEnv {
   }
   return {
     ...env,
-    GIT_CONFIG_GLOBAL: process.platform === 'win32' ? 'NUL' : '/dev/null',
+    // The POSIX literal on EVERY platform, win32 included — git documents `/dev/null` as
+    // the way to skip a config level, and Git for Windows exits 128 on both `NUL` and
+    // `\\.\nul` (measured, git 2.55.0.windows.3; see `gitConfigNullPath`).
+    GIT_CONFIG_GLOBAL: '/dev/null',
     GIT_CONFIG_NOSYSTEM: '1',
     GIT_TERMINAL_PROMPT: '0',
     GCM_INTERACTIVE: 'never',
@@ -408,7 +441,7 @@ class TestGitDaemonManager {
     let stopped = this.lastStopped;
     if (this.active !== undefined) stopped = await this.stop();
     if (stopped === undefined) throw new Error('git daemon has no lifecycle evidence for teardown');
-    rmSync(this.root, { recursive: true, force: true });
+    await rmTeardown(this.root);
     return stopped;
   }
 }
@@ -731,6 +764,24 @@ const NEGATIVE_CREDENTIAL_QUERY_CASES: ReadonlyArray<{
   { label: 'discovery output cap', stdout: Buffer.alloc(65_537, 0x61) },
 ];
 
+/**
+ * A `!`-helper written as a `#!/bin/sh` script cannot be launched on win32 — see
+ * the full declaration on the one case that needs one, below.
+ *
+ * Scoped to that single case, NOT to the file and not to the cluster, for the
+ * same reason the daemon skip at the foot of this file is scoped to the daemon:
+ * every other case here is in-process config shaping, runs on Windows today, and
+ * is exactly where a Windows product defect would surface. Declaring them
+ * unproven to buy a rounder number would make the real gap illegible.
+ */
+const SHELL_HELPER_FIXTURE_UNSUPPORTED = process.platform === 'win32';
+
+if (SHELL_HELPER_FIXTURE_UNSUPPORTED) {
+  console.warn(
+    "SKIPPED — 'materializes URL scopes without matching them…' in exec-remote-telemetry-git.int.test.ts does not run on win32. The FIXTURE is POSIX shell, not the adapter: it registers `#!/bin/sh` helper scripts as `!<native absolute path>`, and Git launches a `!`-helper through a shell where a native `C:\\Users\\…` path's back-slashes are escape characters, so the helper never runs and `git credential fill` returns empty. What is now unproven on this host: that Git, given the operation-scoped config this adapter materializes, invokes ONLY the URL-scope-matching helper and leaves the non-matching one uninvoked, and that the matching helper's secret is absent from the sanitized on-disk config during the network call. Linux CI proves both on every push; only the WINDOWS behaviour of Git's scope selection is unmeasured. MECHANISM EXPECTED, UNVERIFIED — reasoned from the fixture, never observed on a Windows host.",
+  );
+}
+
 describe('ExecRemoteTelemetryGit — HTTPS credential discovery RED cluster A', () => {
   it('preserves helper chain/reset/include/order/scoped fields and excludes forbidden config', async () => {
     const root = mkdtempSync(join(tmpdir(), 'harness-credential-red-a-'));
@@ -830,79 +881,133 @@ describe('ExecRemoteTelemetryGit — HTTPS credential discovery RED cluster A', 
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
-  });
+    // 120s, not the 30s floor — the same spawn-count budget as
+    // hooks/composed-command.int.test.ts, set to the SAME value so the two do not
+    // drift apart for no reason.
+    //
+    // This row drives many real `git` invocations to build and read back a
+    // credential-helper chain. Measured on the Windows VM at 30039ms against a
+    // 30000ms wall — 39 MILLISECONDS over — and it OSCILLATED across runs
+    // (this timing family moved 14 -> 1 -> 0 -> 1) precisely because it sits on
+    // the boundary. A row that passes or fails on machine load is reporting the
+    // load, not the code.
+    //
+    // NOT SKIPPED. The credential-leak assertions are the security-relevant part
+    // of this file; losing them on the slow platform is exactly the outcome a
+    // budget raise exists to avoid.
+  }, 120_000);
 
-  it('materializes URL scopes without matching them so real Git selects only the applicable helper', async () => {
-    const root = mkdtempSync(join(tmpdir(), 'harness-credential-red-a-scope-'));
-    const globalConfig = join(root, '.gitconfig');
-    const markerMatch = join(root, 'matched');
-    const markerOther = join(root, 'other');
-    const secretFile = join(root, 'helper-secret');
-    const matchingHelper = join(root, 'matching-helper.sh');
-    const otherHelper = join(root, 'other-helper.sh');
-    const sentinel = 'fixture-secret-never-public';
-    let sanitizedPath: string | undefined;
-    let sanitizedBytesDuringNetwork: Buffer | undefined;
-    let fillOutput = '';
-    try {
-      writeFileSync(secretFile, `${sentinel}\n`);
-      writeFileSync(
-        matchingHelper,
-        `#!/bin/sh\nprintf matched > ${JSON.stringify(markerMatch)}\nprintf 'username=matched-user\\npassword='\ncat ${JSON.stringify(secretFile)}\n`,
-      );
-      writeFileSync(
-        otherHelper,
-        `#!/bin/sh\nprintf other > ${JSON.stringify(markerOther)}\nprintf 'username=other-user\\npassword=other\\n'\n`,
-      );
-      chmodSync(matchingHelper, 0o700);
-      chmodSync(otherHelper, 0o700);
-      addGitConfig(
-        globalConfig,
-        'credential.https://match.example.invalid.helper',
-        `!${matchingHelper}`,
-      );
-      addGitConfig(
-        globalConfig,
-        'credential.https://other.example.invalid.helper',
-        `!${otherHelper}`,
-      );
+  /**
+   * SKIPPED on win32, deliberately and by name (plan 077 · #108).
+   *
+   * ## Why it cannot run there
+   *
+   * The FIXTURE is POSIX shell, not the adapter. It writes two `#!/bin/sh`
+   * helper scripts, `chmod 0700`s them, and registers each against a URL scope as
+   * `!<absolute path>`. Git runs a `!`-prefixed helper THROUGH A SHELL, and the
+   * absolute path here comes from `join()` — native, so on win32 it is
+   * `C:\Users\…\matching-helper.sh`, whose back-slashes the shell reads as escape
+   * characters. The helper never executes, `git credential fill` emits nothing,
+   * and the assertion reports `expected '' to contain 'username=matched-user'`.
+   * `chmod 0700` is also close to a no-op on that filesystem, so the executable
+   * bit the fixture thinks it set is not the bit that decides anything.
+   *
+   * MECHANISM: **expected, unverified.** It is reasoned from the fixture and the
+   * consumer's reported error text. Nobody on this plan has a Windows box, so no
+   * one has watched it happen. Rewriting the fixture in a Windows-portable shell
+   * would be a different experiment — it would prove that OUR helper spelling
+   * works, not that Git selects among the operator's real ones.
+   *
+   * ## What is NOT proven on win32 while this stands
+   *
+   * That Git, handed the operation-scoped config this adapter materializes,
+   * selects ONLY the helper whose URL scope matches (`match.example.invalid`) and
+   * leaves the non-matching one (`other.example.invalid`) uninvoked; and that the
+   * matching helper's secret is absent from the sanitized config that is on disk
+   * during the network call. Linux CI asserts both on every push, so the claim is
+   * covered — it is the WINDOWS behaviour of Git's scope selection that is
+   * unmeasured, and Git's own credential matching is not code this repo owns.
+   *
+   * NOT skipped with it: the sibling case that registers an unrelated opaque
+   * helper and asserts its marker is ABSENT. That one is green on win32 — but for
+   * the wrong reason, since a helper that fails to launch leaves no marker either.
+   * It is a control that cannot fail there; that is worth knowing and is not
+   * worth a skip, because the assertion is still true.
+   */
+  it.skipIf(SHELL_HELPER_FIXTURE_UNSUPPORTED)(
+    'materializes URL scopes without matching them so real Git selects only the applicable helper',
+    async () => {
+      const root = mkdtempSync(join(tmpdir(), 'harness-credential-red-a-scope-'));
+      const globalConfig = join(root, '.gitconfig');
+      const markerMatch = join(root, 'matched');
+      const markerOther = join(root, 'other');
+      const secretFile = join(root, 'helper-secret');
+      const matchingHelper = join(root, 'matching-helper.sh');
+      const otherHelper = join(root, 'other-helper.sh');
+      const sentinel = 'fixture-secret-never-public';
+      let sanitizedPath: string | undefined;
+      let sanitizedBytesDuringNetwork: Buffer | undefined;
+      let fillOutput = '';
+      try {
+        writeFileSync(secretFile, `${sentinel}\n`);
+        writeFileSync(
+          matchingHelper,
+          `#!/bin/sh\nprintf matched > ${JSON.stringify(markerMatch)}\nprintf 'username=matched-user\\npassword='\ncat ${JSON.stringify(secretFile)}\n`,
+        );
+        writeFileSync(
+          otherHelper,
+          `#!/bin/sh\nprintf other > ${JSON.stringify(markerOther)}\nprintf 'username=other-user\\npassword=other\\n'\n`,
+        );
+        chmodSync(matchingHelper, 0o700);
+        chmodSync(otherHelper, 0o700);
+        addGitConfig(
+          globalConfig,
+          'credential.https://match.example.invalid.helper',
+          `!${matchingHelper}`,
+        );
+        addGitConfig(
+          globalConfig,
+          'credential.https://other.example.invalid.helper',
+          `!${otherHelper}`,
+        );
 
-      await withProcessEnvironment(
-        { HOME: root, USERPROFILE: root, XDG_CONFIG_HOME: join(root, 'xdg') },
-        async () => {
-          await new ExecRemoteTelemetryGit({
-            timeoutMs: 1_000,
-            onGitCommand: (args: readonly string[]) => {
-              const fileIndex = args.indexOf('--file');
-              if (fileIndex >= 0 && args.includes('--add')) sanitizedPath = args[fileIndex + 1];
-              if (args.includes('ls-remote') && sanitizedPath !== undefined) {
-                sanitizedBytesDuringNetwork = readFileSync(sanitizedPath);
-                fillOutput = execFileSync('git', ['credential', 'fill'], {
-                  input: 'protocol=https\nhost=match.example.invalid\n\n',
-                  encoding: 'utf8',
-                  env: {
-                    PATH: process.env.PATH,
-                    HOME: root,
-                    GIT_CONFIG_GLOBAL: sanitizedPath,
-                    GIT_CONFIG_NOSYSTEM: '1',
-                    GIT_TERMINAL_PROMPT: '0',
-                  },
-                });
-              }
-            },
-          }).advertiseTelemetryRefs(HTTPS_CREDENTIAL_PROBE_REPOSITORY);
-        },
-      );
-      expect(fillOutput).toContain('username=matched-user');
-      expect(fillOutput).toContain(`password=${sentinel}`);
-      expect(existsSync(markerMatch)).toBe(true);
-      expect(existsSync(markerOther)).toBe(false);
-      expect(sanitizedBytesDuringNetwork?.toString('utf8')).not.toContain(sentinel);
-      expect(existsSync(sanitizedPath as string)).toBe(false);
-    } finally {
-      rmSync(root, { recursive: true, force: true });
-    }
-  });
+        await withProcessEnvironment(
+          { HOME: root, USERPROFILE: root, XDG_CONFIG_HOME: join(root, 'xdg') },
+          async () => {
+            await new ExecRemoteTelemetryGit({
+              timeoutMs: 1_000,
+              onGitCommand: (args: readonly string[]) => {
+                const fileIndex = args.indexOf('--file');
+                if (fileIndex >= 0 && args.includes('--add')) sanitizedPath = args[fileIndex + 1];
+                if (args.includes('ls-remote') && sanitizedPath !== undefined) {
+                  sanitizedBytesDuringNetwork = readFileSync(sanitizedPath);
+                  fillOutput = execFileSync('git', ['credential', 'fill'], {
+                    input: 'protocol=https\nhost=match.example.invalid\n\n',
+                    encoding: 'utf8',
+                    env: {
+                      PATH: process.env.PATH,
+                      HOME: root,
+                      GIT_CONFIG_GLOBAL: sanitizedPath,
+                      GIT_CONFIG_NOSYSTEM: '1',
+                      GIT_TERMINAL_PROMPT: '0',
+                    },
+                  });
+                }
+              },
+            }).advertiseTelemetryRefs(HTTPS_CREDENTIAL_PROBE_REPOSITORY);
+          },
+        );
+        expect(fillOutput).toContain('username=matched-user');
+        expect(fillOutput).toContain(`password=${sentinel}`);
+        expect(existsSync(markerMatch)).toBe(true);
+        expect(existsSync(markerOther)).toBe(false);
+        expect(sanitizedBytesDuringNetwork?.toString('utf8')).not.toContain(sentinel);
+        expect(existsSync(sanitizedPath as string)).toBe(false);
+      } finally {
+        rmSync(root, { recursive: true, force: true });
+      }
+    },
+  );
 
   it('accepts no matching entries and still creates an empty operation-scoped config', async () => {
     const root = mkdtempSync(join(tmpdir(), 'harness-credential-red-a-empty-'));
@@ -1458,7 +1563,10 @@ describe('ExecRemoteTelemetryGit — HTTPS credential lease RED cluster B', () =
         },
       }).advertiseTelemetryRefs(repository);
       expect(network?.args).not.toContain('credential.interactive=false');
-      expect(network?.env?.GIT_CONFIG_GLOBAL).toBe(devNull);
+      // A LITERAL, never `gitConfigNullPath()`. Comparing the product against itself
+      // cannot fail for any value the function returns — it would have followed the
+      // broken `'NUL'` silently, and would follow the next mistake just as quietly.
+      expect(network?.env?.GIT_CONFIG_GLOBAL).toBe('/dev/null');
     }
     expect(queries).toBe(0);
     assertNoCredentialLeak(beforeTemps);
@@ -1680,7 +1788,47 @@ describe('ExecRemoteTelemetryGit — HTTPS credential lease RED cluster B', () =
   });
 });
 
-describe('ExecRemoteTelemetryGit — real network-served Git', () => {
+/**
+ * The real-`git daemon` cluster — SKIPPED on win32, deliberately and by name
+ * (plan 077 · tk-0104 · #108).
+ *
+ * These cases spawn a real `git daemon` on loopback, restart it mid-flight, and
+ * assert on its lifecycle evidence. On Windows the daemon holds its handles past
+ * SIGTERM, so teardown races the next generation and the `TestGitDaemonManager`
+ * assertions fail on process bookkeeping rather than on anything about the
+ * adapter. The downstream consumer of #108 measured ~16 failures here and
+ * deprioritised them AS COVERAGE, not as an oversight: Linux CI runs this
+ * cluster properly on every push, so what Windows adds is noise, not signal.
+ *
+ * ## The skip is scoped to the daemon, NOT to the file
+ *
+ * The brief said "skip `exec-remote-telemetry-git` on win32". Scoping it to the
+ * whole file would have skipped 91 cases to silence ~16 — and the other 73
+ * (credential discovery, lease handling, config shaping) are in-process, pass on
+ * Windows today, and are exactly the kind of thing a Windows product defect would
+ * show up in. Declaring them unproven to buy a rounder number would be the same
+ * error as claiming them proven: both make the gap illegible. The daemon is the
+ * part that cannot run here, so the daemon is the part that gets declared.
+ *
+ * ## What is NOT proven on win32 while this stands
+ *
+ * That `ExecRemoteTelemetryGit` fetches, pushes and re-reads telemetry refs
+ * against a REAL network-served git over the git:// transport; that a mid-flight
+ * daemon restart is survived with exactly one reconnect and no ref corruption;
+ * and that a fetch against a dead daemon fails loudly rather than silently
+ * reporting an empty ref list. Every one of those is asserted on Linux CI, so the
+ * claim is covered — it is just not covered ON WINDOWS, and nobody has measured
+ * whether the transport behaves the same there.
+ */
+const DAEMON_UNSUPPORTED = process.platform === 'win32';
+
+if (DAEMON_UNSUPPORTED) {
+  console.warn(
+    'SKIPPED — the real-`git daemon` cases in exec-remote-telemetry-git.int.test.ts do not run on win32. This is NOT a missing binary: `git daemon` starts here, but it holds its handles past SIGTERM, so the fixture cannot tear a generation down deterministically and the failures are about process lifecycle rather than about the adapter. These cases are NOT reimplementable — a faked transport would assert that our fake agrees with our code, which is the one thing this cluster exists NOT to do. What is now unproven on this host: that ExecRemoteTelemetryGit fetches/pushes telemetry refs over a REAL git:// transport, that a mid-flight daemon restart is survived with exactly one reconnect and no ref corruption, and that a fetch against a dead daemon fails loudly instead of reporting an empty ref list. Linux CI proves all three on every push; only the WINDOWS behaviour of that transport is unmeasured.',
+  );
+}
+
+describe.skipIf(DAEMON_UNSUPPORTED)('ExecRemoteTelemetryGit — real network-served Git', () => {
   let root: string;
   let work: string;
   let remote: string;

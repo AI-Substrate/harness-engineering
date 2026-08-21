@@ -8,7 +8,7 @@ import {
   rmSync,
   statSync,
 } from 'node:fs';
-import { devNull, tmpdir } from 'node:os';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type {
   AdvertisedTelemetryRef,
@@ -94,7 +94,52 @@ const SAFE_CREDENTIAL_CONFIG_ENV = [
   'XDG_CONFIG_HOME',
 ] as const;
 
-function safeGitEnvironment(credentialConfigPath?: string): NodeJS.ProcessEnv {
+/**
+ * The path handed to `GIT_CONFIG_GLOBAL` to make git skip that config level.
+ *
+ * IT IS `/dev/null` ON EVERY PLATFORM, WINDOWS INCLUDED. That is not a POSIX assumption
+ * leaking into a Windows path: it is a documented contract of the variable itself. git's
+ * `Documentation/git.adoc`, under `GIT_CONFIG_GLOBAL`/`GIT_CONFIG_SYSTEM` — *"Can be set
+ * to `/dev/null` to skip reading configuration files of the respective level."* git reads
+ * the string, it does not open a device.
+ *
+ * MEASURED BY US (plan 083), 2026-08-11, on Parallels **Windows 11 build 26100** with
+ * **git 2.55.0.windows.3**, outside vitest, four verbs (`add`/`status`/`rev-parse`/
+ * `config`) × three values, with a positive control (a global config carrying a
+ * detectable `user.name`, proven detectable before each case — without it "nothing
+ * leaked" is indistinguishable from "the probe cannot see a leak"):
+ *
+ *   GIT_CONFIG_GLOBAL=NUL        exit 128  fatal: unable to access 'NUL': Invalid argument
+ *   GIT_CONFIG_GLOBAL=\\.\nul    exit 128  fatal: unable to access '\\.\nul': Invalid argument
+ *   GIT_CONFIG_GLOBAL=/dev/null  exit 0    ISOLATED, and git runs
+ *
+ * BOTH of the values this repo has ever emitted are in the rejected set: `'NUL'` (this
+ * function, plan 077 · #108) and `\\.\nul` (`os.devNull`, what `main` emitted before the
+ * merge). A reader who greps `main` for `NUL`, finds nothing and concludes the report was
+ * overblown has disproved nothing — the two branches were broken by DIFFERENT values.
+ *
+ * The earlier table here recorded `NUL -> exit 0 ISOLATED`, attributed to *"the downstream
+ * consumer of #108, with a positive control"*. Product code was built on that and nobody
+ * re-measured, because a positive control had already been cited. It is now replaced by
+ * our own run above; the git version is load-bearing, so it is named.
+ *
+ * THE FAILURE MODE IS FAIL-CLOSED, NOT A LEAK. Under either rejected value git refuses to
+ * run at all, so on Windows this adapter was INOPERATIVE, never leaky. Nothing was ever
+ * exposed. It fails loud, and so it is not a member of the silent-wrong-answer family.
+ *
+ * `platform` is ACCEPTED AND DELIBERATELY IGNORED. It is the regression seam: the callers
+ * still thread it, so a test can drive the whole env-building path as win32 from a POSIX
+ * host and assert the literal `/dev/null` comes out. Deleting the parameter would make
+ * "no platform variance here" unassertable, which is the exact property that broke.
+ */
+export function gitConfigNullPath(_platform: NodeJS.Platform = process.platform): string {
+  return '/dev/null';
+}
+
+export function safeGitEnvironment(
+  credentialConfigPath?: string,
+  platform: NodeJS.Platform = process.platform,
+): NodeJS.ProcessEnv {
   const inherited: NodeJS.ProcessEnv = {};
   for (const name of SAFE_INHERITED_ENV) {
     const value = process.env[name];
@@ -104,7 +149,7 @@ function safeGitEnvironment(credentialConfigPath?: string): NodeJS.ProcessEnv {
     ...inherited,
     GIT_TERMINAL_PROMPT: '0',
     GIT_CONFIG_NOSYSTEM: '1',
-    GIT_CONFIG_GLOBAL: credentialConfigPath ?? devNull,
+    GIT_CONFIG_GLOBAL: credentialConfigPath ?? gitConfigNullPath(platform),
     GIT_OPTIONAL_LOCKS: '0',
     GIT_PROTOCOL_FROM_USER: '0',
     GIT_ALLOW_PROTOCOL: 'https:ssh:git',
@@ -112,7 +157,10 @@ function safeGitEnvironment(credentialConfigPath?: string): NodeJS.ProcessEnv {
   };
 }
 
-function safeCredentialConfigEnvironment(materializing = false): NodeJS.ProcessEnv {
+export function safeCredentialConfigEnvironment(
+  materializing = false,
+  platform: NodeJS.Platform = process.platform,
+): NodeJS.ProcessEnv {
   const inherited: NodeJS.ProcessEnv = {};
   for (const name of SAFE_CREDENTIAL_CONFIG_ENV) {
     const value = process.env[name];
@@ -123,7 +171,7 @@ function safeCredentialConfigEnvironment(materializing = false): NodeJS.ProcessE
     GIT_CONFIG_NOSYSTEM: '1',
     GIT_TERMINAL_PROMPT: '0',
     GCM_INTERACTIVE: 'never',
-    ...(materializing ? { GIT_CONFIG_GLOBAL: devNull } : {}),
+    ...(materializing ? { GIT_CONFIG_GLOBAL: gitConfigNullPath(platform) } : {}),
   };
 }
 

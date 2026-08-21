@@ -14,9 +14,11 @@ import {
  * a full, correct authorship note the daemon could not tell from live traffic.
  *
  * `node:net` is a Node BUILTIN. No dependency is added, and named-pipe support
- * means the same code path is at least structurally viable on Windows — where
- * git's `af_unix` trace2 target does not exist, so the resolver above simply
- * never yields a socket to probe (U-5: Windows is must-not-break, not must-work).
+ * means the same code path carries Windows too: `{ path }` is the identical
+ * option for an af_unix socket and a `\\.\pipe\…` endpoint, which is what let
+ * plan 082 · F006 route the Windows ingress through this adapter unchanged. What
+ * this adapter has NOT done is deliver a byte into a real named pipe — that is
+ * EXPECTED-UNVERIFIED until it is measured on Windows hardware.
  *
  * The connection factory is INJECTABLE, and that is the whole testing story: a
  * unit test hands in a fake socket and drives {@link classifyProbeError}'s
@@ -36,6 +38,25 @@ export interface ProbeSocket {
 /** How a socket is opened. Defaults to `net.createConnection`; injected in tests. */
 export type ConnectFactory = (path: string) => ProbeSocket;
 
+/**
+ * `{ path }` is the IDENTICAL Node option for an af_unix socket and a Win32
+ * NAMED PIPE (`\\.\pipe\…`), which is why plan 082 · F006 could make the relay
+ * speak to a pipe without adding a line of transport code here.
+ *
+ * A NOTE FOR WHOEVER HOLDS THE WINDOWS BOX — `EBUSY` IS NOT A DEAD COLLECTOR.
+ * A Win32 named-pipe server is created with a finite instance count, so when
+ * every instance is in use a connect fails with `ERROR_PIPE_BUSY` (surfacing as
+ * `EBUSY`) even though the daemon is alive, listening, and about to be free. It
+ * lands in {@link classifyProbeError}'s `error:<code>` arm — deliberately, and
+ * with no retry: that arm exists exactly so an unrecognised failure keeps its
+ * code instead of being flattened into `absent` (daemon not running) or `denied`
+ * (sandbox). Read `error:EBUSY` as "transiently could not get an instance", and
+ * re-run rather than reinstalling git-ai.
+ *
+ * UNMEASURED — this is a property of documented Win32 pipe semantics, not
+ * something observed from this codebase. No run here has connected to a real
+ * named pipe.
+ */
 const defaultConnect: ConnectFactory = (path) => net.createConnection({ path }) as ProbeSocket;
 
 /**

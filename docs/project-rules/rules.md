@@ -114,10 +114,45 @@ test('given_unconfigured_verb_when_run_then_status_unconfigured_exit_2', () => {
 | Principle Violated | Why Needed | Simpler Alternative Rejected | Risk Mitigation |
 |--------------------|------------|------------------------------|-----------------|
 | Telemetry attribution doctrine (`value-measures` § Team-level only — prior forced non-individual commit author) | Telemetry refs must be traceable to who pushed, so flows can be diagnosed and onboarding supported (Amendment A4, plan 034, 2026-06-25) | Keep the fixed `harness-telemetry` non-individual author | Storage is attributable; usage stays diagnostic/team-grain — individual reads only to help that engineer, never to rate or rank |
-| Sanitized-tracked-docs / no-private-content-in-git (§ 8 SHOULD; Constitution P12) — committing **real, scrubbed harness session transcripts** as telemetry test fixtures (plan 037, 2026-06-25) | The telemetry adapters can only be trusted when tested against **real** session bytes (prompts + tool calls verbatim); synthetic fixtures miss the shapes real transcripts produce, so extraction bugs hide | Keep only synthetic fixtures | Three layered controls: (1) `fixture-scrub` strips paths/identity/secrets at capture, prompts/tools kept verbatim; (2) `fixture-privacy-scan` byte-scans every committed raw fixture in CI (with a live negative control); (3) a **non-skippable manual "anything bad" review of the promoted corpus bytes before `git add`/commit/publication** — capture stages to a gitignored `scratch/` first for an early check ([`docs/how/telemetry-fixtures.md`](../how/telemetry-fixtures.md)) |
+| Sanitized-tracked-docs / no-private-content-in-git (§ 8 SHOULD; Constitution P12) — committing **real, scrubbed harness session transcripts** as telemetry test fixtures (plan 037, 2026-06-25) | The telemetry adapters can only be trusted when tested against **real** session bytes (prompts + tool calls verbatim); synthetic fixtures miss the shapes real transcripts produce, so extraction bugs hide | Keep only synthetic fixtures | Three layered controls: (1) `fixture-scrub` strips paths/identity/secrets at capture, prompts/tools kept verbatim; (2) `fixture-privacy-scan` byte-scans every committed raw fixture in CI (with a live negative control); (3) a **non-skippable manual "anything bad" review of the promoted corpus bytes before `git add`/commit/publication** — capture stages to a gitignored `scratch/` first for an early check ([`docs/how/telemetry/fixtures.md`](../how/telemetry/fixtures.md)) |
 
 - **MUST** pass the Constitution gate in `/plan-3` (no unresolved violations without a ledger entry).
 
 <!-- USER CONTENT START -->
 <!-- Add project-specific rules here; preserved across regenerations. -->
+
+### The global `harness` binary is owned by `main` alone
+
+- **MUST NOT** point the machine-global `harness` at a worktree. A worktree never
+  runs `npm link`, `just link`, `harness skills install --global`, or anything else
+  that repoints the global at itself.
+- **MUST** exercise a worktree build by invoking it explicitly:
+  `node <worktree>/harness/cli/bin/harness.js <verb>` — never bare `harness`.
+- **MUST** put the machine back on `main` after every merged PR:
+  `just local-deploy` (root checkout only — syncs main, builds, links, deploys
+  skills, then **proves** the global is not a worktree via `just verify-global-link`).
+
+**Rationale.** A linked worktree silently redirects *every other seat's* `harness`
+call to an in-flight, possibly-broken build, and **nothing in the envelope reveals
+which binary answered**. It is strictly worse than a stale install: a stale install
+is at least a shipped state.
+
+**Why this is a control and not etiquette.** `just link` already refuses to run from
+a worktree (`_require-root-checkout`), and `harness doctor`'s version-skew layer does
+**not** catch a worktree link — on 2026-08-05 it reported *"running 0.13.0 matches the
+repo (no stale install shadowing)"* while the global resolved into
+`…-worktrees/s065-deterministic-documents/…`. **Version identity is not path
+identity.** `just verify-global-link` checks the resolved path, and treats an absent
+`harness` as `NOT-PROBEABLE`, never as a pass.
+
+**Companion failure, same root cause — deployed artifacts drift silently.** On
+2026-08-05 the deployed builder skill was **three weeks stale** (`~/.agents` is a
+*copy*, not a symlink to source), so a Jul-15 builder authored plan 072 for a tool
+that reads Aug-4 plans and `harness plan ready` answered `E400: no plan.dd.json` on
+its own plan. **Eleven green `harness checks` runs never mentioned it** —
+`check:doctrine-parity` guards the mirrored doctrine block, not deploy freshness.
+Nothing yet detects that a deployed skill is behind its source; until something does,
+`just local-deploy` after every merge is the only thing standing between the fleet and
+that class of failure.
+
 <!-- USER CONTENT END -->

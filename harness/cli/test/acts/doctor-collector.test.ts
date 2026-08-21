@@ -57,6 +57,16 @@ function ioFor(mode: OutputMode): { io: CliIo; out: () => string; err: () => str
   return { io: { mode, writers }, out: () => o, err: () => e };
 }
 
+/**
+ * EVERY FIXTURE MUST DECLARE THAT THE BINARY RUNS (plan 082 · F007).
+ *
+ * `installHooks` asks `--version` before it hands over `install-hooks`, and an
+ * unconfigured fake answers exit 0 with silence — which is REFUSED. That is
+ * deliberate: a fixture that has not said the binary works must break loudly
+ * rather than sail through the guard and assert nothing.
+ */
+const VIABLE = { [`${BINARY} --version`]: { code: 0, stdout: 'git-ai 1.6.22' } };
+
 /** The shipped pin with one digest swapped for the fake payload's real digest. */
 function testPin() {
   return {
@@ -80,6 +90,7 @@ function offlineDeps(over: Partial<CollectorDeps> = {}): CollectorDeps & {
 } {
   const fs = new FakeCollectorFs();
   const exec = new FakeSequencedExec({
+    ...VIABLE,
     [TRACE2_GET]: [
       { code: 1, stdout: '' },
       { code: 0, stdout: `${GITAI_TRACE2}\n` },
@@ -179,6 +190,7 @@ describe('the git-ai collector is reachable from the shipped CLI (P0)', () => {
   it('a blocked guard degrades the envelope and prints manual steps — it never fails the run', async () => {
     const deps = offlineDeps({
       exec: new FakeSequencedExec({
+        ...VIABLE,
         [TRACE2_GET]: { code: 0, stdout: 'trace2.normalTarget /tmp/trace\n' },
         [`${BINARY} status --json`]: { code: 0, stdout: '{"schema_version":"authorship/3.0.0"}' },
       }),

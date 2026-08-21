@@ -1,7 +1,33 @@
 name: CI
 
 on:
-  pull_request:
+  # MANUAL on branches; automatic only on `main`. Pushing to a PR branch does
+  # NOT start a run.
+  #
+  # WHY: under `pull_request`, every push to every open PR paid for the full
+  # Node 22 + Node 24 matrix and package-smoke. Most of those pushes are
+  # work-in-progress nobody was waiting on a verdict for, and with many
+  # concurrent seats that made this the single largest Actions line item.
+  #
+  # THIS DOES NOT WEAKEN THE GATE — read before "restoring" the trigger.
+  # `ci-verdict` is a REQUIRED status check on `main` (repo ruleset), published
+  # by the `ci-required` job below. Because nothing auto-runs, a head SHA that
+  # has never been dispatched has no verdict at all, so the PR reports
+  # `Expected — waiting for status to be reported` and is UNMERGEABLE. What
+  # moved is WHEN you pay (when you want the verdict), not WHETHER green is
+  # required.
+  #
+  # Deliberately NOT done with a job-level `if:` on a `pull_request` trigger: a
+  # job skipped by `if:` reports as SKIPPED, and branch protection counts
+  # skipped as SUCCESS — that shape would let an untested PR merge. Absent is
+  # safe; skipped is not.
+  #
+  # Trigger it (the verdict binds to the head SHA of the ref you dispatch):
+  #   just ci                                # current branch
+  #   gh workflow run ci.yml --ref <branch>
+  # Push another commit afterwards and the PR blocks again — the verdict is
+  # pinned to the SHA that was actually tested, which is the point.
+  workflow_dispatch: {}
   push:
     branches: [main]
 
@@ -63,7 +89,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up Node ${{ matrix.node }}
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node }}
           cache: npm
@@ -82,7 +108,15 @@ jobs:
       # nondeterministically across npm majors). Warn-launch: degraded (warn-only
       # findings) exits 0 and surfaces a ::warning::; a hard-gate error exits 1 and
       # fails the step. For a failing gate's detail, reproduce locally with `harness checks`.
+      #
+      # HARNESS_TEST_SCOPE=all is LOAD-BEARING, not tidiness. Local runs default to the
+      # FAST scope, which skips the 12 slowest test files — and those files are the git
+      # adapters, the pre/post-commit hooks and the telemetry push path, i.e. the code
+      # most likely to break on Windows. Without this line they would run NOWHERE, and
+      # the gate would report green over a suite 5% smaller than the one it claims.
       - name: Quality gate (harness checks)
+        env:
+          HARNESS_TEST_SCOPE: all
         run: |
           set +e
           out=$(node harness/cli/bin/harness.js checks --json); code=$?
@@ -109,16 +143,88 @@ jobs:
   ci-required:
     name: ci-required
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Least-privilege, and ONLY here: this is the one job that publishes the
+      # commit status the ruleset requires.
+      statuses: write
     needs: [rename-guard, build-test, package-smoke]
     if: always()
     steps:
-      - name: Verify required jobs passed
-        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+      - name: Verify every required job succeeded
+        id: verdict
+        env:
+          NEEDS_RESULTS: ${{ join(needs.*.result, ',') }}
         run: |
-          echo "One or more required jobs did not succeed."
+          set -euo pipefail
+          echo "needs results: ${NEEDS_RESULTS:-<none>}"
+          # ALLOW-LIST, NOT A DENY-LIST — this is load-bearing, do not "simplify"
+          # it back to `contains(needs.*.result, 'failure')`.
+          #
+          # That earlier shape asked "did anything fail or get cancelled?", and a
+          # SKIPPED need is neither — so it fell through to GREEN. That is the
+          # exact false-green this workflow refuses at the job level ("absent is
+          # safe; skipped is not"), reproduced inside the step that replaced it.
+          # Nothing skips these three jobs today (no `if:`, no path filter), so it
+          # was unreachable — but it becomes reachable the first time someone adds
+          # a path filter to save minutes, which is the motivation that produced
+          # this change in the first place.
+          #
+          # So: green ONLY when every result is literally `success`. That also
+          # fails closed against an empty needs list and against any result state
+          # GitHub adds in future, neither of which a deny-list would catch.
+          if [ -n "${NEEDS_RESULTS:-}" ] && ! printf '%s' "$NEEDS_RESULTS" | tr ',' '\n' | grep -qvx 'success'; then
+            echo "state=success" >> "$GITHUB_OUTPUT"
+            echo "desc=all required jobs succeeded" >> "$GITHUB_OUTPUT"
+            echo "All required jobs succeeded."
+            exit 0
+          fi
+          echo "state=failure" >> "$GITHUB_OUTPUT"
+          echo "desc=a required job did not succeed (${NEEDS_RESULTS:-no results})" >> "$GITHUB_OUTPUT"
+          echo "::error title=ci-required::a required job did not succeed (${NEEDS_RESULTS:-no results})"
           exit 1
-      - name: All required jobs passed
-        run: echo "All required jobs passed."
+
+      # DO NOT DELETE THIS STEP AS "REDUNDANT WITH THE JOB". It is what makes a
+      # manually-dispatched run able to gate a PR at all.
+      #
+      # MEASURED, not assumed: a `workflow_dispatch` check suite is EXCLUDED from
+      # the commit's `statusCheckRollup`, and rulesets evaluate the ROLLUP. On sha
+      # 803ff983 the suite and all five check runs were visible via
+      # `/commits/<sha>/check-runs` with conclusion success, the suite even listed
+      # `pull_requests: [166]` — and `statusCheckRollup` was still `null`, so the
+      # PR sat BLOCKED with `ci-required` required. The identical query against a
+      # `pull_request`-event sha returned a SUCCESS rollup with 5 contexts. So the
+      # `ci-required` CHECK RUN cannot satisfy a required check on a dispatched
+      # run, no matter how green it is.
+      #
+      # A commit STATUS *is* rollup-eligible regardless of event, so this job
+      # publishes its verdict as one and the ruleset requires THAT context
+      # (`ci-verdict`, pinned to the GitHub Actions app so a human cannot hand-post
+      # a green verdict with `gh api .../statuses/<sha>`).
+      #
+      # Fail-safe by construction: if the run never happens, is cancelled early, or
+      # the workflow file fails to parse, no status is posted, and an absent
+      # required status blocks. Nothing here can make a PR mergeable by omission.
+      - name: Publish the rollup-eligible verdict (ci-verdict)
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STATE: ${{ steps.verdict.outputs.state }}
+          DESC: ${{ steps.verdict.outputs.desc }}
+        run: |
+          set -euo pipefail
+          # Single source of truth: the verdict step decided. If it died before
+          # writing an output, publish FAILURE — never fall through to green on
+          # missing information.
+          state="${STATE:-failure}"
+          desc="${DESC:-ci-required could not determine a verdict}"
+          gh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state="$state" \
+            -f context="ci-verdict" \
+            -f description="$desc" \
+            -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+            --silent
+          echo "posted ci-verdict=$state for ${GITHUB_SHA}"
 
   # Packaging / bin-symlink smoke (companion F005 guard): pack the tarball,
   # install it into a clean temp project, and invoke the installed `harness`
@@ -137,7 +243,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Set up Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm

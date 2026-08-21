@@ -68,6 +68,118 @@ repo that actually has `.dd.json` documents.
 
 - Run the composite gate **`harness checks`** yourself before declaring work done — tests+coverage, biome, typecheck, the docs/flows/telemetry drift guards, and arch/skills/markdown/windows-check, in one envelope. (`just checks` builds first, then runs it.) **CI + branch protection are the authoritative gate.**
 
+### CI does NOT auto-run on a PR-branch push — you must dispatch it
+
+Pushing to a PR branch starts **no** workflow. `.github/workflows/ci.yml` triggers on
+`workflow_dispatch` and on pushes to `main` only; the `pull_request` trigger was removed
+because every WIP push was paying for the full Node 22 + Node 24 matrix plus package-smoke,
+and with many concurrent seats that was the largest Actions line item in the repo.
+
+**Nothing was loosened — but check which half is live.** The `ci-required` job publishes a
+`ci-verdict` commit status, and the intent is that `ci-verdict` be a **required** status
+check on `main`, so a head SHA that has never been dispatched has no verdict and the PR
+reads *Expected — waiting for status to be reported*: unmergeable.
+
+> **Enforcement status: the pin is NOT yet applied.** The `main` ruleset carries no
+> `required_status_checks` rule, so today nothing blocks a merge on CI — that hole predates
+> this change (the old branch-protection object that required a check was replaced by a
+> ruleset that dropped it). Do not trust this paragraph; ask the repo:
+>
+> ```bash
+> gh api repos/AI-Substrate/harness-engineering/rules/branches/main --jq '[.[].type]'
+> ```
+>
+> `required_status_checks` present ⇒ enforced. Absent ⇒ CI is advisory and a red PR can be
+> merged by anyone who doesn't look.
+
+Ask for the verdict when you want it:
+
+```bash
+just ci                                # dispatch on the current branch
+gh workflow run ci.yml --ref <branch>  # …or any branch
+gh run list --workflow=ci.yml --branch <branch>   # watch
+```
+
+**Before pinning `ci-verdict`, check the publisher's PRESENCE on every open PR head** — a
+branch that predates the publisher cannot emit the context at all, so pinning would leave it
+blocked with no reachable green:
+
+```bash
+git show <ref>:.github/workflows/ci.yml | grep -c ci-verdict   # must be non-zero, every PR
+```
+
+Derive from the property you need (*emits `ci-verdict`*), never the proxy (*has taken
+main*) — a branch can be legitimately unable to take main.
+
+**Why the required check is `ci-verdict` and not the `ci-required` job.** A
+`workflow_dispatch` check suite is **excluded from the commit's `statusCheckRollup`**, and
+rulesets evaluate the rollup — so a dispatched run's check runs can never satisfy a required
+check, however green they are. (Measured on sha `803ff983`: all five check runs present and
+successful via `/commits/<sha>/check-runs`, the suite even listing `pull_requests: [166]`,
+yet `statusCheckRollup` was `null` and the PR sat BLOCKED. The same query on a
+`pull_request`-event sha returned a SUCCESS rollup.) A commit **status** *is* rollup-eligible
+regardless of event, so the `ci-required` job publishes its verdict as the `ci-verdict`
+status and the ruleset requires that. The rule is pinned to the GitHub Actions app
+(`integration_id: 15368` — *not* `41898282`, which is the `github-actions[bot]` **user** id),
+so a human cannot hand-post a green verdict with `gh api .../statuses/<sha>`.
+
+**Dependabot cannot satisfy this check on its own.** Dependabot opens PRs but cannot dispatch
+a workflow, and nothing runs on its branches, so every dependabot PR needs someone to run
+`gh workflow run ci.yml --ref <head>` before it can ever merge.
+
+> **The failure mode is silence, not an error.** A dependabot PR that is permanently
+> unmergeable looks exactly like a dependabot PR nobody has got round to. A quiet queue is
+> not evidence of a calm one — if the security queue looks idle, check whether anything has
+> been *dispatched*, not whether anything is red.
+
+Auto-merge would hide this completely: it would wait forever on a check nothing triggers.
+That needs two deliberate acts today — the repo setting **`allow_auto_merge` is `false`**, so
+per-PR auto-merge cannot be enabled until someone flips it. **If you are the one flipping it,
+this paragraph is the consequence you are taking on**; pair it with a dispatcher for
+dependabot heads (one `gh workflow run` per PR) or the queue stalls in silence.
+
+Two consequences that bite if you forget them:
+
+- **CI tests the sha on the REMOTE**, and the verdict binds to *that* sha — dispatch with
+  unpushed commits and you get a green verdict against code you did not write. `just ci`
+  refuses when `origin/<branch>` and your HEAD disagree; a bare `gh workflow run` will not.
+- **Every new commit re-blocks the PR.** That is the design, not a bug — dispatch again once
+  you have stopped pushing.
+
+Do **not** "fix" any of this by restoring `pull_request` with a job-level `if:` guard. A job
+skipped by `if:` reports as **skipped**, and branch protection counts skipped as **success** —
+that shape lets an untested PR merge. An absent check blocks; a skipped check does not.
+
+### Never `git stash` in this repo — measure against a ref instead
+
+**The stash stack is SHARED across every worktree** (34 of them, 13 concurrent seats, one `refs/stash`). A `stash`/`pop` pair races every other seat, and the loser silently inherits someone else's uncommitted work into a tree they are about to commit from. **A bad pop is indistinguishable from legitimate work in progress** — no error, no marker, just modified tracked files beside your own edits.
+
+- **Do not** `git stash`, `stash pop` or `stash apply`, **for any reason — including "just to measure."** Three seats reached for it in one day, every one of them while *measuring* rather than delivering.
+- Checking `git stash list` first is **not** a control. It answers *whose is this?* when the question is *what will `pop` restore into my tree?* — and one seat read a foreign stash, correctly noted it wasn't theirs, and filed that as reassurance.
+- To compare against another ref: **`harness checks --ref <ref>`** (below), or `git show <ref>:<path>` / `git grep <pat> <ref> -- <path>` for a single file, or a throwaway `git worktree add`.
+
+**`harness checks --ref <ref> [--keep]`** answers **"is this ref sound?"** — it runs the whole gate against any ref in a throwaway worktree that installs its own dependencies, and returns a verdict pinned to the resolved sha. Your tree is never touched; the isolation is structural, so there is nothing to be careful about. ~55s cold.
+
+It measures **the ref, not your tree.** Because it builds fresh from the ref it cannot see local breakage — a stale `dist/`, a half-applied rebase, an uninstalled dependency — which a plain `harness checks` does report. Ask `--ref` about a commit; ask the ordinary gate about your working tree. The isolated tree **must** own its `node_modules`: vitest writes `node_modules/.vite/vitest/<hash>/results.json` on an ordinary run, so sharing or symlinking deps would leak writes back into your checkout — an untracked write, invisible to `git status`.
+
+If a `--ref` run is **interrupted**, it leaves a registered worktree — and **`git worktree prune` will not reclaim it**, because prune only drops entries whose directory is gone and a half-installed tree still has one. Recover with `git worktree remove --force <path>`. The verb reports any it finds rather than deleting them: another seat may be running its own `--ref` gate, and the name cannot distinguish a crashed tree from a live one. **`git worktree prune` is itself repo-global** — it can remove other seats' entries, so prefer the targeted `remove`.
+
+### Test scope: the suite runs FAST by default, and says so
+
+The test suite defaults to a **fast scope** that skips the 12 slowest files — **5% of the tests, ~81% of the runtime, 1,363 of 1,617 process spawns** (measured: `just test` 22.5s → 8.9s; `harness checks` 31.5s → 19.6s). The list is `SLOW_TESTS` in `harness/cli/vitest.config.ts`, each entry carrying its measured median.
+
+| Command | Scope | Use |
+|---|---|---|
+| `just test` / `just fft` / `just checks` | fast | the inner loop |
+| `just test-all` | **all** | **before you push** |
+| `just test-heavy` | the 12 slow files only | rarely, directly |
+
+- **`HARNESS_TEST_SCOPE`** (`fast`\|`all`\|`slow`) is the single control point, chosen over vitest `projects`/`--project` precisely because `harness checks` spawns vitest itself — an env var is inherited by every invocation path, so the default cannot be true locally and false in the gate. An unrecognised value **fails loudly** rather than falling back to a smaller suite.
+- **CI sets `HARNESS_TEST_SCOPE=all`** (`.github/workflows/ci.yml`). That line is load-bearing: the skipped 12 are the git adapters, the pre/post-commit hooks and the telemetry push path — the code most likely to break on Windows. Without it they would run **nowhere**.
+- **A reduced scope always declares itself** — a stderr banner on every fast run, and a `note` on the `tests` gate in the `checks` envelope for JSON consumers. A local green must never quietly mean less than yesterday's.
+- Do **not** use vitest tags for this. Tags filter *tests* but still **load the files**, and ~86% of the tail's cost is module import — you would skip the assertions and keep the cost.
+- `test/architecture/fast-scope-guard.test.ts` fails if a `SLOW_TESTS` entry stops existing (a stale entry excludes nothing and the fast scope silently grows back). It asserts composition, not wall-clock times — a duration threshold on shared hardware is a flake generator.
+
 ## Sensors: one truth, two views
 
 This repo declares its fast development signals in `.harness/extensions/repo-sensors/`.
@@ -102,12 +214,34 @@ paved path; a timeout above 180 seconds is a design smell. **If your sensor need
 20 minutes, it isn't a sensor.** See [the sensors guide](docs/how/harness-sensors.md)
 for the shipped set, authoring rules, and watch globs.
 
-### Git hooks: NO pre-push gate, YES a post-commit telemetry flush
+### Git hooks: this repo installs NONE — and two rules survive their removal
 
-These are deliberately asymmetric — keep them straight:
+**There is no `just install-hooks`, no `.githooks/`, and no tracked git hook here.** The
+harness-side capture those hooks fed went **off by default in code** at plan 073
+(`capture-gate.ts` — `CAPTURE_DEFAULT_ENABLED = false`), when git-ai became the collector,
+so a `pre-commit` that buffered a capture and a `post-commit` that flushed it were serving a
+path that no longer runs unless someone sets `HARNESS_TELEMETRY_CAPTURE=1`. They were
+removed rather than left to rot.
 
-- **NO `pre-push` checks gate.** A tracked `.githooks/pre-push` that ran `harness checks` on every push was removed because it recursed: `harness checks` auto-pushes telemetry on exit, the push re-fired the gate, and it pinned a 16-core box at load 175. **Do not re-add a push-triggered `harness checks` gate.**
-- **YES a `post-commit` telemetry flush** (`just install-hooks` → `core.hooksPath=.githooks` → `.githooks/post-commit`). It runs **only `harness telemetry sync`** — a counts-only push to `refs/harness-telemetry/*` — so each commit flushes buffered telemetry without anyone remembering to. It **cannot recurse** (no build, no tests; the telemetry push is `--no-verify`, so it triggers no hook) and **cannot block a commit** (post-commit's exit code is ignored). `harness doctor` warns when a repo is capturing telemetry but has no flush hook — run `just install-hooks` to resolve it. The `--no-verify` on the telemetry push (`exec-git-write.ts`) is **load-bearing**: it is what makes any commit/push-time flush recursion-proof.
+If you ran `just install-hooks` before it was removed, your clone still has
+`core.hooksPath=.githooks` pointing at a directory that no longer exists. That is harmless —
+git finds no hook and proceeds — but you can clear it with
+`git config --unset core.hooksPath`.
+
+Two rules outlived the hooks, and both still bind:
+
+- **Never add a push-triggered `harness checks` gate.** A tracked `.githooks/pre-push` that
+  ran `harness checks` on every push recursed — `harness checks` auto-pushes telemetry on
+  exit, the push re-fired the gate — and it pinned a 16-core box at load 175.
+- **The `--no-verify` on the telemetry push (`exec-git-write.ts`) is load-bearing.** It is
+  what makes any commit- or push-time flush recursion-proof, and it must stay even though
+  nothing hooks those events today.
+
+**`git-ai install-hooks` is a DIFFERENT command and is untouched by any of the above.** It
+belongs to the live collector (`services/doctor/collector/`), it is what plan 073 replaced
+harness-side capture *with*, and a search-and-destroy on the string `install-hooks` would
+gut it. Likewise `core.hooksPath=` in `exec-remote-telemetry-git.ts` is a *suppression* that
+makes the telemetry push hook-free — not an install.
 
 ## Model-to-task fit & delegation (token discipline)
 

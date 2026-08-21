@@ -1,4 +1,4 @@
-import type { GitPort } from './git-port.js';
+import type { GitPort, IndexState, ReflogEntry, ReflogRead } from './git-port.js';
 
 /**
  * Deterministic git for tests. Seeded with repo/branch state; records each
@@ -15,6 +15,20 @@ export class FakeGit implements GitPort {
       remoteUrl?: string | null;
       worktreeRoots?: readonly string[];
       worktreeFailure?: 'not-a-repository' | 'malformed' | 'too-many';
+      /** Reflog entries NEWEST FIRST, exactly as a real read returns them. */
+      reflog?: readonly ReflogEntry[];
+      /** Seed a failing read; takes precedence over `reflog`. */
+      reflogFailure?: 'unreadable' | 'malformed' | 'bad-limit';
+      /**
+       * Seeded index state. Defaults to `unknown` — the honest default for an
+       * unseeded fake, and the one that makes the guard stay SILENT. A default of
+       * `clean` would make every test that forgot to seed it look like a genuine
+       * authored commit, which is the exact failure this discriminator exists to
+       * prevent.
+       */
+      indexState?: IndexState;
+      /** Parents of HEAD. `undefined` (unseeded) means the read fails — `null`. */
+      headParents?: readonly string[] | null;
     } = {},
   ) {}
 
@@ -49,5 +63,35 @@ export class FakeGit implements GitPort {
       return { status: 'unavailable', reason: 'too-many' };
     }
     return { status: 'ok', roots };
+  }
+
+  /**
+   * The seeded reflog, newest first, truncated to `limit` — the same `-n` bound
+   * the real adapter hands to git, applied here so a test seeding ten entries and
+   * asking for one gets the same answer both adapters would give.
+   *
+   * Unseeded is `{ status: 'ok', entries: [] }`, NOT a failure: an existing ref
+   * with no reflog is exactly what git reports (exit 0, empty output), and the
+   * default must model the honest case rather than the convenient one.
+   */
+  readReflog(ref: string, limit: number): ReflogRead {
+    this.calls.push(`readReflog:${ref}:${limit}`);
+    if (!Number.isSafeInteger(limit) || limit < 1) {
+      return { status: 'unavailable', reason: 'bad-limit' };
+    }
+    if (this.state.reflogFailure !== undefined) {
+      return { status: 'unavailable', reason: this.state.reflogFailure };
+    }
+    return { status: 'ok', entries: (this.state.reflog ?? []).slice(0, limit) };
+  }
+
+  indexState(): IndexState {
+    this.calls.push('indexState');
+    return this.state.indexState ?? 'unknown';
+  }
+
+  headParents(): readonly string[] | null {
+    this.calls.push('headParents');
+    return this.state.headParents ?? null;
   }
 }

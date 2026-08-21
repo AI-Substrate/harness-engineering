@@ -106,7 +106,7 @@ function hrefFor(address: string, linkBase: string | null): string {
   const file = (path ?? address).replace(/\.dd\.json$/, '.dd.md');
   const section = interior?.split('/')[0];
   const anchor = section === undefined || section.length === 0 ? '' : `#${headingSlug(section)}`;
-  const base = linkBase === null ? '' : linkBase.replace(/\/+$/, '') + '/';
+  const base = linkBase === null ? '' : `${linkBase.replace(/\/+$/, '')}/`;
   return `${base}${file}${anchor}`;
 }
 

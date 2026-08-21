@@ -3,6 +3,7 @@ import { SystemClock } from '../adapters/clock/system-clock.js';
 import { NodeDb } from '../adapters/db/node-db.js';
 import { NodeEnv } from '../adapters/env/node-env.js';
 import { NodeExec } from '../adapters/exec/node-exec.js';
+import type { FsPort } from '../adapters/fs/fs-port.js';
 import { NodeExecutableBit } from '../adapters/fs/node-executable-bit.js';
 import { NodeFs } from '../adapters/fs/node-fs.js';
 import { NodePathKind } from '../adapters/fs/node-path-kind.js';
@@ -17,6 +18,10 @@ import { formatDegraded, formatError, formatOk } from '../output/envelope.js';
 import { ErrorCodes } from '../output/error-codes.js';
 import { exitWithEnvelope } from '../output/exit.js';
 import { type CliIo, createOutputPort, type OutputPort } from '../output/output-port.js';
+import {
+  autoInstallCollector,
+  COLLECTOR_OPT_OUT_ENV,
+} from '../services/doctor/collector/auto-install.js';
 import { readIngress } from '../services/doctor/collector/ingress.js';
 import { installCollector, recheckCollector } from '../services/doctor/collector/install.js';
 import { telemetryNudge } from '../services/doctor/collector/nudge.js';
@@ -28,9 +33,12 @@ import {
   renderDoctorText,
 } from '../services/doctor/doctor-service.js';
 import type { VerbRegistry } from '../services/extensions/registry.js';
+import { readEnvOverrides } from '../services/hooks/agent-matrix.js';
+import { autoInstallHooks } from '../services/hooks/hooks-verbs.js';
 import type { RecordRegistry } from '../services/record/registry.js';
 import { toPosix } from '../services/shared/posix-path.js';
 import { readVersion } from '../version.js';
+import { hooksDepsFor } from './hooks.js';
 
 /**
  * The host the git-ai collector resolves against.
@@ -52,11 +60,14 @@ function collectorHostTarget(env: NodeEnv): HostTarget | undefined {
     ...(claudeConfigDir !== undefined && claudeConfigDir.trim() !== ''
       ? { claudeConfigDir: toPosix(claudeConfigDir) }
       : {}),
+    // Every override the MATRIX declares, so backup and install resolve alike.
+    envOverrides: readEnvOverrides((n) => env.get(n)),
   };
 }
 
 /** The real collector lifecycle dependencies — network, exec, hash, mode bit. */
 function realCollectorDeps(host: HostTarget, cwd: string): CollectorDeps {
+  const env = new NodeEnv();
   return {
     fs: new NodeFs(),
     paths: new NodePathKind(),
@@ -67,6 +78,7 @@ function realCollectorDeps(host: HostTarget, cwd: string): CollectorDeps {
     clock: new SystemClock(),
     host,
     cwd,
+    env: (name) => env.get(name),
   };
 }
 
@@ -99,17 +111,28 @@ interface CollectorOptions {
  * The git-ai collector (plan 073) rides on this command in two distinct modes,
  * and the distinction is load-bearing:
  *
- * - **the report** always includes the `gitai-collector` row, which is a pure
- *   filesystem read of the state the install path wrote down. It invokes
- *   nothing, so P7 still holds for a bare `harness doctor`.
+ * - **the report** always includes the `gitai-collector` row. Since plan 077 a
+ *   bare run also AUTO-INSTALLS the collector when it is missing or incomplete
+ *   (packet §3a): the customer must have telemetry working without customising
+ *   their machine, and "re-run with `--install-collector`" is a customisation
+ *   task with an apologetic tone. It installs, then reports what it did.
  * - **the lifecycle flags** (`--install-collector`, `--recheck-collector`,
- *   `--regenerate-collector-pin`) are the ONLY way anything is downloaded,
- *   executed or written. They are explicit, never implied by a plain run, and
- *   each emits its own envelope instead of the report.
+ *   `--regenerate-collector-pin`) remain the explicit overrides, and each emits
+ *   its own envelope instead of the report.
+ *
+ * WHAT DID NOT CHANGE, because two places in this file used to assert it more
+ * broadly than plan 074 ever did: ac-0007 is about the RECOVERY path — no bare
+ * doctor or checks run mutates a SOCKET, a BUFFER, or a REF. That still holds,
+ * and still by construction: this act is handed the probe port and never the
+ * relay, so it cannot replay a buffered event or write a note however the
+ * install path behaves. A bare doctor is no longer read-only with respect to
+ * your machine's telemetry SETUP; it is still read-only with respect to your
+ * git history.
  *
  * `collectorOverride` exists so an act-level test can drive the whole lifecycle
  * through offline fakes — no network, no git-ai, no daemon — which is the only
- * honest way to prove this wiring in CI.
+ * honest way to prove this wiring in CI. Since plan 077 it also governs the
+ * auto-install, so a test run cannot reach the network by default.
  *
  * `sockets` exists for the same reason and closes the same gap one level
  * down (review F006): without it this act always constructed the REAL
@@ -126,6 +149,26 @@ export function registerDoctorAct(
   recordRegistry?: RecordRegistry,
   collectorOverride?: CollectorDeps,
   sockets?: SocketOverrides,
+  /**
+   * Opt IN to the plan-077 auto-install. DEFAULTS TO FALSE, and the default is
+   * the whole point.
+   *
+   * The production composition root and the act tests both call this with
+   * `collectorOverride` undefined, so there is no way to tell them apart from
+   * in here. An auto-install that defaulted ON would therefore run inside the
+   * unit suite with REAL deps — downloading a release and invoking
+   * `install-hooks` machine-wide on whatever box ran `vitest`. That is a
+   * hermeticity violation of exactly the shape review F006 found for the socket
+   * probe (ac-000a), except the blast radius is an install rather than a
+   * connect.
+   *
+   * It went undetected locally precisely because this machine already has a
+   * healthy collector, so the install path short-circuited and the suite stayed
+   * green. A machine WITHOUT git-ai would have been silently modified by its own
+   * test run. So the safe value is the default and production says otherwise
+   * explicitly.
+   */
+  autoInstall = false,
 ): void {
   const doctor = program
     .command('doctor')
@@ -198,6 +241,65 @@ export function registerDoctorAct(
           fs,
           env,
         });
+        // AUTO-INSTALL (plan 077 · packet §3a), BEFORE the report is built so the
+        // rows describe the machine as it now is rather than as it was a
+        // moment ago. `autoInstallCollector` never throws and never returns a
+        // reason to exit non-zero: telemetry setup must not break a command the
+        // developer ran for an unrelated reason.
+        //
+        // Skipped entirely when the host has no home directory — the collector
+        // cannot be located, and the report says so through its own row.
+        // RESOLVED ONCE, and that is now load-bearing rather than tidy — see the
+        // hooks block below.
+        const collectorDeps =
+          host === undefined
+            ? null
+            : (collectorOverride ?? realCollectorDeps(host, toPosix(proc.cwd())));
+        const auto =
+          collectorDeps === null || !autoInstall
+            ? null
+            : await autoInstallCollector(
+                collectorDeps,
+                // The composition root reads the global, never the service (P2).
+                env.get(COLLECTOR_OPT_OUT_ENV) === '1',
+              );
+        // OUR AGENT HOOKS, alongside the collector and with the SAME posture
+        // (plan 082 tk-0002). Warn-only: it never throws, never changes the exit
+        // code, and never suppresses a doctor row. A doctor that dies on our
+        // optional step is worse than one that never had it — the operator ran it
+        // to diagnose something else, and every other row is what they came for.
+        //
+        // It is NEVER SILENT, though: a swallowed failure means the machine now
+        // differs from what the operator believes and nothing said so. Failures
+        // come back as warnings and are printed beside the collector's.
+        //
+        // COMPOSED FROM THE SAME RESOLVED `collectorDeps` AS THE COLLECTOR ABOVE,
+        // AND THIS LINE HAS ALREADY GONE WRONG ONCE — it wrote to a real developer's
+        // editor configs (2026-08-10). It read the composition root's own adapters:
+        //
+        //   autoInstallHooks(hooksDeps({ fs, clock, env }))   // WRONG
+        //
+        // which resolves `env.home()` to the REAL home no matter what a caller
+        // injected. Plan 077 protected the collector from exactly this with TWO
+        // things — an opt-in FLAG and an injection SEAM (`collectorOverride`) — and
+        // that line honoured the flag while ignoring the seam. So the one test that
+        // deliberately opts in, in order to prove the seam works, ran the real
+        // installer against the real machine on every gate run.
+        //
+        // The rule, which is `detectId` and `configPathsFor` for the third time:
+        // TWO INDEPENDENT ANSWERS TO "WHERE IS HOME" IS THE DEFECT. An injected
+        // override must move the hooks install exactly as it moves the collector's,
+        // so both read one resolved object.
+        //
+        // `binary` still comes from the running process (that is what must be
+        // written into a user's config) and `env` still reads variables — neither
+        // can escape a fence. `fs` and `home` can, so both come from `collectorDeps`.
+        const hooks =
+          !autoInstall || collectorDeps === null
+            ? null
+            : autoInstallHooks(
+                hooksDepsFor(collectorDeps.fs as FsPort, collectorDeps.host.home, env),
+              );
         const report = buildDoctorReport(
           {
             fs,
@@ -217,6 +319,7 @@ export function registerDoctorAct(
             // "nothing is collecting your AI attribution" is the single thing this
             // row exists to be able to say.
             ...(host !== undefined ? { collectorHost: host } : {}),
+            collectorOptedOut: env.get(COLLECTOR_OPT_OUT_ENV) === '1',
             hash: new NodeHash(),
             ingress,
             // plan 074 · ac-0003 — the at-risk row, and ONLY inside a repo: a
@@ -228,13 +331,41 @@ export function registerDoctorAct(
           registry,
           recordRegistry,
         );
-        const envelope = doctorEnvelope(report, clock, io.quiet === true);
+        const base = doctorEnvelope(report, clock, io.quiet === true);
+        // VISIBLE ON BOTH SURFACES, and the JSON one is not an afterthought: an
+        // agent reads `doctor --json`, and a warning that exists only in the text
+        // render is swallowed for exactly the reader most likely to act on it.
+        //
+        // Carried BESIDE the report rather than as a doctor LAYER, deliberately. A
+        // failing layer flips the envelope to `degraded`, and our optional step must
+        // not change the verdict on the machine's readiness — that is the same
+        // never-break-the-command posture as exit 0, applied to the envelope.
+        const envelope =
+          hooks === null || hooks.action === 'not-needed'
+            ? base
+            : { ...base, data: { ...(base.data as Record<string, unknown>), agentHooks: hooks } };
+        // TELL, DON'T ASK (packet §3a). An install the operator was never told
+        // about is worse than one that did not happen: it changed their machine
+        // and left them no way to know. Emitted on the text surface alongside
+        // the report, and carried in the envelope for the JSON surface.
+        const announcement =
+          auto === null || auto.action === 'not-needed'
+            ? null
+            : [`git-ai collector: ${auto.detail}`, ...auto.warnings.map((w) => `  - ${w}`)].join(
+                '\n',
+              );
+        const hooksAnnouncement =
+          hooks === null || hooks.action === 'not-needed'
+            ? null
+            : [hooks.detail, ...hooks.warnings.map((w) => `  - ${w}`)].join('\n');
         const port: OutputPort =
           io.mode === 'json'
             ? createOutputPort('json', io.writers)
             : {
                 emit: (e) => {
                   io.writers.err(renderDoctorText(report));
+                  if (announcement !== null) io.writers.err(`${announcement}\n`);
+                  if (hooksAnnouncement !== null) io.writers.err(`${hooksAnnouncement}\n`);
                   io.writers.out(`doctor: ${e.status}\n`);
                 },
               };
@@ -249,10 +380,20 @@ export function registerDoctorAct(
  * `harness doctor telemetry-nudge` (plan 074 · ac-0006) — the RECOVERY verb.
  *
  * A subcommand of `doctor` and not a flag on it, because the distinction is the
- * whole of ac-0007: a bare `doctor` run is read-only and must stay so, while
- * this MUTATES — it rotates a buffer, writes into a socket, and can delete a
- * segment. Making recovery a separate, explicitly-typed verb is what keeps the
- * diagnostic honest about being a diagnostic.
+ * whole of ac-0007: this MUTATES THE RECORD — it rotates a buffer, writes into a
+ * socket, and can delete a segment — while a bare `doctor` run never touches a
+ * socket, a buffer, or a ref. Making recovery a separate, explicitly-typed verb
+ * is what keeps the diagnostic honest about being a diagnostic.
+ *
+ * THE SCOPE OF THAT SENTENCE NARROWED IN PLAN 077, and saying "a bare doctor is
+ * read-only" flatly is now false (P2 of the cross-model review, 2026-08-09). A
+ * bare doctor MAY place the pinned CLI, rewrite agent configs through
+ * `install-hooks`, and reset an observed-empty global trace2 section. ac-0007
+ * remains satisfied on its own terms — its subject is the socket/buffer/ref
+ * triple, and doctor is still handed the PROBE port and never the relay, so it
+ * structurally cannot replay an event or write a note. But the guarantee is now
+ * "read-only with respect to your git HISTORY", not "read-only", and the two
+ * were being used interchangeably in prose that a reader would take literally.
  */
 function registerTelemetryNudge(doctor: Command, io: CliIo, sockets?: SocketOverrides): void {
   doctor
@@ -345,9 +486,15 @@ function renderLines(title: string, lines: readonly string[]): string {
 }
 
 /**
- * The three lifecycle actions. Each emits its OWN envelope: these invoke things,
- * so folding their outcome into the doctor report would make the report a liar
- * about being read-only.
+ * The three lifecycle actions. Each emits its OWN envelope rather than folding
+ * its outcome into the doctor report — an envelope that says what was INVOKED is
+ * a different kind of statement from one that says what was OBSERVED, and
+ * merging them loses which is which.
+ *
+ * This used to be justified as "the report would be a liar about being
+ * read-only". That reason expired in plan 077: the report is now built AFTER an
+ * automatic install on a bare run, so it already describes a machine harness
+ * just changed. The separation is still right, for the reason above.
  */
 async function runCollectorLifecycle(
   opts: CollectorOptions,
@@ -380,10 +527,11 @@ async function runCollectorLifecycle(
       );
       return;
     }
-    const written =
-      opts.pinOut !== undefined && opts.pinOut.trim() !== ''
-        ? (deps.fs.writeText(opts.pinOut, result.source), opts.pinOut)
-        : null;
+    let written: string | null = null;
+    if (opts.pinOut !== undefined && opts.pinOut.trim() !== '') {
+      deps.fs.writeText(opts.pinOut, result.source);
+      written = opts.pinOut;
+    }
     exitWithEnvelope(
       formatOk(
         'doctor',

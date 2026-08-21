@@ -31,9 +31,11 @@ import { HARNESS_DIR, TEMP_DIR } from '../shared/temp.js';
  *   configured target is already buffering, and overriding it would only move
  *   the buffer somewhere the user did not choose.
  * - **`named_pipe`** (a live Windows ingress) → commit with NO override, no
- *   sidecar, and NO claim: the transport cannot be probed, so this branch
- *   reports plainly that attribution was not verified on this platform rather
- *   than calling a live ingress a buffer (plan 075 · ac-0005).
+ *   sidecar, and NO claim: attribution cannot be VERIFIED on this transport
+ *   (the pipe itself is probeable since plan 082 · F006 — reachability and
+ *   attribution are different questions), so this branch reports plainly that
+ *   nothing was verified rather than calling a live ingress a buffer
+ *   (plan 075 · ac-0005).
  * - **EVERY other outcome** (`denied` | `refused` | `absent` | `timeout` |
  *   `error:<code>` | `unconfigured`) → commit with `GIT_TRACE2_EVENT` pointed at
  *   a buffer file under the gitignored harness temp dir, and skip note-verify,
@@ -135,11 +137,14 @@ export type CommitMode =
   | 'file-buffered'
   | 'harness-buffered'
   /**
-   * The target is a LIVE ingress the harness cannot probe or verify against —
-   * today, a Windows named pipe (plan 075 · ac-0005). The commit is made with
-   * NO trace2 override, because overriding would DIVERT events away from a
-   * collector that may well be receiving them; and nothing is claimed about
-   * attribution afterwards, because nothing was measured.
+   * The target is a LIVE ingress the harness cannot VERIFY attribution against —
+   * today, a Windows named pipe (plan 075 · ac-0005). The pipe is reachable and
+   * probeable (plan 082 · F006); what is unavailable is the evidence that a note
+   * landed, because nobody has established how the collector behaves on this
+   * transport. The commit is made with NO trace2 override, because overriding
+   * would DIVERT events away from a collector that may well be receiving them;
+   * and nothing is claimed about attribution afterwards, because nothing was
+   * measured.
    */
   | 'ingress-unverified';
 
@@ -368,9 +373,11 @@ export async function harnessCommit(
         ? 'harness-buffered'
         : fileTarget !== null
           ? 'file-buffered'
-          : // A live-but-unprobeable ingress (a named pipe) is NOT
+          : // A live ingress whose ATTRIBUTION was never established is NOT
             // `direct-verified`: nothing here was verified, and saying so is the
-            // point.
+            // point. (F006 made the pipe probeable, so this is no longer "we
+            // cannot connect to it" — it is "no note was waited for on a
+            // transport whose collector behaviour is unmeasured".)
             policy.receives === 'always'
             ? 'ingress-unverified'
             : 'direct-verified',
@@ -418,7 +425,9 @@ export async function harnessCommit(
     // - no `GIT_TRACE2_EVENT` override — git talked to the pipe exactly as it
     //   normally would, and diverting a live ingress to "protect" it would turn
     //   the fix into the bug (the F-08 exclusivity rule, applied to a transport
-    //   we cannot probe);
+    //   whose collector behaviour we have never measured — F006 made the pipe
+    //   PROBEABLE, which is a different question from whether the daemon on the
+    //   other end records what it receives);
     // - no `.shas` sidecar and no known-targets record beside the pipe path —
     //   those are the bookkeeping of a DRAINABLE buffer, and writing them next
     //   to a pipe both asserts a falsehood and may simply fail;

@@ -425,10 +425,7 @@ export default defineExtension({
     },
     'telemetry-ref-size': {
       summary: 'Name any refs/harness-telemetry tree that never rolled; warn only, never a gate failure.',
-      watch: [
-        'harness/cli/src/services/telemetry/**/*.ts',
-        '.githooks/post-commit',
-      ],
+      watch: ['harness/cli/src/services/telemetry/**/*.ts'],
       timeoutMs: DEFAULT_TIMEOUT_MS,
       guidance:
         'Inspect the named ref (`git ls-tree -r --name-only <ref> | wc -l`). A rolled ref carries 3 files; an unrolled legacy ref is expected to stay listed here.',

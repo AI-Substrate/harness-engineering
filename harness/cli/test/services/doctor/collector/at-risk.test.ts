@@ -152,6 +152,110 @@ describe('plan 074 · ac-0003 — empty is not clean', () => {
     expect(absent.detail).toContain('daemon is not running');
   });
 
+  it('never tells a Windows operator their SOCKET FILE is missing (F006)', () => {
+    /*
+    Test Doc:
+    - Why: before F006 a pipe reading always had `outcome: null` and so was
+      described by the kind table. Now it is PROBED, so it reaches the outcome
+      arms — which were written when only a socket could get there and said
+      "has no socket file", "a stale socket", "blocking the socket connect".
+      About a named pipe the first is not imprecise but FALSE: there is no socket
+      file for a pipe whether or not the daemon is running. That is plan 075's
+      "four wrong statements from one misclassification" arriving through the
+      front door instead of the back.
+    - Contract: a probed pipe is described in pipe vocabulary, never socket
+      vocabulary.
+    - Quality Contribution: asserts the ABSENCE of the wrong word as well as the
+      presence of the right one — a description that said "named pipe" while
+      still mentioning a socket file would pass a presence-only assertion.
+    */
+    const git = new FakeGitAttribution({ window: windowOf(SHAS), notes: SHAS });
+    const pipeReading = (outcome: ProbeOutcome) =>
+      enumerateAtRisk({
+        git,
+        ingress: {
+          target: { kind: 'named_pipe', path: '\\\\.\\pipe\\git-ai' },
+          outcome,
+          socketExists: false,
+          markers: [],
+        },
+      }).detail;
+
+    expect(pipeReading('absent')).toContain('has no named pipe');
+    expect(pipeReading('denied')).toContain('blocking the named pipe connect');
+    expect(pipeReading('refused')).toContain('a stale named pipe');
+    for (const outcome of ['absent', 'denied', 'refused'] as const) {
+      expect(pipeReading(outcome)).not.toContain('socket');
+    }
+  });
+
+  it('never sends a Windows operator to the nudge for UNATTRIBUTED commits (F006)', () => {
+    /*
+    Test Doc:
+    - Why: the `unattributed` rung recommends `harness doctor telemetry-nudge`
+      unconditionally. Before F006 a pipe reading was never probed, so the
+      reading that reaches this rung alongside a pipe target is a CONSEQUENCE of
+      making pipes probeable. Replay into a named pipe is still refused (plan 075
+      · TRACE2_TARGET_POLICY.named_pipe.replayInto), so the recommendation is a
+      command that answers "not supported on this platform" — the same class of
+      wrong next action F1 caught one rung down.
+    - Contract: with a named-pipe target and a NON-EMPTY unattributed list, the
+      nudge is not RECOMMENDED — it is named only to say it is unavailable, the
+      same shape health.ts and commit-service already use — and the manual note
+      check is named instead. Naming the wrong verb to forbid it beats silence:
+      an operator who knows the nudge exists would otherwise try it and get a
+      bare refusal with no alternative.
+    - Quality Contribution: the sibling test above covers only the EMPTY-list
+      description arms; this is the only row that reaches the `unattributed`
+      next_action with a pipe. The assertion is a WHOLE-STRING pin, not a
+      substring guard. A substring guard on the recommending form was shown to
+      be satisfiable by a string that both recommends the nudge and forbids it —
+      prepending "Run `harness doctor telemetry-nudge` from an UNSANDBOXED
+      shell." ahead of the honest prohibition left this file green, because the
+      capitalised sentence is not the exact lowercase substring. No regex
+      cleverness closes that; equality does. This is an operator string we own
+      and every word of it is a claim, so the whole string is the contract —
+      the same posture as the F3 measured-wording pins.
+    */
+    const git = new FakeGitAttribution({ window: windowOf(SHAS) });
+    const report = enumerateAtRisk({
+      git,
+      ingress: {
+        target: { kind: 'named_pipe', path: '\\\\.\\pipe\\git-ai' },
+        outcome: 'denied',
+        socketExists: false,
+        markers: [],
+      },
+    });
+
+    expect(report.status).toBe('unattributed');
+    expect(report.commits).toHaveLength(3);
+    expect(report.next_action).toBe(
+      'Those commits carry no note. Replay via `harness doctor telemetry-nudge` is NOT available for a named-pipe ingress, so there is no buffer to drain: check a commit for yourself with `git notes --ref=ai show <sha>`, and recover by restoring a connect this process is allowed to make. Commits made before git-ai was installed will never gain a note and are expected here.',
+    );
+    // Kept as its own row: the whole-string pin above is what makes the
+    // contract exhaustive, but this names the ONE thing an operator must be
+    // left holding, so a future rewrite that drops it fails with a message
+    // that says WHICH promise was broken rather than only "strings differ".
+    expect(report.next_action).toContain('git notes --ref=ai show');
+  });
+
+  it('still points an af_unix reading AT the nudge — the split cuts both ways', async () => {
+    const git = new FakeGitAttribution({ window: windowOf(SHAS) });
+    const report = enumerateAtRisk({ git, ingress: await ingressWith('denied') });
+
+    expect(report.status).toBe('unattributed');
+    expect(report.next_action).toContain('run `harness doctor telemetry-nudge`');
+    expect(report.next_action).not.toContain('NOT available');
+  });
+
+  it('keeps SOCKET wording for an af_unix reading — the split cuts both ways', async () => {
+    const git = new FakeGitAttribution({ window: windowOf(SHAS), notes: SHAS });
+    const report = enumerateAtRisk({ git, ingress: await ingressWith('absent', false) });
+    expect(report.detail).toContain('has no socket');
+    expect(report.detail).not.toContain('named pipe');
+  });
+
   it('a FILE target is unproven — events buffer rather than reach the collector', () => {
     const git = new FakeGitAttribution({ window: windowOf(SHAS), notes: SHAS });
     const report = enumerateAtRisk({

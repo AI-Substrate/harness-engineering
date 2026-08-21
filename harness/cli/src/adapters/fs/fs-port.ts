@@ -55,6 +55,64 @@ export interface FsPort {
   writeText(path: string, contents: string): void;
   /** Write raw bytes exactly. Caller ensures the parent directory exists. */
   writeBytes(path: string, contents: Uint8Array): void;
+  /**
+   * Create `path` with `contents` ONLY if it does not already exist, and report
+   * which happened: `true` when THIS call created it, `false` when it was already
+   * there (plan 082 tk-0003).
+   *
+   * `O_EXCL` semantics, and the exclusivity is the entire point — this is a CLAIM,
+   * not a write. The commit guard fires once per agent tool call, so two POST
+   * phases can race on the same commit; both would read the same prior state and
+   * both would emit, giving the collector two sessions for one commit. Whoever
+   * creates the marker owns the transition; everyone else sees `false` and stays
+   * silent. A read-then-write pair cannot express that — the window between the
+   * two is exactly the bug.
+   *
+   * Never throws for the ordinary loser case: losing the race is a normal outcome,
+   * not an error. Any other I/O failure also returns `false`, because a claim that
+   * could not be established must never be treated as won.
+   */
+  createExclusive(path: string, contents: string): boolean;
+  /**
+   * Append UTF-8 text in ONE `O_APPEND` write (plan 082 tk-0011).
+   *
+   * The distinction from `writeText` is interprocess, and it is the whole reason
+   * this exists: a read-modify-write pair loses data when two processes overlap,
+   * because both read the same bytes and the second overwrites the first's
+   * addition. MEASURED against the hook journal before this port existed — N real
+   * concurrent `harness hooks fire` processes recorded fewer than N lines, and it
+   * fired at THREE parallel processes, which is ordinary agent behaviour.
+   *
+   * `O_APPEND` moves the seek-to-end and the write into one atomic kernel
+   * operation, so concurrent writers interleave whole records instead of clobbering
+   * each other. The caller must pass ONE complete record ending in a newline: the
+   * atomicity is per `write()` call, so splitting a record across two calls
+   * reintroduces the interleaving it exists to prevent.
+   *
+   * NOTE the asymmetry with `createExclusive`. That one makes a decision UNIQUE
+   * (exactly one winner); this one makes concurrent records LOSS-FREE (every
+   * writer survives). Reaching for the wrong one is how both bugs come back.
+   *
+   * Never throws — see the callers' own no-throw contracts. Returns `true` when
+   * the append landed, `false` when it could not be made.
+   *
+   * THE CONTRACT BOTH ADAPTERS MUST MEET, asserted against each in the same test
+   * (`append-text-parity.test.ts`), because a divergence here is invisible until a
+   * service that only ever ran against `FakeFs` meets a real filesystem:
+   *
+   * - creates the file when absent, and appends when present;
+   * - returns `false` — and writes NOTHING — when the parent directory is missing.
+   *   The caller `mkdirp`s first; this is the failure mode when it did not.
+   * - a SHORT write is a failure (`false`), never a silent truncation and never a
+   *   retry: retrying would be a second `write()`, reintroducing the split this
+   *   method exists to prevent.
+   *
+   * NOT MODELLED BY THE FAKE, and unproven except against `NodeFs`: permission
+   * errors, full filesystems, and a genuine short write (unreachable for a regular
+   * file at these sizes — the branch exists so the failure is honest, not because
+   * it has been observed).
+   */
+  appendText(path: string, contents: string): boolean;
   /** Canonical native absolute identity for a bundle target; path aliases converge. */
   normalizeBundleTargetIdentity(target: string): string;
   /** Create a unique sibling temp directory on the target filesystem. */

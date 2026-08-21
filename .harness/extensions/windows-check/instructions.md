@@ -5,8 +5,9 @@ This verb is **deterministic Windows-compatibility back pressure**: it moves
 CI leg the team ruled out) into the deterministic one. It statically scans the
 **extension verb layer** (`.harness/extensions/**`) for the cross-platform
 anti-patterns the dogfood verbs once regressed on, and reports an honest
-envelope. Run it after any change to an extension; CI runs it on every PR
-through this same verb (one rule set, one code path).
+envelope. Run it after any change to an extension; CI runs it through this
+same verb (one rule set, one code path) whenever CI is dispatched — see
+AGENTS.md, CI is manual on branches.
 
 Windows compatibility is proven **by construction** on the existing ubuntu legs
 — there is no Windows runner (continuing plan 017's posture for the core's

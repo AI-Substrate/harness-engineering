@@ -1,0 +1,1049 @@
+# Harness telemetry
+
+## Before you investigate — read these, in order
+
+Three separate investigations this week re-derived facts that were already written down, one
+of them from a document in this very folder. **The failure was never missing documentation. It
+was reaching for the config before reading the record.** So, in order:
+
+1. **`~/github/git-ai`** — *the source*, currently **v1.6.22** (our collector pin expects
+   1.6.21; the skew is real). Read the code before reasoning about behaviour.
+2. **`~/github/git-ai/docs/`** — *the vendor's own specs, and they are authoritative*:
+   `daemon-trace2-ingestion-spec.md`, `rewrite-ops-spec.md`, `notes-backend-spec.md`,
+   `attribution-fuzzer-spec.md`, `session-event-attribution-recovery-plan.md`,
+   `bash-attribution-recovery-plan.md`. The three-day-old question *"why does a connected
+   probe still produce no note?"* was answered by the first of these, in a paragraph that had
+   been sitting there the whole time.
+3. **`~/.cursor/hooks.json`** — the local checkpoint channel, already documented in
+   [our agent-coverage review](./gitai-03-agent-coverage.md).
+4. **These docs** — our analysis, dated and provenance-marked.
+
+**Read 1–4 before investigating the machine.** Every re-derivation this week started by poking
+at config instead. If you are about to run an experiment, check first whether you are about to
+re-measure something the vendor already specified.
+
+**Start here to RUN it:** the validation procedure in these docs is a verb —
+`harness validate-attribution --begin` / `--end`
+([walkthrough](../../../.harness/extensions/validate-attribution/README.md)). It censuses the
+relays, requires an in-sandbox probe for *this* run, and **refuses to certify** when the
+preconditions are not met. Three runs on 2026-08-09/10 looked conclusive and were not; the verb
+refuses each of them by construction.
+
+**Start here for mechanism:**
+[git-ai's two channels — and why a reachable socket is not enough](./gitai-06-two-channel-model.md).
+
+---
+
+The front door for harness telemetry: what changed when
+[git-ai became the collector](../gitai-collector.md), how to read the frozen
+`refs/harness-telemetry/*` corpus, and the counts-only segment, event-stream,
+OTLP, reporting, attribution, privacy, and offline contracts that remain
+authoritative for those already-published records.
+
+> **Capture is off by default. Reading is not.** A shipped harness with a clean
+> environment produces and publishes no new harness telemetry. The legacy
+> producer remains intact behind `HARNESS_TELEMETRY_CAPTURE=1` so v2 can migrate
+> it rather than rebuild it. `telemetry ls`, `pull`, `session save`, `report`,
+> `sweep`, `insights`, and the schema/read contracts remain live.
+
+> **This was the sensor, not the analyst.** The legacy producer emitted and
+> committed faithful counts; it built no scanner, dashboard, or correlation.
+> Downstream tooling can still read the committed refs and engineer measures —
+> see [Harness value measures](../harness-value-measures.md).
+
+> **Stored shape is OTEL/OTLP.** Published segments were re-serialized as OTLP
+> Logs + Metrics (one file per signal), collector-ingestible with zero
+> translation. The on-disk layout, the `schema_url` policy, the keep-and-harden
+> ref contract, and the downstream read contract live in
+> [Harness telemetry — the OTLP/OTEL stored shape](./otlp.md).
+
+> **Remote retrospective retrieval.** `harness telemetry ls` inventories
+> counts-only sessions published under explicit repositories'
+> `refs/harness-telemetry/**`; `harness telemetry pull` writes selected complete
+> sessions into one deterministic, integrity-verifiable bundle that the existing
+> `telemetry report` command can read. See
+> [Pull published telemetry from remote repositories](./pull.md) for
+> repository inputs, selectors, bundle fields, fidelity/gaps, privacy, and
+> troubleshooting.
+
+---
+
+## The model in one minute
+
+There are now two distinct paths:
+
+1. **Current default — read the archive.** Published session refs remain
+   queryable and reportable. No capture gate is applied to the read path.
+2. **Legacy producer — explicit opt-in only.** With
+   `HARNESS_TELEMETRY_CAPTURE=1`, each `harness <verb>` runs the old fail-safe
+   capture preamble before the command body. It detects the innermost agent
+   harness, reads the per-session delta, and writes one normalized `segment` to
+   the gitignored buffer.
+
+When that opt-in is set, `harness telemetry sync` rolls buffered segments into
+**one ref per session, keyed at the session's start date**
+(`refs/harness-telemetry/<start-YYYY>/<MM>/<DD>/<session>`), without touching
+the index or working tree. The existing corpus has this shape, so the storage
+and reader contracts below remain operationally important even though the
+default producer is dormant.
+
+```
+published refs ──read-only──▶ telemetry ls / pull / session save / report / sweep / insights
+
+HARNESS_TELEMETRY_CAPTURE=1 harness <verb>
+                 ──preamble──▶ .harness/temp/telemetry/<session>/<seq>.json
+harness telemetry sync
+                 ──plumbing──▶ refs/harness-telemetry/<start-date>/<session>
+```
+
+Historically, the **first** opted-in `harness telemetry sync` in a repo that still holds old
+per-capture-date refs also runs a one-time **migration**: it discovers every old
+ref (the one sanctioned `ls-remote` + fetch), unions each session's segments
+across its full commit history — recovering any buried by the earlier
+clobber-on-rewrite behaviour — rewrites them to the new start-date-keyed rolled
+refs, verifies the rollup, then deletes the old refs. Steady-state syncs after
+that are fetch-free.
+
+The migration is **self-retiring** (plan 067): once a scan finds nothing
+old-shape locally, sync records `.harness/temp/telemetry/.migrated` and never
+scans the corpus again — steady state reads one local file and touches no ref.
+The trade: a *later* manual fetch of an old-shape ref (only producible by
+pre-plan-049 CLIs) is not auto-detected. Recovery is one command:
+`rm .harness/temp/telemetry/.migrated` — the next sync re-scans and migrates
+it.
+
+Two properties made the opted-in producer safe to run on every command:
+
+- **Zero host impact.** Capture is wrapped so it can never change the host
+  command's stdout, stderr, or exit code. Any error inside it is swallowed.
+- **PR-invisible.** The buffer lives under `.harness/temp/`, which self-ignores
+  (a nested `.gitignore` of `*`), and the durable write is a ref under
+  `refs/harness-telemetry/` via plumbing — so `git status --porcelain` is
+  byte-identical across a capture and a flush. PR/merge-base algorithms only walk
+  `refs/heads/*` and `refs/tags/*`, so telemetry never appears in a feature branch
+  or a PR diff.
+
+## What a segment records (counts only)
+
+The `segment` is a **counts/identifiers-only** record. The full, enumerated field
+set is the cross-tool/cross-repo contract — see the plan's
+`### Segment Schema` and the machine schema at
+`harness/cli/src/services/telemetry/segment.schema.json`. In summary it carries:
+token buckets, per-model turn/output counts, skill/tool histograms, subagent
+identity, repo-relative file paths, plan links, compaction/api-error/local-command
+event counts, branch + timecode, and the capture window.
+
+It **never** carries content: no prompt or message text, no file contents, no
+free-form tool-argument strings (those can leak secrets). Absent data is
+represented honestly, never estimated and never omitted — but the shape differs
+by field kind:
+
+- **Nullable scalars** serialize `null` when the harness can't supply them:
+  `tokens`, `effort`, `thinking`, `branch`, and the per-subagent values
+  (`subagents[].tokens`, `.tool_uses`, etc.).
+- **Collection fields are always present** with an empty default, never `null`:
+  `models` `{}`, `skills` `{}`, `tools` `{}`, `subagents` `[]`, `files`
+  `{written:[],edited:[]}`, `plans_touched` `[]`, `events`
+  `{compactions:[],api_errors:0,local_commands:0}`, and the v2.0
+  `event_stream` `[]`.
+
+Either way the field is present (a stable shape for the scraper); only its value
+reflects availability.
+
+> **Schema v2.0 — the event stream.** As of `schema_version` `2.0`, the segment
+> additionally carries an ordered **`event_stream[]`** (the timestamped substrate)
+> and a derived **`rollup`** — see [The event stream](#the-event-stream-v20). The
+> v1 count fields above are retained as a compatibility view; they are equal to the
+> rollup's derived counts. (The legacy `events` object — compactions / api-errors /
+> local-commands — is a *different*, retained field; the timestamped stream is
+> `event_stream`.)
+
+### Path semantics
+
+File paths are recorded **repo-relative**. A path **outside** the repo is reduced
+to its **basename only** — the directory is dropped (no information about your
+home directory or machine layout leaks). For example, a write to
+`/Users/alex/.claude/projects/abc/memory/note.md` is recorded as `note.md`,
+while a write to `harness/cli/src/app.ts` keeps its full repo-relative path.
+
+## The event stream (v2.0)
+
+v1 recorded **counts per command window**. v2 makes the atom a **timestamped
+event** and *derives* the counts from it, so a session's **shape** — order,
+time-gaps, when the agent was working vs. when you were — is reconstructable, not
+just its totals. The counts didn't go away: the rollup's tallies equal the v1
+histograms exactly (a derived view, never a second source of truth).
+
+**An event is still counts-only.** Each `event_stream[]` entry is
+`t + kind + name + numbers` — never prompt text, file contents, or tool-arg
+strings (the same privacy floor as v1, enforced by an allowlist *by construction*:
+the serializer picks each field per-kind and never spreads its input). The event
+kinds:
+
+| kind | carries | from |
+|---|---|---|
+| `prompt` | word count of a human steer | user message |
+| `turn` | `dur_s` + optional token buckets + model | one agent generation |
+| `tools` | tool name + count + span (a same-name burst) | tool calls |
+| `skill` | skill name + lifecycle status | skill/subagent opens |
+| `flow` | flight-plan `flow`/`stage`/`status` (the **current-stage anchor**) | `the-flow.json` nav (not args) |
+| `flow_log` | a flight-plan mutation: `op` + `node`/`from`/`to`/`type`/`edge_op` | `the-flow.json` `events[]` log (the **transition history**) |
+| `artifact` | a counts-only snapshot of a changed flow/SDD artifact: `artifact_type` + `counts`/`enums`/`size` | a review/plan/workshop/… in the window's changed files |
+| `mark` | a peer's counts-only **self-attestation**: `mark_kind` + optional `verdict` + finding `counts` | `harness telemetry mark` (agent-invoked, not auto-derived) |
+| `branch` | the new branch (`to`) + prior (`from?`) | a git branch switch between captures |
+| `harness` | sub-command verb (sans params) | `harness …` calls |
+| `checks` / `command_exit` | gate verdicts / exit codes | a harness command's result |
+| `subagent` · `compaction` · `model` · `api_error` | identity / presence / class | transcript signals |
+
+**Flow replay (`flow_log`).** The `flow` event is a per-window *snapshot* of where
+the flight plan sits; `flow_log` is the **movement history** — projected from
+`the-flow.json`'s append-only `events[]` audit log, one marker per mutation
+(`cursor-moved`, `status-changed`, `node-created`/`-updated`, `created`) at its real
+`fired_at`. It carries only **shape** (ids, statuses, `from`/`to`, edge ops) — never
+a manual event's free-form `description`/`value` or comment text. Windowed by an
+append-only **array offset** kept per (session, plan), so each entry is surfaced
+exactly once (a timestamp watermark would drop the several entries one CLI call can
+stamp in the same millisecond). Joined on time with the work events, it lets a reader
+reconstruct *which stages a session moved through, what completed/changed, and when*.
+Two honest bounds: `flow_log` markers are **excluded from the rollup** (their real —
+sometimes backfilled — times must not distort gap/stage math), and the **initial**
+stage is recoverable only via the first `cursor-moved.from` (a flow that never moved,
+or was positioned by an advisory `nav --next` only, leaves no journey — read absence
+as *unknown*, not *stayed put*).
+
+**Artifact semantics (`artifact`).** The flow writes rich, deterministic artifacts —
+reviews, plans, workshops, dossiers, tasks, execution logs, backpressure coverage,
+validations, ship reports, and `the-flow.json`. Their **process signals** (fixes per
+review, phases per plan, workshop depth, gate PASS/FAIL, validation verdict) sit
+unread in those files. The artifact pass reads them at **capture time**: when a
+registered artifact appears in the window's `files.written`/`edited` set, a thin
+regex extractor parses it and emits one `artifact` event carrying the artifact's
+`path` (repo-relative), `plan_id`, `change` (`written`/`edited`), a `counts` map
+(integers only), an `enums` map (fixed-vocabulary verdicts/statuses/proof-levels,
+with an `other` fallback), and a `size` (`lines`/`bytes`). Files change over time, so
+each change re-emits an updated snapshot — a **semantic time series** per artifact, at
+zero added agent burden (the sensor rides the existing capture window; there is no
+watcher and no form to fill in).
+
+The **privacy floor is unchanged**: `counts` are integers, `enums` are allowlisted
+tokens gated by the extractor itself (a novel verdict maps to `other`, never travels
+verbatim), and there is **no free-text field by construction** — finding text, fix
+descriptions, and decision prose can never be emitted. The `counts`/`enums` **keys**
+are themselves a **closed, schema-enumerated union** (`additionalProperties: false`),
+so an extractor cannot invent a key to smuggle text through the map name. Extraction
+is **defensive**: an unparseable/garbage artifact yields empty counts (never a capture
+failure), and missing / binary / oversized / out-of-repo files are skipped. Like
+`flow_log`, an `artifact` event carries a **capture-time** `t` and is **excluded from
+the rollup**, so its snapshot stamp never distorts gap/wall/stage math. It complements
+the flight-plan replay: `flow_log` is the *transition history*, the `artifact` snapshot
+of `the-flow.json` is the *current shape* (nodes by type/status, phases, workshops,
+chores done/skipped/todo) — cheap to query without replaying every event.
+
+**The rollup — derived, recomputable.** `rollup` is a pure function of
+`event_stream[]` (a consumer may ignore it and recompute):
+
+- **Activity** — every inter-event gap is classified by what it *ends at*: a gap
+  before a `prompt` is **human** time (≤ 5 min) or **idle** (> 5 min, walked away);
+  every other gap is **agent** time. `working_ratio = agent / (agent + human)` —
+  idle excluded. This is the load-bearing idea: *"is the agent working?"* is a
+  **timestamp** question, not a token one.
+- **Flow-stage time** — gap-time attributed to the active flight-plan `stage`
+  (`flow_stage_time_s`), so you can see *where* a session's time went by stage.
+- **Outcomes** — the last `checks` verdict + each verb's exit code.
+- **tokens / tools / skills** — the same totals as the v1 fields (`tokens` is
+  `null` when no turn carried buckets — e.g. Cursor — never zero-filled).
+
+**Per-harness ceilings (honest).** Claude and **Copilot CLI** (`copilot-cli`)
+emit an *exact*-timed stream (Copilot CLI turns even carry per-interaction
+tokens). The next two surfaces hit a **tokens-`null` ceiling** — they keep usage
+server-side, so the adapter reports the timeline and **never estimates tokens**:
+
+- **Cursor** (`cursor-agent`) has no transcript timestamps, so its timed events
+  are **anchored** to the IDE-store bubble times (`t_precision: "anchored"`).
+  `file` events (plan 066: `ApplyPatch` patch deltas, the same V4A grammar as
+  copilot's `apply_patch`) don't need the bubbles: without an anchor they take
+  the capture wall-clock at `t_precision: "interval"` — "within this window" —
+  so a headless session still carries its file evidence. A headless session with
+  no bubbles **and no file activity** serializes an **empty `event_stream` with
+  `rollup: null`** rather than a fabricated one.
+- **Copilot Chat in VS Code** (`copilot-vscode`) is a **distinct surface from
+  `copilot-cli`** — the VS Code extension keeps its own SQLite store
+  (`…/globalStorage/github.copilot-chat/session-store.db`, `sessions` + `turns`),
+  not the CLI's `~/.copilot` JSONL. It is detected by `AI_AGENT=
+  github_copilot_vscode_agent` (no session-id env var exists, so the active
+  session is resolved from the store **by cwd**, latest `updated_at`), and its
+  events are **anchored** to `turns.timestamp`. The store has **no token
+  columns** (`tokens`/`models` are `null`); for privacy the word-count + a
+  presence flag are computed **at the SQL boundary** (`user_message` /
+  `assistant_response` appear only inside `length()`/`CASE`), so the message
+  **text never enters the telemetry process** — only `turn_index`, `words`,
+  `has_response`, `timestamp` cross the read-only `DbPort`. Plan 066 added its
+  store's `session_files` table as a source: **`files` written/edited path
+  lists** (write-tool allowlist; reads excluded; written-vs-edited from the
+  chat-editing state's initial-content hash when present) and a **`tools`
+  histogram** (per-file-first-seen — a lower bound on invocations, not a call
+  count). The store keeps no patch payloads, so per-file line/byte deltas are
+  unknowable: copilot-vscode emits **no `file` events** — path lists yes,
+  deltas honestly never (until the store exposes payloads).
+
+`event_stream` itself is always present, never `null`. Outcome events follow each
+harness's result-capture ability: Claude has the full result envelope (`checks` +
+`command_exit`), Copilot CLI reports only success (`command_exit`), Cursor and
+Copilot-VS-Code neither — **for transcript-derived outcomes**. Since plan 069 the
+`checks` verdict itself no longer depends on the transcript at all (next section).
+
+### Discipline signals — `control` and self-observed `checks` verdicts (plan 069)
+
+The insights **discipline panel** (checks-before-push, boot rhythm) joins two
+markers on the control timeline: a `checks` verdict and the `git push`/`git commit`
+that follows it. Before plan 069 both markers were **starved at the producer**, so
+the panel read 0/0 on every harness:
+
+- **`tools.control`** — a shell tool event's `signature` is the **chain head** of
+  the command line (`cd foo && git push` → `cd`), which is right for burst
+  grouping and useless for spotting the push. Measured on real sessions, 97% of
+  chained `git push`/`git commit` lines were invisible. `control` fixes this
+  without changing `signature`'s meaning: a per-signature count of a **closed
+  two-member allowlist** (`git push`, `git commit`) found **anywhere** in the
+  line. The read side imports the producer's own allowlist (one grammar across
+  the seam, the plan-068 rule), prefers `control`, and falls back to `signature`
+  for pre-069 shards — never both, so nothing double-counts. `control` is part
+  of the burst key, so a `cd && git push` can never merge into an adjacent
+  `cd && git add` burst and lose its instant.
+- **Self-observed `checks` verdicts** — transcript adapters structurally cannot
+  see a command's outcome (capture is a preamble; the result does not exist
+  yet). Instead the harness observes **itself** at the exit chokepoint, where
+  the real result envelope exists, and writes a zero-width verdict segment (no
+  cursor movement, no double capture). This works identically on **every**
+  harness — including Copilot-VS-Code, whose session lane is resolved from the
+  chat store by the **same resolver** the capture preamble uses, so the verdict
+  can never land on a different lane than its `checks` command marker. A run
+  with no detectable harness session, or an unrecognized verdict, writes
+  **nothing** — silence, never a fabricated `ok`.
+
+Two honest bounds. Copilot-VS-Code still has **no shell-call visibility** in its
+store, so its push/commit `control` stays `null` (the panel says so rather than
+guessing). And pre-069 shards carry no `control` field, so **historical
+discipline numbers are permanently unmeasurable** — reports declare this as
+`coverage.push_signatures_unavailable` instead of rendering a false zero.
+
+### Capture liveness & late recovery (plan 070)
+
+> **Legacy producer diagnostic.** This layer evaluates lanes created by
+> explicitly enabled harness capture. A default-off install creates no lanes,
+> so a green `capture-liveness` result proves only that no legacy lane is owed;
+> it does **not** prove that git-ai or any other collector is recording work.
+
+Some agent harnesses write their transcripts **lazily** — cursor-agent (since
+~July 2026) buffers the transcript in memory during an agent turn and flushes
+at turn boundaries, so a long agentic run is a 2-line stub on disk for its
+entire duration and materializes at the end. Every in-session capture honestly
+sees "nothing new", and a session whose last flush lands after its last
+harness command strands its evidence forever — **a confident thin record, not
+an error**. Two instruments make that class observable and recoverable:
+
+- **Liveness marker** — every eligible capture attempt records
+  `.harness/temp/telemetry/<session>.liveness.json`: last outcome
+  (`captured` / `no-window` / `unread-window` / `source-unreadable` /
+  `error` + error *class*, never a message), the watermark, the observed
+  source extent, and the source path. Local-only: never synced, never in a
+  ref, pruned with its session.
+- **Detectors** (surface: `harness doctor`, layer `capture-liveness`) — a
+  **stall** detector (2+ consecutive attempts that saw an unconsumed window
+  and didn't capture — names which stage stopped), a **residue** detector
+  (a quiet lane whose source holds materially more than it ever captured:
+  residue > cursor and ≥10 lines, 6h idle), and a **lost** state (source
+  file gone for a lane whose marker *recorded* seeing unconsumed work —
+  never guessed from absence alone). Owed lanes say how they'll be
+  recovered; unrecoverable lanes say why (`no reconcile adapter…`, `source
+  has no usable evidence`, `source file no longer exists`) and never get a
+  sync suggestion that would quietly never come true. All WARN, never error.
+  For an enabled legacy producer, green means no existing lane is owed.
+- **Reconciliation** — on an explicit `harness telemetry sync` (the
+  post-commit hook runs one; hourly-debounced; the `checks` auto-push path
+  deliberately does not sweep), owed lanes are re-read from the recorded
+  source and the missed segment is emitted **attributed to the original
+  session** and shipped in the same pass. A recovered segment declares
+  itself: Segment 2.7 `capture_mode: 'reconciled'` (the ONLY accepted value
+  — a live segment is proven live by the field's *absence*, the one claim
+  that cannot be forged by omission), interval-grade `t_precision` (recovered
+  events never accrue agent-working time), the window end anchored to the
+  source file's mtime (an observed fact, never the recovery clock), and
+  attribution taken ONLY from the marker — in reconcile mode adapters
+  structurally have **no env access** (facts the source can't establish are
+  omitted, never inherited from the recovery shell). Recovery is idempotent
+  (two independent guards) and possible in a **[6h, 14d)** window whose
+  ordering against the buffer prune is pinned by test. Reports and the
+  attribution table render recovered evidence **visibly marked** — honesty
+  reaches the render, not just the record.
+
+Known limits, stated rather than papered over: the sweep is
+**per-worktree** — each worktree heals itself on its own sync; run
+`harness telemetry sync` in a worktree **before removing it** (a deleted
+worktree destroys markers, buffers, and watermarks together — nothing can
+recover what no longer exists); and the last session before a repo goes
+quiet stays thin until anything touches that repo again.
+
+## Capture controls
+
+Harness capture is off when all telemetry environment variables are unset.
+Four controls remain. Note that the last one governs a **different consent** from
+the rest — see the warning below the table:
+
+| Variable | Effect |
+|---|---|
+| `HARNESS_TELEMETRY_CAPTURE=1` | **Opt in to the legacy producer** — enables capture, publishing, and capture housekeeping for this process. |
+| `HARNESS_NO_TELEMETRY=1` | **Hard off** — harness does not **CAPTURE**. No capture, sync, ref writes, or capture housekeeping. This wins even when the opt-in is set. |
+| `HARNESS_NO_TELEMETRY_AUTOSYNC=1` | With legacy capture enabled, suppress unprompted pushes while leaving capture and manual sync available. |
+| `HARNESS_NO_COLLECTOR=1` | Harness does not **INSTALL SOMEONE ELSE'S SOFTWARE** on your machine. A bare `harness doctor` will not download the pinned git-ai binary, will not run `install-hooks`, and will not rewrite any agent config. |
+
+> **`HARNESS_NO_TELEMETRY` and `HARNESS_NO_COLLECTOR` are not aliases**, and setting
+> one does not set the other. They express two different consents:
+>
+> - `HARNESS_NO_TELEMETRY` — *don't collect data about my work.*
+> - `HARNESS_NO_COLLECTOR` — *don't install third-party software on my machine.*
+>
+> A developer may reasonably want the second without the first: happy for
+> attribution to be recorded, unwilling to have `git-ai` installed and their agent
+> configs rewritten by a diagnostic command. Because these are separate switches,
+> that combination is expressible.
+>
+> With `HARNESS_NO_COLLECTOR=1` set, `harness doctor` **still reports the collector
+> row** — and reports it as *skipped by explicit opt-out*, never as
+> `could-not-determine`. An opt-out that made a deliberate choice look identical to
+> a broken machine would send you debugging something you chose.
+
+```bash
+# Default: harness captures and publishes nothing.
+harness checks
+
+# Explicit migration/testing escape hatch for the old producer.
+HARNESS_TELEMETRY_CAPTURE=1 harness checks
+
+# Absolute operator kill-switch; wins over the opt-in.
+HARNESS_NO_TELEMETRY=1 HARNESS_TELEMETRY_CAPTURE=1 harness checks
+```
+
+## Plan links
+
+A segment records the plan it relates to when either holds:
+
+- `HARNESS_PLAN_ID` is set in the environment (it wins), or
+- the current working directory is inside `docs/plans/<id>/` — the
+  `<ordinal>-<slug>` directory name is derived automatically.
+
+Multiple distinct plans seen across a session's segments are flushed as a
+**deduped set**.
+
+## Fleets — joining a flow-pair run (`harness telemetry get-fleet`)
+
+A flow-pair run is a **fleet**: an orchestrator pij session that spawns child
+pij sessions (a coder, a reviewer, …). `pij spawn` stamps each child's env with
+`PIJ_SESSION_ID` (its own id), `PIJ_PARENT_ID` (the spawner), and `PIJ_HARNESS`
+(`claude` | `copilot` | `codex` | `pi`); telemetry captures all three into
+`captured_env`, so the whole fleet can be re-joined from history alone — nothing
+extra is captured.
+
+```sh
+# env-tree: every child whose captured_env.PIJ_PARENT_ID == the root
+harness telemetry get-fleet <root-pij-id> --json
+
+# roster-scoped: reconcile the env tree against a flow-pair run.json roster
+harness telemetry get-fleet <root-pij-id> --roster .flow-pair/runs/<run>/run.json --json
+```
+
+The result is a **`FleetEvidence`** (closed, counts-only shape in
+`fleet-export.schema.json`) — one lane per child, each embedding the same
+per-session evidence `harness telemetry get` returns, plus fleet totals. Every lane
+carries a **`source`** (`live` | `ref` | `ledger`) and, when recovered from a vendor
+side-channel, a **`billing`** block (`nano_aiu` and/or `token_buckets`):
+
+- **Cost** — resolved per lane in precedence order **live → ref → ledger**: the
+  local temp buffer first; then, for a rostered member whose buffer was already
+  flushed, its synced `refs/harness-telemetry/*` rollup (`source: ref`); then its
+  vendor **ledger** (`source: ledger`) — the copilot `session.shutdown` billing
+  record or the codex rollout `token_count` total, joined through the pij registry.
+  `totals.cost.grand_total` sums `tokens.grand_total` over lanes with
+  `cost_measured: true`; a lane that resolves to a tier but whose cost can't be read
+  — a live copilot-null lane, or a **present-but-malformed** ledger/rollup — stays
+  `cost_measured: false`, **excluded from the sum** (never zero-filled) and counted
+  in `unmeasured_lanes`, so a broken side-channel **degrades** the lane rather than
+  making the member vanish. A rostered member with **no resolvable source at all** is
+  instead an `orphan` (below), not a zero-filled lane. Fleet cost is still an honest
+  **lower bound**.
+- **Token evidence** — precedence is evaluated **per field**, not per lane. A
+  measured vendor field can supplement an empty ref; complementary live/ref/ledger
+  fields merge without adding unlike observation kinds. `source` remains the
+  deterministic compatibility projection, while `token_evidence.fields.*` records
+  each value's source, observation kind, coverage, and reason. Aggregate coverage
+  can honestly be `partial` even when some fields are measured—for example, after
+  prune a ref may preserve measured token fields while another shard has no usage.
+  `partial` therefore does not mean "discard the values"; absent fields remain
+  unavailable and are never converted to measured zero. A billing-only Copilot
+  checkpoint can likewise preserve measured `nano_aiu` while aggregate primary-token
+  coverage stays unavailable.
+- **Time** — `totals.time.wall_clock_s` is the **union** of the lanes' event-time
+  spans; `active_s` is their **sum**; `active/wall` is the parallelism ratio. Both
+  come from `event_stream[].t` timestamps (the segment `window` is an event index,
+  not wall-clock), and are `null` only when no lane had a measurable span. Ledger
+  lanes carry no event stream, so they add cost but not time.
+- **Membership** — without a roster the `scope` is `env-tree` (a superset: a
+  parent pij id is stable across the orchestrator's whole life, so it can conflate
+  several runs). With `--roster`, `scope` is `roster` and two diffs surface the
+  discrepancy as a first-class signal: `orphans` (rostered ids that resolved to no
+  source at all) and `unrostered` (env-tree children absent from the roster).
+
+Depth-1 by contract (grandchildren are reserved, not walked). Read-only and
+fail-safe — an unknown root or an empty buffer resolves to an honest error /
+`null`, never a throw. See `docs/plans/051-pij-fleet-session-eval/` for the design
+(workshop D1–D3) and `docs/plans/052-fleet-telemetry-lane-sources/` for the lane
+sources below.
+
+### Lane sources — where each harness's cost + semantics live
+
+The knowledge that used to be tribal (which side-channel holds which harness's
+cost, when it materializes, and the key that joins it) is the matrix below. Every
+cell is a **deterministic reader** inside `get-fleet` — no hand archaeology.
+
+| harness | cost source | **materializes** | join key | semantics | never available |
+|---|---|---|---|---|---|
+| **claude** (orchestrator) | live temp segments → synced `ref` rollup | per-command (live), then on `checks`/sync flush | `captured_env.PIJ_SESSION_ID` (live) · ref last path segment (ref) | full artifact/flow/skill events | — |
+| **copilot** (worker) | `~/.copilot/session-state/<id>/events.jsonl` → `session.shutdown` (`totalNanoAiu` = AIC×1e9, `tokenDetails`, `codeChanges`) | **shutdown-only** — written once, at graceful session end | pij registry `harnessSessionId` → the session dir | `artifact` events (F-07 fix: `create`/`edit` paths now captured) | live per-command tokens (always null mid-session — F-01) |
+| **codex** (worker) | `~/.codex/sessions/<Y/M/D>/rollout-*.jsonl` → last `token_count` (`total_token_usage`) | per-turn, running total | pij registry `transcriptPath` (else session-id in the rollout filename) | none captured | AIC (codex bills in raw tokens) |
+| **pi** (worker) | — (no harness telemetry, no side-channel ledger yet) | — | pij registry | none | cost + semantics (documented gap) |
+
+The load-bearing caveat is **materialization timing**: a copilot lane's billing
+exists **only after** the session shuts down gracefully — a `get-fleet` run while a
+copilot worker is still live reads its ledger as unmeasured. Read-only peers (a
+reviewer that never commits) leave **no** harness telemetry at all; the shutdown
+ledger is their only trace (dossier F-05).
+
+### Run-end sweep — and the teardown-order trap
+
+Two facts collide at teardown, and getting the order wrong **silently** degrades
+every worker lane to `cost_measured: false` — it never errors, the fleet just comes
+back unmeasured:
+
+1. A copilot lane's cost lives **only** in its `session.shutdown` ledger, written
+   **only when the peer exits** — a still-live peer reads as unmeasured (F-01). You
+   have to end the peer to get its cost.
+2. The ledger's **join key** is the pij registry descriptor (`~/.pij/<id>.json` →
+   `harnessSessionId` → the session dir), and **`pij close` deletes that
+   descriptor**. Ending the peer destroys the join.
+
+So the one action that *writes* a copilot ledger is the same action that *breaks the
+join to it* — you cannot hold both through the descriptor alone. The way out is the
+run's `run.json` roster: `pij spawn` records each member's `harnessSessionId` there
+at spawn (before use, P9), so the join **survives teardown through the roster**
+instead of the deleted descriptor. `get-fleet` reads that fallback — when a rostered
+member has no `~/.pij` descriptor (closed) but its `run.json` entry carries a
+`harnessSessionId`, the vendor ledger still resolves. So the sweep works even after
+teardown:
+
+```sh
+# 1. If the legacy producer was explicitly enabled, flush its live buffers.
+HARNESS_TELEMETRY_CAPTURE=1 harness telemetry sync
+# 2. close each spawned copilot/codex peer so it writes its shutdown/rollout ledger
+#    (this ALSO deletes its ~/.pij descriptor — expected; the run.json roster is the join now)
+pij close <peer-id>            # for each peer you spawned
+# 3. snapshot the joined fleet — the roster supplies harnessSessionId, so the ledgers
+#    under ~/.copilot/session-state/<id>/ + ~/.codex/sessions/ still resolve
+harness telemetry get-fleet <root-pij-id> --roster <run.json> --json > fleet.json
+```
+
+> **The descriptor still wins when present** — the roster fallback fires only for a
+> member the pij registry no longer has, so a *live* fleet joins exactly as before
+> (byte-inert pre-teardown). The join key is `run.json`'s `harnessSessionId`, so an
+> old `run.json` that predates it (pijId-only) can't recover a closed lane — regenerate
+> the roster or snapshot before close. A cleaner live path (consume `pij sessions
+> --json` instead of globbing `~/.pij`) is an optional follow-on, not required for
+> correctness.
+
+### Billing conventions (F-10)
+
+Report **billing units, never raw token grand totals**. Copilot bills in **AIC**
+(`nano_aiu / 1e9`, ≈ \$0.01/credit); codex and others are indicative USD via a
+pricing table (an analysis-layer concern — the CLI emits raw units only, never a USD
+conversion). `totalPremiumRequests` is a **legacy** (pre-2026-06) field — carried for
+provenance, **never** surfaced as cost. Cache reads dominate modern token totals (a
+long orchestrator lane can be ~98% cache reads, billed at ~1/10 the input rate), so
+the raw `grand_total` overstates spend — the per-lane `billing` block is the
+authoritative unit.
+
+### Fleet semantics — the process shape, not just the price
+
+Cost and time say what a run *consumed*; the **semantic rollup** says what the
+process *did*. Every lane carries a `semantics` block, and the fleet a top-level
+one, aggregated from the lane's `artifact`/`flow` events (the [artifact
+semantics](#the-event-stream-v20) above) — **counts/enums only**, no prose:
+
+- **review** `findings` by severity, the ordered `verdicts` path, and `fix_cycles`
+  (`FIX_REQUIRED → APPROVE` transitions);
+- **plan** `plan_phases` + `plan_cs`; **workshop** `workshop_decisions`;
+- **flight-plan** `nodes` / `nodes_done` / `chores_done` / `chores_todo`;
+- per-stage `flow_stage_time_s`.
+
+The load-bearing rule is the honesty flag **`semantics_measured`**: a lane with no
+artifact capture is `semantics_measured: false` and **omits every dimension — never
+a `0`**. So a blind lane is distinguishable from one that measured *zero* findings
+(that lane is `semantics_measured: true` with `findings: {critical: 0, …}`). Each
+dimension is emitted only when its artifact type was captured, so a lane that saw a
+plan but not the review reports `plan_phases` and **no** `findings` — the review
+ran elsewhere, and the rollup says so by omission.
+
+Read the fleet-level **`measured_lanes` / `blind_lanes`** counts *first*: they are
+the coverage truth. A telemetry-only report can claim the process shape of the
+**instrumented** lanes; it **cannot** claim what happened in blind ones. In a
+flow-pair run that means the orchestrator's planning artifacts surface, but a
+read-only reviewer's findings (no harness telemetry — F-05) and a worker that
+emitted 0 artifact events (F-07) are absent — reported as blind, not as zero. A
+read-only reviewer can **opt out of blindness** by emitting a `mark` (see
+[Marks](#marks--peer-self-attestation-harness-telemetry-mark) below): its verdict
+then lands on its own lane's `semantics.mark` and the lane reads
+`semantics_measured: true`. See
+`docs/plans/052-fleet-telemetry-lane-sources/evidence/fleet-051-semantics-note.md`
+for a worked reconcile of a real fleet against a hand-made quality table, with
+every discrepancy (blind lane vs extractor precision vs capture-time drift)
+enumerated. Ledger- and ref-resolved lanes recover **cost** but not the event
+stream, so they are semantically blind until worker-lane artifact capture lands.
+
+## Marks — peer self-attestation (`harness telemetry mark`)
+
+Every semantic event above is **auto-derived** during passive capture — a review
+`artifact` only appears because a reviewer *wrote a review file*. A **read-only
+reviewer** runs no harness command and may write no file, so its verdict never
+reaches its lane: the lane is blind (F-05). `harness telemetry mark` closes that
+hole. It is the one **agent-invoked** semantic emit — a peer stamps a counts-only
+marker onto **its own** session lane with a single call:
+
+```bash
+harness telemetry mark --kind review --verdict fix-required --findings-critical 1
+```
+
+- **Shape-guarded, no free text.** `--kind` and `--verdict` are identifier slugs
+  (`^[a-z][a-z0-9-]{0,31}$`); the finding buckets (`--findings-critical` /
+  `-high` / `-med` / `-low`, plus a total `--findings`) are non-negative integers.
+  There is **no prose field by construction** — a bad slug (uppercase, whitespace,
+  over-long) is rejected with an `unconfigured` outcome (exit 2) naming the shape,
+  and **no marker is written** (telemetry is best-effort — it never blocks work).
+- **Cost-excluded, attribution-visible.** The marker is its own segment carrying
+  `tokens: null` and a single `mark` event; it contributes **zero** to
+  rollup gap/time/token math (like `artifact`/`flow_log`, it rides a capture-time
+  `t`) and zero to fleet cost. It surfaces on the emitting lane's
+  `semantics.mark` (`marks`, `kinds`, deduped `verdicts`, summed `findings`), and
+  a **mark-only lane is no longer blind** (`semantics_measured: true`).
+- **Generic — the vocabulary is prose, not a second binary.** The verb carries no
+  flow-stage vocabulary. The flow/skill layer decides *which* `kind`/`verdict` to
+  emit and formats the call as prose the agent renders — the Node CLI stays the one
+  cross-platform surface; there is no skill-side executable to install.
+
+**Where a mark shows up (F3 nuance).** A mark surfaces through
+`harness telemetry get-fleet` (read from the **live buffer** `<seq>.json`), **not**
+through `harness telemetry report` or the committed OTLP shards — the marker
+deliberately writes **no** OTLP sidecar, so it is fleet-attribution evidence, not
+part of the reconstruction-critical `harness.*` transport. Emit a mark, then read
+it back on your lane:
+
+```bash
+harness telemetry mark --kind review --verdict approve
+harness telemetry get-fleet <root-pij-id> --json    # → sessions[].semantics.mark
+```
+
+
+## Syncing — `harness telemetry sync`
+
+The command remains for migration and for sessions that explicitly opt in to
+legacy capture. With the shipped default it performs no capture publication.
+With `HARNESS_TELEMETRY_CAPTURE=1`, capture is decoupled from push and sync can
+be run explicitly:
+
+```bash
+HARNESS_TELEMETRY_CAPTURE=1 harness telemetry sync
+```
+
+It rolls every buffered segment up into **one ref per session, keyed at the
+session's start date** — `refs/harness-telemetry/<start-YYYY>/<MM>/<DD>/<session>`
+— rebuilt from the whole local buffer on each sync, and force-pushes that single
+refspec using your **ambient git credentials** (the CLI handles no tokens). The
+ref's commit tree carries the entire session: `session.logs.jsonl` +
+`session.metrics.jsonl` (every seq's OTLP record, concatenated seq-ordered) + a
+`manifest.json` (format marker, start date, max published seq). The start date is
+taken from the session's first segment and pinned in a `<session>.startdate`
+sidecar, so a session that crosses midnight — or spans several days — stays at
+**one** ref at its start date rather than trailing a ref-per-day. Each sync
+rewrites the ref with a fresh orphan commit (a full rewrite, so the tip tree is
+always the whole session), which is why the push is **forced** (`+ref:ref`);
+re-syncing with nothing new re-pushes the same content without a duplicate commit.
+
+### Automatic sync on `checks`
+
+This behavior is dormant by default. When the legacy producer is explicitly
+enabled, the two well-known commands carry the old telemetry housekeeping,
+surfaced as an additive `housekeeping[]` field without changing the host
+command's status or exit code:
+
+| Command | Behaviour |
+|---|---|
+| `checks` | With `HARNESS_TELEMETRY_CAPTURE=1`, auto-pushes buffered telemetry (best-effort), unless autosync is disabled. |
+| `boot` · `doctor` | **Nudge only** — if telemetry is unpushed they warn you to run `harness telemetry sync`; they never push. |
+
+In the opted-in path, because the capture preamble runs before the command body, by the time
+`checks` reaches its auto-push the segment for that run is already buffered —
+**capture strictly precedes push**. Since plan 069, `checks` also writes its own
+**verdict marker** (a zero-width self-observed segment, see § Discipline signals)
+at the exit chokepoint *before* the auto-push, so the verdict ships on the same
+flush. The auto-push is the same `harness telemetry sync` flush, just invoked
+for you.
+
+It is **defensive by contract**: any failure (offline, no auth, a hung push —
+bounded by a timeout) is *reported*, never thrown, and never fails `checks`:
+
+```json
+// checks succeeded; telemetry flushed alongside it
+"housekeeping": [{ "kind": "telemetry-synced", "message": "auto-pushed 4 telemetry segment(s)",
+                   "details": { "count": 4, "sessions": 1 } }]
+
+// checks ran; the auto-push could not land — reported, checks unaffected
+"housekeeping": [{ "kind": "telemetry-autosync-failed", "message": "telemetry auto-sync failed: …",
+                   "command": "harness telemetry sync" }]
+
+// boot/doctor (or checks with autosync disabled) with a backlog
+"housekeeping": [{ "kind": "telemetry-unpushed", "message": "4 telemetry segment(s) not yet pushed",
+                   "command": "harness telemetry sync", "details": { "count": 4, "sessions": 1 } }]
+```
+
+To enable or suppress this path, see [Capture controls](#capture-controls).
+
+### The git hooks — REMOVED (plan 077 · #108)
+
+There are no tracked git hooks in this repo, and no `just install-hooks` recipe.
+
+`.githooks/pre-commit` (one counts-only capture, anchoring file evidence to the
+commit's true parent) and `.githooks/post-commit` (the deterministic
+`harness telemetry sync` flush) both existed to serve **harness-side capture**, which
+[went off by default in code](#capture-controls) when git-ai became the collector
+(`CAPTURE_DEFAULT_ENABLED = false`). On a default install their telemetry work was
+already a no-op, so they were removed rather than left arming a path that does not run.
+
+Two doctor checks went with them, because both read evidence only those hooks produced:
+`telemetry-flush-hook` (looked for a `post-commit` running `telemetry sync`) and
+`precommit-hook-latency` (read `.harness/temp/precommit-latency.tsv`, whose sole writer
+was the pre-commit hook). The `./scripts/precommit-latency-harness.sh` re-measurement rig
+went too.
+
+If you ran `just install-hooks` while it existed, your clone still has
+`core.hooksPath=.githooks` pointing at a directory that is no longer there. Git finds no
+hook and proceeds, so it is harmless; clear it with `git config --unset core.hooksPath`.
+
+**Unaffected, and not to be confused with the above:** `git ai install-hooks` is a
+different command belonging to the [git-ai collector](../gitai-collector.md), and the
+`core.hooksPath=` argument in `exec-remote-telemetry-git.ts` is a *suppression* that keeps
+the telemetry push hook-free — it is what makes that push recursion-proof.
+
+### Team scale — many engineers, one repo
+
+A single shared, mutable `refs/harness-telemetry` does **not** work for a team:
+many engineers pushing from independent clones is a distributed write-contention
+problem — every pusher after the first gets a non-fast-forward rejection, and
+their telemetry never drains. **One ref per session solves this structurally:**
+no two writers ever target the same ref (a session's buffer lives in exactly one
+clone), so each writer owns its ref outright and force-pushes its own rewrite —
+no fetch, no merge, no cross-writer retry. This is the canonical git pattern for
+"many writers append out-of-tree metadata" (cf. Gerrit `refs/changes/*`, GitHub
+`refs/pull/*`). Because a session is written by a single clone, the append stays
+**fetch-free**: the rewrite reads the local buffer + a local ref-tree peel, never
+the remote.
+
+The ref key is the **session** (an opaque per-session id — the contributor
+identity rides on the commit, not the ref name; [§ Attribution](#attribution--contributor-commit-team-grain-use)),
+so keying per session introduces no new identity exposure beyond what the commit
+already carries.
+
+**Collecting it upstream is one fetch, not many.** A globbed refspec is a single
+network round-trip — the server advertises every matching ref at once:
+
+```bash
+git fetch origin '+refs/harness-telemetry/*:refs/harness-telemetry/*'   # all sessions, one fetch
+```
+
+Ref count stays cheap (a ref is just a name + a SHA; problems only begin in the
+tens-of-thousands), and the **start-date** prefix is the **retention/prune key** —
+a scraper drops a day after ingesting it:
+
+```bash
+git push origin --delete 'refs/harness-telemetry/2026/03/23/<session>'   # prune after ingest (by start date)
+```
+
+Treat the refs as an **ingestion buffer, not the system of record**: long-term
+storage lives in the downstream telemetry system; `git gc` reclaims the objects
+once a pruned ref is unreachable.
+
+**Keeping it out of day-to-day git.** The namespace is already invisible to
+branch/PR operations. To also hide it from ordinary clones/fetches, set
+server-side:
+
+```
+git config uploadpack.hideRefs refs/harness-telemetry/   # (or transfer.hideRefs / receive.hideRefs)
+```
+
+The scraper simply doesn't apply the filter.
+
+### Offline-safe
+
+A failed shard push (offline, no auth) is **not** an error for the host and
+**does not lose data**: that shard's buffer is left intact (the per-session
+`<session>.flushed` watermark is not advanced past it) and its local ref is rolled
+back, so the next `harness telemetry sync` retries the same segments cleanly.
+Shards are pushed in capture order and the watermark advances only across the
+ones that landed, so a mid-flush failure never strands or double-flushes a
+segment. The explicit verb reports a non-zero exit so a CI/cron caller can see a
+push didn't land; the buffer is preserved either way.
+
+## Attribution — contributor commit, team-grain use
+
+Every telemetry commit's author **and** committer are the **contributor's own
+configured git identity** (the 2026-06-25 decision), so each
+`refs/harness-telemetry/*` shard is traceable to **who pushed it** — the same
+attribution `git log` gives any commit. The generic `harness-telemetry
+<noreply@…>` identity is used **only** as a fallback when the repo has no
+configured `user.name`/`user.email`, so an unconfigured environment never fails
+the commit. Shard refs are keyed by **session** (an opaque per-session id), not by
+engineer — sharding is for write-isolation; the contributor identity lives on the
+commit.
+
+**Usage norm (P12):** attribution makes a push *traceable*, but the counts remain
+intended for **team/repo-grain** measurement — not a per-person productivity
+scoreboard (see the do-not-use-for-individuals list in
+[Harness value measures § Team-level only](../harness-value-measures.md#team-level-only--never-individual-attribution)).
+The optional `agent` provenance field follows the house pattern (nullable, `null`
+when unset).
+
+## Best-effort, not billing-grade
+
+When explicitly enabled, capture is best-effort. The window after the *last* command of a session is a
+trailing tail — captured by **session-end flush**: because the capture preamble
+runs before every opted-in command (including `harness telemetry sync`), wiring a host
+**SessionEnd hook to `harness telemetry sync`** records that tail segment (the
+cursor delta) and flushes it in one step — no extra command. the-flow's `ship`
+already runs `telemetry sync`, so a shipped session flushes its tail for free; a
+session that ends without the hook (or is killed) loses only its final tail, never
+an interior segment (the `window` bounds make any gap visible, not hidden). Token
+sources are read from each harness's authoritative artifacts; when a source is
+absent the field is `null`, never estimated.
+
+### Known limitations
+
+- **Subagent token attribution.** On real Claude transcripts, `subagents[].tokens`
+  is frequently `null` — the per-subagent cost is not reliably correlatable from
+  the live transcript shape today (subagent *identity* and lifecycle are still
+  captured). This is a known gap pending a follow-up probe of the live `usage`
+  shape; it is not estimated in the meantime.
+- **Out-of-repo path fidelity.** As above, files written outside the repo are
+  recorded as basenames only — intentional (no leak) but lossy for correlation.
+- **Ledger-join after teardown needs a fresh `run.json`.** The copilot/codex ledger
+  join runs through the pij descriptor (`~/.pij/<id>.json`), which `pij close` deletes.
+  `get-fleet` covers this with a **descriptor-independent fallback** (SUGG-001,
+  shipped): a rostered member with no live descriptor but a `harnessSessionId` in
+  `run.json` still resolves its ledger — so the [run-end sweep](#run-end-sweep--and-the-teardown-order-trap)
+  works after close. The residual limit is roster freshness: a `run.json` written
+  before this fix (pijId-only, no `harnessSessionId`) can't recover a torn-down lane —
+  regenerate the roster or snapshot before close.
+- **Read-only-peer semantics recovery is unproven.** A reviewer that runs no harness
+  command emits no segment (F-05); its verdict survives only in the review *file* it
+  writes, which enters telemetry only if the committing lane's capture observes that
+  write. That the verdict then lands on the committer's lane (the orchestrator, in
+  flow-pair) is the design intent but is **not yet proven live** — treat read-only
+  peers as semantically blind until a measured fleet demonstrates otherwise.
+
+## Token evidence after sync and prune
+
+Typed usage is preserved as per-field evidence for `input`, `output`,
+`cache_read`, `cache_create`, and `nano_aiu`. Each field carries its value,
+source (`live`, `ref`, or `ledger`), observation kind, coverage, and a closed
+reason when unavailable. Readers reduce a whole session once: final shutdown,
+then cumulative checkpoint, then distinct message outputs, then partial
+compaction. Unlike kinds are never added.
+
+Aggregate coverage is `measured` only when all four token buckets are known,
+`partial` when at least one is known, and `unavailable` when none is known.
+`cause` remains `unknown` unless an authoritative producer supplies it. Scalar
+totals and `source` remain compatibility projections; per-field evidence is the
+authoritative surface. A synced ref with empty fields cannot mask measured vendor
+evidence, and pruning the local buffer does not remove ref-backed measurements.
+
+
+## Read-path honesty — degrade and name, never throw, never invent
+
+Plan 068 made the read path obey the repo's warn-never-hide doctrine
+end-to-end:
+
+- **Producer failures degrade, never throw.** An OTLP metric set or log event
+  that fails validation is SKIPPED AND NAMED — `metric_skipped:<metric>` /
+  `event_skipped:<kind>` in the session summary's `degraded` list — and
+  `telemetry session save` reports `degraded` (exit 0) instead of `ok`
+  whenever anything was skipped. Previously one bad value made the whole
+  session permanently unreadable.
+- **One grammar per value, on BOTH sides of the logs↔metrics seam.** The bug
+  that motivated this: command verbs admit multi-word extension forms
+  (`dd build`) in the logs grammar, while the metrics side validated the same
+  value as a single-word atom — so every session in which an extension
+  subcommand exited was poisoned at write AND unreadable at read. Rule for
+  future attributes: a value crossing the seam must be admitted under the
+  same grammar on both sides.
+- **`t_precision` is consumed, not just carried.** Events stamped
+  `'interval'` ("within this capture window", e.g. cursor file events with no
+  bubble anchor) are excluded from active-time gap accrual and counted in
+  `report.provenance.interval_events`, so bucket timestamps can no longer
+  inflate `agent_working_s` or trip cohort exclusions.
+- **Authorship rows may be path-only.** A surface that knows *which* files an
+  agent wrote but not *how many lines* (copilot-vscode) yields rows whose
+  delta fields are `null` with a named marker (`delta_unavailable`), counted
+  in `totals.files_delta_unavailable` — never zeros, never a number in the
+  claim, never diluting measured totals.
+
+## Authorship attribution — then and now
+
+The archived harness refs and git-ai answer related questions with different
+evidence.
+
+### Reading the archived harness-join era
+
+The historical method joined attributed-but-partial telemetry `file` events to
+complete-but-anonymous git diffs. For commit `X` with parent `P`:
+
+```text
+agent_lines(X, file) = Σ lines_added in file events whose product_commit == P
+total_lines(X, file) = git diff --numstat P..X for that path
+```
+
+Match on the parent SHA, not timestamps. `product_commit` records the base the
+work was built on, so the join survives delayed publication, rebases,
+cherry-picks, branch switches, and independent worktrees.
+
+This method measured **gross agent churn** against **net committed diff**.
+Rewrites and reverted work inflated the numerator; blind spots such as shell
+writes or an unrecognized write-tool vocabulary deflated it. In one dated
+harness-join example:
+
+| File | agent lines | git lines | ratio |
+|---|---:|---:|---:|
+| `file-capture-check/extension.ts` | 579 | 597 | 97% |
+| `golden/expected-authorship.json` | 56 | 53 | 106% |
+| `file-capture-check/instructions.md` | 18 | 14 | 129% |
+| `changes/…/design.md` | 5 | 185 | 3% |
+| `changes/…/tasks.md` | 38 | 107 | 36% |
+| **Total** | **737** | **995** | **74%** |
+
+Three of nine per-file ratios exceeded 100% (worst 129%); clamping moved the
+aggregate from 74% to 73%. The low rows represented mixed authorship, while
+checkbox edits showed how modification could be counted as authorship. This is
+dated historical evidence from the harness-join era, not a git-ai result.
+
+The archived data supports file-touch attribution, edit volume, and an
+approximate aggregate share. It does **not** support exact line identity or an
+exact per-file percentage. A path-only row with `delta_unavailable` names a file
+the agent wrote but contributes nothing to line sums; a null delta is never zero.
+The two error directions do not cancel in any principled way, so do not treat
+their coexistence as accuracy.
+
+FX009 is the lasting warning: one Cursor session wrote 410 lines but emitted no
+`file` events, producing a confident 0.0% agent share rather than an explicit
+gap. Any attribution collector, including git-ai, needs a detector for
+"activity observed, attribution absent"; health checks that prove only process
+liveness are insufficient.
+
+### What git-ai changes
+
+The old method proposed per-line fingerprints as the route to exact attribution
+but rejected hashes of common source lines (`}`, `return;`) because dictionary
+attacks could reverse them. git-ai delivers the useful outcome more safely:
+**line ranges**, which carry no source content.
+
+That structurally removes gross-churn inflation for dead code: code that does
+not survive into the commit receives no range. It does **not** preserve the old
+written-versus-kept measure. git-ai has no churn signal, and its current
+`ai_additions` equals `ai_accepted`, so acceptance reads 100%. The honest
+trade is not "the bias is gone"; it is **written-versus-kept is no longer
+measurable**.
+
+## Live git-ai dogfood findings
+
+The first live install established limits that installation and health surfaces
+must disclose:
+
+- `git ai install-hooks --help` performs a full install. Unknown arguments are
+  ignored, so near-miss spellings of `--dry-run` also fail open and mutate the
+  machine.
+- Hook installation cannot be scoped to selected agents. It also installs a VS
+  Code extension and rewrites editor `settings.json`.
+- Already-running agents remain uninstrumented until restart, and work before
+  that restart is attributed to the human.
+- On the dogfood machine, git-ai did not attribute Cursor IDE work. Cursor
+  dispatched complete write-hook payloads and the daemon ingested them without
+  error, but the note writer was reached only from a trace2-observed commit.
+  Cursor's sandboxed shell hid that commit, and there is no reconciliation
+  sweep for commits without notes (known open upstream issues #909 and #1968).
+- The failure is worse than silence: the recovery ladder can assign `h_`
+  known-human attestations to the unattributed lines. This was observed on
+  agent-written lines.
+- Binary, hooks, daemon, trace2, and checkpoint checks all remained healthy.
+  No shipped health signal detected the missing or wrongly-human attribution.
+
+## See also
+
+- [The git-ai collector handover](../gitai-collector.md) — the current collector,
+  installation contract, losses, and v1 proof ceiling.
+- [Harness telemetry — reports & rollups](./reports.md) — read and
+  render the frozen published corpus.
+- [Pull published telemetry from remote repositories](./pull.md) —
+  retrieve complete published sessions without enabling capture.
+- [Harness telemetry — the OTLP/OTEL stored shape](./otlp.md) — the
+  frozen wire contract and read path.
+- [Harness value measures](../harness-value-measures.md) — how the `segment`
+  contract feeds the team/repo-grain eng-thrive measures.
+- `harness/cli/src/services/telemetry/segment.schema.json` — the machine schema.
+
+### Validating attribution inside an agent harness
+
+Rescued out of a gitignored `scratch/` directory (plan 077 · #108) — the Cursor sandbox
+answer had already been re-derived from scratch twice because the record was somewhere git
+does not track.
+
+- [How agent telemetry actually reaches a git note — and what breaks it](./gitai-06-two-channel-model.md)
+  — **read this first.** The requirement (working telemetry with NO machine customisation), the
+  full five-link chain including the note PUSH nobody had written down, why a reachable socket
+  is still not enough, and which of the two sandbox escapes is the product.
+- [Validating telemetry capture inside a sandboxed agent](./validating-telemetry-capture-in-sandboxed-agents.md)
+  — the interleaved scenario that exercises both channels and fails them independently, with
+  per-line attribution as the thing being proven.
+- [Validating telemetry attribution inside a sandboxed agent harness](./sandbox-03-validation-playbook.md)
+  — the general procedure, with Cursor as the worked example and an explicit table of which
+  harnesses have and have not been tested.
+- [The sandbox investigation](./sandbox-01-investigation.md) — the root cause, found and
+  proven on macOS: a sandbox can leave a socket visible and still refuse the `connect()`.
+- [Two proven routes around the sandbox](./sandbox-02-workarounds-proven.md) — both
+  measured, neither needs a git-ai change.
+- [Sandbox config reference](./sandbox-04-config-reference.md) — the settings that govern
+  it, and an explicit note on which parts are measured versus inferred.
+
+### What each collector captures
+
+- [What harness telemetry captures](./gitai-01-what-harness-captures.md) — read from the
+  schemas and services directly, every claim cited.
+- [git-ai capture inventory](./gitai-02-capture-inventory.md) — its persistent stores and
+  data surface, `file:line` cited.
+- [git-ai agent coverage](./gitai-03-agent-coverage.md) — which agents it ingests
+  transcripts from, and how.
+- [What git-ai pushes, and what you can filter](./gitai-04-push-and-filtering.md) — the two
+  channels, and which one is a git ref.
+- [git-ai attribution algorithm](./gitai-05-attribution-algorithm.md) — how a line becomes
+  attributed, and the correctness machinery around it.
+
+> These were written against `git-ai @ 7df7e2069` in August 2026 and are **point-in-time
+> source reads**, not a maintained contract. They are here because the analysis is expensive
+> to redo, not because it self-updates — re-verify against the current source before relying
+> on a specific `file:line`.
+
+- [`cursor-validation-kit/`](./cursor-validation-kit/README.md) — **runnable kit**: seed script,
+  three paste-ready agent prompts, the human-simulating script, a verification script, and the
+  measured results from 2026-08-09. Run it rather than re-deriving it.

@@ -104,7 +104,7 @@ jobs:
           persist-credentials: false
 
       - name: Set up Node ${{ inputs.node }}
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ inputs.node }}
           cache: npm
@@ -143,6 +143,24 @@ jobs:
       # the summarise step below, which DOES fail.
       - name: Run the suite (report-only)
         working-directory: harness/cli
+        env:
+          # THE SCOPE MUST BE SET EXPLICITLY, AND THIS LINE IS THE WHOLE POINT OF
+          # THE JOB. `vitest.config.ts` defaults HARNESS_TEST_SCOPE to `fast`,
+          # which SKIPS the slow files; its own comment says "all — everything.
+          # What CI sets; what a gate must mean." This workflow did not set it.
+          #
+          # Measured 2026-08-10: the fast default collects 349 test files and this
+          # job reported success five times running. The full suite is 393 files,
+          # and at `all` the same sha produces 112 failures — 81 of them one
+          # product defect that makes every telemetry git call exit 128 on
+          # Windows. Every one of those was invisible here, and the job still
+          # rendered green in `gh run list`, which is how it came to be cited as
+          # Windows coverage.
+          #
+          # A platform job that measures a REDUCED default is worse than no
+          # platform job: it answers a question nobody asked in the voice of the
+          # one they did.
+          HARNESS_TEST_SCOPE: all
         run: |
           $ErrorActionPreference = 'Continue'
           # Two reporters on purpose: `default` puts human-readable failures in
@@ -153,6 +171,7 @@ jobs:
           # doing less work: coverage is already proven on every push by the
           # ubuntu leg, it does not vary by platform, and instrumenting adds time
           # to a job that is already slow for real reasons.
+          "scope: $env:HARNESS_TEST_SCOPE (files collected below must reflect it)"
           npx --no-install vitest run `
             --reporter=default `
             --reporter=json `
@@ -189,8 +208,27 @@ jobs:
           $skipped  = [int]$r.numPendingTests
           $todo     = [int]$r.numTodoTests
           $total    = [int]$r.numTotalTests
-          $filesTot = [int]$r.numTotalTestSuites
-          $filesBad = [int]$r.numFailedTestSuites
+
+          # FILE counts come from testResults[], NOT from num*TestSuites.
+          #
+          # `numTotalTestSuites` counts DESCRIBE BLOCKS, not files, and
+          # `numFailedTestSuites` inflates the numerator to match. Measured: three
+          # files containing nine describes report numTotalTestSuites=9 and, with
+          # ONE file failing, numFailedTestSuites=3. Day one printed "6/1378 files"
+          # for what was really 3/349.
+          #
+          # This is not a cosmetic slip. The consumer reports in FILES ("12 files /
+          # 27 tests"), and ac-0011 requires comparing our number against theirs, so
+          # a suite count under a file label makes the two sides of that comparison
+          # different denominators — the exact error class this plan keeps hitting.
+          # `testResults[]` has one entry per FILE, so it is the honest source, and
+          # it is the same source as the failing-file list below: the table and the
+          # list cannot disagree.
+          $fileResults = @($r.testResults)
+          $failedFileResults = @($fileResults | Where-Object { $_.status -eq 'failed' })
+          $filesTot = $fileResults.Count
+          $filesBad = $failedFileResults.Count
+          $failedFiles = @($failedFileResults | ForEach-Object { $_.name })
 
           # ---- GUARD 2: a suspiciously LOW total is a suspect JOB. ----
           # Verified locally: when a file fails to COLLECT, vitest reports
@@ -207,8 +245,51 @@ jobs:
           $MIN_TOTAL = 4800
           $undercollected = $total -lt $MIN_TOTAL
 
-          # Failing files, for triage and to make the count attributable.
-          $failedFiles = @($r.testResults | Where-Object { $_.status -ne 'passed' } | ForEach-Object { $_.name })
+          # The skip count MEASURED on day one (run 31293261626) — not invented.
+          #
+          # That distinction is the reason this pin is legitimate and it must stay
+          # readable here: before day one there was no honest number to pin, so
+          # none was written down. This is what the platform actually reported the
+          # first time it was asked, and it is a FLOOR to be defended rather than a
+          # constant to be adjusted.
+          #
+          # The failure mode this guards is someone adding a skip and bumping this
+          # number in the SAME commit — "we stopped looking" wearing a green. So a
+          # rise WARNS and states the delta; it never silently re-baselines. If you
+          # move it, move it in its own change and say why the new number is
+          # legitimate.
+          #
+          # The skip count MEASURED on run 31298610502 — not invented, not derived.
+          #
+          # History, so the number has provenance rather than drifting anonymously:
+          #   56  day one          (run 31293261626)
+          #   58  +2               (run 31297297873) two discardProbeRoot cases added
+          #   28  -30              (run 31298610502) the capture-hook removal
+          #
+          # The -30 is attributed source by source, all CASE 3 (subject and tests
+          # removed together), no case 2:
+          #   pre-commit-hook.test.ts   15 skips  file deleted with the hooks
+          #   external-binary.test.ts   15 skips  13 pre-existing POSIX-only + the 2
+          #                                       discardProbeRoot cases; probeShell
+          #                                       has no callers left
+          #   post-commit-hook.test.ts   0 skips  see below — it was never skipping
+          #
+          # `post-commit-hook.test.ts` contributed ZERO to the fall, and that is the
+          # clearest single illustration of what this job cannot see. It guarded on
+          # `describe.skipIf(!BASH.capable)`, and THIS RUNNER'S bash IS capable — so
+          # its 4 cases RAN here, green, in the very file the consumer lost outright
+          # to a WSL bash that is not capable. Green-and-running for us, dead for
+          # them, same file, same commit.
+          #
+          # This pin moved in its OWN commit, against a measured number. A baseline
+          # bumped inside the change that caused the move is how a number stops
+          # meaning anything.
+          $EXPECTED_SKIPS = 28
+          # Both remaining fully-skipped files were deleted by the capture-hook
+          # removal; the 28 that remain are case-level skips.
+          $EXPECTED_SKIPPED_FILES = 0
+
+          # Failing files are derived above, from the same source as the table.
 
           $sum = @()
           $sum += "## windows-latest suite — REPORT ONLY"
@@ -223,31 +304,73 @@ jobs:
           $sum += "| todo | $todo |"
           $sum += "| total collected | $total |"
           $sum += "| test files failed | $filesBad of $filesTot |"
+          # THE DENOMINATOR TRAVELS WITH THE NUMBERS. A count without its scope is
+          # unreadable: 349 files green at `fast` and 393 files with 112 failures
+          # at `all` are both true of the same sha, and only this row tells them
+          # apart. Read from the environment, not hardcoded, so it cannot drift
+          # from what actually ran.
+          $sum += "| scope | ``$env:HARNESS_TEST_SCOPE`` |"
           $sum += ""
           $sum += "Ref measured: ``$(git rev-parse HEAD)``  ·  node ``$(node --version)``"
           $sum += ""
+          $sum += "> **This is THE RUNNER's result, not Windows'.** A green here says the runner is green. What that does and does not license is quantified under *What this job does NOT cover*."
+          $sum += ""
 
           # ---- The skip column, stated as an anti-goal rather than a stat. ----
+          #
+          # The delta is computed OUTSIDE any `skipped -gt 0` gate, deliberately.
+          # A previous version nested the comparison inside it, so a fall to ZERO
+          # skipped the check entirely and printed "No tests were skipped on this
+          # run" — the largest possible loss of coverage rendered as good news.
+          $skipDelta = $skipped - $EXPECTED_SKIPS
           $sum += "### Skips — a green here must never mean ""we stopped looking"""
           $sum += ""
           if ($skipped -gt 0) {
-            $sum += "**$skipped test(s) did not run on this platform.** This round deliberately skipped the real-``git daemon`` cluster and the URL-scope credential case, so a non-zero number is expected — but it is reported here, as a number, so that it CANNOT rise quietly. If this figure grows, something stopped being measured; find out what before reading the pass count as progress."
+            $sum += "**$skipped test(s) did not run on this platform.** Deliberate skips exist here (the real-``git daemon`` cluster, the URL-scope credential case, the cleanup fault-injection cases), so a non-zero number is expected — it is reported as a number so that it cannot CHANGE quietly in either direction."
             $sum += ""
-            $sum += "Once day one's figure is known it should be pinned as the expected baseline, so any increase is an explicit change rather than a thing someone has to notice."
+          } elseif ($EXPECTED_SKIPS -gt 0) {
+            $sum += "**ZERO tests were skipped, against a pin of $EXPECTED_SKIPS.** That is not a clean run — it is a fall of $EXPECTED_SKIPS, and it is the single largest coverage change this job can report. Every deliberate skip this suite had has stopped being reported. Find out whether those tests now RUN or no longer EXIST before reading anything else on this page."
+            $sum += ""
           } else {
-            $sum += "No tests were skipped on this run."
+            $sum += "No tests were skipped, and none were expected."
+            $sum += ""
+          }
+
+          if ($skipDelta -gt 0) {
+            $sum += "> **:rotating_light: SKIPS HAVE RISEN by $skipDelta** — $skipped now versus **$EXPECTED_SKIPS, the last MEASURED pin**. Something stopped being measured since then."
+            $sum += ">"
+            $sum += "> Do NOT re-baseline this in the same change that caused it. Name what stopped being proven, say what still proves it, and move the pin as its own deliberate edit — a skip added and a baseline bumped together is ""we stopped looking"" wearing a green."
+          } elseif ($skipDelta -lt 0) {
+            # Symmetric with the rise ON PURPOSE. An earlier version framed a fall
+            # as unambiguously good ("the new, better floor"), which would have
+            # congratulated a suite for DELETING the tests that used to skip.
+            $sum += "> **:rotating_light: SKIPS HAVE FALLEN by $(-$skipDelta)** — $skipped now versus **$EXPECTED_SKIPS, the last MEASURED pin**."
+            $sum += ">"
+            $sum += "> **A fall is not automatically good news, and it is not automatically bad news either.** It means one of three things, and the number cannot tell you which:"
+            $sum += ">"
+            $sum += "> 1. **Coverage RESTORED** — a case that used to decline now runs here. Good."
+            $sum += "> 2. **Coverage DELETED while its subject remains** — the tests went, the code they guarded did not. **This is the dangerous one**, and it is the reading that never gets assumed."
+            $sum += "> 3. **Subject and tests removed together** — nothing stopped being proven, because the thing being proven no longer exists. Legitimate, and the commonest cause of a large fall."
+            $sum += ">"
+            $sum += "> Case 3 is why this is a WARNING and not a failure: a guard that screams at every legitimate deletion gets ignored, and an ignored guard cannot catch case 2 — which is the only one it exists for. So attribute the fall source by source, name WHICH case each part is, and only then move the pin, in its OWN commit."
+          } else {
+            $sum += "Matches the pinned baseline of **$EXPECTED_SKIPS** — **measured** (day one 56 on run 31293261626; re-pinned to 58 on run 31297297873 when two new fault-injection proofs were added that cannot run on win32), not chosen. Of these, $EXPECTED_SKIPPED_FILES are whole FILES skipped rather than individual cases; a file-level skip and a case-level skip read very differently when scanning this number."
           }
           $sum += ""
 
           # ---- The honesty column (ac-0005): travels WITH the result. ----
           $sum += "### What this job does NOT cover"
           $sum += ""
-          $sum += "A hosted runner is **curated** and is not a proxy for a user's machine — measured, not assumed. ``jq`` is present here and **absent** on the consumer's box, so a green leg can be entirely silent about the failure they actually hit."
+          $sum += "A hosted runner is **curated** and is not a proxy for a user's machine. This is no longer an argument — it is **measured**:"
+          $sum += ""
+          $sum += "> **Day one: this runner reported 3 failing tests. The consumer's box reported 27.** Same suite, same commit family — a **9x gap**."
+          $sum += ""
+          $sum += "Everything in that gap is real breakage this leg cannot see. ``jq`` is present here and **absent** on their box, so a green leg can be entirely silent about the failure they actually hit. Two defects from this round show the shape of what is missing:"
           $sum += ""
           $sum += "* ``acts/plan`` failed on their machine only because an **unelevated** process cannot create ``C:\out``. A runner with more privilege goes green while creating a directory at the drive root — that defect is invisible to CI **by construction**."
           $sum += "* The **timeout** class is contention-dependent. A quiet runner finishes in 12s what a loaded laptop takes 30s to do, so this leg systematically under-reports load-sensitive failures."
           $sum += ""
-          $sum += "**A green run means the path-shape class is covered. It does not mean Windows is fine.**"
+          $sum += "**A green run means the path-shape class is covered. It does not mean Windows is fine — the 9x gap is the measurement of exactly how much it does not mean that.**"
           $sum += ""
 
           # ---- Comparison against the last pristine downstream measurement. ----
@@ -255,7 +378,9 @@ jobs:
           $sum += ""
           $sum += "Consumer's last pristine measurement (``f19bf0d1``): **12 files / 27 tests failing of 5121**, minus whatever ``5a8e8f5b`` fixed."
           $sum += ""
-          $sum += "This run: **$filesBad files / $failed tests failing of $total**."
+          $sum += "This run: **$filesBad files / $failed tests failing of $total collected**, across $filesTot test files."
+          $sum += ""
+          $sum += "Day one on this runner (31293261626): **3 files / 3 tests failing of 5164**, across 349 files. Both sides of that comparison are now in FILES — a suite count is not a file count, and mixing them is how two numbers get compared that were never the same measurement."
           $sum += ""
           $sum += "A count *dramatically lower* than the baseline is a **suspect job before it is a suspect suite** — check that the whole suite was collected before reporting the number as an improvement."
           $sum += ""
@@ -273,8 +398,14 @@ jobs:
 
           # Annotations, so the three numbers are visible without opening the run.
           Write-Output "::notice title=windows-suite::passed=$passed failed=$failed skipped=$skipped of $total collected ($filesBad/$filesTot files failed)"
-          if ($skipped -gt 0) {
-            Write-Output "::warning title=windows-suite skips::$skipped test(s) did not run on win32 — a green suite with a rising skip count means we stopped looking, not that we got better"
+          # Direction-aware, and fired on ANY deviation from the pin — including a
+          # fall to zero, which the previous version could not announce at all
+          # because it only ran when `skipped -gt 0`.
+          if ($skipDelta -ne 0) {
+            $dir = if ($skipDelta -gt 0) { "ROSE by $skipDelta" } else { "FELL by $(-$skipDelta)" }
+            Write-Output "::warning title=windows-suite skips::skip count $dir — $skipped versus the pinned $EXPECTED_SKIPS. A RISE means something stopped being measured; a FALL can mean coverage was DELETED rather than restored. The number cannot tell you which — attribute it before moving the pin."
+          } elseif ($skipped -gt 0) {
+            Write-Output "::warning title=windows-suite skips::$skipped test(s) did not run on win32 (matching the pinned baseline) — a green suite whose skip count CHANGES in either direction means what it is looking at changed, not that it got better"
           }
           if ($undercollected) {
             Write-Output "::error title=windows-suite undercollected::only $total tests collected, expected at least $MIN_TOTAL — SUSPECT THE JOB, not the suite. A Windows collection failure shrinks the totals and reads as 'hardly anything failed'."

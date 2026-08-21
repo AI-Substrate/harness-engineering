@@ -206,9 +206,21 @@ fix:
 format:
     npx biome format --write harness/cli
 
-# Run the CLI unit tests with coverage (report-only).
+# Run the CLI unit tests with coverage (report-only). FAST scope by default —
+# the 12 slow files (see SLOW_TESTS in harness/cli/vitest.config.ts) are skipped,
+# which is ~81% of the runtime for 5% of the tests. Every fast run prints what it
+# skipped. Use `just test-all` before pushing; CI always runs everything.
 test:
     cd harness/cli && npx vitest run --coverage
+
+# The 12 slow files ONLY (real git, fixture repos, PTY). Rarely needed directly —
+# `just test-all` is usually what you want.
+test-heavy:
+    cd harness/cli && HARNESS_TEST_SCOPE=slow npx vitest run
+
+# The FULL suite — the same scope CI gates on. Run before pushing.
+test-all:
+    cd harness/cli && HARNESS_TEST_SCOPE=all npx vitest run --coverage
 
 # Regenerate the real telemetry-fixture goldens from the adapters (plan 037).
 gen-telemetry-fixtures:
@@ -243,29 +255,85 @@ checks:
     npm run build
     node harness/cli/bin/harness.js checks
 
-# Install this clone's telemetry git hooks (sets core.hooksPath -> .githooks). ARMS BOTH:
-#   pre-commit  — buffers ONE counts-only capture while HEAD is still the commit the work was
-#                 based on, so file evidence anchors to the right commit (plan 068). Capture
-#                 only: no sync, no push, no checks. Git HONOURS pre-commit's exit code, so
-#                 that file is structurally exit-0 (`trap 'exit 0' EXIT`, `set -u` banned).
-#                 Disarm just this one: export HARNESS_NO_TELEMETRY_PRECOMMIT=1
-#   post-commit — runs ONLY `harness telemetry sync`, a counts-only push to
-#                 refs/harness-telemetry/*, so each commit flushes buffered telemetry without
-#                 the model having to remember. Git IGNORES its exit code.
-# Neither is the old pre-push checks gate (no build, no tests, can't recurse: the sync push is
-# --no-verify, and a capture cannot trigger a commit). `harness doctor` warns when the flush
-# hook is missing and when the pre-commit hook's p95 goes over budget.
-# Standalone + idempotent (NOT a build dependency — opt in once). Undo: `git config --unset core.hooksPath`.
-install-hooks:
-    @if ! git rev-parse --git-dir >/dev/null 2>&1; then \
-        echo "… not a git checkout — skipping hook install"; \
-    elif [ "$(git config --get core.hooksPath || true)" = ".githooks" ]; then \
-        echo "✓ telemetry hooks already enabled (core.hooksPath=.githooks): pre-commit capture + post-commit flush."; \
-    else \
-        git config core.hooksPath .githooks && \
-        echo "✓ telemetry hooks enabled (core.hooksPath=.githooks) — pre-commit buffers one capture, post-commit runs harness telemetry sync, on every commit."; \
-    fi
+# Dispatch CI on a branch. CI NO LONGER auto-runs on a PR-branch push (see the
+# `on:` block in .github/workflows/ci.yml) — the required `ci-verdict` status is
+# absent until someone asks for it, so an untested PR stays unmergeable.
+#
+# The footgun this recipe exists to close: `workflow_dispatch` tests the sha that
+# is ON THE REMOTE, not the one in your working tree, and the verdict binds to
+# THAT sha. Dispatch with unpushed commits and you get a green verdict against
+# code you did not write — so this refuses when they disagree.
+#
+# Dispatch CI on a branch (default: current) — CI does not auto-run on push.
+ci ref="":
+    @r="{{ref}}"; r="${r:-$(git rev-parse --abbrev-ref HEAD)}"; \
+    head="$(git rev-parse --abbrev-ref HEAD)"; \
+    git fetch --quiet origin "$r" 2>/dev/null \
+      || { echo "no origin/$r — push the branch first: git push -u origin $r"; exit 1; }; \
+    remote="$(git rev-parse FETCH_HEAD)"; \
+    if [ "$r" = "$head" ] && [ "$(git rev-parse HEAD)" != "$remote" ]; then \
+      echo "REFUSING: local HEAD $(git rev-parse --short HEAD) != origin/$r $(git rev-parse --short FETCH_HEAD)."; \
+      echo "CI would test the remote sha and the required check would bind to it. Push first."; \
+      exit 1; \
+    fi; \
+    echo "==> dispatching CI on $r @ $(git rev-parse --short FETCH_HEAD)"; \
+    gh workflow run ci.yml --ref "$r"; \
+    echo "==> watch: gh run list --workflow=ci.yml --branch $r"
 
 # Generate a fresh throwaway test repo (for real agent/manual extension testing); prints its path.
 test-repo dest="":
     @bash scripts/new-test-repo.sh "{{dest}}"
+
+# ---------------------------------------------------------------------------
+# POST-MERGE DEPLOY — one command, so it stops being a memory exercise.
+#
+# Jordan's standing instruction: after EVERY merged PR, the machine must be put
+# back on main — latest source, built CLI, global link pointing at main, skills
+# deployed. Each of those four was already possible and all four depended on
+# someone remembering. Tonight the skills half was THREE WEEKS STALE and it cost
+# a whole plan: a Jul-15 builder authored plan 072 for a tool that reads Aug-4
+# plans, and `harness plan ready` answered E400 on its own plan. Eleven green
+# `harness checks` runs never mentioned it — `check:doctrine-parity` guards the
+# mirrored doctrine block, not deploy freshness.
+#
+# The link step is the one with teeth: a linked WORKTREE silently redirects every
+# other seat's `harness` call to an in-flight, possibly-broken build, and nothing
+# in the envelope reveals which binary answered. See docs/project-rules/rules.md.
+local-deploy: _require-root-checkout
+    @echo "==> 1/5 sync main"
+    git fetch origin main --quiet
+    git merge --ff-only origin/main
+    @echo "==> 2/5 build"
+    npm run build
+    @echo "==> 3/5 link global at main"
+    npm link --ignore-scripts
+    @echo "==> 4/5 deploy skills"
+    @just install-skills-from-source
+    @echo "==> 5/5 PROVE the global is main, not a worktree"
+    @just verify-global-link
+
+# Assert the machine-global `harness` resolves inside the ROOT checkout.
+#
+# A rule that must be remembered is not a control — the same failure mode as the
+# stale skills this recipe exists to prevent. `doctor`'s version-skew layer does
+# NOT catch this: it reported "running 0.13.0 matches the repo (no stale install
+# shadowing)" while the global pointed into a worktree, because the version
+# matched. Version identity is not path identity.
+verify-global-link:
+    @resolved="$(readlink -f "$(command -v harness 2>/dev/null)" 2>/dev/null || true)"; \
+    root="$(git rev-parse --show-toplevel)"; \
+    if [ -z "$resolved" ]; then \
+        echo "NOT-PROBEABLE: no global \`harness\` on PATH — absence is not a pass."; exit 1; \
+    fi; \
+    case "$resolved" in \
+        *-worktrees/*) echo "FAIL: global \`harness\` resolves INSIDE A WORKTREE:"; \
+                       echo "  $resolved"; \
+                       echo "  Every seat's \`harness\` call is running that in-flight build."; \
+                       echo "  Fix from the root checkout: just local-deploy"; exit 1;; \
+    esac; \
+    case "$resolved" in \
+        "$root"/*) echo "OK: global harness -> $resolved";; \
+        *)         echo "FAIL: global \`harness\` resolves OUTSIDE this checkout:"; \
+                   echo "  $resolved"; \
+                   echo "  expected under: $root"; exit 1;; \
+    esac

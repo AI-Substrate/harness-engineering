@@ -245,4 +245,116 @@ describe('arch-check mapping — § Envelope & Exit Contract', () => {
       expect(v.comment).toBe('no comment found for this rule — see .dependency-cruiser.cjs');
     }
   });
+
+  it('given_zero_modules_cruised_when_mapped_then_error_exit1_never_ok', () => {
+    /*
+    Test Doc:
+    - Why: the gate held its own denominator and never looked at it. `totalCruised`
+      was validated by parseDepcruiseJson and published as data.modules, but no
+      branch read it — so an empty cruise (0 modules, 0 violations, valid schema,
+      depcruise exit 0) fell through the clean path and reported `ok`. An
+      architecture gate that scanned NOTHING has abstained, not passed, and a
+      green there is indistinguishable from real enforcement.
+    - Contract: summary.totalCruised === 0 → {status:'error', exitIntent:1} with
+      error.code E_ARCH_NO_MODULES, regardless of violations being empty.
+    - Usage Notes: zero-modules.json is a REAL capture, not a hand-built stub —
+      dependency-cruiser 18.1.0 over harness/cli/src under TypeScript 7.0.2
+      (2026-08-11), the same tree that cruises 336 modules under TypeScript 6.0.3.
+      TS7's native port drops the JS compiler API depcruise parses with, and
+      depcruise resolves the HOST project's typescript, so it goes silently blind.
+    - Quality Contribution: this is the fixture the gate must REFUSE. Without it
+      the new branch is one nobody has watched fire. It also covers the sibling
+      route in Gotcha #1 (bare `npx depcruise` scanning 0 modules in directory
+      mode), which the config has documented as a comment since plan 016 —
+      a comment only fires for a reader who is already suspicious, and nobody is
+      suspicious of a green gate.
+    - Worked Example: zero-modules.json → {status:'error', exitIntent:1,
+      data:{modules:0, dependencies:0, violations:[]},
+      error.code:'E_ARCH_NO_MODULES'}
+    */
+    const { parsed, rules } = parsedWithRules('zero-modules.json');
+    const decision = mapToDecision(parsed, rules);
+
+    expect(decision.status).toBe('error');
+    expect(decision.exitIntent).toBe(1);
+    expect(decision.status).not.toBe('ok');
+    expect(decision.error?.code).toBe('E_ARCH_NO_MODULES');
+    // The honest counts still travel, so the reader sees the zero itself.
+    expect(decision.data).toEqual({ modules: 0, dependencies: 0, violations: [] });
+  });
+
+  it('given_zero_modules_when_mapped_then_next_action_names_the_causes_and_the_reproduction', () => {
+    /*
+    Test Doc:
+    - Why: a refusal that does not say what to do converts a false green into a
+      confusing red. The reader must learn that nothing was scanned, how to
+      reproduce it, and that a passing build/test suite cannot see this — `tsc`
+      is a native binary and stays green while depcruise is blind.
+    - Contract: next_action is present, states that nothing was scanned, carries
+      the raw reproduction command, and names the TypeScript-API cause.
+    - Usage Notes: asserts on substrings that must survive rewording, not on the
+      whole string.
+    - Quality Contribution: stops the guard degrading into a bare 'failed' with
+      no route out — the defect class this whole change is about.
+    - Worked Example: next_action contains 'scanned NOTHING', 'depcruise --config'
+      and 'createProgram'.
+    */
+    const { parsed, rules } = parsedWithRules('zero-modules.json');
+    const decision = mapToDecision(parsed, rules);
+
+    expect(decision.next_action).toBeDefined();
+    expect(decision.next_action).toContain('scanned NOTHING');
+    expect(decision.next_action).toContain('depcruise --config');
+    expect(decision.next_action).toContain('createProgram');
+  });
+
+  it('given_zero_modules_with_intact_schema_when_parsed_then_it_is_not_a_parse_failure', () => {
+    /*
+    Test Doc:
+    - Why: the empty cruise must be separable from schema drift. parseDepcruiseJson
+      rejects malformed output (contract row 6); an empty-but-well-formed document
+      is NOT malformed — it parses cleanly and is refused later, by the mapping,
+      for a different and correctly-named reason. Collapsing the two would report
+      a tooling incompatibility as corrupt output and send the reader hunting the
+      wrong bug.
+    - Contract: parseDepcruiseJson(zero-modules.json) → {ok:true}, and the refusal
+      arrives from mapToDecision with E_ARCH_NO_MODULES rather than a parse detail.
+    - Usage Notes: same real TS7 capture; its schema is fully intact (25 forbidden
+      rules present in ruleSetUsed), which is exactly what makes it dangerous.
+    - Quality Contribution: pins the boundary between 'output is broken' and
+      'output is honestly empty', so each keeps its own diagnosis.
+    - Worked Example: parse ok:true → mapToDecision status 'error'
+      code 'E_ARCH_NO_MODULES'.
+    */
+    const parseResult = parseDepcruiseJson(fixture('zero-modules.json'));
+    expect(parseResult.ok).toBe(true);
+
+    const { parsed, rules } = parsedWithRules('zero-modules.json');
+    expect(mapToDecision(parsed, rules).error?.code).toBe('E_ARCH_NO_MODULES');
+  });
+
+  it('given_zero_modules_but_violations_present_when_mapped_then_still_refuses_as_no_modules', () => {
+    /*
+    Test Doc:
+    - Why: ordering has to be deliberate. The guard sits BEFORE the violation
+      branches, so an incoherent document (nothing cruised, yet violations
+      reported) is refused on the more fundamental fault rather than being
+      reported as an ordinary violation over a scan that never happened.
+    - Contract: totalCruised === 0 wins over the error/degraded violation paths.
+    - Usage Notes: built by grafting the warn-only fixture's violations onto the
+      real zero-module summary — a state depcruise should never emit, asserted so
+      the precedence is pinned rather than incidental.
+    - Quality Contribution: prevents a later refactor from reordering the branches
+      and quietly restoring exit 0 for an empty cruise.
+    - Worked Example: {totalCruised:0, violations:[warn]} → E_ARCH_NO_MODULES.
+    */
+    const { parsed: zero, rules } = parsedWithRules('zero-modules.json');
+    const { parsed: warn } = parsedWithRules('warn-only.json');
+    const doc = zero as { summary: { violations: unknown[] } };
+    doc.summary.violations = (warn as { summary: { violations: unknown[] } }).summary.violations;
+
+    const decision = mapToDecision(doc, rules);
+    expect(decision.status).toBe('error');
+    expect(decision.error?.code).toBe('E_ARCH_NO_MODULES');
+  });
 });

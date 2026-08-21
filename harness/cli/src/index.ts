@@ -21,7 +21,12 @@ process.stdout.on('error', (err: NodeJS.ErrnoException) => {
 // main() routes every expected failure through the exit kernel; this .catch() is
 // a CATASTROPHIC-only net so the async bin can never float an unhandled promise
 // rejection (which would bypass the kernel + the Envelope contract). KF-04.
-main().catch((err: unknown) => {
+// `autoInstallCollector: true` is set HERE and nowhere else. This file is the
+// only entry that is never imported by a test — importing it runs `main()` — so
+// it is the one place where "this is a real user invocation" is structurally
+// true rather than assumed. `main()` itself is unit-tested, which is why the
+// flag does not default on there.
+main(process.argv, { autoInstallCollector: true }).catch((err: unknown) => {
   process.exitCode = 1;
   process.stderr.write(
     `harness: unexpected error: ${err instanceof Error ? err.message : String(err)}\n`,
