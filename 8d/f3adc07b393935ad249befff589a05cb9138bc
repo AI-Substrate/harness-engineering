@@ -1,0 +1,681 @@
+.claude/skills/telemetry-insights-narrate/SKILL.md
+  s_c88674e85f3aea::t_f6d90783dce4c1 98
+.github/workflows/ci.yml
+  s_c88674e85f3aea::t_075d199444da2b 4-30,92,111-116,118-119,146-150,154-157,159-184,186-227,246
+.github/workflows/release.yml
+  s_c88674e85f3aea::t_5be31da6fb0e10 68,111
+.github/workflows/windows.yml
+  s_c88674e85f3aea::t_a06984fcb32da0 107,146-163,174,211-231,248-292,307-312,316-317,320-325,329-335,337-355,357,364-368,373,381-383,401-408
+.harness/extensions/arch-check/fixtures/zero-modules.json
+  s_c88674e85f3aea::t_c10110c4e1fccd 1-336
+.harness/extensions/arch-check/instructions.md
+  s_c88674e85f3aea::t_03ac69de1f1b6e 10-12,41-42,50-51,54-82
+.harness/extensions/arch-check/mapping.test.ts
+  s_c88674e85f3aea::t_87c5ad8a993de8 248-359
+.harness/extensions/arch-check/mapping.ts
+  s_c88674e85f3aea::t_8c2d99f907d8c9 125-165
+.harness/extensions/checks/extension.ts
+  s_c88674e85f3aea::t_d82fc0349afbc6 109-311,324-331,340-349,355-366,368,370-374,380-381
+.harness/extensions/checks/instructions.md
+  s_c88674e85f3aea::t_03ad8aafa8c5f6 61-102
+.harness/extensions/checks/ref-isolation.test.ts
+  s_c88674e85f3aea::t_82d90f315831cb 1-152
+.harness/extensions/repo-sensors/extension.ts
+  s_c88674e85f3aea::t_c731e0792d3377 428
+.harness/extensions/telemetry-fixtures/instructions.md
+  s_c88674e85f3aea::t_1f33bc2250aaf1 60
+.harness/extensions/validate-attribution/README.md
+  s_c88674e85f3aea::t_f8b237f6d3b0a5 1-214
+.harness/extensions/validate-attribution/extension.test.ts
+  s_c88674e85f3aea::t_afb463f1b3326e 1-387
+.harness/extensions/validate-attribution/extension.ts
+  s_c88674e85f3aea::t_ed234d48ed44d7 1-675
+.harness/extensions/validate-attribution/fixtures.ts
+  s_c88674e85f3aea::t_999f9975885c63 1-198
+.harness/extensions/validate-attribution/scoring.test.ts
+  s_c88674e85f3aea::t_fa60beb6eb420e 1-343
+.harness/extensions/validate-attribution/scoring.ts
+  s_c88674e85f3aea::t_a8729866407fdc 1-418
+.harness/extensions/windows-check/instructions.md
+  s_c88674e85f3aea::t_3c57e60b768d06 8-10
+.harness/records/retro/2026-07-04/004-052-backlog.md
+  s_c88674e85f3aea::t_a150edc2206c04 93
+.harness/records/retro/2026-08-09/001-082-harness-hooks-phase-1.md
+  s_c88674e85f3aea::t_325b1901eba7d3 1-86
+.harness/records/retro/2026-08-09/002-082-harness-hooks-phases-2-3.md
+  s_c88674e85f3aea::t_e61231640a2749 1-217
+AGENTS.md
+  s_c88674e85f3aea::t_4794dbb42b9069 71-182,217-244
+README.md
+  s_c88674e85f3aea::t_3d653c0c246f4f 107,170,174-226
+docs/guide/14-metrics-and-measures.md
+  s_c88674e85f3aea::t_f97b90d053070e 190,203
+docs/how/architecture-conformance.md
+  s_c88674e85f3aea::t_d6a658e1e70900 16,94
+docs/how/detailed-system-overview.md
+  s_c88674e85f3aea::t_533b95efcad6fa 349
+docs/how/flow-conformance-eval.md
+  s_c88674e85f3aea::t_1c0deac9a7965a 455,494
+docs/how/gitai-collector.md
+  s_c88674e85f3aea::t_972968258f9904 352-368,597-606,622,624,626
+docs/how/harness-value-measures.md
+  s_c88674e85f3aea::t_a7462b2c4aa48e 292,304,416
+docs/how/telemetry/README.md
+  s_c88674e85f3aea::t_604244a229d290 3-36,38,52,58,65,390-391,396,398-414,717-741,817,994,996,998,1000,1002,1005-1049
+docs/how/telemetry/cohort-insights.md
+  s_c88674e85f3aea::t_eebdbe14792196 14,20,22,24,88,105,107,109,111
+docs/how/telemetry/cursor-validation-kit/00-seed-repo.sh
+  s_c88674e85f3aea::t_967bf0414074c5 2-4,6-7,9-12,14-25
+docs/how/telemetry/cursor-validation-kit/01-human-step.sh
+  s_c88674e85f3aea::t_9acef580e8378b 1-43
+docs/how/telemetry/cursor-validation-kit/02-verify.sh
+  s_c88674e85f3aea::t_afd9af9c63f767 1-32
+docs/how/telemetry/cursor-validation-kit/CURSOR-PROMPT-1.md
+  s_c88674e85f3aea::t_d6ea045870ccfb 1-34
+docs/how/telemetry/cursor-validation-kit/CURSOR-PROMPT-2.md
+  s_c88674e85f3aea::t_d2f58c4032af29 1-39
+docs/how/telemetry/cursor-validation-kit/CURSOR-PROMPT-3.md
+  s_c88674e85f3aea::t_034789abbbd789 1-40
+docs/how/telemetry/cursor-validation-kit/README.md
+  s_c88674e85f3aea::t_4ce553ceadb72c 1-240
+docs/how/telemetry/cursor-validation-kit/VALIDATING-THE-HUMAN-AI-SPLIT.md
+  s_c88674e85f3aea::t_8d79b7d44aa5f2 1-167
+docs/how/telemetry/cursor-validation-kit/human_edit.py
+  s_c88674e85f3aea::t_e3d0c59a2a85ba 1-22
+docs/how/telemetry/field-reference.html
+  s_c88674e85f3aea::t_db9a0bbef4ae52 813-815
+docs/how/telemetry/gitai-02-capture-inventory.md
+  s_c88674e85f3aea::t_80470bb5122ccd 1-195
+docs/how/telemetry/gitai-03-agent-coverage.md
+  s_c88674e85f3aea::t_033aa6317acd57 1-289
+docs/how/telemetry/gitai-05-attribution-algorithm.md
+  s_c88674e85f3aea::t_150a6c5e1a8363 1-379
+docs/how/telemetry/gitai-06-two-channel-model.md
+  s_c88674e85f3aea::t_0c1ce2d4e040d6 1-454
+docs/how/telemetry/otlp.md
+  s_c88674e85f3aea::t_df70291bd4be77 4,223,225,227
+docs/how/telemetry/pull.md
+  s_c88674e85f3aea::t_5d6acaef1739a7 10
+docs/how/telemetry/reports.md
+  s_c88674e85f3aea::t_7bb484c5bfe530 6,20,58,74,232,234,236,239
+docs/how/telemetry/sandbox-01-investigation.md
+  s_c88674e85f3aea::t_ca38e0ab030f27 1-170
+docs/how/telemetry/sandbox-02-workarounds-proven.md
+  s_c88674e85f3aea::t_ec1b78c178da4f 1-136
+docs/how/telemetry/sandbox-03-validation-playbook.md
+  s_c88674e85f3aea::t_0fedcceca3c028 1-412
+docs/how/telemetry/sandbox-04-config-reference.md
+  s_c88674e85f3aea::t_209a98176f5794 1-172
+docs/how/telemetry/validating-telemetry-capture-in-sandboxed-agents.md
+  s_c88674e85f3aea::t_42c2cfddeee919 1-640
+docs/plans/083-windows-portability/assets/briefs/CODER-dd-schema-fs.md
+  s_c88674e85f3aea::t_210f871ede410d 1-92
+docs/plans/083-windows-portability/assets/briefs/CODER-final-11.md
+  s_c88674e85f3aea::t_ce6f5efbf01b21 1-122
+docs/plans/083-windows-portability/assets/briefs/CODER-hooks-windows.md
+  s_c88674e85f3aea::t_4678ad1e5f20d3 1-160
+docs/plans/083-windows-portability/assets/briefs/CODER-null-device.md
+  s_c88674e85f3aea::t_8f4fe06250ff13 1-142
+docs/plans/083-windows-portability/assets/briefs/VM-LANE-narwhal.md
+  s_c88674e85f3aea::t_0c65836a17cfeb 1-54
+docs/plans/083-windows-portability/assets/windows/BRIEF-FINAL-REVIEW.md
+  s_c88674e85f3aea::t_6886a2069976b2 1-67
+docs/plans/083-windows-portability/assets/windows/BRIEF-S1-product.md
+  s_c88674e85f3aea::t_57010b25f821f8 1-91
+docs/plans/083-windows-portability/assets/windows/BRIEF-S2-paths.md
+  s_c88674e85f3aea::t_5e6a63aa539349 1-54
+docs/plans/083-windows-portability/assets/windows/BRIEF-S3-tests.md
+  s_c88674e85f3aea::t_b63abc471fba3e 1-64
+docs/plans/083-windows-portability/assets/windows/FINDING-npm-ci-dirties-the-tree-on-windows.md
+  s_c88674e85f3aea::t_2439a61c54049a 1-297
+docs/plans/083-windows-portability/assets/windows/FINDING-windows-check-cannot-see-the-cli.md
+  s_c88674e85f3aea::t_3cf03c193e5a44 1-45
+docs/plans/083-windows-portability/assets/windows/PLANS-SALVAGE.md
+  s_c88674e85f3aea::t_77312d6ac92a41 1-68
+docs/plans/083-windows-portability/assets/windows/PROVENANCE.md
+  s_c88674e85f3aea::t_90208fcd193832 1-75
+docs/plans/083-windows-portability/assets/windows/STREAM-CONTEXT.md
+  s_c88674e85f3aea::t_5be035d23d036d 1-103
+docs/plans/083-windows-portability/assets/windows/WINDOWS-ISSUES.md
+  s_c88674e85f3aea::t_d61b7c0f53dfb3 1-642
+docs/plans/083-windows-portability/assets/windows/remote-23-failures.md
+  s_c88674e85f3aea::t_ae1ac24b87234f 1-81
+docs/plans/083-windows-portability/assets/windows/vitest-results-control.json
+  s_c88674e85f3aea::t_4915a99464bc43 1
+docs/plans/083-windows-portability/assets/windows/vitest-results-timeout.json
+  s_c88674e85f3aea::t_ae50baf045f557 1
+docs/plans/083-windows-portability/assets/windows/vm-082-measurement.md
+  s_c88674e85f3aea::t_e2995a9f85e016 1-241
+docs/plans/083-windows-portability/assets/windows/vm-082/README.md
+  s_c88674e85f3aea::t_1707d6ccfdd31b 1-23
+docs/plans/083-windows-portability/assets/windows/vm-082/vitest-results.json
+  s_c88674e85f3aea::t_75fc5846445ca7 1
+docs/plans/083-windows-portability/assets/windows/vm-082/vitest-results2.json
+  s_c88674e85f3aea::t_dcee8bf004dedb 1
+docs/plans/083-windows-portability/original-ask.md
+  s_c88674e85f3aea::t_3d4d020d7b5b69 1-23
+docs/plans/083-windows-portability/windows-portability-plan.md
+  s_c88674e85f3aea::t_ddbef20e37014a 1-440
+docs/plans/archive/073-gitai-collector-v1/assets/post-flight.md
+  s_c88674e85f3aea::t_782203c978d23b 1-27
+docs/plans/archive/073-gitai-collector-v1/assets/research-dossier.md
+  s_c88674e85f3aea::t_a17f29b1bcb20d 115,117
+docs/plans/archive/073-gitai-collector-v1/assets/research/01-what-harness-captures.md
+  s_c88674e85f3aea::t_73370bcd00cccb 1-192
+docs/plans/archive/073-gitai-collector-v1/assets/research/04-gitai-push-and-filtering.md
+  s_c88674e85f3aea::t_09aaf515ddec63 1-92
+docs/plans/archive/074-sandbox-attribution/assets/post-flight.md
+  s_c88674e85f3aea::t_8a139922c26341 1-30
+docs/plans/archive/074-sandbox-attribution/assets/research/03-scratch-cursor-sandbox-investigation.md
+  s_c88674e85f3aea::t_8faef123a83279 78-93
+docs/plans/archive/075-windows-nudge-honesty/assets/post-flight.md
+  s_c88674e85f3aea::t_1461c093ebb581 1-23
+docs/plans/archive/076-commit-guidance-convergence/assets/post-flight.md
+  s_c88674e85f3aea::t_f8ac029839c40f 1-23
+docs/plans/archive/077-windows-suite-portability/assets/BASELINE-CORRECTION-markdown-lint.md
+  s_c88674e85f3aea::t_39e6386ebccfee 1-144
+docs/plans/archive/077-windows-suite-portability/assets/CODER-BRIEF-round1.md
+  s_c88674e85f3aea::t_fa4ce04ff03cc9 1-93
+docs/plans/archive/077-windows-suite-portability/assets/CODER-BRIEF-round2-fixes.md
+  s_c88674e85f3aea::t_3ab0787f19a036 1-65
+docs/plans/archive/077-windows-suite-portability/assets/CODER-BRIEF-round4-nulldevice.md
+  s_c88674e85f3aea::t_b99ba553954181 1-77
+docs/plans/archive/077-windows-suite-portability/assets/CODER-BRIEF-round5-greenfork.md
+  s_c88674e85f3aea::t_b5a4a991110fd9 1-69
+docs/plans/archive/077-windows-suite-portability/assets/CODER-BRIEF-round5-sentinel.md
+  s_c88674e85f3aea::t_7324926265aad9 1-89
+docs/plans/archive/077-windows-suite-portability/assets/CODER-BRIEF-round6-winci.md
+  s_c88674e85f3aea::t_10551cec38b21e 1-80
+docs/plans/archive/077-windows-suite-portability/assets/REVIEWER-BRIEF-round1.md
+  s_c88674e85f3aea::t_a70c8748b39c96 1-79
+docs/plans/archive/077-windows-suite-portability/assets/REVIEWER-BRIEF-round2.md
+  s_c88674e85f3aea::t_cbe7fd92d09bcf 1-89
+docs/plans/archive/077-windows-suite-portability/assets/REVIEWER-BRIEF-round4.md
+  s_c88674e85f3aea::t_6a5291428f54cc 1-111
+docs/plans/archive/077-windows-suite-portability/assets/REVIEWER-BRIEF-round5.md
+  s_c88674e85f3aea::t_b7836b267c9165 1-104
+docs/plans/archive/077-windows-suite-portability/assets/post-flight.md
+  s_c88674e85f3aea::t_ebdb321305ef65 1-33
+docs/plans/archive/077-windows-suite-portability/assets/reviews/phase-2-review.md
+  s_c88674e85f3aea::t_c72e653793176f 1-237
+docs/plans/archive/077-windows-suite-portability/assets/reviews/phase-3-review.md
+  s_c88674e85f3aea::t_faa8753915d785 1-66
+docs/plans/archive/077-windows-suite-portability/assets/reviews/phase-4-review.md
+  s_c88674e85f3aea::t_0ca82b4f95c419 1-51
+docs/plans/archive/077-windows-suite-portability/assets/reviews/phase-5-review.md
+  s_c88674e85f3aea::t_0ec7c67f4d9f3f 1-40
+docs/plans/archive/077-windows-suite-portability/assets/tasks/phase-1/tasks.dd.json
+  s_c88674e85f3aea::t_97799c4bda7f01 1-109
+docs/plans/archive/077-windows-suite-portability/assets/tasks/phase-1/tasks.dd.md
+  s_c88674e85f3aea::t_8ab52f7e71bc13 1-53
+docs/plans/archive/077-windows-suite-portability/assets/tasks/phase-2/execution.log.md
+  s_c88674e85f3aea::t_10035ae81e6a41 1-770
+docs/plans/archive/077-windows-suite-portability/assets/tasks/phase-2/tasks.dd.json
+  s_c88674e85f3aea::t_f50b6554db8ebf 1-75
+docs/plans/archive/077-windows-suite-portability/assets/tasks/phase-2/tasks.dd.md
+  s_c88674e85f3aea::t_d632eec4b4854f 1-48
+docs/plans/archive/077-windows-suite-portability/assets/tasks/phase-3/execution.log.md
+  s_c88674e85f3aea::t_c9866c4b5eac75 1-303
+docs/plans/archive/077-windows-suite-portability/assets/tasks/phase-3/tasks.dd.json
+  s_c88674e85f3aea::t_13d134303b9302 1-57
+docs/plans/archive/077-windows-suite-portability/assets/tasks/phase-3/tasks.dd.md
+  s_c88674e85f3aea::t_d707449f3b0ec0 1-46
+docs/plans/archive/077-windows-suite-portability/assets/tasks/phase-4/tasks.dd.json
+  s_c88674e85f3aea::t_b6feac5916c4bb 1-72
+docs/plans/archive/077-windows-suite-portability/assets/tasks/phase-4/tasks.dd.md
+  s_c88674e85f3aea::t_9be23b3e7c5251 1-47
+docs/plans/archive/077-windows-suite-portability/original-ask.md
+  s_c88674e85f3aea::t_b24a0bcc5a5649 1-76
+docs/plans/archive/077-windows-suite-portability/plan.dd.json
+  s_c88674e85f3aea::t_30a4302b35b76b 1-180
+docs/plans/archive/077-windows-suite-portability/plan.dd.md
+  s_c88674e85f3aea::t_d76a43149773dc 1-89
+docs/plans/archive/078-collector-install-host-pin/assets/post-flight.md
+  s_c88674e85f3aea::t_2f1bb7be83f0ef 1-27
+docs/plans/archive/082-harness-hooks/assets/backpressure-coverage.md
+  s_c88674e85f3aea::t_14f31795d4a978 1-144
+docs/plans/archive/082-harness-hooks/assets/delivery-state.md
+  s_c88674e85f3aea::t_ddfec644a09c80 1-256
+docs/plans/archive/082-harness-hooks/assets/index-at-pre-what-it-catches.md
+  s_c88674e85f3aea::t_dbd51a0dc431ca 1-193
+docs/plans/archive/082-harness-hooks/assets/platform-findings.md
+  s_c88674e85f3aea::t_bfca0c372c8da3 1-268
+docs/plans/archive/082-harness-hooks/assets/poc/CURSOR-PROMPT-1.md
+  s_c88674e85f3aea::t_abc62f37df0b57 1-28
+docs/plans/archive/082-harness-hooks/assets/poc/CURSOR-PROMPT-2.md
+  s_c88674e85f3aea::t_20cabdc844554d 1-32
+docs/plans/archive/082-harness-hooks/assets/poc/CURSOR-PROMPT-3.md
+  s_c88674e85f3aea::t_c8f792b24cabfa 1-31
+docs/plans/archive/082-harness-hooks/assets/poc/CURSOR-PROMPT-4.md
+  s_c88674e85f3aea::t_a2419b9e8ff582 1-30
+docs/plans/archive/082-harness-hooks/assets/poc/CURSOR-PROMPT-5.md
+  s_c88674e85f3aea::t_5b521123b90b35 1-33
+docs/plans/archive/082-harness-hooks/assets/poc/CURSOR-PROMPT-6.md
+  s_c88674e85f3aea::t_13fa590959af97 1-40
+docs/plans/archive/082-harness-hooks/assets/poc/CURSOR-PROMPT-7.md
+  s_c88674e85f3aea::t_39916b08465f13 1-40
+docs/plans/archive/082-harness-hooks/assets/poc/CURSOR-PROMPT-8.md
+  s_c88674e85f3aea::t_aaec36dc49183b 1-176
+docs/plans/archive/082-harness-hooks/assets/poc/PREDICTION.md
+  s_c88674e85f3aea::t_21226ce8a217fb 1-55
+docs/plans/archive/082-harness-hooks/assets/poc/env-report.py
+  s_c88674e85f3aea::t_a6fcd625d831e0 1-66
+docs/plans/archive/082-harness-hooks/assets/poc/harness-commit-hook.mjs
+  s_c88674e85f3aea::t_aed527c3818ec7 1-176
+docs/plans/archive/082-harness-hooks/assets/poc/harness-trace2-hook.mjs
+  s_c88674e85f3aea::t_2dcdd6cbf306ee 1-139
+docs/plans/archive/082-harness-hooks/assets/poc/hook-probe.py
+  s_c88674e85f3aea::t_4cd323c4b62d0d 1-49
+docs/plans/archive/082-harness-hooks/assets/poc/probe-socket.py
+  s_c88674e85f3aea::t_2514a4c320ebce 1-73
+docs/plans/archive/082-harness-hooks/assets/poc/seed-human.py
+  s_c88674e85f3aea::t_100035ef04ce63 1-70
+docs/plans/archive/082-harness-hooks/assets/poc/synth-trace2.mjs
+  s_c88674e85f3aea::t_98bfd530a34dfa 1-92
+docs/plans/archive/082-harness-hooks/assets/poc/trace2-relay.py
+  s_c88674e85f3aea::t_8e5a0b01943833 1-95
+docs/plans/archive/082-harness-hooks/assets/post-flight.md
+  s_c88674e85f3aea::t_d29de9f4794345 1-33
+docs/plans/archive/082-harness-hooks/assets/research-dossier.md
+  s_c88674e85f3aea::t_9684f06630eeaf 1-366
+docs/plans/archive/082-harness-hooks/assets/reviews/phase-1-review-brief.md
+  s_c88674e85f3aea::t_40b5ecb2623dd5 1-87
+docs/plans/archive/082-harness-hooks/assets/reviews/phase-1-review-verdict.md
+  s_c88674e85f3aea::t_de9ef7bd336e42 1-57
+docs/plans/archive/082-harness-hooks/assets/reviews/phase-2-review-brief.md
+  s_c88674e85f3aea::t_11cc45c6073c59 1-98
+docs/plans/archive/082-harness-hooks/assets/tasks/phase-1/execution.log.md
+  s_c88674e85f3aea::t_fe1ecdf7146e9e 1-767
+docs/plans/archive/082-harness-hooks/assets/tasks/phase-1/tasks.dd.json
+  s_c88674e85f3aea::t_398a0783562bce 1-400
+docs/plans/archive/082-harness-hooks/assets/tasks/phase-1/tasks.dd.md
+  s_c88674e85f3aea::t_f976bcb625f229 1-152
+docs/plans/archive/082-harness-hooks/assets/tasks/phase-2/execution.log.md
+  s_c88674e85f3aea::t_ef3123ac8125b3 1-1568
+docs/plans/archive/082-harness-hooks/assets/tasks/phase-2/reviews/fix-tasks.phase-2.md
+  s_c88674e85f3aea::t_a89d33dbf699d1 1-36
+docs/plans/archive/082-harness-hooks/assets/tasks/phase-2/reviews/review.phase-2.md
+  s_c88674e85f3aea::t_0c1f0c3d5f68ea 1-160
+docs/plans/archive/082-harness-hooks/assets/tasks/phase-2/tasks.dd.json
+  s_c88674e85f3aea::t_03490518b0d513 1-638
+docs/plans/archive/082-harness-hooks/assets/tasks/phase-2/tasks.dd.md
+  s_c88674e85f3aea::t_7c74e20aedef17 1-208
+docs/plans/archive/082-harness-hooks/assets/tasks/phase-3/execution.log.md
+  s_c88674e85f3aea::t_411dd02e0bf0e3 1-1275
+docs/plans/archive/082-harness-hooks/assets/tasks/phase-3/reviews/fix-tasks.phase-3.md
+  s_c88674e85f3aea::t_657bbfd00e1de7 1-26
+docs/plans/archive/082-harness-hooks/assets/tasks/phase-3/reviews/review.phase-3.md
+  s_c88674e85f3aea::t_f7e2202b41589d 1-157
+docs/plans/archive/082-harness-hooks/assets/tasks/phase-3/tasks.dd.json
+  s_c88674e85f3aea::t_d0bc1039b6c659 1-270
+docs/plans/archive/082-harness-hooks/assets/tasks/phase-3/tasks.dd.md
+  s_c88674e85f3aea::t_b531088be9a831 1-105
+docs/plans/archive/082-harness-hooks/assets/tasks/phase-4/execution.log.md
+  s_c88674e85f3aea::t_ee3581e98937f9 1-246
+docs/plans/archive/082-harness-hooks/assets/tasks/phase-5/execution.log.md
+  s_c88674e85f3aea::t_5a0b265417af84 1-566
+docs/plans/archive/082-harness-hooks/assets/windows/METHOD-how-this-was-run.md
+  s_c88674e85f3aea::t_b583c43f87b379 1-241
+docs/plans/archive/082-harness-hooks/assets/windows/README.md
+  s_c88674e85f3aea::t_eeff21ea722e27 1-113
+docs/plans/archive/082-harness-hooks/assets/windows/createdfile-means-unreadable-not-created.md
+  s_c88674e85f3aea::t_453ab29bd6b937 1-138
+docs/plans/archive/082-harness-hooks/assets/windows/cursor-sandbox-not-on-native-windows.md
+  s_c88674e85f3aea::t_d6be73930bf15e 1-109
+docs/plans/archive/082-harness-hooks/assets/windows/deploy-runbook.md
+  s_c88674e85f3aea::t_aae19dc01dee27 1-189
+docs/plans/archive/082-harness-hooks/assets/windows/hook-parse-observable-brief.md
+  s_c88674e85f3aea::t_eeb6f51533630a 1-463
+docs/plans/archive/082-harness-hooks/assets/windows/knownhuman-attestation-decides-attribution.md
+  s_c88674e85f3aea::t_e6b0c26f0fb8f9 1-163
+docs/plans/archive/082-harness-hooks/assets/windows/machine-and-method-facts.md
+  s_c88674e85f3aea::t_c4c0a837670af2 1-201
+docs/plans/archive/082-harness-hooks/assets/windows/ordering-experiment.md
+  s_c88674e85f3aea::t_93ff77fb5d602c 1-130
+docs/plans/archive/082-harness-hooks/assets/windows/root-cause-extension-cannot-find-git-ai.md
+  s_c88674e85f3aea::t_c277e50b15c7d7 1-260
+docs/plans/archive/082-harness-hooks/assets/windows/same-file-mixed-commit.md
+  s_c88674e85f3aea::t_981543dc2adcc8 1-221
+docs/plans/archive/082-harness-hooks/assets/windows/vendor-support-status-non-wsl-experimental.md
+  s_c88674e85f3aea::t_f6ca89e8144704 1-120
+docs/plans/archive/082-harness-hooks/assets/workshops/hooks-installing.md
+  s_c88674e85f3aea::t_be007bd96e9c24 1-175
+docs/plans/archive/082-harness-hooks/plan.dd.json
+  s_c88674e85f3aea::t_fb35bf7f8fd892 1-409
+docs/plans/archive/082-harness-hooks/plan.dd.md
+  s_c88674e85f3aea::t_6a582112b93b8c 1-223
+docs/plans/archive/082-harness-hooks/the-flow.json
+  s_c88674e85f3aea::t_a58efffbf2bac9 1-830
+docs/plans/archive/082-harness-hooks/the-flow.md
+  s_c88674e85f3aea::t_a78f3dd0830bc9 1-64
+docs/plans/archive/fx001-telemetry-get-ref-fallback/FX001-findings-for-prime.md
+  s_c88674e85f3aea::t_29112de57c9b46 61
+docs/plans/archive/fx001-telemetry-get-ref-fallback/FX001-review-packet.md
+  s_c88674e85f3aea::t_5bfc824042ad27 181
+docs/plans/archive/fx001-telemetry-get-ref-fallback/FX001-telemetry-get-ref-fallback.log.md
+  s_c88674e85f3aea::t_03ab2624133291 130,137
+docs/plans/archive/fx009-cursor-write-strreplace/assets/post-flight.md
+  s_c88674e85f3aea::t_37979502600eac 1-27
+docs/project-rules/rules.md
+  s_c88674e85f3aea::t_f652a8f18b5f90 117,123-157
+docs/retros/slow-test-audit.md
+  s_c88674e85f3aea::t_a66f7de574970d 1-1086
+harness/cli/README.md
+  s_c88674e85f3aea::t_1c7a1ebd495092 166-183,187-189,193,196,199-201
+harness/cli/bin/harness-hook.ps1
+  s_c88674e85f3aea::t_2502c9a1ab3954 1-309
+harness/cli/bin/harness-hook.sh
+  s_c88674e85f3aea::t_610eb35858ef48 1-290
+harness/cli/src/acts/doctor.ts
+  s_c88674e85f3aea::t_0aeb23a042f5b1 6,21-24,36-37,41,63-64,70,81,114-118,120-130,134-135,152-171,244-302,322,334-360,367-368,383-396,489-497,530-534
+harness/cli/src/acts/hooks.ts
+  s_c88674e85f3aea::t_328f94a84610e1 1-530
+harness/cli/src/acts/plan/index.ts
+  s_c88674e85f3aea::t_561a84f0f5e352 421,469-472
+harness/cli/src/acts/plan/pr-body.ts
+  s_c88674e85f3aea::t_3ebb2168d37534 109
+harness/cli/src/adapters/exec/invocation-probe-port.ts
+  s_c88674e85f3aea::t_ac8cde07e168a5 1-44
+harness/cli/src/adapters/exec/spawn-invocation-probe.ts
+  s_c88674e85f3aea::t_b0c9c7a5181a09 1-58
+harness/cli/src/adapters/exec/spawn-wrapper-check.ts
+  s_c88674e85f3aea::t_6a3cb06a67ec9a 1-53
+harness/cli/src/adapters/fs/fake-fs.ts
+  s_c88674e85f3aea::t_d73ea7f52f51c7 14-15,200-239,407-415,417-421
+harness/cli/src/adapters/fs/fs-port.ts
+  s_c88674e85f3aea::t_85d6b3094a37a1 58-115
+harness/cli/src/adapters/fs/node-fs.ts
+  s_c88674e85f3aea::t_17c88a18a18d8e 21,112-148,163,273-314
+harness/cli/src/adapters/git/exec-git.ts
+  s_c88674e85f3aea::t_81b9a7bac61a78 2-3,51-96,98-107,161-219
+harness/cli/src/adapters/git/exec-remote-telemetry-git.ts
+  s_c88674e85f3aea::t_f2372cad274938 11,97-142,152,160-163,174
+harness/cli/src/adapters/git/fake-git.ts
+  s_c88674e85f3aea::t_e7589c5dc1967c 1,18-31,67-96
+harness/cli/src/adapters/git/git-port.ts
+  s_c88674e85f3aea::t_024124eb6ad298 7-89,114-148
+harness/cli/src/adapters/net/node-socket-probe.ts
+  s_c88674e85f3aea::t_f26ee9b94800f6 17-21,41-59
+harness/cli/src/app.ts
+  s_c88674e85f3aea::t_4388715874d9e1 7,50,63,76-79,318-382,394-408,463,473-481,485-488,551-564,602,691
+harness/cli/src/index.ts
+  s_c88674e85f3aea::t_ef69797517536a 24-29
+harness/cli/src/services/commit/commit-service.ts
+  s_c88674e85f3aea::t_7a9d769c3373f8 34-38,140-147,376,378-380,428-430
+harness/cli/src/services/docs/docs-content.ts
+  s_c88674e85f3aea::t_f7254d6630f96c 58,76,85,94,103
+harness/cli/src/services/docs/docs-manifest.json
+  s_c88674e85f3aea::t_b189c1945997ba 65,72,79
+harness/cli/src/services/doctor/collector/agents.ts
+  s_c88674e85f3aea::t_116a46a1c5e826 1-2,18-36,46-76,79-99,101-176,189-216,225-278
+harness/cli/src/services/doctor/collector/at-risk.ts
+  s_c88674e85f3aea::t_d4d9fa1a7153d1 75-84,94,126-132,135-139,141-142,144,146,148,152-157
+harness/cli/src/services/doctor/collector/auto-install-block.ts
+  s_c88674e85f3aea::t_7a4b088e8c7536 1-100
+harness/cli/src/services/doctor/collector/auto-install.ts
+  s_c88674e85f3aea::t_5b3225d8cc9c6a 1-429
+harness/cli/src/services/doctor/collector/backup.ts
+  s_c88674e85f3aea::t_33157aadd66109 1-418
+harness/cli/src/services/doctor/collector/cursor-sandbox.ts
+  s_c88674e85f3aea::t_73754a00fcc848 1-348
+harness/cli/src/services/doctor/collector/download.ts
+  s_c88674e85f3aea::t_1c1388e6856c36 123-147,186-188
+harness/cli/src/services/doctor/collector/evidence.ts
+  s_c88674e85f3aea::t_aeff22e5aa2397 1-168
+harness/cli/src/services/doctor/collector/exit-code.ts
+  s_c88674e85f3aea::t_6b080f11116ca8 1-95
+harness/cli/src/services/doctor/collector/health.ts
+  s_c88674e85f3aea::t_a73a6f2901c930 3-8,10-11,44-45,85-89,92-97,121-138,141-162,166,169,180,182-238,244-245,263-267,292,303-307,310-315,322,329-331,345,361-370,372,376,378,390-438,460-465,467,469,474-475,486-501,514,540-570,574-600,604-643,647-653,669-683
+harness/cli/src/services/doctor/collector/ingress.ts
+  s_c88674e85f3aea::t_f849ae6689bf4a 17-22,102-114,118-133,164-187,210,217,225,232,276,283-288,291-296,329-341,344-345
+harness/cli/src/services/doctor/collector/install.ts
+  s_c88674e85f3aea::t_64cfc4bfd71fe6 1-3,5-6,8-13,17,30,66-78,179-211,214,216-230,280,286-348,371-408,469-511,531-535,537,545-554,556,558-559,603-604,611-620,624-645,664-669,779-799,802-812,814-835,840-871,879,884-944,984-986
+harness/cli/src/services/doctor/collector/platform.ts
+  s_c88674e85f3aea::t_4dc11aaafab1fc 84-143
+harness/cli/src/services/doctor/collector/state.ts
+  s_c88674e85f3aea::t_fd55554d6f1867 38-43,113-117,119-137,239-252
+harness/cli/src/services/doctor/collector/types.ts
+  s_c88674e85f3aea::t_eff6b06bbbee1e 48-64,96,100-107,136-142,148-165
+harness/cli/src/services/doctor/doctor-service.ts
+  s_c88674e85f3aea::t_0cef750af6469f 19,31-32,34,75-80,919,922,925-963,1040-1071,1084-1113,1115-1175,1177-1183,1185-1189,1191-1210
+harness/cli/src/services/extensions/registry.ts
+  s_c88674e85f3aea::t_8814e06a02cf1f 97-99
+harness/cli/src/services/hooks/agent-matrix.ts
+  s_c88674e85f3aea::t_e253520f6faca1 1-417
+harness/cli/src/services/hooks/binary-path.ts
+  s_c88674e85f3aea::t_3f5ea0b0773bb5 1-416
+harness/cli/src/services/hooks/classify-head-transition.ts
+  s_c88674e85f3aea::t_45e219102319a7 1-236
+harness/cli/src/services/hooks/commit-intercept.ts
+  s_c88674e85f3aea::t_1adb5528ec3fa5 1-191
+harness/cli/src/services/hooks/config-writer.ts
+  s_c88674e85f3aea::t_92149f4733ffe1 1-192
+harness/cli/src/services/hooks/fire-options.ts
+  s_c88674e85f3aea::t_c9197bed11213a 1-121
+harness/cli/src/services/hooks/hook-journal.ts
+  s_c88674e85f3aea::t_47f39a8bc1a57e 1-241
+harness/cli/src/services/hooks/hook-marker.ts
+  s_c88674e85f3aea::t_00c751270d1934 1-294
+harness/cli/src/services/hooks/hook-payload.ts
+  s_c88674e85f3aea::t_e19ca7cd44e565 1-221
+harness/cli/src/services/hooks/hook-state.ts
+  s_c88674e85f3aea::t_d5e56a0b049403 1-223
+harness/cli/src/services/hooks/hooks-verbs.ts
+  s_c88674e85f3aea::t_8ecefa52bd637d 1-1373
+harness/cli/src/services/hooks/install-record.ts
+  s_c88674e85f3aea::t_76a88c91a59ec6 1-185
+harness/cli/src/services/hooks/install-strategy-a.ts
+  s_c88674e85f3aea::t_6feff42d1493a6 1-829
+harness/cli/src/services/hooks/scan-command.ts
+  s_c88674e85f3aea::t_04471cd733d686 1-153
+harness/cli/src/services/hooks/trace2-tickler.ts
+  s_c88674e85f3aea::t_1d478c882625aa 1-7,9-29,31-66,69-104,106-130,132-156
+harness/cli/src/services/hooks/uninstall-strategy-a.ts
+  s_c88674e85f3aea::t_a37e0affd8a751 1-315
+harness/cli/src/services/telemetry/housekeeping.ts
+  s_c88674e85f3aea::t_c4306ec624a389 47-55,71-89,94-126,159-208,229-245
+harness/cli/test/acts/doctor-collector.test.ts
+  s_c88674e85f3aea::t_4ce48eb52c7926 60-69,93,193
+harness/cli/test/acts/doctor.test.ts
+  s_c88674e85f3aea::t_df95a5b7169151 2,5,7-8,11-12,15-22,40-90,101-133,135,137,242-293,296,299,313,322-499
+harness/cli/test/acts/plan-review.test.ts
+  s_c88674e85f3aea::t_b5b70fb51a7d06 5,118-136
+harness/cli/test/acts/plan.test.ts
+  s_c88674e85f3aea::t_2f6840c8dcdc30 1,18,377-403
+harness/cli/test/adapters/collector-adapters.int.test.ts
+  s_c88674e85f3aea::t_3a03dfe3f79e6d 1,5,10-21,172-178,185,206-223,228,247-256,260
+harness/cli/test/adapters/fs/append-text-parity.test.ts
+  s_c88674e85f3aea::t_cc385b0d357455 1,5-7,10,12-17,19-22,25-34,36-45,48,50,52-69,71-75,78-91,94-109,111-130,132-133
+harness/cli/test/adapters/fs/fake-fs.test.ts
+  s_c88674e85f3aea::t_1ad35a154c3f34 16,264-287,552-558,572-611,678-710,754-790
+harness/cli/test/adapters/fs/node-fs.test.ts
+  s_c88674e85f3aea::t_9eef8d6c564e82 15,26-61,78-123,125-126,141-170,172-184,186-227,229-230,232-246,248-254,259-355,358-361,363-367
+harness/cli/test/adapters/git/cat-file-batch.int.test.ts
+  s_c88674e85f3aea::t_6c303efacbd4c3 2,25-47,139,175
+harness/cli/test/adapters/git/exec-git-write.int.test.ts
+  s_c88674e85f3aea::t_7b7690ccab0e59 165-170,172
+harness/cli/test/adapters/git/exec-git.test.ts
+  s_c88674e85f3aea::t_acb1195e2f202f 2-5,54-143
+harness/cli/test/adapters/git/exec-remote-telemetry-git-null-device.test.ts
+  s_c88674e85f3aea::t_cb4cd437846416 1-165
+harness/cli/test/adapters/git/exec-remote-telemetry-git.int.test.ts
+  s_c88674e85f3aea::t_f97e21f5e9d428 14,16,53-58,93-118,123,196-199,444,767-784,884-1010,1566-1569,1791-1831
+harness/cli/test/adapters/git/fake-git.test.ts
+  s_c88674e85f3aea::t_99c80de017e459 140-305
+harness/cli/test/app.test.ts
+  s_c88674e85f3aea::t_52e11759d96ed9 135-170,180,212
+harness/cli/test/architecture/fast-scope-guard.test.ts
+  s_c88674e85f3aea::t_1e0722f0c11499 1-63
+harness/cli/test/architecture/no-direct-node-io.test.ts
+  s_c88674e85f3aea::t_ba85aa91a90408 23-32,35-38
+harness/cli/test/fixtures/hooks/cursor.golden.json
+  s_c88674e85f3aea::t_c438d786d4f6c0 1-21
+harness/cli/test/fixtures/hooks/cursor.input.json
+  s_c88674e85f3aea::t_481cbfb9bd5573 1-15
+harness/cli/test/fixtures/hooks/droid.golden.jsonc
+  s_c88674e85f3aea::t_d6fc71a8b56c8e 1-25
+harness/cli/test/fixtures/hooks/droid.input.jsonc
+  s_c88674e85f3aea::t_d7862650778814 1-15
+harness/cli/test/index.test.ts
+  s_c88674e85f3aea::t_8edae3ded96dab 67
+harness/cli/test/services/doctor/collector-layer.test.ts
+  s_c88674e85f3aea::t_bc4e2eb9d6d4c7 121,128-129,140-160
+harness/cli/test/services/doctor/collector/at-risk.test.ts
+  s_c88674e85f3aea::t_9fb508e4a7937c 155-258
+harness/cli/test/services/doctor/collector/auto-install.test.ts
+  s_c88674e85f3aea::t_9daecdb11284c7 1-912
+harness/cli/test/services/doctor/collector/backup-path-shape.test.ts
+  s_c88674e85f3aea::t_1cbe69694710ad 1-154
+harness/cli/test/services/doctor/collector/backup-restore.int.test.ts
+  s_c88674e85f3aea::t_ffcf0634f4d3a2 1-242
+harness/cli/test/services/doctor/collector/binary-viability.test.ts
+  s_c88674e85f3aea::t_00dc3798f39c50 1-420
+harness/cli/test/services/doctor/collector/config-paths.test.ts
+  s_c88674e85f3aea::t_ca9ef7aac49c90 1-88
+harness/cli/test/services/doctor/collector/cursor-sandbox.test.ts
+  s_c88674e85f3aea::t_aaef0181ce5edc 1-296
+harness/cli/test/services/doctor/collector/download.test.ts
+  s_c88674e85f3aea::t_047656f7c3f694 57-61,64,105-107,128,149,161,207,225,238,261-316
+harness/cli/test/services/doctor/collector/evidence.test.ts
+  s_c88674e85f3aea::t_35bedcf57d4c89 1-347
+harness/cli/test/services/doctor/collector/health.test.ts
+  s_c88674e85f3aea::t_e39d38f4d49907 2,4-6,11,13-16,40,83,95,264-936
+harness/cli/test/services/doctor/collector/ingress.test.ts
+  s_c88674e85f3aea::t_7243f028674280 41,80-131,160-163,165-168,241-242,246-252,256-299,340-345
+harness/cli/test/services/doctor/collector/install.test.ts
+  s_c88674e85f3aea::t_ade0e8b9dafd13 39-48,93-101,104-132,245,311,326,357,374,426-435,445,511,562,580,597,615-623,684-780
+harness/cli/test/services/doctor/collector/nudge.test.ts
+  s_c88674e85f3aea::t_f131881d11b4b0 109-128,817-818,1097-1098,1629-1644,1648,1653-1657
+harness/cli/test/services/doctor/collector/recheck-coverage.test.ts
+  s_c88674e85f3aea::t_112afb8cc29d81 47-56,85-108,209
+harness/cli/test/services/doctor/doctor-service.test.ts
+  s_c88674e85f3aea::t_c3eff5d36de5c4 890-1132
+harness/cli/test/services/flow/archive-move.test.ts
+  s_c88674e85f3aea::t_a93b4891caf5a7 65-69
+harness/cli/test/services/flow/flow-node-fields-drift.test.ts
+  s_c88674e85f3aea::t_4c30dbc1a310ab 2
+harness/cli/test/services/flow/flow-renderer.test.ts
+  s_c88674e85f3aea::t_40c32a63447983 65-184,186-194,199-259,265-283,286-472,475,480,487-488,1284
+harness/cli/test/services/hooks/agent-detection.test.ts
+  s_c88674e85f3aea::t_26665e72f1121e 1-288
+harness/cli/test/services/hooks/agent-matrix.test.ts
+  s_c88674e85f3aea::t_74fa1d2189300e 1-305
+harness/cli/test/services/hooks/backup-widening.test.ts
+  s_c88674e85f3aea::t_5ad4560daf215b 1-223
+harness/cli/test/services/hooks/binary-path.test.ts
+  s_c88674e85f3aea::t_b11a24a674147c 1-323
+harness/cli/test/services/hooks/classify-head-transition.test.ts
+  s_c88674e85f3aea::t_b61eac84eb285d 1-266
+harness/cli/test/services/hooks/command-runs.test.ts
+  s_c88674e85f3aea::t_ef1df30a521f9c 1-321
+harness/cli/test/services/hooks/composed-command.int.test.ts
+  s_c88674e85f3aea::t_dbc9c74fb4e7e2 1-718
+harness/cli/test/services/hooks/composition-boundaries.test.ts
+  s_c88674e85f3aea::t_f97cae2cf40174 1-1068
+harness/cli/test/services/hooks/config-fixture.test.ts
+  s_c88674e85f3aea::t_8ecdf6fd46b5c3 1-216
+harness/cli/test/services/hooks/config-writer.test.ts
+  s_c88674e85f3aea::t_34f923c34d6e78 1-298
+harness/cli/test/services/hooks/copilot-vendor-contract.test.ts
+  s_c88674e85f3aea::t_ae770e5ea3e760 1-178
+harness/cli/test/services/hooks/doctor-hooks.int.test.ts
+  s_c88674e85f3aea::t_8267cd1a535fd3 1-267
+harness/cli/test/services/hooks/entry-shape.test.ts
+  s_c88674e85f3aea::t_884a4bcd06cc90 1-698
+harness/cli/test/services/hooks/hook-journal.test.ts
+  s_c88674e85f3aea::t_ff27ee4fa7ad17 1-390
+harness/cli/test/services/hooks/hook-marker.test.ts
+  s_c88674e85f3aea::t_18938ff8675df7 1-187
+harness/cli/test/services/hooks/hook-state.test.ts
+  s_c88674e85f3aea::t_c11abecef57116 1-317
+harness/cli/test/services/hooks/hook-wrapper.int.test.ts
+  s_c88674e85f3aea::t_182256134a013c 1-324
+harness/cli/test/services/hooks/hooks-verb.int.test.ts
+  s_c88674e85f3aea::t_523ca2a61e6c03 2,4,6-7,10-12,14-22,25,27-30,33-46,49-57,60-68,70-74,76-87,89-93,95-165,167-178,180-259,261-266,268-273,275-282,284-312,314-324,326-344,346-353,355-372,374-381,383-404,406-417,419-441,443-448,450-460
+harness/cli/test/services/hooks/hooks-verbs.test.ts
+  s_c88674e85f3aea::t_115754d345e220 1-425
+harness/cli/test/services/hooks/idempotency.test.ts
+  s_c88674e85f3aea::t_5ae3a6a1922f4f 1-175
+harness/cli/test/services/hooks/install-strategy-a.test.ts
+  s_c88674e85f3aea::t_41ad3fb40ed6e1 1-355
+harness/cli/test/services/hooks/journal-race.int.test.ts
+  s_c88674e85f3aea::t_d3d58fd9224ace 1-193
+harness/cli/test/services/hooks/legacy-command-form.test.ts
+  s_c88674e85f3aea::t_fc121815840043 1-524
+harness/cli/test/services/hooks/live-daemon-note.int.test.ts
+  s_c88674e85f3aea::t_2398eb30163279 1-291
+harness/cli/test/services/hooks/provocation.int.test.ts
+  s_c88674e85f3aea::t_39b84bb89de515 1-658
+harness/cli/test/services/hooks/scan-command.test.ts
+  s_c88674e85f3aea::t_dbbf6a235dbf5e 1-120
+harness/cli/test/services/hooks/status-and-fires.test.ts
+  s_c88674e85f3aea::t_f72d7ce287427f 1-698
+harness/cli/test/services/hooks/trace2-tickler.test.ts
+  s_c88674e85f3aea::t_c595868661e5ff 1-226
+harness/cli/test/services/hooks/uninstall.test.ts
+  s_c88674e85f3aea::t_320089df50adc3 1-406
+harness/cli/test/services/hooks/verbs-e2e.int.test.ts
+  s_c88674e85f3aea::t_8260ecc2e2f30c 1-645
+harness/cli/test/services/hooks/win-command-executable.test.ts
+  s_c88674e85f3aea::t_d32dfd2c2f22dd 1-172
+harness/cli/test/services/hooks/win-invocation.test.ts
+  s_c88674e85f3aea::t_ff8d842744aa7d 1-321
+harness/cli/test/services/telemetry/capture-reconcile.test.ts
+  s_c88674e85f3aea::t_4e0d4af6981b05 584-594,596
+harness/cli/test/services/telemetry/fixtures/real/README.md
+  s_c88674e85f3aea::t_82f69aac0cf54f 79
+harness/cli/test/services/telemetry/fx001-ref-fallback.test.ts
+  s_c88674e85f3aea::t_3e16c288ab0190 784
+harness/cli/test/services/telemetry/git-read.test.ts
+  s_c88674e85f3aea::t_27811eeecb45e4 67-70
+harness/cli/test/services/telemetry/housekeeping.test.ts
+  s_c88674e85f3aea::t_8d645e3e4007c6 8,11-12,62-67,74,189-390
+harness/cli/test/services/telemetry/pin-knob-src-usage.test.ts
+  s_c88674e85f3aea::t_00151601c310d5 169-175
+harness/cli/test/services/telemetry/publication-boundary.test.ts
+  s_c88674e85f3aea::t_87c82a4275628d 14,51-53,322,360
+harness/cli/test/skills.test.ts
+  s_c88674e85f3aea::t_2300412223d18f 1-2,51-61,63-67
+harness/cli/test/support/biome-capability.ts
+  s_c88674e85f3aea::t_e7cc49825c1b8c 1-66
+harness/cli/test/support/collector-fakes.ts
+  s_c88674e85f3aea::t_bf391731a01c3b 25-41,49-50,105-121,124-132,219-237,259-263,288-295
+harness/cli/test/support/config-fixture.ts
+  s_c88674e85f3aea::t_ba28bf0965417a 1-190
+harness/cli/test/support/copilot-published-schema.ts
+  s_c88674e85f3aea::t_89f2100a20ec29 1-171
+harness/cli/test/support/external-binary.ts
+  s_c88674e85f3aea::t_f5bec6a10b952c 1-98
+harness/cli/test/support/hermetic-git.ts
+  s_c88674e85f3aea::t_60b2f7e49d44f8 1-2,84-90,96-146
+harness/cli/test/support/posix-shell.ts
+  s_c88674e85f3aea::t_2d6c0ac18e5979 1-77
+harness/cli/test/support/symlink-capability.ts
+  s_c88674e85f3aea::t_f0ce40bc82e25b 1-103
+harness/cli/test/support/writer-shape-parity.ts
+  s_c88674e85f3aea::t_438d171fa41d87 1-271
+harness/cli/vitest.config.ts
+  s_c88674e85f3aea::t_588b3754105de0 1-77,84-85,89-114,136-159
+justfile
+  s_c88674e85f3aea::t_9e0c4b37e2f769 209-212,216-224,258-281,286-339
+package-lock.json
+  s_c88674e85f3aea::t_17a5bae9e956d5 14,25,39-40,59-61,66,69,86-88,91-93,95,1870-1872,2212-2214,2218,2241-2243,2247-2248,2251,3004-3006,3010,3015-3017,3021,3025,3027,3038,3100-3102,3497-3499,3548-3550,3554-3556,3558-3559,3561,3563,3565,3567-3568,3570,3572-3577,3581,3584-3586,3599,3612,3625,3631-3633,3636-3638,3640,3647-3649,3653-3655,3658,3809-3811,3818,4766-4768,5893-5895,5903-5905,5909,5915,6304-6306,6308,6311-6313,6387-6389,6393-6394,6397,6532,6674-6686,6701-6713,7589-7591,7598,7670-7672,7676,7679
+package.json
+  s_c88674e85f3aea::t_37460d4819256f 4,56,60-61,67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8df3adc07b393935ad249befff589a05cb9138bc",
+  "prompts": {},
+  "sessions": {
+    "s_c88674e85f3aea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "71679da4-5249-4e02-9117-68a3abf3ed0e",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
