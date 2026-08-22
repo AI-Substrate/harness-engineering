@@ -2,7 +2,7 @@
 
 > **⚠ This corpus fails on purpose, and that is the point.**
 >
-> Run `harness dd validate` on it from **this folder** and you get 5 warnings.
+> Run `node_modules/.bin/dd validate` on it from **this folder** and you get 5 warnings.
 > Run it from the **repository root** and you get a clean bill of health. Run it
 > from the folder **above** and you get a hard `E401`.
 >
@@ -94,7 +94,7 @@ actually read.
 ## Regenerating
 
 ```bash
-harness dd build docs/how/dd/exemplar/custom-render/release.dd.json
+node_modules/.bin/dd build docs/how/dd/exemplar/custom-render/release.dd.json
 ```
 
 **Run it from the repository root.** That is not a preference — see below.
@@ -118,7 +118,7 @@ document produces **three different verdicts depending on where you stand**:
   doc-folder run reporting **0 errors**;
 - the schema finding its own adapters — proven by all three custom types
   rendering, from every cwd;
-- `harness dd build --check` reporting no byte drift from this folder.
+- `node_modules/.bin/dd build --check` reporting no byte drift from this folder.
 
 **What is not, and is the bug:** `repoRoot` is taken from `process.cwd()`
 (`acts/dd/build.ts:270`, `acts/dd/shared.ts:204`), and it serves as both the
@@ -128,7 +128,7 @@ and standing in `exemplar/` makes the depth-walk unable to resolve `builder/plan
 for that linked document (the E401) — because the real `.dd/` lives at the
 repository root either way.
 
-A related, smaller wrinkle: `harness dd schema list` reports **no doc-folder
+A related, smaller wrinkle: `node_modules/.bin/dd schema list` reports **no doc-folder
 root at all** (only gitroot / harness / home), so run from this folder it lists
 zero schemas even though `release/gate` demonstrably resolves for a document
 here. `list` has no document to anchor on, so the first precedence root simply

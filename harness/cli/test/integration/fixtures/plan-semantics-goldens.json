@@ -1,0 +1,1292 @@
+{
+  "$comment": "GENERATED from the fork (services/dd/plan) by plan-semantics-goldens.gen.test.ts. Regenerate with GOLDEN_UPDATE=1. These pin the plan-semantics BEHAVIOUR so it survives the fork being promoted (subject becomes oracle) and then deleted.",
+  "captured_from": "harness/cli/src/services/dd/plan",
+  "check": {
+    "contradiction": {
+      "ok": true,
+      "counts": {
+        "error": 0,
+        "warn": 1,
+        "semantic": {
+          "items": 12,
+          "completable": 2,
+          "open": 1,
+          "contradictions": 1,
+          "orphans": 0,
+          "in_scope": 12
+        }
+      },
+      "findings": [
+        {
+          "class": "contradiction",
+          "severity": "WARN",
+          "address": "docs/plans/trial/plan.dd.json#tasks/tk-0001",
+          "owner": "/repo/docs/plans/trial/plan.dd.json",
+          "location": "$.sections[tasks].value[0].satisfies",
+          "message": "docs/plans/trial/plan.dd.json#tasks/tk-0001 (the task) is \"checked\" but satisfies docs/plans/trial/plan.dd.json#criteria/ac-0001 (the criterion), which is still \"unchecked\"",
+          "rel": "satisfies",
+          "counterpart": "docs/plans/trial/plan.dd.json#criteria/ac-0001"
+        }
+      ]
+    },
+    "nonBuiltinRel": {
+      "ok": true,
+      "counts": {
+        "error": 0,
+        "warn": 0,
+        "semantic": {
+          "items": 12,
+          "completable": 2,
+          "open": 1,
+          "contradictions": 0,
+          "orphans": 1,
+          "in_scope": 12
+        }
+      },
+      "findings": []
+    },
+    "orphan": {
+      "ok": true,
+      "counts": {
+        "error": 0,
+        "warn": 3,
+        "semantic": {
+          "items": 11,
+          "completable": 2,
+          "open": 2,
+          "contradictions": 0,
+          "orphans": 1,
+          "in_scope": 11
+        }
+      },
+      "findings": [
+        {
+          "class": "open-completable",
+          "severity": "WARN",
+          "address": "docs/plans/trial/plan.dd.json#criteria/ac-0001",
+          "owner": "/repo/docs/plans/trial/plan.dd.json",
+          "location": "$.sections[criteria].value[0]",
+          "message": "docs/plans/trial/plan.dd.json#criteria/ac-0001 (unaccounted for) is still \"unchecked\""
+        },
+        {
+          "class": "open-completable",
+          "severity": "WARN",
+          "address": "docs/plans/trial/plan.dd.json#tasks/tk-0001",
+          "owner": "/repo/docs/plans/trial/plan.dd.json",
+          "location": "$.sections[tasks].value[0]",
+          "message": "docs/plans/trial/plan.dd.json#tasks/tk-0001 (claims nothing) is still \"unchecked\""
+        },
+        {
+          "class": "orphan-claim",
+          "severity": "WARN",
+          "address": "docs/plans/trial/plan.dd.json#criteria/ac-0001",
+          "owner": "/repo/docs/plans/trial/plan.dd.json",
+          "location": "$.sections[criteria].value[0]",
+          "message": "docs/plans/trial/plan.dd.json#criteria/ac-0001 (unaccounted for) has no incoming satisfies — no task accounts for it"
+        }
+      ]
+    },
+    "rollup": {
+      "ok": true,
+      "counts": {
+        "error": 0,
+        "warn": 2,
+        "semantic": {
+          "items": 18,
+          "completable": 4,
+          "open": 1,
+          "contradictions": 0,
+          "orphans": 1,
+          "in_scope": 18
+        }
+      },
+      "findings": [
+        {
+          "class": "open-completable",
+          "severity": "WARN",
+          "address": "docs/plans/trial/plan.dd.json#done_when/dw-0002",
+          "owner": "/repo/docs/plans/trial/plan.dd.json",
+          "location": "$.sections[done_when].value[1]",
+          "message": "docs/plans/trial/plan.dd.json#done_when/dw-0002 is still \"unchecked\""
+        },
+        {
+          "class": "orphan-claim",
+          "severity": "WARN",
+          "address": "docs/plans/trial/plan.dd.json#criteria/ac-0001",
+          "owner": "/repo/docs/plans/trial/plan.dd.json",
+          "location": "$.sections[criteria].value[0]",
+          "message": "docs/plans/trial/plan.dd.json#criteria/ac-0001 (the criterion) has no incoming satisfies — no task accounts for it"
+        }
+      ]
+    }
+  },
+  "index": {
+    "contradiction": {
+      "items": [
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [],
+          "address": "docs/plans/trial/plan.dd.json",
+          "location": null,
+          "kind": "document",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": true,
+          "checkable": true,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#criteria",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "criteria"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#criteria",
+          "location": "$.sections[criteria].value",
+          "kind": "section",
+          "state": null,
+          "terminal": [
+            "checked",
+            "human-skipped",
+            "na"
+          ],
+          "completable": false,
+          "derived": true,
+          "checkable": true,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#criteria/ac-0001",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "criteria",
+            "ac-0001"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#criteria/ac-0001",
+          "location": "$.sections[criteria].value[0]",
+          "kind": "instance",
+          "state": "unchecked",
+          "terminal": [
+            "checked",
+            "human-skipped",
+            "na"
+          ],
+          "completable": true,
+          "derived": false,
+          "checkable": true,
+          "done": false,
+          "label": "the criterion",
+          "claim": true
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#criteria/ac-0001/id",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "criteria",
+            "ac-0001",
+            "id"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#criteria/ac-0001/id",
+          "location": "$.sections[criteria].value[0].id",
+          "kind": "part",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": false,
+          "checkable": false,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#criteria/ac-0001/state",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "criteria",
+            "ac-0001",
+            "state"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#criteria/ac-0001/state",
+          "location": "$.sections[criteria].value[0].state",
+          "kind": "part",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": false,
+          "checkable": false,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#criteria/ac-0001/title",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "criteria",
+            "ac-0001",
+            "title"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#criteria/ac-0001/title",
+          "location": "$.sections[criteria].value[0].title",
+          "kind": "part",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": false,
+          "checkable": false,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#tasks",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "tasks"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#tasks",
+          "location": "$.sections[tasks].value",
+          "kind": "section",
+          "state": null,
+          "terminal": [
+            "checked",
+            "human-skipped",
+            "na"
+          ],
+          "completable": false,
+          "derived": true,
+          "checkable": true,
+          "done": true,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#tasks/tk-0001",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "tasks",
+            "tk-0001"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#tasks/tk-0001",
+          "location": "$.sections[tasks].value[0]",
+          "kind": "instance",
+          "state": "checked",
+          "terminal": [
+            "checked",
+            "human-skipped",
+            "na"
+          ],
+          "completable": true,
+          "derived": false,
+          "checkable": true,
+          "done": true,
+          "label": "the task",
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#tasks/tk-0001/id",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "tasks",
+            "tk-0001",
+            "id"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#tasks/tk-0001/id",
+          "location": "$.sections[tasks].value[0].id",
+          "kind": "part",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": false,
+          "checkable": false,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#tasks/tk-0001/satisfies",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "tasks",
+            "tk-0001",
+            "satisfies"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#tasks/tk-0001/satisfies",
+          "location": "$.sections[tasks].value[0].satisfies",
+          "kind": "part",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": false,
+          "checkable": false,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#tasks/tk-0001/state",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "tasks",
+            "tk-0001",
+            "state"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#tasks/tk-0001/state",
+          "location": "$.sections[tasks].value[0].state",
+          "kind": "part",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": false,
+          "checkable": false,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#tasks/tk-0001/title",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "tasks",
+            "tk-0001",
+            "title"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#tasks/tk-0001/title",
+          "location": "$.sections[tasks].value[0].title",
+          "kind": "part",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": false,
+          "checkable": false,
+          "done": false,
+          "label": null,
+          "claim": false
+        }
+      ],
+      "edges": [
+        {
+          "from": "/repo/docs/plans/trial/plan.dd.json#tasks/tk-0001",
+          "to": "/repo/docs/plans/trial/plan.dd.json#criteria/ac-0001",
+          "rel": "satisfies",
+          "address": "#criteria/ac-0001"
+        }
+      ]
+    },
+    "nonBuiltinRel": {
+      "items": [
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [],
+          "address": "docs/plans/trial/plan.dd.json",
+          "location": null,
+          "kind": "document",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": true,
+          "checkable": true,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#criteria",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "criteria"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#criteria",
+          "location": "$.sections[criteria].value",
+          "kind": "section",
+          "state": null,
+          "terminal": [
+            "checked",
+            "human-skipped",
+            "na"
+          ],
+          "completable": false,
+          "derived": true,
+          "checkable": true,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#criteria/ac-0001",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "criteria",
+            "ac-0001"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#criteria/ac-0001",
+          "location": "$.sections[criteria].value[0]",
+          "kind": "instance",
+          "state": "unchecked",
+          "terminal": [
+            "checked",
+            "human-skipped",
+            "na"
+          ],
+          "completable": true,
+          "derived": false,
+          "checkable": true,
+          "done": false,
+          "label": "the criterion",
+          "claim": true
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#criteria/ac-0001/id",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "criteria",
+            "ac-0001",
+            "id"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#criteria/ac-0001/id",
+          "location": "$.sections[criteria].value[0].id",
+          "kind": "part",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": false,
+          "checkable": false,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#criteria/ac-0001/state",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "criteria",
+            "ac-0001",
+            "state"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#criteria/ac-0001/state",
+          "location": "$.sections[criteria].value[0].state",
+          "kind": "part",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": false,
+          "checkable": false,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#criteria/ac-0001/title",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "criteria",
+            "ac-0001",
+            "title"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#criteria/ac-0001/title",
+          "location": "$.sections[criteria].value[0].title",
+          "kind": "part",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": false,
+          "checkable": false,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#tasks",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "tasks"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#tasks",
+          "location": "$.sections[tasks].value",
+          "kind": "section",
+          "state": null,
+          "terminal": [
+            "checked",
+            "human-skipped",
+            "na"
+          ],
+          "completable": false,
+          "derived": true,
+          "checkable": true,
+          "done": true,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#tasks/tk-0001",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "tasks",
+            "tk-0001"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#tasks/tk-0001",
+          "location": "$.sections[tasks].value[0]",
+          "kind": "instance",
+          "state": "checked",
+          "terminal": [
+            "checked",
+            "human-skipped",
+            "na"
+          ],
+          "completable": true,
+          "derived": false,
+          "checkable": true,
+          "done": true,
+          "label": "the task",
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#tasks/tk-0001/id",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "tasks",
+            "tk-0001",
+            "id"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#tasks/tk-0001/id",
+          "location": "$.sections[tasks].value[0].id",
+          "kind": "part",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": false,
+          "checkable": false,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#tasks/tk-0001/satisfies_toward",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "tasks",
+            "tk-0001",
+            "satisfies_toward"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#tasks/tk-0001/satisfies_toward",
+          "location": "$.sections[tasks].value[0].satisfies_toward",
+          "kind": "part",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": false,
+          "checkable": false,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#tasks/tk-0001/state",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "tasks",
+            "tk-0001",
+            "state"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#tasks/tk-0001/state",
+          "location": "$.sections[tasks].value[0].state",
+          "kind": "part",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": false,
+          "checkable": false,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#tasks/tk-0001/title",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "tasks",
+            "tk-0001",
+            "title"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#tasks/tk-0001/title",
+          "location": "$.sections[tasks].value[0].title",
+          "kind": "part",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": false,
+          "checkable": false,
+          "done": false,
+          "label": null,
+          "claim": false
+        }
+      ],
+      "edges": [
+        {
+          "from": "/repo/docs/plans/trial/plan.dd.json#tasks/tk-0001",
+          "to": "/repo/docs/plans/trial/plan.dd.json#criteria/ac-0001",
+          "rel": "satisfies-toward",
+          "address": "#criteria/ac-0001"
+        }
+      ]
+    },
+    "orphan": {
+      "items": [
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [],
+          "address": "docs/plans/trial/plan.dd.json",
+          "location": null,
+          "kind": "document",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": true,
+          "checkable": true,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#criteria",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "criteria"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#criteria",
+          "location": "$.sections[criteria].value",
+          "kind": "section",
+          "state": null,
+          "terminal": [
+            "checked",
+            "human-skipped",
+            "na"
+          ],
+          "completable": false,
+          "derived": true,
+          "checkable": true,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#criteria/ac-0001",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "criteria",
+            "ac-0001"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#criteria/ac-0001",
+          "location": "$.sections[criteria].value[0]",
+          "kind": "instance",
+          "state": "unchecked",
+          "terminal": [
+            "checked",
+            "human-skipped",
+            "na"
+          ],
+          "completable": true,
+          "derived": false,
+          "checkable": true,
+          "done": false,
+          "label": "unaccounted for",
+          "claim": true
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#criteria/ac-0001/id",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "criteria",
+            "ac-0001",
+            "id"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#criteria/ac-0001/id",
+          "location": "$.sections[criteria].value[0].id",
+          "kind": "part",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": false,
+          "checkable": false,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#criteria/ac-0001/state",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "criteria",
+            "ac-0001",
+            "state"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#criteria/ac-0001/state",
+          "location": "$.sections[criteria].value[0].state",
+          "kind": "part",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": false,
+          "checkable": false,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#criteria/ac-0001/title",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "criteria",
+            "ac-0001",
+            "title"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#criteria/ac-0001/title",
+          "location": "$.sections[criteria].value[0].title",
+          "kind": "part",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": false,
+          "checkable": false,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#tasks",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "tasks"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#tasks",
+          "location": "$.sections[tasks].value",
+          "kind": "section",
+          "state": null,
+          "terminal": [
+            "checked",
+            "human-skipped",
+            "na"
+          ],
+          "completable": false,
+          "derived": true,
+          "checkable": true,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#tasks/tk-0001",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "tasks",
+            "tk-0001"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#tasks/tk-0001",
+          "location": "$.sections[tasks].value[0]",
+          "kind": "instance",
+          "state": "unchecked",
+          "terminal": [
+            "checked",
+            "human-skipped",
+            "na"
+          ],
+          "completable": true,
+          "derived": false,
+          "checkable": true,
+          "done": false,
+          "label": "claims nothing",
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#tasks/tk-0001/id",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "tasks",
+            "tk-0001",
+            "id"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#tasks/tk-0001/id",
+          "location": "$.sections[tasks].value[0].id",
+          "kind": "part",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": false,
+          "checkable": false,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#tasks/tk-0001/state",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "tasks",
+            "tk-0001",
+            "state"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#tasks/tk-0001/state",
+          "location": "$.sections[tasks].value[0].state",
+          "kind": "part",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": false,
+          "checkable": false,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#tasks/tk-0001/title",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "tasks",
+            "tk-0001",
+            "title"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#tasks/tk-0001/title",
+          "location": "$.sections[tasks].value[0].title",
+          "kind": "part",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": false,
+          "checkable": false,
+          "done": false,
+          "label": null,
+          "claim": false
+        }
+      ],
+      "edges": []
+    },
+    "rollup": {
+      "items": [
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [],
+          "address": "docs/plans/trial/plan.dd.json",
+          "location": null,
+          "kind": "document",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": true,
+          "checkable": true,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#criteria",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "criteria"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#criteria",
+          "location": "$.sections[criteria].value",
+          "kind": "section",
+          "state": null,
+          "terminal": [
+            "checked",
+            "human-skipped",
+            "na"
+          ],
+          "completable": false,
+          "derived": true,
+          "checkable": true,
+          "done": true,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#criteria/ac-0001",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "criteria",
+            "ac-0001"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#criteria/ac-0001",
+          "location": "$.sections[criteria].value[0]",
+          "kind": "instance",
+          "state": "checked",
+          "terminal": [
+            "checked",
+            "human-skipped",
+            "na"
+          ],
+          "completable": true,
+          "derived": false,
+          "checkable": true,
+          "done": true,
+          "label": "the criterion",
+          "claim": true
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#criteria/ac-0001/id",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "criteria",
+            "ac-0001",
+            "id"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#criteria/ac-0001/id",
+          "location": "$.sections[criteria].value[0].id",
+          "kind": "part",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": false,
+          "checkable": false,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#criteria/ac-0001/state",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "criteria",
+            "ac-0001",
+            "state"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#criteria/ac-0001/state",
+          "location": "$.sections[criteria].value[0].state",
+          "kind": "part",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": false,
+          "checkable": false,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#criteria/ac-0001/title",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "criteria",
+            "ac-0001",
+            "title"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#criteria/ac-0001/title",
+          "location": "$.sections[criteria].value[0].title",
+          "kind": "part",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": false,
+          "checkable": false,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#done_when",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "done_when"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#done_when",
+          "location": "$.sections[done_when].value",
+          "kind": "section",
+          "state": null,
+          "terminal": [
+            "checked",
+            "human-skipped",
+            "na"
+          ],
+          "completable": false,
+          "derived": true,
+          "checkable": true,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#done_when/dw-0001",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "done_when",
+            "dw-0001"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#done_when/dw-0001",
+          "location": "$.sections[done_when].value[0]",
+          "kind": "instance",
+          "state": "checked",
+          "terminal": [
+            "checked",
+            "human-skipped",
+            "na"
+          ],
+          "completable": true,
+          "derived": false,
+          "checkable": true,
+          "done": true,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#done_when/dw-0001/id",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "done_when",
+            "dw-0001",
+            "id"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#done_when/dw-0001/id",
+          "location": "$.sections[done_when].value[0].id",
+          "kind": "part",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": false,
+          "checkable": false,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#done_when/dw-0001/state",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "done_when",
+            "dw-0001",
+            "state"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#done_when/dw-0001/state",
+          "location": "$.sections[done_when].value[0].state",
+          "kind": "part",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": false,
+          "checkable": false,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#done_when/dw-0002",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "done_when",
+            "dw-0002"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#done_when/dw-0002",
+          "location": "$.sections[done_when].value[1]",
+          "kind": "instance",
+          "state": "unchecked",
+          "terminal": [
+            "checked",
+            "human-skipped",
+            "na"
+          ],
+          "completable": true,
+          "derived": false,
+          "checkable": true,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#done_when/dw-0002/id",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "done_when",
+            "dw-0002",
+            "id"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#done_when/dw-0002/id",
+          "location": "$.sections[done_when].value[1].id",
+          "kind": "part",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": false,
+          "checkable": false,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#done_when/dw-0002/state",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "done_when",
+            "dw-0002",
+            "state"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#done_when/dw-0002/state",
+          "location": "$.sections[done_when].value[1].state",
+          "kind": "part",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": false,
+          "checkable": false,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#tasks",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "tasks"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#tasks",
+          "location": "$.sections[tasks].value",
+          "kind": "section",
+          "state": null,
+          "terminal": [
+            "checked",
+            "human-skipped",
+            "na"
+          ],
+          "completable": false,
+          "derived": true,
+          "checkable": true,
+          "done": true,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#tasks/tk-0001",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "tasks",
+            "tk-0001"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#tasks/tk-0001",
+          "location": "$.sections[tasks].value[0]",
+          "kind": "instance",
+          "state": "checked",
+          "terminal": [
+            "checked",
+            "human-skipped",
+            "na"
+          ],
+          "completable": true,
+          "derived": false,
+          "checkable": true,
+          "done": true,
+          "label": "the task",
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#tasks/tk-0001/id",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "tasks",
+            "tk-0001",
+            "id"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#tasks/tk-0001/id",
+          "location": "$.sections[tasks].value[0].id",
+          "kind": "part",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": false,
+          "checkable": false,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#tasks/tk-0001/state",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "tasks",
+            "tk-0001",
+            "state"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#tasks/tk-0001/state",
+          "location": "$.sections[tasks].value[0].state",
+          "kind": "part",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": false,
+          "checkable": false,
+          "done": false,
+          "label": null,
+          "claim": false
+        },
+        {
+          "key": "/repo/docs/plans/trial/plan.dd.json#tasks/tk-0001/title",
+          "path": "/repo/docs/plans/trial/plan.dd.json",
+          "interior": [
+            "tasks",
+            "tk-0001",
+            "title"
+          ],
+          "address": "docs/plans/trial/plan.dd.json#tasks/tk-0001/title",
+          "location": "$.sections[tasks].value[0].title",
+          "kind": "part",
+          "state": null,
+          "terminal": null,
+          "completable": false,
+          "derived": false,
+          "checkable": false,
+          "done": false,
+          "label": null,
+          "claim": false
+        }
+      ],
+      "edges": []
+    }
+  },
+  "readiness": {
+    "ready": {
+      "verdict": "ready",
+      "reason": "ready",
+      "decided_by": null,
+      "criteria": {
+        "satisfied": true,
+        "reason": "all-claimed",
+        "claims": 1,
+        "unclaimed": []
+      }
+    },
+    "notReady": {
+      "verdict": "not-ready",
+      "reason": "unclaimed-criteria",
+      "decided_by": "criteria",
+      "criteria": {
+        "satisfied": false,
+        "reason": "unclaimed-criteria",
+        "claims": 1,
+        "unclaimed": [
+          {
+            "address": "docs/plans/trial/plan.dd.json#criteria/ac-0001",
+            "owner": "/repo/docs/plans/trial/plan.dd.json",
+            "message": "docs/plans/trial/plan.dd.json#criteria/ac-0001 (unaccounted for) has no incoming satisfies — no task accounts for it"
+          }
+        ]
+      }
+    },
+    "cantTell": {
+      "verdict": "cant-tell",
+      "reason": "no-flight-plan",
+      "decided_by": "survey",
+      "criteria": {
+        "satisfied": true,
+        "reason": "all-claimed",
+        "claims": 1,
+        "unclaimed": []
+      }
+    }
+  }
+}

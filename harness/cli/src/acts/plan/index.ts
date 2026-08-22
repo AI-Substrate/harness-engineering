@@ -1,3 +1,24 @@
+import {
+  ConventionSchemaResolver,
+  collectLinkCells,
+  type DdDoc,
+  type DdIssue,
+  FsDocLoader,
+  isAddressFailure,
+  parse,
+  parseAddress,
+  resolveAddressFile,
+  validateWalk,
+} from '@ai-substrate/dd';
+import { resolveMapSeed, traverseCorpus } from '@ai-substrate/dd/links';
+import {
+  DD_ISSUE_CODES,
+  type DdActDeps,
+  NodeSchemaFs,
+  renderDocument,
+  trackedPaths,
+} from '@ai-substrate/dd/node';
+import type { SchemaIssue } from '@ai-substrate/dd/schema/model';
 import type { Command } from 'commander';
 import type { Clock } from '../../adapters/clock/clock-port.js';
 import { SystemClock } from '../../adapters/clock/system-clock.js';
@@ -17,23 +38,13 @@ import {
 import { ErrorCodes } from '../../output/error-codes.js';
 import { exitWithEnvelope } from '../../output/exit.js';
 import { type CliIo, createOutputPort } from '../../output/output-port.js';
-import { isAddressFailure, parseAddress } from '../../services/dd/core/address.js';
-import type { DdDoc } from '../../services/dd/core/model.js';
-import { parse } from '../../services/dd/core/parse.js';
-import {
-  collectLinkCells,
-  type DdIssue,
-  resolveAddressFile,
-} from '../../services/dd/core/validate.js';
+import { readBackpressureSurvey } from '../../services/flow/chores-read.js';
 import {
   type PlanDocument,
   type ReadyReading,
   readPlanCheck,
   readPlanReadiness,
-} from '../../services/dd/plan/index.js';
-import type { SchemaIssue } from '../../services/dd/schema/model.js';
-import { ConventionSchemaResolver } from '../../services/dd/schema/resolve.js';
-import { readBackpressureSurvey } from '../../services/flow/chores-read.js';
+} from '../../services/plan-semantics/index.js';
 import {
   isWithin,
   posixDirname,
@@ -41,9 +52,6 @@ import {
   resolveInRepo,
   toPosix,
 } from '../../services/shared/posix-path.js';
-import { renderDocument } from '../dd/build.js';
-import { NodeSchemaFs } from '../dd/schema-fs.js';
-import { DD_ISSUE_CODES, type DdActDeps, FsDocLoader, trackedPaths } from '../dd/shared.js';
 import { checkFence, readFenceRows } from './fence.js';
 import { renderPrBody } from './pr-body.js';
 import { buildPlanScaffold } from './scaffold.js';
@@ -52,6 +60,65 @@ import { buildPlanScaffold } from './scaffold.js';
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 /** Where plans live unless told otherwise — the house layout, not a new one. */
+/**
+ * Parse `--ordinal`. Returns `null` for "not supplied", and `null` for invalid too —
+ * the caller distinguishes them by whether the raw option was present, so an
+ * unparseable value refuses loudly instead of silently scaffolding un-numbered.
+ */
+function parseOrdinal(raw: string | undefined): number | null {
+  if (raw === undefined) return null;
+  if (!/^\d+$/.test(raw)) return null;
+  const value = Number.parseInt(raw, 10);
+  return Number.isSafeInteger(value) ? value : null;
+}
+
+/** An empty value of the right SHAPE for a declared section. */
+function emptyForShape(shape: { type?: string } | undefined): unknown {
+  switch (shape?.type) {
+    case 'array':
+      return [];
+    case 'object':
+      return {};
+    default:
+      return '';
+  }
+}
+
+/**
+ * Every section `builder/plan` declares, mapped to an empty value of its shape.
+ *
+ * Resolved from the plan's own future location, because schema resolution is
+ * path-relative (doc-folder → gitroot/.dd → .harness/.dd → ~/.dd) and a plan
+ * scaffolded under `--dir` may see a different package than the repo root does.
+ * Returns `undefined` when nothing resolves — the scaffold then keeps its
+ * built-in sections and the act reports the unresolved schema separately.
+ */
+function declaredEmptySections(
+  folder: string,
+  repoRoot: string,
+): Record<string, unknown> | undefined {
+  try {
+    const resolver = new ConventionSchemaResolver({ fs: new NodeSchemaFs(), repoRoot });
+    const resolution = resolver.resolve('builder/plan', posixJoin(folder, 'plan.dd.json'));
+    if (!resolution.ok) return undefined;
+    const sections = resolution.schema.sections;
+    const out: Record<string, unknown> = {};
+    for (const [name, spec] of Object.entries(sections)) {
+      out[name] = emptyForShape((spec as { shape?: { type?: string } }).shape);
+    }
+    return out;
+  } catch {
+    return undefined;
+  }
+}
+
+interface PlanNewOptions {
+  title?: string;
+  phase: string[];
+  dir?: string;
+  ordinal?: string;
+}
+
 const DEFAULT_PLANS_DIR = 'docs/plans';
 
 interface PlanContext {
@@ -193,7 +260,11 @@ function registerNewCommand(plan: Command, io: CliIo, deps: DdActDeps): void {
       [] as string[],
     )
     .option('--dir <dir>', `parent directory for the plan folder (default: ${DEFAULT_PLANS_DIR})`)
-    .action(async (slug: string, opts: { title?: string; phase: string[]; dir?: string }) => {
+    .option(
+      '--ordinal <n>',
+      "the plan's number; the folder becomes `<n>-<slug>` and `meta.ordinal` records it",
+    )
+    .action(async (slug: string, opts: PlanNewOptions) => {
       const ctx = context(io, deps);
       if (!SLUG_PATTERN.test(slug)) {
         exitWithEnvelope(
@@ -212,10 +283,41 @@ function registerNewCommand(plan: Command, io: CliIo, deps: DdActDeps): void {
       }
 
       const parent = opts.dir ?? DEFAULT_PLANS_DIR;
-      const folder = posixJoin(resolveInRepo(parent, ctx.repoRoot), slug);
+
+      // The ordinal is the plan's NUMBER, and it belongs in exactly two places:
+      // the folder name and `meta.ordinal`. Before this, an author who wanted
+      // `080-dd-consume-upgrade` typed the whole thing as the slug — so the
+      // number ended up INSIDE `meta.slug`, and a second `plan new` with the bare
+      // slug minted a second folder whose meta disagreed with the first
+      // (dogfood-ledger #2). Splitting them means the slug is the slug at every
+      // layer, and the number is derivable rather than embedded.
+      const ordinal = parseOrdinal(opts.ordinal);
+      if (opts.ordinal !== undefined && ordinal === null) {
+        exitWithEnvelope(
+          formatError(
+            'plan new',
+            ErrorCodes.SCAFFOLD_INVALID_NAME,
+            `invalid --ordinal: ${JSON.stringify(opts.ordinal)}`,
+            ctx.clock,
+            { next_action: 'Pass a non-negative integer, e.g. `--ordinal 80`.' },
+          ),
+          ctx.port,
+        );
+      }
+      const folderName = ordinal === null ? slug : `${String(ordinal).padStart(3, '0')}-${slug}`;
+      const folder = posixJoin(resolveInRepo(parent, ctx.repoRoot), folderName);
+
+      // Seed every section the schema declares, not a fixed list — see
+      // `PlanScaffoldInput.declaredSections`. Resolution is best-effort on
+      // purpose: an unresolvable schema is already reported below, and a scaffold
+      // that falls back to the built-in sections is strictly better than one that
+      // refuses to scaffold at all.
+      const declaredSections = declaredEmptySections(folder, ctx.repoRoot);
       const scaffold = buildPlanScaffold({
         slug,
         ...(opts.title !== undefined && { title: opts.title }),
+        ...(ordinal !== null && { ordinal }),
+        ...(declaredSections !== undefined && { declaredSections }),
         phases: opts.phase.length > 0 ? opts.phase : ['Phase 1'],
       });
       const documents = [scaffold.plan, ...scaffold.taskFiles];

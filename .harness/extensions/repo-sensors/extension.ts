@@ -416,18 +416,6 @@ export default defineExtension({
       guidance: 'Resolve or convert stale debt annotations into owned work items.',
       run: todoDebt,
     },
-    'dd-doctor': {
-      summary: 'Sweep every deterministic document at infinite validation radius.',
-      // The watch set is snapshotted when the scheduler is built, so it names both
-      // halves of what a dd finding can come from: the documents themselves, and
-      // the schema packages that decide whether those documents are valid. A
-      // schema edit can redden a document nobody touched.
-      watch: ['**/*.dd.json', '.dd/schemas/**/*.{json,ts}', '.harness/.dd/schemas/**/*.{json,ts}'],
-      timeoutMs: DEFAULT_TIMEOUT_MS,
-      guidance:
-        'Run `node harness/cli/bin/harness.js dd doctor --json` and fix the owning document named in each finding.',
-      run: harnessVerbMeasurement('dd doctor'),
-    },
     'lock-hygiene': {
       summary: 'Require public-form package-lock URLs with no internal feed or signed CDN hosts.',
       watch: ['package.json', 'package-lock.json'],

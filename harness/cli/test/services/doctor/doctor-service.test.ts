@@ -753,6 +753,69 @@ function ddLayer(files: Record<string, string>, dirs: Record<string, string[]>) 
   return layer;
 }
 
+describe('doctor — the standalone dd CLI layer (plan 080 tk-000e)', () => {
+  function ddCliLayer(files: Record<string, string>, dirs: Record<string, string[]>) {
+    const report = buildDoctorReport(
+      deps({ fs: new FakeFs({ ...BUILT_CLI, ...files }, dirs) }),
+      EMPTY,
+    );
+    const layer = report.layers.find((entry) => entry.name === 'dd-cli');
+    if (!layer) throw new Error('dd-cli layer missing');
+    return layer;
+  }
+
+  const USING_DD = {
+    files: { '/repo/docs/plan.dd.json': DD_DOC, '/repo/docs/plan.dd.md': '# rendered' },
+    dirs: { '/repo': ['docs'], '/repo/docs': ['plan.dd.json', 'plan.dd.md'] },
+  };
+
+  it('warns, non-fatally, when a repo that USES dd has no standalone CLI', () => {
+    const layer = ddCliLayer(USING_DD.files, USING_DD.dirs);
+    expect(layer.ok).toBe(false);
+    expect(layer.detail).toContain('standalone dd CLI not found');
+    expect(layer.next_action).toBeDefined();
+  });
+
+  it('stays silent in a repo that does not use dd at all', () => {
+    // Proportionality: a missing OPTIONAL cli is not a finding where it cannot
+    // bite. Without this the layer would degrade every consumer repo's doctor
+    // for lacking a tool it has no documents for — the same nagging the
+    // dd-documents row refuses.
+    const layer = ddCliLayer({}, { '/repo': ['README.md'] });
+    expect(layer.ok).toBe(true);
+    expect(layer.next_action).toBeUndefined();
+  });
+
+  it('is silent when the standalone CLI is installed', () => {
+    const layer = ddCliLayer(
+      { '/repo/node_modules/.bin/dd': '#!/usr/bin/env node' },
+      { '/repo': ['node_modules'] },
+    );
+    expect(layer.ok).toBe(true);
+    expect(layer.next_action).toBeUndefined();
+  });
+
+  it('names the two spellings that run a DIFFERENT program', () => {
+    // The reason this layer exists at all. `dd` is coreutils on every POSIX box
+    // and an unrelated `dd` package exists on npm, so a next_action that merely
+    // said "install dd" would send a reader to one of two wrong programs — the
+    // npx one silently. The warning must name both, or it is worse than absent.
+    const layer = ddCliLayer(USING_DD.files, USING_DD.dirs);
+    expect(layer.next_action).toContain('node_modules/.bin/dd');
+    expect(layer.next_action).toContain('coreutils');
+    expect(layer.next_action).toContain('npx dd');
+  });
+
+  it('does NOT report present merely because coreutils dd is on PATH', () => {
+    // The false-green this layer is built to avoid: a PATH probe finds /bin/dd
+    // on every POSIX host, so `which` would report our CLI present everywhere,
+    // forever. The probe looks for the installed bin instead — this test fails
+    // the moment someone "simplifies" it back to proc.which('dd').
+    const layer = ddCliLayer(USING_DD.files, USING_DD.dirs);
+    expect(layer.ok).toBe(false);
+  });
+});
+
 describe('doctor — the shipped dd layer', () => {
   it('stays silent and ok in a repository that does not use dd', () => {
     // Same posture as the quality-gate and telemetry rows: never nag a repo the
@@ -772,7 +835,7 @@ describe('doctor — the shipped dd layer', () => {
     expect(layer.detail).toContain('1 deterministic document(s)');
     // The deep answer belongs to the sweep, and this row says so rather than
     // pretending to have run it (P7 — doctor never invokes).
-    expect(layer.detail).toContain('harness dd doctor');
+    expect(layer.detail).toContain('node_modules/.bin/dd doctor');
   });
 
   it('fails a document committed without its rendered sibling', () => {
@@ -783,7 +846,7 @@ describe('doctor — the shipped dd layer', () => {
     expect(layer.ok).toBe(false);
     expect(layer.detail).toContain('no rendered sibling');
     expect(layer.detail).toContain('docs/plan.dd.json');
-    expect(layer.next_action).toContain('harness dd build');
+    expect(layer.next_action).toContain('node_modules/.bin/dd build');
   });
 
   it('honours the sweep exclusion contract instead of re-deriving it', () => {

@@ -3,14 +3,7 @@ import {
   resolveLink,
   type SchemaResolver,
   verifyBasis,
-} from '../dd/links/index.js';
-import {
-  isPlanCheckKind,
-  type PlanCheckReading,
-  type PlanCheckResult,
-  readPlanCheck,
-  resolvePlanAddress,
-} from '../dd/plan/index.js';
+} from '@ai-substrate/dd/links';
 import {
   type DdSchemaItem,
   type DdSection,
@@ -18,7 +11,14 @@ import {
   deriveSchemaState,
   type SchemaRecord,
   type SchemaResolution,
-} from '../dd/schema/index.js';
+} from '@ai-substrate/dd/schema';
+import {
+  isPlanCheckKind,
+  type PlanCheckReading,
+  type PlanCheckResult,
+  readPlanCheck,
+  resolvePlanAddress,
+} from '../plan-semantics/index.js';
 import { type DdLink, type DdLinkReading, ddLinkCheck } from './flow-events.js';
 
 /**

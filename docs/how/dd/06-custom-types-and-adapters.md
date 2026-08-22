@@ -155,14 +155,14 @@ docs/how/dd/exemplar/custom-render/
 Regenerate it from the repository root:
 
 ```bash
-harness dd build \
+node_modules/.bin/dd build \
   docs/how/dd/exemplar/custom-render/release.dd.json
 ```
 
 Check byte drift without writing:
 
 ```bash
-harness dd build \
+node_modules/.bin/dd build \
   docs/how/dd/exemplar/custom-render/release.dd.json \
   --check
 ```

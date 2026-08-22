@@ -1,6 +1,5 @@
 import { Command } from 'commander';
 import { registerCommitAct } from './acts/commit.js';
-import { registerDdAct } from './acts/dd/index.js';
 import { registerDocsAct } from './acts/docs.js';
 import { registerDoctorAct } from './acts/doctor.js';
 import { registerFlowAct } from './acts/flow.js';
@@ -496,7 +495,6 @@ export function buildProgram(
   registerObserveAct(program, io, deps);
   registerRetroAct(program, io, deps);
   registerFlowAct(program, io, deps, version);
-  registerDdAct(program, io, deps);
   registerPlanAct(program, io, deps);
   registerSensorsAct(
     program,

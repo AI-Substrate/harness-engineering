@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { ConventionSchemaResolver, FsDocLoader, MemoizingDocLoader } from '@ai-substrate/dd';
 import type { Command } from 'commander';
 import type { Clock } from '../adapters/clock/clock-port.js';
 import type { EnvPort } from '../adapters/env/env-port.js';
@@ -10,8 +11,6 @@ import { type Envelope, formatDegraded, formatError, formatOk } from '../output/
 import { ErrorCodes } from '../output/error-codes.js';
 import { emitRawAndExit, exitWithEnvelope } from '../output/exit.js';
 import { type CliIo, createOutputPort, type OutputPort } from '../output/output-port.js';
-import { MemoizingDocLoader } from '../services/dd/links/index.js';
-import { ConventionSchemaResolver } from '../services/dd/schema/index.js';
 import {
   type DdGateDeps,
   type DdGateDrift,
@@ -77,7 +76,6 @@ import {
   resolveInRepo,
   toPosix,
 } from '../services/shared/posix-path.js';
-import { FsDocLoader } from './dd/shared.js';
 
 /** The ports the `flow` act injects into the flow service (a subset of VerbActDeps). */
 export interface FlowActDeps {
@@ -234,11 +232,15 @@ function restoreFlowSource(fs: FsPort, path: string, previous: string | null): b
  * hides the failure in a warning line nobody greps for.
  *
  * So the sibling is not optional decoration; it is half of the write. If the render
- * throws, or the `.md` cannot be written, the source is put back the way it was
- * (deleted, if the operation created it) and the operation REFUSES — the same
- * either-both-or-neither contract `writeDocumentWithSibling` gives dd's mutating
- * verbs, and the same phase-1 law: validate/render before write, failure = refusal
- * with the source untouched.
+ * throws, or the `.md` cannot be written, the source write is rolled back (deleted, if
+ * the operation created it) and the operation REFUSES — the phase-1 law: validate and
+ * render before write, failure = refusal. The rollback is attempted and VERIFIED (the
+ * restore is read back and compared), but it is not guaranteed and — unlike the forward
+ * write — it is NOT atomic (plain `writeText`, not `writeFlowAtomic`), so a failed
+ * restore can leave the source matching neither the previous nor the mutated bytes.
+ * That is why `refuse()` warns and names the file rather than reporting a clean source:
+ * E302 covers all of these outcomes, so a caller must read `next_action`, not switch on
+ * the code alone. (The non-atomic restore is tracked as #142.)
  *
  * `previousSource` is the bytes at `sourcePath` BEFORE the operation wrote it, or
  * `null` when the file did not exist. It is the only thing that makes the refusal

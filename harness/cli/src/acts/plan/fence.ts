@@ -1,4 +1,4 @@
-import type { DdDoc } from '../../services/dd/core/model.js';
+import type { DdDoc } from '@ai-substrate/dd';
 
 /**
  * Fences as data (ac-7120, tk-7171).

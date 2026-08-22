@@ -142,14 +142,14 @@ original number and array values.
 Every dd command supports JSON output:
 
 ```bash
-harness dd validate "$plan" --depth 3 --json \
+node_modules/.bin/dd validate "$plan" --depth 3 --json \
   | jq '{status, counts: .data.counts, issues: .data.issues}'
 ```
 
 For schema provenance:
 
 ```bash
-harness dd schema list --json \
+node_modules/.bin/dd schema list --json \
   | jq -r '.data.schemas[] | "\(.name)\t\(.root)\t\(.path)"'
 ```
 

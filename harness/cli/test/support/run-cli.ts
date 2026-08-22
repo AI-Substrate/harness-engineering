@@ -112,3 +112,63 @@ async function run(argv: string[], mode: 'json' | 'human', verbDeps: VerbActDeps
       mode === 'json' && out.trim().length > 0 ? (JSON.parse(out.trim()) as Envelope) : null,
   };
 }
+
+/**
+ * Drive the STANDALONE `dd` CLI, the way an operator does after plan 080 phase 3.
+ *
+ * `harness dd *` was deleted with the fork (tk-000d), but several tests here were
+ * never testing those verbs — they USED them as tools to validate a fixture, mint
+ * an address, or sweep a corpus. Deleting the verb does not delete that need, so
+ * this routes it to dd's own bin instead of quietly dropping the assertion.
+ *
+ * The bin is resolved from `node_modules/.bin/dd`, never as bare `dd`, and never
+ * via `npx dd`. THREE different programs answer to that name and only one is ours:
+ *
+ *   `dd`               -> coreutils' disk-dump utility (`which dd` -> /bin/dd) —
+ *                         loud and harmless here, it just fails on our verbs.
+ *   `npx dd`           -> an UNSCOPED `dd` package that really exists on npm
+ *                         (v0.26.0, a stranger's devops tool — verified with
+ *                         `npm view dd version`). In a repo without ours installed
+ *                         this FETCHES AND RUNS REMOTE CODE. It is the dangerous
+ *                         spelling precisely because it looks like the careful
+ *                         one — it trades a visible failure for a silent
+ *                         supply-chain path, so a rule that forbids only the bare
+ *                         form actively steers people into this one.
+ *   `npx @ai-substrate/dd` -> ours, and the safe PATH-independent spelling — but
+ *                         NOT YET RUNNABLE: the package is unpublished today
+ *                         (`npm view @ai-substrate/dd version` -> E404). It
+ *                         becomes correct only from the release commit onward,
+ *                         and then only after registry/proxy lag clears.
+ *
+ * So TODAY there is exactly one runnable prescription: `node_modules/.bin/dd`,
+ * which is what this helper resolves. Write the scoped form in docs as the
+ * post-publish route, never as a command a reader can run right now — a
+ * prescription that 404s is how someone talks themselves back into `npx dd`.
+ */
+export async function runDd(argv: string[], cwd?: string): Promise<CliRun> {
+  const { execFile } = await import('node:child_process');
+  const { promisify } = await import('node:util');
+  const { dirname, join } = await import('node:path');
+  const { fileURLToPath } = await import('node:url');
+  const here = dirname(fileURLToPath(import.meta.url));
+  const bin = join(here, '../../../../node_modules/.bin/dd');
+  const run = promisify(execFile);
+  try {
+    const { stdout, stderr } = await run(bin, argv, { cwd, maxBuffer: 32 * 1024 * 1024 });
+    return {
+      out: stdout,
+      err: stderr,
+      code: 0,
+      envelope: stdout.trim().length > 0 ? (JSON.parse(stdout.trim()) as Envelope) : null,
+    };
+  } catch (error) {
+    const e = error as { stdout?: string; stderr?: string; code?: number };
+    const stdout = e.stdout ?? '';
+    return {
+      out: stdout,
+      err: e.stderr ?? '',
+      code: typeof e.code === 'number' ? e.code : 1,
+      envelope: stdout.trim().length > 0 ? (JSON.parse(stdout.trim()) as Envelope) : null,
+    };
+  }
+}

@@ -1,11 +1,11 @@
+import { FsDocLoader } from '@ai-substrate/dd';
+import { MemoizingDocLoader } from '@ai-substrate/dd/links';
+import { NodeSchemaFs } from '@ai-substrate/dd/node';
+import { ConventionSchemaResolver } from '@ai-substrate/dd/schema';
 import { afterEach, describe, expect, it } from 'vitest';
-import { NodeSchemaFs } from '../../../src/acts/dd/schema-fs.js';
-import { FsDocLoader } from '../../../src/acts/dd/shared.js';
 import { FakeClock } from '../../../src/adapters/clock/fake-clock.js';
 import { NodeHash } from '../../../src/adapters/hash/node-hash.js';
 import { ErrorCodes } from '../../../src/output/error-codes.js';
-import { MemoizingDocLoader } from '../../../src/services/dd/links/index.js';
-import { ConventionSchemaResolver } from '../../../src/services/dd/schema/index.js';
 import {
   type DdGateDeps,
   type DdGateResult,

@@ -1,0 +1,221 @@
+{
+  "dd": {
+    "schema": "builder/backpressure"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Backpressure coverage - dd consume-upgrade",
+        "plan": "../plan.dd.json#meta",
+        "basis_sha256": "b37369d36f1646a9b06dd45054d5fcaa358d4e2a19c8cab6795850386c8d6834",
+        "generated": "2026-08-09",
+        "certainty": "Partial"
+      }
+    },
+    {
+      "name": "sensors",
+      "value": [
+        {
+          "id": "sn-build",
+          "name": "typecheck+build",
+          "command": "just build",
+          "dimension": "maintainability",
+          "found_in": "root justfile"
+        },
+        {
+          "id": "sn-test",
+          "name": "vitest suite (incl. 6-file architecture suite)",
+          "command": "just test",
+          "dimension": "behaviour+architecture",
+          "found_in": "root justfile -> harness/cli vitest"
+        },
+        {
+          "id": "sn-fix",
+          "name": "biome fix/format",
+          "command": "just fix",
+          "dimension": "maintainability",
+          "found_in": "root justfile"
+        },
+        {
+          "id": "sn-lintmd",
+          "name": "markdown lint",
+          "command": "just lint-md",
+          "dimension": "maintainability",
+          "found_in": "root justfile"
+        },
+        {
+          "id": "sn-winchk",
+          "name": "windows-path family check",
+          "command": "just windows-check",
+          "dimension": "behaviour",
+          "found_in": "root justfile"
+        },
+        {
+          "id": "sn-planvalidate",
+          "name": "dd plan validate (dogfood)",
+          "command": "node harness/cli/bin/harness.js plan validate docs/plans/080-dd-consume-upgrade/plan.dd.json",
+          "dimension": "behaviour",
+          "found_in": "harness CLI (in-tree)"
+        },
+        {
+          "id": "sn-frozen",
+          "name": "semantics byte-pin (FROZEN_DIGEST)",
+          "command": "just test (test/architecture/dd-plan-semantics-frozen.test.ts)",
+          "dimension": "architecture-fitness",
+          "found_in": "harness/cli/test/architecture"
+        },
+        {
+          "id": "sn-ci",
+          "name": "CI (build+biome+tests+coverage+audit)",
+          "command": ".github/workflows/ci.yml (PR gate)",
+          "dimension": "all",
+          "found_in": ".github/workflows"
+        }
+      ]
+    },
+    {
+      "name": "rows",
+      "value": [
+        {
+          "id": "bp-0001",
+          "criterion": "ac-0001 dep pinned by full sha, registry untouched for dd",
+          "phase": "ph-1d68",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "RUN: npm ls @ai-substrate/dd at the REPO ROOT (the single manifest; harness/cli has no package.json) shows git+...#<full sha>; grep '\"@ai-substrate/dd\"' package.json names the pinned spec; ancestry from f712ded proven via git merge-base --is-ancestor",
+          "state": "checked"
+        },
+        {
+          "id": "bp-0002",
+          "criterion": "ac-0002 four survivors import only public dd subpaths",
+          "phase": "ph-1633",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "RUN: git grep -n \"services/dd\\|acts/dd\" -- harness/cli/src/acts/flow.ts harness/cli/src/acts/plan/index.ts harness/cli/src/acts/plan/pr-body.ts harness/cli/src/acts/plan/fence.ts returns zero matches (review-time probe, not a standing guard - D-4)",
+          "state": "checked"
+        },
+        {
+          "id": "bp-0003",
+          "criterion": "ac-0003 typecheck + full suite green each phase boundary",
+          "phase": "ph-1d68",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "RUN: just build && just test",
+          "state": "checked"
+        },
+        {
+          "id": "bp-0004",
+          "criterion": "ac-0004 trial report with dated prediction BEFORE trial + per-primitive falsifier-or-UNPROVEN",
+          "phase": "ph-1633",
+          "mode": "ABSENT",
+          "tier": "human-judgement",
+          "proof": "review reads the report; commit order of prediction-vs-trial is checkable via git log at review",
+          "probe": "no sensor class fits an evidentiary-ordering claim; searched justfile recipes + harness verbs for a report-lint - none (root + harness/cli)",
+          "state": "checked"
+        },
+        {
+          "id": "bp-0005",
+          "criterion": "ac-0005 OQ-2 verdict delivered to dd; insufficiency blocks per D-3",
+          "phase": "ph-1633",
+          "mode": "ABSENT",
+          "tier": "human-judgement",
+          "proof": "pij send receipt + dd-side acknowledgement at review",
+          "probe": "cross-repo message delivery has no repo-local sensor; searched harness verbs - none",
+          "state": "checked"
+        },
+        {
+          "id": "bp-0006",
+          "criterion": "ac-0006 fork-drain checklist before deletion (commits enumerated + confirmed in dd)",
+          "phase": "ph-08e2",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "BUILD->RUN: phase-3 task builds scripts/dd-drain-check - BIDIRECTIONAL (prime ruling 2026-08-09): (a) enumerate git log <fork-point>..main -- harness/cli/src/services/dd harness/cli/src/acts/dd and confirm each present in dd by merge-base ancestry; (b) enumerate dd-side fixes to ported files (dd log on src/) and confirm each present in the fork or explicitly deferred-with-owner; named shas both directions; then node scripts/dd-drain-check.mjs green",
+          "state": "checked"
+        },
+        {
+          "id": "bp-0007",
+          "criterion": "ac-0007 both dd trees deleted, zero residual imports",
+          "phase": "ph-08e2",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "RUN: test ! -d harness/cli/src/services/dd && test ! -d harness/cli/src/acts/dd && git grep -c \"services/dd\\|acts/dd\" -- harness/cli/src harness/cli/test returns nothing",
+          "state": "checked"
+        },
+        {
+          "id": "bp-0008",
+          "criterion": "ac-0008 dd verbs removed; doctor warns when dd CLI absent",
+          "phase": "ph-08e2",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "EXTEND->RUN: add doctor unit case (dd-CLI-absent fixture via fake process port) to the doctor suite; then just test",
+          "state": "checked"
+        },
+        {
+          "id": "bp-0009",
+          "criterion": "ac-0009 docs/how/consuming-dd.md exists and lints",
+          "phase": "ph-08e2",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "RUN: test -f docs/how/consuming-dd.md && just lint-md",
+          "state": "checked"
+        },
+        {
+          "id": "bp-000a",
+          "criterion": "ac-000a retired boundary documented at guard sites",
+          "phase": "ph-08e2",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "RUN: git grep -l \"D-4\\|boundary unenforced\" -- harness/cli/test/services/flow/flow-dd-sdk-seam.test.ts harness/cli/test/architecture/dd-core-isolation.test.ts returns both files (or their removal is recorded in the phase log)",
+          "state": "checked"
+        },
+        {
+          "id": "bp-000b",
+          "criterion": "ac-000b dogfood: flow orient/rail + plan validate green on the rewired build",
+          "phase": "ph-1d68",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "RUN: node harness/cli/bin/harness.js flow orient --path docs/plans/080-dd-consume-upgrade/the-flow.json && node harness/cli/bin/harness.js plan validate docs/plans/080-dd-consume-upgrade/plan.dd.json",
+          "state": "checked"
+        },
+        {
+          "id": "bp-000c",
+          "criterion": "ac-000c dogfood-findings ledger closes to zero silent workarounds",
+          "phase": "ph-08e2",
+          "mode": "ABSENT",
+          "tier": "human-judgement",
+          "proof": "review reads assets/dogfood-ledger.md; computational assist: grep -c OPEN assets/dogfood-ledger.md is zero at close",
+          "probe": "ledger-state judgement (was a workaround silent?) is not machine-decidable; searched harness verbs for a ledger-lint - none",
+          "state": "checked"
+        },
+        {
+          "id": "bp-000d",
+          "criterion": "failure mode: plan-semantics drift green-but-wrong during phase-2 re-implementation",
+          "phase": "ph-1633",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "EXTEND->RUN: falsifier test per primitive lands in vitest BEFORE implementation (TDD, testing_strategy) with its RED run logged; the FROZEN_DIGEST pin in dd-plan-semantics-frozen.test.ts stays UNCHANGED and green for all of phase 2 (the fork is byte-frozen until phase-3 deletion); RED->GREEN chronology is proved by commit order in the execution log; then just test",
+          "state": "checked"
+        },
+        {
+          "id": "bp-000e",
+          "criterion": "failure mode: SDK-boundary behavioural regression on re-pin (D7/A-2 class - POSIX suite blind to drive-letter inputs)",
+          "phase": "ph-1d68",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "EXTEND->RUN: promote the POC probe trio (pack shape, injection, tracked===null, D7 drive-letter resolution) from scratch probe.mjs into a vitest integration spec that runs against the installed package; then just test",
+          "state": "checked"
+        },
+        {
+          "id": "bp-000f",
+          "criterion": "ac-0002 PARTIAL (phase-1 scope): flow.ts+fence.ts fully off the fork; index.ts+pr-body.ts carry ONLY the deliberate services/dd/plan remainder",
+          "phase": "ph-1d68",
+          "mode": "EXISTS",
+          "tier": "computational",
+          "proof": "RUN: git grep -nE \"services/dd|acts/dd|\\./dd/\" -- harness/cli/src/acts/plan/index.ts harness/cli/src/acts/plan/pr-body.ts returns ONLY lines importing services/dd/plan (the bounded phase-2 remainder); zero acts/dd or relative ./dd/ matches",
+          "state": "checked"
+        }
+      ]
+    }
+  ]
+}

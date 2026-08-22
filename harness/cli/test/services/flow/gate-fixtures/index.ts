@@ -1,11 +1,11 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { NodeSchemaFs } from '../../../../src/acts/dd/schema-fs.js';
-import { FsDocLoader } from '../../../../src/acts/dd/shared.js';
+import { FsDocLoader } from '@ai-substrate/dd';
+import { MemoizingDocLoader } from '@ai-substrate/dd/links';
+import { NodeSchemaFs } from '@ai-substrate/dd/node';
+import { ConventionSchemaResolver } from '@ai-substrate/dd/schema';
 import { NodeHash } from '../../../../src/adapters/hash/node-hash.js';
-import { MemoizingDocLoader } from '../../../../src/services/dd/links/index.js';
-import { ConventionSchemaResolver } from '../../../../src/services/dd/schema/index.js';
 import type { DdGateDeps } from '../../../../src/services/flow/flow-dd-gate.js';
 import type { FlowDoc, FlowNode } from '../../../../src/services/flow/flow-events.js';
 

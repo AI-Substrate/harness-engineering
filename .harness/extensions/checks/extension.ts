@@ -316,8 +316,8 @@ const checks: HarnessVerb = {
   description:
     'Runs the repo\u2019s deterministic checks and aggregates: tests (`vitest run --coverage`), biome, typecheck, ' +
     'check:docs, check:flows, check:telemetry-fixtures, and skills-check are hard gates (error => exit 1); ' +
-    'check:doctrine-parity, check:dd-docs, root-invocation-smoke, arch-check, dd doctor, markdown-lint, windows-check are warn-launch ' +
-    '(findings => degraded/exit 0; dd doctor escalates to error only on ERROR-class findings). Any hard-gate error => ' +
+    'check:doctrine-parity, root-invocation-smoke, arch-check, markdown-lint, windows-check are warn-launch ' +
+    '(findings => degraded/exit 0). Any hard-gate error => ' +
     'checks error/exit 1; otherwise any degraded/unconfigured gate => checks degraded/exit 0; all clean => ok/exit 0. ' +
     'PREREQUISITE: `npm run build` first (the bin + drift guards need `dist/`). `harness boot` composes this; CI ' +
     'calls it. Extend the gate by adding a line here as the team grows. See `harness instructions checks`.',
@@ -429,19 +429,6 @@ const checks: HarnessVerb = {
         }),
       );
 
-      // dd baked-docs drift (WARN-LAUNCH): the committed docs-content.ts must still
-      // match its manifest + source markdown. Warn-launch to match the other
-      // generated-content guards' launch posture; promote once it has run clean
-      // for a while.
-      gates.push(
-        await runCmdGate(ctx, 'check:dd-docs', 'npm', ['run', 'check:dd-docs'], {
-          cwd: root,
-          severity: 'warn',
-          failNote:
-            'Baked dd docs drifted \u2014 run `npm run gen:dd-docs` and commit docs-content.ts.',
-        }),
-      );
-
       // Root-invocation smoke (P2 DL-008, decided here): the repo sanctions a
       // repo-root `vitest run` via the root vitest.config.ts, and until now
       // NOTHING exercised it \u2014 two sanctioned invocations, one of them unproven,
@@ -449,22 +436,29 @@ const checks: HarnessVerb = {
       // full suite: the gate already runs every test once from harness/cli, so the
       // open question is whether the root invocation resolves at all, and one
       // CLI-spawning file answers that for seconds rather than a second full pass.
+      //
+      // Re-aimed from `test/acts/dd.test.ts` to `test/acts/plan-fence.test.ts`
+      // (plan 080 tk-000d): the dd verb suite was deleted with the fork. The
+      // requirement on this file is only that it SPAWNS THE CLI and is small \u2014
+      // plan-fence does both. If it is ever deleted, re-aim rather than drop the
+      // gate: the thing under test is the root invocation, not the file.
       gates.push(
-        await runCmdGate(ctx, 'root-invocation-smoke', 'npx', ['vitest', 'run', 'test/acts/dd.test.ts'], {
-          cwd: root,
-          severity: 'warn',
-          failNote:
-            'The repo-root vitest invocation failed \u2014 either fix it or delete the root vitest.config.ts; the repo must not sanction an invocation nothing runs.',
-        }),
+        await runCmdGate(
+          ctx,
+          'root-invocation-smoke',
+          'npx',
+          ['vitest', 'run', 'test/acts/plan-fence.test.ts'],
+          {
+            cwd: root,
+            severity: 'warn',
+            failNote:
+              'The repo-root vitest invocation failed \u2014 either fix it or delete the root vitest.config.ts; the repo must not sanction an invocation nothing runs.',
+          },
+        ),
       );
 
       // Composed harness sub-verbs.
       gates.push(await runVerbGate(ctx, 'arch-check'));
-      // dd corpus health at infinite radius. Severity is the sub-verb's OWN
-      // envelope status and nothing else (`runVerbGate` has no severity
-      // parameter): WARN-class findings make `dd doctor` degraded, ERROR-class
-      // make it error, and this gate simply reports what it was told (Opus F3).
-      gates.push(await runVerbGate(ctx, 'dd doctor'));
       gates.push(await runVerbGate(ctx, 'skills-check'));
       gates.push(await runVerbGate(ctx, 'markdown-lint'));
       gates.push(await runVerbGate(ctx, 'windows-check'));

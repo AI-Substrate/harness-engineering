@@ -1,5 +1,5 @@
 import { ErrorCodes } from '../../output/error-codes.js';
-import type { SurveyDimension, SurveyReason } from '../dd/plan/index.js';
+import type { SurveyDimension, SurveyReason } from '../plan-semantics/index.js';
 import type { FlowNode } from './flow-events.js';
 import { type FlowServiceDeps, readFlowDoc } from './flow-service.js';
 

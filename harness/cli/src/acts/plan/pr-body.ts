@@ -1,5 +1,5 @@
-import type { PlanEdge, PlanIndex, PlanItem } from '../../services/dd/plan/index.js';
-import { escapeCell, headingSlug } from '../../services/dd/render/renderer.js';
+import { escapeCell, headingSlug } from '@ai-substrate/dd/render/renderer';
+import type { PlanEdge, PlanIndex, PlanItem } from '../../services/plan-semantics/index.js';
 
 /**
  * The PR-body acceptance table — a plan's closed claims, each beside the evidence

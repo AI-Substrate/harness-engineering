@@ -55,7 +55,7 @@ The current core parser type-checks `spec` but does not interpret its value.
 document:
 
 ```bash
-harness dd validate path/to/excluded.dd.json --depth 0
+node_modules/.bin/dd validate path/to/excluded.dd.json --depth 0
 ```
 
 See [Validation and doctor](08-validation-and-doctor.md#sweep-exclusions).
@@ -167,7 +167,7 @@ release.dd.md
 ```
 
 The JSON is authored and reviewed. The markdown begins with a generated-file
-banner and is overwritten by `harness dd build`. Never hand-edit the sibling.
+banner and is overwritten by `node_modules/.bin/dd build`. Never hand-edit the sibling.
 
 The renderer uses only the source basename in its header, so canonical output
 does not embed machine-specific absolute paths.

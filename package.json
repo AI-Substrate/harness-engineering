@@ -37,13 +37,11 @@
     "gen:flows": "node scripts/gen-flows.mjs",
     "gen:flow-fixtures": "node scripts/flow-fixtures.mjs",
     "gen:telemetry-fixtures": "node scripts/telemetry-fixtures.mjs",
-    "gen:dd-docs": "node scripts/gen-dd-docs.mjs",
     "check:docs": "node scripts/gen-docs.mjs --check",
     "check:flows": "npm run gen:flows && git diff --exit-code harness/cli/src/services/flow/schemas-content.ts && node scripts/flow-fixtures.mjs --check",
     "check:telemetry-fixtures": "node scripts/telemetry-fixtures.mjs --check",
     "check:doctrine-parity": "node scripts/doctrine-parity.mjs --check",
-    "check:dd-docs": "node scripts/check-dd-docs.mjs",
-    "build": "npm run gen:docs && npm run gen:flows && npm run gen:dd-docs && tsc -p harness/cli/tsconfig.json",
+    "build": "npm run gen:docs && npm run gen:flows && tsc -p harness/cli/tsconfig.json",
     "prepare": "npm run build",
     "test": "cd harness/cli && vitest run --coverage",
     "lint": "biome check harness/cli",
@@ -52,6 +50,7 @@
     "fix": "biome check --write harness/cli"
   },
   "dependencies": {
+    "@ai-substrate/dd": "github:AI-Substrate/dd#a37a20ecf12342275a9d81b4cf8835302de8e9e0",
     "commander": "^15.0.0",
     "jiti": "2.7.0",
     "jsonc-parser": "3.3.1",

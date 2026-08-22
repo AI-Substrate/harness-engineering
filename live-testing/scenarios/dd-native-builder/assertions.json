@@ -119,7 +119,7 @@
       "source": "fs",
       "required": true,
       "params": {
-        "cmd": "node harness/cli/bin/harness.js dd doctor"
+        "cmd": "node_modules/.bin/dd doctor"
       },
       "describe": "the corpus is doctor-clean AFTER the run — which is the honest test of 'never hand-edited the generated markdown'. A hand-edited sibling shows up here as drift no matter how it was made. Read WITH A9a/A9b: clean over an empty corpus is vacuous"
     },

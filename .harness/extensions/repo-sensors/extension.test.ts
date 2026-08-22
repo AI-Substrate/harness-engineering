@@ -34,7 +34,6 @@ const EXPECTED_SENSORS = [
   'windows-check',
   'coverage-branch',
   'todo-debt',
-  'dd-doctor',
   'lock-hygiene',
   'telemetry-ref-size',
 ];
@@ -99,9 +98,11 @@ describe('repo real sensors', () => {
       readings.push(await declaration.run(fake.context));
     }
 
-    // 13 single-command sensors + telemetry-ref-size's ref listing (which finds no
+    // 12 single-command sensors + telemetry-ref-size's ref listing (which finds no
     // `refs/harness-telemetry/**` line in the fake output, so it lists no trees).
-    expect(fake.calls).toHaveLength(14);
+    // Was 13+1: the `dd-doctor` sensor retired with the `harness dd` verb family
+    // it measured (plan 080 tk-000d).
+    expect(fake.calls).toHaveLength(13);
     expect(fake.calls.every((call) => call.command !== 'npx')).toBe(true);
     expect(fake.calls.every((call) => !call.args.some((arg) => /^(?:install|audit|exec)$/.test(arg)))).toBe(
       true,
