@@ -45,8 +45,13 @@ import { accessSync, constants } from 'node:fs';
  *   so six of seven agents get `command` = a bare `harness-hook.sh` path on Windows.
  *   Whether that executes there is **unmeasured**. The rows this module gates are the
  *   only thing in the suite pointing near that question.
- * - **#174** — `harness-hook.ps1` has **no execution coverage anywhere**; its sole
- *   reference in the test tree is a `readFileSync` text grep.
+ * - **#174** — `harness-hook.ps1` had **no execution coverage anywhere**; its sole
+ *   reference in the test tree was a `readFileSync` text grep. **PARTLY CLOSED by plan
+ *   089**: `hook-wrapper-ps1.int.test.ts` now EXECUTES that wrapper, gated on
+ *   {@link ./powershell-shell.ts}. It stays open in the respect that matters most —
+ *   every constraint in that file was measured on Windows PowerShell **5.1**, so a
+ *   green under `pwsh 7` narrows the gap rather than closing it. The row names carry
+ *   the interpreter that answered, so the two greens cannot be confused.
  */
 
 /**

@@ -71,13 +71,36 @@ HARNESS_MIN_NODE=22
 # defect class this project has already paid for once. So this is a separate file
 # with a deliberately trivial fixed-field format that no one could mistake for the
 # journal.
+#
+# THE KIND IS A PARAMETER, NOT A CONSTANT, AS OF #180. It used to be hardcoded to
+# `no-interpreter` because that was the only failure the shell could see. It is now
+# also the only place a POST-node failure can be seen at all: once the fire path
+# swallows the child's streams, a CLI that resolved an interpreter and then failed to
+# boot leaves NO trace anywhere - not on stderr (discarded), not in fires.jsonl (the
+# process that writes it is the process that died). MEASURED on a fenced HOME: after
+# such a fire the state dir contained the interpreter cache and nothing else.
+#
+# Fields are `<utc>\t<kind>\t<reason>\t<context>` - unchanged shape, so the existing
+# `no-interpreter` lines still parse. Nothing in src/ reads this file (only tests do),
+# so a new kind breaks no reader.
+#
+# THE FOURTH FIELD IS PER-KIND CONTEXT, NOT ALWAYS $PATH, and that distinction was
+# bought on a real Windows host. `no-interpreter` means we searched and found nothing,
+# so the PATH we searched IS the evidence. `cli-failed` means we FOUND a node and the
+# CLI died anyway - PATH answers a question nobody is asking, while the interpreter
+# that actually ran is what reproduces the failure. MEASURED on Windows PowerShell
+# 5.1: a `cli-failed` line carrying the full machine PATH ran to ~500 characters, and
+# a hook fires twice per tool call, so a persistently broken CLI would grow this log
+# fast while embedding environment detail in every line. Short, useful, and less
+# disclosing all point the same way.
 # ---------------------------------------------------------------------------
 record_failure() {
   mkdir -p "$HARNESS_STATE_DIR" 2>/dev/null || return 0
-  printf '%s\tno-interpreter\t%s\t%s\n' \
+  printf '%s\t%s\t%s\t%s\n' \
     "$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo unknown)" \
-    "${1:-}" \
-    "${PATH:-}" \
+    "${1:-unknown}" \
+    "${2:-}" \
+    "${3:-}" \
     >>"$HARNESS_FAILLOG" 2>/dev/null || true
 }
 
@@ -242,7 +265,7 @@ if [ -z "$RESOLVED" ]; then
   # operator asking a question, not an agent mid-tool-call, so it is the one caller
   # that MUST be told the truth by exit code. Silence is the right answer to an agent
   # and the wrong answer to a person.
-  record_failure "no usable node >= $HARNESS_MIN_NODE"
+  record_failure no-interpreter "no usable node >= $HARNESS_MIN_NODE" "${PATH:-}"
   if [ "${1:-}" = "--harness-hook-check" ]; then
     echo "step=none"
     exit 1
@@ -284,6 +307,73 @@ fi
 # visibly, where a stat would have reported the file present and healthy.
 if [ "${1:-}" = "--harness-hook-check" ]; then
   printf 'path=%s\nversion=%s\nstep=%s\n' "$RESOLVED" "$RESOLVED_VERSION" "$RESOLVED_STEP"
+  exit 0
+fi
+
+# FIRE MODE - the failure branch that starts AFTER node does (#180).
+#
+# Everything above this line covers the case where NO interpreter can be found: the
+# script exits 0 to a fire and 1 to a checker, and a test pins that asymmetry. It
+# covers nothing that happens once node STARTS. A bare `exec` hands the child's exit
+# code and both its streams to whoever spawned us, so an interpreter that resolves
+# and then cannot boot the CLI - a `dist/` half-rewritten by a concurrent `just
+# build`, a bad import, a parse error - reaches the agent as a NON-ZERO PRE-TOOL
+# HOOK, which every agent reads as a DENIAL. MEASURED at 9d3ea8e4 with a stub
+# harness.js that wrote to both streams and exited 23: the wrapper exited 23 and
+# leaked both streams. In a real session that blocked every tool call.
+#
+# RECOVERY IS BROKEN AT THE SAME MOMENT, which is what makes this worth a branch
+# rather than a note: `harness hooks uninstall` runs the same unbootable CLI, so the
+# operator cannot turn off the thing denying their tool calls without hand-editing
+# the agent's hook config. And they reached it without doing anything wrong.
+#
+# THE SUPPRESSION IS NOT NEW POLICY - it is the CLI's own contract, enforced one
+# layer out. `acts/hooks.ts` already declares fire "EXIT 0, ALWAYS, AND SILENT" on
+# every path; the wrapper is simply the last layer that can still honour it when the
+# CLI is too broken to honour it itself. So there is no legitimate fire output being
+# discarded here: a fire's observable is the journal, never stdout.
+#
+# SCOPED TO `hooks fire` BY THE FIRST TWO ARGUMENTS, AND THAT NARROWNESS IS THE
+# POINT. Swallowing unconditionally would be simpler and would silently destroy
+# `hooks status`, `--harness-hook-check` and `--version` - the operator surfaces
+# whose entire job is to report that something is wrong. An agent gets silence; a
+# person gets the truth. Same asymmetry as check mode above, one failure branch
+# later.
+#
+# `exec` IS DELIBERATELY DROPPED HERE AND KEPT BELOW. The fire path must outlive its
+# child to rewrite the exit code, so it costs one resident shell for the duration of
+# the fire; the operator path still execs and stays a single process.
+if [ "${1:-}" = "hooks" ] && [ "${2:-}" = "fire" ]; then
+  # No `set -e`, so a non-zero child - or a child killed by a signal, or a $RESOLVED
+  # that vanished between the check above and this line (126/127, whose diagnostic
+  # the shell writes to the stderr being discarded) - falls through to `exit 0`.
+  "$RESOLVED" --no-warnings "$HARNESS_SCRIPT" "$@" >/dev/null 2>&1
+  _status=$?
+
+  # SWALLOWING WITHOUT RECORDING WOULD REBUILD THE DEFECT ONE LAYER UP, and that is
+  # not a hypothetical: it is what the first cut of this fix did. MEASURED on a fenced
+  # HOME with a stub CLI that exits 23 - the state dir afterwards held the interpreter
+  # cache and NOTHING ELSE. No stderr (discarded here), no fires.jsonl (the process
+  # that writes it is the one that died before it could).
+  #
+  # THE READING THAT MAKES THIS WORSE THAN NO SIGNAL: `hooks status` reports fires
+  # from the journal, so a CLI that is dead on every fire renders as "never fired" -
+  # WHICH IS ALSO WHAT A HEALTHY, IDLE REPO LOOKS LIKE. An operator checks, sees
+  # nothing, and correctly concludes nothing is wrong. A missing signal is bad; a
+  # signal indistinguishable from health is worse, and it is the same shape as the
+  # silent no-interpreter failure this file was written to end.
+  #
+  # COSTS NOTHING WHEN HEALTHY. `fire` is contractually exit-0-always
+  # (`acts/hooks.ts`), so a non-zero status here cannot mean "the hook declined" - it
+  # can only mean the CLI itself failed to run. Zero writes on the happy path.
+  # A persistently broken CLI does append per fire; that unbounded-growth exposure is
+  # the same one the no-interpreter kind above has always carried.
+  # The fourth field is the INTERPRETER, not $PATH: node was found, so the PATH we
+  # searched is not the evidence - the binary that ran is, and it is what reproduces
+  # the failure by hand. It is also ~500 characters shorter per line on a real
+  # machine, on a log that grows twice per tool call while a CLI stays broken.
+  [ "$_status" -eq 0 ] || record_failure cli-failed "exit=$_status agent=${3:-unknown}" "$RESOLVED"
+
   exit 0
 fi
 

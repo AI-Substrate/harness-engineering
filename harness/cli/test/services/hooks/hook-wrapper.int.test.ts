@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import {
   chmodSync,
   copyFileSync,
@@ -12,6 +12,14 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+  brokenCliEnv,
+  FAKE_EXIT_CODE,
+  FAKE_STDERR_LEAK,
+  FAKE_STDOUT_LEAK,
+  SIGNALLED_CLI,
+  stageBrokenCli,
+} from '../../support/broken-cli-fixture.js';
 import { POSIX_SHELL } from '../../support/posix-shell.js';
 
 /**
@@ -215,6 +223,166 @@ describe.runIf(POSIX_SHELL)('a failure that cannot run node still reports itself
 });
 
 /**
+ * THE FAILURE BRANCH THAT STARTS AFTER NODE DOES (#180) — POSIX dialect.
+ *
+ * The describe above proves the wrapper's asymmetry when NO interpreter can be found,
+ * i.e. everything BEFORE node starts. This one covers the other half: an interpreter
+ * that resolves and then cannot boot the CLI. See
+ * {@link ../../support/broken-cli-fixture.ts} for why that is an ordinary race rather
+ * than an exotic state, and why the fixture is itself a control.
+ *
+ * The PowerShell twin of these rows lives in `hook-wrapper-ps1.int.test.ts`, staged
+ * against the same fixture but asserted on its own terms.
+ */
+describe.runIf(POSIX_SHELL)('a CLI that BOOTS AND THEN FAILS never denies the agent', () => {
+  let broken: ReturnType<typeof stageBrokenCli>;
+
+  beforeEach(() => {
+    broken = stageBrokenCli('harness-hook.sh');
+  });
+  afterEach(() => rmSync(broken.dir, { recursive: true, force: true }));
+
+  /**
+   * `spawnSync`, not the `run()` helper above: these rows must read STDERR
+   * separately from stdout (the defect leaked both) and must not depend on a throw to
+   * observe a non-zero status.
+   */
+  const fire = (args: string[]) =>
+    spawnSync('/bin/sh', [broken.wrapper, ...args], {
+      encoding: 'utf8',
+      env: brokenCliEnv(broken.home),
+      input: '{"tool_name":"Bash"}',
+    });
+
+  it('swallows a broken CLI for a FIRE and preserves it for an OPERATOR', () => {
+    /*
+    Test Doc:
+    - Why: MEASURED at 9d3ea8e4 — with a `harness.js` that wrote to both streams and
+      exited 23, `hooks fire … --hook-input stdin` exited 23 and leaked both streams.
+      A non-zero PRE-tool hook is read as a DENIAL, so in a real Copilot session every
+      tool call was blocked; recovery was blocked too, because `hooks hooks uninstall`
+      runs the same unbootable CLI. A half-written `dist/` from a concurrent build is
+      all it takes.
+    - Contract: a `hooks fire` invocation exits 0 and emits nothing, whatever the child
+      does; EVERY other invocation keeps the child's exit code and both its streams.
+    - Usage Notes: BOTH HALVES LIVE IN ONE BODY on purpose, matching the pre-node
+      asymmetry row above. The operator half is the POSITIVE CONTROL: without it this
+      file would pass just as happily against a wrapper that swallowed everything
+      unconditionally — which would silently destroy `hooks status`. A test that cannot
+      fail against the over-broad fix is not evidence.
+    - Quality Contribution: catches (a) a return to `exec`, which forwards the child's
+      status, (b) any suppression that widens past `hooks fire`, and (c) a fixture whose
+      child never started — asserted directly, because "exit 0 and silent" and "never
+      ran" are identical at the observer and opposite in meaning.
+    - Worked Example: fire → {status: 0, stdout: '', stderr: ''} with childArgv
+      non-null; `--version` → {status: 23, stdout: 'FAKE_STDOUT_LEAK'}.
+    */
+    const fired = fire([
+      'hooks',
+      'fire',
+      'github-copilot',
+      '--phase',
+      'pre',
+      '--hook-input',
+      'stdin',
+    ]);
+
+    expect(broken.childArgv(), 'the fake CLI never ran — this row proves NOTHING').not.toBeNull();
+    expect(fired.status).toBe(0);
+    expect(fired.stdout).toBe('');
+    expect(fired.stderr).toBe('');
+
+    const operator = fire(['--version']);
+    expect(operator.status).toBe(FAKE_EXIT_CODE);
+    expect(operator.stdout).toContain(FAKE_STDOUT_LEAK);
+    expect(operator.stderr).toContain(FAKE_STDERR_LEAK);
+  });
+
+  it('leaves CHECK MODE — what `hooks status` invokes — completely untouched', () => {
+    /*
+    Test Doc:
+    - Why: a fix that special-cased only `--version` would pass the row above and still
+      kill `--harness-hook-check`, which is the entry point `hooks status` invokes to
+      answer CAN THIS RUN. Killing it would rebuild the false green this wrapper exists
+      to remove, one layer up.
+    - Contract: check mode still reports its resolution on stdout and exits 0, and it
+      starts no node at all.
+    - Usage Notes: the absence of the leak strings here means the CHILD WAS NEVER
+      STARTED, which is the correct behaviour for check mode — the opposite of what the
+      same absence means on the fire row.
+    - Quality Contribution: catches a suppression scoped by anything looser than the
+      exact `hooks fire` argument pair.
+    - Worked Example: `--harness-hook-check` → {status: 0, stdout: 'path=/…\nversion=…'}.
+    */
+    const checked = fire(['--harness-hook-check']);
+
+    expect(checked.status).toBe(0);
+    expect(checked.stdout).toMatch(/^path=\//m);
+    expect(checked.stdout).toMatch(/^step=/m);
+    expect(checked.stdout).not.toContain(FAKE_STDOUT_LEAK);
+    expect(broken.childArgv(), 'check mode must not start node').toBeNull();
+  });
+
+  it('exits 0 even when the child is KILLED BY A SIGNAL', () => {
+    /*
+    Test Doc:
+    - Why: a signalled child has no exit code. A POSIX shell reports it as 128+n, so a
+      wrapper that forwarded status would hand the agent 137 for a hook whose contract
+      is exit 0 — the same denial as a non-zero exit, reached by a path that a
+      `$? -eq 0` style fix could miss. OOM-killing a node process is not rare.
+    - Contract: SIGKILL of the child still yields exit 0 from the wrapper.
+    - Usage Notes: the fake writes its marker BEFORE killing itself, so the row still
+      proves the child ran.
+    - Quality Contribution: catches a fix that inspects the child's status and
+      selectively forwards it rather than exiting 0 unconditionally.
+    - Worked Example: child SIGKILLs itself → wrapper {status: 0}.
+    */
+    broken.replaceCli(SIGNALLED_CLI);
+
+    const fired = fire(['hooks', 'fire', 'cursor', '--phase', 'post']);
+
+    expect(broken.childArgv(), 'the fake CLI never ran — this row proves NOTHING').not.toBeNull();
+    expect(fired.status).toBe(0);
+  });
+
+  it('RECORDS the boot failure it swallowed, so silence is not the whole story', () => {
+    /*
+    Test Doc:
+    - Why: MEASURED while building this fix — after a swallowed boot failure the fenced
+      state dir held the interpreter cache and NOTHING ELSE. No stderr (discarded), no
+      `fires.jsonl` (the process that writes it is the one that died). `hooks status`
+      then renders a CLI that is dead on every fire as "never fired", WHICH IS ALSO
+      WHAT A HEALTHY IDLE REPO LOOKS LIKE: an operator checks, sees nothing, and
+      correctly concludes nothing is wrong. A signal indistinguishable from health is
+      worse than a missing one, and it is the exact defect class this wrapper was
+      written to end — so swallowing without recording would rebuild it one layer up.
+    - Contract: a swallowed fire failure appends a `cli-failed` line to
+      `interpreter-failures.log`, carrying the child's exit code, the agent slug, and
+      THE INTERPRETER THAT RAN. A healthy fire writes nothing.
+    - Usage Notes: the kind is the SECOND tab-separated field; `no-interpreter` lines
+      from the pre-node branch keep the same shape, so both parse the same way.
+      Nothing in `src/` reads this file, so the new kind breaks no reader.
+    - Quality Contribution: catches a future "simplification" that keeps the exit-0
+      swallow and drops the record, which would leave the failure invisible on every
+      surface. The exact match on field 4 also catches a revert to logging `$PATH`
+      here — MEASURED on Windows PowerShell 5.1 at ~500 characters per line, on a log
+      that grows twice per tool call while a CLI stays broken, and answering a question
+      nobody is asking once node has already been found.
+    - Worked Example: fire against the broken CLI → log line
+      `2026-…Z\tcli-failed\texit=23 agent=github-copilot\t/opt/homebrew/bin/node`.
+    */
+    fire(['hooks', 'fire', 'github-copilot', '--phase', 'pre']);
+
+    const log = readFileSync(broken.failureLog, 'utf8');
+    const fields = log.trim().split('\n')[0].split('\t');
+    expect(fields[1]).toBe('cli-failed');
+    expect(fields[2]).toContain(`exit=${FAKE_EXIT_CODE}`);
+    expect(fields[2]).toContain('agent=github-copilot');
+    expect(fields[3]).toBe(broken.resolvedInterpreter());
+  });
+});
+
+/**
  * A STATIC GUARD ON THE .PS1, IN A FILE THAT OTHERWISE COVERS ONLY THE .SH.
  *
  * This asserts nothing about PowerShell's behaviour — it asserts a TEXTUAL property,
@@ -266,12 +434,14 @@ describe('the PowerShell wrapper never mentions `$input` (measured stdin-drain h
  * otherwise reach Windows users through a green run.
  *
  * WHAT THESE ROWS DO NOT PROVE, and where that lives instead. They say nothing about
- * whether either wrapper RUNS on Windows. Both questions are open and both were held
- * out of plan 087 by scope ruling rather than resolved: **#173** (six of seven agents
- * get `command` = a bare `harness-hook.sh` path on Windows, executability unmeasured)
- * and **#174** (`harness-hook.ps1` has no execution coverage anywhere). If you came here
- * because Windows is green and wondered whether that means the wrapper works there:
- * it does not, and those two issues are why.
+ * whether either wrapper RUNS on Windows. **#173** is still fully open (six of seven
+ * agents get `command` = a bare `harness-hook.sh` path on Windows, executability
+ * unmeasured). **#174** is partly closed by plan 089: `hook-wrapper-ps1.int.test.ts`
+ * now EXECUTES `harness-hook.ps1` wherever a host PowerShell can run a `.ps1` file, so
+ * the dialect is no longer covered by a text grep alone — but every constraint in that
+ * wrapper was measured on Windows PowerShell 5.1, and a green under `pwsh 7` is an
+ * approximation of it. If you came here because Windows is green and wondered whether
+ * that means both wrappers work there: it does not, and that is why.
  */
 describe('both wrappers ship, on every platform (no shell required)', () => {
   const wrappers = [
