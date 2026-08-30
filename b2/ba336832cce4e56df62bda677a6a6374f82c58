@@ -1,0 +1,19 @@
+government/how-we-work.md
+  s_44da07539fdbc0::t_f469ab62fe455e 70-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b2ba336832cce4e56df62bda677a6a6374f82c58",
+  "prompts": {},
+  "sessions": {
+    "s_44da07539fdbc0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_44da07539fdbc0",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
