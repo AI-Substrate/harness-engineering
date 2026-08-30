@@ -15,10 +15,10 @@ function consent(value: boolean, origin: ResolvedValue<boolean>['origin']): Reso
 }
 
 describe('conversation sync service', () => {
-  it('does no Flowspace work when consent is disabled by default', () => {
+  it('does no Flowspace work when consent is disabled by default', async () => {
     const flowspace = new FakeFlowspace();
 
-    expect(syncConversation(consent(false, 'default'), INGEST, flowspace)).toEqual({
+    await expect(syncConversation(consent(false, 'default'), INGEST, flowspace)).resolves.toEqual({
       status: 'disabled',
       origin: 'default',
     });
@@ -26,20 +26,22 @@ describe('conversation sync service', () => {
     expect(flowspace.ingests).toEqual([]);
   });
 
-  it('preserves kill-switch origin when consent is disabled', () => {
+  it('preserves kill-switch origin when consent is disabled', async () => {
     const flowspace = new FakeFlowspace();
 
-    expect(syncConversation(consent(false, 'kill-switch'), INGEST, flowspace)).toEqual({
+    await expect(
+      syncConversation(consent(false, 'kill-switch'), INGEST, flowspace),
+    ).resolves.toEqual({
       status: 'disabled',
       origin: 'kill-switch',
     });
     expect(flowspace.calls).toEqual([]);
   });
 
-  it('stops after detection when flowspace3 is absent', () => {
+  it('stops after detection when flowspace3 is absent', async () => {
     const flowspace = new FakeFlowspace({ detected: false });
 
-    expect(syncConversation(consent(true, 'repo'), INGEST, flowspace)).toEqual({
+    await expect(syncConversation(consent(true, 'repo'), INGEST, flowspace)).resolves.toEqual({
       status: 'undetected',
       origin: 'repo',
     });
@@ -47,10 +49,10 @@ describe('conversation sync service', () => {
     expect(flowspace.ingests).toEqual([]);
   });
 
-  it('reports enabled but unreachable once without ingesting', () => {
+  it('reports enabled but unreachable once without ingesting', async () => {
     const flowspace = new FakeFlowspace({ reachable: false });
 
-    expect(syncConversation(consent(true, 'repo'), INGEST, flowspace)).toEqual({
+    await expect(syncConversation(consent(true, 'repo'), INGEST, flowspace)).resolves.toEqual({
       status: 'unreachable',
       origin: 'repo',
     });
@@ -58,10 +60,10 @@ describe('conversation sync service', () => {
     expect(flowspace.ingests).toEqual([]);
   });
 
-  it('detects, pings, then fires one ingest with the exact identity', () => {
+  it('detects, pings, then fires one ingest with the exact identity', async () => {
     const flowspace = new FakeFlowspace();
 
-    expect(syncConversation(consent(true, 'repo'), INGEST, flowspace)).toEqual({
+    await expect(syncConversation(consent(true, 'repo'), INGEST, flowspace)).resolves.toEqual({
       status: 'fired',
       origin: 'repo',
     });
@@ -69,11 +71,11 @@ describe('conversation sync service', () => {
     expect(flowspace.ingests).toEqual([INGEST]);
   });
 
-  it('copies recorded ingest arguments instead of retaining caller-owned state', () => {
+  it('copies recorded ingest arguments instead of retaining caller-owned state', async () => {
     const flowspace = new FakeFlowspace();
     const input = { ...INGEST };
 
-    syncConversation(consent(true, 'repo'), input, flowspace);
+    await syncConversation(consent(true, 'repo'), input, flowspace);
     input.session = 'mutated';
 
     expect(flowspace.ingests).toEqual([INGEST]);

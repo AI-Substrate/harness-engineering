@@ -1,8 +1,9 @@
-import type { FlowspacePort, IngestArgs } from './flowspace-port.js';
+import type { FlowspacePort, IngestArgs, IngestDispatch } from './flowspace-port.js';
 
 export interface FakeFlowspaceOptions {
   detected?: boolean;
   reachable?: boolean;
+  dispatch?: IngestDispatch;
 }
 
 /** Deterministic Flowspace seam: seeded availability, no daemon, recorded intent. */
@@ -22,8 +23,9 @@ export class FakeFlowspace implements FlowspacePort {
     return this.options.reachable ?? true;
   }
 
-  ingest(args: IngestArgs): void {
+  async ingest(args: IngestArgs): Promise<IngestDispatch> {
     this.calls.push('ingest');
     this.ingests.push({ ...args });
+    return this.options.dispatch ?? { status: 'fired' };
   }
 }
