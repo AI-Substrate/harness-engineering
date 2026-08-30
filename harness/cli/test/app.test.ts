@@ -21,6 +21,7 @@ import {
 } from '../src/app.js';
 import type { CliIo, Writers } from '../src/output/output-port.js';
 import type { HarnessVerb } from '../src/services/extensions/contract.js';
+import { RESERVED_NAMES } from '../src/services/extensions/registry.js';
 import { coreTelemetryAdapters } from '../src/services/telemetry/adapters/index.js';
 import { type CaptureDeps, captureTelemetry } from '../src/services/telemetry/capture-service.js';
 
@@ -227,6 +228,12 @@ describe('buildProgram — composition root wiring', () => {
       'telemetry',
       'instructions',
     ]);
+  });
+
+  it('reserves every registered core command name and alias from extensions', () => {
+    const program = buildProgram('1.2.3', io, deps(), { verbs: [], records: [] });
+    const coreNames = program.commands.flatMap((command) => [command.name(), ...command.aliases()]);
+    expect([...RESERVED_NAMES]).toEqual(expect.arrayContaining(coreNames));
   });
 });
 
