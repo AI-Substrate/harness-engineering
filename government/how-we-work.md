@@ -25,6 +25,13 @@
    plans for CODE go through /builder planning; close-out uses /builder
    post-flight. The packet cites the discipline; the seat follows the maintained
    stage doc, never a re-derivation from packet prose. (Jordan, 2026-08-30.)
+   SCOPING (coral, 2026-08-30, standing in every coder brief): for packet-shaped
+   plans, follow 60-implement.md in SIMPLE MODE — domain mode OFF, no tasks
+   dossier exists and none may be INVENTED (invented compliance is the dangerous
+   failure), no dd state verbs, no `harness plan validate`; what DOES apply:
+   the testing discipline, an execution log under the plan's assets/, the
+   discoveries table, the step-5 output contract. A seat pulled toward creating
+   a missing artifact stops-and-asks — that is the doc outrunning the packet.
 4. **Receipts-or-not-done** — exact commands + tails; mutation-checked tests (the
    fix's test fails without the fix — stated, not assumed).
 5. **Canary-before-trust** — identity echo (id/cwd/model) before a fresh spawn's
