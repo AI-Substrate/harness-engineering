@@ -49,7 +49,7 @@ recomputing or reviewing whatever depended on that target.
 At the command line, use a repository-root-qualified address:
 
 ```bash
-node_modules/.bin/dd link verify-basis \
+node_modules/.bin/ddocs link verify-basis \
   "docs/how/dd/exemplar/plan.dd.json#meta" \
   --sha <recorded-sha>
 ```
@@ -63,7 +63,7 @@ it tells the consumer to recompute; it does not by itself fail a dd gate.
 After reviewing the current target:
 
 ```bash
-node_modules/.bin/dd link verify-basis \
+node_modules/.bin/ddocs link verify-basis \
   "docs/how/dd/exemplar/plan.dd.json#meta" \
   --sha <recorded-sha> \
   --update path/to/consumer.dd.json

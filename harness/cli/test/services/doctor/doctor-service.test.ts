@@ -788,7 +788,7 @@ describe('doctor — the standalone dd CLI layer (plan 080 tk-000e)', () => {
 
   it('is silent when the standalone CLI is installed', () => {
     const layer = ddCliLayer(
-      { '/repo/node_modules/.bin/dd': '#!/usr/bin/env node' },
+      { '/repo/node_modules/.bin/ddocs': '#!/usr/bin/env node' },
       { '/repo': ['node_modules'] },
     );
     expect(layer.ok).toBe(true);
@@ -801,7 +801,7 @@ describe('doctor — the standalone dd CLI layer (plan 080 tk-000e)', () => {
     // said "install dd" would send a reader to one of two wrong programs — the
     // npx one silently. The warning must name both, or it is worse than absent.
     const layer = ddCliLayer(USING_DD.files, USING_DD.dirs);
-    expect(layer.next_action).toContain('node_modules/.bin/dd');
+    expect(layer.next_action).toContain('node_modules/.bin/ddocs');
     expect(layer.next_action).toContain('coreutils');
     expect(layer.next_action).toContain('npx dd');
   });
@@ -835,7 +835,7 @@ describe('doctor — the shipped dd layer', () => {
     expect(layer.detail).toContain('1 deterministic document(s)');
     // The deep answer belongs to the sweep, and this row says so rather than
     // pretending to have run it (P7 — doctor never invokes).
-    expect(layer.detail).toContain('node_modules/.bin/dd doctor');
+    expect(layer.detail).toContain('node_modules/.bin/ddocs doctor');
   });
 
   it('fails a document committed without its rendered sibling', () => {
@@ -846,7 +846,7 @@ describe('doctor — the shipped dd layer', () => {
     expect(layer.ok).toBe(false);
     expect(layer.detail).toContain('no rendered sibling');
     expect(layer.detail).toContain('docs/plan.dd.json');
-    expect(layer.next_action).toContain('node_modules/.bin/dd build');
+    expect(layer.next_action).toContain('node_modules/.bin/ddocs build');
   });
 
   it('honours the sweep exclusion contract instead of re-deriving it', () => {

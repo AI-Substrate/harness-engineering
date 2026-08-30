@@ -75,14 +75,14 @@ The task file is a DETERMINISTIC DOCUMENT. Its `.dd.md` sibling is GENERATED, an
 ```bash
 TASKS="${PLAN_DIR}/assets/tasks/phase-N/tasks.dd.json"
 
-node_modules/.bin/dd set "${TASKS}#done_when/tk-XXXX/dw-XXXX/state" checked   # an assertion holds
-node_modules/.bin/dd set "${TASKS}#tasks/tk-XXXX/state" checked               # the task itself
-node_modules/.bin/dd set "${TASKS}#tasks/tk-XXXX/state" blocked               # blocked ≠ not done: say which
-node_modules/.bin/dd set "${TASKS}#tasks/tk-XXXX/receipt" "<command + result>"
-node_modules/.bin/dd get "${TASKS}#tasks/tk-XXXX"                              # read it back
+node_modules/.bin/ddocs set "${TASKS}#done_when/tk-XXXX/dw-XXXX/state" checked   # an assertion holds
+node_modules/.bin/ddocs set "${TASKS}#tasks/tk-XXXX/state" checked               # the task itself
+node_modules/.bin/ddocs set "${TASKS}#tasks/tk-XXXX/state" blocked               # blocked ≠ not done: say which
+node_modules/.bin/ddocs set "${TASKS}#tasks/tk-XXXX/receipt" "<command + result>"
+node_modules/.bin/ddocs get "${TASKS}#tasks/tk-XXXX"                              # read it back
 ```
 
-Each `dd set` validates against the schema BEFORE writing, rebuilds `tasks.dd.md` in the same operation, and refuses (writing nothing) if the value is not one the schema allows. **Never hand-edit `tasks.dd.json`, and never edit `tasks.dd.md` at all** — it is derived, and `node_modules/.bin/dd build --check` reports a hand-edit as drift that will be blamed on you.
+Each `dd set` validates against the schema BEFORE writing, rebuilds `tasks.dd.md` in the same operation, and refuses (writing nothing) if the value is not one the schema allows. **Never hand-edit `tasks.dd.json`, and never edit `tasks.dd.md` at all** — it is derived, and `node_modules/.bin/ddocs build --check` reports a hand-edit as drift that will be blamed on you.
 
 Rehearse the gate before you try to leave the phase — it is cheaper than a refusal:
 

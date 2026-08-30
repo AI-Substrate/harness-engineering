@@ -19,17 +19,17 @@ TASKS="${PLAN_DIR}/assets/tasks/phase-N/tasks.dd.json"
 # 1. the task file exists already if `harness plan new` scaffolded this phase;
 #    otherwise scaffold the plan with the phase and it is born with it.
 # 2. rows, ids minted by the CLI — never hand-rolled
-node_modules/.bin/dd add "${TASKS}#tasks" \
+node_modules/.bin/ddocs add "${TASKS}#tasks" \
   '{"title":"<task>","phase":"ph-XXXX","state":"unchecked","satisfies":["../../../plan.dd.json#acceptance_criteria/ac-XXXX"]}' --mint tk
 
 # 3. every task's done_when assertions — EVERY assertion names its instrument
-node_modules/.bin/dd add "${TASKS}#done_when/tk-XXXX" \
+node_modules/.bin/ddocs add "${TASKS}#done_when/tk-XXXX" \
   '{"assertion":"<what must be true>","state":"unchecked","pressure":"../../../backpressure.dd.json#rows/bp-XXXX"}' --mint dw
 #    no instrument? say so explicitly — silence is a validation ERROR:
 #    ... '{"assertion":"…","state":"unchecked","pressure":"not-applicable","note":"<the real instrument>"}' --mint dw
 
 # 4. THE SAME STROKE: point the phase row at the file it just got
-node_modules/.bin/dd set "${PLAN_DIR}/plan.dd.json#phases/ph-XXXX/tasks" "assets/tasks/phase-N/tasks.dd.json#tasks"
+node_modules/.bin/ddocs set "${PLAN_DIR}/plan.dd.json#phases/ph-XXXX/tasks" "assets/tasks/phase-N/tasks.dd.json#tasks"
 #    the SOURCE (`.dd.json`), never the generated sibling: `.dd.md#tasks` is not a
 #    document link, so the phase row would name nothing and the plan's
 #    work-accounting would silently disconnect.
@@ -38,7 +38,7 @@ node_modules/.bin/dd set "${PLAN_DIR}/plan.dd.json#phases/ph-XXXX/tasks" "assets
 harness plan validate "${PLAN_DIR}/plan.dd.json"
 ```
 
-**`satisfies` is always an ARRAY**, and it is what makes the work accountable to the criteria — an AC nobody satisfies warns as an orphan under `--complete`, which is exactly the gate the last review runs. **Never hand-edit the `.dd.json` and never edit the `.dd.md` at all**: the sibling is generated, and `node_modules/.bin/dd build --check` reports a hand-edit as drift.
+**`satisfies` is always an ARRAY**, and it is what makes the work accountable to the criteria — an AC nobody satisfies warns as an orphan under `--complete`, which is exactly the gate the last review runs. **Never hand-edit the `.dd.json` and never edit the `.dd.md` at all**: the sibling is generated, and `node_modules/.bin/ddocs build --check` reports a hand-edit as drift.
 
 ---
 

@@ -22,70 +22,70 @@ default:
 
 # The headline: everything flowing in and out of one acceptance-criteria row.
 graph-ac:
-    cd {{root}} && node_modules/.bin/dd graph map "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201"
+    cd {{root}} && node_modules/.bin/ddocs graph map "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201"
 
 # The same row, bounded hard — shows the truncation warning doing its job.
 graph-truncated:
-    cd {{root}} && node_modules/.bin/dd graph map "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201" --max-nodes 8
+    cd {{root}} && node_modules/.bin/ddocs graph map "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201" --max-nodes 8
 
 # Only what this row points AT (its proof chain).
 graph-out:
-    cd {{root}} && node_modules/.bin/dd graph map "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201" --direction out
+    cd {{root}} && node_modules/.bin/ddocs graph map "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201" --direction out
 
 # Only what points AT this row (who depends on it).
 graph-in:
-    cd {{root}} && node_modules/.bin/dd graph map "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201" --direction in
+    cd {{root}} && node_modules/.bin/ddocs graph map "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201" --direction in
 
 # Reach further, and allow more nodes.
 graph-deep:
-    cd {{root}} && node_modules/.bin/dd graph map "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201" --depth 4 --max-nodes 40
+    cd {{root}} && node_modules/.bin/ddocs graph map "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201" --depth 4 --max-nodes 40
 
 # A row in the self-contained corpus — links reach across folders.
 graph-custom:
-    cd {{root}} && node_modules/.bin/dd graph map "{{ex}}/custom-render/release.dd.json#gates/gt-0101"
+    cd {{root}} && node_modules/.bin/ddocs graph map "{{ex}}/custom-render/release.dd.json#gates/gt-0101"
 
 # The whole corpus as a mermaid diagram. stdout is ONLY the diagram, so:
 #   just mermaid > corpus.mmd
 mermaid:
-    @cd {{root}} && node_modules/.bin/dd graph --path {{ex}}
+    @cd {{root}} && node_modules/.bin/ddocs graph --path {{ex}}
 
 # ── Checking documents ───────────────────────────────────────────────────────
 
 # Validate one document and everything it links to, three hops out.
 validate:
-    cd {{root}} && node_modules/.bin/dd validate {{ex}}/plan.dd.json --depth 3
+    cd {{root}} && node_modules/.bin/ddocs validate {{ex}}/plan.dd.json --depth 3
 
 # Validate the document alone, ignoring what it links to.
 validate-shallow:
-    cd {{root}} && node_modules/.bin/dd validate {{ex}}/plan.dd.json --depth 0
+    cd {{root}} && node_modules/.bin/ddocs validate {{ex}}/plan.dd.json --depth 0
 
 # Sweep every dd document in the repository.
 doctor:
-    cd {{root}} && node_modules/.bin/dd doctor
+    cd {{root}} && node_modules/.bin/ddocs doctor
 
 # Are the generated .dd.md siblings in sync with their .dd.json sources?
 drift:
-    cd {{root}} && node_modules/.bin/dd build {{ex}}/plan.dd.json --check
+    cd {{root}} && node_modules/.bin/ddocs build {{ex}}/plan.dd.json --check
 
 # Regenerate every .dd.md in the corpus.
 build:
     cd {{root}} && for f in plan backpressure execution-log tasks/phase-2/tasks custom-render/release; do \
-        node_modules/.bin/dd build {{ex}}/$f.dd.json; \
+        node_modules/.bin/ddocs build {{ex}}/$f.dd.json; \
     done
 
 # ── Schemas and adapters ─────────────────────────────────────────────────────
 
 # Every schema that resolves, and any shadowed duplicates.
 schemas:
-    cd {{root}} && node_modules/.bin/dd schema list
+    cd {{root}} && node_modules/.bin/ddocs schema list
 
 # One schema in full — its path, shapes, enums and gate-terminal set.
 schema-plan:
-    cd {{root}} && node_modules/.bin/dd schema show builder/plan
+    cd {{root}} && node_modules/.bin/ddocs schema show builder/plan
 
 # The custom schema that ships with its own adapters.
 schema-custom:
-    cd {{root}} && node_modules/.bin/dd schema show release/gate
+    cd {{root}} && node_modules/.bin/ddocs schema show release/gate
 
 # ── Asking questions with jq ─────────────────────────────────────────────────
 
@@ -103,7 +103,7 @@ q-proof:
 
 # Machine-readable graph: every node the map walk reached, with its direction.
 q-graph:
-    cd {{root}} && node_modules/.bin/dd graph map "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201" --json | jq -r '.data.nodes[] | "\(.arm)\t\(.distance)\t\(.address)"'
+    cd {{root}} && node_modules/.bin/ddocs graph map "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201" --json | jq -r '.data.nodes[] | "\(.arm)\t\(.distance)\t\(.address)"'
 
 # ── The known defect, demonstrated ───────────────────────────────────────────
 
@@ -112,11 +112,11 @@ q-graph:
 # This is deliberate and is left reproducing until FU-4 is fixed.
 fu4:
     @echo "--- from the repository root ---"
-    -@cd {{root}} && node_modules/.bin/dd validate {{ex}}/custom-render/release.dd.json --json | jq -c '{status, counts: .data.counts}'
+    -@cd {{root}} && node_modules/.bin/ddocs validate {{ex}}/custom-render/release.dd.json --json | jq -c '{status, counts: .data.counts}'
     @echo "--- from the document's own folder ---"
-    -@cd {{root}}/{{ex}}/custom-render && node_modules/.bin/dd validate release.dd.json --json | jq -c '{status, counts: .data.counts}'
+    -@cd {{root}}/{{ex}}/custom-render && node_modules/.bin/ddocs validate release.dd.json --json | jq -c '{status, counts: .data.counts}'
     @echo "--- from its parent folder ---"
-    -@cd {{root}}/{{ex}} && node_modules/.bin/dd validate custom-render/release.dd.json --json | jq -c '{status, error: .error.code}'
+    -@cd {{root}}/{{ex}} && node_modules/.bin/ddocs validate custom-render/release.dd.json --json | jq -c '{status, error: .error.code}'
 
 # ── Writing documents (the CLI is the writer) ────────────────────────────────
 #
@@ -136,34 +136,34 @@ scratch-corpus:
 
 # Read the value at any address.
 w-get:
-    cd {{root}} && node_modules/.bin/dd get "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201"
+    cd {{root}} && node_modules/.bin/ddocs get "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201"
 
 # Read one field rather than the whole row.
 w-get-field:
-    cd {{root}} && node_modules/.bin/dd get "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201/state"
+    cd {{root}} && node_modules/.bin/ddocs get "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201/state"
 
 # Change a value. Validates BEFORE writing, and rebuilds the .dd.md sibling.
 w-set: scratch-corpus
-    cd {{scratch}} && node_modules/.bin/dd set "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201/note" "touched by the writer demo"
-    @cd {{scratch}} && node_modules/.bin/dd get "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201/note"
+    cd {{scratch}} && node_modules/.bin/ddocs set "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201/note" "touched by the writer demo"
+    @cd {{scratch}} && node_modules/.bin/ddocs get "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201/note"
 
 # Non-string values need --value-json: arrays, objects, numbers, booleans.
 w-set-json: scratch-corpus
-    cd {{scratch}} && node_modules/.bin/dd set "{{ex}}/tasks/phase-2/tasks.dd.json#tasks/tk-0201/satisfies" '["../../plan.dd.json#acceptance_criteria/ac-0201"]' --value-json
+    cd {{scratch}} && node_modules/.bin/ddocs set "{{ex}}/tasks/phase-2/tasks.dd.json#tasks/tk-0201/satisfies" '["../../plan.dd.json#acceptance_criteria/ac-0201"]' --value-json
 
 # Append a row with a CLI-minted, collision-free id.
 w-add: scratch-corpus
-    cd {{scratch}} && node_modules/.bin/dd add "{{ex}}/backpressure.dd.json#rows" '{"criterion":"A demo row added by the writer example.","phase":"ph-0002","mode":"ABSENT","tier":"human-judgement","proof":"the writer demo","state":"unchecked"}' --mint bp
+    cd {{scratch}} && node_modules/.bin/ddocs add "{{ex}}/backpressure.dd.json#rows" '{"criterion":"A demo row added by the writer example.","phase":"ph-0002","mode":"ABSENT","tier":"human-judgement","proof":"the writer demo","state":"unchecked"}' --mint bp
 
 # Remove a row.
 w-rm: scratch-corpus
-    cd {{scratch}} && node_modules/.bin/dd rm "{{ex}}/backpressure.dd.json#rows/bp-0902"
+    cd {{scratch}} && node_modules/.bin/ddocs rm "{{ex}}/backpressure.dd.json#rows/bp-0902"
 
 # The refusal, on purpose: an invalid value is rejected and NOTHING is written.
 w-refuse: scratch-corpus
-    -cd {{scratch}} && node_modules/.bin/dd set "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201/state" "definitely-not-a-state"
+    -cd {{scratch}} && node_modules/.bin/ddocs set "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201/state" "definitely-not-a-state"
     @echo "--- the document is untouched: ---"
-    @cd {{scratch}} && node_modules/.bin/dd get "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201/state"
+    @cd {{scratch}} && node_modules/.bin/ddocs get "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201/state"
 
 # ── Asking whether the plan's story hangs together ───────────────────────────
 
@@ -181,7 +181,7 @@ p-address:
 
 # Follow only ONE relation out of a row — who accounted for this criterion?
 graph-satisfies:
-    cd {{root}} && node_modules/.bin/dd graph map "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201" --direction in --rel satisfies
+    cd {{root}} && node_modules/.bin/ddocs graph map "{{ex}}/plan.dd.json#acceptance_criteria/ac-0201" --direction in --rel satisfies
 
 # ── The PR surface ───────────────────────────────────────────────────────────
 
@@ -260,7 +260,7 @@ f-relocate: f-create
 
 # The worked fence document: rows with owner, cause and expiry.
 fence-show:
-    cd {{root}} && node_modules/.bin/dd get "{{ex}}/fence/dispatch.dd.json#rows"
+    cd {{root}} && node_modules/.bin/ddocs get "{{ex}}/fence/dispatch.dd.json#rows"
 
 # In fence — the paths this dispatch's allow rows cover.
 fence-ok:

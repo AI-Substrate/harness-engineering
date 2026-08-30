@@ -28,9 +28,9 @@ Green means **exactly zero errors and zero warnings**. Under `--complete` an ope
 Close criteria and record their evidence through the verbs — never an editor:
 
 ```bash
-node_modules/.bin/dd set "${PLAN_DIR}/plan.dd.json#acceptance_criteria/ac-XXXX/state" checked
-node_modules/.bin/dd set "${PLAN_DIR}/plan.dd.json#acceptance_criteria/ac-XXXX/receipt" "<command + result>"
-node_modules/.bin/dd link verify-basis "<address>" --sha "<sha>" --update "${PLAN_DIR}/plan.dd.json"   # a moved basis
+node_modules/.bin/ddocs set "${PLAN_DIR}/plan.dd.json#acceptance_criteria/ac-XXXX/state" checked
+node_modules/.bin/ddocs set "${PLAN_DIR}/plan.dd.json#acceptance_criteria/ac-XXXX/receipt" "<command + result>"
+node_modules/.bin/ddocs link verify-basis "<address>" --sha "<sha>" --update "${PLAN_DIR}/plan.dd.json"   # a moved basis
 ```
 
 Closure is a PERFORMED act: nothing derives an AC's state for you. The guard rails make the claim trustworthy; they do not make it for you.
