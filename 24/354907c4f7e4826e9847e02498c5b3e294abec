@@ -1,0 +1,28 @@
+docs/plans/095-convo-dispatch-fix/assets/execution.log.md
+  h_9e71e8b09f7cf2 6-7,14-18,25,27
+harness/cli/src/acts/convo.ts
+  h_9e71e8b09f7cf2 214,229-233
+harness/cli/src/adapters/exec/background-port.ts
+  h_9e71e8b09f7cf2 33-38,42-44,46
+harness/cli/src/adapters/exec/fake-background.ts
+  h_9e71e8b09f7cf2 1-5,19,27
+harness/cli/src/adapters/exec/node-background.ts
+  h_9e71e8b09f7cf2 3-7,36,52-57
+harness/cli/src/services/extensions/contract.ts
+  h_9e71e8b09f7cf2 138-140,149
+harness/cli/test/acts/convo.test.ts
+  h_9e71e8b09f7cf2 203,208-210,223-244
+harness/cli/test/adapters/exec/node-background.test.ts
+  h_9e71e8b09f7cf2 2,24-26,77-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "24354907c4f7e4826e9847e02498c5b3e294abec",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
