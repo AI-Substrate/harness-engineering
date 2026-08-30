@@ -80,7 +80,12 @@ claim wished for.
 Corollary for ERROR text: an error that has observed an ABSENCE must not
 assert a CAUSE — name the path/value actually inspected and hedge the diagnosis
 (coral's E-NOREG incident: 'no registry at <path>' self-diagnoses in one line;
-'is the extension loaded?' sends you somewhere expensive and wrong).
+'is the extension loaded?' sends you somewhere expensive and wrong). Concrete
+instance, the most common false absence an agent manufactures: A GREP THAT
+RETURNS NOTHING IS NOT AN ABSENCE IN THE FILE — multi-line forms escape single-
+line patterns, and a Broken-pipe truncation is silent (coral nearly challenged a
+correct finding on exactly this; the file, read directly, refuted the grep).
+Before relaying an absence, open the file.
 
 **Environment overrides are scoped, never exported.** In a persistent shell,
 `HOME=<fixture> cmd` — one command, one override. A bare `export` contaminates
