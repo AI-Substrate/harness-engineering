@@ -30,11 +30,18 @@ export interface SpawnDetachedInput {
   logPath: string;
 }
 
+export interface DetachedProcessHandle {
+  pid: number;
+  /** Resolves when the detached child exits; null means signal/error rather than exit zero. */
+  exitCode: Promise<number | null>;
+}
+
 export interface BackgroundProcessPort {
   /**
    * Spawn a detached, `unref`'d child that outlives the parent, with its
-   * stdout+stderr appended to `input.logPath`. Returns the OS pid. Throws if the
-   * spawn yields no pid (the caller maps the throw to an honest envelope).
+   * stdout+stderr appended to `input.logPath`. The exit promise observes an
+   * early result without keeping the child referenced. Throws if the spawn
+   * yields no pid (the caller maps the throw to an honest envelope).
    */
-  spawnDetached(input: SpawnDetachedInput): { pid: number };
+  spawnDetached(input: SpawnDetachedInput): DetachedProcessHandle;
 }

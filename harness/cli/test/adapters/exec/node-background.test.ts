@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { EventEmitter } from 'node:events';
 import { closeSync, openSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NodeBackground } from '../../../src/adapters/exec/node-background.js';
@@ -20,7 +21,9 @@ const openSyncMock = vi.mocked(openSync);
 const closeSyncMock = vi.mocked(closeSync);
 
 function fakeChild(pid: number | undefined) {
-  return { pid, unref: vi.fn() } as unknown as ReturnType<typeof spawn>;
+  return Object.assign(new EventEmitter(), { pid, unref: vi.fn() }) as unknown as ReturnType<
+    typeof spawn
+  >;
 }
 
 beforeEach(() => {
@@ -69,6 +72,22 @@ describe('NodeBackground.spawnDetached (plan 031 T002 — workshop 001 §C2)', (
     expect(child.unref).toHaveBeenCalledTimes(1); // I4
     expect(pid).toBe(4242); // I5
     expect(closeSyncMock).toHaveBeenCalledWith(7); // F004 — parent closes its fd copy
+  });
+
+  it('exposes the detached child exit code without keeping it referenced', async () => {
+    const child = fakeChild(4242);
+    spawnMock.mockReturnValue(child);
+
+    const handle = new NodeBackground('linux').spawnDetached({
+      command: 'flowspace3',
+      args: ['conversation', 'ingest'],
+      cwd: '/repo',
+      logPath: '/repo/run.log',
+    });
+    child.emit('exit', 0, null);
+
+    await expect(handle.exitCode).resolves.toBe(0);
+    expect(child.unref).toHaveBeenCalledTimes(1);
   });
 
   it('non-windows: the command is spawned as-is with windowsVerbatimArguments false', () => {

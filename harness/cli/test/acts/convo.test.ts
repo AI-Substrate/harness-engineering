@@ -158,7 +158,6 @@ describe('FlowspaceCliAdapter', () => {
       },
       background,
       clock: new FakeClock(),
-      isAlive: () => true,
       cwd: '/repo',
       logPath: '/repo/.harness/temp/convo-sync.log',
     });
@@ -177,10 +176,8 @@ describe('FlowspaceCliAdapter', () => {
       ping: () => true,
       background,
       clock: new FakeClock(),
-      isAlive: () => true,
       cwd: '/repo',
       logPath: '/repo/.harness/temp/convo-sync.log',
-      pijId: 'pij-seat',
     });
 
     await expect(adapter.ingest(ingest)).resolves.toEqual({ status: 'fired' });
@@ -203,14 +200,15 @@ describe('FlowspaceCliAdapter', () => {
     ]);
   });
 
-  it('reports a dead-on-arrival child after one bounded grace period', async () => {
+  it('reports a nonzero child exit within the bounded grace period', async () => {
     const clock = new FakeClock();
     const adapter = new FlowspaceCliAdapter({
       detect: () => true,
       ping: () => true,
-      background: new FakeBackground(),
+      background: {
+        spawnDetached: () => ({ pid: 424242, exitCode: Promise.resolve(2) }),
+      },
       clock,
-      isAlive: () => false,
       cwd: '/repo',
       logPath: '/repo/.harness/temp/convo-sync.log',
     });
@@ -220,6 +218,28 @@ describe('FlowspaceCliAdapter', () => {
       logPath: '/repo/.harness/temp/convo-sync.log',
     });
     expect(clock.sleeps).toEqual([250]);
+  });
+
+  it('keeps a fast successful child classified as fired', async () => {
+    const clock = new FakeClock();
+    const background = {
+      calls: [] as unknown[],
+      spawnDetached: () => ({
+        pid: 424242,
+        exitCode: clock.sleep(50).then(() => 0),
+      }),
+    };
+    const adapter = new FlowspaceCliAdapter({
+      detect: () => true,
+      ping: () => true,
+      background,
+      clock,
+      cwd: '/repo',
+      logPath: '/repo/.harness/temp/convo-sync.log',
+    });
+
+    await expect(adapter.ingest(ingest)).resolves.toEqual({ status: 'fired' });
+    expect(clock.sleeps).toEqual([50, 250]);
   });
 
   it('propagates DOA failure through a populated pij registry without passing pij identity', async () => {

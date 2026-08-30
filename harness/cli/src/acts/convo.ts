@@ -121,7 +121,6 @@ function defaultFlowspaceFactory(deps: VerbActDeps): FlowspaceFactory {
       ping: spawnFlowspacePing,
       background: deps.background,
       clock: deps.clock,
-      isAlive: isProcessAlive,
       prepare: () => deps.fsWrite?.mkdirp(temp),
       cwd,
       logPath: posixJoin(temp, 'convo-sync.log'),
@@ -139,7 +138,6 @@ export interface FlowspaceCliOptions {
   ping: () => boolean;
   background: BackgroundProcessPort;
   clock: Pick<Clock, 'sleep'>;
-  isAlive: (pid: number) => boolean;
   prepare?: () => void;
   cwd: string;
   logPath: string;
@@ -213,7 +211,7 @@ export class FlowspaceCliAdapter implements FlowspacePort {
 
   async ingest(args: IngestArgs): Promise<IngestDispatch> {
     this.options.prepare?.();
-    const { pid } = this.options.background.spawnDetached({
+    const child = this.options.background.spawnDetached({
       command: 'flowspace3',
       args: [
         'conversation',
@@ -228,19 +226,13 @@ export class FlowspaceCliAdapter implements FlowspacePort {
       cwd: this.options.cwd,
       logPath: this.options.logPath,
     });
-    await this.options.clock.sleep(250);
-    return this.options.isAlive(pid)
+    const outcome = await Promise.race([
+      child.exitCode.then((code) => ({ kind: 'exited' as const, code })),
+      this.options.clock.sleep(250).then(() => ({ kind: 'running' as const })),
+    ]);
+    return outcome.kind === 'running' || outcome.code === 0
       ? { status: 'fired' }
       : { status: 'dispatch-failed', logPath: this.options.logPath };
-  }
-}
-
-function isProcessAlive(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    return (error as NodeJS.ErrnoException).code === 'EPERM';
   }
 }
 

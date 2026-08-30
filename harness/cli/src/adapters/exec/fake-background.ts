@@ -1,4 +1,8 @@
-import type { BackgroundProcessPort, SpawnDetachedInput } from './background-port.js';
+import type {
+  BackgroundProcessPort,
+  DetachedProcessHandle,
+  SpawnDetachedInput,
+} from './background-port.js';
 
 /**
  * Deterministic background-spawn for tests. Spawns NOTHING — it records each
@@ -12,7 +16,7 @@ export class FakeBackground implements BackgroundProcessPort {
 
   constructor(private readonly pid = 424242) {}
 
-  spawnDetached(input: SpawnDetachedInput): { pid: number } {
+  spawnDetached(input: SpawnDetachedInput): DetachedProcessHandle {
     this.calls.push({
       command: input.command,
       args: input.args,
@@ -20,6 +24,6 @@ export class FakeBackground implements BackgroundProcessPort {
       ...(input.env && { env: input.env }),
       logPath: input.logPath,
     });
-    return { pid: this.pid };
+    return { pid: this.pid, exitCode: new Promise(() => {}) };
   }
 }
