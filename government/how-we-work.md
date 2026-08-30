@@ -28,7 +28,10 @@
    coders; on API collision the later-lander adapts.
 6. **Teardown**: before any tidy — `git -C <wt> status --short` + sweep dossier
    paths (scratch/, assets/), copy live material out, THEN tidy.
-7. **Status cards** at unit edges (`pij report now`); parked states declared, not
+7. **Named windows** — every spawned worker is moved to its own well-named tmux
+   window immediately at spawn (`tmux break-pane -s <pane> -n <role-plan-topic>`);
+   a worker pane never lives inside the prime's window. (Jordan, 2026-08-30.)
+8. **Status cards** at unit edges (`pij report now`); parked states declared, not
    refreshed.
 
 ## Single-writer
