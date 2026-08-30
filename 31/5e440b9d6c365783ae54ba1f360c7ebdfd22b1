@@ -1,0 +1,24 @@
+.gitignore
+  h_9e71e8b09f7cf2 172
+docs/plans/091-ways-of-working/assets/execution.log.md
+  h_9e71e8b09f7cf2 34-60
+harness/cli/src/acts/convo.ts
+  h_9e71e8b09f7cf2 1-155
+harness/cli/src/adapters/exec/spawn-flowspace-probe.ts
+  h_9e71e8b09f7cf2 1-35
+harness/cli/test/acts/convo.test.ts
+  h_9e71e8b09f7cf2 1-186
+harness/cli/test/adapters/exec/spawn-flowspace-probe.test.ts
+  h_9e71e8b09f7cf2 1-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "315e440b9d6c365783ae54ba1f360c7ebdfd22b1",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
