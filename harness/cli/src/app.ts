@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import { registerCommitAct } from './acts/commit.js';
+import { buildSilentConvoSync, registerConvoAct, runConvoAfterBoot } from './acts/convo.js';
 import { registerDocsAct } from './acts/docs.js';
 import { registerDoctorAct } from './acts/doctor.js';
 import { registerFlowAct } from './acts/flow.js';
@@ -441,6 +442,7 @@ export function buildProgram(
     registry.recordTypes ?? [],
     withheldExtensions,
   );
+  const convoSync = buildSilentConvoSync(deps);
 
   // Cross-cutting: register the exit-chokepoint decorators ONCE so every
   // command's exit surfaces (a) a known update and (b) telemetry housekeeping for
@@ -467,6 +469,7 @@ export function buildProgram(
   setBannerDecorator((env) => {
     banner(env);
     housekeeping(env);
+    runConvoAfterBoot(env, convoSync);
   });
 
   registerHelpAct(program, io, registry, deps.fs);
@@ -481,7 +484,8 @@ export function buildProgram(
   );
   // plan 074 — a CORE verb: the sandbox failure it guards is a property of the
   // MACHINE, not of any repo's toolchain, so it cannot be a per-consumer extension.
-  registerCommitAct(program, io);
+  registerCommitAct(program, io, convoSync);
+  registerConvoAct(program, io, deps);
   // plan 082 — also a CORE verb, for the same reason: an agent's hook config and
   // the collector daemon are properties of the MACHINE, not of any repo's
   // toolchain, and doctor must be able to call it.

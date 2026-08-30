@@ -34,7 +34,7 @@ Status: in progress
 
 ## U3 — command and lifecycle wiring
 
-Status: in progress
+Status: complete
 
 - Scope: `harness convo sync`, app registration, commit and boot seams, plus the tracked root gitignore protection for local settings.
 - Frozen U2 boundary: `FlowspacePort.detect/ping/ingest`, `IngestArgs`, and four `SyncOutcome` variants; U3 builds the command-line adapter and envelope mapping.
@@ -48,6 +48,25 @@ Status: in progress
 - Post-mutation run: 1 file passed, 7 tests passed.
 - Identity assertion RED: permissive act stubs ran 4 identity tests; all 4 failed on explicit identity, pij-id lookup, reverse native-session lookup, and the required identity-unresolvable envelope/fix. GREEN: 4 passed, 7 skipped in the act suite.
 - Ping probe module RED: missing adapter produced 1 failed suite, 0 tests. Assertion RED: constant-false production stub ran 3 tests; the positive-marker test failed (`false`, expected `true`) while two negative regression guards passed. GREEN: 1 file passed, 3 tests passed.
+- Command assertion RED: the compiling registration stub ran 3 tests; all 3 failed on explicit dispatch, enabled identity failure, and default-disabled behavior. GREEN after U2 integration: the command, renderer, identity, adapter, and seam slices passed.
+- Seam assertion RED: no-op production stubs ran 3 tests; commit and boot invocation assertions failed while the no-throw regression test passed. GREEN: all 3 passed.
+- Mutation — identity refusal: disabled the missing-harness/session guard. `npx vitest run test/acts/convo-command.test.ts -t 'reports enabled identity failure'` exited 1; the command returned `ok` instead of `degraded`. Restored.
+- Mutation — commit seam: disabled the unsuccessful/no-op commit guard. `npx vitest run test/acts/convo-seams.test.ts -t 'actual successful commit'` exited 1; callback count was 3, expected 1. Restored.
+- Mutation — boot seam: inverted the boot command guard. `npx vitest run test/acts/convo-seams.test.ts -t 'runs once after boot'` exited 1; callback count was 0, expected 1. Restored.
+- Mutation — ping evidence: accepted exit 0 without checking stdout. `npx vitest run test/adapters/exec/spawn-flowspace-probe.test.ts -t 'refuses exit 0'` exited 1 (`true`, expected `false`). Restored.
+- Mutation — dispatch claim: changed “dispatched” to “ingested.” `npx vitest run test/acts/convo.test.ts -t 'claims dispatch only'` exited 1 because the dispatch assertion failed and the forbidden delivery claim appeared. Restored.
+
+### U3 verification
+
+- First integrated U1/U2/U3 run: `cd harness/cli && npx vitest run test/services/convo test/services/settings test/acts/convo.test.ts` exited 0; 4 files passed, 30 tests passed.
+- Full U3 focused run after formatting: `cd harness/cli && npx vitest run test/services/convo test/services/settings test/acts/convo.test.ts test/acts/convo-command.test.ts test/acts/convo-seams.test.ts test/adapters/exec/spawn-flowspace-probe.test.ts` exited 0; 7 files passed, 39 tests passed.
+- Full CLI suite: `cd harness/cli && npx vitest run` exited 0 after updating the second ordered command-list fixture. Tail: `Test Files 341 passed (341)`; `Tests 5248 passed (5248)`; duration 26.13s. The preceding run exposed `test/index.test.ts`: 340 passed, 1 failed because its expected core list omitted `convo`.
+- Ordered registration fixtures: `HARNESS_TEST_SCOPE=all npx vitest run test/app.test.ts test/index.test.ts -t 'registers core commands|registers help, doctor'` exited 0; 2 files passed, 2 tests passed, 40 skipped.
+- Formatter/linter: `just fix` exited 0; confirmation tail: `Checked 641 files`; `No fixes applied`; the same 3 pre-existing unsafe unused-import suggestions remained out of scope.
+- Compile/build: `npm run build` exited 0; docs and flows regenerated, then `tsc -p harness/cli/tsconfig.json` completed without diagnostics.
+- Actual CLI smoke: `node harness/cli/bin/harness.js convo sync --json` exited 0 and returned `status:ok`, `data.status:disabled`, `origin:default`, with message `Conversation ingest is off because it was not configured.`
+- Privacy audit: changed production files contain no `transcript_path`/`transcriptPath`, import no hook journal, and pass no journal input. The only occurrences in the U3 diff are the sentinel test fixture/assertions. Generic caught errors discard the caught value before rendering.
+- U3 done-bar satisfied; no deferred code or unmet acceptance criterion.
 
 ### U3 Discoveries & Learnings
 
@@ -58,6 +77,10 @@ Status: in progress
 | Noteworthy | `transcript_path` formats are documented separately for Claude, Copilot, and Codex, but no shared live parser exists. | Await the input-surface ruling; any parser must return only derived harness/session/folder and never expose its source path. |
 | Noteworthy | Looking only at generic `ExecPort` made synchronous probing appear absent; three sibling spawn-based adapters already establish the convention. | Add a sibling `spawn-flowspace-probe` adapter; keep `node:child_process` out of the act and keep the U2 port synchronous. |
 | Noteworthy | Live `flowspace3 ping --json` returned the human marker `healthy - fs3 daemon …`, not a JSON envelope. | Treat that measured marker plus exit 0 as positive evidence; exit 0 without the marker remains false. Probe timeout is 1 second against the measured 0–10ms healthy path. |
+| Noteworthy | The first 30-test U1/U2/U3 join was green while the full suite was red because a second ordered command-list fixture lived in `test/index.test.ts`. | Update both existing fixtures only; do not unify them in this packet. Focused green was narrower than the delivery claim. |
+| Noteworthy | Both command-list fixtures use array `toEqual`, so registration order—not only membership—is enforced. | Report the accidental-or-intended order contract to the PM backlog; do not refactor during W2 close. |
+| Noteworthy | The initial command action caught the test harness's `process.exit` sentinel and emitted a second envelope, producing concatenated JSON. | Narrow the catch to result construction; call `exitWithEnvelope` exactly once outside it. |
+
 ## Plan 091 U2 — conversation sync service
 
 ### Task: Flowspace port, fake, and gated sync
