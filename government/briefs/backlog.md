@@ -12,6 +12,7 @@ One row per item; numbers never reused. Status: open | packet | done | wontfix.
 | 6 | 2026-08-30 | fs3 dogfood: ask silently answers the nearest answerable question (team new → harness new) with citations; search archive-over-source ranking (FS-1 x4) — relayed to lynx | open |
 | 7 | 2026-08-27 | ci-verdict ruleset pin (not ci-required) on ruleset 20537412 — awaiting Jordan | open |
 | 8 | 2026-08-30 | plan 091 phase 2 proving packet: services/settings + harness convo sync | packet |
-| 9 | 2026-08-30 | pij spawn inherits caller's cwd — coder spawned into PM's tree (coral F1); want a --cwd flag upstream; ritual line added meanwhile | open |
+| 9 | 2026-08-30 | pij spawn cwd: RESOLVED mechanically (`cd <wt> && pij spawn` — pane takes shell cwd); --cwd flag now optional polish | done |
 | 10 | 2026-08-30 | settings.local.json self-gitignore WRITE path — deferred from phase 2 by ruling (no owner among frozen units); interim: U3 ships the .gitignore ENTRY only | open |
+| 12 | 2026-08-30 | Lesson (coral, self-reported): a name in two flag positions is a TAXONOMY not a synonym (pi = harness AND bin); read `<verb> --help` before theorising about the verb | open |
 | 11 | 2026-08-30 | pij models vs omp models CONTRADICT on sol-fast thinking levels (pij: none..max; omp: '-'); -1m rows are omp-runtime-only and a bare pi spawn 400s on them (coral, Seat A DOA) — report upstream | open |

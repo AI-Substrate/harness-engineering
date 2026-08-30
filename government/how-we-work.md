@@ -29,9 +29,20 @@
    fix's test fails without the fix — stated, not assumed).
 5. **Canary-before-trust** — identity echo (id/cwd/model) before a fresh spawn's
    first real message is trusted. NOTE: a spawned seat INHERITS THE SPAWNER'S CWD
-   (coral, 2026-08-30) — the brief must correct it and the canary must PROVE the
-   seat stands in its own tree; without the cwd echo, two seats silently share one
-   worktree. — identity echo (id/cwd/model) before a fresh spawn's
+   (coral, 2026-08-30) — and the FIX IS MECHANICAL, not a warning: spawn as
+   `cd <target-worktree> && pij spawn ...` (the pane takes the spawning shell's
+   cwd; there is no --cwd flag and none is needed). The canary still PROVES it.
+
+   THE PINNED SPAWN FORM (paste verbatim, never paraphrase — a packet saying
+   'per settings' instead of the literal command is a recorded scar):
+   ```
+   cd <target-worktree> && pij spawn --harness pi --bin omp \
+     --model github-copilot/gpt-5.6-sol-fast-1m --effort high \
+     --layout window --plan-id <plan> --task "<brief>"
+   ```
+   --bin omp is MANDATORY for any -1m selector; --layout window still needs an
+   explicit rename after spawn (window indexes get reused). omp seats are
+   pij-native at boot: never `pij adopt`/`inbox register`, no wait loops. — identity echo (id/cwd/model) before a fresh spawn's
    first real message is trusted.
 6. **Worktree-per-packet**, cut from current origin/main. Prime merges, never
    coders; on API collision the later-lander adapts.
