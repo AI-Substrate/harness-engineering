@@ -1,0 +1,19 @@
+docs/plans/093-collision-skip/packet-coder.md
+  s_f1a7ee9f435ed3::t_a42212a1a01d34 1-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "56fe158db64b6cb871e8b1fc88cd37d51fe8e44b",
+  "prompts": {},
+  "sessions": {
+    "s_f1a7ee9f435ed3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6616ca6a-61c0-4a92-b9be-3512605a2826",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
