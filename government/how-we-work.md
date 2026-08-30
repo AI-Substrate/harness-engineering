@@ -85,7 +85,12 @@ instance, the most common false absence an agent manufactures: A GREP THAT
 RETURNS NOTHING IS NOT AN ABSENCE IN THE FILE — multi-line forms escape single-
 line patterns, and a Broken-pipe truncation is silent (coral nearly challenged a
 correct finding on exactly this; the file, read directly, refuted the grep).
-Before relaying an absence, open the file.
+Before relaying an absence, open the file. And before reconstructing whether a
+MECHANISM ran, list what it would have PRODUCED — the producer's own log is the
+one instrument built for the question; black-box read-back proves a claim WRONG,
+the log says WHY, and neither substitutes for the other (dajeil's convo-sync
+investigation: a perfect discriminator built while the refusal sat verbatim in
+the log the thing writes).
 
 **Environment overrides are scoped, never exported.** In a persistent shell,
 `HOME=<fixture> cmd` — one command, one override. A bare `export` contaminates
