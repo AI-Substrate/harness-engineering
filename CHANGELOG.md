@@ -10,6 +10,56 @@
 
 * **cli:** portable verb I/O (plan 031) — new optional capabilities on the verb contract so extensions run cross-platform with **no** `bash`/coreutil shell-outs: `ctx.fsWrite` (write / mkdir / rename / CWE-59-confined copy), `ctx.fs.realpath`, `ctx.clock.sleep`, and `ctx.background.spawnDetached` (detached fire-and-forget worker; reuses the core `.cmd` resolver, never a bare `.cmd` spawn).
 
+## [0.14.0](https://github.com/AI-Substrate/harness-engineering/compare/v0.13.0...v0.14.0) (2026-08-30)
+
+
+### Features
+
+* **dd:** consume @ai-substrate/dd as a package, delete the in-repo fork (plan 080) ([#154](https://github.com/AI-Substrate/harness-engineering/issues/154)) ([197540e](https://github.com/AI-Substrate/harness-engineering/commit/197540eebffc46d946b7ba6ea982377d98b58060))
+* **dd:** dd-native builder — plans as deterministic documents, gates driven by document state (plan 071) ([#95](https://github.com/AI-Substrate/harness-engineering/issues/95)) ([13679de](https://github.com/AI-Substrate/harness-engineering/commit/13679dee31cc25b6adde87115de1fc8d53dc3b97))
+* **dd:** Deterministic Documents — validated data docs, generated views, graph map, and a runnable reference (plan 065) ([#87](https://github.com/AI-Substrate/harness-engineering/issues/87)) ([d537ad3](https://github.com/AI-Substrate/harness-engineering/commit/d537ad3333dd024ca1dc64fb7449ebd13cc73716))
+* **ddocs:** bump @ai-substrate/dd to de01b77a and migrate the dd→ddocs rename ([#184](https://github.com/AI-Substrate/harness-engineering/issues/184)) ([d7fbea1](https://github.com/AI-Substrate/harness-engineering/commit/d7fbea13ee66bce75f7b3fa3ea662597314fd7a9))
+* **hooks:** resolve the interpreter at fire time via a shipped wrapper ([#172](https://github.com/AI-Substrate/harness-engineering/issues/172)) ([3e4b148](https://github.com/AI-Substrate/harness-engineering/commit/3e4b148aeb18de137fea14579c57aa0efd1e6a61))
+* **plan:** `harness plan ready` — a three-valued readiness gate that refuses to judge an empty plan ([1aef9d9](https://github.com/AI-Substrate/harness-engineering/commit/1aef9d9c99e6f618f749cfc6651609e7778a730c))
+* **record:** always warn when an extension is skipped, never hide it ([#86](https://github.com/AI-Substrate/harness-engineering/issues/86)) ([ad4882a](https://github.com/AI-Substrate/harness-engineering/commit/ad4882a072a5dc7fcffa0f4f21914263446db17b))
+* **settings+convo:** settings machinery and flowspace conversation sync (plan 091) ([#185](https://github.com/AI-Substrate/harness-engineering/issues/185)) ([478129d](https://github.com/AI-Substrate/harness-engineering/commit/478129d9c87341cc13ccb49f8a7547b800a503ef))
+* **skills:** add eng-harness-in-a-box — zero-dependency harness loop ([7227d25](https://github.com/AI-Substrate/harness-engineering/commit/7227d254a92531c0d88a78c3d14986e7c5887324))
+* **skills:** post-flight close-out stage, plan archiving, assets/ layout, opt-in domains ([#90](https://github.com/AI-Substrate/harness-engineering/issues/90)) ([963eae5](https://github.com/AI-Substrate/harness-engineering/commit/963eae5348d25bebb9bfeda5dd6b0f6bebb8c0ea))
+* **telemetry:** capture liveness + orphan-lane reconciliation — a stalled capture can no longer pass as healthy (plan 070) ([#93](https://github.com/AI-Substrate/harness-engineering/issues/93)) ([f78957e](https://github.com/AI-Substrate/harness-engineering/commit/f78957e38ea335ff7c7f12a121db76e687a26ce3))
+* **telemetry:** cursor + vscode file-write evidence (plan 066) ([#88](https://github.com/AI-Substrate/harness-engineering/issues/88)) ([895644a](https://github.com/AI-Substrate/harness-engineering/commit/895644a59531ecdf9dda563d89b9a9a8c7c886f6))
+* **telemetry:** discipline signal capture — control facet + self-observed checks verdicts (plan 069) ([#92](https://github.com/AI-Substrate/harness-engineering/issues/92)) ([d8e0cfe](https://github.com/AI-Substrate/harness-engineering/commit/d8e0cfea752a4131dc5db1307dbfe75e065cc5ee))
+* **telemetry:** git-ai becomes the collector — harness capture off by default, pinned+verified install (plan 073) ([#104](https://github.com/AI-Substrate/harness-engineering/issues/104)) ([7b39b2d](https://github.com/AI-Substrate/harness-engineering/commit/7b39b2d539ecb9fbd575188409a75fc91506e7e4))
+
+
+### Bug Fixes
+
+* **arch-check:** refuse an empty cruise instead of reporting ok ([#164](https://github.com/AI-Substrate/harness-engineering/issues/164)) ([a1e528e](https://github.com/AI-Substrate/harness-engineering/commit/a1e528e72762253007f9b0b3fd1089cb597431bb))
+* **collector:** a Windows named pipe is an ingress, never a buffer (plan 075) ([#107](https://github.com/AI-Substrate/harness-engineering/issues/107)) ([5dae6e9](https://github.com/AI-Substrate/harness-engineering/commit/5dae6e9c8c106628f5fb5680aef8c5af52ec5938))
+* **collector:** drop the unsatisfiable release_host pin — the install path never worked ([#124](https://github.com/AI-Substrate/harness-engineering/issues/124)) ([#125](https://github.com/AI-Substrate/harness-engineering/issues/125)) ([f4944a0](https://github.com/AI-Substrate/harness-engineering/commit/f4944a0d530ab134bf55903bf77435f7e309861f))
+* **convo:** drop --pij from resolved dispatch and detect dead-on-arrival children ([#188](https://github.com/AI-Substrate/harness-engineering/issues/188)) ([ef895a3](https://github.com/AI-Substrate/harness-engineering/commit/ef895a3c05bd3a4f03a7ba4ff940f770c97d3596))
+* **dd,doctor:** --path is broken on Windows however the user spells it ([#108](https://github.com/AI-Substrate/harness-engineering/issues/108)) ([#116](https://github.com/AI-Substrate/harness-engineering/issues/116)) ([cfa501a](https://github.com/AI-Substrate/harness-engineering/commit/cfa501a6b6fc195479b42bbfc0f14332ae9c0b57))
+* **dd,flow:** one address per fact, one remedy mapper per finding ([#105](https://github.com/AI-Substrate/harness-engineering/issues/105)) ([4902fef](https://github.com/AI-Substrate/harness-engineering/commit/4902fef7ddd12846934719be79874840f79b8160))
+* **dd:** a drive-rooted address file part is absolute, not relative ([#108](https://github.com/AI-Substrate/harness-engineering/issues/108) D7) ([#133](https://github.com/AI-Substrate/harness-engineering/issues/133)) ([3d1e469](https://github.com/AI-Substrate/harness-engineering/commit/3d1e469261929e598b4f5633fc5068731ed92727))
+* **extensions:** a name collision with a core verb skips the extension instead of bricking the CLI ([#187](https://github.com/AI-Substrate/harness-engineering/issues/187)) ([c2050ae](https://github.com/AI-Substrate/harness-engineering/commit/c2050aef61f47949b49e65826f7c11f54c26c807))
+* **hooks:** check the INTERPRETER too, refuse paths that will not survive, and attribute every journal record ([#171](https://github.com/AI-Substrate/harness-engineering/issues/171)) ([0fb45e3](https://github.com/AI-Substrate/harness-engineering/commit/0fb45e3bb92aa2f23e1248d5388659febaedd087))
+* **hooks:** hook wrappers must fail OPEN when the CLI dies after node starts ([#181](https://github.com/AI-Substrate/harness-engineering/issues/181)) ([93e7c80](https://github.com/AI-Substrate/harness-engineering/commit/93e7c80329daeb5e202b35d8c8d9085913b91679))
+* **hooks:** the Windows `command` must START with a native executable (plan 088) ([#177](https://github.com/AI-Substrate/harness-engineering/issues/177)) ([9d3ea8e](https://github.com/AI-Substrate/harness-engineering/commit/9d3ea8e419ef5ef73a89e54458c731b6d6b7b8ee))
+* **instructions:** converge commit guidance on the CommitMode union (plan 076) ([#112](https://github.com/AI-Substrate/harness-engineering/issues/112)) ([1636094](https://github.com/AI-Substrate/harness-engineering/commit/163609493015ac11023e2a39b3bdf10c097c58b7))
+* **markdown-lint:** the unexamined finding offers the branch, not one repair ([#150](https://github.com/AI-Substrate/harness-engineering/issues/150)) ([277003c](https://github.com/AI-Substrate/harness-engineering/commit/277003c910a232746fd06f8d0baafced4a436609))
+* **telemetry:** Cursor Write/StrReplace reported a silent 0% agent share (FX009) ([#103](https://github.com/AI-Substrate/harness-engineering/issues/103)) ([bf58bea](https://github.com/AI-Substrate/harness-engineering/commit/bf58bea9f5bdcc3147d43c26314284a7e7a042cd))
+* **telemetry:** FX002 + FX003 + FX004 + the read pin at the floor — an unavailability is a state ([f50a0e8](https://github.com/AI-Substrate/harness-engineering/commit/f50a0e88a50fd14779529ac8c80b01b712a40bde))
+* **telemetry:** FX007 — the published reader could not read its own repo's telemetry ([#101](https://github.com/AI-Substrate/harness-engineering/issues/101)) ([e756d09](https://github.com/AI-Substrate/harness-engineering/commit/e756d0910e9219b0864c637ac5950f3c79b92619))
+* **telemetry:** FX007 residue — the OTLP path had its own no-space grammar ([#102](https://github.com/AI-Substrate/harness-engineering/issues/102)) ([d08f494](https://github.com/AI-Substrate/harness-engineering/commit/d08f4942d28b7e5181d5845a56a63b0cbb1d3402))
+* **telemetry:** read-path honesty — degrade-never-throw, honest time, path-only authorship, pre-commit capture (plan 068) ([#91](https://github.com/AI-Substrate/harness-engineering/issues/91)) ([2984bf9](https://github.com/AI-Substrate/harness-engineering/commit/2984bf980fc43c92ac6ddb2eb1608523fff09300))
+* **windows:** 107 failing tests to 0, measured on a real Windows VM (plan 083) ([#165](https://github.com/AI-Substrate/harness-engineering/issues/165)) ([cfbf741](https://github.com/AI-Substrate/harness-engineering/commit/cfbf741587675bb34f3dda9d1ca1faad4ec99717))
+
+
+### Performance Improvements
+
+* **telemetry:** stop scanning the whole Copilot log dir on every command ([#100](https://github.com/AI-Substrate/harness-engineering/issues/100)) ([6651683](https://github.com/AI-Substrate/harness-engineering/commit/66516836c49eaa921535701d2cd6b724944ca78f))
+* **telemetry:** sync in milliseconds, not minutes (plan 067) ([#89](https://github.com/AI-Substrate/harness-engineering/issues/89)) ([64609be](https://github.com/AI-Substrate/harness-engineering/commit/64609bebbf99755b37a45a1fb4c4671166ab857a))
+* **tests:** run the suite fast by default, and gate any ref without touching your tree ([#155](https://github.com/AI-Substrate/harness-engineering/issues/155)) ([1da78a4](https://github.com/AI-Substrate/harness-engineering/commit/1da78a41656f14bdc94d31d19757d193133566fa))
+
 ## [0.13.0](https://github.com/AI-Substrate/harness-engineering/compare/v0.12.0...v0.13.0) (2026-07-29)
 
 
