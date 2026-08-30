@@ -1,0 +1,23 @@
+docs/plans/091-ways-of-working/impl-guide.md
+  s_f1a7ee9f435ed3::t_9a0f9dc7b75e31 1-36
+docs/plans/091-ways-of-working/packet-pm.md
+  s_f1a7ee9f435ed3::t_0c609aa5f08b8d 1-42
+docs/plans/091-ways-of-working/ways-of-working-plan.md
+  s_f1a7ee9f435ed3::t_d6d1baff920c32 1-113
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "08bec78de0f7b5674524f2b4589832b6cf8576c4",
+  "prompts": {},
+  "sessions": {
+    "s_f1a7ee9f435ed3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6616ca6a-61c0-4a92-b9be-3512605a2826",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
