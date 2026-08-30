@@ -169,6 +169,7 @@ agents/*/runs/
 # Harness scratch buffer — crash-resilient agent working notes (.harness/ itself is committed;
 # only the temp/ scratch dir is ignored — records under .harness/records/ stay tracked).
 .harness/temp/
+.harness/settings.local.json
 
 # Skills-install OUTPUT (plan 055) — install STATE on a consumer/dev machine, never
 # source. Source skills live in `skills/`; these are produced by `harness skills install`

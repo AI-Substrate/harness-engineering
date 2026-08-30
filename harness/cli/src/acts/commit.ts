@@ -32,7 +32,11 @@ import { toPosix } from '../services/shared/posix-path.js';
  * proven → DEGRADED/0 (warn, never block — a commit that happened is never
  * reported as a failure); git itself failed → error/1 with git's own exit code.
  */
-export function registerCommitAct(program: Command, io: CliIo): void {
+export function registerCommitAct(
+  program: Command,
+  io: CliIo,
+  convoSync: () => void = () => {},
+): void {
   program
     .command('commit')
     .description(
@@ -43,10 +47,18 @@ export function registerCommitAct(program: Command, io: CliIo): void {
       '[pathspecs...]',
       'explicit paths to stage before committing; omit to commit what is already staged',
     )
-    .action((message: string, pathspecs: string[]): Promise<void> => run(io, message, pathspecs));
+    .action(
+      (message: string, pathspecs: string[]): Promise<void> =>
+        run(io, message, pathspecs, convoSync),
+    );
 }
 
-async function run(io: CliIo, message: string, pathspecs: string[]): Promise<void> {
+async function run(
+  io: CliIo,
+  message: string,
+  pathspecs: string[],
+  convoSync: () => void,
+): Promise<void> {
   const clock = new SystemClock();
   const proc = new NodeProcess();
   const fs = new NodeFs();
@@ -61,7 +73,20 @@ async function run(io: CliIo, message: string, pathspecs: string[]): Promise<voi
   });
 
   const outcome = await harnessCommit({ git, ingress, fs, proc, clock }, message, pathspecs);
+  runConvoAfterCommit(outcome, convoSync);
   exitWithEnvelope(envelopeFor(outcome, clock), port(io, outcome));
+}
+
+export function runConvoAfterCommit(
+  outcome: { ok: boolean; staged: readonly string[] },
+  sync: () => void,
+): void {
+  if (!outcome.ok || outcome.staged.length === 0) return;
+  try {
+    sync();
+  } catch {
+    // Optional ingestion never changes the commit's output or exit status.
+  }
 }
 
 /**
