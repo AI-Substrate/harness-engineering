@@ -1,0 +1,35 @@
+docs/how/dd/exemplar/backpressure.dd.md
+  s_15d888f4b629c1::t_96310fa013d5fe 1,25,37
+docs/how/dd/exemplar/custom-render/release.dd.md
+  s_15d888f4b629c1::t_f9a2ea8c8d50fb 1
+docs/how/dd/exemplar/execution-log.dd.md
+  s_15d888f4b629c1::t_b3fb6e27f2c908 1
+docs/how/dd/exemplar/fence/dispatch.dd.md
+  s_15d888f4b629c1::t_d764451d944865 1
+harness/cli/test/acts/builder-dd-teaching.test.ts
+  s_59d749bfeff5de::t_a8d76383f5bccd 48-53,93,97-101,103,106,110,140
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d1559835d4aa9203500c6d02b42e3b4b377ada6f",
+  "prompts": {},
+  "sessions": {
+    "s_15d888f4b629c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a5a5588f-0979-439f-a1bf-ddf185a089c7",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_59d749bfeff5de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ae4199d-c737-4ac3-a856-7e69531e4bab",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
