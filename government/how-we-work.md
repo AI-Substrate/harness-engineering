@@ -77,6 +77,14 @@ CONFIGURED value, not the running one · a status may only say "fired", never
 ran" has not proved "the daemon answered". Whenever a surface reports success,
 ask WHICH claim it actually proves; name statuses for the claim proved, not the
 claim wished for.
+Corollary for ERROR text: an error that has observed an ABSENCE must not
+assert a CAUSE — name the path/value actually inspected and hedge the diagnosis
+(coral's E-NOREG incident: 'no registry at <path>' self-diagnoses in one line;
+'is the extension loaded?' sends you somewhere expensive and wrong).
+
+**Environment overrides are scoped, never exported.** In a persistent shell,
+`HOME=<fixture> cmd` — one command, one override. A bare `export` contaminates
+every later command silently (a daemon gets its env AT START, explicitly).
 
 ## Single-writer
 
