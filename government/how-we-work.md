@@ -85,6 +85,12 @@ instance, the most common false absence an agent manufactures: A GREP THAT
 RETURNS NOTHING IS NOT AN ABSENCE IN THE FILE — multi-line forms escape single-
 line patterns, and a Broken-pipe truncation is silent (coral nearly challenged a
 correct finding on exactly this; the file, read directly, refuted the grep).
+A probe must be able to see the opposite — and ONE LEVEL UP: **a fixture that
+isolates by REMOVING things removes TRIGGERS too.** The question is not only
+'can my probe see the failure' but 'what does my FIXTURE make impossible' —
+coral's synthetic HOME correctly isolated the store and, in the same stroke,
+deleted the registry that triggers the --pij bug, so a CORRECT out-of-band
+control passed a broken build with every signal genuinely green (091 smoke).
 Before relaying an absence, open the file. And before reconstructing whether a
 MECHANISM ran, list what it would have PRODUCED — the producer's own log is the
 one instrument built for the question; black-box read-back proves a claim WRONG,
