@@ -9,6 +9,10 @@ export const ErrorCodes = {
   INVALID_ARGS: 'E108',
   /** `.harness`/command-map config failed validation. */
   CONFIG_INVALID: 'E120',
+  /** `.harness/settings*.json` is malformed or violates governance/locality rules. */
+  SETTINGS_INVALID: 'E121',
+  /** `.harness/settings*.json` declares a schema major this CLI does not understand. */
+  SETTINGS_SCHEMA_VERSION: 'E122',
   /** A doctor check raised an unexpected error (vs. reporting a failing layer). */
   DOCTOR_CHECK_FAILED: 'E130',
   /** An extension file couldn't be imported or failed shape validation (per-extension, non-fatal; surfaced by `doctor`). */
