@@ -46,15 +46,31 @@ shape stops moving. So:
   `.harness/settings.local.json`, merged with **split-by-nature** (lynx A4
   correction, adopted): local wins ONLY inside its machine-fact namespace; a
   governance key in the local file is REFUSED loudly, never merged. Origins
-  (`default|repo|local|kill-switch`) on every resolved value. Self-gitignore on
-  first local write (trace2-buffer pattern). Malformed/unknown-major = refuse
-  loudly. `HARNESS_NO_TELEMETRY` stays absolute.
+  (`default|repo|local|kill-switch`) on every resolved value. U1 is a READ-ONLY
+  loader (`Pick<FsPort,'exists'|'readText'>`); the `.gitignore` ENTRY for
+  `.harness/settings.local.json` ships as a committed line (U3) — protection
+  without a write path. Malformed/unknown-major = refuse loudly.
+  `HARNESS_NO_TELEMETRY` stays absolute.
+  CORRECTED 2026-08-30: original 2b required self-gitignore-on-first-local-write,
+  a WRITE path no unit owned and nothing in phase 2 triggers; ruled out of phase 2
+  by prime (backlog row 10). Found by seat A at ack.
 - 2c (same packet or rider): `harness convo sync` — detection gate (command -v +
-  ping, measured 0-10ms vs 360ms fire), resolve harness+session from the hook
-  payload's transcript_path (NEVER journalled — existing PII contract), fire
+  ping, measured 0-10ms vs 360ms fire), resolve harness+session from the **pij
+  registry** (`services/telemetry/pij-registry.ts` — read-only, fail-safe, never
+  throws; `PIJ_SESSION_ID` / the `by_harness_session` join; plan 052's P12 posture
+  lifts ids + the closed harness label only), then fire
   `flowspace3 conversation ingest --harness <h> --session <id> --folder <root>`
-  fire-and-forget. Gated on `flowspace.ingest.enabled`, default false. Commit
-  seam primary + boot drain. Envelope says so ONCE when enabled-but-unreachable.
+  fire-and-forget. transcript_path NEVER enters the flow — the hazard is removed,
+  not guarded. Gated on `flowspace.ingest.enabled`, default false. Commit seam +
+  boot drain resolve identity the same way and stay SILENT; only the explicit
+  command renders reachability (a commit is not the place to editorialise about
+  telemetry). The explicit command distinguishes THREE honest states: disabled
+  (with origin, from U1's `{value,origin}`) · enabled-but-identity-unresolvable
+  (registry unavailable or no descriptor — envelope says so and names the fix:
+  pass `--harness`/`--session`) · enabled-and-fired. A silent no-op on an ENABLED
+  setting is the misleading-success family and is forbidden.
+  CORRECTED 2026-08-30: original §2c contradicted hook-payload.ts:60; found by
+  seat A at RED, ruled by prime.
   Smoke proof (lynx correction 2, adopted): the INCREMENTAL contract — fire ingest
   twice against a session that grew between fires; the receipt must show run 2
   ingesting ONLY the new turns under the SAME conversation identity (fs3 measured
