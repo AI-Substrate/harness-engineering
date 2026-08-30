@@ -1,0 +1,26 @@
+docs/plans/091-ways-of-working/assets/execution.log.md
+  h_9e71e8b09f7cf2 1-33
+harness/cli/src/output/error-codes.ts
+  h_9e71e8b09f7cf2 12-15
+harness/cli/src/services/settings/load-settings.ts
+  h_9e71e8b09f7cf2 1-43
+harness/cli/src/services/settings/settings.ts
+  h_9e71e8b09f7cf2 1-265
+harness/cli/test/output/error-codes.test.ts
+  h_9e71e8b09f7cf2 18-19
+harness/cli/test/services/settings/load-settings.test.ts
+  h_9e71e8b09f7cf2 1-54
+harness/cli/test/services/settings/settings.test.ts
+  h_9e71e8b09f7cf2 1-120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d3cbe926cbc7069b6f5e5444123948267adf7b58",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
