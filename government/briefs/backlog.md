@@ -14,3 +14,4 @@ One row per item; numbers never reused. Status: open | packet | done | wontfix.
 | 8 | 2026-08-30 | plan 091 phase 2 proving packet: services/settings + harness convo sync | packet |
 | 9 | 2026-08-30 | pij spawn inherits caller's cwd — coder spawned into PM's tree (coral F1); want a --cwd flag upstream; ritual line added meanwhile | open |
 | 10 | 2026-08-30 | settings.local.json self-gitignore WRITE path — deferred from phase 2 by ruling (no owner among frozen units); interim: U3 ships the .gitignore ENTRY only | open |
+| 11 | 2026-08-30 | pij models vs omp models CONTRADICT on sol-fast thinking levels (pij: none..max; omp: '-'); -1m rows are omp-runtime-only and a bare pi spawn 400s on them (coral, Seat A DOA) — report upstream | open |
