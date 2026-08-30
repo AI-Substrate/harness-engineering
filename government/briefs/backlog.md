@@ -12,3 +12,5 @@ One row per item; numbers never reused. Status: open | packet | done | wontfix.
 | 6 | 2026-08-30 | fs3 dogfood: ask silently answers the nearest answerable question (team new → harness new) with citations; search archive-over-source ranking (FS-1 x4) — relayed to lynx | open |
 | 7 | 2026-08-27 | ci-verdict ruleset pin (not ci-required) on ruleset 20537412 — awaiting Jordan | open |
 | 8 | 2026-08-30 | plan 091 phase 2 proving packet: services/settings + harness convo sync | packet |
+| 9 | 2026-08-30 | pij spawn inherits caller's cwd — coder spawned into PM's tree (coral F1); want a --cwd flag upstream; ritual line added meanwhile | open |
+| 10 | 2026-08-30 | settings.local.json self-gitignore WRITE path — deferred from phase 2 by ruling (no owner among frozen units); interim: U3 ships the .gitignore ENTRY only | open |

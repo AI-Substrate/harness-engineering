@@ -23,6 +23,10 @@
 3. **Receipts-or-not-done** — exact commands + tails; mutation-checked tests (the
    fix's test fails without the fix — stated, not assumed).
 4. **Canary-before-trust** — identity echo (id/cwd/model) before a fresh spawn's
+   first real message is trusted. NOTE: a spawned seat INHERITS THE SPAWNER'S CWD
+   (coral, 2026-08-30) — the brief must correct it and the canary must PROVE the
+   seat stands in its own tree; without the cwd echo, two seats silently share one
+   worktree. — identity echo (id/cwd/model) before a fresh spawn's
    first real message is trusted.
 5. **Worktree-per-packet**, cut from current origin/main. Prime merges, never
    coders; on API collision the later-lander adapts.
