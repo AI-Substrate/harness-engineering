@@ -67,6 +67,17 @@
 10. **Status cards** at unit edges (`pij report now`); parked states declared, not
    refreshed.
 
+## The packet's law (091's real finding — coral, five instances in one packet)
+
+**Dispatch is not delivery; exit 0 is not evidence.** A thing REQUESTED is not a
+thing DONE, at every layer: a RED that fails for an assertion (not a missing
+module) · a green never seen failing proves nothing · a pane footer shows the
+CONFIGURED value, not the running one · a status may only say "fired", never
+"delivered", when delivery was not observed · a ping that proves "the process
+ran" has not proved "the daemon answered". Whenever a surface reports success,
+ask WHICH claim it actually proves; name statuses for the claim proved, not the
+claim wished for.
+
 ## Single-writer
 
 `government/**` is prime-writable only. A settings/ruling want from any other seat
