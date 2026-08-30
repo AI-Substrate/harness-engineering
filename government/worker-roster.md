@@ -9,6 +9,7 @@ Ownership authority for this repo's fleet. Git authorship is a NULL signal here
 | pij-respectable-clam | pm | windows telemetry / collector | claude | (see pij revive --print) | active |
 | pij-vicarious-coral | pm | plan 091 proving packet | pi/omp claude-opus-5 med | (omp session store) | active |
 | pij-changing-vulture | coder | 091 U1 settings (then U3) | pi/omp gpt-5.6-sol-fast-1m high | (omp session store) | active |
+| pij-identical-turtle | coder | 091 U2 convo service | pi/omp gpt-5.6-sol-fast-1m high | (omp session store) | active |
 | pij-net-fowl | coder | (DOA — model_not_supported on bare pi; superseded by vulture) | — | — | closed |
 | pij-underground-roadrunner | worker | (legacy) | claude | — | dormant |
 
