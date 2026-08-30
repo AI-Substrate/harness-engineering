@@ -3,6 +3,7 @@ import { ErrorCodes } from '../../output/error-codes.js';
 import { verbShapeIssues } from '../config/load-config.js';
 import type { HarnessRecordType } from '../record/contract.js';
 import { type ExtensionRecordType, recordTypeShapeIssues } from '../record/registry.js';
+import { posixDirname } from '../shared/posix-path.js';
 import type { CustomRegistryItem, ExtensionRecord } from './contract.js';
 import { gateExtensionDefinition } from './v2/api-gate.js';
 import { type ClassifiedExtensionEntry, classifyExtensionExport } from './v2/classify.js';
@@ -69,15 +70,9 @@ export interface ExtensionRegistryOptions {
 }
 
 /**
- * Core command names an extension may NOT shadow. `help`/`doctor`/`new`/`docs`/
- * `skills`/`record`/`instructions`/`observe`/`init` are all reserved core
- * commands (`instructions` reserved since plan 014 — the agent-briefing act;
- * `observe` since plan 015 — the friction-capture act; `init` since plan 008
- * FX001 — the governance-doc inception writer; `sensors` since plan 059; `dd`
- * and `plan` since plan 065 — both recorded as deviations in that plan's ledger,
- * because a core verb is a departure from "verbs are extension-owned"); `commit`
- * since plan 074 — the safe commit path, core because the sandbox failure it
- * guards against belongs to the machine rather than to any repo's toolchain.
+ * This set mirrors every command name registered by the composition root. The
+ * composition-root regression test derives that surface from Commander so a new
+ * core command cannot ship without becoming reserved here.
  */
 export const RESERVED_NAMES: ReadonlySet<string> = new Set([
   'help',
@@ -94,9 +89,14 @@ export const RESERVED_NAMES: ReadonlySet<string> = new Set([
   'plan',
   'sensors',
   'commit',
+  'convo',
   // plan 082 — a shadowed hook verb would silently change what runs on every
   // tool call of every agent session, with no output to notice it by.
   'hooks',
+  'update',
+  'self-install',
+  'retro',
+  'telemetry',
 ]);
 
 /**
@@ -268,13 +268,21 @@ export async function buildExtensionRegistry(
     const acceptedSensors: RegisteredSensor[] = [];
     const acceptedCustomItems: RegisteredCustomItem[] = [];
     const verbShadows: string[] = [];
+    const coreVerbShadows: string[] = [];
+    const extensionVerbShadows: string[] = [];
     const recordShadows: string[] = [];
 
     normalized.forEach((entry, index) => {
       const accepted = acceptedExtensions[index];
       if (accepted === undefined) return;
       for (const verb of entry.verbs) {
-        if (reservedVerbs.has(verb.name) || claimedVerbs.has(verb.name)) {
+        if (reservedVerbs.has(verb.name)) {
+          coreVerbShadows.push(verb.name);
+          verbShadows.push(verb.name);
+          continue;
+        }
+        if (claimedVerbs.has(verb.name)) {
+          extensionVerbShadows.push(verb.name);
           verbShadows.push(verb.name);
           continue;
         }
@@ -335,7 +343,7 @@ export async function buildExtensionRegistry(
             ...(verbShadows.length > 0 && { shadows: verbShadows }),
             ...(recordShadows.length > 0 && { recordShadows }),
             code: ErrorCodes.EXTENSION_VERB_CONFLICT,
-            error: conflictError(verbShadows, recordShadows),
+            error: conflictError(entryPath, coreVerbShadows, extensionVerbShadows, recordShadows),
             next_action:
               'Rename the shadowed verb/record type or remove the duplicate extension, then retry.',
           }
@@ -404,15 +412,25 @@ function formatNormalized(entries: readonly NormalizedExtension[]): string {
   );
 }
 
-function conflictError(verbShadows: string[], recordShadows: string[]): string {
+function conflictError(
+  entryPath: string,
+  coreVerbShadows: string[],
+  extensionVerbShadows: string[],
+  recordShadows: string[],
+): string {
   const parts: string[] = [];
-  if (verbShadows.length > 0) {
-    parts.push(`verb(s) '${verbShadows.join("', '")}'`);
+  for (const name of coreVerbShadows) {
+    parts.push(`verb '${name}' collides with core command '${name}'`);
+  }
+  for (const name of extensionVerbShadows) {
+    parts.push(`verb '${name}' collides with an earlier extension registration`);
   }
   if (recordShadows.length > 0) {
-    parts.push(`record type(s) '${recordShadows.join("', '")}'`);
+    parts.push(
+      `record type(s) '${recordShadows.join("', '")}' collide with a core type or earlier extension registration`,
+    );
   }
-  return `${ErrorCodes.EXTENSION_VERB_CONFLICT}: ${parts.join(' and ')} already provided (core command/type or earlier extension); duplicate(s) ignored.`;
+  return `${ErrorCodes.EXTENSION_VERB_CONFLICT}: ${parts.join('; ')}; skipped colliding registration from extension directory '${posixDirname(entryPath)}'.`;
 }
 
 function failed(

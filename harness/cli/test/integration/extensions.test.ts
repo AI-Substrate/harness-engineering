@@ -29,6 +29,7 @@ import {
 const here = dirname(fileURLToPath(import.meta.url));
 const REPO = join(here, 'fixtures', 'repo');
 const REPO_CONFLICT = join(here, 'fixtures', 'repo-conflict');
+const REPO_CORE_CONFLICT = join(here, 'fixtures', 'repo-core-conflict');
 
 /** Real adapters, but cwd is the fixture repo (so discovery scans its .harness/). */
 function realDeps(cwd: string): VerbActDeps {
@@ -212,10 +213,13 @@ describe('extension system — end-to-end via real jiti fixtures', () => {
     expect(registry.verbs.map((v) => v.name)).toEqual(['greet']);
     const winner = registry.records.find((r) => r.entryPath.endsWith('alpha/extension.ts'));
     const shadowed = registry.records.find((r) => r.entryPath.endsWith('beta/extension.ts'));
+    if (shadowed === undefined) throw new Error('missing beta collision record');
     expect(winner?.status).toBe('loaded');
     expect(shadowed?.status).toBe('conflict');
     expect(shadowed?.shadows).toEqual(['greet']);
     expect(shadowed?.error).toContain('E142');
+    expect(shadowed?.error).toContain('earlier extension registration');
+    expect(shadowed?.error).toContain(posix.dirname(shadowed.entryPath));
   });
 
   it('the winning conflict verb runs (alpha), not the shadowed one (beta)', async () => {
@@ -224,6 +228,44 @@ describe('extension system — end-to-end via real jiti fixtures', () => {
     expect(env.status).toBe('ok');
     expect(env.data.from).toBe('alpha');
     expect(code).toBe(0);
+  });
+
+  it('skips a core-name collision, keeps the CLI usable, and names both inspected sides', async () => {
+    /*
+    Test Doc:
+    - Why: a repo extension named after a newly-added core verb must not make every CLI command
+      fail while Commander assembles the command tree.
+    - Contract: core `convo` wins; the losing extension directory is reported as an E142 conflict;
+      the healthy sibling extension and every core command remain registered.
+    - Quality Contribution: pins the live failure mode with a real on-disk fixture and jiti loader.
+    - Worked Example: `harness doctor` is degraded but usable, then `harness healthy` still succeeds.
+    */
+    const doctor = await run(REPO_CORE_CONFLICT, ['doctor']);
+    const env = JSON.parse(doctor.out);
+    const collision = env.data.extensions.find((extension: { entryPath: string }) =>
+      extension.entryPath.endsWith('/convo/extension.ts'),
+    );
+
+    expect(doctor.code).toBe(0);
+    expect(env.status).toBe('degraded');
+    expect(collision.status).toBe('conflict');
+    expect(collision.shadows).toEqual(['convo']);
+    expect(collision.error).toContain("core command 'convo'");
+    expect(collision.error).toContain(posix.dirname(collision.entryPath));
+    expect(collision.error).toContain('skipped colliding registration');
+    expect(doctor.registry.verbs.map((verb) => verb.name)).toEqual(['healthy']);
+
+    const program = buildProgram(
+      '9.9.9',
+      { mode: 'json', writers: { out: () => {}, err: () => {} } },
+      realDeps(REPO_CORE_CONFLICT),
+      doctor.registry,
+    );
+    expect(program.commands.map((command) => command.name())).toContain('convo');
+
+    const healthy = await run(REPO_CORE_CONFLICT, ['healthy']);
+    expect(healthy.code).toBe(0);
+    expect(JSON.parse(healthy.out).data.from).toBe('healthy-extension');
   });
 
   it('doctor enumerates the fixtures (loaded + failed + convention wails) without invoking them', async () => {
