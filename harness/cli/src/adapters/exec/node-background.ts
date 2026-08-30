@@ -1,6 +1,10 @@
 import { spawn } from 'node:child_process';
 import { closeSync, openSync } from 'node:fs';
-import type { BackgroundProcessPort, SpawnDetachedInput } from './background-port.js';
+import type {
+  BackgroundProcessPort,
+  DetachedProcessHandle,
+  SpawnDetachedInput,
+} from './background-port.js';
 import { resolveSpawn } from './windows-command.js';
 
 /**
@@ -29,7 +33,7 @@ import { resolveSpawn } from './windows-command.js';
 export class NodeBackground implements BackgroundProcessPort {
   constructor(private readonly platform: NodeJS.Platform = process.platform) {}
 
-  spawnDetached(input: SpawnDetachedInput): { pid: number } {
+  spawnDetached(input: SpawnDetachedInput): DetachedProcessHandle {
     // Forward `env` to the resolver too (F005), so a win32 `.cmd`/PATH lookup
     // resolves against the SAME env the child runs with — not the parent's.
     const spec = resolveSpawn(input.command, input.args, input.cwd, this.platform, input.env);
@@ -44,9 +48,13 @@ export class NodeBackground implements BackgroundProcessPort {
         windowsVerbatimArguments: spec.windowsVerbatimArguments ?? false, // I2 — honour the resolver
       });
       const pid = child.pid;
-      child.unref(); // let the parent exit independently
       if (pid == null) throw new Error('detached spawn returned no pid');
-      return { pid };
+      const exitCode = new Promise<number | null>((resolve) => {
+        child.once('exit', (code) => resolve(code));
+        child.once('error', () => resolve(null));
+      });
+      child.unref(); // listener observes early exit; unref still lets the parent exit independently
+      return { pid, exitCode };
     } finally {
       // The child has its own dup of the fd; close the parent's copy so a verb
       // looping over many repos doesn't leak one descriptor per launch (F004).

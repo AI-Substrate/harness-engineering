@@ -135,9 +135,9 @@ export interface VerbContext {
    * core provides it; feature-detect (`if (ctx.background)`) for graceful
    * degradation on an older core. `spawnDetached` launches a fire-and-forget
    * child that OUTLIVES the verb (stdout+stderr → `logPath`), returning its pid
-   * — the portable, injection-safe replacement for a `nohup … &` shell-out. On
-   * Windows a `.cmd` shim is launched via `cmd.exe` (never a bare `.cmd` spawn —
-   * it EINVALs on patched Node; see the core resolver).
+   * and an exit-code promise that observes early completion without retaining
+   * the child. On Windows a `.cmd` shim is launched via `cmd.exe` (never a bare
+   * `.cmd` spawn — it EINVALs on patched Node; see the core resolver).
    */
   background?: {
     spawnDetached(input: {
@@ -146,7 +146,7 @@ export interface VerbContext {
       cwd: string;
       env?: Record<string, string | undefined>;
       logPath: string;
-    }): { pid: number };
+    }): { pid: number; exitCode: Promise<number | null> };
   };
   env: { get(name: string): string | undefined };
   git: { isRepo(): boolean; currentBranch(): string | null };

@@ -7,7 +7,11 @@ import { type Envelope, formatDegraded, formatError, formatOk } from '../output/
 import { ErrorCodes } from '../output/error-codes.js';
 import { exitWithEnvelope } from '../output/exit.js';
 import { type CliIo, createOutputPort } from '../output/output-port.js';
-import type { FlowspacePort, IngestArgs } from '../services/convo/flowspace-port.js';
+import type {
+  FlowspacePort,
+  IngestArgs,
+  IngestDispatch,
+} from '../services/convo/flowspace-port.js';
 import { type SyncOutcome, syncConversation } from '../services/convo/sync-service.js';
 import { loadSettings } from '../services/settings/load-settings.js';
 import type { SettingsOrigin, SettingsRefusal } from '../services/settings/settings.js';
@@ -15,7 +19,7 @@ import { posixJoin } from '../services/shared/posix-path.js';
 import { type PijRegistry, readPijRegistry } from '../services/telemetry/pij-registry.js';
 import type { VerbActDeps } from './verb.js';
 
-export type FlowspaceFactory = (pijId?: string) => FlowspacePort;
+export type FlowspaceFactory = () => FlowspacePort;
 
 export type ConvoRunResult =
   | { kind: 'outcome'; outcome: SyncOutcome }
@@ -36,10 +40,14 @@ export function registerConvoAct(
     .option('--harness <name>', 'native harness name (defaults through the pij registry)')
     .option('--session <id>', 'native harness session id (defaults through the pij registry)')
     .option('--folder <path>', 'conversation workspace (defaults to the current repository)')
-    .action((options: ConvoIdentityOptions) => {
+    .action(async (options: ConvoIdentityOptions) => {
       let envelope: Envelope;
       try {
-        const result = runConvoSync(options, deps, flowspace ?? defaultFlowspaceFactory(deps));
+        const result = await runConvoSync(
+          options,
+          deps,
+          flowspace ?? defaultFlowspaceFactory(deps),
+        );
         envelope = envelopeForConvoRun(result, deps.clock);
       } catch (error) {
         envelope = envelopeForConvoError(error, deps.clock);
@@ -48,11 +56,11 @@ export function registerConvoAct(
     });
 }
 
-export function runConvoSync(
+export async function runConvoSync(
   options: ConvoIdentityOptions,
   deps: Pick<VerbActDeps, 'fs' | 'env' | 'proc'>,
   flowspace: FlowspaceFactory,
-): ConvoRunResult {
+): Promise<ConvoRunResult> {
   const settings = loadSettings(deps.proc.cwd(), { fs: deps.fs, env: deps.env });
   if (!settings.ok) return { kind: 'settings-refusal', refusal: settings };
   const consent = settings.settings.flowspace.ingest.enabled;
@@ -65,7 +73,7 @@ export function runConvoSync(
   if (!identity.ok) return { kind: 'identity-unresolvable', origin: consent.origin };
   return {
     kind: 'outcome',
-    outcome: syncConversation(consent, identity.args, flowspace(identity.pijId)),
+    outcome: await syncConversation(consent, identity.args, flowspace()),
   };
 }
 
@@ -74,11 +82,9 @@ export function runConvoSyncSilently(
   deps: Pick<VerbActDeps, 'fs' | 'env' | 'proc'>,
   flowspace: FlowspaceFactory,
 ): void {
-  try {
-    runConvoSync({}, deps, flowspace);
-  } catch {
+  void runConvoSync({}, deps, flowspace).catch(() => {
     // Commit and boot are never changed by optional conversation ingestion.
-  }
+  });
 }
 
 export function runConvoAfterBoot(envelope: Pick<Envelope, 'command'>, sync: () => void): void {
@@ -104,7 +110,7 @@ function envelopeForConvoRun(result: ConvoRunResult, clock: Clock): Envelope {
 }
 
 function defaultFlowspaceFactory(deps: VerbActDeps): FlowspaceFactory {
-  return (pijId) => {
+  return () => {
     if (deps.background === undefined || deps.fsWrite === undefined) {
       throw new Error('conversation background capability unavailable');
     }
@@ -114,10 +120,10 @@ function defaultFlowspaceFactory(deps: VerbActDeps): FlowspaceFactory {
       detect: () => deps.proc.which('flowspace3') !== null,
       ping: spawnFlowspacePing,
       background: deps.background,
+      clock: deps.clock,
       prepare: () => deps.fsWrite?.mkdirp(temp),
       cwd,
       logPath: posixJoin(temp, 'convo-sync.log'),
-      ...(pijId !== undefined && { pijId }),
     });
   };
 }
@@ -131,10 +137,10 @@ export interface FlowspaceCliOptions {
   detect: () => boolean;
   ping: () => boolean;
   background: BackgroundProcessPort;
+  clock: Pick<Clock, 'sleep'>;
   prepare?: () => void;
   cwd: string;
   logPath: string;
-  pijId?: string;
 }
 
 export interface ConvoIdentityOptions {
@@ -144,7 +150,7 @@ export interface ConvoIdentityOptions {
 }
 
 export type ConvoIdentityResolution =
-  | { ok: true; args: IngestArgs; pijId?: string }
+  | { ok: true; args: IngestArgs }
   | { ok: false; reason: 'identity-unresolvable' };
 
 function flowspaceHarness(harness: string | null): string | undefined {
@@ -175,7 +181,6 @@ export function resolveConvoIdentity(
   return {
     ok: true,
     args: { harness, session, folder: options.folder ?? cwd },
-    ...(pijId !== undefined && { pijId }),
   };
 }
 
@@ -204,9 +209,9 @@ export class FlowspaceCliAdapter implements FlowspacePort {
     return this.options.ping();
   }
 
-  ingest(args: IngestArgs): void {
+  async ingest(args: IngestArgs): Promise<IngestDispatch> {
     this.options.prepare?.();
-    this.options.background.spawnDetached({
+    const child = this.options.background.spawnDetached({
       command: 'flowspace3',
       args: [
         'conversation',
@@ -217,11 +222,17 @@ export class FlowspaceCliAdapter implements FlowspacePort {
         args.session,
         '--folder',
         args.folder,
-        ...(this.options.pijId ? ['--pij', this.options.pijId] : []),
       ],
       cwd: this.options.cwd,
       logPath: this.options.logPath,
     });
+    const outcome = await Promise.race([
+      child.exitCode.then((code) => ({ kind: 'exited' as const, code })),
+      this.options.clock.sleep(250).then(() => ({ kind: 'running' as const })),
+    ]);
+    return outcome.kind === 'running' || outcome.code === 0
+      ? { status: 'fired' }
+      : { status: 'dispatch-failed', logPath: this.options.logPath };
   }
 }
 
@@ -249,6 +260,16 @@ export function envelopeForSyncOutcome(outcome: SyncOutcome, clock: Clock): Enve
         'convo sync',
         { ...outcome, message: 'The Flowspace daemon is unreachable.' },
         'Run `flowspace3 ping`, repair the daemon if needed, then retry.',
+        clock,
+      );
+    case 'dispatch-failed':
+      return formatDegraded(
+        'convo sync',
+        {
+          ...outcome,
+          message: 'Conversation ingest exited during the dispatch grace period.',
+        },
+        `Inspect ${outcome.logPath}, repair the dispatch failure, then retry.`,
         clock,
       );
     case 'fired':

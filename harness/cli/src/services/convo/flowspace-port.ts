@@ -4,8 +4,10 @@ export interface IngestArgs {
   folder: string;
 }
 
+export type IngestDispatch = { status: 'fired' } | { status: 'dispatch-failed'; logPath: string };
+
 export interface FlowspacePort {
   detect(): boolean;
   ping(): boolean;
-  ingest(args: IngestArgs): void;
+  ingest(args: IngestArgs): Promise<IngestDispatch>;
 }

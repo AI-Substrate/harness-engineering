@@ -5,10 +5,14 @@ import {
   envelopeForSyncOutcome,
   FlowspaceCliAdapter,
   resolveConvoIdentity,
+  runConvoSync,
 } from '../../src/acts/convo.js';
 import { FakeClock } from '../../src/adapters/clock/fake-clock.js';
 import { FakeEnv } from '../../src/adapters/env/fake-env.js';
 import { FakeBackground } from '../../src/adapters/exec/fake-background.js';
+import { FakeFs } from '../../src/adapters/fs/fake-fs.js';
+import { FakeProcess } from '../../src/adapters/process/fake-process.js';
+import { FakeFlowspace } from '../../src/services/convo/fake-flowspace.js';
 import type { IngestArgs } from '../../src/services/convo/flowspace-port.js';
 import type { SyncOutcome } from '../../src/services/convo/sync-service.js';
 import type { PijDescriptor, PijRegistry } from '../../src/services/telemetry/pij-registry.js';
@@ -49,6 +53,19 @@ describe('convo sync envelope', () => {
     expect(rendered).not.toMatch(/\b(?:synced|ingested)\b/i);
   });
 
+  it('degrades when the detached ingest is dead on arrival', () => {
+    const result = envelope({
+      status: 'dispatch-failed',
+      origin: 'repo',
+      logPath: '/repo/.harness/temp/convo-sync.log',
+    });
+    expect(result).toMatchObject({
+      command: 'convo sync',
+      status: 'degraded',
+      data: { status: 'dispatch-failed', logPath: '/repo/.harness/temp/convo-sync.log' },
+    });
+  });
+
   it('never renders a transcript path from a caught failure', () => {
     const rendered = JSON.stringify(envelopeForConvoError(new Error(SENTINEL_PATH), clock));
     expect(rendered).not.toContain(SENTINEL_PATH);
@@ -85,17 +102,14 @@ describe('convo identity', () => {
     });
   });
 
-  it('defaults through PIJ_SESSION_ID without lifting transcript_path', () => {
+  it('resolves populated pij registry identity only to native harness and session', () => {
     expect(
       resolveConvoIdentity({}, '/repo', registry, new FakeEnv({ PIJ_SESSION_ID: 'pij-seat' })),
     ).toEqual({
       ok: true,
       args: { harness: 'omp', session: 'native-session', folder: '/repo' },
-      pijId: 'pij-seat',
     });
-  });
 
-  it('also resolves PIJ_SESSION_ID through the reverse native-session join', () => {
     expect(
       resolveConvoIdentity(
         {},
@@ -103,7 +117,10 @@ describe('convo identity', () => {
         registry,
         new FakeEnv({ PIJ_SESSION_ID: 'native-session' }),
       ),
-    ).toMatchObject({ ok: true, pijId: 'pij-seat' });
+    ).toEqual({
+      ok: true,
+      args: { harness: 'omp', session: 'native-session', folder: '/repo' },
+    });
   });
 
   it('returns an honest act-level miss when enabled identity cannot resolve', () => {
@@ -140,6 +157,7 @@ describe('FlowspaceCliAdapter', () => {
         return false;
       },
       background,
+      clock: new FakeClock(),
       cwd: '/repo',
       logPath: '/repo/.harness/temp/convo-sync.log',
     });
@@ -151,18 +169,18 @@ describe('FlowspaceCliAdapter', () => {
     expect(background.calls).toEqual([]);
   });
 
-  it('maps IngestArgs to an injection-safe detached flowspace3 invocation', () => {
+  it('maps native identity to the accepted flowspace3 grammar without --pij', async () => {
     const background = new FakeBackground();
     const adapter = new FlowspaceCliAdapter({
       detect: () => true,
       ping: () => true,
       background,
+      clock: new FakeClock(),
       cwd: '/repo',
       logPath: '/repo/.harness/temp/convo-sync.log',
-      pijId: 'pij-seat',
     });
 
-    expect(adapter.ingest(ingest)).toBeUndefined();
+    await expect(adapter.ingest(ingest)).resolves.toEqual({ status: 'fired' });
     expect(background.calls).toEqual([
       {
         command: 'flowspace3',
@@ -175,12 +193,93 @@ describe('FlowspaceCliAdapter', () => {
           'session-123',
           '--folder',
           '/repo',
-          '--pij',
-          'pij-seat',
         ],
         cwd: '/repo',
         logPath: '/repo/.harness/temp/convo-sync.log',
       },
     ]);
+  });
+
+  it('reports a nonzero child exit within the bounded grace period', async () => {
+    const clock = new FakeClock();
+    const adapter = new FlowspaceCliAdapter({
+      detect: () => true,
+      ping: () => true,
+      background: {
+        spawnDetached: () => ({ pid: 424242, exitCode: Promise.resolve(2) }),
+      },
+      clock,
+      cwd: '/repo',
+      logPath: '/repo/.harness/temp/convo-sync.log',
+    });
+
+    await expect(adapter.ingest(ingest)).resolves.toEqual({
+      status: 'dispatch-failed',
+      logPath: '/repo/.harness/temp/convo-sync.log',
+    });
+    expect(clock.sleeps).toEqual([250]);
+  });
+
+  it('keeps a fast successful child classified as fired', async () => {
+    const clock = new FakeClock();
+    const background = {
+      calls: [] as unknown[],
+      spawnDetached: () => ({
+        pid: 424242,
+        exitCode: clock.sleep(50).then(() => 0),
+      }),
+    };
+    const adapter = new FlowspaceCliAdapter({
+      detect: () => true,
+      ping: () => true,
+      background,
+      clock,
+      cwd: '/repo',
+      logPath: '/repo/.harness/temp/convo-sync.log',
+    });
+
+    await expect(adapter.ingest(ingest)).resolves.toEqual({ status: 'fired' });
+    expect(clock.sleeps).toEqual([50, 250]);
+  });
+
+  it('propagates DOA failure through a populated pij registry without passing pij identity', async () => {
+    const home = '/home/test';
+    const fs = new FakeFs(
+      {
+        '/repo/.harness/settings.json': JSON.stringify({
+          schema_version: 1,
+          flowspace: { ingest: { enabled: true } },
+        }),
+        [`${home}/.pij/pij-seat.json`]: JSON.stringify({
+          harness: 'pi',
+          harnessSessionId: 'native-session',
+        }),
+      },
+      { [`${home}/.pij`]: ['pij-seat.json'] },
+    );
+    const env = new FakeEnv({ PIJ_SESSION_ID: 'pij-seat' }, home);
+    const flowspace = new FakeFlowspace({
+      dispatch: { status: 'dispatch-failed', logPath: '/repo/.harness/temp/convo-sync.log' },
+    });
+    const factoryArgCounts: number[] = [];
+
+    const result = await runConvoSync(
+      {},
+      { fs, env, proc: new FakeProcess({}, '/repo') },
+      (...args) => {
+        factoryArgCounts.push(args.length);
+        return flowspace;
+      },
+    );
+
+    expect(factoryArgCounts).toEqual([0]);
+    expect(result).toEqual({
+      kind: 'outcome',
+      outcome: {
+        status: 'dispatch-failed',
+        origin: 'repo',
+        logPath: '/repo/.harness/temp/convo-sync.log',
+      },
+    });
   });
 });
