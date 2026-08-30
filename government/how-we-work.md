@@ -35,7 +35,13 @@
 7. **Named windows** — every spawned worker is moved to its own well-named tmux
    window immediately at spawn (`tmux break-pane -s <pane> -n <role-plan-topic>`);
    a worker pane never lives inside the prime's window. (Jordan, 2026-08-30.)
-8. **Status cards** at unit edges (`pij report now`); parked states declared, not
+8. **Dogfood flowspace3** — every seat (prime, PM, coders, reviewers) uses
+   fs3 as a working tool: `flowspace3 search "<meaning-shaped question>"` before
+   grep where meaning beats text, `ask` for assembled answers (budget ~1min),
+   `--source conversation` for the why behind past decisions. Every miss,
+   substitution, or confusing envelope is REPORTED (to prime → lynx), not shrugged
+   at — misses are worth more than hits. (Jordan, 2026-08-30, standing.)
+9. **Status cards** at unit edges (`pij report now`); parked states declared, not
    refreshed.
 
 ## Single-writer
