@@ -1,0 +1,19 @@
+government/worker-roster.md
+  s_0cb39fbdc00452::t_ed1ed8b1c52594 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c605c16cc72d3f39c953c0bbc79f98f337a85245",
+  "prompts": {},
+  "sessions": {
+    "s_0cb39fbdc00452": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_0cb39fbdc00452",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
