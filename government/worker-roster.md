@@ -7,7 +7,7 @@ Ownership authority for this repo's fleet. Git authorship is a NULL signal here
 |---|---|---|---|---|---|
 | pij-massive-meadowlark | o-prime | whole repo | claude / opus-family | 6616ca6a-61c0-4a92-b9be-3512605a2826 | active |
 | pij-respectable-clam | pm | windows telemetry / collector | claude | (see pij revive --print) | active |
-| pij-vicarious-coral | pm | plan 091 proving packet | pi/omp claude-opus-5 med | (omp session store) | active |
+| pij-vicarious-coral | pm | plan 091 proving packet | pi/omp claude-opus-5 med | (omp session store) | active — EXCEPTIONAL first run (lynx concurring): law-naming, self-application, upstream contract proof; first-pick PM for future multi-unit plans |
 | pij-changing-vulture | coder | 091 U1 settings (then U3) | pi/omp gpt-5.6-sol-fast-1m high | (omp session store) | active |
 | pij-identical-turtle | coder | 091 U2 convo service | pi/omp gpt-5.6-sol-fast-1m high | (omp session store) | active |
 | pij-net-fowl | coder | (DOA — model_not_supported on bare pi; superseded by vulture) | — | — | closed |
