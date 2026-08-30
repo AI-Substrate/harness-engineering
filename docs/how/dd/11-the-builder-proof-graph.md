@@ -84,7 +84,7 @@ match.
 Direction follows **birth order**: the later-born artifact points backward at
 what already existed. A task can cite an acceptance criterion; a plan cannot cite
 task ids that do not exist yet. Incoming edges are recovered by traversal
-(`node_modules/.bin/dd graph map … --direction in`), never authored twice — an edge written
+(`node_modules/.bin/ddocs graph map … --direction in`), never authored twice — an edge written
 from both ends is an edge that can disagree with itself.
 
 ### Relations are typed
@@ -163,7 +163,7 @@ Three tiers, three postures. Each consumes the graph; none duplicates another.
 
 | Tier | Surface | Posture |
 |---|---|---|
-| mechanical | `node_modules/.bin/dd validate` | structure, links, vocabularies; silent on states |
+| mechanical | `node_modules/.bin/ddocs validate` | structure, links, vocabularies; silent on states |
 | semantic | `harness plan validate` | contradictions always; open rows as a summary line, per-row under `--complete` |
 | refusal | flow gate (`dd_link` at departure) | phase nodes gate on their task section; the last review node carries `{"check": "plan-validate"}` and gates on `plan validate --complete` |
 
@@ -181,7 +181,7 @@ Key properties:
 
 ## Writing the graph
 
-Documents are mutated through the CLI, never by hand: `node_modules/.bin/dd get`, `dd set`,
+Documents are mutated through the CLI, never by hand: `node_modules/.bin/ddocs get`, `dd set`,
 `dd add --mint`, `dd rm`. Each validates the result before anything reaches disk
 and rebuilds the `.dd.md` sibling in the same operation, so a refusal leaves the
 document exactly as it was and a success can never leave source and sibling out

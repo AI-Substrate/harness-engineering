@@ -45,9 +45,12 @@ function instructionsOf(id: string): string {
 
 describe('ac-7116 layer a — orient teaches each node its own dd commands (tk-7144)', () => {
   it.each([
-    ['plan', ['harness plan new', 'node_modules/.bin/dd set', 'harness flow create', '--plan-dir']],
-    ['phase-1', ['node_modules/.bin/dd set', 'harness plan validate', '--address']],
-    ['review-1', ['harness plan validate', '--complete', 'node_modules/.bin/dd set', '--force']],
+    [
+      'plan',
+      ['harness plan new', 'node_modules/.bin/ddocs set', 'harness flow create', '--plan-dir'],
+    ],
+    ['phase-1', ['node_modules/.bin/ddocs set', 'harness plan validate', '--address']],
+    ['review-1', ['harness plan validate', '--complete', 'node_modules/.bin/ddocs set', '--force']],
   ])('node %s bakes the commands its seam needs', (id, commands) => {
     const text = instructionsOf(id);
     for (const command of commands) expect(text).toContain(command);
@@ -87,21 +90,24 @@ describe('ac-7116 layer b — each stage module teaches its own seam (tk-7145)',
   it.each([
     [
       'stages/20-plan.md',
-      ['plan.dd.json', 'harness plan new', 'node_modules/.bin/dd add', '--mint ac'],
+      ['plan.dd.json', 'harness plan new', 'node_modules/.bin/ddocs add', '--mint ac'],
     ],
     [
       'stages/50-phase-tasks.md',
-      ['tasks.dd.json', 'node_modules/.bin/dd add', '--mint tk', '--mint dw'],
+      ['tasks.dd.json', 'node_modules/.bin/ddocs add', '--mint tk', '--mint dw'],
     ],
-    ['stages/60-implement.md', ['node_modules/.bin/dd set', 'harness plan validate', '--address']],
-    ['stages/62-progress.md', ['node_modules/.bin/dd set']],
+    [
+      'stages/60-implement.md',
+      ['node_modules/.bin/ddocs set', 'harness plan validate', '--address'],
+    ],
+    ['stages/62-progress.md', ['node_modules/.bin/ddocs set']],
     [
       'stages/70-review.md',
-      ['harness plan validate', '--complete', 'node_modules/.bin/dd link verify-basis'],
+      ['harness plan validate', '--complete', 'node_modules/.bin/ddocs link verify-basis'],
     ],
     [
       'stages/80-ship.md',
-      ['node_modules/.bin/dd get', 'node_modules/.bin/dd graph map', 'archive'],
+      ['node_modules/.bin/ddocs get', 'node_modules/.bin/ddocs graph map', 'archive'],
     ],
   ])('%s teaches its commands', (module, commands) => {
     const text = read(module);
@@ -131,7 +137,7 @@ describe('ac-7116 layer b — each stage module teaches its own seam (tk-7145)',
     // (`tasks.dd.md#tasks`) — a non-document link that disconnects the plan's
     // work-accounting while every surrounding assertion still passes.
     expect(text).toMatch(
-      /node_modules\/\.bin\/dd set "\$\{PLAN_DIR\}\/plan\.dd\.json#phases\/ph-XXXX\/tasks" "assets\/tasks\/phase-N\/tasks\.dd\.json#tasks"/,
+      /node_modules\/\.bin\/ddocs set "\$\{PLAN_DIR\}\/plan\.dd\.json#phases\/ph-XXXX\/tasks" "assets\/tasks\/phase-N\/tasks\.dd\.json#tasks"/,
     );
     expect(text).not.toMatch(/tasks\.dd\.md#tasks/);
   });

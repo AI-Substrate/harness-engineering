@@ -127,12 +127,12 @@ not just the copies.
 the package directly — but `validate`, `build`, `set`, `doctor`, and `link` now come from
 dd's own CLI.
 
-**Invoke it as `node_modules/.bin/dd <verb>`.** Four spellings, and only one is both
+**Invoke it as `node_modules/.bin/ddocs <verb>`.** Four spellings, and only one is both
 correct and runnable today:
 
 | spelling | what actually runs |
 |---|---|
-| `node_modules/.bin/dd` | **ours — use this** |
+| `node_modules/.bin/ddocs` | **ours — use this** |
 | `dd` | coreutils' disk-dump utility (`/bin/dd`). Fails loudly on our verbs — harmless, but not ours |
 | `npx dd` | **an unrelated package that really exists on npm** (`npm view dd version` → `0.26.0`). In a repo without ours installed, this **fetches and executes remote code** |
 | `npx @ai-substrate/dd` | ours, and the right spelling **after publication** — but `npm view @ai-substrate/dd version` returns **E404** today, and there is registry/proxy lag after any release |

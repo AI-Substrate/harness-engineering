@@ -21,7 +21,7 @@ The example above resolves as:
 Run the resolver when the classification matters:
 
 ```bash
-node_modules/.bin/dd address validate \
+node_modules/.bin/ddocs address validate \
   "docs/how/dd/exemplar/plan.dd.json#phases/ph-0002/tasks" \
   --resolve
 ```
@@ -55,14 +55,14 @@ update. It only has meaning in a containing document. The CLI can validate its
 syntax:
 
 ```bash
-node_modules/.bin/dd address validate "#done_when/tk-0201"
+node_modules/.bin/ddocs address validate "#done_when/tk-0201"
 ```
 
 The CLI cannot resolve that bare address by itself because no containing file
 was supplied. Use a qualified address at the command line:
 
 ```bash
-node_modules/.bin/dd link resolve \
+node_modules/.bin/ddocs link resolve \
   "docs/how/dd/exemplar/tasks/phase-2/tasks.dd.json#done_when/tk-0201"
 ```
 
@@ -84,7 +84,7 @@ An address must:
 Generate addresses rather than assembling them:
 
 ```bash
-node_modules/.bin/dd address generate \
+node_modules/.bin/ddocs address generate \
   "phases/ph-0002/tasks" \
   --path docs/how/dd/exemplar/plan.dd.json
 ```
@@ -153,7 +153,7 @@ subsection.
 `dd links` scans the current corpus and reports both directions:
 
 ```bash
-node_modules/.bin/dd links \
+node_modules/.bin/ddocs links \
   docs/how/dd/exemplar/plan.dd.json
 ```
 
@@ -164,7 +164,7 @@ because each edge already carries its full address and source location.
 For a repository or subtree view:
 
 ```bash
-node_modules/.bin/dd graph \
+node_modules/.bin/ddocs graph \
   --path docs/how/dd/exemplar
 ```
 

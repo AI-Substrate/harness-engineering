@@ -93,13 +93,13 @@ This sub-skill is the **single source of truth** for progress updates. Always de
 When the phase's task file is `assets/tasks/phase-N/tasks.dd.json`, every status write goes through the CLI — there is no table to edit:
 
 ```bash
-node_modules/.bin/dd set "<task file>#tasks/tk-XXXX/state" checked      # completed
-node_modules/.bin/dd set "<task file>#tasks/tk-XXXX/state" blocked      # blocked — note WHY on the row
-node_modules/.bin/dd set "<task file>#tasks/tk-XXXX/note"  "<why>"
-node_modules/.bin/dd set "<task file>#done_when/tk-XXXX/dw-XXXX/state" checked
+node_modules/.bin/ddocs set "<task file>#tasks/tk-XXXX/state" checked      # completed
+node_modules/.bin/ddocs set "<task file>#tasks/tk-XXXX/state" blocked      # blocked — note WHY on the row
+node_modules/.bin/ddocs set "<task file>#tasks/tk-XXXX/note"  "<why>"
+node_modules/.bin/ddocs set "<task file>#done_when/tk-XXXX/dw-XXXX/state" checked
 ```
 
-The sibling `.dd.md` rebuilds in the same operation; a schema-invalid value is REFUSED and writes nothing. **Never edit the generated `.dd.md`** — `node_modules/.bin/dd build --check` reports it as drift.
+The sibling `.dd.md` rebuilds in the same operation; a schema-invalid value is REFUSED and writes nothing. **Never edit the generated `.dd.md`** — `node_modules/.bin/ddocs build --check` reports it as drift.
 
 ---
 

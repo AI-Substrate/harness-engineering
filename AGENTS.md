@@ -46,12 +46,12 @@ This repo HAS its own governance doc at `.harness/engineering-harness.md` (hand-
 operated through **its own CLI**. `harness plan` and `harness flow` still work — they use
 the package directly — but `dd validate|build|set|doctor|link` now come from dd.
 
-**Invoke it as `node_modules/.bin/dd <verb>`.** That is the only spelling that is both
+**Invoke it as `node_modules/.bin/ddocs <verb>`.** That is the only spelling that is both
 correct and runnable today:
 
 | spelling | what actually runs |
 |---|---|
-| `node_modules/.bin/dd` | **ours — use this** |
+| `node_modules/.bin/ddocs` | **ours — use this** |
 | `dd` | coreutils' disk-dump utility (`/bin/dd`) — fails loudly on our verbs |
 | `npx dd` | **an unrelated package that really exists on npm** (v0.26.0). In a repo without ours installed this **fetches and executes remote code** |
 | `npx @ai-substrate/dd` | ours, but **not published yet** (`npm view` → E404). Correct only after the release lands, and after registry/proxy lag clears |

@@ -561,7 +561,7 @@ function checkSensorWatcher(
  * really ship — a `.dd.json` edited and committed without its `.dd.md` — and it is
  * knowable from `exists()` alone.
  *
- * It NEVER runs the sweep (P7): the deep answer is `node_modules/.bin/dd doctor`,
+ * It NEVER runs the sweep (P7): the deep answer is `node_modules/.bin/ddocs doctor`,
  * and the next_action says so rather than this row pretending to have asked. A repo
  * with no dd documents stays ok and silent — the same "don't pester a repo the
  * feature doesn't apply to" posture as the quality-gate and telemetry rows.
@@ -590,12 +590,12 @@ function checkSensorWatcher(
 function checkDdCli(fs: FsPort, proc: ProcessPort): LayerReport {
   const name = 'dd-cli';
   const cwd = toPosix(proc.cwd());
-  const localBin = `${cwd}/node_modules/.bin/dd`;
+  const localBin = `${cwd}/node_modules/.bin/ddocs`;
   if (fs.exists(localBin)) {
     return {
       name,
       ok: true,
-      detail: 'standalone dd CLI available at node_modules/.bin/dd',
+      detail: 'standalone dd CLI available at node_modules/.bin/ddocs',
     };
   }
 
@@ -621,7 +621,7 @@ function checkDdCli(fs: FsPort, proc: ProcessPort): LayerReport {
     detail:
       'standalone dd CLI not found — `harness dd *` was removed in plan 080, so dd verbs (validate, build, set, doctor) now come from dd itself',
     next_action:
-      'Install the dd package in this repo, then invoke it as `node_modules/.bin/dd <verb>`. Do NOT run bare `dd` (that is coreutils disk-dump) or `npx dd` (an unrelated package of that name exists on npm and would be fetched and executed).',
+      'Install the dd package in this repo, then invoke it as `node_modules/.bin/ddocs <verb>`. Do NOT run bare `dd` (that is coreutils disk-dump) or `npx dd` (an unrelated package of that name exists on npm and would be fetched and executed).',
   };
 }
 
@@ -635,7 +635,7 @@ function checkDd(fs: FsPort, proc: ProcessPort): LayerReport {
       ok: false,
       detail: `deterministic documents could not be enumerated: ${scan.issues[0]?.message ?? 'unknown'}`,
       next_action:
-        'Fix the unreadable path, then re-run `harness doctor`. `node_modules/.bin/dd doctor` gives the full sweep.',
+        'Fix the unreadable path, then re-run `harness doctor`. `node_modules/.bin/ddocs doctor` gives the full sweep.',
     };
   }
 
@@ -658,7 +658,7 @@ function checkDd(fs: FsPort, proc: ProcessPort): LayerReport {
     return {
       name,
       ok: true,
-      detail: `${swept.length} deterministic document(s), each with its rendered sibling — run \`node_modules/.bin/dd doctor\` for the full sweep`,
+      detail: `${swept.length} deterministic document(s), each with its rendered sibling — run \`node_modules/.bin/ddocs doctor\` for the full sweep`,
     };
   }
   return {
@@ -669,7 +669,7 @@ function checkDd(fs: FsPort, proc: ProcessPort): LayerReport {
       .slice(0, 3)
       .join(', ')}${unrendered.length > 3 ? ', …' : ''}`,
     next_action:
-      'Regenerate with `node_modules/.bin/dd build <path>` (or `harness plan render <plan>`) and commit the sibling beside its document. `node_modules/.bin/dd doctor` reports the deeper findings this row cannot.',
+      'Regenerate with `node_modules/.bin/ddocs build <path>` (or `harness plan render <plan>`) and commit the sibling beside its document. `node_modules/.bin/ddocs doctor` reports the deeper findings this row cannot.',
   };
 }
 

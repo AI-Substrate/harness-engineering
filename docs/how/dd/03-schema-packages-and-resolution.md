@@ -61,7 +61,7 @@ The first root containing a qualified name wins. Lower-precedence copies are
 reported as shadows with their paths:
 
 ```bash
-node_modules/.bin/dd schema show builder/plan
+node_modules/.bin/ddocs schema show builder/plan
 ```
 
 A duplicate name within one root is different: precedence cannot choose
@@ -176,8 +176,8 @@ address resolution.
 From the repository root:
 
 ```bash
-node_modules/.bin/dd schema list
-node_modules/.bin/dd schema show builder/plan
+node_modules/.bin/ddocs schema list
+node_modules/.bin/ddocs schema show builder/plan
 ```
 
 `list` returns the roots it searched, every winning schema path, descriptions,
@@ -196,7 +196,7 @@ known issue FU-4a. Use document validation as the authoritative resolution
 probe for a document-local package:
 
 ```bash
-node_modules/.bin/dd validate \
+node_modules/.bin/ddocs validate \
   docs/how/dd/exemplar/custom-render/release.dd.json \
   --depth 0
 ```
