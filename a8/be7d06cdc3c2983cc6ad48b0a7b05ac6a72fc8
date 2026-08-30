@@ -1,0 +1,31 @@
+harness/cli/src/services/convo/fake-flowspace.ts
+  s_59d749bfeff5de::t_3cf1e521a2503e 1-29
+harness/cli/src/services/convo/flowspace-port.ts
+  s_f5a59eaabcfb7d::t_524f36ac559b63 1-11
+harness/cli/test/services/convo/sync-service.test.ts
+  s_f5a59eaabcfb7d::t_5b76e7fe4a25cd 1-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a8be7d06cdc3c2983cc6ad48b0a7b05ac6a72fc8",
+  "prompts": {},
+  "sessions": {
+    "s_59d749bfeff5de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ae4199d-c737-4ac3-a856-7e69531e4bab",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    },
+    "s_f5a59eaabcfb7d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c1a8ee5f-0c77-4a73-9109-a12db9cd18a8",
+        "model": "claude-opus-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
