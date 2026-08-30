@@ -1,0 +1,19 @@
+harness/cli/test/app.test.ts
+  s_59d749bfeff5de::t_e8666d66d5b696 180,213
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "7b679342b8bbf800acfdfbacddfee00c19bbab12",
+  "prompts": {},
+  "sessions": {
+    "s_59d749bfeff5de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ae4199d-c737-4ac3-a856-7e69531e4bab",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
