@@ -1,0 +1,26 @@
+docs/plans/095-convo-dispatch-fix/assets/execution.log.md
+  h_9e71e8b09f7cf2 1-23
+harness/cli/src/acts/convo.ts
+  h_9e71e8b09f7cf2 10-14,22,43,46-50,59,63,76,85,87,113,123-124,141-142,155,214,216,231-243,273-282
+harness/cli/src/services/convo/fake-flowspace.ts
+  h_9e71e8b09f7cf2 1,6,26,29
+harness/cli/src/services/convo/flowspace-port.ts
+  h_9e71e8b09f7cf2 7-8,12
+harness/cli/src/services/convo/sync-service.ts
+  h_9e71e8b09f7cf2 8-9,12,16,21-22
+harness/cli/test/acts/convo.test.ts
+  h_9e71e8b09f7cf2 8,13-15,56-68,105,120-123,160-161,173,179-180,186,205-264
+harness/cli/test/services/convo/sync-service.test.ts
+  h_9e71e8b09f7cf2 18,21,29,32-34,41,44,52,55,63,66,74,78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "e5bfe3e0aeebc0db0782e934eb701c1bd65d5237",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
