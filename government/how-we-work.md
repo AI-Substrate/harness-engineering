@@ -20,28 +20,33 @@
    with "will proceed" gets ruled back.
 2. **Verify-then-relay** — cite the command and its output; a worker's measurement
    outranks the brief. [INFERENCE] is quarantined until someone opens the cited file.
-3. **Receipts-or-not-done** — exact commands + tails; mutation-checked tests (the
+3. **Builder discipline by invocation** — coders load /builder and follow the
+   implement stage explicitly (RED → GREEN → production-path mutation → receipts);
+   plans for CODE go through /builder planning; close-out uses /builder
+   post-flight. The packet cites the discipline; the seat follows the maintained
+   stage doc, never a re-derivation from packet prose. (Jordan, 2026-08-30.)
+4. **Receipts-or-not-done** — exact commands + tails; mutation-checked tests (the
    fix's test fails without the fix — stated, not assumed).
-4. **Canary-before-trust** — identity echo (id/cwd/model) before a fresh spawn's
+5. **Canary-before-trust** — identity echo (id/cwd/model) before a fresh spawn's
    first real message is trusted. NOTE: a spawned seat INHERITS THE SPAWNER'S CWD
    (coral, 2026-08-30) — the brief must correct it and the canary must PROVE the
    seat stands in its own tree; without the cwd echo, two seats silently share one
    worktree. — identity echo (id/cwd/model) before a fresh spawn's
    first real message is trusted.
-5. **Worktree-per-packet**, cut from current origin/main. Prime merges, never
+6. **Worktree-per-packet**, cut from current origin/main. Prime merges, never
    coders; on API collision the later-lander adapts.
-6. **Teardown**: before any tidy — `git -C <wt> status --short` + sweep dossier
+7. **Teardown**: before any tidy — `git -C <wt> status --short` + sweep dossier
    paths (scratch/, assets/), copy live material out, THEN tidy.
-7. **Named windows** — every spawned worker is moved to its own well-named tmux
+8. **Named windows** — every spawned worker is moved to its own well-named tmux
    window immediately at spawn (`tmux break-pane -s <pane> -n <role-plan-topic>`);
    a worker pane never lives inside the prime's window. (Jordan, 2026-08-30.)
-8. **Dogfood flowspace3** — every seat (prime, PM, coders, reviewers) uses
+9. **Dogfood flowspace3** — every seat (prime, PM, coders, reviewers) uses
    fs3 as a working tool: `flowspace3 search "<meaning-shaped question>"` before
    grep where meaning beats text, `ask` for assembled answers (budget ~1min),
    `--source conversation` for the why behind past decisions. Every miss,
    substitution, or confusing envelope is REPORTED (to prime → lynx), not shrugged
    at — misses are worth more than hits. (Jordan, 2026-08-30, standing.)
-9. **Status cards** at unit edges (`pij report now`); parked states declared, not
+10. **Status cards** at unit edges (`pij report now`); parked states declared, not
    refreshed.
 
 ## Single-writer
