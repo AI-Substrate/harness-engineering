@@ -1,0 +1,14 @@
+docs/plans/091-ways-of-working/ways-of-working-plan.md
+  h_9e71e8b09f7cf2 49-56,58-61,63-73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "c40b9a1bcfea88161470c240836131986d26ed6b",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
