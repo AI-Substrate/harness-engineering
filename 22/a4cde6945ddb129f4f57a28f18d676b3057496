@@ -1,0 +1,19 @@
+government/briefs/backlog.md
+  s_726ba1b4c8c186::t_0a1cb7ce8a1f54 17-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "22a4cde6945ddb129f4f57a28f18d676b3057496",
+  "prompts": {},
+  "sessions": {
+    "s_726ba1b4c8c186": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_726ba1b4c8c186",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
