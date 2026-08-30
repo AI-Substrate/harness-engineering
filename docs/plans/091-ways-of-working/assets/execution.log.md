@@ -31,3 +31,35 @@ Status: in progress
 | Noteworthy | The initial acknowledgment proposed thrown refusals and colocated tests; live source shows returned discriminated results and the suite uses a parallel test tree. | Return `{ ok: false, code, message, next_action }`; place tests under `test/services/settings/`. |
 | Noteworthy | A module-resolution RED ran zero tests; only a second rung using production-path stubs demonstrated assertion failures. | Keep both receipts distinct: rung 1 proves wiring absent, while rung 2 proves the tests can fail for the intended behavior. |
 | Noteworthy | `just fix` succeeds but reports three pre-existing unsafe unused-import suggestions outside U1. | Leave out-of-scope source unchanged; report the warnings with the clean formatter receipt. |
+
+## Plan 091 U2 — conversation sync service
+
+### Task: Flowspace port, fake, and gated sync
+
+Status: complete
+
+- Scope: `services/convo/` only — a typed `FlowspacePort`, zero-daemon fake, and synchronous gate consuming `ResolvedValue<boolean>`.
+- Module-absent RED: `cd harness/cli && npx vitest run test/services/convo/sync-service.test.ts` exited 1; 1 suite failed to import `fake-flowspace.js`, 0 tests executed. This is wiring evidence only.
+- Assertion RED: after adding compiling no-op production stubs, the same command executed 6 tests: 4 failed on assertions and 2 passed. The biting failures covered undetected, unreachable, fired/order/exact arguments, and fake copy semantics. The disabled/default and disabled/kill-switch tests passed because the chosen stub returned `{ status: 'disabled', origin: consent.origin }`; they were excluded from this RED proof until the consent mutation below made both fail.
+- Focused GREEN: `cd harness/cli && npx vitest run test/services/convo/sync-service.test.ts` exited 0; 1 file passed, 6 tests passed.
+- Mutation — consent gate: inverted `!consent.value`, then ran `npx vitest run test/services/convo/sync-service.test.ts -t 'consent is disabled'`. Exit 1; both `does no Flowspace work when consent is disabled by default` and `preserves kill-switch origin when consent is disabled` failed with `fired` instead of `disabled`. Restored.
+- Mutation — detection gate: deleted the detect guard, then ran the focused `stops after detection when flowspace3 is absent` test. Exit 1; it received `fired` instead of `undetected`. Restored.
+- Mutation — reachability gate: deleted the ping guard, then ran the focused `reports enabled but unreachable once without ingesting` test. Exit 1; it received `fired` instead of `unreachable`. Restored.
+- Mutation — dispatch: deleted `flowspace.ingest(args)`, then ran the focused `detects, pings, then fires one ingest with the exact identity` test. Exit 1; recorded calls lacked `ingest`. Restored.
+- Mutation — fake copy boundary: changed the fake to retain the caller's object, then ran the focused `copies recorded ingest arguments instead of retaining caller-owned state` test. Exit 1; the recorded session changed to `mutated`. Restored.
+
+### U2 verification
+
+- Full CLI suite: `cd harness/cli && npx vitest run` exited 0. Tail: `Test Files 337 passed (337)`; `Tests 5228 passed (5228)`; duration 17.78s. The declared FAST scope skipped 12 slow files.
+- Formatter/linter: `just fix` exited 0. Tail: `Checked 635 files`; `No fixes applied`; 3 known unsafe unused-import suggestions in `acts/plan/index.ts` and `services/hooks/hooks-verbs.ts` were skipped.
+- LSP diagnostics: no issues in `src/services/convo/*.ts` or `test/services/convo/*.ts`.
+- U2 done-bar satisfied; no live daemon used, no deferred code, and no unmet U2 acceptance criterion.
+
+### U2 discoveries & learnings
+
+| Tag | Discovery | Decision |
+|---|---|---|
+| Noteworthy | The binding guide froze `ingest(args)` and an outcome without freezing either shape; two concurrent units would otherwise invent incompatible contracts. | PM froze typed `IngestArgs` and the four-variant `SyncOutcome`; U2 implemented that addendum and U3 received the same ruling. |
+| Noteworthy | Plan §2c bundles act wiring and the live incremental smoke into the service deliverable, while the implementation guide assigns those to U3/PM. | Treat the implementation guide and explicit unit fence as binding; U2 touches only `services/convo/` plus its parallel tests and this log. |
+| Noteworthy | Flowspace3 semantic search weakly ranked unrelated files for the resolved-input precedent. | Treat the envelope as a miss; exact search plus source-read verified `CommitDeps.ingress` before adopting the pattern. |
+| Noteworthy | A test passing against one chosen stub is not inherently unable to fail; it is merely unproven until a relevant mutation flips it. | Exclude the two stub-green consent tests from assertion-RED evidence, then promote them to proof only after the inverted consent guard made both fail for the intended reason. |
