@@ -1,0 +1,19 @@
+CANARY-meadowlark-9c1f.md
+  s_bf6da7f39bfe1b::t_452893c3b4c239 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "abc78909f8f9ac162092e2701ee449c39d0017ac",
+  "prompts": {},
+  "sessions": {
+    "s_bf6da7f39bfe1b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06e6dd44-59f3-4c97-b6d8-5cf88bf73df3",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
