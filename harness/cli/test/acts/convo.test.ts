@@ -378,6 +378,21 @@ describe('silent seam identity warning', () => {
     expect(lines).toEqual([]);
   });
 
+  it('spawns in the same tick it is called — the callers exit the process before any await settles', () => {
+    const flowspace = new FakeFlowspace();
+    runConvoSyncSilently(
+      {
+        ...enabledRepo(),
+        env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'claude-native' }, '/nowhere'),
+      },
+      () => flowspace,
+    );
+    // Asserted SYNCHRONOUSLY, with no await: this is the whole point of the test.
+    expect(flowspace.ingests).toEqual([
+      { harness: 'claude', session: 'claude-native', folder: '/repo' },
+    ]);
+  });
+
   it('never throws even when the warn sink throws', () => {
     expect(() =>
       runConvoSyncSilently(

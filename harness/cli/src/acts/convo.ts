@@ -145,6 +145,12 @@ export function runConvoSyncSilently(
     }
     return;
   }
+  // INVARIANT (pinned by test 'spawns in the same tick'): both callers exit the
+  // process in the tick this returns, so the dispatch is real ONLY because nothing
+  // asynchronous precedes `spawnDetached` — settings, identity, detect, ping and
+  // the spawn itself all run before the first `await` inside `ingest`. One added
+  // `await` ahead of the spawn (an async mkdirp, say) would make boot and commit
+  // spawn nothing, with no error and every other test green.
   void syncConversation(plan.consent, plan.args, flowspace()).catch(() => {
     // Commit and boot are never changed by optional conversation ingestion.
   });
