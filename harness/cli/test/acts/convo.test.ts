@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CONVO_IDENTITY_UNRESOLVABLE_LINE,
   envelopeForConvoError,
   envelopeForIdentityUnresolvable,
   envelopeForSyncOutcome,
   FlowspaceCliAdapter,
   resolveConvoIdentity,
   runConvoSync,
+  runConvoSyncSilently,
 } from '../../src/acts/convo.js';
 import { FakeClock } from '../../src/adapters/clock/fake-clock.js';
 import { FakeEnv } from '../../src/adapters/env/fake-env.js';
@@ -121,6 +123,51 @@ describe('convo identity', () => {
       ok: true,
       args: { harness: 'omp', session: 'native-session', folder: '/repo' },
     });
+  });
+
+  it('resolves a claude seat from its own exported session id with NO pij registry', () => {
+    // The rs-generation pij store carries no inner session id and its seats are absent
+    // from ~/.pij entirely (2026-09-02: 245 of 248 live seats). The harness's own env is
+    // the ground truth pij only ever recorded, so it must be enough on its own.
+    expect(
+      resolveConvoIdentity(
+        {},
+        '/repo',
+        { available: false, by_pij: new Map(), by_harness_session: new Map() },
+        new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'claude-native' }),
+      ),
+    ).toEqual({
+      ok: true,
+      args: { harness: 'claude', session: 'claude-native', folder: '/repo' },
+    });
+  });
+
+  it('prefers the native env over a pij registry that disagrees, and explicit flags over both', () => {
+    const env = new FakeEnv({
+      CLAUDE_CODE_SESSION_ID: 'claude-native',
+      PIJ_SESSION_ID: 'pij-seat',
+    });
+    expect(resolveConvoIdentity({}, '/repo', registry, env)).toEqual({
+      ok: true,
+      args: { harness: 'claude', session: 'claude-native', folder: '/repo' },
+    });
+    expect(
+      resolveConvoIdentity({ harness: 'omp', session: 'explicit' }, '/repo', registry, env),
+    ).toEqual({
+      ok: true,
+      args: { harness: 'omp', session: 'explicit', folder: '/repo' },
+    });
+  });
+
+  it('treats an empty native env value as absent, not as a session', () => {
+    expect(
+      resolveConvoIdentity(
+        {},
+        '/repo',
+        { available: false, by_pij: new Map(), by_harness_session: new Map() },
+        new FakeEnv({ CLAUDE_CODE_SESSION_ID: '' }),
+      ),
+    ).toEqual({ ok: false, reason: 'identity-unresolvable' });
   });
 
   it('returns an honest act-level miss when enabled identity cannot resolve', () => {
@@ -281,5 +328,80 @@ describe('FlowspaceCliAdapter', () => {
         logPath: '/repo/.harness/temp/convo-sync.log',
       },
     });
+  });
+});
+
+describe('silent seam identity warning', () => {
+  const enabledRepo = () => {
+    const fs = new FakeFs({
+      '/repo/.harness/settings.json': JSON.stringify({
+        schema_version: 1,
+        flowspace: { ingest: { enabled: true } },
+      }),
+    });
+    return { fs, proc: new FakeProcess({ cwd: '/repo' }) };
+  };
+
+  it('warns exactly once, on stderr only, when consent is on but identity is unresolvable', () => {
+    const lines: string[] = [];
+    const flowspace = new FakeFlowspace();
+    runConvoSyncSilently(
+      { ...enabledRepo(), env: new FakeEnv({ HOME: '/nowhere' }, '/nowhere') },
+      () => flowspace,
+      (line) => lines.push(line),
+    );
+    expect(lines).toEqual([CONVO_IDENTITY_UNRESOLVABLE_LINE]);
+    expect(flowspace.ingests).toHaveLength(0);
+  });
+
+  it('carries no seat name, session id or path in the warning', () => {
+    expect(CONVO_IDENTITY_UNRESOLVABLE_LINE).not.toMatch(/pij-[a-z]+-[a-z]+/);
+    expect(CONVO_IDENTITY_UNRESOLVABLE_LINE).not.toMatch(/\/Users\//);
+  });
+
+  it('stays silent when ingest is disabled or when identity resolves', () => {
+    const lines: string[] = [];
+    runConvoSyncSilently(
+      { fs: new FakeFs({}), proc: new FakeProcess({ cwd: '/repo' }), env: new FakeEnv() },
+      () => new FakeFlowspace(),
+      (line) => lines.push(line),
+    );
+    const resolved = new FakeFlowspace();
+    runConvoSyncSilently(
+      {
+        ...enabledRepo(),
+        env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'claude-native' }, '/nowhere'),
+      },
+      () => resolved,
+      (line) => lines.push(line),
+    );
+    expect(lines).toEqual([]);
+  });
+
+  it('spawns in the same tick it is called — the callers exit the process before any await settles', () => {
+    const flowspace = new FakeFlowspace();
+    runConvoSyncSilently(
+      {
+        ...enabledRepo(),
+        env: new FakeEnv({ CLAUDE_CODE_SESSION_ID: 'claude-native' }, '/nowhere'),
+      },
+      () => flowspace,
+    );
+    // Asserted SYNCHRONOUSLY, with no await: this is the whole point of the test.
+    expect(flowspace.ingests).toEqual([
+      { harness: 'claude', session: 'claude-native', folder: '/repo' },
+    ]);
+  });
+
+  it('never throws even when the warn sink throws', () => {
+    expect(() =>
+      runConvoSyncSilently(
+        { ...enabledRepo(), env: new FakeEnv({}, '/nowhere') },
+        () => new FakeFlowspace(),
+        () => {
+          throw new Error('closed stderr');
+        },
+      ),
+    ).not.toThrow();
   });
 });

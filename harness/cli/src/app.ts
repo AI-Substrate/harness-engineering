@@ -442,7 +442,7 @@ export function buildProgram(
     registry.recordTypes ?? [],
     withheldExtensions,
   );
-  const convoSync = buildSilentConvoSync(deps);
+  const convoSync = buildSilentConvoSync(deps, (line) => io.writers.err(`${line}\n`));
 
   // Cross-cutting: register the exit-chokepoint decorators ONCE so every
   // command's exit surfaces (a) a known update and (b) telemetry housekeeping for

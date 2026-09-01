@@ -14,7 +14,11 @@ import type {
 } from '../services/convo/flowspace-port.js';
 import { type SyncOutcome, syncConversation } from '../services/convo/sync-service.js';
 import { loadSettings } from '../services/settings/load-settings.js';
-import type { SettingsOrigin, SettingsRefusal } from '../services/settings/settings.js';
+import type {
+  ResolvedValue,
+  SettingsOrigin,
+  SettingsRefusal,
+} from '../services/settings/settings.js';
 import { posixJoin } from '../services/shared/posix-path.js';
 import { type PijRegistry, readPijRegistry } from '../services/telemetry/pij-registry.js';
 import type { VerbActDeps } from './verb.js';
@@ -56,33 +60,98 @@ export function registerConvoAct(
     });
 }
 
+/**
+ * The SYNCHRONOUS half of a sync: consent + identity, no I/O beyond settings
+ * and the pij registry. Split out so the lifecycle seams can learn "enabled but
+ * unresolvable" BEFORE the process exits — a promise settled after
+ * `process.exit` is scheduled never runs, so a warning that waits on one is
+ * a warning that never prints.
+ */
+export type ConvoSyncPlan =
+  | { kind: 'ready'; consent: ResolvedValue<boolean>; args: IngestArgs }
+  | { kind: 'done'; result: ConvoRunResult };
+
+export function planConvoSync(
+  options: ConvoIdentityOptions,
+  deps: Pick<VerbActDeps, 'fs' | 'env' | 'proc'>,
+): ConvoSyncPlan {
+  const settings = loadSettings(deps.proc.cwd(), { fs: deps.fs, env: deps.env });
+  if (!settings.ok)
+    return { kind: 'done', result: { kind: 'settings-refusal', refusal: settings } };
+  const consent = settings.settings.flowspace.ingest.enabled;
+  if (!consent.value) {
+    return {
+      kind: 'done',
+      result: { kind: 'outcome', outcome: { status: 'disabled', origin: consent.origin } },
+    };
+  }
+
+  const registry = readPijRegistry({ fs: deps.fs, env: deps.env });
+  const identity = resolveConvoIdentity(options, deps.proc.cwd(), registry, deps.env);
+  if (!identity.ok) {
+    return { kind: 'done', result: { kind: 'identity-unresolvable', origin: consent.origin } };
+  }
+  return { kind: 'ready', consent, args: identity.args };
+}
+
 export async function runConvoSync(
   options: ConvoIdentityOptions,
   deps: Pick<VerbActDeps, 'fs' | 'env' | 'proc'>,
   flowspace: FlowspaceFactory,
 ): Promise<ConvoRunResult> {
-  const settings = loadSettings(deps.proc.cwd(), { fs: deps.fs, env: deps.env });
-  if (!settings.ok) return { kind: 'settings-refusal', refusal: settings };
-  const consent = settings.settings.flowspace.ingest.enabled;
-  if (!consent.value) {
-    return { kind: 'outcome', outcome: { status: 'disabled', origin: consent.origin } };
-  }
-
-  const registry = readPijRegistry({ fs: deps.fs, env: deps.env });
-  const identity = resolveConvoIdentity(options, deps.proc.cwd(), registry, deps.env);
-  if (!identity.ok) return { kind: 'identity-unresolvable', origin: consent.origin };
+  const plan = planConvoSync(options, deps);
+  if (plan.kind === 'done') return plan.result;
   return {
     kind: 'outcome',
-    outcome: await syncConversation(consent, identity.args, flowspace()),
+    outcome: await syncConversation(plan.consent, plan.args, flowspace()),
   };
 }
 
-/** Lifecycle seams deliberately discard every outcome and every failure. */
+/**
+ * One line on stderr, and only for the case a fleet cannot otherwise see:
+ * consent is ON but the seam has nothing to ingest under. Every other outcome
+ * (disabled, undetected, dispatch) stays silent as before.
+ *
+ * WHY THIS EXISTS: on 2026-09-02, 245 of 248 live rs-generation pij seats
+ * resolved `identity-unresolvable` and this seam discarded every one of them,
+ * so a repo with consent on, `harness commit` running and `refs/notes/ai`
+ * written produced ZERO indexed conversations for three days with no signal
+ * anywhere. A discarded failure is an unfalsifiable success.
+ *
+ * Deliberately carries no session id, path, or seat name.
+ */
+export const CONVO_IDENTITY_UNRESOLVABLE_LINE =
+  'harness: conversation ingest is enabled here but session identity is unresolvable (no CLAUDE_CODE_SESSION_ID, no PIJ_SESSION_ID in the pij registry); nothing was ingested. Run `harness convo sync --harness <name> --session <id>` or see `harness convo sync`.';
+
+/** Lifecycle seams never change commit or boot output or exit status. */
 export function runConvoSyncSilently(
   deps: Pick<VerbActDeps, 'fs' | 'env' | 'proc'>,
   flowspace: FlowspaceFactory,
+  warn: (line: string) => void = () => {},
 ): void {
-  void runConvoSync({}, deps, flowspace).catch(() => {
+  let plan: ConvoSyncPlan;
+  try {
+    plan = planConvoSync({}, deps);
+  } catch {
+    return;
+  }
+  if (plan.kind === 'done') {
+    if (plan.result.kind === 'identity-unresolvable') {
+      try {
+        warn(CONVO_IDENTITY_UNRESOLVABLE_LINE);
+      } catch {
+        // A warning that cannot be written is still not a reason to touch the commit.
+      }
+    }
+    return;
+  }
+  // INVARIANT (pinned by test 'spawns in the same tick'): both callers exit the
+  // process in the tick this returns, so the dispatch is real ONLY because nothing
+  // asynchronous precedes `spawnDetached` — settings, identity, detect, ping and
+  // the spawn itself all run before the first `await` inside `ingest`. One added
+  // `await` ahead of the spawn (an async mkdirp, say) would make boot and commit
+  // spawn nothing, with no error and every other test green.
+  void syncConversation(plan.consent, plan.args, flowspace()).catch(() => {
     // Commit and boot are never changed by optional conversation ingestion.
   });
 }
@@ -128,9 +197,9 @@ function defaultFlowspaceFactory(deps: VerbActDeps): FlowspaceFactory {
   };
 }
 
-export function buildSilentConvoSync(deps: VerbActDeps): () => void {
+export function buildSilentConvoSync(deps: VerbActDeps, warn?: (line: string) => void): () => void {
   const flowspace = defaultFlowspaceFactory(deps);
-  return () => runConvoSyncSilently(deps, flowspace);
+  return () => runConvoSyncSilently(deps, flowspace, warn);
 }
 
 export interface FlowspaceCliOptions {
@@ -158,12 +227,39 @@ function flowspaceHarness(harness: string | null): string | undefined {
   return harness === 'pi' ? 'omp' : harness;
 }
 
+/**
+ * Harnesses that export their OWN native session id into the shell a seat's
+ * commands run in. This is the seat's ground truth — the pij registry only
+ * ever RECORDED this value — so it is consulted before pij, and it needs no
+ * pij at all. Claude Code exports `CLAUDE_CODE_SESSION_ID`; pi/omp export
+ * nothing (the id lives only inside the extension process), so those seats
+ * resolve through pij or not at all until pij persists the id on its rs rows
+ * (pij req-0033).
+ */
+const NATIVE_SESSION_ENV: ReadonlyArray<{ env: string; harness: string }> = [
+  { env: 'CLAUDE_CODE_SESSION_ID', harness: 'claude' },
+];
+
+function nativeIdentity(env: Pick<EnvPort, 'get'>): { harness: string; session: string } | null {
+  for (const { env: name, harness } of NATIVE_SESSION_ENV) {
+    const session = env.get(name);
+    if (session !== undefined && session !== '') return { harness, session };
+  }
+  return null;
+}
+
+/**
+ * Precedence: explicit flags → the harness's own exported session id → the
+ * pij registry (legacy `~/.pij/<id>.json`; rs-generation seats are NOT there
+ * and carry no inner session id anywhere yet — see pij req-0033).
+ */
 export function resolveConvoIdentity(
   options: ConvoIdentityOptions,
   cwd: string,
   registry: PijRegistry,
   env: Pick<EnvPort, 'get'>,
 ): ConvoIdentityResolution {
+  const native = nativeIdentity(env);
   const identity = env.get('PIJ_SESSION_ID') ?? options.session;
   const pijId =
     identity === undefined
@@ -172,8 +268,9 @@ export function resolveConvoIdentity(
         ? identity
         : registry.by_harness_session.get(identity);
   const descriptor = pijId === undefined ? undefined : registry.by_pij.get(pijId);
-  const harness = options.harness ?? flowspaceHarness(descriptor?.harness ?? null);
-  const session = options.session ?? descriptor?.harness_session_id ?? undefined;
+  const harness =
+    options.harness ?? native?.harness ?? flowspaceHarness(descriptor?.harness ?? null);
+  const session = options.session ?? native?.session ?? descriptor?.harness_session_id ?? undefined;
 
   if (harness === undefined || session === undefined) {
     return { ok: false, reason: 'identity-unresolvable' };
