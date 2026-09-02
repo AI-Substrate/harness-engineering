@@ -1,0 +1,21 @@
+harness/cli/src/services/settings/load-settings.ts
+  s_f1a7ee9f435ed3::t_eb138cc947dc68 35-67,70,72-78
+harness/cli/test/services/settings/load-settings.test.ts
+  s_f1a7ee9f435ed3::t_a1816a732439f9 8,55-123
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "258df34cb2ad569652355f417e4ae856cb3d9ec8",
+  "prompts": {},
+  "sessions": {
+    "s_f1a7ee9f435ed3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6616ca6a-61c0-4a92-b9be-3512605a2826",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
