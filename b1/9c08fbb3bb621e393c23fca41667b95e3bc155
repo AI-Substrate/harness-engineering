@@ -1,0 +1,29 @@
+docs/plans/098-builder-team-lifecycle/assets/execution-log.md
+  s_73aa5aeef580ba::t_43bce6da4aa200 1-5
+docs/plans/098-builder-team-lifecycle/assets/intake.md
+  s_73aa5aeef580ba::t_b268aaa64b5aad 1-57
+docs/plans/098-builder-team-lifecycle/assets/tasks/phase-1/tasks.dd.json
+  s_73aa5aeef580ba::t_f700a0509213a8 1-101
+docs/plans/098-builder-team-lifecycle/assets/tasks/phase-1/tasks.dd.md
+  s_73aa5aeef580ba::t_072d2496073929 1-159
+docs/plans/098-builder-team-lifecycle/plan.dd.json
+  s_73aa5aeef580ba::t_8f926c4c8fd84e 1-110
+docs/plans/098-builder-team-lifecycle/plan.dd.md
+  s_73aa5aeef580ba::t_095f08d8e7b249 1-161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "b19c08fbb3bb621e393c23fca41667b95e3bc155",
+  "prompts": {},
+  "sessions": {
+    "s_73aa5aeef580ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_73aa5aeef580ba",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
