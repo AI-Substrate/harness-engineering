@@ -22,11 +22,21 @@ TASKS="${PLAN_DIR}/assets/tasks/phase-N/tasks.dd.json"
 node_modules/.bin/ddocs add "${TASKS}#tasks" \
   '{"title":"<task>","phase":"ph-XXXX","state":"unchecked","satisfies":["../../../plan.dd.json#acceptance_criteria/ac-XXXX"]}' --mint tk
 
-# 3. every task's done_when assertions — EVERY assertion names its instrument
+# 3. every task's done_when assertions — EVERY assertion names its instrument:
+#    the survey row that measures it, from `assets/backpressure.dd.json` (the
+#    pre-coding seam's deterministic document). The path is RELATIVE TO THE TASK
+#    FILE: from assets/tasks/phase-N/ the survey is TWO levels up, the plan THREE.
 node_modules/.bin/ddocs add "${TASKS}#done_when/tk-XXXX" \
-  '{"assertion":"<what must be true>","state":"unchecked","pressure":"../../../backpressure.dd.json#rows/bp-XXXX"}' --mint dw
+  '{"assertion":"<what must be true>","state":"unchecked","pressure":"../../backpressure.dd.json#rows/bp-XXXX"}' --mint dw
+#    pick the row: node_modules/.bin/ddocs get "${PLAN_DIR}/assets/backpressure.dd.json#rows"
+#    — an assertion usually shares its row with the criterion the task satisfies
+#    (that criterion's own `pressure` names it).
 #    no instrument? say so explicitly — silence is a validation ERROR:
-#    ... '{"assertion":"…","state":"unchecked","pressure":"not-applicable","note":"<the real instrument>"}' --mint dw
+#    ... '{"assertion":"…","state":"unchecked","pressure":"not-applicable","note":"<why no instrument can measure this>"}' --mint dw
+#    `not-applicable` means "no sensor exists and none was surveyed" — a
+#    human-judgement call. It is NOT the answer to "the survey is missing" or
+#    "the survey is only a Markdown coverage file": run the pre-coding seam
+#    (`/eng-harness-flow --hook pre-coding`) so the rows exist, then link them.
 
 # 4. THE SAME STROKE: point the phase row at the file it just got
 node_modules/.bin/ddocs set "${PLAN_DIR}/plan.dd.json#phases/ph-XXXX/tasks" "assets/tasks/phase-N/tasks.dd.json#tasks"

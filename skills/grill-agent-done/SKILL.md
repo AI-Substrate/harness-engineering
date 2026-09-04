@@ -18,7 +18,7 @@ The question that does most of the work:
 
 ## Core behavior
 
-Inspect before you interrogate: the task, plan, or spec and its **acceptance criteria** (never skip these), the tests, commands, CI, architecture rules, runtime surfaces, the execution log's done-claims, and `backpressure-coverage.md` if it exists. Work with whatever is present — if little exists, the job shifts from *defend* to *build*.
+Inspect before you interrogate: the task, plan, or spec and its **acceptance criteria** (never skip these), the tests, commands, CI, architecture rules, runtime surfaces, the execution log's done-claims, and the backpressure survey if it exists (`assets/backpressure.dd.json`, whose rows the plan's criteria point at through `pressure`; older plans: `backpressure-coverage.md`). Work with whatever is present — if little exists, the job shifts from *defend* to *build*.
 
 You and the user do this **together** — co-defending (or co-designing) how you'll know the work is done. You do the legwork: inspect the repo, propose each claim and the proof grade that fits, and answer from the repository whatever it can answer. The user steers and owns the genuine judgement calls — product, risk, cost, taste — and you decide those together. This is not quizzing the user, and it is not grading yourself.
 

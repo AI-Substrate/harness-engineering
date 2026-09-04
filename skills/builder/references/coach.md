@@ -270,7 +270,7 @@ All copy obeys **Orient → Flag → Insight → Suggest → Invite**: one decis
 > Next: re-run **plan** to fold the decision into both halves (a workshop after a plan is a refinement — re-planning regenerates the phases with it). Another workshop or the backpressure survey (`/eng-harness-flow --hook pre-coding`, router-installed only) are also options. Recommended: {{render-edge: awaiting-2c → plan}}. Type: `another`, `prove it`, or `plan`.
 
 ### `awaiting-backpressure` → after backpressure survey
-> **Where we are**: backpressure coverage written — **Certainty: `<Strong|Partial|Weak>`**`<; recommended Phase 0: …>`.
+> **Where we are**: backpressure survey written (`assets/backpressure.dd.json`; `<N>` criteria now carry a `pressure` link) — **Certainty: `<Strong|Partial|Weak>`**`<; recommended Phase 0: …>`.
 > `<⚠️ Before we move on — the survey flagged <N ABSENT sensors> where you'd otherwise be eyeballing: <one-line each>. Just making sure you saw those — they're the Phase-0 candidates.>` *(omit if coverage is Strong with no ABSENT sensors)*
 > What this means: `<criteria with EXISTS sensors are provable now; BUILDABLE/ABSENT ones are where you'd otherwise be eyeballing>`. It's **advisory output** — use it to shape your re-plan intent; the plan verb won't auto-read it, so fold in what you learned yourself.
 > Next: re-run **plan** *informed by* the coverage — {{render-edge: awaiting-backpressure → plan}}. (Compact first if the survey was long.) Type: `plan` or `compact`.

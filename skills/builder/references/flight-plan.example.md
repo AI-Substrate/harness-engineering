@@ -111,7 +111,7 @@ flowchart TD
 - 📄 artifacts: workshops/002-fakes.md
 
 ### bp · Backpressure Check (post-plan refinement)
-- 📄 artifacts: backpressure-coverage.md
+- 📄 artifacts: assets/backpressure.dd.json
 
 ### plan · Plan (spec + impl)
 - 📄 artifacts: project-setup-plan.md

@@ -94,7 +94,7 @@ All five entries pin the **same nine fields** (\`hook\`, \`intent\`, \`run_at\`,
       "kind": "fire",
       "invoke": "/eng-harness-flow --hook pre-coding --json",
       "aliases": ["post-spec"],
-      "produces": "backpressure-coverage.md",
+      "produces": "assets/backpressure.dd.json",
       "needs": [],
       "preconditions": []
     },

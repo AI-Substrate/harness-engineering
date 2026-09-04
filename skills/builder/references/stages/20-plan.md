@@ -216,7 +216,10 @@ _Refinement opportunities still open — recorded as evidence; the flow surfaces
 |----------|----------|--------------------|
 | research-dossier.md | y/n | informs Key Findings |
 | workshops/*.md | y/n | authoritative design decisions |
+| assets/backpressure.dd.json | y/n | selected proofs — `meta.backpressure` and each criterion's `pressure` link to its `bp-XXXX` row |
 ```
+
+**When a backpressure survey exists** (`${PLAN_DIR}/assets/backpressure.dd.json`, written by the pre-coding seam): a re-plan keeps `meta.backpressure` and every `acceptance_criteria/ac-XXXX/pressure` link intact — never clear them. A criterion added or reworded here has no row yet, so leave its `pressure` unset and say so in the summary; the survey re-runs against the new basis (its `meta.basis_sha` is the plan's SHA-256) and lands the link itself. A legacy `backpressure-coverage.md` is pre-dd output nothing can link to — treat it as the same evidence, and expect the seam to re-run.
 
 Fill the table and the open-opportunities line from the artifacts consumed in A0. This is a passive record: it names what could still refine the plan, but the flow (Graph + coach) owns offering those steps and this verb owns regenerating **both** halves when one is folded in.
 

@@ -55,7 +55,7 @@
       "command": "/eng-harness-flow --hook pre-coding --spec project-setup-plan.md --json", "ran_at": "2026-01-18T07:30Z",
       "user_input": "check what we can prove deterministically before building",
       "note": "Pre-coding backpressure seam (routed via /eng-harness-flow; --hook pre-coding, alias --event post-spec) — an engine-owned, optional post-plan refinement: the flow offers it at the edge; the coverage is ADVISORY output — re-plan informed by it (the harness-blind plan verb does not auto-read it). Rendered as a dotted :::harness excursion off plan (render rule 3), not a spine node. Certainty: Partial; the survey flags a smoke route + dependency-cruiser rule as buildable sensors. Advisory, never blocks.",
-      "artifacts": ["backpressure-coverage.md"], "next": ["plan"] },
+      "artifacts": ["assets/backpressure.dd.json"], "next": ["plan"] },
 
     { "id": "plan", "type": "plan", "label": "Plan (spec + impl)", "status": "done",
       "command": "/builder 1b plan", "ran_at": "2026-01-18T08:00Z",

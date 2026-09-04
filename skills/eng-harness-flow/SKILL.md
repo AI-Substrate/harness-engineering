@@ -95,7 +95,7 @@ This is the **canonical** statement of how harness seams are laid onto an SDD fl
 | Trigger (lifecycle hook / adoption rung) | Verb | Module / target | Produces |
 |---|---|---|---|
 | `pre-flight` | boot | `references/stages/boot.md` | boot verdict (HEALTHY / SLOW / UNHEALTHY / UNAVAILABLE) |
-| `pre-coding` | backpressure | `references/stages/backpressure.md` | `backpressure-coverage.md` |
+| `pre-coding` | backpressure | `references/stages/backpressure.md` | `assets/backpressure.dd.json` (+ generated `.dd.md`) |
 | `coding` | observe | — **CLI verb**: `harness observe "<what>" --kind <kind>` (silent; no module) | one observe-buffer entry |
 | `post-coding` | retro (drain) | `references/stages/retro.md` | drained `.retro.md` |
 | `post-flight` | retro (harvest) + improve | `references/stages/retro.md` | harvested view + encoded improvement |

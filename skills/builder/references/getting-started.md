@@ -89,7 +89,7 @@ flowchart TB
     P1B -.-> P2C
     P2C -.->|re-plan| P1B
     P1B -.->|"--hook pre-coding (optional refinement)"| R
-    R -.->|"backpressure-coverage.md → re-plan"| P1B
+    R -.->|"backpressure.dd.json → re-plan"| P1B
     P1B --> P5
     P5 --> P6
     P6 -->|auto| P6A
@@ -171,7 +171,7 @@ flowchart LR
       `## Implementation Plan` below (inline gates G1–G7 + 2 research subagents;
       2 phases). /validate-v2 auto-runs.
     → Optional post-plan refinement (engine-offered): /eng-harness-flow --hook pre-coding --spec ...
-      → assets/backpressure-coverage.md (advisory: what's provable vs eyeballed); re-run plan informed by it.
+      → assets/backpressure.dd.json (+ .dd.md; advisory: what's provable vs eyeballed — each AC's `pressure` now names its row); re-run plan informed by it.
 
 3.  /builder 5 tasks --phase "Phase 1: Route & Validation" --plan ".../api-widgets-plan.md"
     → tasks.md (harness seams are engine-owned — offered at the phase edge, not task rows).
@@ -212,7 +212,7 @@ You never named a harness skill — the flow told the router *where the work was
 | `/builder 1a explore` · `explore` | Deep-dive codebase research *(optional; mines `docs/plans/archive/` as non-authoritative institutional memory)* | `assets/research-dossier.md` | engine offers `--hook pre-flight` at flow entry |
 | `/builder 1b plan` · `plan` | Business spec + implementation plan in one document (front-loaded clarifications; inline gates G1–G7; validate-v2 auto-runs) | `<slug>-plan.md` | engine offers `--hook pre-coding` backpressure as a post-plan refinement (seams engine-owned, not plan rows) |
 | `/builder 2c workshop` · `workshop` | Design workshop for complex topics *(optional)* | `assets/workshops/<topic>.md` | — |
-| `/eng-harness-flow --hook pre-coding` | Backpressure survey *(optional post-plan refinement)* | `assets/backpressure-coverage.md` | advisory output; informs your re-plan; never blocks |
+| `/eng-harness-flow --hook pre-coding` | Backpressure survey *(optional post-plan refinement)* | `assets/backpressure.dd.json` (+ generated `.dd.md`) | advisory output; informs your re-plan; never blocks |
 | `/builder 3a adr` · `adr` | Architectural Decision Record *(optional)* | `docs/adr/*.md` | — |
 | `/builder 5 tasks` · `tasks` | Task table + brief for one phase | `assets/tasks/<phase>/tasks.md` | — (harness seams engine-owned, offered at the phase edge) |
 | `/builder 6 implement` · `implement` | Implement one phase | code + `execution.log.md` | engine offers `--hook pre-flight` (before) + `--hook post-coding` (after) |
@@ -237,7 +237,7 @@ docs/
     │   ├── the-flow.json + the-flow.md ← the flight plan (CLI-written)
     │   └── assets/                    ← everything else lives here (§ Plan-folder layout)
     │       ├── research-dossier.md    ← /builder 1a explore (optional)
-    │       ├── backpressure-coverage.md ← post-spec seam (optional post-plan refinement)
+    │       ├── backpressure.dd.json   ← post-spec seam (optional post-plan refinement; + generated .dd.md)
     │       ├── workshops/             ← /builder 2c workshop (optional)
     │       ├── post-flight.md         ← /builder 7b post-flight (close-out note)
     │       ├── ship/                  ← /builder 8 ship (report per date)

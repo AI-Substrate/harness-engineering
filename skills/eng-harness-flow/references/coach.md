@@ -23,7 +23,7 @@ Every human-mode turn opens with a one-line rail, then a blank line, then the na
 [eng-harness-flow] ⚙ ◆─◐─◇─◇─◇ ↺  boot · [backpressure] · observe · retro · improve
 
  now  · post-spec — running the backpressure survey (boot ✓ this pass)
- next · ▸ /plan-3   architect — consumes backpressure-coverage.md
+ next · ▸ /plan-3   architect — consumes backpressure.dd.json
 ```
 
 The five loop pips are Boot · Backpressure · Observe · Retro · Improve, in that order, and the legend rides **on the rail line itself**: two spaces after the pips, the stage names in pip order joined by ` · `, the **current** one wrapped in `[…]`. Brackets follow the `◐`; on a settled rail bracket the next stage up. Same rule as `the-flow`'s rail.

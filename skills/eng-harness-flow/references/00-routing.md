@@ -136,7 +136,7 @@ Once the required adoption rungs hold, the router crosses into the loop and disp
 | Where in the work (signals H · I / `--event`) | Route to | Produces |
 |---|---|---|
 | session start / unknown | `boot` verb (re-run the boot adoption built) | a boot verdict (healthy / SLOW / UNHEALTHY / UNAVAILABLE) |
-| spec done, pre-architect | `backpressure` verb | `backpressure-coverage.md` |
+| spec done, pre-architect | `backpressure` verb | `assets/backpressure.dd.json` (+ generated `.dd.md`) |
 | mid-build (doing work) | capture is one CLI call — `harness observe "<what>" --kind <kind>` *(silent; capture judgment lives in the `retro` verb § in-flight capture)* | one buffer entry per call |
 | phase / session end · **buffer non-empty** | `retro` verb `--drain` | buffer drained → `.retro.md` (`next_suggested: --harvest`) |
 | phase / session / plan end · **buffer empty** | `retro` verb `--harvest` | curated cross-plan view |
@@ -345,7 +345,7 @@ All five entries pin the **same nine fields** (`hook`, `intent`, `run_at`, `kind
       "kind": "fire",
       "invoke": "/eng-harness-flow --hook pre-coding --json",
       "aliases": ["post-spec"],
-      "produces": "backpressure-coverage.md",
+      "produces": "assets/backpressure.dd.json",
       "needs": [],
       "preconditions": []
     },
