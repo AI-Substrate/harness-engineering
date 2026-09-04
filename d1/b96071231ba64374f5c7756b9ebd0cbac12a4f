@@ -1,0 +1,47 @@
+harness/cli/test/contract/__snapshots__/hooks-snapshot.test.ts.snap
+  s_f1a7ee9f435ed3::t_2c26b95800a10f 97
+skills/builder/references/00-routing.md
+  s_f1a7ee9f435ed3::t_eb24d309582c8c 146,179,274
+skills/builder/references/coach.md
+  s_f1a7ee9f435ed3::t_3616df9428ef63 273
+skills/builder/references/flight-plan.example.json
+  s_f1a7ee9f435ed3::t_05f5103660d54c 58
+skills/builder/references/flight-plan.example.md
+  s_f1a7ee9f435ed3::t_ce3fe6c830b409 114
+skills/builder/references/getting-started.md
+  s_f1a7ee9f435ed3::t_e664121d3c06e8 92,174,215,240
+skills/builder/references/harness-seams.md
+  s_f1a7ee9f435ed3::t_0031987cd560d5 108
+skills/builder/references/stages/20-plan.md
+  s_f1a7ee9f435ed3::t_0da7cf4406f0f1 219,222-223
+skills/builder/references/stages/50-phase-tasks.md
+  s_f1a7ee9f435ed3::t_c72ec52a44572a 25-28,30-33,35-39
+skills/eng-harness-flow/SKILL.md
+  s_f1a7ee9f435ed3::t_41f0539e2e90ce 98
+skills/eng-harness-flow/references/00-routing.md
+  s_f1a7ee9f435ed3::t_8d165891268b1f 139,348
+skills/eng-harness-flow/references/coach.md
+  s_f1a7ee9f435ed3::t_1790389001de2f 26
+skills/eng-harness-flow/references/getting-started.md
+  s_f1a7ee9f435ed3::t_f23773e4d8b783 93,209,269
+skills/eng-harness-flow/references/stages/backpressure.md
+  s_f1a7ee9f435ed3::t_efe603b7595195 10-13,23,44,46-47,60-62,119-120,122,126-128,130,140-142,162,164,170,174,188-243,245,247,249,251,253,263,267
+skills/grill-agent-done/SKILL.md
+  s_f1a7ee9f435ed3::t_bc9a55c1ba6ef4 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "d1b96071231ba64374f5c7756b9ebd0cbac12a4f",
+  "prompts": {},
+  "sessions": {
+    "s_f1a7ee9f435ed3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6616ca6a-61c0-4a92-b9be-3512605a2826",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
