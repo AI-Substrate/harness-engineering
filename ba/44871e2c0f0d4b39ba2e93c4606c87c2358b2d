@@ -1,0 +1,20 @@
+docs/plans/098-builder-team-lifecycle/assets/execution.dd.json
+  h_9e71e8b09f7cf2 125-154
+docs/plans/098-builder-team-lifecycle/assets/execution.dd.md
+  h_9e71e8b09f7cf2 44-49
+docs/plans/098-builder-team-lifecycle/assets/impl-guide.dd.json
+  h_9e71e8b09f7cf2 37,557-561
+docs/plans/098-builder-team-lifecycle/assets/impl-guide.dd.md
+  h_9e71e8b09f7cf2 25,84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ba44871e2c0f0d4b39ba2e93c4606c87c2358b2d",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
