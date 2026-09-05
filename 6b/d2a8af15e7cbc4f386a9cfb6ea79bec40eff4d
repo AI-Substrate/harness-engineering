@@ -1,0 +1,46 @@
+docs/plans/098-builder-team-lifecycle/assets/backpressure.dd.json
+  h_9e71e8b09f7cf2 11
+docs/plans/098-builder-team-lifecycle/assets/backpressure.dd.md
+  h_9e71e8b09f7cf2 14
+docs/plans/098-builder-team-lifecycle/assets/execution.dd.json
+  h_9e71e8b09f7cf2 95-109
+docs/plans/098-builder-team-lifecycle/assets/execution.dd.md
+  h_9e71e8b09f7cf2 38-40
+docs/plans/098-builder-team-lifecycle/assets/impl-guide.dd.json
+  h_9e71e8b09f7cf2 59-61,363,409,550-552
+docs/plans/098-builder-team-lifecycle/assets/impl-guide.dd.md
+  h_9e71e8b09f7cf2 35,80-81,84
+docs/plans/098-builder-team-lifecycle/assets/reviews/decomposition-delta-review.json
+  h_9e71e8b09f7cf2 1-167
+docs/plans/098-builder-team-lifecycle/assets/reviews/integration-fence-addendum.md
+  h_9e71e8b09f7cf2 1-49
+docs/plans/098-builder-team-lifecycle/plan.dd.json
+  h_9e71e8b09f7cf2 626-632
+docs/plans/098-builder-team-lifecycle/plan.dd.md
+  h_9e71e8b09f7cf2 256
+docs/plans/098-builder-team-lifecycle/the-flow.json
+  h_9e71e8b09f7cf2 198-262,350,360,375-379,386,564-589
+docs/plans/098-builder-team-lifecycle/the-flow.md
+  h_9e71e8b09f7cf2 4,13-14,19,57-59
+harness/cli/src/services/builder/commands.ts
+  h_9e71e8b09f7cf2 2-4,163-165,272-298
+harness/cli/src/services/builder/types.ts
+  h_9e71e8b09f7cf2 172,305-306,419-420
+harness/cli/src/services/extensions/registry.ts
+  h_9e71e8b09f7cf2 90
+harness/cli/test/fixtures/builder-contracts.ts
+  h_9e71e8b09f7cf2 7-8,23,422,433-438
+harness/cli/test/services/builder-contracts.test.ts
+  h_9e71e8b09f7cf2 3-6,318,324-357
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "6bd2a8af15e7cbc4f386a9cfb6ea79bec40eff4d",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
