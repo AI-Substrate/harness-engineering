@@ -202,7 +202,7 @@ The survey is a **deterministic document** (schema `builder/backpressure`, insta
 | probe trail (ABSENT rows) | `note` | what was globbed, across which roots |
 | state | `state` | always `unchecked` — selection, not completed proof; later stages tick rows |
 
-The STEP 1 inventory → one `sensors` item per paved command: `{id, name, command, dimension, found_in}` (`command` is the paved invocation; `found_in` the root or package). Header → `meta`: `title`, `plan` = `../plan.dd.json#meta` (omit when only a legacy Markdown plan exists), `basis_sha` = `BASIS`, `certainty` (STEP 4's stored value).
+The STEP 1 inventory → one `sensors` item per paved command: `{id, name, command, dimension, found_in}` (`command` is the paved invocation; `found_in` the root or package). Header → `meta`: `title`, `plan` = `../plan.dd.json#meta` (omit when only a legacy Markdown plan exists), `certainty` (STEP 4's stored value), `basis_sha` = the plan's SHA-256 taken **after** the step-5 links land (they change the plan's bytes; an earlier hash is stale on arrival).
 
 **Recipe — through the CLI, never an editor.** `ddocs` validates every write against the schema and regenerates the `.dd.md` sibling in the same operation; a refused value writes nothing. Ids are minted (`--mint bp`), never hand-rolled.
 
@@ -211,13 +211,14 @@ PLAN_DIR=docs/plans/<ordinal>-<slug>
 PLAN="${PLAN_DIR}/plan.dd.json"
 BP="${PLAN_DIR}/assets/backpressure.dd.json"
 mkdir -p "${PLAN_DIR}/assets"
-BASIS=$(shasum -a 256 "${PLAN}" | cut -d' ' -f1)
 
-# 1. seed the document — the ONLY hand-written bytes; overwrite-safe (a re-survey starts clean)
-cat > "${BP}" <<EOF
+# 1. seed the document ONLY IF ABSENT — the only hand-written bytes, ever. A re-survey
+#    edits rows in place (see Re-survey below); it never re-seeds, because re-minted ids
+#    would strand every `pressure` link that points at the old ones.
+[ -f "${BP}" ] || cat > "${BP}" <<EOF
 { "dd": { "schema": "builder/backpressure" },
   "sections": [
-    { "name": "meta", "value": { "title": "<feature> — selected backpressure", "plan": "../plan.dd.json#meta", "basis_sha": "${BASIS}", "certainty": "Partial" } },
+    { "name": "meta", "value": { "title": "<feature> — selected backpressure", "plan": "../plan.dd.json#meta", "certainty": "Partial" } },
     { "name": "rows", "value": [] },
     { "name": "sensors", "value": [] } ] }
 EOF
@@ -237,7 +238,13 @@ node_modules/.bin/ddocs set "${BP}#meta/certainty" "Confident"
 node_modules/.bin/ddocs set "${PLAN}#meta/backpressure" "assets/backpressure.dd.json#rows"
 node_modules/.bin/ddocs set "${PLAN}#acceptance_criteria/ac-0007/pressure" "assets/backpressure.dd.json#rows/bp-0001"   # once per criterion that has a row
 
-# 6. prove it
+# 6. LAST — record the basis. Step 5 changed the plan's bytes, so a hash taken earlier
+#    is stale the moment it is written. Hash AFTER the links land; the flight-plan
+#    receipt (basis_sha256:<hex>) takes this same value.
+BASIS=$(shasum -a 256 "${PLAN}" | cut -d' ' -f1)
+node_modules/.bin/ddocs set "${BP}#meta/basis_sha" "${BASIS}"
+
+# 7. prove it
 node_modules/.bin/ddocs validate "${BP}" --depth 2
 harness plan validate "${PLAN}"
 ```
@@ -248,7 +255,7 @@ harness plan validate "${PLAN}"
 
 **Legacy plan (no `plan.dd.json`).** Write the same document with `meta.plan` omitted; there is nothing to link from, so skip step 5 and say so in the terminal report. A re-plan through the plan verb is what turns it into a linkable dd plan.
 
-**Re-survey.** A changed plan is a changed `BASIS`: re-seed (step 1 overwrites), re-add rows, re-link. Row ids are re-minted — the plan's `pressure` links are rewritten in step 5, so nothing dangles; `ddocs doctor` reports any that do.
+**Re-survey — rows are stable, ids are never re-minted.** A changed plan is a changed `BASIS`, not a fresh document: a `bp-XXXX` id is an address that the plan's criteria AND the task files' done-when assertions already point at, so re-seeding would leave those callers dangling or, worse, pointing at a *different* valid row after re-minting. Instead: update an existing row in place (`node_modules/.bin/ddocs set "${BP}#rows/bp-XXXX/proof" "…"`, likewise `mode` / `probe` / `note`); `add --mint bp` only for a criterion that has no row yet, then link it (step 5); `rm "${BP}#rows/bp-XXXX"` only for a criterion that no longer exists — and in the same stroke clear or repoint every caller (`ddocs links "${BP}#rows/bp-XXXX"` lists them). Finish with step 6 (re-hash) and step 7; `ddocs doctor` names any link left dangling.
 
 **Never** hand-edit `backpressure.dd.json` after seeding it, and never edit `backpressure.dd.md` at all — `node_modules/.bin/ddocs build --check` reports either as drift.
 
