@@ -1,5 +1,14 @@
 #!/usr/bin/env node
 import { main } from './app.js';
+import { makeBlockingIfPipe } from './output/stdio-blocking.js';
+
+// Pipe stdio is ASYNCHRONOUS on macOS/Windows, and `exitWithEnvelope` (the single
+// exit chokepoint) calls process.exit straight after emitting — so an envelope
+// over 64 KiB piped to a reader was cut at exactly 65 536 bytes with exit 0 (Linux
+// pipes are synchronous, which is why CI never saw it). Make pipe stdio blocking
+// BEFORE anything writes; files and TTYs are untouched. See stdio-blocking.ts.
+makeBlockingIfPipe(process.stdout);
+makeBlockingIfPipe(process.stderr);
 
 // Pipe-friendly raw output (`harness docs <id> | head`) can have stdout closed
 // by the reader before we finish writing, which Node surfaces as EPIPE. Treat a
