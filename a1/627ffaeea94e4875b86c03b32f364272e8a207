@@ -1,0 +1,50 @@
+harness/cli/README.md
+  h_9e71e8b09f7cf2 101,104
+harness/cli/src/acts/builder.ts
+  h_9e71e8b09f7cf2 1-371
+harness/cli/src/acts/instructions.ts
+  h_9e71e8b09f7cf2 44,46,75,79
+harness/cli/src/app.ts
+  h_9e71e8b09f7cf2 1-2,4,506-524
+harness/cli/src/services/docs/docs-manifest.json
+  h_9e71e8b09f7cf2 94-100
+harness/cli/src/services/help/help-service.ts
+  h_9e71e8b09f7cf2 33,70,138
+harness/cli/src/services/instructions/builder-guidance.ts
+  h_9e71e8b09f7cf2 1-49
+harness/cli/src/services/instructions/commit-guidance.ts
+  h_9e71e8b09f7cf2 4,343
+harness/cli/test/acts/builder-dd-teaching.test.ts
+  h_9e71e8b09f7cf2 52,54-55,69-70,108-112,159,162-165,235-236,238-242
+harness/cli/test/acts/builder.test.ts
+  h_9e71e8b09f7cf2 1-118
+harness/cli/test/acts/flow-bundled-flight-plan.test.ts
+  h_9e71e8b09f7cf2 85-86
+harness/cli/test/acts/instructions.test.ts
+  h_9e71e8b09f7cf2 82,87-108
+harness/cli/test/app.test.ts
+  h_9e71e8b09f7cf2 172-192,215,249
+harness/cli/test/contract/__snapshots__/hooks-snapshot.test.ts.snap
+  h_9e71e8b09f7cf2 97
+harness/cli/test/index.test.ts
+  h_9e71e8b09f7cf2 80
+harness/cli/test/services/flow/flight-plan-gates.test.ts
+  h_9e71e8b09f7cf2 95-96,99,103,121,125,135,153,209,271,348,351
+harness/cli/test/services/instructions/instructions-service.test.ts
+  h_9e71e8b09f7cf2 46,52,54,64,74
+package.json
+  h_9e71e8b09f7cf2 26,47-48
+scripts/builder-smoke.mjs
+  h_9e71e8b09f7cf2 1-206
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "a1627ffaeea94e4875b86c03b32f364272e8a207",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
