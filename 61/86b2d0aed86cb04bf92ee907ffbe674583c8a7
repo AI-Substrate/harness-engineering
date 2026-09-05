@@ -1,0 +1,19 @@
+skills/eng-harness-flow/references/stages/backpressure.md
+  s_ee535d95f8ab80::t_805873314b5af0 205,215-218,221,241-247,258
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "6186b2d0aed86cb04bf92ee907ffbe674583c8a7",
+  "prompts": {},
+  "sessions": {
+    "s_ee535d95f8ab80": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "s_ee535d95f8ab80",
+        "model": "unknown"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
