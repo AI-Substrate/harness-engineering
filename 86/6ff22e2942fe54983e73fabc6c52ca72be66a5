@@ -1,0 +1,32 @@
+docs/plans/098-builder-team-lifecycle/assets/execution.dd.json
+  h_9e71e8b09f7cf2 110-119
+docs/plans/098-builder-team-lifecycle/assets/execution.dd.md
+  h_9e71e8b09f7cf2 41-42
+docs/plans/098-builder-team-lifecycle/assets/impl-guide.dd.json
+  h_9e71e8b09f7cf2 37,365,455,552-556,757,783
+docs/plans/098-builder-team-lifecycle/assets/impl-guide.dd.md
+  h_9e71e8b09f7cf2 25,80,82,84,114,116
+docs/plans/098-builder-team-lifecycle/assets/tasks/phase-1/tasks.dd.json
+  h_9e71e8b09f7cf2 164-165,171-172,178-179,185-186
+docs/plans/098-builder-team-lifecycle/assets/tasks/phase-1/tasks.dd.md
+  h_9e71e8b09f7cf2 53-58
+harness/cli/src/services/builder/records.ts
+  h_9e71e8b09f7cf2 28-29,49-161
+harness/cli/src/services/builder/types.ts
+  h_9e71e8b09f7cf2 21-22
+harness/cli/test/fixtures/builder-contracts.ts
+  h_9e71e8b09f7cf2 31,395-432,438,446,469
+harness/cli/test/services/builder-contracts.test.ts
+  h_9e71e8b09f7cf2 1,10,14,16,362-576
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "866ff22e2942fe54983e73fabc6c52ca72be66a5",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
