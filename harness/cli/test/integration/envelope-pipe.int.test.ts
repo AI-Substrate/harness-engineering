@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -47,6 +47,10 @@ describe('envelope output through a real pipe (no 64 KiB truncation)', () => {
     }
     fixtureRoot = mkdtempSync(join(tmpdir(), 'harness-envelope-pipe-'));
     execFileSync('git', ['init', '-q'], { cwd: fixtureRoot, stdio: 'ignore' });
+    // Schemas resolve doc-folder → <gitroot>/.dd → .harness/.dd → ~/.dd. A CI runner has no
+    // ~/.dd, so the fixture carries the repo's own builder schemas (the dev-machine pass
+    // was riding on the developer's home store — a false positive this line removes).
+    cpSync(join(repoRoot, '.dd'), join(fixtureRoot, '.dd'), { recursive: true });
     // Scaffold through the real verb so the document has every required section,
     // then widen its criteria list — the only part the size depends on.
     execFileSync(
