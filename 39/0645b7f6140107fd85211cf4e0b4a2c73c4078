@@ -1,0 +1,22 @@
+docs/plans/098-builder-team-lifecycle/assets/execution.dd.json
+  h_9e71e8b09f7cf2 120-124
+docs/plans/098-builder-team-lifecycle/assets/execution.dd.md
+  h_9e71e8b09f7cf2 43
+docs/plans/098-builder-team-lifecycle/assets/impl-guide.dd.json
+  h_9e71e8b09f7cf2 411,455,556-557,695,771,784,883
+docs/plans/098-builder-team-lifecycle/assets/impl-guide.dd.md
+  h_9e71e8b09f7cf2 81-82,84-85,115-116,125
+harness/cli/test/sensors/tui/pty-input.test.ts
+  h_9e71e8b09f7cf2 104-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "390645b7f6140107fd85211cf4e0b4a2c73c4078",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
