@@ -86,6 +86,7 @@ describe('envelope output through a real pipe (no 64 KiB truncation)', () => {
 
   it('delivers the whole JSON envelope to a piped reader and exits with the mapped code', () => {
     let stdout = '';
+    let stderr = '';
     let status: number | null = 0;
     try {
       stdout = execFileSync(
@@ -109,14 +110,18 @@ describe('envelope output through a real pipe (no 64 KiB truncation)', () => {
     } catch (error) {
       // --complete on an all-open plan may map to a non-zero status; the bytes are what
       // this test is about, so keep whatever stdout the child produced.
-      const failure = error as { stdout?: string; status?: number | null };
+      const failure = error as { stdout?: string; stderr?: string; status?: number | null };
       stdout = failure.stdout ?? '';
+      stderr = failure.stderr ?? '';
       status = failure.status ?? null;
     }
 
+    // A SMALL result is not truncation — it is the CLI answering something else (an error
+    // envelope); say what it said so a CI-only failure is diagnosable from the log.
     const truncatedHint =
       `piped envelope is ${Buffer.byteLength(stdout)} bytes — a 65536-byte result means ` +
-      'process.exit raced an asynchronous pipe flush (src/index.ts must make pipe stdio blocking)';
+      'process.exit raced an asynchronous pipe flush (src/index.ts must make pipe stdio blocking); ' +
+      `stdout head: ${stdout.slice(0, 600)} | stderr head: ${stderr.slice(0, 300)}`;
     expect(Buffer.byteLength(stdout), truncatedHint).toBeGreaterThan(PIPE_BUFFER);
     expect(() => JSON.parse(stdout), truncatedHint).not.toThrow();
 
