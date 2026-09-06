@@ -34,7 +34,16 @@ export function setBannerDecorator(decorator: BannerDecorator | null): void {
   bannerDecorator = decorator;
 }
 
-/** Single exit point for the whole CLI — only the kernel calls process.exit. */
+/**
+ * Single exit point for the whole CLI — only the kernel calls process.exit.
+ *
+ * `process.exit` right after `io.emit` is safe ONLY because the bin entry
+ * (`src/index.ts`) makes pipe-backed stdio blocking before main() runs
+ * (`output/stdio-blocking.ts`): with an asynchronous pipe (macOS, Windows) an
+ * envelope over 64 KiB was truncated at the pipe buffer with exit 0. Do not
+ * "fix" this by returning instead of exiting — 130 call sites, many not in tail
+ * position, rely on `never`; a returning exit would emit twice.
+ */
 export function exitWithEnvelope(env: Envelope, io: OutputPort): never {
   // Decorate BEFORE emit so the JSON renderer serializes any field the decorator
   // sets (e.g. update_available) and the human banner precedes the act's output.
