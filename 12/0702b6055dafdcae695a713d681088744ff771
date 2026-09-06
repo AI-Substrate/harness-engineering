@@ -1,0 +1,22 @@
+harness/cli/src/index.ts
+  h_9e71e8b09f7cf2 3-11
+harness/cli/src/output/exit.ts
+  h_9e71e8b09f7cf2 37-46
+harness/cli/src/output/stdio-blocking.ts
+  h_9e71e8b09f7cf2 1-48
+harness/cli/test/integration/envelope-pipe.int.test.ts
+  h_9e71e8b09f7cf2 1-145
+harness/cli/test/output/stdio-blocking.test.ts
+  h_9e71e8b09f7cf2 1-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "120702b6055dafdcae695a713d681088744ff771",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
