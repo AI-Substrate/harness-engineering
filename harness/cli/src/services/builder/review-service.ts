@@ -5,6 +5,7 @@ import {
   builderHead,
   loadBuilderGuide,
   sameBuilderFile,
+  validAmendment,
   verifyBuilderBasis,
   verifyBuilderComposition,
 } from './composition-service.js';
@@ -113,6 +114,10 @@ async function reviewIdentity(
       const composition = readBuilderRecord<CompositionReceipt>(deps, path, 'composition');
       if (!composition.ok) return composition;
       for (const unit of composition.value.value.units) excluded.add(unit.peer_id);
+      // Whoever declared an amendment authored part of the composed bytes and
+      // cannot be its independent reviewer (gibbon, #200 review).
+      for (const amendment of composition.value.value.amendments ?? [])
+        if (validAmendment(amendment)) excluded.add(amendment.declared_by);
       continue;
     }
     const record = readBuilderRecord<DispatchReceipt | AckReceipt>(

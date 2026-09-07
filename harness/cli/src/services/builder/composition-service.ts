@@ -494,13 +494,49 @@ function compositionRoster(
  * for another SHA authorises nothing here; the independent composition review
  * then reads the real bytes, amendments included.
  */
-function amendedPaths(
-  amendments: readonly IntegrationAmendment[] | undefined,
-  to: string,
-): Set<string> {
-  return new Set(
-    (amendments ?? []).filter((amendment) => amendment.sha === to).flatMap((row) => row.paths),
+/**
+ * A persisted amendment grants scope only when it is a COMPLETE declaration:
+ * a full candidate SHA, exact relative paths, a reason and a declarer. The team
+ * schema does not know this field, so the shape is enforced here, on the read
+ * path, before any row authorises anything (a hand-written {sha, paths} row is
+ * not a declaration).
+ */
+export function validAmendment(row: unknown): row is IntegrationAmendment {
+  if (row === null || typeof row !== 'object' || Array.isArray(row)) return false;
+  const value = row as Record<string, unknown>;
+  return (
+    typeof value.id === 'string' &&
+    value.id.length > 0 &&
+    typeof value.recorded_at === 'string' &&
+    !Number.isNaN(Date.parse(value.recorded_at)) &&
+    typeof value.sha === 'string' &&
+    SHA.test(value.sha) &&
+    Array.isArray(value.paths) &&
+    value.paths.length > 0 &&
+    value.paths.every(
+      (path) =>
+        typeof path === 'string' &&
+        path.length > 0 &&
+        !path.startsWith('/') &&
+        !path.split('/').includes('..'),
+    ) &&
+    typeof value.reason === 'string' &&
+    value.reason.trim().length > 0 &&
+    typeof value.declared_by === 'string' &&
+    value.declared_by.trim().length > 0
   );
+}
+
+function amendedPaths(
+  amendments: readonly unknown[] | undefined,
+  to: string,
+): { declared: Set<string>; malformed: number } {
+  const rows = amendments ?? [];
+  const valid = rows.filter(validAmendment);
+  return {
+    declared: new Set(valid.filter((row) => row.sha === to).flatMap((row) => row.paths)),
+    malformed: rows.length - valid.length,
+  };
 }
 
 async function integrationFence(
@@ -516,7 +552,13 @@ async function integrationFence(
   const delta = await builderGit(deps, ['diff', '--name-only', '--no-renames', '-z', from, to]);
   if (!delta.ok) return delta;
   const pm = guide.units.filter((unit) => unit.role === 'pm');
-  const declared = amendedPaths(amendments, to);
+  const { declared, malformed } = amendedPaths(amendments, to);
+  if (malformed > 0)
+    return builderFailure(
+      ErrorCodes.BUILDER_OWNERSHIP,
+      `${malformed} amendment row(s) on the composition receipt are not complete declarations (id, recorded_at, full sha, exact relative paths, reason, declared_by).`,
+      'Only `harness builder amend` writes amendments; remove the malformed rows and declare again through the verb.',
+    );
   const outside = nulPaths(delta.value).filter(
     (file) =>
       !isWithin(context.planDir, resolveInRepo(file, deps.repoRoot)) &&
@@ -669,6 +711,18 @@ export async function verifyBuilderComposition(
     head.value,
   ]);
   if (!ancestor.ok) return ancestor;
+  // The authorisation that let verify accept the artifact must still hold as
+  // recorded NOW: an amendment removed or retargeted after verification takes
+  // the proof with it (gibbon, #200 review).
+  const stillDeclared = await integrationFence(
+    deps,
+    context,
+    guide,
+    value.integration_sha,
+    value.artifact_sha,
+    value.amendments,
+  );
+  if (!stillDeclared.ok) return stillDeclared;
   const delta = await builderGit(deps, [
     'diff',
     '--name-only',

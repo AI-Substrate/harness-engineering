@@ -852,6 +852,123 @@ describe('Builder committed composition', () => {
     expect(verified.value.amendments?.[0]?.paths).toEqual(['src/parser.ts']);
   });
 
+  it('grants no scope to a malformed amendment row and loses proof when an amendment is removed (row 48 review)', async () => {
+    /*
+    Test Doc:
+    - Why: the team schema does not know `amendments`, so a hand-written {sha, paths}
+      row would otherwise pass the fence; and re-observation of composition proof
+      ignored amendments, so a declaration removed or retargeted after verification
+      went unnoticed (gibbon, #200 review, HIGH ×2).
+    - Contract: only a COMPLETE declaration (id, recorded_at, full sha, exact relative
+      paths, reason, declared_by) grants scope — a partial row refuses E477 naming the
+      malformed count; verifyBuilderComposition re-runs the fence with the amendments
+      as recorded now, so stripping the amendment after verify fails the proof.
+    - Quality Contribution: both opposites are visible — the same paths with a complete
+      declaration pass; the same receipt with the row present passes re-observation.
+    */
+    const s = scenario();
+    s.state.delta = 'src/parser.ts\0';
+    s.state.head = C;
+    s.composition({
+      artifact_sha: undefined,
+      checks: [],
+      amendments: [{ sha: C, paths: ['src/parser.ts'] } as never],
+    });
+    const partial = await composeBuilderUnits(s.deps, {
+      plan: BUILDER_FIXTURE_PLAN,
+      mode: 'verify',
+      sha: C,
+    });
+    expect(partial).toMatchObject({ ok: false, code: 'E477' });
+    if (!partial.ok) expect(partial.message).toContain('not complete declarations');
+    // a fresh scenario: the fixture's composition helper is create-only
+    const t = scenario();
+    t.state.delta = 'src/parser.ts\0';
+    t.state.head = C;
+    t.composition({ artifact_sha: undefined, checks: [] });
+    const declaredResult = await declareIntegrationAmendment(t.deps, {
+      plan: BUILDER_FIXTURE_PLAN,
+      sha: C,
+      paths: ['src/parser.ts'],
+      reason: 'cargo fmt',
+      declaredBy: 'pij-pm',
+    });
+    value(declaredResult);
+    const verifiedResult = await composeBuilderUnits(t.deps, {
+      plan: BUILDER_FIXTURE_PLAN,
+      mode: 'verify',
+      sha: C,
+    });
+    const verified = value(verifiedResult);
+    // The fixture's fake git answers ONE delta for every range, so re-observation
+    // cannot fully pass here; what is provable is the ORDER: with the amendment
+    // present the fence passes and the later post-proof check is what refuses …
+    const present = await verifyBuilderComposition(t.deps, t.context, t.guide);
+    expect(present).toMatchObject({ ok: false, code: 'E475' });
+    if (!present.ok) expect(present.message).toContain('Code changed after composition proof');
+    // strip the declaration after the fact (compare-and-swap on the verified receipt):
+    // the proof no longer stands
+    const current = value(
+      readBuilderRecord<CompositionReceipt>(
+        t.deps,
+        builderRecordPath(t.context, 'composition'),
+        'composition',
+      ),
+    );
+    value(
+      writeBuilderRecord(
+        t.deps,
+        builderRecordPath(t.context, 'composition'),
+        { ...current.value, amendments: [] },
+        { expectedSha256: current.ref.sha256 },
+      ),
+    );
+    // … and with it stripped, the fence itself refuses first.
+    const stripped = await verifyBuilderComposition(t.deps, t.context, t.guide);
+    expect(stripped).toMatchObject({ ok: false, code: 'E477' });
+    if (!stripped.ok) expect(stripped.message).toContain('Undeclared PM integration changes');
+  });
+
+  it('refuses the amendment declarer as the composition reviewer (row 48 review)', async () => {
+    /*
+    Test Doc:
+    - Why: PM A could amend candidate C and then be recorded as its reviewer by PM B —
+      the exclusion set knew coder peers, dispatch/ack identities and the caller, but
+      not amendments[].declared_by (gibbon, #200 review, HIGH).
+    - Contract: whoever declared an amendment on the composition is excluded from its
+      independent review; an actually independent reviewer still succeeds.
+    */
+    const s = scenario();
+    s.composition({
+      amendments: [
+        {
+          id: 'amend-1',
+          recorded_at: '2026-09-07T00:00:00.000Z',
+          sha: C,
+          paths: ['src/parser.ts'],
+          reason: 'cargo fmt',
+          declared_by: 'peer-reviewer',
+        },
+      ],
+    });
+    expect(
+      await recordBuilderReview(s.deps, {
+        plan: BUILDER_FIXTURE_PLAN,
+        receipt: s.review('composition'),
+      }),
+    ).toMatchObject({ ok: false, code: 'E475' });
+    const independent = s.review('composition', {
+      reviewer_id: 'peer-independent',
+      observed: {
+        ...s.review('composition').observed,
+        peer_id: 'peer-independent',
+      },
+    });
+    expect(
+      (await recordBuilderReview(s.deps, { plan: BUILDER_FIXTURE_PLAN, receipt: independent })).ok,
+    ).toBe(true);
+  });
+
   it('never imports or verifies on main', async () => {
     const s = scenario();
     s.state.branch = 'main';
