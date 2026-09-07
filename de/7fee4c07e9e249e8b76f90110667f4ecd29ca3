@@ -1,0 +1,21 @@
+harness/cli/src/services/builder/allocation-store.ts
+  s_f1a7ee9f435ed3::t_33dd2aa39be986 148-167,480-496
+harness/cli/test/services/builder-workspace.test.ts
+  s_f1a7ee9f435ed3::t_26dbfc87f14d7f 341-375
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "de7fee4c07e9e249e8b76f90110667f4ecd29ca3",
+  "prompts": {},
+  "sessions": {
+    "s_f1a7ee9f435ed3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6616ca6a-61c0-4a92-b9be-3512605a2826",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
