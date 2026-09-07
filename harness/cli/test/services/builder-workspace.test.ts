@@ -338,6 +338,41 @@ describe('Builder durable workspace allocation', () => {
     ).toBe(false);
   });
 
+  it('resolves a unit allocation parent from the plan workspace locator when the caller names only the peer (row 46)', async () => {
+    /*
+    Test Doc:
+    - Why: `harness builder dispatch` names the governing peer (--parent <seat>), never the
+      allocation record, and the live provision adapter forwards its input unchanged — so
+      reserveAllocation saw `parent` undefined and refused every unit with E470 on a
+      builder-allocated plan workspace (Unisphere Plan001, 3× E470).
+    - Contract: for purpose 'unit' with no explicit parent, the store resolves the parent
+      through the checkout's own locator (<git-dir>/builder/allocation-ref) and records it
+      as parent_id; a checkout with no locator refuses E470 naming the locator.
+    - Usage Notes: a harness-provisioned WORKTREE carries a locator (the shape `builder new`
+      leaves behind), so it stands in for the plan workspace; the fixture root's own parent
+      was adopted as external and has no locator, which is the negative case.
+    - Quality Contribution: the opposite is visible — same input, checkout without a locator,
+      E470 with the locator named; through the real store, real git, no mocked provision.
+    */
+    const fixture = await realFixture();
+    const located = unwrap(
+      await provisionBuilderWorkspace(fixture.deps, fixture.unitInput('worktree', 'located')),
+    );
+    expect(existsSync(`${located.allocation.value.git_dir}/builder/allocation-ref`)).toBe(true);
+    const fromLocated = { ...fixture.deps, repoRoot: located.allocation.value.root };
+    const { parent, ...withoutParent } = fixture.unitInput('worktree', 'child');
+    void parent;
+    const reserved = unwrap(await reserveAllocation(fromLocated, withoutParent));
+    expect(reserved.value.parent_id).toBe(located.allocation.value.id);
+    const refused = await reserveAllocation(fixture.deps, {
+      ...withoutParent,
+      target: `${fixture.home}/unlocated`,
+      unit: 'tk-unlocated',
+    });
+    expect(refused).toMatchObject({ ok: false, code: 'E470' });
+    if (!refused.ok) expect(refused.message).toContain('allocation locator');
+  });
+
   it('retains reservations after failed creation and never reuses tombstone ordinals or targets', async () => {
     const fixture = await realFixture();
     const input = fixture.unitInput('worktree');
