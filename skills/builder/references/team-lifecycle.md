@@ -46,6 +46,20 @@ harness builder ready "${PLAN}" --unit "${UNIT}"
 
 Roles resolve repo < guide < explicit fields. Requested model/harness/effort and observed runtime are distinct. Omitted effort stays absent; PID/argv/environment/native-session evidence is recorded only where observed. Provider-served identity remains unverified unless independently attested.
 
+## PM edits after import — declare them, do not smuggle or revert them
+
+After `compose --import`, the verify fence accepts only plan-folder files and the PM units' own `paths`. A PM sometimes has to touch imported worker files anyway — a formatter pass, a clippy fix the guide's own checks demand, a generated file. Declare exactly those paths for the candidate you will verify; the fence then accepts them for that SHA only, the composition receipt records who declared what and why, and the independent composition review reads the real bytes with the declaration beside them.
+
+```bash
+git commit -am "integration: cargo fmt over imported lanes"     # the candidate
+harness builder amend "${PLAN}" --sha "$(git rev-parse HEAD)" \
+  --path crates/sdk/src/lib.rs --path crates/cli/src/main.rs \
+  --reason "cargo fmt --all; guide check vd-0003 requires it"
+harness builder compose "${PLAN}" --verify "$(git rev-parse HEAD)"
+```
+
+Refused at declaration, nothing written: a SHA that is not the current HEAD, a frozen contract path (a sealed contract changes only through a new baseline), a path not in the import→candidate delta, an empty reason. An amendment is scope authorisation, not proof: verify still runs every guide check and the review still decides. Prefer having each lane format inside its own fence before delivery; use `amend` for what is left.
+
 ## Dispatch and acknowledgement
 
 Packets freeze scope, allowed writes/reads, interfaces, dependencies, proof, parent, allocation, plan/guide/baseline digests and requested role. Forbid canonical flow/plan/guide/receipt writes, other units, global/deployed settings, main, pushes and unapproved deletion. Workspace kind is not allocation authority. The authority record must survive removing the workspace.

@@ -1,6 +1,6 @@
 import { parse } from '@ai-substrate/dd';
 import { ErrorCodes } from '../../output/error-codes.js';
-import { isWithin, posixDirname, posixJoin, resolveInRepo } from '../shared/posix-path.js';
+import { isWithin, posixDirname, posixJoin, resolveInRepo, toPosix } from '../shared/posix-path.js';
 import {
   builderContext,
   builderFailure,
@@ -20,6 +20,7 @@ import type {
   BuilderContext,
   BuilderDeps,
   BuilderResult,
+  BuilderTarget,
   Check,
   CommandSpec,
   ComposeInput,
@@ -28,6 +29,7 @@ import type {
   DispatchReceipt,
   FileDigest,
   Guide,
+  IntegrationAmendment,
   Packet,
   Stored,
   Unit,
@@ -485,31 +487,149 @@ function compositionRoster(
   return { ok: true, value: true };
 }
 
+/**
+ * Paths a PM may change between the last imported lane commit and the candidate:
+ * plan-folder files, the PM units' own fences, and — for THIS candidate only —
+ * exact paths declared through `harness builder amend`. An amendment declared
+ * for another SHA authorises nothing here; the independent composition review
+ * then reads the real bytes, amendments included.
+ */
+function amendedPaths(
+  amendments: readonly IntegrationAmendment[] | undefined,
+  to: string,
+): Set<string> {
+  return new Set(
+    (amendments ?? []).filter((amendment) => amendment.sha === to).flatMap((row) => row.paths),
+  );
+}
+
 async function integrationFence(
   deps: BuilderDeps,
   context: BuilderContext,
   guide: Guide,
   from: string,
   to: string,
+  amendments?: readonly IntegrationAmendment[],
 ): Promise<BuilderResult<true>> {
   const ancestor = await builderGit(deps, ['merge-base', '--is-ancestor', from, to]);
   if (!ancestor.ok) return ancestor;
   const delta = await builderGit(deps, ['diff', '--name-only', '--no-renames', '-z', from, to]);
   if (!delta.ok) return delta;
   const pm = guide.units.filter((unit) => unit.role === 'pm');
+  const declared = amendedPaths(amendments, to);
   const outside = nulPaths(delta.value).filter(
     (file) =>
       !isWithin(context.planDir, resolveInRepo(file, deps.repoRoot)) &&
-      !pm.some((unit) => builderOwnsPath(unit, file)),
+      !pm.some((unit) => builderOwnsPath(unit, file)) &&
+      !declared.has(file),
   );
   return outside.length
     ? builderFailure(
         ErrorCodes.BUILDER_OWNERSHIP,
         'Undeclared PM integration changes.',
-        'Declare integration ownership in the reviewed guide; do not smuggle worker-path edits.',
+        `These paths are outside every PM fence and not declared for candidate ${to.slice(0, 12)}: ${outside.join(', ')}. Either keep them out of the integration, or declare them with \`harness builder amend <plan> --sha ${to} --path <path>… --reason "<why>"\` so verify accepts them and the independent review sees them.`,
         outside,
       )
     : { ok: true, value: true };
+}
+
+export interface AmendInput extends BuilderTarget {
+  sha: string;
+  paths: string[];
+  reason: string;
+  declaredBy: string;
+}
+
+/**
+ * Record a PM's exact post-import edits for one candidate. Refuses: no import
+ * yet, a candidate that is not the current HEAD, a path that is a frozen
+ * contract, a path not in the candidate's delta, or an empty reason. Writes
+ * nothing on refusal. Declaring is scope authorisation, not proof — verify and
+ * the independent review still run on the real bytes.
+ */
+export async function declareIntegrationAmendment(
+  deps: BuilderDeps,
+  input: AmendInput,
+): Promise<BuilderResult<Stored<CompositionReceipt>>> {
+  const loaded = loadBuilderGuide(deps, input.plan);
+  if (!loaded.ok) return loaded;
+  const { context, guide: storedGuide } = loaded.value;
+  const baseline = loadBuilderBaseline(deps, context, storedGuide.value);
+  if (!baseline.ok) return baseline;
+  const path = builderRecordPath(context, 'composition');
+  const imported = readBuilderRecord<CompositionReceipt>(deps, path, 'composition');
+  if (!imported.ok)
+    return builderFailure(
+      ErrorCodes.BUILDER_NOT_READY,
+      'No composition to amend: import the coder units first.',
+      'Run `harness builder compose <plan> --import <deliveries.json>`; amendments describe PM edits made after import.',
+    );
+  const head = await builderHead(deps);
+  if (!head.ok) return head;
+  if (!SHA.test(input.sha) || input.sha !== head.value)
+    return builderFailure(
+      ErrorCodes.BUILDER_PROOF,
+      'An amendment must name the current committed HEAD exactly.',
+      'Commit the PM integration edits, then declare them with the full SHA of that commit.',
+    );
+  const reason = input.reason.trim();
+  if (!reason)
+    return builderFailure(
+      ErrorCodes.BUILDER_INVALID,
+      'An amendment needs a reason.',
+      'Say why the PM touched these paths (formatter, clippy fix, generated file…); reviewers read it.',
+    );
+  const paths = [...new Set(input.paths.map((raw) => toPosix(raw.trim())).filter(Boolean))];
+  if (paths.length === 0)
+    return builderFailure(
+      ErrorCodes.BUILDER_INVALID,
+      'An amendment needs at least one exact path.',
+      'Pass each changed repo-relative path with --path; globs are not accepted here.',
+    );
+  const frozen = new Set(baseline.value.value.files.map((file) => file.path));
+  const contracts = paths.filter((file) => frozen.has(file));
+  if (contracts.length)
+    return builderFailure(
+      ErrorCodes.BUILDER_OWNERSHIP,
+      `Frozen contract paths cannot be amended: ${contracts.join(', ')}.`,
+      'A sealed contract changes only through a new baseline; remove those paths from the amendment.',
+      contracts,
+    );
+  const delta = await builderGit(deps, [
+    'diff',
+    '--name-only',
+    '--no-renames',
+    '-z',
+    imported.value.value.integration_sha,
+    input.sha,
+  ]);
+  if (!delta.ok) return delta;
+  const changed = new Set(nulPaths(delta.value));
+  const absent = paths.filter((file) => !changed.has(file));
+  if (absent.length)
+    return builderFailure(
+      ErrorCodes.BUILDER_INVALID,
+      `Paths not changed between the import and this candidate: ${absent.join(', ')}.`,
+      'Declare only paths that differ from the imported composition; nothing else needs authorisation.',
+      absent,
+    );
+  const amendment: IntegrationAmendment = {
+    id: `amend-${deps.nonce()}`,
+    recorded_at: deps.clock.nowIso(),
+    sha: input.sha,
+    paths,
+    reason,
+    declared_by: input.declaredBy,
+  };
+  return writeBuilderRecord(
+    deps,
+    path,
+    {
+      ...imported.value.value,
+      amendments: [...(imported.value.value.amendments ?? []), amendment],
+    },
+    { expectedSha256: imported.value.ref.sha256 },
+  );
 }
 
 export async function verifyBuilderComposition(
@@ -736,6 +856,7 @@ export async function composeBuilderUnits(
     guide,
     imported.value.value.integration_sha,
     input.sha,
+    imported.value.value.amendments,
   );
   if (!integration.ok) return integration;
   const checks = compositionChecks(guide);

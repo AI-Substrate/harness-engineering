@@ -29,7 +29,7 @@ import type {
 } from './types.js';
 
 /** Decode only the supported identity surface of the configured transport. */
-function callerFromWhoami(text: string, command: string): string | undefined {
+export function callerFromWhoami(text: string, command: string): string | undefined {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);

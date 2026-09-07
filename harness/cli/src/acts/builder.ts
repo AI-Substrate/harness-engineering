@@ -6,7 +6,11 @@ import { exitWithEnvelope } from '../output/exit.js';
 import { type CliIo, createOutputPort } from '../output/output-port.js';
 import { closeBuilderPlan } from '../services/builder/close-service.js';
 import { type BuilderVerb, registerBuilderCommandContract } from '../services/builder/commands.js';
-import { composeBuilderUnits } from '../services/builder/composition-service.js';
+import {
+  builderCommand,
+  composeBuilderUnits,
+  declareIntegrationAmendment,
+} from '../services/builder/composition-service.js';
 import {
   checkBuilderReadiness,
   sealBuilderContracts,
@@ -24,7 +28,7 @@ import {
   readBuilderDocument,
   readBuilderRecord,
 } from '../services/builder/records.js';
-import { recordBuilderReview } from '../services/builder/review-service.js';
+import { callerFromWhoami, recordBuilderReview } from '../services/builder/review-service.js';
 import { resolveBuilderRoles } from '../services/builder/role-settings.js';
 import type {
   AllocationRecord,
@@ -303,6 +307,31 @@ async function executeBuilder(
           plan: argument,
           mode: 'import',
           deliveries: deliveries.value as UnitDelivery[],
+        }),
+      );
+    }
+    case 'amend': {
+      // The declarer is the governing PM seat: PIJ_SESSION_ID first, else the
+      // observed whoami — the same resolution `review` uses, never a free-text flag.
+      let declaredBy = deps.env.get('PIJ_SESSION_ID');
+      if (!declaredBy) {
+        const identity = await builderCommand(deps, deps.pij, ['whoami', '--json']);
+        if (!identity.ok) return identity;
+        declaredBy = callerFromWhoami(identity.value, deps.pij.command);
+      }
+      if (!declaredBy)
+        return inputFailure(
+          'The declaring PM identity cannot be observed; set PIJ_SESSION_ID or restore the whoami transport.',
+        );
+      const paths = Array.isArray(options.path) ? (options.path as string[]) : [];
+      return named(
+        'composition',
+        await declareIntegrationAmendment(deps, {
+          plan: argument,
+          sha: options.sha as string,
+          paths,
+          reason: options.reason as string,
+          declaredBy,
         }),
       );
     }

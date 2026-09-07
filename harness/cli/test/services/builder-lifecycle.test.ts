@@ -9,6 +9,7 @@ import { FakeGit } from '../../src/adapters/git/fake-git.js';
 import { closeBuilderPlan } from '../../src/services/builder/close-service.js';
 import {
   composeBuilderUnits,
+  declareIntegrationAmendment,
   loadBuilderGuide,
   verifyBuilderBasis,
   verifyBuilderComposition,
@@ -774,6 +775,81 @@ describe('Builder committed composition', () => {
     expect(
       await composeBuilderUnits(s.deps, { plan: BUILDER_FIXTURE_PLAN, mode: 'verify', sha: C }),
     ).toMatchObject({ ok: false, code: 'E477' });
+  });
+
+  it('accepts PM edits declared for exactly this candidate through an integration amendment (row 48)', async () => {
+    /*
+    Test Doc:
+    - Why: a PM formatting or lint-fixing imported coder files was refused E477 with no
+      supported way to declare it after import (plan 098, Unisphere Plan001), and reverting
+      would have left the guide's own fmt/clippy checks knowingly red.
+    - Contract: `declareIntegrationAmendment` records exact paths + reason for the current
+      HEAD candidate; verify accepts ONLY those paths for ONLY that SHA; the receipt carries
+      the amendment so the independent composition review reads it with the real bytes.
+    - Usage Notes: `s.state.delta` is the import→candidate delta; `src/parser.ts` is a coder
+      path outside every PM fence; `contracts.ts` is the frozen contract.
+    - Quality Contribution: the opposite is visible — an amendment for another SHA still
+      refuses E477; a frozen path and an unchanged path are refused at declaration.
+    */
+    const s = scenario();
+    s.composition({ artifact_sha: undefined, checks: [] });
+    s.state.delta = 'src/parser.ts\0';
+    s.state.head = C;
+    // wrong candidate: authorises nothing for C
+    const other = await declareIntegrationAmendment(s.deps, {
+      plan: BUILDER_FIXTURE_PLAN,
+      sha: B,
+      paths: ['src/parser.ts'],
+      reason: 'cargo fmt',
+      declaredBy: 'pij-pm',
+    });
+    expect(other).toMatchObject({ ok: false, code: 'E475' });
+    // frozen contract: refused at declaration, nothing written
+    expect(
+      await declareIntegrationAmendment(s.deps, {
+        plan: BUILDER_FIXTURE_PLAN,
+        sha: C,
+        paths: ['contracts.ts'],
+        reason: 'cargo fmt',
+        declaredBy: 'pij-pm',
+      }),
+    ).toMatchObject({ ok: false, code: 'E477' });
+    // path not in the delta: refused
+    expect(
+      await declareIntegrationAmendment(s.deps, {
+        plan: BUILDER_FIXTURE_PLAN,
+        sha: C,
+        paths: ['src/new.ts'],
+        reason: 'cargo fmt',
+        declaredBy: 'pij-pm',
+      }),
+    ).toMatchObject({ ok: false, code: 'E470' });
+    expect(
+      await composeBuilderUnits(s.deps, { plan: BUILDER_FIXTURE_PLAN, mode: 'verify', sha: C }),
+    ).toMatchObject({ ok: false, code: 'E477' });
+    // the real declaration
+    const declared = value(
+      await declareIntegrationAmendment(s.deps, {
+        plan: BUILDER_FIXTURE_PLAN,
+        sha: C,
+        paths: ['src/parser.ts'],
+        reason: 'cargo fmt --all over imported lanes',
+        declaredBy: 'pij-pm',
+      }),
+    );
+    expect(declared.value.amendments).toMatchObject([
+      {
+        sha: C,
+        paths: ['src/parser.ts'],
+        reason: 'cargo fmt --all over imported lanes',
+        declared_by: 'pij-pm',
+      },
+    ]);
+    const verified = value(
+      await composeBuilderUnits(s.deps, { plan: BUILDER_FIXTURE_PLAN, mode: 'verify', sha: C }),
+    );
+    expect(verified.value.artifact_sha).toBe(C);
+    expect(verified.value.amendments?.[0]?.paths).toEqual(['src/parser.ts']);
   });
 
   it('never imports or verifies on main', async () => {

@@ -324,6 +324,23 @@ export interface UnitDelivery {
   baseline_sha: string;
 }
 
+/**
+ * A PM's declared, digest-bound edit outside its guide fence at integration
+ * time — exact paths, a reason, the candidate SHA it applies to, and who
+ * declared it. The composition verify fence accepts ONLY these paths for ONLY
+ * that candidate; the independent composition review then sees the real
+ * composed bytes. Never a frozen contract path, never a path outside the
+ * candidate's delta. Declared through `harness builder amend`.
+ */
+export interface IntegrationAmendment {
+  id: string;
+  recorded_at: string;
+  sha: string;
+  paths: string[];
+  reason: string;
+  declared_by: string;
+}
+
 /** Import is not proof. artifact_sha is set only after committed-tree verification. */
 export interface CompositionReceipt {
   record_type: 'composition';
@@ -335,6 +352,7 @@ export interface CompositionReceipt {
   artifact_sha?: string;
   files: FileDigest[];
   checks: CheckReceipt[];
+  amendments?: IntegrationAmendment[];
 }
 export interface CompositionDeps extends BuilderDeps {
   readiness: AssessReadiness;

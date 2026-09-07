@@ -14,6 +14,7 @@ export type BuilderVerb =
   | 'ack'
   | 'advance'
   | 'compose'
+  | 'amend'
   | 'review'
   | 'close'
   | 'tidy';
@@ -203,6 +204,32 @@ export const BUILDER_COMMANDS: BuilderCommand[] = [
       },
     ],
     exactlyOne: ['import', 'verify'],
+    results: ['composition'],
+  },
+  {
+    name: 'amend',
+    argument: '<plan>',
+    description:
+      'Declare exact PM integration edits outside the guide fence for one composed candidate, so verify accepts them and the independent review sees them',
+    options: [
+      {
+        flags: '--sha <sha>',
+        description: 'The committed candidate these edits belong to; must be the current HEAD',
+        required: true,
+      },
+      {
+        flags: '--path <paths...>',
+        description:
+          'Exact repo-relative paths the PM changed after import; each must be in the candidate delta and never a frozen contract',
+        required: true,
+      },
+      {
+        flags: '--reason <text>',
+        description:
+          'Why the PM had to touch these paths (e.g. formatter, clippy fix); reviewers read this',
+        required: true,
+      },
+    ],
     results: ['composition'],
   },
   {
