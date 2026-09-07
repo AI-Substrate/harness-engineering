@@ -33,6 +33,7 @@ describe('Builder cohort source and packaging', () => {
     const sources: Record<string, string> = {
       'package/package.json': JSON.stringify({ name: '@ai-substrate/engineering-harness', version: '1.0.0', type: 'module', dependencies: {} }),
       'package/harness/cli/bin/harness.js': "console.log('local-packaged-cli');",
+      'package/.dd/schemas/builder/plan/schema.json': JSON.stringify({ $id: 'builder/plan', type: 'object' }),
     };
     for (const name of ['builder', 'eng-harness-flow', 'eng-harness-0-harnessability-assessment']) sources[`package/skills/${name}/SKILL.md`] = `# ${name} locally packaged source`;
     for (const [path, text] of Object.entries(sources)) { mkdirSync(dirname(join(staged, path)), { recursive: true }); writeFileSync(join(staged, path), text); }
@@ -44,6 +45,7 @@ describe('Builder cohort source and packaging', () => {
       '--dependencies', join(temp, 'dependencies'), '--out', out, '--evidence', retained], { encoding: 'utf8' }));
     expect(preparation.base_sha).toMatch(/^[a-f0-9]{40}$/);
     expect(preparation.package_sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(readFileSync(join(out, 'node_modules/@ai-substrate/engineering-harness/.dd/schemas/builder/plan/schema.json'), 'utf8')).toBe(sources['package/.dd/schemas/builder/plan/schema.json']);
     expect(existsSync(join(out, 'live-testing'))).toBe(false);
     expect(existsSync(join(out, 'docs/plans/098-builder-team-lifecycle'))).toBe(false);
     expect(readdirSync(join(out, '.claude/skills')).sort()).toEqual(['builder', 'eng-harness-0-harnessability-assessment', 'eng-harness-flow']);
@@ -54,6 +56,19 @@ describe('Builder cohort source and packaging', () => {
     expect(execFileSync(process.execPath, [join(clone, 'node_modules/.bin/harness')], { encoding: 'utf8' }).trim()).toBe('local-packaged-cli');
     expect(() => execFileSync(process.execPath, [join(scenario, 'prepare-consumer.mjs'), '--package', archive,
       '--dependencies', join(temp, 'dependencies'), '--out', out, '--evidence', retained], { stdio: 'pipe' })).toThrow();
+    // Accept the shipped schema bytes, never evaluator/private files in or beside that namespace.
+    for (const [index, forbidden] of ['package/.dd/schemas/builder/plan/private-notes.md', 'package/live-testing/scenarios/private/assertions.json'].entries()) {
+      mkdirSync(dirname(join(staged, forbidden)), { recursive: true });
+      writeFileSync(join(staged, forbidden), 'private evaluation material');
+      const forbiddenArchive = join(temp, `forbidden-${index}.tgz`);
+      execFileSync('tar', ['-czf', forbiddenArchive, '-C', staged, ...Object.keys(sources), forbidden]);
+      const blockedOut = join(temp, `blocked-consumer-${index}`);
+      const blockedEvidence = join(temp, `blocked-evidence-${index}`);
+      expect(() => execFileSync(process.execPath, [join(scenario, 'prepare-consumer.mjs'), '--package', forbiddenArchive,
+        '--dependencies', join(temp, 'dependencies'), '--out', blockedOut, '--evidence', blockedEvidence], { stdio: 'pipe' })).toThrow('archive contains non-product paths');
+      expect(existsSync(blockedOut)).toBe(false);
+      expect(existsSync(blockedEvidence)).toBe(false);
+    }
   });
   it('preserves native source/provenance and unknown telemetry through report, ledger and rerender', async () => {
     const fs = new FakeFs({

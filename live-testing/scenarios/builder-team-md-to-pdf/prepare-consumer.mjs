@@ -17,7 +17,7 @@ if (existsSync(out) || existsSync(evidence)) throw new Error('consumer and evide
 if (evidence.startsWith(`${out}/`) || out.startsWith(`${evidence}/`)) throw new Error('consumer and retained evidence must be separate sibling roots');
 const entries = execFileSync('tar', ['-tzf', archive], { encoding: 'utf8' }).trim().split('\n');
 if (entries.some((entry) => !entry.startsWith('package/') || entry.split('/').includes('..') ||
-  !/^package\/(?:package\.json|LICENSE|README\.md|harness\/cli\/(?:bin|dist)\/|skills\/)/.test(entry))) throw new Error('archive contains non-product paths');
+  !/^package\/(?:package\.json|LICENSE|README\.md|harness\/cli\/(?:bin|dist)\/|skills\/|\.dd\/schemas\/builder\/[a-z0-9-]+\/schema\.json$)/.test(entry))) throw new Error('archive contains non-product paths');
 mkdirSync(out, { recursive: true });
 mkdirSync(evidence, { recursive: true });
 const product = join(out, 'node_modules/@ai-substrate/engineering-harness');
