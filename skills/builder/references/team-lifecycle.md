@@ -42,6 +42,8 @@ harness builder settings "${PLAN}"
 harness builder ready "${PLAN}" --unit "${UNIT}"
 ```
 
+**Order of commits around the seal.** Commit the SOURCE (contract unit, checks, fixtures) first — that commit is the seal's `source_sha`. The seal receipt and the review receipt are then written to disk; commit them whenever you like. Dispatch accepts a plan-repository HEAD that *is* the sealed source **or a descendant of it** — every frozen artifact is digest-checked against the seal, so receipt and evidence commits on top of the sealed source never block a dispatch, and the dispatch record names the plan-root HEAD it observed. What is refused: a HEAD the sealed source is not an ancestor of (a rewritten baseline, a checkout moved off its history). The coder clone is different: it must start at exactly the sealed source, and its acknowledgements are checked against that.
+
 Roles resolve repo < guide < explicit fields. Requested model/harness/effort and observed runtime are distinct. Omitted effort stays absent; PID/argv/environment/native-session evidence is recorded only where observed. Provider-served identity remains unverified unless independently attested.
 
 ## Dispatch and acknowledgement
