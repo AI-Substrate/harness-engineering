@@ -12,7 +12,7 @@
 | title | Warning-first delivery and end-to-end proof |
 | slug | phase-3 |
 | ordinal | — |
-| status | draft |
+| status | ready |
 | complexity | — |
 | summary | Complete shared on-track and delivery-warning semantics across all ownership checks; prove the actual CLI/Git consumer workflow, integrity contrasts, documentation/skill cutover and archive re-observation. |
 | backpressure | — |
@@ -27,19 +27,38 @@
 
 ## Summary
 
-Complete shared on-track and delivery-warning semantics across all ownership checks; prove the actual CLI/Git consumer workflow, integrity contrasts, documentation/skill cutover and archive re-observation. Detailed implementation tasks are not issued at the product-planning stage.
+Final advisory ownership cutover, shared on-track comparison and a fresh local-only native operational E2E scenario. Earlier blind/manual runs remain historical and are not relabelled as successful composition or guided orchestration.
 
 <a id="tasks"></a>
 
 ## Tasks
 
-_No entries._
+| id | title | domain | phase | state | note | receipt | done | success | notes | satisfies | satisfies_toward |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| tk-0001 | Complete shared delivery and on-track warnings without weakening real integrity | — | ph-638c | [ ] unchecked | — | — | [ ] 0/4 [tk-0001](#tk-0001) | — | — | [ac-0003](../../../plan.dd.md#acceptance-criteria), [ac-0004](../../../plan.dd.md#acceptance-criteria), [ac-000a](../../../plan.dd.md#acceptance-criteria) | — |
+| tk-0002 | Exercise the revised pipeline with actual isolated native participants | — | ph-638c | [ ] unchecked | — | — | [ ] 0/4 [tk-0002](#tk-0002) | — | — | [ac-0008](../../../plan.dd.md#acceptance-criteria), [ac-000b](../../../plan.dd.md#acceptance-criteria) | — |
 
 <a id="done-when"></a>
 
 ## Done when
 
-_No fields._
+### tk-0001
+
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-0001 | Guide ownership policies warn and remain visible through readiness, baseline, dispatch, import and advancement. | [ ] unchecked | [bp-0003](../../backpressure.dd.md#rows) |
+| dw-0002 | Committed coder history, including reverted out-of-map writes, produces the same file/owner rows in on-track and delivery. | [ ] unchecked | [bp-0003](../../backpressure.dd.md#rows) |
+| dw-0003 | On-track selects and names its actual basis, committed/working/untracked scope and incomplete observations, with exit zero and no mutation. | [ ] unchecked | [bp-0004](../../backpressure.dd.md#rows) |
+| dw-0004 | Live help, source skills, templates, packets and examples consistently describe guidance rather than ownership permission. | [ ] unchecked | [bp-000a](../../backpressure.dd.md#rows) |
+
+### tk-0002
+
+| id | assertion | state | pressure |
+| --- | --- | --- | --- |
+| dw-0005 | A fresh local-only native run performs actual packet dispatch, self-check/on-track observations, out-of-map deliveries and PM composition with warning evidence. | [ ] unchecked | [bp-000b](../../backpressure.dd.md#rows) |
+| dw-0006 | Actual wrong/mismatched delivery inputs refuse before mutation; valid pinned deliveries and later evidence remain usable. | [ ] unchecked | [bp-0008](../../backpressure.dd.md#rows) |
+| dw-0007 | An independent native reviewer assesses actual composed bytes, and canonical advancement/archival re-observation records the real outcomes without rewriting older runs. | [ ] unchecked | [bp-000b](../../backpressure.dd.md#rows) |
+| dw-0008 | Local transcripts, command receipts and Git/source artifacts are preserved with explicit proof limits and no Flowspace ingestion. | [ ] unchecked | [bp-000b](../../backpressure.dd.md#rows) |
 
 <a id="goals"></a>
 

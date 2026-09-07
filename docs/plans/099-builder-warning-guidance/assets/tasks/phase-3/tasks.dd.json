@@ -8,21 +8,98 @@
       "value": {
         "title": "Warning-first delivery and end-to-end proof",
         "slug": "phase-3",
-        "status": "draft",
+        "status": "ready",
         "summary": "Complete shared on-track and delivery-warning semantics across all ownership checks; prove the actual CLI/Git consumer workflow, integrity contrasts, documentation/skill cutover and archive re-observation."
       }
     },
     {
       "name": "summary",
-      "value": "Complete shared on-track and delivery-warning semantics across all ownership checks; prove the actual CLI/Git consumer workflow, integrity contrasts, documentation/skill cutover and archive re-observation. Detailed implementation tasks are not issued at the product-planning stage."
+      "value": "Final advisory ownership cutover, shared on-track comparison and a fresh local-only native operational E2E scenario. Earlier blind/manual runs remain historical and are not relabelled as successful composition or guided orchestration."
     },
     {
       "name": "tasks",
-      "value": []
+      "value": [
+        {
+          "id": "tk-0001",
+          "title": "Complete shared delivery and on-track warnings without weakening real integrity",
+          "state": "unchecked",
+          "phase": "ph-638c",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0003",
+            "../../../plan.dd.json#acceptance_criteria/ac-0004",
+            "../../../plan.dd.json#acceptance_criteria/ac-000a"
+          ],
+          "done": "#done_when/tk-0001"
+        },
+        {
+          "id": "tk-0002",
+          "title": "Exercise the revised pipeline with actual isolated native participants",
+          "state": "unchecked",
+          "phase": "ph-638c",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0008",
+            "../../../plan.dd.json#acceptance_criteria/ac-000b"
+          ],
+          "done": "#done_when/tk-0002"
+        }
+      ]
     },
     {
       "name": "done_when",
-      "value": {}
+      "value": {
+        "tk-0001": [
+          {
+            "id": "dw-0001",
+            "assertion": "Guide ownership policies warn and remain visible through readiness, baseline, dispatch, import and advancement.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0003"
+          },
+          {
+            "id": "dw-0002",
+            "assertion": "Committed coder history, including reverted out-of-map writes, produces the same file/owner rows in on-track and delivery.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0003"
+          },
+          {
+            "id": "dw-0003",
+            "assertion": "On-track selects and names its actual basis, committed/working/untracked scope and incomplete observations, with exit zero and no mutation.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0004"
+          },
+          {
+            "id": "dw-0004",
+            "assertion": "Live help, source skills, templates, packets and examples consistently describe guidance rather than ownership permission.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-000a"
+          }
+        ],
+        "tk-0002": [
+          {
+            "id": "dw-0005",
+            "assertion": "A fresh local-only native run performs actual packet dispatch, self-check/on-track observations, out-of-map deliveries and PM composition with warning evidence.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-000b"
+          },
+          {
+            "id": "dw-0006",
+            "assertion": "Actual wrong/mismatched delivery inputs refuse before mutation; valid pinned deliveries and later evidence remain usable.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0008"
+          },
+          {
+            "id": "dw-0007",
+            "assertion": "An independent native reviewer assesses actual composed bytes, and canonical advancement/archival re-observation records the real outcomes without rewriting older runs.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-000b"
+          },
+          {
+            "id": "dw-0008",
+            "assertion": "Local transcripts, command receipts and Git/source artifacts are preserved with explicit proof limits and no Flowspace ingestion.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-000b"
+          }
+        ]
+      }
     },
     {
       "name": "goals",

@@ -285,7 +285,7 @@
           "tk-0003"
         ],
         "steps": [
-          "Import only the fenced commits after baseline/packet verification.",
+          "Import committed deliveries after baseline/packet integrity checks; retain ownership-map warnings without a path veto.",
           "Wire filesystem reader/writer in cli.mjs and commit the composed artifact.",
           "Run composition verification and independently review the exact artifact SHA."
         ],

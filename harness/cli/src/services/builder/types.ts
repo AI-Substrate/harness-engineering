@@ -147,6 +147,7 @@ export interface Guide {
 export interface GuideCheckReport {
   valid: boolean;
   issues: BuilderIssue[];
+  warnings?: OwnershipWarning[];
   architectural_judgement: 'not-performed';
 }
 export interface GuideInput extends BuilderTarget {
@@ -162,11 +163,12 @@ export type ReadinessReport =
   | {
       status: 'ready';
       issues: BuilderIssue[];
+      warnings?: OwnershipWarning[];
       context: BuilderContext;
       guide: Guide;
       baseline: Stored<BaselineReceipt>;
     }
-  | { status: 'not-ready' | 'cant-tell'; issues: BuilderIssue[] };
+  | { status: 'not-ready' | 'cant-tell'; issues: BuilderIssue[]; warnings?: OwnershipWarning[] };
 export type AssessReadiness = (input: ReadinessInput) => Promise<BuilderResult<ReadinessReport>>;
 
 export type AllocationOwner = 'harness' | 'external' | 'pij';
@@ -229,6 +231,7 @@ export interface BaselineReceipt {
   files: FileDigest[];
   checks: CheckReceipt[];
   review: FileDigest;
+  warnings?: OwnershipWarning[];
 }
 
 export interface RuntimeObservation {
@@ -294,6 +297,7 @@ export interface DispatchReceipt {
   observed: RuntimeObservation;
   /** Exact immutable seed files, not a broad untracked-file exemption. */
   seed_files: FileDigest[];
+  warnings?: OwnershipWarning[];
   /** Observed transport outcome for the work packet, never an acknowledgement gate. */
   delivery?: { message_id: string; outcome: 'queued' | 'delivered'; recorded_at: string };
   /** Historical handshake metadata; current dispatch/import do not consume it. */
@@ -341,7 +345,30 @@ export interface UnitDelivery {
 export interface OwnershipWarning {
   file: string;
   owning_unit: string;
-  stage: 'import' | 'verify';
+  stage: 'guide' | 'delivery' | 'import' | 'verify';
+  unit_id?: string;
+  code?: string;
+  message?: string;
+  next_action?: string;
+}
+
+export interface OnTrackInput extends BuilderTarget {
+  unit?: string;
+  from?: string;
+  to?: string;
+  untracked?: boolean;
+}
+export interface OnTrackReport {
+  compared: boolean;
+  mode: 'unit' | 'pm';
+  unit_id?: string;
+  basis?: 'explicit' | 'import' | 'baseline' | 'head';
+  from?: string;
+  to?: string;
+  includes_worktree: boolean;
+  includes_untracked: boolean;
+  warnings: OwnershipWarning[];
+  issues: BuilderIssue[];
 }
 
 /** Import is not proof. artifact_sha is set only after committed-tree verification. */
@@ -395,6 +422,7 @@ export interface AdvanceInput extends BuilderTarget {
 export interface AdvanceResult {
   flow: string;
   now: string;
+  warnings?: OwnershipWarning[];
 }
 
 export interface PreservedItem {

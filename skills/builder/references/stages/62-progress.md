@@ -10,7 +10,7 @@
 ## Procedure
 
 1. Resolve the task from `assets/tasks/phase-N/tasks.dd.json` and its guide unit. For completed historical Markdown plans, retain the old read path; do not migrate or reopen them.
-2. Check ownership: the PM writes canonical plan/tasks/receipts; a worker restricted by packet returns the requested update and evidence to the PM instead. Never expand its fence to make bookkeeping easier.
+2. Respect canonical writers: the PM writes plan/tasks/receipts; a worker returns the requested update and evidence to the PM instead. Advisory source maps do not transfer canonical lifecycle mutation or immutable-evidence authority.
 3. Record actual outcome before state: command, cwd, exit/status, subject SHA, output/evidence pointer, changed files and relevant risks in `assets/execution-log.dd.json#entries` using local `node_modules/.bin/ddocs add --mint lg`. Preserve failed/unavailable results without relabelling them as success.
 4. For completed work, link the observed entry via AC `proven_by` and assertion `proven_by` where appropriate. Every AC/assertion retains its `pressure` link to `assets/backpressure.dd.json`. Use `../backpressure-recipe.md`; a selected RUN command or authored test is not an observed receipt.
 5. Set only exercised assertions checked; blocked assertions stay blocked with a reason. The task's `done` link derives from its assertion list. `in_progress` remains unchecked plus an execution entry/note, not an unsupported DD state. Human-skipped/na require the actual human decision or applicability reason.

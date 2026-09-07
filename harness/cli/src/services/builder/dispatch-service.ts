@@ -693,6 +693,7 @@ export async function dispatchBuilderUnit(
         ],
       },
       seed_files: [...seeded.value, ...prepared.value.seeds],
+      warnings: ready.value.warnings ?? baseline.value.warnings ?? [],
     };
     const stored = writeBuilderRecord(deps, dispatchPath, receipt);
     if (!stored.ok) return stored;

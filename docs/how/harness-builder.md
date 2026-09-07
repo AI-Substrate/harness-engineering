@@ -32,7 +32,7 @@ harness builder settings <plan>
 harness builder settings <plan> --role reviewer --harness omp --model github-copilot/claude-opus-5
 ```
 
-`--init` never overwrites an existing guide. Author through local `node_modules/.bin/ddocs`; source templates are under `skills/builder/templates/`. `--check` verifies structure, ownership, dependency order and AC/proof links, not architectural judgement. Independent decomposition review is separate. Guide exit does not require the future committed code baseline.
+`--init` never overwrites an existing guide. Author through local `node_modules/.bin/ddocs`; source templates are under `skills/builder/templates/`. `--check` checks structure, dependency order and AC/proof links, not architectural judgement. Ownership-only findings are visible warnings, not guide invalidity or readiness blockers: overlapping writes, read-map gaps, unmapped baseline files and owner declarations guide the work rather than veto it. Real malformed data, ambiguous identities and invalid executable checks remain errors. Independent decomposition review is separate. Guide exit does not require the future committed code baseline.
 
 Settings resolve repo < guide < explicit fields, with per-field `source`. `--harness`, `--model` or `--effort` on settings requires `--role`. Omitted effort stays absent. `roles.template.json` contains reusable role profiles, **not** a replacement global settings file; install them in guide roles or pass explicit settings flags. Requested/observed configuration is not provider-served identity attestation.
 
@@ -97,6 +97,8 @@ The work message begins with a useful map:
 
 Then provide the exact packet pointer and SHA-256. The packet binds plan/guide/baseline/allocation bytes, `source_sha`, ownership, interfaces, proof and role. Receiving it starts that unit; there is no separate acknowledgement or release. `DispatchReceipt.delivery` records only the observed transport message ID, outcome and time. A queued message is not proof of receipt, and neither queued nor delivered transport is an import gate.
 
+The map guides both coder and PM work; it is not a source-path permission fence. Out-of-map edits need no approval or justification. Prefer the shared interfaces that make independent work possible, coordinate changes that break consumers, and surface the comparison warnings rather than inventing a second approval process.
+
 Current packets use the separately staged `builder/work-packet` schema. Provisioning installs that missing package before native launch; it does not overwrite an existing consumer `builder/packet` schema or its customizations. Historical packets and acknowledgements continue to use their original schema and remain readable. No legacy canary field is invented to make a new packet fit an old schema.
 
 From the worker's actual checkout, one optional orientation check is:
@@ -109,6 +111,25 @@ This read-only report returns `packet`, `expected`, `observed` and `warnings`: e
 
 Keep historical acknowledgement and release records readable and unchanged; do not replay completed work or reclassify old evidence as a current prerequisite. Requested settings are not provider attestation, and unavailable optional runtime observations belong in `observed.gaps`, not invented fields.
 
+## Check on-track without a ceremony
+
+```bash
+harness builder on-track <plan> [--unit <id>] [--from <ref>] [--to <ref>] [--untracked]
+```
+
+This read-only inspection uses the same ownership comparison as automatic delivery/import/verification. It needs no readiness, seal, review or receipt prerequisite; it runs even on main and writes no files, receipts or lifecycle state. It exits 0 with a report, not a permission decision.
+
+| Selection | Compared work |
+|---|---|
+| `--unit <id>` | That named unit's map; `mode: unit`, delivery-stage warnings, every committed touched path including reverted writes |
+| No `--unit` | All PM maps; `mode: pm`, verify-stage warnings, endpoint delta |
+| Default end | HEAD plus tracked staged/unstaged work; new/untracked files are excluded |
+| `--untracked` | Explicitly adds untracked paths to the current-work comparison |
+| `--to <ref>` | Committed-only comparison; excludes staged/unstaged/untracked work even with `--untracked` |
+| `--from <ref>` | Explicit starting commit (`basis: explicit`) |
+
+Without `--from`, PM uses imported `integration_sha` (`basis: import`) when available, otherwise sealed `source_sha` (`baseline`), otherwise HEAD (`head`). Named-unit inspection uses the sealed source or HEAD. Malformed existing basis evidence yields an issue rather than a silent fallback. The report exposes measured full `from`/`to` SHAs, `includes_worktree`, `includes_untracked`, `warnings` and actionable `issues`. When inspection cannot compare, it returns `compared: false` and the cause/fix in `issues`, still exit 0. Display the selected basis, warnings and issues; a zero exit or empty warnings without `compared: true` does not prove a comparison happened.
+
 ## Import is not composition proof
 
 ```bash
@@ -119,11 +140,11 @@ harness builder review <plan> --receipt <composition-review.dd.json>
 harness builder advance <plan> --now <canonical-node>
 ```
 
-`deliveries.json` is an array of `UnitDelivery`: `unit_id`, `peer_id`, `workspace`, `commit_sha`, `packet_sha256`, `baseline_sha`. `baseline_sha` is the full Git source SHA, while FileDigest `sha256` binds bytes. Import verifies current packet/dispatch/external-allocation digests, tree/branch/commit, distinct peer attribution, sealed ancestry and coder fences before integrating in guide order. It does not consult self-check reports, acknowledgements, release or transport outcome, nonce challenges or timing. Only verify sets the composed `artifact_sha` with actual check receipts. Independent review binds that SHA, plan/guide digests, requested/observed reviewer, report digest and findings. Artifact drift needs fresh proof/review.
+`deliveries.json` is an array of `UnitDelivery`: `unit_id`, `peer_id`, `workspace`, `commit_sha`, `packet_sha256`, `baseline_sha`. `baseline_sha` is the full Git source SHA, while FileDigest `sha256` binds bytes. Import verifies current packet/dispatch/external-allocation digests, tree/branch/commit, distinct peer attribution and sealed ancestry before integrating in guide order. Coder path-map deviations warn rather than refuse. Import does not consult self-check/on-track reports, acknowledgements, release or transport outcome, nonce challenges or timing. Only verify sets the composed `artifact_sha` with actual check receipts. Independent review binds that SHA, plan/guide digests, requested/observed reviewer, report digest and findings. Artifact drift needs fresh proof/review.
 
 Integrity refusals still name cause and fix: wrong tree/branch/commit → return to the allocated checkout and deliver its actual committed SHA; forged/mismatched evidence → recover original bound bytes and measured digests; duplicate peer attribution → use the actual distinct dispatched workers; rewritten baseline → restore sealed history or review/seal new contracts and issue new packets. An orientation warning does not waive these import checks.
 
-The PM's path map is guidance, not permission. PM changes outside that map do not stop import or verification and require no declaration or justification. `composition.value.warnings` records each `file`, its `owning_unit` (or `unmapped`), and the `stage` (`import` or `verify`); a file mapped to several units has one row per owner. Verification retains import observations and refreshes its own warning list; real check failures still fail and retain the warnings beside their output. Read the generated composition receipt when reviewing the actual artifact. Coder-delivery path ownership retains its existing enforcement; this startup change does not convert it to warnings.
+Coder and PM maps are guidance, not permission. `composition.value.warnings` retains guide, delivery and import observations, then refreshes verify-stage warnings on each verification. Each row names `file`, scalar `owning_unit` (unit ID or `unmapped`) and `stage` (`guide|delivery|import|verify`); multiple owners produce separate rows and coder delivery rows include the actor `unit_id`. Guide-only declarations may use `<guide:field>` with an actionable `code`, `message` and `next_action` instead of inventing a file. Read these warnings alongside the exact artifact and checks during independent review. Ownership warnings do not block readiness, sealing, dispatch, composition or advance; real Git/replay, filesystem confinement, structural and product-check failures still fail with their warnings visible.
 
 No silent review fallback: unavailable requested cross-model review is unfulfilled. A justified solo implementation does not change this promise.
 
@@ -162,4 +183,4 @@ Completed historical DD/Markdown plans retain their read path without conversion
 
 The [exact command table](../../skills/builder/references/team-lifecycle.md#public-grammar) covers all flags/result fields. Outcomes use the existing envelope: ok exit 0; degraded exit 0 with `next_action`; unconfigured exit 2; error exit 1. A zero exit is not necessarily ready. Missing support is explicit, not fake success.
 
-PM owns canonical state and integration. Coders write only packet-owned source/test paths. Reviewers supply evidence, not code changes. Global/deployed settings, unrelated workspaces and main stay outside their fence. Push, PR creation and merge require their own user authorization; retirement is not implied by closeout or shipping.
+PM owns canonical state and integration; coders use the packet's source/test and read maps as guidance, not mandatory fences. Reviewers supply independent evidence, not implementation changes. Advisory maps do not authorize global/deployed settings, unrelated workspaces or changes on main. Push, PR creation, merge and destructive operations require their own user authorization; retirement is not implied by closeout or shipping.

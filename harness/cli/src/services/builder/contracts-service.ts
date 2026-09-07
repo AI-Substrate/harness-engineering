@@ -26,6 +26,7 @@ import type {
   CompositionReceipt,
   FileDigest,
   Guide,
+  OwnershipWarning,
   ReadinessInput,
   ReadinessReport,
   ReviewReceipt,
@@ -41,13 +42,17 @@ type Inputs = {
   files: FileDigest[];
   checks: Check[];
   receiptPath: string;
+  warnings: OwnershipWarning[];
 };
 const OBJECT_ID = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/;
 const proofId = (address: string) => address.slice(address.lastIndexOf('/') + 1);
 const sameRef = (left: FileDigest, right: FileDigest) =>
   left.path === right.path && left.sha256 === right.sha256;
 
-function loadInputs(deps: BuilderDeps, plan: string): BuilderResult<Inputs> {
+function loadInputs(
+  deps: BuilderDeps,
+  plan: string,
+): BuilderResult<Inputs> & { warnings?: OwnershipWarning[] } {
   const context = builderContext(deps, plan);
   if (!context.ok) return context;
   const loaded = readBuilderGuide(deps, { plan });
@@ -58,19 +63,23 @@ function loadInputs(deps: BuilderDeps, plan: string): BuilderResult<Inputs> {
     (section) => section.name === 'acceptance_criteria',
   )?.value;
   const report = checkBuilderGuide(loaded.value, (criteria ?? []) as { id: string }[]);
+  const warnings = report.warnings ?? [];
   if (!report.valid)
-    return builderFailure(
-      ErrorCodes.BUILDER_NOT_READY,
-      'The implementation guide is not structurally ready.',
-      'Correct every named guide issue; independent architectural review remains a separate requirement.',
-      report.issues,
-    );
+    return {
+      ...builderFailure(
+        ErrorCodes.BUILDER_NOT_READY,
+        'The implementation guide is not structurally ready.',
+        'Correct every named guide issue; independent architectural review remains a separate requirement.',
+        report.issues,
+      ),
+      warnings,
+    };
   const guideRef = digestBuilderFile(deps, context.value.guidePath);
-  if (!guideRef.ok) return guideRef;
+  if (!guideRef.ok) return { ...guideRef, warnings };
   const files: FileDigest[] = [];
   for (const path of loaded.value.baseline.files) {
     const digest = confinedDigest(deps, path);
-    if (!digest.ok) return digest;
+    if (!digest.ok) return { ...digest, warnings };
     files.push(digest.value);
   }
   const required = new Set(loaded.value.baseline.proof.map(proofId));
@@ -88,6 +97,7 @@ function loadInputs(deps: BuilderDeps, plan: string): BuilderResult<Inputs> {
       files,
       checks: loaded.value.checks.filter((check) => required.has(check.id)),
       receiptPath,
+      warnings,
     },
   };
 }
@@ -370,12 +380,14 @@ export async function sealBuilderContracts(
     files: inputs.files,
     checks,
     review: review.value.ref,
+    warnings: inputs.warnings,
   });
 }
 
 function notReady(
   result: { message: string; next_action: string; details?: unknown },
   status: 'not-ready' | 'cant-tell' = 'not-ready',
+  warnings: OwnershipWarning[] = [],
 ): BuilderResult<ReadinessReport> {
   const fallback = { code: 'baseline', message: result.message, next_action: result.next_action };
   const issues: BuilderIssue[] =
@@ -392,7 +404,7 @@ function notReady(
           };
         })
       : [fallback];
-  return { ok: true, value: { status, issues } };
+  return { ok: true, value: { status, issues, warnings } };
 }
 
 /** Only the canonical plan-to-archive move can relocate immutable evidence. */
@@ -584,8 +596,12 @@ export async function checkBuilderReadiness(
   input: ReadinessInput,
 ): Promise<BuilderResult<ReadinessReport>> {
   const loaded = loadInputs(deps, input.plan);
-  if (!loaded.ok) return notReady(loaded);
+  if (!loaded.ok) return notReady(loaded, 'not-ready', loaded.warnings);
   const inputs = loaded.value;
+  const unavailable = (
+    result: { message: string; next_action: string; details?: unknown },
+    status: 'not-ready' | 'cant-tell' = 'not-ready',
+  ) => notReady(result, status, inputs.warnings);
   const unit =
     input.unit === undefined
       ? undefined
@@ -594,13 +610,13 @@ export async function checkBuilderReadiness(
     input.unit !== undefined &&
     (unit?.role !== 'coder' || inputs.guide.fan_out.decision !== 'coders')
   ) {
-    return notReady({
+    return unavailable({
       message: `Unit ${input.unit} is not a dispatchable coder.`,
       next_action: 'Select a declared coder unit; PM and solo decisions are never peer dispatches.',
     });
   }
   const stored = readBuilderRecord<BaselineReceipt>(deps, inputs.receiptPath, 'baseline');
-  if (!stored.ok) return notReady(stored);
+  if (!stored.ok) return unavailable(stored);
   const baseline = stored.value.value;
   if (
     baseline.files.length !== inputs.files.length ||
@@ -608,18 +624,19 @@ export async function checkBuilderReadiness(
       (file) => baseline.files.filter((candidate) => sameRef(file, candidate)).length !== 1,
     )
   ) {
-    return notReady({
+    return unavailable({
       message: 'The plan, guide or shared contract files differ from the sealed baseline.',
       next_action:
         'Restore the bound inputs or deliberately review and seal a new committed baseline.',
     });
   }
   const proof = proofIssues(inputs.checks, baseline.checks, deps.repoRoot);
-  if (proof.length > 0) return { ok: true, value: { status: 'not-ready', issues: proof } };
+  if (proof.length > 0)
+    return { ok: true, value: { status: 'not-ready', issues: proof, warnings: inputs.warnings } };
   const relocate = (ref: FileDigest) => relocatedRef(ref, baseline, inputs);
   const reviewRef = relocate(baseline.review);
   const reviewDigest = unchanged(deps, [reviewRef]);
-  if (!reviewDigest.ok) return notReady(reviewDigest);
+  if (!reviewDigest.ok) return unavailable(reviewDigest);
   const review = reviewEvidence(
     deps,
     reviewRef.path,
@@ -627,11 +644,11 @@ export async function checkBuilderReadiness(
     baseline.source_sha,
     relocate,
   );
-  if (!review.ok) return notReady(review);
+  if (!review.ok) return unavailable(review);
   const source = await head(deps);
-  if (!source.ok) return notReady(source, 'cant-tell');
+  if (!source.ok) return unavailable(source, 'cant-tell');
   if (!OBJECT_ID.test(baseline.source_sha))
-    return notReady({
+    return unavailable({
       message: 'The baseline source SHA is invalid.',
       next_action: 'Seal a baseline from an observed full commit SHA.',
     });
@@ -642,16 +659,16 @@ export async function checkBuilderReadiness(
     baseline.source_sha,
     source.value,
   ]);
-  if (!ancestor.ok) return notReady(ancestor);
+  if (!ancestor.ok) return unavailable(ancestor);
   const documents = await historicalDocuments(deps, inputs, baseline);
-  if (!documents.ok) return notReady(documents);
+  if (!documents.ok) return unavailable(documents);
   const refs = [inputs.planRef, inputs.guideRef, ...inputs.files];
   const committed = await committedFiles(deps, baseline.source_sha, inputs.files);
-  if (!committed.ok) return notReady(committed);
+  if (!committed.ok) return unavailable(committed);
   const dependencies = unit
     ? await dependencyEvidence(deps, inputs, stored.value, unit, source.value)
     : { ok: true as const, value: [] };
-  if (!dependencies.ok) return notReady(dependencies);
+  if (!dependencies.ok) return unavailable(dependencies);
   const stable = unchanged(deps, [
     ...refs,
     stored.value.ref,
@@ -660,11 +677,11 @@ export async function checkBuilderReadiness(
     relocate(review.value.value.report),
     ...dependencies.value,
   ]);
-  if (!stable.ok) return notReady(stable);
+  if (!stable.ok) return unavailable(stable);
   const after = await head(deps);
-  if (!after.ok) return notReady(after, 'cant-tell');
+  if (!after.ok) return unavailable(after, 'cant-tell');
   if (after.value !== source.value)
-    return notReady(
+    return unavailable(
       {
         message: 'HEAD moved during readiness observation.',
         next_action: 'Repeat readiness against a stable workspace.',
@@ -676,6 +693,7 @@ export async function checkBuilderReadiness(
     value: {
       status: 'ready',
       issues: [],
+      warnings: inputs.warnings,
       context: inputs.context,
       guide: inputs.guide,
       baseline: stored.value,

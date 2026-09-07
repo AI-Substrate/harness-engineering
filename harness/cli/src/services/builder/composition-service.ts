@@ -1,6 +1,7 @@
 import { parse } from '@ai-substrate/dd';
 import { ErrorCodes } from '../../output/error-codes.js';
 import { isWithin, posixDirname, posixJoin, resolveInRepo } from '../shared/posix-path.js';
+import { committedDeliveryPaths, ownershipWarnings } from './ownership-service.js';
 import {
   builderContext,
   builderFailure,
@@ -121,15 +122,6 @@ export function sameBuilderFile(deps: BuilderDeps, ref: FileDigest): BuilderResu
         `Stale evidence: ${ref.path}`,
         'Refresh the evidence against the actual artifact; historical receipts must not be relabelled.',
       );
-}
-
-export function builderOwnsPath(unit: Unit, path: string): boolean {
-  return unit.paths.some(
-    (fence) =>
-      fence === path ||
-      (fence.endsWith('/**') && path.startsWith(fence.slice(0, -2))) ||
-      (fence.endsWith('/') && path.startsWith(fence)),
-  );
 }
 
 function nulPaths(text: string): string[] {
@@ -271,9 +263,10 @@ async function validateDelivery(
   deps: BuilderDeps,
   context: BuilderContext,
   baseline: Stored<BaselineReceipt>,
+  guide: Guide,
   unit: Unit,
   delivery: UnitDelivery,
-): Promise<BuilderResult<string[]>> {
+): Promise<BuilderResult<{ commits: string[]; warnings: OwnershipWarning[] }>> {
   const source = baseline.value.source_sha;
   if (!SHA.test(source))
     return builderFailure(
@@ -415,6 +408,26 @@ async function validateDelivery(
       `Workspace identity changed for ${unit.id}.`,
       'Use the exact allocated native checkout and branch.',
     );
+  const actualHead = await builderGit(deps, ['rev-parse', 'HEAD'], delivery.workspace);
+  if (!actualHead.ok) return actualHead;
+  if (!SHA.test(actualHead.value.trim()))
+    return builderFailure(
+      ErrorCodes.BUILDER_PROOF,
+      `The allocated checkout did not return a full HEAD SHA for ${unit.id}.`,
+      'Restore the allocated checkout before importing the pinned delivery commit.',
+    );
+  const deliveredAncestor = await builderGit(
+    deps,
+    ['merge-base', '--is-ancestor', delivery.commit_sha, actualHead.value.trim()],
+    delivery.workspace,
+  );
+  if (!deliveredAncestor.ok)
+    return builderFailure(
+      ErrorCodes.BUILDER_PROOF,
+      `The delivered commit is not reachable from the allocated checkout HEAD for ${unit.id}.`,
+      'Deliver the intended committed artifact from this checkout’s history; later evidence commits may remain at HEAD.',
+      deliveredAncestor,
+    );
   const ancestor = await builderGit(
     deps,
     ['merge-base', '--is-ancestor', baseline.value.source_sha, delivery.commit_sha],
@@ -429,40 +442,29 @@ async function validateDelivery(
   if (!merges.ok) return merges;
   if (merges.value.trim())
     return builderFailure(
-      ErrorCodes.BUILDER_OWNERSHIP,
-      'Worker delivery contains merge commits.',
-      'Deliver a linear sequence of fenced unit commits.',
+      ErrorCodes.BUILDER_PROOF,
+      'Worker delivery contains merge commits that cannot be replayed without a mainline choice.',
+      'Prepare an equivalent linear delivery on the sealed baseline, then retry; this is a Git replay limitation, not an ownership restriction.',
     );
-  const commits = await builderGit(
-    deps,
-    ['rev-list', '--reverse', `${baseline.value.source_sha}..${delivery.commit_sha}`],
-    delivery.workspace,
+  const history = await committedDeliveryPaths(
+    (args) => builderGit(deps, args, delivery.workspace),
+    source,
+    delivery.commit_sha,
   );
-  if (!commits.ok) return commits;
-  const sequence = commits.value.trim().split(/\s+/).filter(Boolean);
-  if (!sequence.length || sequence.some((commit) => !SHA.test(commit)))
+  if (!history.ok) return history;
+  if (!history.value.commits.length)
     return builderFailure(
       ErrorCodes.BUILDER_PROOF,
       `No committed work for ${unit.id}.`,
       'Deliver actual unit commits, not the baseline itself.',
     );
-  for (const commit of sequence) {
-    const files = await builderGit(
-      deps,
-      ['diff-tree', '--no-commit-id', '--name-only', '--no-renames', '-r', '-z', commit],
-      delivery.workspace,
-    );
-    if (!files.ok) return files;
-    const outside = nulPaths(files.value).filter((path) => !builderOwnsPath(unit, path));
-    if (outside.length)
-      return builderFailure(
-        ErrorCodes.BUILDER_OWNERSHIP,
-        `Out-of-fence history in ${unit.id}.`,
-        'Remove unrelated commits from the delivery history; reverted writes are still outside ownership.',
-        outside,
-      );
-  }
-  return { ok: true, value: sequence };
+  return {
+    ok: true,
+    value: {
+      commits: history.value.commits,
+      warnings: ownershipWarnings(guide.units, history.value.paths, [unit], 'delivery', unit.id),
+    },
+  };
 }
 
 function compositionRoster(
@@ -492,7 +494,7 @@ function compositionRoster(
   return { ok: true, value: true };
 }
 
-async function integrationFence(
+async function integrationWarnings(
   deps: BuilderDeps,
   context: BuilderContext,
   guide: Guide,
@@ -505,19 +507,12 @@ async function integrationFence(
   const delta = await builderGit(deps, ['diff', '--name-only', '--no-renames', '-z', from, to]);
   if (!delta.ok) return delta;
   const pm = guide.units.filter((unit) => unit.role === 'pm');
-  const outside = nulPaths(delta.value).filter(
-    (file) =>
-      !isWithin(context.planDir, resolveInRepo(file, deps.repoRoot)) &&
-      !pm.some((unit) => builderOwnsPath(unit, file)),
+  const paths = nulPaths(delta.value).filter(
+    (file) => !isWithin(context.planDir, resolveInRepo(file, deps.repoRoot)),
   );
   return {
     ok: true,
-    value: outside.flatMap((file) => {
-      const owners = guide.units.filter((unit) => builderOwnsPath(unit, file));
-      return owners.length
-        ? owners.map((unit) => ({ file, owning_unit: unit.id, stage }))
-        : [{ file, owning_unit: 'unmapped', stage }];
-    }),
+    value: ownershipWarnings(guide.units, paths, pm, stage),
   };
 }
 
@@ -643,7 +638,7 @@ export async function composeBuilderUnits(
         'Resolve every readiness issue before importing.',
         ready.value,
       );
-    const integration = await integrationFence(
+    const integration = await integrationWarnings(
       deps,
       context,
       guide,
@@ -666,7 +661,19 @@ export async function composeBuilderUnits(
         'Composition must contain each coder exactly once.',
         'Use the reviewed guide dependency order and an exact delivery set.',
       );
-    const prepared: Array<{ delivery: UnitDelivery; commits: string[] }> = [];
+    if (
+      new Set(input.deliveries.map((delivery) => delivery.peer_id)).size !== input.deliveries.length
+    )
+      return builderFailure(
+        ErrorCodes.BUILDER_ACK,
+        'Multiple coder deliveries identify the same native peer.',
+        'Use each unit’s distinct allocated native peer and matching dispatch evidence before importing.',
+      );
+    const prepared: Array<{
+      delivery: UnitDelivery;
+      commits: string[];
+      warnings: OwnershipWarning[];
+    }> = [];
     for (const id of order) {
       const unit = coders.find((row) => row.id === id);
       const delivery = input.deliveries.find((row) => row.unit_id === id);
@@ -684,9 +691,16 @@ export async function composeBuilderUnits(
           `Invalid dependency order at ${id}.`,
           'Import dependencies before their consumers.',
         );
-      const validated = await validateDelivery(deps, context, baseline.value, unit, delivery);
+      const validated = await validateDelivery(
+        deps,
+        context,
+        baseline.value,
+        guide,
+        unit,
+        delivery,
+      );
       if (!validated.ok) return validated;
-      prepared.push({ delivery, commits: validated.value });
+      prepared.push({ delivery, ...validated.value });
     }
     for (const { delivery, commits } of prepared) {
       const fetched = await builderGit(deps, [
@@ -702,8 +716,8 @@ export async function composeBuilderUnits(
       if (!imported.ok)
         return builderFailure(
           ErrorCodes.BUILDER_CONFLICT,
-          `Composition stopped at ${delivery.unit_id}; Git conflict state is preserved.`,
-          'Inspect and resolve the visible cherry-pick state; do not claim completed composition or reset unrelated work.',
+          `Composition replay stopped at ${delivery.unit_id}; Git state is preserved.`,
+          'Inspect the cherry-pick error and resolve its conflict, empty commit or other replay limitation; this is not an ownership refusal. Do not claim completed composition or reset unrelated work.',
           imported,
         );
     }
@@ -718,7 +732,12 @@ export async function composeBuilderUnits(
       integration_sha: composed.value,
       files: [],
       checks: [],
-      warnings: integration.value,
+      warnings: [
+        ...(baseline.value.value.warnings ?? []),
+        ...(ready.value.warnings ?? []),
+        ...integration.value,
+        ...prepared.flatMap((row) => row.warnings),
+      ],
     });
   }
   if (!SHA.test(input.sha) || input.sha !== head.value)
@@ -741,7 +760,7 @@ export async function composeBuilderUnits(
     baseline.value.value.source_sha,
   );
   if (!roster.ok) return roster;
-  const integration = await integrationFence(
+  const integration = await integrationWarnings(
     deps,
     context,
     guide,
@@ -768,7 +787,7 @@ export async function composeBuilderUnits(
     files: snapshot,
     checks: [],
     warnings: [
-      ...(imported.value.value.warnings ?? []).filter((warning) => warning.stage === 'import'),
+      ...(imported.value.value.warnings ?? []).filter((warning) => warning.stage !== 'verify'),
       ...integration.value,
     ],
   };

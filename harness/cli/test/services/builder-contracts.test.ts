@@ -37,9 +37,33 @@ describe('Builder shared DD record contract', () => {
   it.each([
     fixtureAllocation(),
     fixtureBaseline(),
+    fixtureBaseline({
+      warnings: [
+        {
+          file: 'contracts.ts',
+          owning_unit: 'unmapped',
+          stage: 'guide',
+          code: 'baseline-owner',
+          message: 'No unit maps this shared file.',
+          next_action: 'Review the ownership guidance.',
+        },
+      ],
+    }),
     fixturePacket(),
     fixtureAck(),
     fixtureDispatch(),
+    fixtureDispatch({
+      warnings: [
+        {
+          file: '<guide:composition/owner>',
+          owning_unit: 'tk-0002',
+          stage: 'guide',
+          code: 'composition-owner',
+          message: 'Composition is mapped to a coder.',
+          next_action: 'Review the composition owner.',
+        },
+      ],
+    }),
     fixtureComposition(),
     fixtureReview(),
     fixturePreservation(),

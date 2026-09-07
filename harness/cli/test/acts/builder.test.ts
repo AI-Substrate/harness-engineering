@@ -87,6 +87,28 @@ describe('Builder CLI composition boundary', () => {
     });
   });
 
+  it('keeps unavailable on-track inspection advisory at the CLI boundary', async () => {
+    /*
+    Test Doc:
+    - Why: the self-serve map check must not become a new readiness gate.
+    - Contract: unavailable guide data yields compared:false and actionable issues, exit zero.
+    - Usage Notes: the selected plan does not exist in the fake filesystem.
+    - Quality Contribution: catches accidental error-envelope mapping for inspection failures.
+    */
+    const result = await runBuilder(['on-track', 'missing-plan.dd.json', '--untracked']);
+    expect(result.code).toBe(0);
+    expect(result.envelope.error).toBeUndefined();
+    expect(result.envelope.data).toMatchObject({
+      on_track: {
+        compared: false,
+        includes_untracked: true,
+        issues: expect.arrayContaining([
+          expect.objectContaining({ message: expect.any(String), next_action: expect.any(String) }),
+        ]),
+      },
+    });
+  });
+
   it('applies a role-scoped invocation override without changing the guide', async () => {
     const fixture = builderFixture();
     const result = await runBuilder(

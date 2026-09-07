@@ -19,6 +19,8 @@
 
 For team work, load `../team-lifecycle.md`: review the exact composition `artifact_sha`, plan/guide digests, frozen contracts, ownership and actual checks. Record the independent `ReviewReceipt` through `harness builder review <plan> --receipt <path>`. The reviewer records requested versus observed configuration and evidence gaps; provider identity is not attested by launch argv. If requested cross-model review cannot run, report it unfulfilled rather than substituting self-review or a solo fallback.
 
+Read guide, delivery, import and verify ownership warnings alongside the exact artifact and checks. Keep `file`, `owning_unit`, `stage` and declaration-only cause/fix visible. Coder and PM maps are guidance; out-of-map work needs no approval or justification and is not a review failure by itself. Real source/evidence integrity and failed product checks still matter. Optional `harness builder on-track <plan> [--unit <id>] [--from <ref>] [--to <ref>] [--untracked]` uses the same comparison without readiness, seal, review or receipt prerequisites and writes nothing. It exits 0; surface `compared`, issues and selected basis, not just warnings. Default includes tracked staged/unstaged work; explicit `--untracked` adds new paths and explicit `--to` is committed-only. See `../team-lifecycle.md` for basis and history selection; no inspection result replaces independent review.
+
 Review checks the scoped phase and composed behavior. **Whole-plan `--complete` gates post-flight EXIT**, after closeout evidence, never review exit. Future closeout assertions remain unchecked; do not mark them early to leave review. Phase task gates and review findings remain meaningful.
 
 ```bash

@@ -17,6 +17,7 @@ import {
 } from '../services/builder/dispatch-service.js';
 import { checkBuilderGuide, readBuilderGuide } from '../services/builder/guide-service.js';
 import { advanceBuilderStage } from '../services/builder/lifecycle-service.js';
+import { inspectBuilderOnTrack } from '../services/builder/on-track-service.js';
 import {
   builderContext,
   builderFailure,
@@ -272,6 +273,17 @@ async function executeBuilder(
         await selfCheckBuilderPacket(deps, {
           packet: argument,
           sha256: options.sha256 as string,
+        }),
+      );
+    case 'on-track':
+      return named(
+        'on_track',
+        await inspectBuilderOnTrack(deps, {
+          plan: argument,
+          ...(typeof options.unit === 'string' && { unit: options.unit }),
+          ...(typeof options.from === 'string' && { from: options.from }),
+          ...(typeof options.to === 'string' && { to: options.to }),
+          ...(options.untracked === true && { untracked: true }),
         }),
       );
     case 'advance':

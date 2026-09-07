@@ -317,7 +317,7 @@ Delegate when the work is bounded, independently executable, and its return can 
 
 Escalate when a worker reports material uncertainty, contradictory evidence, missing access, or a task that grew beyond its packet. A tier is a starting posture, never a substitute for reading the result.
 
-Worker packets name `tier:`, the owned question/task, allowed paths or sources, exclusions, and the return shape. Returns carry the conclusion, exact evidence pointers, material unknowns, and no duplicated context.
+Worker packets lead with owned paths, mapped reads, the job and observable done conditions; then give the actual packet pointer/digest, requested tier, genuine operational boundaries and return shape. Source maps guide coders and PM, never impose out-of-map approval or justification. Use the public `on-track` comparison in `team-lifecycle.md` for visible warnings, not a second policy engine. Returns carry the conclusion, exact evidence pointers, material unknowns, and no duplicated context.
 
 Rationale: [`harness-foundations/rules-of-why.md`](https://github.com/AI-Substrate/harness-engineering/blob/main/harness-foundations/rules-of-why.md) Rules 5–6 — spend inference where it changes the outcome, and move bounded work out of the lead context.
 

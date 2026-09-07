@@ -8,7 +8,7 @@
       "value": {
         "title": "Builder warning-first guidance: staged composition and startup cutover",
         "plan": "../plan.dd.json#meta",
-        "version": 2
+        "version": 3
       }
     },
     {
@@ -30,7 +30,13 @@
           "Read explicitly selected bounded regular packet, measure digest even if mismatched, compare actual repository root and HEAD with packet workspace and source_sha. For a historical packet lacking source_sha, use its in-root digest-bound baseline. Missing/unreadable/invalid packet/baseline or Git inspection yields warnings and no pretend success observation. Do not read arbitrary baseline paths outside the checkout. No clock window, root challenge, cleanliness/metadata veto, native seat handshake or state write.",
           "Bind exact current packet, dispatch and external allocation digests to delivery peer/workspace/source/unit. Validate root/branch and baseline ancestry before mutation. Compare packet.source_sha when present. Do not consult AckReceipt, acknowledgement, release outcome, delivery outcome, nonce/time-window or canary. Existing coder path-ownership warning conversion is checkpoint 3, not this change.",
           "FsPort.readBytesNoFollow(path, {maxBytes, root?}) optionally uses the existing bounded opened-file/confinement reader for exact packet-byte hashing. One-argument callers keep their existing behavior. Baseline reads supply the actual repository root; invalid UTF-8 remains observed bytes plus a warning, not a decoded-text digest claim.",
-          "Format evolution: current packets use builder/work-packet with source_sha; provisioning stages the missing package before native launch. Existing builder/packet schemas and historical packet/ack records remain unchanged/readable. This is an explicit new record schema, not a handshake shim or schema-validation bypass."
+          "Format evolution: current packets use builder/work-packet with source_sha; provisioning stages the missing package before native launch. Existing builder/packet schemas and historical packet/ack records remain unchanged/readable. This is an explicit new record schema, not a handshake shim or schema-validation bypass.",
+          "harness builder on-track <plan> [--unit <id>] [--from <ref>] [--to <ref>] [--untracked]",
+          "No mutation/readiness/review/seal prerequisite. With --unit compare that named unit map (mode unit), otherwise all PM maps. Default from is imported integration_sha for PM, otherwise sealed source_sha if available, otherwise HEAD with explicit basis=head; malformed existing basis is an issue, not silent fallback. Default to is HEAD plus tracked staged/unstaged work; --untracked explicitly adds new/untracked paths. Explicit --to compares committed range only. Resolve Git refs with --verify --end-of-options and report measured full SHAs. Invalid/unavailable inspection returns compared:false plus actionable issues, exit0. Never call builderHead because inspection works on main too.",
+          "OnTrackReport {compared, mode:unit|pm, unit_id?, basis?:explicit|import|baseline|head, from?,to?,includes_worktree,includes_untracked,warnings:OwnershipWarning[],issues:BuilderIssue[]}. Warnings use delivery stage for named-unit comparisons and verify for PM, so automatic and self-serve comparison rows match; issues explain incomplete inspection. No mandatory receipt/write.",
+          "ownership-service.ts now owns moved builderOwnsPath (no re-export), ownershipWarnings(units,paths,allowedUnits,stage,unitId?), and committedDeliveryPaths(readGit,from,to) -> {commits,paths}. The latter reads every touched path including reverted changes; caller owns root/ancestry and actual replay checks. No import cycle with composition-service.",
+          "GuideCheckReport/ReadinessReport/BaselineReceipt/DispatchReceipt/AdvanceResult may carry warnings. Guide ownership-only issues become warnings, never valid:false. Baseline and dispatch retain them; composition retains guide/delivery/import warnings and refreshes verify warnings; advance returns warning evidence rather than silently discarding it.",
+          "Keep wrong actual checkout/branch/commit, forged/mismatched receipt bindings, duplicate native peer and rewritten baseline failures before mutation; each names cause+fix. Do not treat all E477 as ownership or discard real Git/structural/check errors. Git replay limitations are operational, not scope policing; do not invent unsafe merge replay."
         ]
       }
     },
@@ -304,7 +310,8 @@
           "Run existing targeted tests with changed warning behavior and unchanged integrity contrasts; exercise real Git/CLI, including warnings on failed checks.",
           "Commit the exact source, obtain independent review, and run the full repository gate. Publish increment 1 separately; send PR and exact head to the prime for merge/activation confirmation.",
           "Do not mark later packet/self-check/delivery acceptance complete. Start subsequent increments from the approved staged order; preserve both source and red evidence from consumers.",
-          "Increment 2: PM owns shared APIs/schemas/fixtures and real CLI proof; the startup producer, delivery consumer and source-guidance helpers edit disjoint source areas. No tests/builds while concurrent edits are active. Integrate once, run source/packed smoke and all-scope checks, obtain exact-source independent review, publish separate PR for prime release confirmation."
+          "Increment 2: PM owns shared APIs/schemas/fixtures and real CLI proof; the startup producer, delivery consumer and source-guidance helpers edit disjoint source areas. No tests/builds while concurrent edits are active. Integrate once, run source/packed smoke and all-scope checks, obtain exact-source independent review, publish separate PR for prime release confirmation.",
+          "Increment 3: file-owned tool helpers implement delivery/on-track, guide warnings and source guidance against the PM-owned shared comparison/CLI/schema. The PM validates the integrated source, then runs a separate fresh local-only native operational scenario with actual worker/reviewer identities. Automated fixture, native operational and guided-skill conformance claims remain distinct."
         ],
         "proof": [
           "#checks/vd-0002",
@@ -320,7 +327,8 @@
         "inputs": [
           "Exact source SHA, plan/guide and recorded warning/check evidence",
           "Warning records identify file and owning units, or unmapped",
-          "Original integrity fixtures and real-Git smoke output; no claim of live fleet execution from tests"
+          "Original integrity fixtures and real-Git smoke output; no claim of live fleet execution from tests",
+          "Final warning propagation and on-track selection cases; fresh native operation receipts and local preservation inventory, explicitly separate from earlier runs"
         ],
         "proof": [
           "Existing independent review must assess the actual bytes and warning evidence; no new warning-approval gate",

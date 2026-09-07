@@ -12,6 +12,7 @@ export type BuilderVerb =
   | 'settings'
   | 'dispatch'
   | 'self-check'
+  | 'on-track'
   | 'advance'
   | 'compose'
   | 'review'
@@ -182,17 +183,42 @@ export const BUILDER_COMMANDS: BuilderCommand[] = [
     results: ['self_check'],
   },
   {
+    name: 'on-track',
+    argument: '<plan>',
+    description:
+      'Inspect the guide map against unit or PM changes; warnings only, no writes, exit 0',
+    options: [
+      {
+        flags: '--unit <id>',
+        description: 'Inspect one named unit; otherwise compare all PM maps',
+      },
+      {
+        flags: '--from <ref>',
+        description: 'Comparison base; defaults to import, baseline, then HEAD',
+      },
+      {
+        flags: '--to <ref>',
+        description: 'Committed endpoint; omission includes tracked working changes',
+      },
+      {
+        flags: '--untracked',
+        description: 'Also inspect untracked files when no --to is supplied',
+      },
+    ],
+    results: ['on_track'],
+  },
+  {
     name: 'advance',
     argument: '<plan>',
     description: 'Advance only through the canonical flow departure gates',
     options: [{ flags: '--now <node>', description: 'Canonical destination node', required: true }],
-    results: ['flow', 'now'],
+    results: ['flow', 'now', 'warnings'],
   },
   {
     name: 'compose',
     argument: '<plan>',
     description:
-      'Import fenced unit commits, or prove the committed PM composition; importing is not proof',
+      'Import unit commits with map warnings, or prove committed PM composition; importing is not proof',
     options: [
       {
         flags: '--import <path>',
