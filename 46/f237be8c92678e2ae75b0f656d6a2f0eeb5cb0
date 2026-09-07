@@ -1,0 +1,60 @@
+.dd/schemas/builder/team/schema.json
+  h_9e71e8b09f7cf2 449-460
+docs/how/harness-builder.md
+  h_9e71e8b09f7cf2 125-126
+docs/plans/099-builder-warning-guidance/assets/backpressure.dd.json
+  h_9e71e8b09f7cf2 1-135
+docs/plans/099-builder-warning-guidance/assets/backpressure.dd.md
+  h_9e71e8b09f7cf2 1-39
+docs/plans/099-builder-warning-guidance/assets/impl-guide.dd.json
+  h_9e71e8b09f7cf2 1-336
+docs/plans/099-builder-warning-guidance/assets/impl-guide.dd.md
+  h_9e71e8b09f7cf2 1-129
+docs/plans/099-builder-warning-guidance/assets/tasks/phase-1/tasks.dd.json
+  h_9e71e8b09f7cf2 1-140
+docs/plans/099-builder-warning-guidance/assets/tasks/phase-1/tasks.dd.md
+  h_9e71e8b09f7cf2 1-168
+docs/plans/099-builder-warning-guidance/assets/tasks/phase-2/tasks.dd.json
+  h_9e71e8b09f7cf2 1-100
+docs/plans/099-builder-warning-guidance/assets/tasks/phase-2/tasks.dd.md
+  h_9e71e8b09f7cf2 1-159
+docs/plans/099-builder-warning-guidance/assets/tasks/phase-3/tasks.dd.json
+  h_9e71e8b09f7cf2 1-100
+docs/plans/099-builder-warning-guidance/assets/tasks/phase-3/tasks.dd.md
+  h_9e71e8b09f7cf2 1-159
+docs/plans/099-builder-warning-guidance/original-ask.md
+  h_9e71e8b09f7cf2 1-11
+docs/plans/099-builder-warning-guidance/plan.dd.json
+  h_9e71e8b09f7cf2 1-262
+docs/plans/099-builder-warning-guidance/plan.dd.md
+  h_9e71e8b09f7cf2 1-196
+docs/plans/099-builder-warning-guidance/the-flow.json
+  h_9e71e8b09f7cf2 1-273
+docs/plans/099-builder-warning-guidance/the-flow.md
+  h_9e71e8b09f7cf2 1-40
+harness/cli/src/services/builder/composition-service.ts
+  h_9e71e8b09f7cf2 31,495-496,507-515,646,715,744,764-767
+harness/cli/src/services/builder/types.ts
+  h_9e71e8b09f7cf2 327-333,345-346
+harness/cli/src/services/docs/docs-content.ts
+  h_9e71e8b09f7cf2 130
+harness/cli/test/services/builder-lifecycle.test.ts
+  h_9e71e8b09f7cf2 770-778,780-797,799,802-845
+scripts/builder-smoke.mjs
+  h_9e71e8b09f7cf2 1,80-175,296-297
+skills/builder/references/stages/60-implement.md
+  h_9e71e8b09f7cf2 24
+skills/builder/references/team-lifecycle.md
+  h_9e71e8b09f7cf2 78-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "46f237be8c92678e2ae75b0f656d6a2f0eeb5cb0",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
