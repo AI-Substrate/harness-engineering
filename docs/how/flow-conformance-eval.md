@@ -2,8 +2,8 @@
 
 `harness flow-eval` is a **generic, config-driven evaluator** for the engineering
 harness flow. It grades a *finished* agent session against a scenario's
-assertions and writes a report — deterministically, from telemetry and the
-filesystem, with a thin LLM-judged layer on top.
+assertions and writes a report — deterministically, from telemetry or an explicit
+native Flowspace source plus the filesystem, with a thin LLM-judged layer on top.
 
 The idea: pick a checkpoint in a repo, hand an agent the **same** task every
 time, and tell it only that it is being evaluated and how to report — never *how*
@@ -35,9 +35,8 @@ flowchart LR
     report --> judge["orchestrator fills<br/>judged fields"]
 ```
 
-A scenario is **pure data**. Adding a new evaluation costs an `assertions.json`,
-not an engine change — the engine under `.harness/extensions/flow-eval/` is
-frozen and generic.
+A scenario is data. New proof surfaces extend the existing resolver registry;
+historical bundles retain their own semantics and hashes.
 
 ## The two trees
 
@@ -488,6 +487,100 @@ One practical prerequisite the hard way taught: a scenario that requires the
 legacy telemetry lane must use a base where capture exists and explicitly opt
 in to it; otherwise env-join keys and skill events resolve `unknown`. Pin old
 bases only when you want the ambient/capability-only reading.
+
+## Blind Builder team cohort (version 1)
+
+`builder-team-md-to-pdf` is separate from the historical scenarios. The subject
+receives only its task and the Builder mandate. The evaluator keeps the rubric,
+runbook and reports outside every subject/worker root. No prescribed worker quota,
+unit boundaries or stage choreography belongs in the task packet.
+
+After the product is committed, composed, reviewed and built, prepare a local
+package and a fresh consumer (replace paths with your retained/consumer locations):
+
+```bash
+npm pack --ignore-scripts --pack-destination /retained/packages
+node live-testing/scenarios/builder-team-md-to-pdf/prepare-consumer.mjs --package /retained/packages/ai-substrate-engineering-harness-0.14.0.tgz --dependencies /evaluator/node_modules --out /consumers/document-workbench --evidence /retained/preparation
+```
+
+Preparation copies only the local package and its installed runtime dependency
+closure. It installs packaged source skills locally, uses no registry or global
+installer, and records package SHA-256, versions and the initial consumer Git SHA.
+Missing local dependencies or source skills fail closed. Keep the reported
+`base_sha`; do not substitute the later contracts baseline or evaluator HEAD.
+
+Before dispatch, perform a native positive control using a separate OMP seat:
+
+```bash
+node harness/cli/bin/harness.js flow-eval score --scenario builder-team-md-to-pdf --session <control-peer> --worktree /control/root --evidence-source native
+```
+
+Only B1 is the positive control here; absent plan/artifact rows cannot pass. Inspect
+the persisted `peers.json`, `sync.json`, `verify.json`, `window-*.json` and
+`native-evidence.json`. The scorer resolves `pij-rs list --json`'s exact
+`data.seats[].session`, syncs through the local harness, verifies actual Flowspace
+delivery, then reads contiguous windows with `--before 0 --after 200` through the
+verified final turn. A growing, truncated, missing or misbound conversation stays
+incomplete. Turns, timestamps and tool items are native facts; telemetry segments,
+usage/cost, command exits, check outcomes and refusals remain unknown. Quoted
+commands and opaque wrapper bodies are not treated as executed commands. Requested
+and observed model configuration never attests the provider-served model.
+
+Dispatch only `prompts/subject.md` plus the root and reply channel, through the
+existing pij peer protocol. After the subject completes, score from the evaluator
+checkout, not from any disposable root:
+
+```bash
+node harness/cli/bin/harness.js flow-eval score --scenario builder-team-md-to-pdf --session <subject-pm> --worktree /consumers/document-workbench --evidence-source native --subject-plan docs/plans/<new-plan>/plan.dd.json --base-ref <preparation-base-sha>
+```
+
+The subject-plan lane rejects inherited identities and delegates semantic links
+and completion to local `ddocs validate` and the existing `harness plan validate
+--complete`. Team evidence checks frozen Builder records, exact packet/nonce/root
+acknowledgements, delivered releases, nonempty fenced implementation commits,
+native write/commit evidence, capability ownership and independent review of the
+composed SHA. Checker/reviewer-only padding is not implementation. Later code drift
+invalidates review; factual plan progress does not change business intent.
+
+The independent PDF lane uses the subject's `.harness/pdf-command.json` `argv`
+interface and two fresh nonce-bearing inputs. Install **PyMuPDF** in the evaluator
+Python environment; missing inspector tooling is unknown. The probe parses PDF
+text, checks Mermaid shapes/connectors and preserves page PNGs, source files,
+output PDFs and invocation receipts. Inspect the PNGs for readability. Every
+required row must pass **and** architectural/visual judgement must agree; a score
+or stage-name trace alone is not acceptance.
+
+Preserve before closing peers or removing any allocation:
+
+```bash
+node live-testing/scenarios/builder-team-md-to-pdf/preserve-run.mjs --report /evaluator/.harness/live-testing/builder-team-md-to-pdf/<run>/report.json --out /retained/completed-run
+```
+
+This retains the complete report directory, each unique workspace (including local
+runtime dependencies), Git bundles and a SHA-256 manifest outside all disposable
+roots. It verifies archives/bundles before recording completion; teardown remains
+ownership-aware and explicit. Review native-source gaps separately from capability
+failures, and retain failed/partial runs too.
+
+The focused regression command collects only this extension and fails on zero tests:
+
+```bash
+node_modules/.bin/vitest run --config .harness/extensions/flow-eval/vitest.config.ts
+```
+
+With the evaluator's PyMuPDF installed, run the real parser/diagram negative controls:
+
+```bash
+python3 .harness/extensions/flow-eval/pdf-probe-controls.py
+```
+
+Raster Mermaid inspection additionally requires Tesseract OCR. Missing inspector
+dependencies remain unknown, never a fake pass. Node V8 execution coverage from the
+fresh invocation ties changed implementation files to working capability; it is
+not session telemetry, and unmeasured non-JavaScript contributions remain unknown.
+Fresh worker clones run their tracked `node setup.mjs` to copy the retained local
+runtime into their own `node_modules`; no shared writable dependency symlink or
+global installer is used.
 
 ## See also
 

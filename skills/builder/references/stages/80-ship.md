@@ -7,7 +7,7 @@
 **Verb**: ship
 **Purpose**: Get the work **out** — push the branch, open a pull request (using repo PR guidance when present), watch the PR's CI checks, and report problems. The actual merge is **optional** (platform auto-merge, or a separate confirm-gated step); a meaningfully diverged base is handed off to the upstream-**reconcile** excursion rather than merged locally here. Best-effort throughout: degrades to a printed instruction when `gh` is absent, the repo is on its default branch with nothing to push, or no CI is configured — it never crashes out of a `gh` call.
 
-**Consumes**: an implemented + reviewed plan (review verdict APPROVE / clean, or an explicit user override); plan folder resolvable (`*-plan.md`, or a legacy `*-spec.md`); a git repository. Optional inputs (all best-effort, each degrades): a working branch with commits ahead of the base; `gh` CLI present + authenticated; repo PR guidance — `.github/pull_request_template.md` (or `.github/PULL_REQUEST_TEMPLATE*`), `CONTRIBUTING*`, `CODEOWNERS`, the repo's default base branch.
+**Consumes**: implemented/reviewed product plan, separate guide, exact composition/review receipts and post-flight preservation evidence; prefer archived `plan.dd.json`, then historical Markdown without conversion. Optional Git/PR/CI capabilities remain best-effort and named when unavailable.
 
 **Flags**: `--plan "<abs path to docs/plans/<ordinal>-<slug>/>"` (optional; auto-detect from cwd) · `--base "<branch>"` (optional; PR base, default = repo default branch) · `[--no-watch]` (optional; open the PR but skip the CI-check watch) · `[--draft]` (optional; open the PR as a draft) · `[--watch-cap "<minutes>"]` (optional; bound the check-watch, default 20).
 
@@ -18,6 +18,8 @@
 ## dd-native plans: the PR body renders the proof (plan 071)
 
 The plan folder archived at post-flight, so the corpus is read from `docs/plans/archive/<ord>-<slug>/`. Read it with the CLI rather than by parsing markdown:
+
+For team work, confirm that the published artifact is the independently reviewed composition SHA, not merely imported unit commits. Re-read preservation after factual progress/archive relocation; shipping does not authorize retiring a live or externally owned workspace. `../team-lifecycle.md` owns those separate close/tidy boundaries. `../backpressure-recipe.md` owns canonical survey/proven_by links; do not generate a second Markdown survey for the PR.
 
 ```bash
 ARCHIVE="docs/plans/archive/<ord>-<slug>"
@@ -77,7 +79,7 @@ $ARGUMENTS
 
 1) Input Resolution
 
-   - PLAN_DIR = provided --plan OR auto-detect from cwd (look for *-plan.md, or a legacy *-spec.md).
+   - PLAN_DIR = provided --plan OR auto-detect from cwd (prefer plan.dd.json, then historical *-plan.md / *-spec.md).
      Completed plans live under `docs/plans/archive/<ord>-<slug>/` (the close-out stage archives them
      pre-ship), so resolve there FIRST; a `docs/plans/<ord>-<slug>/` path that no longer exists has
      almost certainly moved to the archive — probe `docs/plans/archive/<same basename>/` before erroring.

@@ -63,6 +63,7 @@ export interface ReportProvenance {
    * only when ≥1 resolution was given, so a comparison knows what actually ran.
    */
   resolutions?: Record<string, string>;
+  evidence?: Record<string, unknown>;
 }
 
 export interface ReportInput {
@@ -139,6 +140,7 @@ export function buildReportJson(input: ReportInput): Record<string, unknown> {
     })),
     provenance: {
       judge: input.provenance?.judge ?? null,
+      ...(input.provenance?.evidence && { evidence: input.provenance.evidence }),
       ...(input.provenance?.resolutions && Object.keys(input.provenance.resolutions).length > 0
         ? { resolutions: input.provenance.resolutions }
         : {}),
@@ -187,6 +189,11 @@ export function buildReportMd(input: ReportInput): string {
     lines.push(`- **⚠ base_ref warning**: ${mdCell(input.base_ref_warning)}`);
   }
   lines.push(`- **Run**: ${input.run_id} (${input.started_at} → ${input.finished_at})`);
+  if (input.provenance?.evidence) {
+    lines.push(`- **Evidence source**: ${mdCell(String(input.provenance.evidence.source))} · ${mdCell(String(input.provenance.evidence.path))}`);
+    lines.push('- **Proof ceiling**: native turns are not telemetry segments; token/cost, exits, checks and refusals remain unknown. Model configuration is not provider attestation.');
+    lines.push(`- **Selected subject plan**: ${mdCell(String(input.provenance.evidence.subject_plan))}`);
+  }
   if (input.provenance?.resolutions && Object.keys(input.provenance.resolutions).length > 0) {
     const rs = Object.entries(input.provenance.resolutions)
       .map(([id, c]) => `${id}=${c}`)
@@ -273,7 +280,7 @@ export function renderMarkdownFromReportJson(parsed: unknown): RenderFromJsonRes
     typeof v === 'number' && Number.isFinite(v) ? v : null;
   const axis = (det.axis_scores as Record<string, unknown> | undefined) ?? {};
   const judged = (Array.isArray(j.judged) ? j.judged : []) as JudgedField[];
-  const provenance = j.provenance as { judge?: unknown; resolutions?: unknown } | undefined;
+  const provenance = j.provenance as { judge?: unknown; resolutions?: unknown; evidence?: Record<string, unknown> } | undefined;
 
   const scored: ScoredReport = {
     deterministic: {
@@ -305,6 +312,7 @@ export function renderMarkdownFromReportJson(parsed: unknown): RenderFromJsonRes
     scored,
     provenance: {
       judge: (provenance?.judge ?? null) as ReportProvenance['judge'],
+      ...(provenance?.evidence && { evidence: provenance.evidence }),
       ...(provenance?.resolutions && typeof provenance.resolutions === 'object'
         ? { resolutions: provenance.resolutions as Record<string, string> }
         : {}),

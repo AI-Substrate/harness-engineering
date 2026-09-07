@@ -7,35 +7,27 @@
 **Verb**: review
 **Purpose**: Read-only per-phase code review — inspects diffs, validates domain compliance, checks for concept reinvention, verifies testing evidence, and produces structured findings as file artifacts. Does NOT modify code.
 
-**Consumes**: an implemented phase (the implement verb finished — execution log written, changes committed or in working tree); plan.md with `**Mode**: Simple` or `**Mode**: Full`; in Full Mode the phase's tasks dossier (`assets/tasks/<phase-slug>/tasks.md`; legacy root `tasks/` fallback); spec, git diffs, `docs/domains/**` (domain mode ON only), `docs/project-rules/**`.
+**Consumes**: an implemented phase; product `plan.dd.json`, reviewed `assets/impl-guide.dd.json`, `assets/backpressure.dd.json`, phase `tasks.dd.json` and actual execution receipts; exact composed artifact SHA for team review. Historical Markdown plans remain readable under their original contract. Domain context is opt-in.
 
-**Flags**: `--plan "<abs path to plan.md>"` (required), `--phase "<Phase N: Title>"` (required for Full Mode, omit for Simple Mode), `--diff-file "<abs path to unified.diff>"` (optional; otherwise computed from git), `--strict` (optional; treat HIGH as blocking).
+**Flags**: `--plan "<abs path to plan.dd.json or historical plan.md>"` (required), `--phase "<phase id or title>"` (required for Full Mode, omit for Simple Mode), `--diff-file "<abs path to unified.diff>"` (optional; otherwise computed from git), `--strict` (optional; treat HIGH as blocking).
 
 **Produces**: Review file `${REVIEW_FILE}` with sections A–H (verdict, summary, checklist, findings table, detailed findings, coverage map, commands, Handover Brief); computed diff saved to `reviews/_computed.diff`; fix-tasks file `${FIX_FILE}` only if verdict is REQUEST_CHANGES. Terminal report: verdict + key failure areas.
 
 **Side effects**: none (read-only — does NOT modify code)
 
-## dd-native plans: closing criteria and clearing the check gate (plan 071, ac-7111/ac-7116)
+## Independent review and evidence
 
-The last review node carries the `plan-validate` CHECK gate. Departure is refused until the plan is green by its own documents, so run the gate's own question first — the refusal quotes every finding, but reading them early is cheaper than being stopped:
+For team work, load `../team-lifecycle.md`: review the exact composition `artifact_sha`, plan/guide digests, frozen contracts, ownership and actual checks. Record the independent `ReviewReceipt` through `harness builder review <plan> --receipt <path>`. The reviewer records requested versus observed configuration and evidence gaps; provider identity is not attested by launch argv. If requested cross-model review cannot run, report it unfulfilled rather than substituting self-review or a solo fallback.
 
-```bash
-harness plan validate "${PLAN_DIR}/plan.dd.json" --complete
-```
-
-Green means **exactly zero errors and zero warnings**. Under `--complete` an open row and an unclaimed acceptance criterion each warn, so the two things it typically catches are real: work still open, and a criterion no task `satisfies`.
-
-Close criteria and record their evidence through the verbs — never an editor:
+Review checks the scoped phase and composed behavior. **Whole-plan `--complete` gates post-flight EXIT**, after closeout evidence, never review exit. Future closeout assertions remain unchecked; do not mark them early to leave review. Phase task gates and review findings remain meaningful.
 
 ```bash
-node_modules/.bin/ddocs set "${PLAN_DIR}/plan.dd.json#acceptance_criteria/ac-XXXX/state" checked
-node_modules/.bin/ddocs set "${PLAN_DIR}/plan.dd.json#acceptance_criteria/ac-XXXX/receipt" "<command + result>"
-node_modules/.bin/ddocs link verify-basis "<address>" --sha "<sha>" --update "${PLAN_DIR}/plan.dd.json"   # a moved basis
+harness plan validate "${PLAN}" --address "${TASK_ADDRESS}"
+node_modules/.bin/ddocs get "${PRESSURE_ADDRESS}"
+node_modules/.bin/ddocs get "${PLAN}#acceptance_criteria"
 ```
 
-Closure is a PERFORMED act: nothing derives an AC's state for you. The guard rails make the claim trustworthy; they do not make it for you.
-
-If the gate still refuses and departing anyway is the **human's** decision, they pass `--force`, which records a defended override as a `dd-gate-override` event and returns a degraded envelope. **An agent may not force a dd gate on its own judgment** — `human-skipped` or `na` on the individual rows is the legitimate way a gate passes without the work.
+Resolve these addresses in Procedure Step 1. The PM closes only proven ACs using the canonical `../backpressure-recipe.md`: preserve `pressure`, link `proven_by` to an observed execution entry resolved from the actual `meta.log`/receipt address, and then set state. Read-only reviewers propose dispositions and never rewrite implementation or canonical progress. A schema check is not behavior proof; a passed unit test is not assembled-product proof. Accepted risk needs a named decision and cannot be hidden in an approved label.
 
 ---
 
@@ -50,56 +42,54 @@ User input:
 
 $ARGUMENTS
 # Required flags (absolute paths):
-# --phase "<Phase N: Title>"   # Required for Full Mode, omit for Simple Mode
-# --plan "<abs path to plan.md>"
+# --phase "<phase id or title>"   # Required for Full Mode, omit for Simple Mode
+# --plan "<abs path to plan.dd.json or historical plan.md>"
 # Optional flags:
 # --diff-file "<abs path to unified.diff>"   # if omitted, compute from git
 # --strict                                   # treat HIGH as blocking
 
 ## Step 1: Resolve Inputs & Artifacts
 
-**Mode Detection**: Read plan for `**Mode**: Simple` or `**Mode**: Full`
+**Select the input contract before resolving artifacts.** Resolve `--plan` to its canonical source: `.dd.json` directly, the matching `.dd.json` sibling for a generated `.dd.md` face, or the sibling `plan.dd.json` when an older Markdown entrypoint accompanies a current DD plan. A missing or invalid DD source is an explicit input error, never permission to fall through to legacy Markdown.
 
-**Full Mode** artifact resolution:
-- PLAN = provided --plan
-- PLAN_DIR = dirname(PLAN)
-- SPEC = `${PLAN_DIR}/<slug>-plan.md` § `## Business Specification` (unified plan), else a legacy `${PLAN_DIR}/<slug>-spec.md`
-- PHASE_SLUG = slugified phase title
-- PHASE_DIR = `${PLAN_DIR}/assets/tasks/${PHASE_SLUG}` (legacy root `tasks/` fallback — § Plan-folder layout, `references/00-routing.md`; write review files where the dossier already lives)
-- PHASE_DOC = `${PHASE_DIR}/tasks.md`
-- EXEC_LOG = `${PHASE_DIR}/execution.log.md`
-- REVIEW_FILE = `${PHASE_DIR}/reviews/review.${PHASE_SLUG}.md`
-- FIX_FILE = `${PHASE_DIR}/reviews/fix-tasks.${PHASE_SLUG}.md` (only if REQUEST_CHANGES)
+**Canonical DD plans** (`dd.schema = builder/plan`):
+- PLAN = absolute canonical DD source; PLAN_DIR = dirname(PLAN).
+- Read `${PLAN}#meta` and `${PLAN}#phases` through local `node_modules/.bin/ddocs get`. MODE comes from `meta.mode` (`Full|Simple`), never Markdown `**Mode**` text. Missing/invalid mode is an input error.
+- SPEC = PLAN; requirements and ACs come from its `summary`, `goals`, `non_goals` and `acceptance_criteria` sections. GUIDE = `${PLAN_DIR}/assets/impl-guide.dd.json`; read architecture, unit ownership, checks and composition there. Testing approach and known hazards come from PLAN `testing_strategy`, `key_findings` and `risks`, not Markdown headings.
+- Full Mode: resolve `--phase` against the recorded phase ID/title, then follow that phase's exact `tasks` DD address relative to PLAN. TASK_ADDRESS is the resolved address; PHASE_DOC is its source file and PHASE_DIR = dirname(PHASE_DOC). Do not derive a task directory by slugifying a title or equate phase IDs with directory ordinals. Missing/ambiguous phase or missing task target is an input error.
+- Simple Mode: TASK_ADDRESS = `${PLAN}#tasks`; PHASE_DOC = PLAN. Read inline `tasks` and their `done` assertion links; no phase dossier is required.
+- Read TASK_ADDRESS and follow each task's actual `done`, `satisfies`/`satisfies_toward` and assertion `pressure`/`proven_by` links. DD addresses resolve relative to their containing source document, not shell cwd or the guide.
+- EXEC_LOG_ADDRESS = the phase task document's `meta.log` when declared, otherwise the product plan's `meta.log`, resolved relative to the declaring document. EXEC_LOG = its source file. Read the addressed execution entries and any separately linked `proven_by` receipts; do not substitute an assumed `execution.log.md` or filename such as `execution-log.dd.json` for the declared address. Missing/unreadable evidence is a review finding, not a fabricated fallback.
+- PRESSURE_ADDRESS = product `meta.backpressure`, resolved relative to PLAN; its source is the canonical backpressure DD document. Follow the selected AC/assertion rows, including actual proof approach and certainty.
+- REVIEW_DIR = `${PHASE_DIR}/reviews` for Full Mode, `${PLAN_DIR}/assets/reviews` for Simple Mode. PHASE_SLUG is a display/report basename derived from the selected phase title only. REVIEW_FILE = `${REVIEW_DIR}/review.${PHASE_SLUG}.md` for Full Mode or `${REVIEW_DIR}/review.md` for Simple Mode; FIX_FILE uses the matching `fix-tasks` basename only for REQUEST_CHANGES.
+- Continue at Step 2 with these resolved inputs. Downstream references to task tables, business specification, testing strategy or logs mean the DD sections/addresses just resolved. Never execute the historical resolution branch for a DD plan.
 
-**Simple Mode** artifact resolution:
-- PLAN = provided --plan
-- PLAN_DIR = dirname(PLAN)
-- SPEC = `${PLAN_DIR}/<slug>-plan.md` § `## Business Specification` (unified plan), else a legacy `${PLAN_DIR}/<slug>-spec.md`
-- PHASE_DOC = PLAN itself (inline tasks from § Implementation)
-- EXEC_LOG = `${PLAN_DIR}/assets/execution.log.md` (legacy root fallback)
-- REVIEW_FILE = `${PLAN_DIR}/assets/reviews/review.md`
-- FIX_FILE = `${PLAN_DIR}/assets/reviews/fix-tasks.md` (only if REQUEST_CHANGES)
+**Historical Markdown only** (the supplied plan is Markdown and no canonical DD source exists):
+- PLAN = provided --plan; PLAN_DIR = dirname(PLAN). Read `**Mode**: Simple` or `**Mode**: Full` only in this branch. Preserve historical read paths; do not migrate or reopen completed plans.
+- SPEC = `${PLAN_DIR}/<slug>-plan.md` § `## Business Specification` (unified plan), else a legacy `${PLAN_DIR}/<slug>-spec.md`.
+- Full Mode: PHASE_SLUG = slugified phase title; PHASE_DIR = `${PLAN_DIR}/assets/tasks/${PHASE_SLUG}` (legacy root `tasks/` fallback — § Plan-folder layout, `references/00-routing.md`). PHASE_DOC = `${PHASE_DIR}/tasks.md`; EXEC_LOG = `${PHASE_DIR}/execution.log.md`; REVIEW_DIR = `${PHASE_DIR}/reviews`.
+- Simple Mode: PHASE_DOC = PLAN (inline § Implementation tasks); EXEC_LOG = `${PLAN_DIR}/assets/execution.log.md` (legacy root fallback); REVIEW_DIR = `${PLAN_DIR}/assets/reviews`.
+- REVIEW_FILE = `${REVIEW_DIR}/review.${PHASE_SLUG}.md` for Full Mode or `${REVIEW_DIR}/review.md` for Simple Mode. FIX_FILE uses the matching `fix-tasks` basename only for REQUEST_CHANGES.
 
-Create the `reviews/` directory if it doesn't exist:
-- **Full Mode**: `${PHASE_DIR}/reviews/`
-- **Simple Mode**: `${PLAN_DIR}/assets/reviews/`
+Create only the resolved REVIEW_DIR if absent. Input resolution is read-only; never create missing canonical plan/task/evidence sources during review.
 
 ## Step 2: Gather Diffs
 
 - If `--diff-file` provided: read it
-- Otherwise: compute diff from git using this detection strategy:
+- For a team composition review, bind the diff to the recorded baseline and exact verified `artifact_sha`, even when the current working tree has newer changes. An explicit diff must identify that same subject; missing/mismatched basis is a finding, never a fallback to HEAD or uncommitted work.
+- Otherwise, for a non-team phase review, compute the diff from git using this detection strategy:
 
   1. **Check for uncommitted changes first**: `git diff --stat` and `git diff --staged --stat`
      - If uncommitted/staged changes exist → use `git diff` and `git diff --staged` for diffs
   2. **If working tree is clean** (already committed): look at recent commit history
-     - Read execution.log.md for the commit hash or file list
+     - Read the resolved EXEC_LOG/EXEC_LOG_ADDRESS for the commit hash or file list
      - Find the commit(s) for this phase by scanning `git log --oneline -10` for phase-related messages
      - Use `git diff <commit-before-phase>..HEAD` to get the full phase diff
-     - If unclear which commits belong to this phase, use the file list from execution.log.md or task table Path(s) column:
+     - If unclear which commits belong to this phase, use the file list from the resolved execution receipts or PHASE_DOC task paths:
        `git log --all --follow -- <file>` to find the relevant commits, then diff from the earliest
-  3. **Fallback**: If git history is unclear, read file list from task table Path(s) column and diff each file against its last committed state before the plan started
+  3. **Fallback**: If git history is unclear, use the resolved task paths and diff each file against its last committed state before the plan started; report any uncertain basis
 - Build a file manifest: every file touched, with action (created/modified/deleted)
-- Save computed diff to `${REVIEW_DIR}/reviews/_computed.diff` for reproducibility (where REVIEW_DIR = PHASE_DIR in Full Mode, PLAN_DIR in Simple Mode)
+- Save computed diff to `${REVIEW_DIR}/_computed.diff` for reproducibility
 
 ## Step 3: Launch Review Subagents (Parallel)
 
@@ -192,7 +182,7 @@ tier: Opus-class
 **Read**:
 - PHASE_DOC (task table — check completion status)
 - EXEC_LOG (implementation evidence)
-- SPEC § Testing Strategy (expected approach)
+- PLAN `testing_strategy` for DD inputs; SPEC § Testing Strategy only for historical Markdown
 - Changed test files (from diffs)
 
 **Check** (adapt to testing approach from spec):
@@ -260,12 +250,12 @@ Write `${REVIEW_FILE}` (create `reviews/` dir if needed):
 ```markdown
 # Code Review: [Phase Title]
 
-**Plan**: [absolute path to plan.md]
-**Spec**: [absolute path to spec.md]
+**Plan**: [resolved canonical PLAN, or historical Markdown path]
+**Specification / guide**: [resolved SPEC and GUIDE when DD]
 **Phase**: [phase title, or "Simple Mode"]
 **Date**: [today]
 **Reviewer**: Automated (the review verb)
-**Testing Approach**: [from spec]
+**Testing Approach**: [from resolved testing_strategy or historical specification]
 
 ## A) Verdict
 
@@ -368,11 +358,11 @@ Universal (all approaches):
 
 **Review result**: [APPROVE | APPROVE WITH NOTES | REQUEST_CHANGES]
 
-**Plan**: [absolute path to plan.md]
-**Spec**: [absolute path to spec.md]
+**Plan**: [resolved canonical PLAN, or historical Markdown path]
+**Specification / guide**: [resolved SPEC and GUIDE when DD]
 **Phase**: [phase title, or "Simple Mode"]
-**Tasks dossier**: [absolute path to tasks.md, or "inline in plan"]
-**Execution log**: [absolute path to execution.log.md]
+**Tasks dossier**: [resolved TASK_ADDRESS/PHASE_DOC, or historical inline plan]
+**Execution log**: [resolved EXEC_LOG_ADDRESS/EXEC_LOG; name absent evidence explicitly]
 **Review file**: [absolute path to this review file]
 
 ### Files Reviewed
@@ -437,7 +427,7 @@ Apply in order. Re-run review after fixes.
 - **Patches are hints only**: Unified diff snippets in report, not applied
 - **Report is deterministic**: Quote minimal context, use absolute paths throughout
 - **Domain map validation is mandatory when domain mode is ON**: If domain-map.md exists (and domain mode is ON), it MUST be checked; domain mode OFF → skip
-- **ALWAYS write review file**: Never just output to console — write the file to the phase's `reviews/` directory (Full Mode: `${PHASE_DIR}/reviews/`, Simple Mode: `${PLAN_DIR}/assets/reviews/`)
+- **ALWAYS write review file**: Never just output to console — write the file to the resolved REVIEW_DIR
 - **ALWAYS include Handover Brief**: The next agent needs full context with absolute paths
 ```
 

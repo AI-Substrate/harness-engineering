@@ -7,7 +7,7 @@
 **Verb**: reconcile
 **Purpose**: A **conditional upstream-reconcile excursion** — fired when the target branch (default `main`) has **meaningfully diverged** since the branch point, not as a routine terminal step. Analyze what landed upstream and generate a comprehensive reconcile/merge plan document — diagrams, conflict tables, regression risks, ordered steps — before any merge execution. Analysis only by default; merge execution runs ONLY after the user explicitly types `PROCEED`. On ABORT the plan is saved for later; re-enter with this verb and the same `--plan`. (Getting work *out* — push, PR, watch checks — is the **ship** verb's job; this verb only handles pulling a diverged base back *in*.)
 
-**Consumes**: all phases implemented and reviewed; clean working tree (no uncommitted changes); on a branch (not detached HEAD); plan folder resolvable (contains `*-plan.md`, or a legacy `*-spec.md`); target branch exists and is reachable. Input artifacts — git history (ancestor/HEAD/target), your spec/plan/execution logs, upstream plan folders under `docs/plans/`, `docs/domains/**` (optional).
+**Consumes**: implemented and reviewed phases, clean branch, reachable target and canonical `plan.dd.json` plus separate `assets/impl-guide.dd.json`, actual composition/review evidence and logs. Historical Markdown plans remain readable without conversion. Material integration changes require fresh composition proof and review.
 
 **Flags**: `--plan "<abs path to docs/plans/<ordinal>-<slug>/>"` (optional; auto-detect from current directory), `--target "main"` (optional; branch to merge from, default `main`).
 
@@ -249,9 +249,9 @@ tier: Opus-class
 - TARGET = ${TARGET}
 
 **Read (via git show ${TARGET}:path):**
-- ${PLAN_FOLDER}/${SLUG}-plan.md § `## Business Specification` (summary, goals, acceptance criteria); legacy ${PLAN_FOLDER}/${SLUG}-spec.md if present
-- ${PLAN_FOLDER}/${SLUG}-plan.md § `## Implementation Plan` (phases, tasks, critical findings)
-- ${PLAN_FOLDER}/assets/tasks/*/execution.log.md (implementation decisions; legacy root `tasks/` fallback)
+- ${PLAN_FOLDER}/plan.dd.json: product claims, goals and phase accounting; historical product Markdown remains a read fallback.
+- ${PLAN_FOLDER}/assets/impl-guide.dd.json: architecture, contracts, ownership, composition and selected checks.
+- ${PLAN_FOLDER}/assets/execution-log.dd.json and phase logs: actual evidence; historical prose logs remain readable.
 
 **Output** - Plan Summary Card:
 ```markdown
@@ -302,9 +302,9 @@ git log ${ANCESTOR}..HEAD --oneline
 ```
 
 **Read:**
-- Your `<slug>-plan.md` § `## Business Specification` (what you're building) — fall back to a legacy `<slug>-spec.md` only if the folder still has a standalone one
-- Your `<slug>-plan.md` § `## Implementation Plan` (what you've done)
-- Your execution logs (decisions made)
+- Your product `plan.dd.json` (what must hold), or the historical product Markdown source when applicable.
+- Your separate `assets/impl-guide.dd.json` (architecture, frozen interfaces and composition) and exact verified/reviewed artifact SHA.
+- Your actual execution receipts, `assets/backpressure.dd.json` pressure links and AC `proven_by` evidence. Preserve these bindings when reconciling; do not mark an untested merged artifact proven.
 
 **Output:**
 ```markdown

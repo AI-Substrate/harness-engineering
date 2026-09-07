@@ -136,14 +136,14 @@ Once the required adoption rungs hold, the router crosses into the loop and disp
 | Where in the work (signals H · I / `--event`) | Route to | Produces |
 |---|---|---|
 | session start / unknown | `boot` verb (re-run the boot adoption built) | a boot verdict (healthy / SLOW / UNHEALTHY / UNAVAILABLE) |
-| spec done, pre-architect | `backpressure` verb | `backpressure-coverage.md` |
+| spec done, pre-architect | `backpressure` verb | `backpressure.dd.json` |
 | mid-build (doing work) | capture is one CLI call — `harness observe "<what>" --kind <kind>` *(silent; capture judgment lives in the `retro` verb § in-flight capture)* | one buffer entry per call |
 | phase / session end · **buffer non-empty** | `retro` verb `--drain` | buffer drained → `.retro.md` (`next_suggested: --harvest`) |
 | phase / session / plan end · **buffer empty** | `retro` verb `--harvest` | curated cross-plan view |
 | ad-hoc cross-plan analysis (`at=insights`; scope flags pass through) | `retro` verb `--harvest`, backed by `harness retro insights --json` | narrated cross-plan insights + cluster member provenance |
 | improvement chosen | route the improvement by its shape — **sensor-shaped friction (a recurring check / diagnostic / proof you kept inferring → targets `project-sensor` / `runtime-inspectability` / `architecture-fitness` / `security` / `schema`) routes to `add-extension`** (scaffold a first-class, discoverable `harness <verb>`, the encoding move proper) · a one-off convenience → retro `[e]ncode` (recipe/doc) · larger work → a fix-plan command · (harness-product friction in a consumer repo) → an upstream issue on `AI-Substrate/harness-engineering` | the encoded harness change (or the filed upstream issue) |
 
-- **Backpressure → `/grill-agent-done` (optional peer skill).** When the `backpressure` survey returns `ABSENT`/`BUILDABLE` sensors, the coach may offer `/grill-agent-done` before architect — a standalone skill in this repo (`skills/grill-agent-done/`) that interrogates and defends the definition of done one claim at a time, lining each against the right proof grade. **Not** a routed stage: the router points at it, exactly as the survey informs but never gates. Skippable; offer once.
+- **Backpressure → `/grill-agent-done` (optional peer skill).** When the `backpressure` survey returns `ABSENT`/`BUILD` sensors, the coach may offer `/grill-agent-done` before architect — a standalone skill in this repo (`skills/grill-agent-done/`) that interrogates and defends the definition of done one claim at a time, lining each against the right proof grade. **Not** a routed stage: the router points at it, exactly as the survey informs but never gates. Skippable; offer once.
 - **Drain before harvest.** At phase/session/plan end, if the observe buffer is non-empty the router routes `--drain` *first* (harvest only reads `.retro.md`, so harvesting a non-drained buffer would miss the latest session). One command per call; the parent calls again for harvest.
 - **Improve is where the loop compounds.** The loop only *compounds* when a retro leads to an encoded improvement. A single mid-plan session may encode nothing — but **`post-flight` (plan complete) must not end silently**: after harvest, name the highest-leverage candidate out loud and make the encode offer explicit (`[e]ncode` / `add-extension` / a fix-plan command / an upstream issue). The user may decline the offer; the agent may not skip making it. **Prefer `add-extension` for the sensor-shaped candidates** — a recurring inference (an eyeballed check, a re-derived diagnostic, a "no command proves X") is a missing `harness <verb>`, and a discoverable verb is the encoding that stops the loop re-paying that inference in tokens every session; a justfile recipe is the fallback for one-off convenience, not for a proof that recurs.
 - **Flush telemetry at close (post-flight).** At session/plan end — after the drain/harvest — the router runs `harness telemetry sync`: a best-effort, **no-confirm** push of the counts-only telemetry buffer to its out-of-tree shard refs (`refs/harness-telemetry/<date>/<session>` — never the working tree or a PR; fail-safe and offline-safe, so it can never disturb the host). This is the loop's **guaranteed flush point**, complementing `checks`' build-time auto-push so telemetry is never left stranded by a session that didn't run `checks`. Honour the kill-switches: **skip** entirely when `HARNESS_NO_TELEMETRY=1`, and when `HARNESS_NO_TELEMETRY_AUTOSYNC=1` treat it as a reminder (nudge) rather than a push.
@@ -166,7 +166,7 @@ The router decides purely from signals it can **read** (no state of its own). Th
 | E | **Loop substrate** | `.harness/temp/` (gitignored observe scratch) + `.harness/records/retro/` (committed retro records, created via `harness record retro`) — legacy `docs/harness/agents/` retros are still read by harvest for back-compat | Can Observe/Retro actually record anything? |
 | F | **Harnessability report** | any report under `.harness/reports/harnessability/` (path inconsistency noted — see "limits"; the router detects *any* report present) | Has the repo been sized up? |
 | G | **Repo shape** | source tree empty vs. has source (e.g. `src/`, `package.json`, a language toolchain) | Fresh on-ramp vs. adopt-existing |
-| H | **In-a-plan position** | `docs/plans/*/` artifacts: `*-spec.md` (post-spec), `*-plan.md` (post-architect), `tasks/phase-*/` + `execution.log.md` (mid-build), `reviews/` (reviewed) | Which loop stage the work is at *(best-effort — see "limits")* |
+| H | **In-a-plan position** | prefer canonical flow/nav and `plan.dd.json`; `assets/impl-guide.dd.json` is separate architecture, `assets/backpressure.dd.json` is selected proof, `assets/tasks/phase-N/tasks.dd.json` and execution-log entries show work; historical Markdown remains readable | Which loop stage applies; artifact presence alone is not execution or approval |
 | I | **Conversation history** | the live session (what the parent just did/said) | Disambiguates G/H when files are inconclusive |
 | J | **Parent hint (params)** | `at=<stage>` / `--event` / `--plan-dir` / `--spec` / `--phase` (see § Parameter contract) | Lets the parent pin position and skip detection |
 
@@ -345,7 +345,7 @@ All five entries pin the **same nine fields** (`hook`, `intent`, `run_at`, `kind
       "kind": "fire",
       "invoke": "/eng-harness-flow --hook pre-coding --json",
       "aliases": ["post-spec"],
-      "produces": "backpressure-coverage.md",
+      "produces": "backpressure.dd.json",
       "needs": [],
       "preconditions": []
     },

@@ -256,6 +256,24 @@ export const ErrorCodes = {
   // --- plan readiness gate (plan 072; E462) ---
   /** `harness plan ready --strict` reached a not-ready verdict; CI asked for teeth. */
   DD_PLAN_NOT_READY: 'E462',
+
+  // --- Builder team lifecycle (plan 098; E470-E477) ---
+  /** Invalid Builder input, guide or durable record. */
+  BUILDER_INVALID: 'E470',
+  /** An explicit guide, baseline or dependency prerequisite is not ready. */
+  BUILDER_NOT_READY: 'E471',
+  /** An allocation or compare-and-swap write conflicts with existing state. */
+  BUILDER_CONFLICT: 'E472',
+  /** The requested peer runtime is unavailable, unsupported or not ready. */
+  BUILDER_RUNTIME: 'E473',
+  /** A peer acknowledgement does not match the frozen dispatch. */
+  BUILDER_ACK: 'E474',
+  /** Required proof or independent review is absent, failed or stale. */
+  BUILDER_PROOF: 'E475',
+  /** Required evidence has not been verified outside every retiring root. */
+  BUILDER_PRESERVATION: 'E476',
+  /** A resource is not owned by this allocation authority. */
+  BUILDER_OWNERSHIP: 'E477',
 } as const;
 
 export type ErrorCode = (typeof ErrorCodes)[keyof typeof ErrorCodes];

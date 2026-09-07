@@ -1,0 +1,150 @@
+{
+  "review": "plan-098 frozen core decomposition",
+  "reviewer_id": "pij-natural-gant",
+  "pm": "pij-cooperative-gibbon",
+  "nonce": "9e44e60d-db46-43f7-86f5-bb757ba8b652",
+  "snapshot_sha": "a58a6c39f997106eb94a71013a5a1fa6ffa91392",
+  "packet": {
+    "path": "docs/plans/098-builder-team-lifecycle/assets/reviews/decomposition-request.md",
+    "sha256": "2053982e0c9ec7a00b4ca5bc248af7590af7df6abc9ee8360d0c4a2637ec29b6"
+  },
+  "input_hashes": {
+    "verified": "11/11 match packet table, zero mismatches",
+    "method": "shasum -a 256 in the s098-review clone at HEAD a58a6c39, captured to a regular file and read from disk (no pipe)",
+    "files": {
+      "docs/plans/098-builder-team-lifecycle/plan.dd.json": "d930c93e7e3bdfd31cf7a40011a35d5888c8eefc863cf44f71b0d8783a15c066",
+      "docs/plans/098-builder-team-lifecycle/assets/impl-guide.dd.json": "980be35b7f7e689f4b50e16b0482f923f9219e8b73d28a8cc72475aa65bf159f",
+      "docs/plans/098-builder-team-lifecycle/assets/backpressure.dd.json": "411f37680fd6fcb820bb27dd48260bfcd2e43d199ca3d1fe72c11bed988bce8e",
+      "docs/plans/098-builder-team-lifecycle/assets/tasks/phase-1/tasks.dd.json": "f3b3f357ecad04cb95802009f0e60640c441f0c82f2ddb44b64b497da9812923",
+      "docs/plans/098-builder-team-lifecycle/plan.dd.md": "4a1a3305447d544fc60e76204a7c64cd9e4c202fc89504dc67a12db5127ce377",
+      "docs/plans/098-builder-team-lifecycle/assets/impl-guide.dd.md": "40d8e49e5117660999b62895fe0d3a2f102bf13b8680143a2cbbb4e08b265bb5",
+      "docs/plans/098-builder-team-lifecycle/assets/backpressure.dd.md": "a1efbb1ff2f31a6a1ca162a4ab55687896bc94c7ec910567cab87e2cf79a0939",
+      "docs/plans/098-builder-team-lifecycle/assets/tasks/phase-1/tasks.dd.md": "94d5d33e6561f9ba0301dd25b058bc63ac7e26b31f5e1b190d4c6a4654fa9439",
+      ".dd/schemas/builder/impl-guide/schema.json": "fd81192dd40d3a935bfcce2d670437d19b477ff78c6f61f29a752073af6567a2",
+      "docs/plans/098-builder-team-lifecycle/assets/research-dossier.md": "823eb448fc3aa6bfba64e6307b307b9f1dc2c3fa39faf79229e020f46221c753",
+      "docs/plans/098-builder-team-lifecycle/original-ask.md": "eea10a08264307211a207dc72e636d7ae386b169fcfbc4a9159519886d50d538"
+    }
+  },
+  "scope": {
+    "covered": "Frozen core decomposition bundle at a58a6c39 only: plan, impl-guide, phase-1 tasks, backpressure, impl-guide schema, dossier, original ask.",
+    "excluded": "The later Markdown-to-PDF flow-eval acceptance addition; it is outside this snapshot and receives a separate delta review.",
+    "not_claimed": "This is not latest-scope validation, not a dispatch-readiness declaration, and not a claim that any implementation exists."
+  },
+  "configuration_evidence_boundary": {
+    "requested": {
+      "harness": "omp",
+      "model": "github-copilot/claude-opus-5",
+      "effort": "high"
+    },
+    "observed": {
+      "process_argv": "bun $HOME/.npm-global/bin/omp --auto-approve --model github-copilot/claude-opus-5 --thinking high (pid 77664)",
+      "env_present": [
+        "OMPCODE=1",
+        "PIJ_SESSION_ID=pij-natural-gant",
+        "PIJ_SPAWN_ID=s-2948d69293902dfe10431d9ddef6bd50"
+      ],
+      "env_absent": [
+        "PIJ_PARENT_ID",
+        "PIJ_HARNESS"
+      ],
+      "registry_record": "pij-rs whoami reports harness omp, model github-copilot/claude-opus-5, effort high \u2014 descriptor, not an environment fact",
+      "native_root": "$HOME/substrate/harness-engineering-coders/s098-review, proven by relative-path reads; shell cwd identical"
+    },
+    "unverified": "Provider-served model identity and materially-high reasoning effort. Argv, env, registry and system prompt all descend from one launch act; they are mutually consistent, not independent confirmation. No attestation is claimed."
+  },
+  "method": {
+    "read_only": true,
+    "commands_run": "read-only inspection only: git rev-parse/status, shasum -a 256, printenv, ps, and node one-liners that JSON.parse the frozen dd documents. No builds, tests, formatters, linters or validation commands.",
+    "faces_vs_canonical": "Generated .dd.md faces used for reading; impl-guide.dd.json read canonically because the face elides units[].reads path lists."
+  },
+  "verdict": {
+    "decision": "conditional \u2014 sound decomposition, not yet safe to seal the wave-0 baseline",
+    "summary": "The core decomposition does genuinely permit parallel coder work after a PM baseline: write fences are disjoint, the dependency graph is acyclic with coherent waves, coders read only tk-0001, the PM alone owns the composition root, all 18 ACs carry a distinct observable path, and the anti-cycle reasoning for ac-0011 is explicit and correct. Three HIGH gaps are all wave-0-fixable contract or granularity omissions that would otherwise surface as coder negotiation or a stalled composition wave; two MEDIUM items concern identifier collision and an unproven proof link. None require redesign.",
+    "independence_answer": "Four of five coder units are independently implementable today; tk-0003 is not, because a human ratification gate sits inside its write fence and completion gate (finding 3).",
+    "verified_positives": [
+      "units[].paths are pairwise disjoint across tk-0001..tk-0007 (checked canonically); no overlapping write fence.",
+      "depends_on graph is acyclic: tk-0001 (wave 0) -> tk-0002..tk-0006 (wave 1) -> tk-0007 (wave 2); waves are monotone with dependencies.",
+      "Every coder unit's reads list contains exactly tk-0001's baseline paths; tk-0007 reads all six. No unit reads a sibling coder's output.",
+      "All 18 ACs appear in capabilities with a distinct, non-vacuous observable path string; ac-0011 is satisfies_toward (not satisfies) on tk-0007, and plan-level tk-0001 owns the residue, so no temporal cycle exists (fn-0003 states this deliberately).",
+      "composition.order lists exactly the five coder units, each once; the PM baseline is supplied as a receipt, so no self-wait cycle (fn-0002 holds).",
+      "backpressure meta.basis_sha d930c93e... equals the SHA-256 of plan.dd.json at this snapshot, so the 'hash plan bytes after links are written' rule from the PR193 recipe is actually satisfied, not merely asserted.",
+      "Role settings are honest: coder effort is omitted rather than invented, and requested-versus-observed runtime is a declared distinction (ac-0008, dw-0004, dw-000c, fn-0007).",
+      "Only one package.json exists (root, @ai-substrate/engineering-harness), so tk-0007's unqualified 'package.json' fence is unambiguous \u2014 a candidate finding I disproved."
+    ]
+  },
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "HIGH",
+      "confidence": "high",
+      "location": "assets/impl-guide.dd.json \u2014 architecture.contracts[0]; units/tk-0001.interface; units/tk-0003.interface; units/tk-0005.interface",
+      "claim": "The archive/preservation record that teardown must verify is produced by tk-0005 and consumed by tk-0003, but it is not a named frozen type, there is no dependency edge or read fence between those units, and nothing tells tk-0001 to define it.",
+      "proof": "architecture.contracts[0] enumerates the frozen types as BuilderDeps, BuilderResult<T>, Guide, Unit, Check, RoleBinding, AllocationRecord, Packet, BaselineReceipt, DispatchReceipt, CompositionReceipt and ReviewReceipt. A case-insensitive scan of impl-guide.dd.json for /(Receipt|Manifest|Archive|Preserv)/ returns only those four *Receipt identifiers \u2014 no CloseReceipt, ArchiveReceipt or PreservationManifest. Yet units/tk-0005.interface says 'closeBuilderPlan verifies harness/post-flight evidence, archives the complete directory', while units/tk-0003.interface says 'tidyBuilderWorkspace verifies preservation and ownership before removal', and dw-000b requires it to verify 'a surviving archive outside the removable root'. Canonically, units/tk-0003.depends_on is exactly ['tk-0001'] and units/tk-0003.reads is a single entry with owner tk-0001 \u2014 tk-0005's paths are neither depended on nor readable. AllocationRecord's declared fields (owner/kind/root/branch/base/ordinal/actor/tombstone, per capabilities/ac-0004.path) carry no archive location or preservation inventory.",
+      "impact": "tk-0003 cannot learn where the archive is or what counts as preserved except by hardcoding a path convention that tk-0005 independently chooses, so the two coders must negotiate mid-wave or the duplicate policies drift and are only reconciled at composition. This sits exactly on the path the plan itself calls Critical ('An archive inside a deleted worktree is not preserved evidence'; risk 'Teardown removes uncommitted work, ignored dossiers or the only archive copy' \u2014 likelihood High, impact Critical) and that dossier F07 records as an observed Flowspace failure.",
+      "correction": "Add one archive/preservation record type (archive root path outside the removable resource, content digests, the required WIP/reports/observations inventory, and an external-survival flag) to tk-0001's frozen types in harness/cli/src/services/builder/types.ts, list it in architecture.contracts[0] beside the four existing receipts, and declare it as the injected fact tidyBuilderWorkspace consumes.",
+      "affected": "architecture.contracts; tk-0001 baseline; tk-0003 and tk-0005 interfaces; ac-000d and ac-000e; dw-0011 and dw-000b; fn-0008; consumer = PM composition owner tk-0007.",
+      "disproof_attempted": "Checked whether tidy could verify survival from the filesystem alone using AllocationRecord \u2014 it cannot, because the archive destination is close-out's choice and is absent from the allocation contract. Also checked whether the refuse-on-ambiguity default makes this harmless: it lowers data-loss risk but converts the gap into a systematic false refusal, so the gap remains material."
+    },
+    {
+      "id": "F2",
+      "severity": "HIGH",
+      "confidence": "high",
+      "location": "assets/impl-guide.dd.json \u2014 units/tk-0006 (wave 1, coder) versus units/tk-0007.interface (wave 2, pm); architecture.contracts",
+      "claim": "The public builder verb/flag/envelope surface is declared only inside the wave-2 PM unit's interface prose, yet the wave-1 coder unit tk-0006 must author skill and doc source that invokes that surface, and its read fence excludes it.",
+      "proof": "The command family is named once, in units/tk-0007.interface: 'Register one builder command family: new/adopt, guide, ready, contracts, settings, dispatch/ack, advance, compose, review, close and tidy, with existing help/JSON/envelope/exit conventions.' units/tk-0006.interface requires that 'The source skill invokes the frozen public builder command contract', but canonically units/tk-0006.depends_on is ['tk-0001'] and units/tk-0006.reads is a single tk-0001 entry; tk-0007's paths (acts/builder.ts, help, instructions) are not readable by tk-0006 and do not exist during wave 1. architecture.contracts contains no command-surface entry. The write fences then prevent repair at composition: skills/** belongs to tk-0006, and composition step 3 requires the PM to 'verify their declared write fences', while composition.steps warns against amending a frozen interface to make a unit fit.",
+      "impact": "tk-0006 must guess verb spellings, flag names and envelope keys for a surface implemented later by a different owner. Divergence surfaces only at bp-0006/bp-0007 during composition, and the PM cannot correct the skill text without breaching tk-0006's fence, forcing a re-dispatch. The plan already rates this risk Medium/High ('New source skill assumes commands before the packaged CLI provides them'), and dossier F05 records that a clean cutover must cover routing, templates and every downstream reader together.",
+      "correction": "Promote the verb list plus flag and JSON-envelope/exit conventions into a wave-0 frozen artifact \u2014 an entry in architecture.contracts backed by a declaration file inside tk-0001's paths \u2014 so tk-0006 and tk-0007 both bind to one declaration instead of tk-0006 binding to prose owned by a later unit.",
+      "affected": "architecture.contracts; tk-0001 baseline scope; tk-0006 and tk-0007 interfaces; ac-0001, ac-000f, ac-0010; dw-0012, dw-0013, dw-0014; consumers = source Builder/eng-harness-flow skills and fresh CLI consumers.",
+      "disproof_attempted": "Considered that the frozen guide document itself is the shared declaration both units read \u2014 it does name the eleven verbs, but only at verb granularity inside a unit-scoped field, with no flag, envelope-key or exit-code contract, so it cannot settle the spellings tk-0006 must write. Also considered that tk-0007 owns help/docs and could reconcile at composition; it cannot, because the divergent text lives in tk-0006's fence."
+    },
+    {
+      "id": "F3",
+      "severity": "HIGH",
+      "confidence": "high",
+      "location": "assets/impl-guide.dd.json \u2014 units/tk-0003 and fan_out.rationale; assets/tasks/phase-1/tasks.dd.json \u2014 dw-0008; plan.dd.json \u2014 open_questions, gate_matrix G1",
+      "claim": "A pending human ratification gate sits inside tk-0003's single write fence and completion gate rather than being isolated, so one of the five coder units cannot complete and the wave-2 composition it feeds cannot start, while no task or assertion owns obtaining the ratification.",
+      "proof": "units/tk-0003.paths bundles allocation-store.ts (the ratification-blocked reservation policy) with schema-service.ts, workspace-service.ts and its test in one fence, and units/tk-0003.notes opens 'Blocked on human allocator ratification.' dw-0008 is the only assertion in the bundle carrying state '[-] blocked'; dw-0009, dw-000a, dw-000b and dw-0026 are unchecked but unblocked. units/tk-0007.depends_on includes tk-0003, and composition.steps[2] imports 'completed unit commits', so an incomplete tk-0003 stalls wave 2. plan gate_matrix G1 is FAIL and the open question is '[-] blocked' with the note 'human question asked in this conversation' \u2014 no phase-1 task, no done_when assertion and no guide unit names obtaining the ruling as its deliverable. fan_out.rationale nonetheless states 'Allocator ratification blocks only workspace implementation; the other units depend on the reviewed contract, not its implementation.'",
+      "impact": "The fan-out delivers four independent implementations, not five: tk-0003's seat either idles or produces a unit it cannot close. Because tk-0007 depends on tk-0003, the block propagates to the composition wave and to the five ACs routed through tk-0003 (ac-0002, ac-0003, ac-0004, ac-000e, ac-0012) \u2014 materially wider than the rationale's 'blocks only workspace implementation' framing, which invites a reader to dispatch as if the impact were contained. Dossier risk note requires the ownership boundary be resolved 'before freezing workspace interfaces'.",
+      "correction": "Either split the ratification-dependent reservation policy (allocation-store.ts) into its own unit gated on the ruling, leaving schema staging, adoption and teardown independently completable, or add an explicit partial-acceptance rule naming which tk-0003 assertions may be deferred past composition \u2014 and in both cases add one owned task for obtaining the ratification so the human gate has a named owner rather than a conversation reference.",
+      "affected": "fan_out.rationale; units/tk-0003; units/tk-0007.depends_on; composition.order; plan open_questions and G1; ac-0002/0003/0004/000e/0012; consumer = PM baseline author and the five Astra coder seats.",
+      "disproof_attempted": "Checked whether tk-0003 could be dispatched and closed on its unblocked assertions alone \u2014 composition.steps[2] requires completed unit commits and dw-0008 is blocked, so it cannot. Checked whether the block is silently hidden \u2014 it is not; G1 FAIL and the blocked open question record it honestly, which is why this is a granularity and ownership finding rather than a false-readiness one. Confirmed against the packet that naming a genuinely missing prerequisite is invited, and that this is not the forbidden 'missing baseline implementation' finding."
+    },
+    {
+      "id": "F4",
+      "severity": "MEDIUM",
+      "confidence": "high",
+      "location": "assets/impl-guide.dd.json \u2014 checks[] ids bp-0001..bp-000a; assets/backpressure.dd.json \u2014 rows[] ids bp-0001..bp-0012",
+      "claim": "Two disjoint registries both use the bp-NNNN identifier space over an overlapping numeric range with different meanings, so the same token denotes an executable check in one document and an acceptance pressure row in the other.",
+      "proof": "impl-guide checks run bp-0001..bp-0009 plus bp-000a (for example bp-0005 = 'Canonical flow gates, composed-SHA proof, stale review refusal and archive preservation', a vitest invocation). backpressure rows run bp-0001..bp-000f plus bp-0010..bp-0012 (bp-0005 = the ac-0005 pressure row). Ten identifiers collide. The two spaces are cited side by side in the same documents: tasks tk-0001/dw-0001 links pressure '../../backpressure.dd.json#rows/bp-0005' while its guide unit proof is 'impl-guide.dd.json#checks/bp-0001'.",
+      "impact": "fn-0006 mandates preserving bp identities in place and migrating every caller on removal; that migration operates on bp-prefixed ids across both files, and any tooling or human step that matches on the id rather than the resolved target can repoint an assertion at the wrong registry silently \u2014 the exact silent-meaning-change fn-0006 exists to prevent. It also makes the guide harder to review, which is a real cost on a document whose purpose is to prevent negotiation.",
+      "correction": "Rename the impl-guide checks registry to its own prefix (for example ck-0001..ck-000a) and update the proof references in capabilities[], units[] and composition.proof; leave the backpressure bp ids untouched so no existing pressure caller migrates.",
+      "affected": "impl-guide checks/capabilities/units/composition proof links; backpressure rows; fn-0006; consumers = the readiness implementation in tk-0002 and every future survey re-run.",
+      "disproof_attempted": "Verified that dd links are typed by target schema (builder/impl-guide/section/checks versus the backpressure rows target), so validation catches a wrong-target link today and machine resolution is currently unambiguous. Retained at MEDIUM rather than higher because the exposure is to id-matching migration steps and human readers, not to the validator."
+    },
+    {
+      "id": "F5",
+      "severity": "MEDIUM",
+      "confidence": "medium",
+      "location": "assets/impl-guide.dd.json \u2014 checks[] (no ddocs invocation) and capabilities/ac-0012.proof; assets/tasks/phase-1/tasks.dd.json \u2014 dw-0027",
+      "claim": "ac-0012 demands the local-ddocs recipe be executed and validated rather than checked for wording, but no executable check row in the guide runs ddocs, and the AC's declared proof points only at two smoke scripts whose contents do not yet exist.",
+      "proof": "The ten checks rows invoke node (vitest x5), node skills/builder/examples/verify.mjs, npm run smoke:builder, npm run smoke:builder:packed, just checks and just test-all \u2014 none invokes node_modules/.bin/ddocs. capabilities/ac-0012.proof resolves to checks bp-0007 and bp-0008, whose descriptions are 'Disposable real-Git CLI lifecycle including public capability paths and refusal cases' and 'Packed package in a fresh consumer with empty home proves schemas, help and scaffold without global installs' \u2014 neither mentions the survey/link recipe. dw-0027 asserts the recipe 'is executed through the real CLI and packed consumer', and backpressure bp-0012 lists probe 'npm run smoke:builder:packed'; architecture.contracts records that both smoke scripts are 'planned BUILD surfaces until implemented, not current green commands'. A ddocs invocation does exist as backpressure sensor sensor-dd, but sensors are not guide checks and nothing in ac-0012's proof references it.",
+      "impact": "The one AC written specifically to defeat wording-only compliance has its proof carried entirely by an unwritten script, so ac-0012 can be reported satisfied on the strength of an assertion sentence. This is the upstream local-ddocs backpressure and proof-link requirement the packet names, and the AC's own text forbids exactly this outcome.",
+      "correction": "Add a checks row that invokes node_modules/.bin/ddocs (validate, and the link and build verbs the recipe uses) against the plan and its assets, and add it to capabilities/ac-0012.proof beside the two smoke rows, so the recipe has a declared executable proof independent of script contents that do not yet exist.",
+      "affected": "impl-guide checks and capabilities/ac-0012; dw-0025, dw-0026, dw-0027; backpressure bp-0012; fn-0006 and fn-000a; consumers = Builder and eng-harness-flow source stages and fresh consumers.",
+      "disproof_attempted": "Considered that dw-0027 and dw-0025 already constrain the smoke scripts to execute the recipe \u2014 they do, at assertion level, but the scripts are unwritten and unowned by any check, so the constraint is currently unenforceable; that is why this is retained at MEDIUM with medium confidence rather than HIGH. Confirmed the AGENTS.md rule that `dd` and `npx dd` are the wrong spellings and node_modules/.bin/ddocs is the correct one."
+    }
+  ],
+  "not_findings": [
+    "Absence of the implemented baseline, coder units and smoke scripts \u2014 excluded by the packet as known state.",
+    "tk-0007's unqualified 'package.json' fence \u2014 only one package.json exists in the repository, so the fence is unambiguous.",
+    "Uniform owner tk-0007 across all 18 capability rows \u2014 intentional and correct, since the PM alone owns every observable delivery path; the discriminating content is the per-AC path string, and the guide honestly assigns 'does this capability actually get exposed' to human review rather than to the structural check.",
+    "ac-0011 remaining partial at implementation exit \u2014 fn-0003 states the anti-cycle reasoning explicitly and the split between tk-0007.satisfies_toward and plan tk-0001.satisfies implements it correctly."
+  ],
+  "prerequisites_named": [
+    "Human ratification of portable harness-owned allocation (plan G1 FAIL, open question blocked, dw-0008 blocked) \u2014 currently unowned as a deliverable; see F3.",
+    "The committed TypeScript and fixture baseline for tk-0001, which must absorb the F1 and F2 contract additions before it is sealed.",
+    "PR 193 / commit 6186b2d0 structured-backpressure cutover, concurrently owned (fn-000a) \u2014 coordination boundary, not a defect in this decomposition."
+  ],
+  "source_report_sha256": "47cea0fb877e7fe22a1fc91f8075f80feb08a1ce30506b8af04fb997cd7cabe9",
+  "redaction": "Home-directory prefix normalized to $HOME; complete original retained in scratch/plan-098/decomposition-review.raw.json and verified by the source digest."
+}

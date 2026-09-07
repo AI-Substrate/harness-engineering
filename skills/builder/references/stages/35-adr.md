@@ -34,13 +34,13 @@ $ARGUMENTS
 
 ## 0) Inputs & Pre-flight
 
-* **FEATURE_SPEC** = `--spec` (REQUIRED; a unified `<slug>-plan.md` or a legacy `<slug>-spec.md`; abort if missing)
-* **PLAN_PATH**    = `--plan` (OPTIONAL; used for backlinks)
+* **FEATURE_SPEC** = `--spec` or the resolved product `plan.dd.json`; historical unified/split Markdown remains readable.
+* **PLAN_PATH** = `--plan`; implementation context comes from the separate `assets/impl-guide.dd.json`, not a second HOW half.
 * **TODAY**        = {{TODAY}}
 
 **Pre-flight checks:**
-1. Abort if `--spec` missing. Read the `--spec` file (entire file); when it is a unified `<slug>-plan.md`, the business content is under `## Business Specification` (the implementation plan is under `## Implementation Plan`).
-2. If `--plan` exists, read for references only.
+1. Resolve product context from the canonical plan first, or historical Markdown without conversion. Missing context is a named input gap.
+2. Read the separate implementation guide for contracts/composition and backlinks when present; the ADR never rewrites either document or flow state.
 3. If doctrine files exist (`docs/project-rules/{constitution.md, rules.md, idioms.md, architecture.md}`), load for alignment cues.
 4. Compute ADR dir = `docs/adr/` (mkdir -p if needed). Scan for `adr-*.md`.
 5. **Idempotency check**:

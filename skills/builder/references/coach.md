@@ -43,32 +43,19 @@ Where we are: …
 - **Same-line legend**: two spaces after the pips, the milestone names ride the same line — lowercase, in rail order, joined by ` · `, the **current** one wrapped in `[…]`. Brackets follow the `◐`; on a settled rail (no `◐`) bracket the first `◇` (the next milestone up). Once the `plan` pass reveals per-phase nodes, the phase group reads as one bracketed word with a counter (`[build 2/3]`); if naming every phase would overflow ~100 columns, shorten to `p1 … pN`.
 - **Phase grouping**: per-phase nodes are wrapped in one `[ … ]` so they read distinctly from the fixed flow nodes → `◆─◆─◆─[◆─◐─◇]─◇`. During Build, the phase currently being implemented is the `◐` inside the group.
 - **Render the whole rail block as a fenced code block — always.** The rail line(s), any anchored companion line, and the `now`/`next` groups are ONE ``` fence (no language tag). Outside a fence markdown collapses leading spaces — and **never** fake alignment with `&nbsp;` or any HTML entity (terminals print them literally). Real spaces inside the fence are the only alignment tool. **If you ever catch yourself typing `&nbsp;`, the rail isn't fenced — fence it, don't entity-pad it:** ❌ `&nbsp;&nbsp;&nbsp;&nbsp;└─ workshop-x` (prints the literal letters `&nbsp;`) → ✅ four real spaces inside the ``` fence: `    └─ workshop-x`. The CLI rail (`harness flow rail`) is already a clean single line; the only sanctioned multi-line extension is the harness `└─ ⚙` anchored line — non-harness excursions (workshop, backpressure, reconcile, fix-loop) are mentioned in the digest's *Optional* facet as prose, **not** hand-appended to the rail as indented sub-lines.
-- **Macro-milestones (Full)**: Research · Plan · Tasks · Build · Review · Post-flight · Ship (7). The old separate Spec + Plan milestones collapse into **one `Plan` pip** — the atomic `plan` verb writes both halves (business spec + implementation plan) in one pass, so the pip fills once that document exists. Optional/sub-steps (deep-research, workshops, the post-spec backpressure check, ADRs, the fix loop) live *under* a milestone and get **no diamond** — opting in/out never changes the total.
-- **Dynamic total**: the rail total is an estimate early, then reflects the real phase count once the **`plan` pass** reveals it (Research · Plan · **one node per phase** · Post-flight · Ship). A 5-phase plan expands the rail (2 + 5 + 2 = 9); a 1-phase Simple plan collapses it. **The pip fill is *derived*, not stored** — `harness flow rail` computes it from live node status + zones (`◆`/`◐`/`◇` follow each node's `done`/`in_progress`/`known` state); there is no `milestones_*` counter. The coach's job is the *presentation* layer on top (the same-line legend, phase-grouping, the `now`/`next` block) — not the count.
+- **Macro-milestones**: Research · Product plan · Implementation guide · per-phase Build/Review · Post-flight · Ship. The guide is a distinct pip; workshops, ADRs and harness chores remain excursions.
+- **Dynamic total**: use `harness flow rail` from real node status and zones. Never maintain a competing milestone counter or infer guide approval from plan existence.
 - **Status line** after the diamonds: `· now: <current> · next: <next>`. **Dynamic expansion** — inline when there's a single short next; when `next` has **≥2 options** (or would wrap), break `now`/`next` onto their **own lines** with options stacked (labelled + aligned, recommended first):
   ```
-  [the-flow] ◆─◆─◇─◇─◇─◇─◇  research · plan · [tasks] · build · review · post-flight · ship
-   now  · plan written (both halves) — CS-4, Full, READY
-   next · ▸ {{render-edge: awaiting-1b → tasks}}         Phase 1 tasks               (recommended)
+  [builder] research · plan · [implementation guide] · build · review · post-flight · ship
+   now  · product plan written — CS-4, Full, ready
+   next · ▸ {{render-edge: awaiting-1b → guide}}         Architecture and ownership    (recommended)
           ▸ {{render-edge: awaiting-1b → workshop}}      workshop a topic, then re-plan
           ▸ /deepresearch            dig into the API
   ```
 - Frame the rail **once, early**, as *an approximate map, not a contract* (totals shift once the `plan` pass reveals phase count). Glyphs are tunable. Apply to **every** narration block below.
 
-**Stage → rail map** (Full mode; settled states — render the active stage as `◐` while it runs):
-
-| Stage reached | done/total | Rail |
-|---|---|---|
-| `start` | 0/6 | `[the-flow] ◇─◇─◇─◇─◇─◇` |
-| `awaiting-1a` | 1/6 | `[the-flow] ◆─◇─◇─◇─◇─◇` |
-| `awaiting-1b` (plan done — both halves) | 2/6 | `[the-flow] ◆─◆─◇─◇─◇─◇` |
-| `awaiting-2c` / `awaiting-backpressure` | 2/6 (post-plan refinements) | unchanged |
-| `awaiting-5` | 3/6 | `[the-flow] ◆─◆─◆─◇─◇─◇` |
-| `awaiting-6` | 4/6 | `[the-flow] ◆─◆─◆─◆─◇─◇` |
-| `awaiting-7` | 5/6 | `[the-flow] ◆─◆─◆─◆─◆─◇` |
-| `awaiting-8` / `complete` | 6/6 | `[the-flow] ◆─◆─◆─◆─◆─◆` |
-
-(Simple mode collapses the per-phase group to one node — the fill is derived live from node status via `harness flow rail`, not a stored count. Rails in this table omit the same-line legend for brevity — every rendered rail carries it.)
+**Stage → rail map**: render from the canonical flow rather than a second hand-maintained count table. New flows include `impl-guide`; completed historical flows retain their original nodes. A done product plan does not fill the guide pip. Phase expansion preserves interleaved review and post-flight completion at EXIT.
 
 **Harness companion rail (unified block)**: when the harness loop is live this session — the `/eng-harness-flow` router has fired this turn or earlier — **never show two disconnected rails**. Under plan 032 the loop's four fire hooks ride **as chores on this flow's own rail** (*"so the main flow tracks them for us too and we don't miss things"*) — there is **no separate `└─ ⚙ … ↺` anchored line** during coexistence; the chore square pips *are* the harness's visible presence. Render the-flow's rail straight from the CLI **with chores shown**:
 
@@ -131,7 +118,7 @@ Then the print-then-offer command block + the offer line follow exactly as befor
 ❌ **Verbose (don't)** — narrates the why at length, announces the clean scan, pads every facet:
 
 > **Just did**
-> 1. The plan verb finished writing the planning document — it has the business spec and the implementation plan, and it's a Simple-mode plan.
+> 1. The plan verb wrote product intent and observable acceptance criteria for a Simple-mode plan.
 > 2. It then auto-ran validate-v2 (adaptive, evidence-backed validation), which returned a clean verdict after a couple of small fixes were folded in.
 > 3. The complexity score is CS-2 (small), so a single phase is appropriate here.
 >
@@ -139,7 +126,7 @@ Then the print-then-offer command block + the offer line follow exactly as befor
 > 1. Nothing flagged — gates all clean, no unresolved gaps, you're good to move on.
 >
 > **Next up**
-> 1. The natural next step is to implement the one phase, since Simple mode has no separate task-expansion step.
+> 1. The implementation guide is next; Simple mode does not bypass architecture or requested review.
 
 ✅ **Lean (do)** — drops the clean *Watch-outs* entirely, one fact per line, why only on request:
 
@@ -193,7 +180,7 @@ When a turn runs **past a glance**, close it with a single distilled sentence so
 > 1. G6: Phase 2 puts impl before tests — the spec mandates TDD.
 > 2. G7: `notifications` is in the spec, missing from the plan's domains.
 >
-> **Bottom line:** Fix the two gaps and re-run the `plan` verb (it regenerates both halves) before building.
+> **Bottom line:** Fix the implementation guide's testing/domain gaps and obtain current review before building.
 
 ---
 
@@ -236,9 +223,9 @@ All copy obeys **Orient → Flag → Insight → Suggest → Invite**: one decis
 >
 > Welcome — I'm your guide through the SDD flow. Tell me in a sentence what you want to build or change, and I'll turn it into the right first step, explain why each stage matters, point out the one thing worth noticing in what each stage produces, and tell you exactly what to type next. You stay in control — nothing ships, pushes, or merges without your say-so.
 >
-> **What do you want to work on?** *(Just describe it. If it touches code you don't fully understand yet, I'll start us with research (the **explore** verb); if the ask is clear, we'll go straight to planning (the **plan** verb — it writes the business spec and the implementation plan into one document). Unsure → just describe it and I'll choose.)*
+> **What do you want to work on?** Describe the change. Unresolved source questions start with research; clear intent starts with the product plan. Architecture and ownership are a separate implementation guide.
 
-*After the answer*: allocate ordinal, create the folder, log the verbatim ask to `original-ask.md`, write state + `the-flow.json`, then:
+*After the answer*: the parent uses `harness builder new` for an isolated allocation or `adopt` for existing external/pij work, preserving the original ask and using returned canonical paths.
 > Got it: **`<intent>`** — logged that to `original-ask.md` so we always have the original wording. `<This is worth a research pass first | This is clear enough to spec directly>`. Here's the next command:
 >
 > {{render-edge: start → explore "<intent>"}}  *or*  {{render-edge: start → plan "<intent>"}}
@@ -249,31 +236,29 @@ All copy obeys **Orient → Flag → Insight → Suggest → Invite**: one decis
 > **Where we are**: research is done (`research-dossier.md`) — that's evidence, not code yet.
 > Did you notice `<the top finding, a material historical warning, or — if the dossier surfaced no material risk — that it came back clean>`? That matters because `<why it shapes the plan>`.
 > **Optional — go deeper?** If anything's still fuzzy, deep-research it with your **tool of choice**: an online-connected agent (`/deepresearch`, Perplexity) or your own coding harness. Skip it if the dossier already answers enough.
-> **Then a seam**: a natural spot for `/compact` — clears the research chatter, keeps the planning sharp; I'll resume right here afterwards. Then we write the plan (both halves in one pass).
+> Then a seam: compact if useful, then write product intent. The implementation guide is a separate, reviewed contract; it is not a hidden second half of the plan.
 >
 > Your move: `deep-research` (your tool), `compact` then `/the-flow` *(recommended)*, or straight to {{render-edge: awaiting-1a → plan}}. Either way, the plan is the next real step.
 
-### `awaiting-1b` → after the plan  *(both halves written in one atomic pass — the busiest seam)*
-> **Where we are**: the planning document is written (`<slug>-plan.md`) — **CS-`<n>` → `<Simple|Full>` Mode**, **Status: `<READY|DRAFT>`** (gates: `<matrix summary>`). It carries the **business spec** on top and the **implementation plan** below; validate-v2 already auto-ran.
-> `<⚠️ Before we move on — the work flagged: <DRAFT + the FAILed gate(s)> / <N unresolved gaps: "…"> / <remaining [NEEDS CLARIFICATION]> / <a Deviation Ledger entry>. Just making sure you saw those.>` *(omit entirely if READY with no gaps)*
-> Did you notice `<a phase boundary | the plan flagged N Workshop Opportunities | a gate that's N/A | the DRAFT gap>`? That matters because `<why>`.
->
-> *If DRAFT*: `<the gap>` needs a fix first — `<the suggested remedy>`, then re-run {{render-edge: awaiting-1b → plan}} (it regenerates **both** halves). Type: `fix` (I'll walk you through it) or `show gaps`.
-> *If READY — before building* (you can wave past each *action*, but the harness call fires regardless): workshop a still-fuzzy topic ({{render-edge: awaiting-1b → workshop}}); the **backpressure seam fires automatically** here (`/eng-harness-flow --hook pre-coding --spec <path>`, router-installed only) — its survey output is the part you may skip; or `/compact`. Taking one means running it, then re-running {{render-edge: awaiting-1b → plan}} to incorporate it (a workshop decision is read directly; the backpressure survey is **advisory** — you fold its lessons into the re-plan yourself).
->   ⚠️ **If the plan flagged `<N>` Workshop Opportunit(ies) you haven't workshopped yet, I'll say so plainly** — the phases were designed *without* those decisions; a quick workshop + re-plan before you build is usually worth it (this is the one spot where the atomic verb's "design first, refine after" can bite). Your call — never a gate.
-> *If READY (Simple)*: next is code — `/compact` keeps the implementer sharp, then {{render-edge: awaiting-1b → implement}}. Type: `compact` then `/the-flow`, or `implement`.
-> *If READY (Full)*: next is {{render-edge: awaiting-1b → tasks}} for Phase 1's tasks (compact first if you like). Type: `compact` or `tasks`.
+### `awaiting-1b` → after product planning
+> **Where we are**: `plan.dd.json` specifies the product claims and scope. Status: `<ready|draft>`; `<actual validation verdict>`.
+> Surface unresolved decisions verbatim. Draft → refine product intent; ready → {{render-edge: awaiting-1b → guide}}. Simple mode still needs the guide, not direct unreviewed dispatch.
+> The real pre-coding router seam fires here; only the human declines its action. Canonical `assets/backpressure.dd.json` selects the actual proof and informs the guide. Product changes return to plan, implementation changes to guide.
+
+### `awaiting-4` → after the implementation guide
+> **Where we are**: the guide declares `<solo-pm|coders>` because `<architectural reason>`, with `<contracts, ownership, waves and composition owner>`.
+> Structural check: `<observed result>`; independent decomposition review: `<actual verdict or unfulfilled>`. The future code baseline belongs to implementation, not this exit.
+> Next: {{render-edge: awaiting-4 → tasks}} or {{render-edge: awaiting-4 → implement}} with scaffolded tasks. Never say requested cross-model review ran when only self-review was possible.
 
 ### `awaiting-2c` → after a workshop
 > **Where we are**: workshop saved (`workshops/<file>`). Its decisions are now **authoritative** — the next `plan` pass won't contradict them.
 > Did you notice it settled `<the Selected option>`? That removes `<the ambiguity>` from the plan.
-> Next: re-run **plan** to fold the decision into both halves (a workshop after a plan is a refinement — re-planning regenerates the phases with it). Another workshop or the backpressure survey (`/eng-harness-flow --hook pre-coding`, router-installed only) are also options. Recommended: {{render-edge: awaiting-2c → plan}}. Type: `another`, `prove it`, or `plan`.
+> Product decisions refine **plan**; architecture/ownership/proof decisions refine **guide**. Preserve authoritative workshop choices and invalidate only the affected downstream bindings.
 
 ### `awaiting-backpressure` → after backpressure survey
-> **Where we are**: backpressure coverage written — **Certainty: `<Strong|Partial|Weak>`**`<; recommended Phase 0: …>`.
-> `<⚠️ Before we move on — the survey flagged <N ABSENT sensors> where you'd otherwise be eyeballing: <one-line each>. Just making sure you saw those — they're the Phase-0 candidates.>` *(omit if coverage is Strong with no ABSENT sensors)*
-> What this means: `<criteria with EXISTS sensors are provable now; BUILDABLE/ABSENT ones are where you'd otherwise be eyeballing>`. It's **advisory output** — use it to shape your re-plan intent; the plan verb won't auto-read it, so fold in what you learned yourself.
-> Next: re-run **plan** *informed by* the coverage — {{render-edge: awaiting-backpressure → plan}}. (Compact first if the survey was long.) Type: `plan` or `compact`.
+> **Where we are**: backpressure coverage written — **Certainty: `<Partial|Confident|Proven>`**`<; recommended Phase 0: …>`.
+> Surface named ABSENT/EXTEND/BUILD gaps and their actual probe evidence. Selected commands are not executed proof; Proven needs applicable receipts, with remaining human judgement named.
+> Next: refine product intent if scope changed; otherwise carry the selected approach into **guide**, including AC/assertion pressure and eventual proven_by links.
 
 ### `awaiting-5` → after phase tasks
 > **Where we are**: Phase `<N>` tasks are tabled (`tasks/<phase>/tasks.md`) with success criteria.
@@ -356,6 +341,8 @@ When invoked with **no active state** but the resolved plan folder **already hol
 | Artifacts present | Inferred stage | pending verb (derived at read time) | done milestones (rail fill) |
 |---|---|---|---|
 | `research-dossier.md` only | `awaiting-1a` | `plan` | Research |
+| `plan.dd.json`, no approved guide | `awaiting-1b` | `guide --plan <path>` | Research, Plan |
+| approved `assets/impl-guide.dd.json` | `awaiting-4` | `tasks` / `implement` with scaffolded tasks | Research, Plan, Guide |
 | `*-plan.md` with `## Business Specification` + `## Implementation Plan` (unified) | read `**Mode**` + phase count → recompute rail; `awaiting-1b` | `implement --phase "Phase 1…"` (Simple) / `tasks` (Full) | Research, Plan |
 | `*-plan.md` with `## Business Specification`, **no** `## Implementation Plan` (interrupted run) | `awaiting-1b` | `plan` — re-run to complete (atomic, regenerates both) | Research |
 | legacy `*-spec.md` only (no plan) | `awaiting-1b` | `plan` — reads the legacy spec as the business source | Research |
@@ -364,9 +351,9 @@ When invoked with **no active state** but the resolved plan folder **already hol
 | `reviews/review.phase-N*` present (under `assets/tasks/…` or legacy paths) | phase N reviewed | `implement --phase "Phase N+1…"` (or `post-flight` if last) | + per-phase to N |
 | folder already under `docs/plans/archive/` (+ `assets/post-flight.md`) | `awaiting-7b` done | `ship` (optional — the flight is closed) | all but Ship |
 
-**Mode / rail**: read `**Mode**` from the plan's top-metadata block → `nav meta set mode <…>` (no plan yet → `mode: "unknown"`). The rail shows the seeded-node milestone estimate (research · plan · build · review · post-flight · ship) until the `plan` pass reveals the real phase count.
+Completed historical plans are read-only history: no retroactive guide/baseline gates, conversion or node resurrection. Existing historical rows above describe their retained read path, not a new-plan authoring recipe.
 
-**Back-fill the flight plan via the CLI** (never hand-write `the-flow.json`): `harness flow create flight-plan --slug <slug> --path docs/plans/<ord>-<slug>/the-flow.json --schema "<skill base>/references/flight-plan.schema.json" --bare --agent the-flow`, then `add-node` each inferred node and `status`/`set-node` it to its back-filled state — completed → `status --to done` (the CLI stamps `ran_at`; for adoption that's the back-fill time, best-effort), `user_input` omitted or `set-node --note "reconstructed"`; remaining nodes → `known`/`assumed` per the taxonomy. Then set position + session bag: `nav set --now <furthest-progressed node>` (+ `--intent` from `original-ask.md` if present), `nav meta set status active`, and `nav meta set mode <from the plan's **Mode**>`. Then `harness flow render --path … --output the-flow.md`. (`<skill base>` = this skill's base dir.)
+**Mode / rail**: read `plan.dd.json#meta/mode` (legacy Markdown metadata only for historical inputs), then render the actual canonical rail. No hard-coded milestone count. Adoption uses `harness builder adopt`; reconcile the existing flow through supported CLI operations without creating a parallel bare spine. Completed history remains inspection-only.
 
 **Safety — never clobber**:
 - Never re-run a stage or touch `*-spec.md` / `*-plan.md` / `assets/` / legacy `tasks/` / `reviews/`. Adoption writes **only** the-flow bookkeeping files.

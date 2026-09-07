@@ -1,0 +1,311 @@
+{
+  "dd": {
+    "schema": "builder/backpressure"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Builder team lifecycle — proof and backpressure survey",
+        "plan": "../plan.dd.json#meta",
+        "basis_sha": "fd1790c364a221a75260cf8480c1b4a69175a91ee84490b53944e00678d4bfe2",
+        "certainty": "Partial"
+      }
+    },
+    {
+      "name": "rows",
+      "value": [
+        {
+          "id": "bp-0001",
+          "criterion": "ac-0001: The packaged CLI exposes the Builder lifecycle through discoverable help and instructions with the existing JSON envelope/exit conventions; missing prerequisites, name collisions and unsupported runtime capabilities are explicit rather than silent success.",
+          "phase": "ph-d5d7",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "BUILD→RUN: implement and pave the guide-owned real CLI/consumer/example proof for surface; then run npm run smoke:builder. This command is proposed, not runnable acceptance proof yet.",
+          "state": "unchecked",
+          "note": "Planned acceptance proof; the product contract is not implemented or proven yet. Structural tests do not replace independent architectural judgement or the actual pinned OMP dogfood. Existing baseline fast-suite evidence is not new-feature or full-suite evidence.",
+          "probe": "npm run smoke:builder"
+        },
+        {
+          "id": "bp-0002",
+          "criterion": "ac-0002: New workspace creation atomically reserves the next ordinal against the shared repository and sibling worktrees, records a resumable allocation before Git mutation, never reuses closed reservations, and refuses conflicting or escaping paths without clobbering existing work.",
+          "phase": "ph-d5d7",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "EXTEND→RUN: add the allocation boundary/refusal cases in the guide-owned workspace suite or source/flow checks; run the existing paved command just test. Structural green does not replace the separately recorded architectural judgement.",
+          "state": "unchecked",
+          "note": "Planned acceptance proof; the product contract is not implemented or proven yet. Structural tests do not replace independent architectural judgement or the actual pinned OMP dogfood. Existing baseline fast-suite evidence is not new-feature or full-suite evidence.",
+          "probe": "just test"
+        },
+        {
+          "id": "bp-0003",
+          "criterion": "ac-0003: A successful initialization creates the branch, worktree, correctly numbered plan folder, separate implementation-guide source, packet/model-setting templates and complete canonical Builder flow with required harness chores; retries preserve existing content.",
+          "phase": "ph-d5d7",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "BUILD→RUN: implement and pave the guide-owned real CLI/consumer/example proof for scaffold; then run npm run smoke:builder:packed. This command is proposed, not runnable acceptance proof yet.",
+          "state": "unchecked",
+          "note": "Planned acceptance proof; the product contract is not implemented or proven yet. Structural tests do not replace independent architectural judgement or the actual pinned OMP dogfood. Existing baseline fast-suite evidence is not new-feature or full-suite evidence.",
+          "probe": "npm run smoke:builder:packed"
+        },
+        {
+          "id": "bp-0004",
+          "criterion": "ac-0004: Allocation metadata is a deterministic document with explicit owner, worktree, branch, base SHA, ordinal, actor and lifecycle/tombstone state; externally created worktrees are recorded as externally owned and are never silently reallocated or reaped.",
+          "phase": "ph-d5d7",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "EXTEND→RUN: add the ownership boundary/refusal cases in the guide-owned workspace suite or source/flow checks; run the existing paved command just test. Structural green does not replace the separately recorded architectural judgement.",
+          "state": "unchecked",
+          "note": "Planned acceptance proof; the product contract is not implemented or proven yet. Structural tests do not replace independent architectural judgement or the actual pinned OMP dogfood. Existing baseline fast-suite evidence is not new-feature or full-suite evidence.",
+          "probe": "just test"
+        },
+        {
+          "id": "bp-0005",
+          "criterion": "ac-0005: The implementation guide has a declared schema and generated Markdown face, with non-empty SRP responsibilities, exact write/read ownership, settled contracts, dependencies/waves, per-unit proof, composition ownership and a justified solo-or-coders decision.",
+          "phase": "ph-d5d7",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "EXTEND→RUN: add the guide boundary/refusal cases in the guide-owned guide suite or source/flow checks; run the existing paved command just test. Structural green does not replace the separately recorded architectural judgement.",
+          "state": "unchecked",
+          "note": "Planned acceptance proof; the product contract is not implemented or proven yet. Structural tests do not replace independent architectural judgement or the actual pinned OMP dogfood. Existing baseline fast-suite evidence is not new-feature or full-suite evidence.",
+          "probe": "just test"
+        },
+        {
+          "id": "bp-0006",
+          "criterion": "ac-0006: Readiness rejects empty/vacuous guides, unknown or cyclic dependencies, unresolved ownership collisions, missing contract/proof declarations and ACs with no observable capability owner; architectural judgement is reported separately from structural proof.",
+          "phase": "ph-d5d7",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "EXTEND→RUN: add the readiness boundary/refusal cases in the guide-owned guide suite or source/flow checks; run the existing paved command just test. Structural green does not replace the separately recorded architectural judgement.",
+          "state": "unchecked",
+          "note": "Planned acceptance proof; the product contract is not implemented or proven yet. Structural tests do not replace independent architectural judgement or the actual pinned OMP dogfood. Existing baseline fast-suite evidence is not new-feature or full-suite evidence.",
+          "probe": "just test"
+        },
+        {
+          "id": "bp-0007",
+          "criterion": "ac-0007: The contracts stage binds declared shared interfaces, fixtures and required proof to an observed baseline commit/digest, and dispatch refuses changed or absent baseline evidence rather than relying on a status flag.",
+          "phase": "ph-d5d7",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "EXTEND→RUN: add the baseline boundary/refusal cases in the guide-owned guide suite or source/flow checks; run the existing paved command just test. Structural green does not replace the separately recorded architectural judgement.",
+          "state": "unchecked",
+          "note": "Planned acceptance proof; the product contract is not implemented or proven yet. Structural tests do not replace independent architectural judgement or the actual pinned OMP dogfood. Existing baseline fast-suite evidence is not new-feature or full-suite evidence.",
+          "probe": "just test"
+        },
+        {
+          "id": "bp-0008",
+          "criterion": "ac-0008: Repository role defaults and plan/dispatch overrides have documented precedence for harness, model and effort, are recorded with the run, and preserve the distinction between requested launch settings and observed/acknowledged runtime identity.",
+          "phase": "ph-d5d7",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "EXTEND→RUN: add the models boundary/refusal cases in the guide-owned runtime suite or source/flow checks; run the existing paved command just test. Structural green does not replace the separately recorded architectural judgement.",
+          "state": "unchecked",
+          "note": "Planned acceptance proof; the product contract is not implemented or proven yet. Structural tests do not replace independent architectural judgement or the actual pinned OMP dogfood. Existing baseline fast-suite evidence is not new-feature or full-suite evidence.",
+          "probe": "just test"
+        },
+        {
+          "id": "bp-0009",
+          "criterion": "ac-0009: Dispatch provisions each coder in its own isolated Git checkout (linked worktree or full clone, with kind recorded) at the approved baseline, publishes a scoped packet with resolvable inputs, invokes the declared runtime, records its identity/readiness, and refuses work release until nonce/packet-hash acknowledgement matches the dispatched contract.",
+          "phase": "ph-d5d7",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "BUILD→RUN: implement and pave the guide-owned real CLI/consumer/example proof for dispatch; then run npm run smoke:builder. This command is proposed, not runnable acceptance proof yet.",
+          "state": "unchecked",
+          "note": "Planned acceptance proof; the product contract is not implemented or proven yet. Structural tests do not replace independent architectural judgement or the actual pinned OMP dogfood. Existing baseline fast-suite evidence is not new-feature or full-suite evidence.",
+          "probe": "npm run smoke:builder"
+        },
+        {
+          "id": "bp-000a",
+          "criterion": "ac-000a: Builder stage advancement uses the existing flow state/mutation kernel and refuses unmet DD gates, required harness chores without receipts, missing or stale evidence and unit completion claims outside the declared fence.",
+          "phase": "ph-d5d7",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "EXTEND→RUN: add the advance boundary/refusal cases in the guide-owned lifecycle suite or source/flow checks; run the existing paved command just test. Structural green does not replace the separately recorded architectural judgement.",
+          "state": "unchecked",
+          "note": "Planned acceptance proof; the product contract is not implemented or proven yet. Structural tests do not replace independent architectural judgement or the actual pinned OMP dogfood. Existing baseline fast-suite evidence is not new-feature or full-suite evidence.",
+          "probe": "just test"
+        },
+        {
+          "id": "bp-000b",
+          "criterion": "ac-000b: The PM composes completed units in dependency order on the plan branch, records the composed SHA and runs the guide-named integration proof against that artifact; conflicts or red proof leave an explicit incomplete state and do not mutate main.",
+          "phase": "ph-d5d7",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "EXTEND→RUN: add the compose boundary/refusal cases in the guide-owned lifecycle suite or source/flow checks; run the existing paved command just test. Structural green does not replace the separately recorded architectural judgement.",
+          "state": "unchecked",
+          "note": "Planned acceptance proof; the product contract is not implemented or proven yet. Structural tests do not replace independent architectural judgement or the actual pinned OMP dogfood. Existing baseline fast-suite evidence is not new-feature or full-suite evidence.",
+          "probe": "just test"
+        },
+        {
+          "id": "bp-000c",
+          "criterion": "ac-000c: Review records name the composed SHA and exact plan/guide basis; a changed SHA, missing verdict, unresolved material findings or unsupported closure claim prevents review completion, including when unit checks were green.",
+          "phase": "ph-d5d7",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "EXTEND→RUN: add the review boundary/refusal cases in the guide-owned lifecycle suite or source/flow checks; run the existing paved command just test. Structural green does not replace the separately recorded architectural judgement.",
+          "state": "unchecked",
+          "note": "Planned acceptance proof; the product contract is not implemented or proven yet. Structural tests do not replace independent architectural judgement or the actual pinned OMP dogfood. Existing baseline fast-suite evidence is not new-feature or full-suite evidence.",
+          "probe": "just test"
+        },
+        {
+          "id": "bp-000d",
+          "criterion": "ac-000d: Close-out verifies required Builder and engineering-harness lifecycle evidence, produces/validates the post-flight record, archives the whole plan folder and re-anchors flow/document references without treating optional shipping as automatically authorized.",
+          "phase": "ph-d5d7",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "EXTEND→RUN: add the close boundary/refusal cases in the guide-owned lifecycle suite or source/flow checks; run the existing paved command just test. Structural green does not replace the separately recorded architectural judgement.",
+          "state": "unchecked",
+          "note": "Planned acceptance proof; the product contract is not implemented or proven yet. Structural tests do not replace independent architectural judgement or the actual pinned OMP dogfood. Existing baseline fast-suite evidence is not new-feature or full-suite evidence.",
+          "probe": "just test"
+        },
+        {
+          "id": "bp-000e",
+          "criterion": "ac-000e: Teardown preserves required WIP/reports/observations and a verifiable surviving archive before removal, refuses unowned/dirty/unpushed/unmerged or ambiguous resources by default, is resumable after partial failure and retains allocation tombstones.",
+          "phase": "ph-d5d7",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "EXTEND→RUN: add the tidy boundary/refusal cases in the guide-owned workspace suite or source/flow checks; run the existing paved command just test. Structural green does not replace the separately recorded architectural judgement.",
+          "state": "unchecked",
+          "note": "Planned acceptance proof; the product contract is not implemented or proven yet. Structural tests do not replace independent architectural judgement or the actual pinned OMP dogfood. Existing baseline fast-suite evidence is not new-feature or full-suite evidence.",
+          "probe": "just test"
+        },
+        {
+          "id": "bp-000f",
+          "criterion": "ac-000f: Tracked Builder source separates plan and implementation-guide stages and updates registry, routing, templates, tasks/implement/review/post-flight/ship consumers consistently, with capability checks and no second independently advanced flow; completed historical plans retain their existing read path.",
+          "phase": "ph-d5d7",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "EXTEND→RUN: add the skill boundary/refusal cases in the guide-owned skills suite or source/flow checks; run the existing paved command just checks. Structural green does not replace the separately recorded architectural judgement.",
+          "state": "unchecked",
+          "note": "Planned acceptance proof; the product contract is not implemented or proven yet. Structural tests do not replace independent architectural judgement or the actual pinned OMP dogfood. Existing baseline fast-suite evidence is not new-feature or full-suite evidence.",
+          "probe": "just checks"
+        },
+        {
+          "id": "bp-0010",
+          "criterion": "ac-0010: The shipped skill/docs include runnable architecture-enabled good and bad decomposition examples, injectable service contracts, dependency waves, AC-to-capability coverage, model settings, packet acknowledgement, composition/review proof and preservation/refusal cases.",
+          "phase": "ph-d5d7",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "BUILD→RUN: implement and pave the guide-owned real CLI/consumer/example proof for examples; then run npm run check:builder-examples. This command is proposed, not runnable acceptance proof yet.",
+          "state": "unchecked",
+          "note": "Planned acceptance proof; the product contract is not implemented or proven yet. Structural tests do not replace independent architectural judgement or the actual pinned OMP dogfood. Existing baseline fast-suite evidence is not new-feature or full-suite evidence.",
+          "probe": "npm run check:builder-examples"
+        },
+        {
+          "id": "bp-0011",
+          "criterion": "ac-0011: The change is demonstrated through deterministic behavior tests and a disposable real-Git CLI lifecycle smoke, independently reviewed with the requested OMP models, and this plan retains the detailed manual dogfood log plus complete lifecycle evidence.",
+          "phase": "ph-d5d7",
+          "mode": "ABSENT",
+          "tier": "human-judgement",
+          "proof": "Independent OMP Opus 5 high judgement against the committed composition and frozen plan/guide, plus PM-verified complete manual Builder/harness lifecycle evidence. Automated behavior and schema checks prove their own scopes, not this judgement or an unobserved run.",
+          "state": "unchecked",
+          "note": "Inspected the root manifest/recipes, harness/cli Vitest/architecture/contract suites and live CLI/OMP canary paths. Those instruments expose runtime/behavior facts; none substitutes for independent architectural judgement and an observed end-to-end manual lifecycle. No provider-served model attestation is claimed."
+        },
+        {
+          "id": "bp-0012",
+          "criterion": "ac-0012: Builder, eng-harness-flow and their templates use the local ddocs CLI and one canonical assets/backpressure.dd.json source to record the actual selected proof approach, link every AC and task assertion to its pressure row, and link observed proof receipts back to the AC; the documented recipe is executed and validated, not merely checked for wording.",
+          "phase": "ph-d5d7",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "BUILD→RUN: implement and pave the guide-owned real CLI/consumer/example proof for backpressure; then run npm run smoke:builder:packed. This command is proposed, not runnable acceptance proof yet.",
+          "state": "unchecked",
+          "note": "The local ddocs validate/links/build --check recipe was executed on the real authored plan with zero errors or warnings. Shipped skill/template teaching and final AC proof links still require implementation and consumer smoke; this entire criterion remains unchecked.",
+          "probe": "npm run smoke:builder:packed"
+        },
+        {
+          "id": "bp-0013",
+          "criterion": "ac-0013: audited DD/new-Builder evaluation, real architecture-enabled worker fan-out and an independently working Markdown-to-PDF artifact",
+          "phase": "ph-d5d7",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "Extend the existing flow-eval tests with selected-plan/base binding, semantic DD validation, native evidence with explicit unknowns, receipt/commit ownership and refusal controls. Then execute and independently inspect a blind run from the reviewed delivery; unit-test or score green alone is insufficient.",
+          "state": "unchecked",
+          "note": "The source-backed compatibility audit is assets/flow-eval-audit.md. Native explicit-identity ingest has a verified route; the evaluator adapter and final live run are not yet implemented/proven. Unknown telemetry and served-model attestation remain explicit.",
+          "probe": "node ../../node_modules/vitest/vitest.mjs run ../../.harness/extensions/flow-eval --passWithNoTests=false (cwd harness/cli), then the separate blind live scenario"
+        }
+      ]
+    },
+    {
+      "name": "sensors",
+      "value": [
+        {
+          "id": "sensor-tests-fast",
+          "name": "Fast behavior/contract/architecture suite",
+          "command": "just test",
+          "dimension": "behaviour",
+          "found_in": "justfile:209-212; harness/cli/vitest.config.ts; harness/cli/test and .harness/extensions tests"
+        },
+        {
+          "id": "sensor-tests-all",
+          "name": "Explicit full test scope",
+          "command": "just test-all",
+          "dimension": "behaviour",
+          "found_in": "justfile:219-223; HARNESS_TEST_SCOPE=all"
+        },
+        {
+          "id": "sensor-checks",
+          "name": "Composite repository gate",
+          "command": "just checks",
+          "dimension": "maintainability",
+          "found_in": "justfile:251-254; .harness/extensions/checks/extension.ts:359-465"
+        },
+        {
+          "id": "sensor-arch",
+          "name": "Import/dependency architecture",
+          "command": "node harness/cli/bin/harness.js arch-check --json",
+          "dimension": "architecture-fitness",
+          "found_in": ".harness/extensions/arch-check/extension.ts:4-55; .dependency-cruiser.cjs"
+        },
+        {
+          "id": "sensor-docs",
+          "name": "Generated docs drift",
+          "command": "npm run check:docs",
+          "dimension": "maintainability",
+          "found_in": "package.json:38-50; scripts/gen-docs.mjs"
+        },
+        {
+          "id": "sensor-flows",
+          "name": "Flow schema/template/fixture drift",
+          "command": "npm run check:flows",
+          "dimension": "architecture-fitness",
+          "found_in": "package.json:38-50; scripts/gen-flows.mjs and the registered flow-fixture drift guard"
+        },
+        {
+          "id": "sensor-skills",
+          "name": "Skill source contract checks",
+          "command": "node harness/cli/bin/harness.js skills-check --json",
+          "dimension": "architecture-fitness",
+          "found_in": ".harness/extensions/checks/extension.ts:359-465; skills/"
+        },
+        {
+          "id": "sensor-markdown",
+          "name": "Markdown/source consistency",
+          "command": "just lint-md",
+          "dimension": "maintainability",
+          "found_in": "justfile:233-249; markdown-lint extension"
+        },
+        {
+          "id": "sensor-windows",
+          "name": "Windows portability",
+          "command": "just windows-check",
+          "dimension": "maintainability",
+          "found_in": "justfile:233-249; windows-check extension"
+        },
+        {
+          "id": "sensor-dd",
+          "name": "DD schema and typed link validation",
+          "command": "node_modules/.bin/ddocs validate docs/plans/098-builder-team-lifecycle/plan.dd.json",
+          "dimension": "architecture-fitness",
+          "found_in": "installed @ai-substrate/dd CLI; .dd/schemas/builder; observed zero-error source validation"
+        },
+        {
+          "id": "sensor-builder-contracts",
+          "name": "Builder shared DD, ownership, argv and command grammar contract tests",
+          "command": "just test",
+          "dimension": "behaviour",
+          "found_in": "harness/cli/test/services/builder-contracts.test.ts; also selected as guide check vd-0001"
+        }
+      ]
+    }
+  ]
+}

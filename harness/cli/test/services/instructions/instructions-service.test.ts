@@ -43,15 +43,15 @@ describe('buildCoreInstructions', () => {
       verbs_with_instructions } where membership = FsPort existence check of
       dirname(record.entryPath)/instructions.md per verb (D4/D5).
     - Quality Contribution: pins the bare `harness instructions` payload shape.
-    - Worked Example: flow has instructions.md, survey does not → ['flow'].
+    - Worked Example: flow has instructions.md, survey does not → core pages plus ['flow'].
     */
     const fs = new FakeFs({ [`${FLOW_DIR}/instructions.md`]: '# Flow briefing' });
     const result = buildCoreInstructions(registry(), fs);
     expect(result.instructions).toBe(CORE_INSTRUCTIONS);
     expect(result.instructions.length).toBeGreaterThan(200);
-    // plan 074 · ac-0008 — CORE pages (`commit`) are always resolvable and lead
+    // Core pages are always resolvable and lead
     // the list; they are baked into the binary, so none can be missing.
-    expect(result.verbs_with_instructions).toEqual(['commit', 'flow']);
+    expect(result.verbs_with_instructions).toEqual(['commit', 'builder', 'flow']);
   });
 
   it('lists every verb of a multi-verb extension when its shared file exists (AC-2)', () => {
@@ -61,6 +61,7 @@ describe('buildCoreInstructions', () => {
     });
     expect(buildCoreInstructions(registry(), fs).verbs_with_instructions).toEqual([
       'commit',
+      'builder',
       'flow',
       'survey',
       'report',
@@ -70,6 +71,7 @@ describe('buildCoreInstructions', () => {
   it('lists only the CORE pages when no extension carries a briefing', () => {
     expect(buildCoreInstructions(registry(), new FakeFs()).verbs_with_instructions).toEqual([
       'commit',
+      'builder',
     ]);
   });
 });

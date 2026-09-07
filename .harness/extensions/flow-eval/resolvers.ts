@@ -28,6 +28,9 @@
 import type { ExecResult } from '@ai-substrate/engineering-harness/contract';
 import type { Assertion, AssertionSource, SequenceMatchMode } from './scenario.js';
 import { ASSERTION_TYPES, join, SEQUENCE_MATCH_MODES } from './scenario.js';
+import type { NativeEvidence } from './native-evidence.js';
+import { builderTeamBound, subjectPlanComplete, type SubjectBinding } from './subject-evidence.js';
+import { pdfCapability } from './pdf-capability.js';
 
 /** Three-valued verdict for a deterministic assertion. */
 export type Verdict = 'pass' | 'fail' | 'unknown';
@@ -205,6 +208,12 @@ export interface ResolverFs {
 export interface ResolveContext {
   /** The session's telemetry evidence, or `null` when `telemetry get` errored/absent. */
   evidence: SessionEvidence | null;
+  native?: NativeEvidence;
+  nativePeers?: Map<string, NativeEvidence>;
+  subject?: SubjectBinding;
+  pdfProbe?: { script: string; output: string };
+  pdfResult?: VerdictWithNote;
+  capabilityFiles?: string[];
   /** The subject's worktree root — fs reads + `command-succeeds` cwd resolve here. */
   worktree: string;
   fs: ResolverFs;
@@ -910,6 +919,19 @@ const retroDrained: ResolverFn = (a, rc) => {
 
 /** The type→resolver registry (lane-tagged). `judged` is intentionally absent. */
 export const RESOLVERS: Record<string, ResolverEntry> = {
+  'subject-plan-complete': { lanes: ASSERTION_TYPES['subject-plan-complete'], resolve: (_a, rc) => subjectPlanComplete(rc) },
+  'builder-team-bound': { lanes: ASSERTION_TYPES['builder-team-bound'], resolve: (_a, rc) => builderTeamBound(rc) },
+  'pdf-capability': { lanes: ASSERTION_TYPES['pdf-capability'], resolve: (_a, rc) => pdfCapability(rc) },
+  'native-evidence-complete': { lanes: ASSERTION_TYPES['native-evidence-complete'], resolve: (_a, rc) => ({
+    verdict: rc.native?.complete ? 'pass' : 'unknown',
+    note: rc.native?.complete ? `Flowspace complete through turn ${rc.native.cutoff?.turns}; not telemetry segments` : rc.native?.gaps.join('; ') ?? 'native evidence not requested',
+  }) },
+  'native-command-ran': { lanes: ASSERTION_TYPES['native-command-ran'], resolve: (a, rc) => {
+    const prefix = a.params.argv;
+    if (!rc.native?.complete || !Array.isArray(prefix) || !prefix.every((v) => typeof v === 'string')) return 'unknown';
+    const found = rc.native.commands.some(({ argv }) => prefix.every((value, i) => argv[i] === value));
+    return { verdict: found ? 'pass' : 'unknown', note: found ? 'direct invocation observed; exit status unknown' : 'no direct invocation observed; opaque wrappers remain unknown' };
+  } },
   'skill-called': { lanes: ASSERTION_TYPES['skill-called'], resolve: skillCalled },
   'skill-sequence': { lanes: ASSERTION_TYPES['skill-sequence'], resolve: skillSequence },
   'flow-seam-fired': { lanes: ASSERTION_TYPES['flow-seam-fired'], resolve: flowSeamFired },

@@ -15,6 +15,33 @@ per verb, so the action is a positional the verb dispatches on):
 | `supersede` | `harness flow-eval supersede --scenario <slug> --run <old-run-id> --by <new-run-id>` | mark a stale run superseded by a corrected re-score — appends an **append-only** annotation line; `ledger` then flags it and `--compare` excludes it (no prior line is rewritten) |
 | `scaffold` | `harness flow-eval scaffold --slug <slug>` | write a ready-to-edit scenario skeleton (refuses to clobber an existing bundle) |
 
+### Explicit native evidence and the Builder team cohort
+
+`score --evidence-source native --subject-plan <new plan.dd.json> --base-ref <initial consumer SHA>`
+selects **Flowspace**, never a fabricated telemetry buffer. Run from an evaluator
+checkout outside all disposable roots. The evaluator reads native rs `row.session`,
+syncs through the local CLI, verifies delivery, and preserves every bounded
+conversation window through the reported cutoff. Unsupported segments, usage,
+check outcomes and refusals remain unknown; opaque wrapper bodies are not executed
+commands. Model configuration is not provider attestation.
+
+The separate `builder-team-md-to-pdf` versioned scenario adds subject/base semantic
+binding, exact Builder team/commit/review evidence and an independent fresh PDF probe.
+The probe's source execution coverage belongs to capability proof, not session
+telemetry. Read [the native cohort runbook](../../../docs/how/flow-conformance-eval.md#blind-builder-team-cohort-version-1)
+for local package preparation, positive control, inspection and retained evidence.
+Historical scenarios and their telemetry defaults are unchanged.
+
+Team authorization is selected by the guide's current sealed baseline, not a
+delivery or acknowledgement's claimed source. Packet, ack and dispatch paths and
+ids must use `<kind>-<unit>-<full-sealed-source-sha>` together with their exact raw
+digests and a matching nonempty packet/ack nonce. Missing current records,
+other-source qualifiers and current-name records bound to another source all
+return `builder-authorization-unverified`; historical unit-only records never
+authorize a new attempt and are never rewritten. The repo-local evaluator calls
+the frozen Builder intent/path helpers directly. Intent equality alone grants
+neither semantic validity nor completion nor review approval.
+
 ### Recording an honest subject + base_ref (`--subject-*` / `--base-ref`)
 
 `scenario.json#subject` / `base.ref` are only **defaults**. When the run's real subject or

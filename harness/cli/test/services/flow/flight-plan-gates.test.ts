@@ -92,14 +92,15 @@ describe('dw-0005 — the shipped template carries both gate kinds', () => {
     expect(link?.check).toBeUndefined();
   });
 
-  it('gates the last review on the plan validator', () => {
-    const link = ddLinkOf(nodeById(templateNodes(), 'review-1'));
+  it('gates post-flight after closeout evidence, never the preceding review', () => {
+    const link = ddLinkOf(nodeById(templateNodes(), 'post-flight'));
     expect(link?.check).toBe('plan-validate');
     expect(link?.address).toBe('plan.dd.json');
+    expect(ddLinkOf(nodeById(templateNodes(), 'review-1'))).toBeUndefined();
   });
 
   it('writes both addresses RELATIVE to the plan folder — a static template knows no folder', () => {
-    for (const id of ['phase-1', 'review-1']) {
+    for (const id of ['phase-1', 'post-flight']) {
       const address = ddLinkOf(nodeById(templateNodes(), id))?.address ?? '';
       expect(address.startsWith('/')).toBe(false);
       expect(address.startsWith('docs/')).toBe(false);
@@ -117,11 +118,11 @@ describe('dw-0005 — `flow create --plan-dir` anchors those addresses', () => {
     expect(ddLinkOf(nodeById(created.doc.nodes, 'phase-1'))?.address).toBe(
       'docs/plans/071-dd-native-builder/assets/tasks/phase-1/tasks.dd.json#tasks',
     );
-    expect(ddLinkOf(nodeById(created.doc.nodes, 'review-1'))?.address).toBe(
+    expect(ddLinkOf(nodeById(created.doc.nodes, 'post-flight'))?.address).toBe(
       'docs/plans/071-dd-native-builder/plan.dd.json',
     );
     // The check kind survives the rewrite — only the address moves.
-    expect(ddLinkOf(nodeById(created.doc.nodes, 'review-1'))?.check).toBe('plan-validate');
+    expect(ddLinkOf(nodeById(created.doc.nodes, 'post-flight'))?.check).toBe('plan-validate');
     expect(created.doc.plan_dir).toBe('docs/plans/071-dd-native-builder');
   });
 
@@ -131,7 +132,7 @@ describe('dw-0005 — `flow create --plan-dir` anchors those addresses', () => {
     expect(created.ok).toBe(true);
     if (!created.ok) throw new Error('unreachable');
     expect(created.doc.plan_dir).toBe('docs/plans/x');
-    expect(ddLinkOf(nodeById(created.doc.nodes, 'review-1'))?.address).toBe(
+    expect(ddLinkOf(nodeById(created.doc.nodes, 'post-flight'))?.address).toBe(
       'docs/plans/x/plan.dd.json',
     );
   });
@@ -149,7 +150,7 @@ describe('dw-0005 — `flow create --plan-dir` anchors those addresses', () => {
     expect(ddLinkOf(nodeById(created.doc.nodes, 'phase-1'))?.address).toBe(
       'assets/tasks/phase-1/tasks.dd.json#tasks',
     );
-    expect(ddLinkOf(nodeById(created.doc.nodes, 'review-1'))?.address).toBe('plan.dd.json');
+    expect(ddLinkOf(nodeById(created.doc.nodes, 'post-flight'))?.address).toBe('plan.dd.json');
     // And the template's own nodes are not mutated in place — a create must not
     // poison the next one in the same process.
     expect(ddLinkOf(nodeById(templateNodes(), 'phase-1'))?.address).toBe(
@@ -205,7 +206,7 @@ describe('dw-0005 — `flow create --plan-dir` anchors those addresses', () => {
     );
     expect(second.ok).toBe(true);
     if (!second.ok) throw new Error('unreachable');
-    expect(ddLinkOf(nodeById(second.doc.nodes, 'review-1'))?.address).toBe(
+    expect(ddLinkOf(nodeById(second.doc.nodes, 'post-flight'))?.address).toBe(
       'docs/plans/x/plan.dd.json',
     );
   });
@@ -267,7 +268,7 @@ describe('dw-0006 — a pre-JIT departure REFUSES, it never passes vacuously', (
     expect(created.ok).toBe(true);
     if (!created.ok) throw new Error('unreachable');
 
-    const link = ddLinkOf(nodeById(created.doc.nodes, 'review-1')) as DdLink;
+    const link = ddLinkOf(nodeById(created.doc.nodes, 'post-flight')) as DdLink;
     const result = evaluateDdGate(link, gateDeps(), { repoRoot: root, fromPath: null });
 
     expect(result.ok).toBe(false);
@@ -344,8 +345,9 @@ describe('dw-0005 — `flow create` refuses a bad --plan-dir at the CLI, writing
       nodes: FlowNode[];
     };
     expect(doc.plan_dir).toBe('docs/plans/071-dd-native-builder');
-    expect(ddLinkOf(nodeById(doc.nodes, 'review-1'))?.address).toBe(
+    expect(ddLinkOf(nodeById(doc.nodes, 'post-flight'))?.address).toBe(
       'docs/plans/071-dd-native-builder/plan.dd.json',
     );
+    expect(ddLinkOf(nodeById(doc.nodes, 'review-1'))).toBeUndefined();
   });
 });

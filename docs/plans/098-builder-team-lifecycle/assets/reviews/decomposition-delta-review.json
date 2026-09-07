@@ -1,0 +1,167 @@
+{
+  "review": "plan-098 decomposition delta and wave-0 contract review",
+  "reviewer_id": "pij-natural-gant",
+  "pm": "pij-cooperative-gibbon",
+  "nonce": "d15daa94-ed29-45dd-a23c-01cccfc8c4cd",
+  "scope": {
+    "snapshot_sha": "208fe7a20b0d43b4de4b6ea2ae398914c78706aa",
+    "prior_snapshot_sha": "a58a6c39f997106eb94a71013a5a1fa6ffa91392",
+    "packet": {
+      "path": "docs/plans/098-builder-team-lifecycle/assets/reviews/decomposition-delta-request.md",
+      "sha256": "05bfdeb35f3722a76140a0ae5d39bd9c2c6d6ddb577c0e93e4f39a55604dfcbb"
+    },
+    "covered": "Disposition of F1-F5 against this baseline; the added acceptance criterion ac-0013; evaluator unit tk-0008; and the actual common code/schema baseline (types.ts, records.ts, commands.ts, error-codes.ts, the four builder schemas, contract fixtures and tests). The relocated complete-plan gate is included because the packet names it.",
+    "not_claimed": "This is a decomposition and contracts review. No product service, live acceptance, sealed baseline or coder release is claimed to exist. My core verdict at a58a6c39 stands unchanged and is not superseded except through the explicit dispositions below.",
+    "input_digests": "17 of 17 re-verified at review time against the packet table; zero mismatches. Method: shasum -a 256 in this clone at HEAD 208fe7a2, captured to a regular file, read from disk, no pipe.",
+    "outside_frozen_set": "docs/plans/098-builder-team-lifecycle/the-flow.json is NOT among the 17 frozen digests, but the packet's scope bullet names the gate relocation and one adjudication question turns on it. Finding N1 is therefore recorded against a file whose bytes the packet did not freeze; treat its digest as unpinned."
+  },
+  "evidence_boundary": {
+    "requested": {
+      "harness": "omp",
+      "model": "github-copilot/claude-opus-5",
+      "effort": "high"
+    },
+    "observed": {
+      "process_argv": "bun $HOME/.npm-global/bin/omp --auto-approve --model github-copilot/claude-opus-5 --thinking high (pid 77664)",
+      "env_present": [
+        "OMPCODE=1",
+        "PIJ_SESSION_ID=pij-natural-gant",
+        "PIJ_SPAWN_ID=s-2948d69293902dfe10431d9ddef6bd50"
+      ],
+      "env_absent": [
+        "PIJ_PARENT_ID",
+        "PIJ_HARNESS"
+      ],
+      "registry_record": "pij-rs whoami agrees; a daemon descriptor, not an environment fact",
+      "native_root": "$HOME/substrate/harness-engineering-coders/s098-review, proven by relative-path native reads; shell cwd identical and treated only as corroboration"
+    },
+    "unverified": "Provider-served model identity and materially-high reasoning effort. Launch configuration is separated from attestation: argv, environment, registry descriptor and system prompt all descend from a single launch act, so they are mutually consistent, not independent confirmation.",
+    "method": "Read-only throughout. git rev-parse/status/diff/log, shasum, printenv, grep and node one-liners that JSON.parse the frozen documents. No formatters, linters, builds, tests or validation suites were run; the four baseline checks reported green by the PM were taken as given and not re-executed."
+  },
+  "verdict": {
+    "decision": "changes-requested",
+    "blocking": false,
+    "summary": "All five prior findings are genuinely resolved, several of them better than the correction I proposed. No HIGH or CRITICAL finding remains and nothing here is unsafe ownership, dishonest evidence or unowned integration work. Four MEDIUM items remain. The reason this is changes-requested rather than approved is timing, not severity: two of the four require editing files that this baseline is about to freeze (types.ts and commands.ts), so they land before the seal or they do not land at all.",
+    "answers": {
+      "all_capabilities_owned_through_a_visible_composed_path": "Yes. All 19 capability rows carry a distinct observable path and resolve to the composition owner tk-0007. Ownership of ac-0013 is real in three places (guide capabilities row, phase tk-0008 satisfies_toward, plan tk-0003 satisfies). The defect is that the plan's own Acceptance Coverage Map has 18 rows for 19 ACs \u2014 see N4.",
+      "six_coder_units_genuinely_independent": "Yes. Verified canonically: zero duplicate paths across all eight units' fences; every coder's reads list contains exactly one entry, owner tk-0001, and each includes commands.ts; depends_on for tk-0002..tk-0006 and tk-0008 is exactly ['tk-0001']; composition.order lists the six coder units once each; tk-0007 is wave 2 and depends on all seven. No private sibling imports exist in the baseline: records.ts imports only node:crypto, the real @ai-substrate/dd parser/validator/renderer, shared posix-path, error-codes and its own types; the fixtures reuse the existing FakeFs/FakeExec/FakeClock/FakeEnv adapters and the existing plan scaffold rather than duplicating them. Cross-unit effects are values or injected callbacks (DispatchDeps.provision/readiness, CompositionDeps.readiness, TidyInput.preservation), never imports.",
+      "close_post_flight_proof_without_cycle_or_anticipatory_state": "Yes. The relocation is real in machine state, not just minuted: review-1.dd_link is {check:'plan-validate', gate:false} and post-flight.dd_link is {check:'plan-validate', gate:true}. That removes the genuine cycle in which review exit demanded --complete green, which in turn demanded ac-0011's close-out evidence before close-out could run. The residual cycle I looked for is absent: ac-000d and ac-000e are proven by the product's own smoke at composition (tk-0007 dw-0020, dw-0021), not by tearing down this plan's workspace, so post-flight's gate does not require its own future teardown. Both late ACs use the same anti-cycle shape \u2014 ac-0011 and ac-0013 are satisfies_toward at phase level with plan-level tasks tk-0001 and tk-0003 holding satisfies, deliberately outside phase-1. I checked for anticipatory checked state specifically: plan tk-0002 is [x] checked, but it only satisfies_toward ac-0004, so no acceptance criterion inherits a checked state from it, and all 19 ACs remain unchecked.",
+      "contracts_sufficient_for_declared_consumers": "Substantially yes, with two named gaps. commands.ts is a real executable Commander grammar, not prose: 13 verbs, per-flag required/choices/default/conflicts, exactlyOne and requires cross-checks, plus BUILDER_OUTCOMES mapping ok/degraded/unconfigured/error to exit codes and next_action. Several policies are encoded rather than documented \u2014 adopt --owner choices are ['external','pij'] so adoption cannot mint harness ownership, and contracts requires {seal:['review'], review:['seal']} so sealing cannot happen without an approved decomposition ReviewReceipt. E470-E477 are distinct and pinned by an exact-table equality test. The gaps are workspace-kind resolution (N2) and the optional fail-closed peer-release capability (N3)."
+    }
+  },
+  "dispositions": [
+    {
+      "finding": "F1",
+      "prior_severity": "HIGH",
+      "disposition": "RESOLVED",
+      "confidence": "high",
+      "evidence": "types.ts:388-401 defines PreservationReceipt with allocation_ids, source_root, source_sha, composed_sha, archived_plan, survivor_root, retiring_roots, inventory and refs. PreservedItem (374-380) carries source, destination, sha256, bytes and a category of artifact|wip|report|observation|telemetry; PreservedRef (381-387) carries source/destination repo and ref plus the exact oid. CloseResult (408-411) returns {archive, preservation} and TidyInput (412-415) takes {allocation, preservation} as a value, so tidy receives the receipt rather than discovering an archive convention. architecture.contracts adds the close-to-tidy entry, tk-0005 produces it, tk-0003 re-verifies it, and commands.ts requires close --survivor and tidy --preservation.",
+      "note": "Better than my proposed correction in one respect I want to name: there is no verified/ok boolean anywhere on the receipt, and survivor_root plus retiring_roots give tidy the exact material for an independent path-separation check. That matches the packet's 'require independent re-observation, not a success boolean' rather than merely asserting it."
+    },
+    {
+      "finding": "F2",
+      "prior_severity": "HIGH",
+      "disposition": "RESOLVED",
+      "confidence": "high",
+      "evidence": "commands.ts is in tk-0001's wave-0 fence and in baseline.files. It declares BuilderVerb over 13 verbs, BUILDER_COMMANDS with flags/results/exactlyOne/requires, BUILDER_OUTCOMES, and registerBuilderCommandContract which registers the family through Commander itself including makeOptionMandatory, choices and conflicts. Canonical check: all six coder units' reads include harness/cli/src/services/builder/commands.ts. tk-0006's interface now says 'Read commands.ts from the shared baseline for every public invocation, flag and result contract; do not guess the later composition surface', and architecture.contracts states neither a later act nor free-form guide prose may invent a second spelling. builder-contracts.test.ts has a 'Builder public command grammar' suite, so the grammar is behaviourally pinned at the baseline rather than only declared.",
+      "note": "The wave-1 consumer and the wave-2 implementer now bind to the same executable artifact, which is what the finding asked for."
+    },
+    {
+      "finding": "F3",
+      "prior_severity": "HIGH",
+      "disposition": "RESOLVED",
+      "confidence": "high",
+      "evidence": "The gate was withdrawn rather than satisfied, and the record says exactly that. Plan tk-0002 'Obtain and record allocator ownership ruling' is [x] checked with proven_by lg-000f (present in execution.dd.json), and its note states the prime withdrew his additional gate because it was not a user requirement. The open question moved from [-] blocked to [x] checked, G1 moved FAIL to PASS with that reason, dw-0008 moved from [-] blocked to [ ] unchecked with the note 'Allocation authority is resolved; implementation and proof are still outstanding', tk-0003's notes now read 'Harness owns creation; external adoption records ownership and never grants teardown authority', and fan_out.rationale no longer claims a contained block. The unowned human gate I flagged now has a named, closed task.",
+      "note": "Two things I checked because a withdrawn gate is easy to launder into a satisfied one: the assertion state moved to unchecked rather than checked, so no proof was claimed; and tk-0002 satisfies_toward ac-0004 rather than satisfies it, so a decision record cannot check an acceptance criterion. Both are honest. isolation.note also now says previously created resources keep their actual external ownership and must not be relabelled as harness-created."
+    },
+    {
+      "finding": "F4",
+      "prior_severity": "MEDIUM",
+      "disposition": "RESOLVED",
+      "confidence": "high",
+      "evidence": "The guide's check registry is now vd-0001..vd-000e. A grep for '\"bp-' in impl-guide.dd.json returns zero occurrences, and backpressure rows keep their bp-* identities, so no existing pressure caller was migrated \u2014 precisely the correction proposed. Four new rows were added while renaming: vd-000b/c/d (ddocs) and vd-000e (evaluator suite).",
+      "note": "The collision is gone rather than merely documented, and fn-0006's caller-migration procedure now operates on a single namespace."
+    },
+    {
+      "finding": "F5",
+      "prior_severity": "MEDIUM",
+      "disposition": "RESOLVED",
+      "confidence": "high",
+      "evidence": "vd-000b runs node_modules/.bin/ddocs validate on plan.dd.json, vd-000c runs ddocs links, vd-000d runs ddocs build --check, each with cwd '.' and a bounded timeout. ac-0012's capability proof now lists vd-0007, vd-0008, vd-000b, vd-000c and vd-000d, so the criterion no longer rests solely on unwritten smoke scripts. backpressure bp-0012's note records that the validate/links/build --check recipe was executed on the real authored plan with zero errors or warnings, and a new sensor-builder-contracts row was added. The correct spelling node_modules/.bin/ddocs is used throughout, not bare dd or npx dd.",
+      "note": "Independently corroborated: backpressure meta.basis_sha is now 3ff1a41e89db62df8617e330efbc0dfb8d135e532e1ffdc25cb6e4d1a71cfb02, which is exactly the SHA-256 of plan.dd.json at this snapshot per the packet's own frozen table. The 'hash plan bytes after links are written' rule holds in fact at this snapshot, as it did at a58a6c39."
+    }
+  ],
+  "findings": [
+    {
+      "id": "N1",
+      "severity": "MEDIUM",
+      "confidence": "high",
+      "location": "docs/plans/098-builder-team-lifecycle/the-flow.json \u2014 nodes review-1 (instructions) and post-flight (instructions)",
+      "claim": "The complete-plan gate moved correctly in machine state but its operator-facing text did not move with it, so the flow now tells the reader the gate is on the node that no longer has it and says nothing on the node that does.",
+      "proof": "review-1.dd_link is {address: plan.dd.json, check: 'plan-validate', gate: false}, yet review-1.instructions[3] still reads 'This node carries the plan-validate CHECK gate: departure is refused until harness plan validate \"<plan dir>/plan.dd.json\" --complete is green (zero errors AND zero warnings). Run it BEFORE you try to leave', and instructions[5] still explains the --force override for that gate. post-flight.dd_link is {address: plan.dd.json, check: 'plan-validate', gate: true}, but all three of its instructions concern archiving and the close-out note; none mentions the gate, --complete, or rehearsing it before departure.",
+      "impact": "The 'run it BEFORE you try to leave, reading the findings early is cheaper' affordance is now attached to the wrong node. An operator or agent at review-1 prepares for a gate that will not fire, and arrives at post-flight \u2014 the destructive archive step \u2014 with no forewarning of a refusal that can only be cleared by a whole-plan validate. The recorded decision explicitly promised this was 'gate relocation, not a force override or a completion claim'; the machine half kept that promise and the instruction half did not.",
+      "correction": "Move the gate paragraph and the --force paragraph from review-1.instructions to post-flight.instructions, leaving review-1 with its independent-review guidance. No schema or dd_link change is needed; both dd_link objects are already correct.",
+      "affected": "the-flow.json nodes review-1 and post-flight; ac-000a and ac-000d consumers; the PM and any agent driving close-out.",
+      "disproof_attempted": "Checked whether the flow renderer derives instruction text from dd_link, which would make the stale prose impossible \u2014 it does not; the rendered the-flow.md diff shows only the gutter glyph moving (review_1 gaining a comment marker, post_flight gaining the gate glyph), while the instruction arrays are authored text. Also confirmed the gate genuinely fires from dd_link.gate, so this is a text defect and not a broken gate."
+    },
+    {
+      "id": "N2",
+      "severity": "MEDIUM",
+      "confidence": "high",
+      "location": "harness/cli/src/services/builder/types.ts:195-207 and :299-305; harness/cli/src/services/builder/commands.ts:59-64 and :158-162; impl-guide.dd.json isolation.mode and architecture.contracts",
+      "claim": "Three different sources imply a workspace kind and none of them declares precedence, so the coder implementing dispatch must invent the default \u2014 and the most natural choice is the one the guide itself records as broken for this runtime.",
+      "proof": "WorkspaceInput.kind (types.ts:199) is REQUIRED, so a concrete value must exist before provisioning. DispatchInput.kind (types.ts:304) is OPTIONAL, so dispatch must supply one when the flag is omitted. commands.ts declares new --kind with choices ['worktree','clone'] and default 'worktree' (59-64), but dispatch --kind has the same choices and NO default (158-162). The guide's isolation.mode is 'clone-per-coder', and architecture.contracts records the operational reason: 'the current OMP dogfood uses clones because pij-rs rejects linked-worktree Git-directory shape'. Nothing states whether an omitted dispatch --kind resolves from repository settings, from isolation.mode, or by mirroring new's declared 'worktree' default. Contrast role settings, where precedence is spelled out field by field as repo defaults < guide roles < explicit dispatch overrides.",
+      "impact": "tk-0004 owns dispatch and tk-0003 owns provisioning, so the boundary is clean but the value is unowned. If tk-0004 mirrors the only declared default it can see, every omitted-flag dispatch requests a linked worktree, which the guide says pij-rs rejects \u2014 the failure lands on the exact dogfood path this plan runs. Because kind is recorded in AllocationRecord and drives isolation, a silent wrong default is also an evidence defect, not only an ergonomic one.",
+      "correction": "Add one line to architecture.contracts declaring kind precedence in the same shape as role settings (repo default < guide isolation.mode < explicit --kind), and give dispatch --kind an explicit declared default in commands.ts so the grammar states the answer rather than leaving it to the service.",
+      "affected": "types.ts WorkspaceInput/DispatchInput; commands.ts new/dispatch; guide isolation and architecture.contracts; ac-0009 and dw-000d; consumers tk-0003, tk-0004 and the PM composition root.",
+      "disproof_attempted": "Searched the guide canonically for any kind-resolution or precedence statement; the only 'kind' passages are the separate-facts principle, the AllocationRecord field list, provisionBuilderWorkspace's signature and fn-0001's warning not to infer authority from clone kind. None resolves an omitted flag. Also considered that the required WorkspaceInput.kind forces an explicit decision and therefore cannot default silently \u2014 it forces the decision into tk-0004's code, which is exactly where an undeclared default becomes an invented contract."
+    },
+    {
+      "id": "N3",
+      "severity": "MEDIUM",
+      "confidence": "medium",
+      "location": "harness/cli/src/services/builder/types.ts:416-419 (TidyDeps.peerReleased)",
+      "claim": "The destructive verb's runtime-release safety is an optional dependency whose fail-closed rule exists only as a source comment, so the frozen type permits the unsafe implementation it warns against.",
+      "proof": "TidyDeps declares `peerReleased?: (peerId: string) => Promise<BuilderResult<boolean>>` with the comment 'Required for an allocation bound to a managed peer; absent capability fails closed.' The property is optional, so `if (!deps.peerReleased) return ok(...)` type-checks and satisfies the contract as written. AllocationRecord.peer_id is likewise optional (types.ts:191), so the condition under which the capability becomes mandatory is itself a runtime fact. tidy's own description in commands.ts:246-247 promises it will 'Re-verify ownership, runtime release and surviving evidence before retiring a workspace', and the behavioural proof for that lives in vd-0003, a suite tk-0003 has not written yet, so nothing in the sealed baseline currently pins the closed path.",
+      "impact": "Every other destructive precondition in this baseline is encoded rather than described \u2014 adopt cannot mint harness ownership because the choices exclude it, contracts cannot seal without a review because requires says so. This one is described. The cost of the inconsistency is that the reviewer of tk-0003 must catch by inspection what the type system would otherwise catch, on the single verb that deletes work.",
+      "correction": "Make peerReleased required. The composition root can always inject a function that returns a BUILDER_RUNTIME (E473) failure when the capability is unavailable, which produces the documented fail-closed behaviour by construction and removes the optional branch entirely.",
+      "affected": "types.ts TidyDeps; ac-000e and dw-000b; consumers tk-0003 and the PM composition root.",
+      "disproof_attempted": "Considered that optionality is deliberate for platforms with no peer runtime, which is a real case \u2014 but that case is better expressed by an injected function that fails, not by an absent property, precisely because the absent property is indistinguishable from an oversight. Rated medium confidence rather than high because the guide's prose and dw-000b do state the obligation, and tk-0003's unwritten suite may well pin it."
+    },
+    {
+      "id": "N4",
+      "severity": "MEDIUM",
+      "confidence": "high",
+      "location": "docs/plans/098-builder-team-lifecycle/plan.dd.json \u2014 acceptance_coverage",
+      "claim": "The plan's Acceptance Coverage Map was not extended when ac-0013 was added: it holds 18 rows for 19 acceptance criteria, and the one missing row is the new criterion.",
+      "proof": "Parsed canonically: acceptance_criteria has 19 entries, acceptance_coverage has 18, and the set difference is exactly ['ac-0013']. Every other criterion from ac-0001 to ac-0012 has a covered_by row. Ownership itself is not missing \u2014 the guide's capabilities section has an ac-0013 row owned by tk-0007, phase task tk-0008 carries satisfies_toward ac-0013, and plan task tk-0003 carries satisfies ac-0013 \u2014 so this is a hole in the map rather than genuinely unowned work.",
+      "impact": "The coverage map is the artifact a reviewer and the future readiness checker read to answer 'is every AC owned', and ac-0006 requires readiness to reject 'ACs with no observable capability owner'. A criterion that is owned in three other places but absent from the map is the reverse of the Flowspace plan 008 failure this plan cites as Critical prior art, and it is the shape most likely to survive review by looking complete. G5 already claims 19 ACs, so the plan's own gate note and its coverage map disagree.",
+      "correction": "Add one acceptance_coverage row for ac-0013 whose covered_by names assets/tasks/phase-1/tasks.dd.json#tasks/tk-0008 and plan.dd.json#tasks/tk-0003, mirroring the existing ac-0011 row that already pairs a phase task with a plan-level task.",
+      "affected": "plan.dd.json acceptance_coverage; G5 structure gate; ac-0006 readiness consumers; the decomposition reviewer and PM baseline author.",
+      "disproof_attempted": "Checked whether coverage rows are generated from satisfies/satisfies_toward links, which would make the gap impossible \u2014 they are not; the map is an authored section, and ac-0011's row is hand-paired across two documents in exactly the way ac-0013's would need to be. Also confirmed ac-0013 is not silently covered under another id."
+    }
+  ],
+  "verified_positives": [
+    "Zero duplicate write-fence paths across all eight units; six coder units each read exactly tk-0001; composition.order contains the six coders once each.",
+    "tk-0008's declared fence paths all exist and are tracked: .harness/extensions/flow-eval, live-testing/scenarios, .claude/skills/flow-eval-run/SKILL.md and docs/how/flow-conformance-eval.md. The SKILL.md is repository-tracked, not the deployed home-directory mirror the repo rules forbid editing.",
+    "G5's arithmetic is checkable and correct: 19 ACs, 8 units, 44 phase assertions (39 plus dw-0028..dw-002c) and 3 plan-level tasks carrying 11 assertions (4 + 1 + 6).",
+    "records.ts uses the real @ai-substrate/dd parse, validateDocument and renderDd with compare-and-swap; builder-contracts.test.ts pins the behaviours the packet promised, including 'requires the current source digest for a changed record and supports identical retries', 'reports a committed source when only derived-face publication fails', 'does not remove an existing writer lock or a foreign temporary file', 'refuses source symlinks and writes outside an explicit root' and 'preserves omitted effort rather than manufacturing observed effort'.",
+    "The canary secrecy rule from the packet is encoded and tested, not merely stated: 'refuses a packet that discloses the native-root canary answer', with DispatchReceipt.seed_files typed as exact FileDigest entries rather than a broad untracked-file exemption.",
+    "CompositionReceipt separates integration_sha from an optional artifact_sha with the comment 'Import is not proof', and ComposeInput is a discriminated union of import and verify modes \u2014 the import/verify distinction is in the type, not in guidance.",
+    "flow-eval-audit.md is source-backed and honest about its ceiling: it names the concrete native route (harness convo sync, flowspace3 conversation verify, row.session not peer id, 200-turn bounded windows) and enumerates what Flowspace cannot supply \u2014 telemetry segments, token/cost totals, command exits, check results, gate refusals \u2014 as explicit unknowns rather than zeros.",
+    "ac-0013's proof design refuses the substitutions the packet worried about: dw-000a requires the outer PM to run the delivered command on fresh Mermaid input and visually confirm rendered diagrams, and dw-0008 states that a headcount, file partition or stage-name trace is not evidence of independent implementation."
+  ],
+  "not_findings": [
+    "The absence of implemented services, smoke scripts and the evaluator adapter \u2014 declared scope, not a defect.",
+    "tk-0008 being wave 1 while its fixture must eventually exercise assets that tk-0006 and tk-0007 produce \u2014 correctly deferred, because the live acceptance is plan-level task tk-0003 owned by the PM after composition, and vd-000e only runs the evaluator's own suite.",
+    "Uniform capability owner tk-0007 across all 19 rows \u2014 intentional; the per-AC path carries the discriminating content and the PM alone owns every observable delivery path.",
+    "ac-0013's capability path being a prose paragraph rather than an arrow chain \u2014 cosmetic inconsistency with the other 18 rows, deliberately not raised as a finding."
+  ],
+  "prerequisites_named": [
+    "The baseline is authored but not sealed: contracts --seal requires an approved decomposition ReviewReceipt (commands.ts requires {seal:['review'], review:['seal']}), which is what this review feeds.",
+    "PR 193 / commit 6186b2d0 structured-backpressure cutover remains a concurrently owned coordination boundary (fn-000a), unchanged by this delta.",
+    "N2 and N3 edit files that sealing will freeze (commands.ts, types.ts); they should land before the seal rather than after fan-out."
+  ],
+  "source_report_sha256": "1879133fe6c85a64c4de51c5d5dcc6683d0a95e9ed2c09d50db7334ea6d7f5f1",
+  "redaction_note": "Home-directory prefixes are redacted. Original bytes are retained at scratch/plan-098/decomposition-delta-review.raw.json in the PM worktree; this is not a promise that the same path exists in a reviewer clone."
+}

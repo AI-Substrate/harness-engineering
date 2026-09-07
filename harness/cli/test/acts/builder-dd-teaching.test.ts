@@ -49,8 +49,21 @@ describe('ac-7116 layer a — orient teaches each node its own dd commands (tk-7
       'plan',
       ['harness plan new', 'node_modules/.bin/ddocs set', 'harness flow create', '--plan-dir'],
     ],
+    ['impl-guide', ['harness builder guide', '--init', '--check', 'node_modules/.bin/ddocs']],
     ['phase-1', ['node_modules/.bin/ddocs set', 'harness plan validate', '--address']],
-    ['review-1', ['harness plan validate', '--complete', 'node_modules/.bin/ddocs set', '--force']],
+    ['review-1', ['harness builder review', '--receipt', 'not a review-exit gate']],
+    [
+      'post-flight',
+      [
+        'harness builder close',
+        '--survivor',
+        '--allocations',
+        '--evidence',
+        'harness plan validate',
+        '--complete',
+        '--force',
+      ],
+    ],
   ])('node %s bakes the commands its seam needs', (id, commands) => {
     const text = instructionsOf(id);
     for (const command of commands) expect(text).toContain(command);
@@ -64,8 +77,8 @@ describe('ac-7116 layer a — orient teaches each node its own dd commands (tk-7
     expect(text.toLowerCase()).toContain('drift');
   });
 
-  it('the review node states the force etiquette — an agent may not force a gate', () => {
-    expect(instructionsOf('review-1')).toContain('may not force a dd gate');
+  it('the post-flight gate states the force etiquette — an agent may not force a gate', () => {
+    expect(instructionsOf('post-flight')).toContain('may not force a dd gate');
   });
 
   it('the plan node warns that a missing --plan-dir makes every gate refuse', () => {
@@ -103,7 +116,24 @@ describe('ac-7116 layer b — each stage module teaches its own seam (tk-7145)',
     ['stages/62-progress.md', ['node_modules/.bin/ddocs set']],
     [
       'stages/70-review.md',
-      ['harness plan validate', '--complete', 'node_modules/.bin/ddocs link verify-basis'],
+      [
+        'harness builder review',
+        '--receipt',
+        'harness plan validate',
+        '--address',
+        'node_modules/.bin/ddocs get',
+      ],
+    ],
+    [
+      'stages/75-post-flight.md',
+      [
+        'harness builder close',
+        '--survivor',
+        '--allocations',
+        '--evidence',
+        '--complete',
+        'harness builder tidy',
+      ],
     ],
     [
       'stages/80-ship.md',
@@ -150,12 +180,13 @@ describe('ac-7116 layer b — each stage module teaches its own seam (tk-7145)',
     expect(gate?.address).toContain('assets/tasks/phase-1/tasks.dd.json');
   });
 
-  it('the ops doctrine tells the expander to MOVE the check gate', () => {
+  it('the ops doctrine keeps whole-plan completion at post-flight during expansion', () => {
     const text = read('flight-plan-ops.md');
     expect(text).toContain('--plan-dir');
-    expect(text).toContain('last review');
-    // The specific failure it prevents: a whole-plan check stranded on review-1.
-    expect(text).toContain('legitimately mid-plan');
+    expect(text).toContain('post-flight');
+    expect(text).toContain('New review nodes carry no whole-plan check');
+    expect(text).toContain('gate:false');
+    expect(text).toContain('SAME batch');
   });
 });
 
@@ -225,15 +256,16 @@ describe('ac-7115 — the legacy markdown read path is retained (tk-7146)', () =
  * quietly stop naming the verb, because the failure that follows is invisible —
  * a body full of dead links, or a set of gates pointing at a folder that moved.
  */
-describe('close-out seams teach the archive relocate and the PR proof table', () => {
-  it('75 post-flight relocates the flow in the same breath as the git mv', () => {
+describe('close-out seams teach preservation-aware archive and the PR proof table', () => {
+  it('75 post-flight delegates archival and relocation to the preservation-aware close', () => {
     const stage = read('stages/75-post-flight.md');
-    expect(stage).toMatch(/harness flow relocate --slug "\$\{FLOW_SLUG\}" --to "\$\{DEST\}"/);
-    // The instruction is only followable because `flow list` reports plan_dir.
-    expect(stage).toContain('harness flow list --json');
-    expect(stage).toContain('plan_dir');
-    // And it says WHY it is not optional — the failure has no discovery moment.
-    expect(stage).toContain('not optional on a dd-native plan');
+    expect(stage).toMatch(
+      /harness builder close "\$\{PLAN\}" --survivor "\$\{SURVIVOR\}" --allocations "\$\{ALLOCATIONS\}" --evidence "\$\{EVIDENCE\}"/,
+    );
+    expect(stage).toContain('Close archives and repairs canonical document/flow bindings');
+    expect(stage).toContain('Do not run a second manual move');
+    expect(stage).toContain('outside every retiring root');
+    expect(stage).toContain('harness builder tidy');
   });
 
   it('80 ship appends the derived proof table, pinned at HEAD', () => {
