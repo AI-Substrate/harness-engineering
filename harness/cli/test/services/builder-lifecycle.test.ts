@@ -929,6 +929,28 @@ describe('Builder committed composition', () => {
     if (!stripped.ok) expect(stripped.message).toContain('Undeclared PM integration changes');
   });
 
+  it('re-observation exempts receipts under the ORIGINAL plan folder after archival (row 48 review follow-up)', async () => {
+    /*
+    Test Doc:
+    - Why: the re-observation fence recheck exempted only the current plan folder; after
+      `close` archives the plan, receipts committed under the original folder between
+      import and artifact would read as out-of-fence and fail a proof that the later
+      delta check (which exempts both folders) would have accepted (gibbon, #200 recheck).
+    - Contract: with the plan archived (context.planDir moved), a delta consisting only
+      of an original-plan-folder receipt is not an integration change; the fence does not
+      refuse E477. Other proof checks may still refuse for their own reasons.
+    */
+    const s = scenario();
+    s.composition();
+    s.state.delta = 'docs/plans/001-example/assets/team/composition.dd.json\0';
+    const archived = { ...s.context, planDir: '/repo/docs/plans/archive/001-example' };
+    const result = await verifyBuilderComposition(s.deps, archived, s.guide);
+    if (!result.ok) {
+      expect(result.code).not.toBe('E477');
+      expect(result.message).not.toContain('Undeclared PM integration changes');
+    }
+  });
+
   it('refuses the amendment declarer as the composition reviewer (row 48 review)', async () => {
     /*
     Test Doc:

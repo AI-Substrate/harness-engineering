@@ -546,6 +546,8 @@ async function integrationFence(
   from: string,
   to: string,
   amendments?: readonly IntegrationAmendment[],
+  /** Plan folders whose files are never integration changes: the current one, and — after archival — the original. */
+  exempt: readonly string[] = [context.planDir],
 ): Promise<BuilderResult<true>> {
   const ancestor = await builderGit(deps, ['merge-base', '--is-ancestor', from, to]);
   if (!ancestor.ok) return ancestor;
@@ -561,7 +563,7 @@ async function integrationFence(
     );
   const outside = nulPaths(delta.value).filter(
     (file) =>
-      !isWithin(context.planDir, resolveInRepo(file, deps.repoRoot)) &&
+      !exempt.some((dir) => isWithin(dir, resolveInRepo(file, deps.repoRoot))) &&
       !pm.some((unit) => builderOwnsPath(unit, file)) &&
       !declared.has(file),
   );
@@ -713,7 +715,10 @@ export async function verifyBuilderComposition(
   if (!ancestor.ok) return ancestor;
   // The authorisation that let verify accept the artifact must still hold as
   // recorded NOW: an amendment removed or retargeted after verification takes
-  // the proof with it (gibbon, #200 review).
+  // the proof with it (gibbon, #200 review). After archival the plan folder has
+  // moved, so receipts committed under the ORIGINAL folder are exempt too —
+  // the same pair the post-proof delta check below exempts.
+  const originalDir = posixDirname(baseline.value.value.plan.path);
   const stillDeclared = await integrationFence(
     deps,
     context,
@@ -721,6 +726,7 @@ export async function verifyBuilderComposition(
     value.integration_sha,
     value.artifact_sha,
     value.amendments,
+    [context.planDir, resolveInRepo(originalDir, deps.repoRoot)],
   );
   if (!stillDeclared.ok) return stillDeclared;
   const delta = await builderGit(deps, [
@@ -733,7 +739,6 @@ export async function verifyBuilderComposition(
   ]);
   if (!delta.ok) return delta;
   // Later factual plan/receipt commits do not turn unchanged code into a new artifact.
-  const originalDir = posixDirname(baseline.value.value.plan.path);
   if (
     nulPaths(delta.value).some(
       (path) =>
