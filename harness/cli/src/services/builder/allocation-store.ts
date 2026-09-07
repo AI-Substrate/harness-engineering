@@ -145,6 +145,26 @@ export function bindWorkspaceAllocation(
       );
 }
 
+/**
+ * The allocation record of the checkout `deps.repoRoot` IS, read through its
+ * own locator (`<git-dir>/builder/allocation-ref`): null when the checkout was
+ * never builder-allocated or adopted. Ownership facts stay in the DD record;
+ * this only finds it.
+ */
+export async function locateWorkspaceAllocation(
+  deps: BuilderDeps,
+): Promise<BuilderResult<AllocationRecord | null>> {
+  const actualGit = await workspaceGit(deps, deps.repoRoot, ['rev-parse', '--absolute-git-dir']);
+  const gitDir = actualGit.ok ? deps.fs.realpath(toPosix(actualGit.stdout.trim())) : null;
+  if (gitDir === null)
+    return builderFailure(
+      ErrorCodes.BUILDER_OWNERSHIP,
+      'Cannot inspect the workspace allocation locator.',
+      'Restore readable workspace Git metadata before dispatching from this checkout.',
+    );
+  return readWorkspaceAllocationLocator(deps, deps.repoRoot, toPosix(gitDir));
+}
+
 export async function allocationAuthority(
   deps: BuilderDeps,
   parent?: AllocationRecord,
@@ -456,6 +476,23 @@ export async function reserveAllocation(
       'Workspace target aliases or contains protected repository state.',
       'Choose a new, non-symlinked workspace outside Git metadata.',
     );
+  }
+  if (input.purpose === 'unit' && !input.parent) {
+    // A unit hangs off the plan workspace it is dispatched FROM. Callers
+    // (dispatch) name the governing peer, not the allocation record, so the
+    // store resolves the parent itself through the workspace's own locator —
+    // the same DD truth `allocationAuthority` consults. Without this, every
+    // unit dispatch from a builder-allocated plan workspace refused E470
+    // (backlog row 46, Unisphere Plan001).
+    const located = await locateWorkspaceAllocation(deps);
+    if (!located.ok) return located;
+    if (located.value === null)
+      return builderFailure(
+        ErrorCodes.BUILDER_INVALID,
+        'This checkout carries no builder allocation locator, so a unit has no parent allocation.',
+        'Dispatch units from the plan workspace `harness builder new` created (or `harness builder adopt` bound); the locator lives at <git-dir>/builder/allocation-ref.',
+      );
+    input = { ...input, parent: located.value };
   }
   const authority = await allocationAuthority(deps, input.parent);
   if (!authority.ok) return authority;
