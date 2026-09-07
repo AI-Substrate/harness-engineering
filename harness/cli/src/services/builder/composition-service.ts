@@ -28,6 +28,7 @@ import type {
   DispatchReceipt,
   FileDigest,
   Guide,
+  OwnershipWarning,
   Packet,
   Stored,
   Unit,
@@ -491,7 +492,8 @@ async function integrationFence(
   guide: Guide,
   from: string,
   to: string,
-): Promise<BuilderResult<true>> {
+  stage: OwnershipWarning['stage'],
+): Promise<BuilderResult<OwnershipWarning[]>> {
   const ancestor = await builderGit(deps, ['merge-base', '--is-ancestor', from, to]);
   if (!ancestor.ok) return ancestor;
   const delta = await builderGit(deps, ['diff', '--name-only', '--no-renames', '-z', from, to]);
@@ -502,14 +504,15 @@ async function integrationFence(
       !isWithin(context.planDir, resolveInRepo(file, deps.repoRoot)) &&
       !pm.some((unit) => builderOwnsPath(unit, file)),
   );
-  return outside.length
-    ? builderFailure(
-        ErrorCodes.BUILDER_OWNERSHIP,
-        'Undeclared PM integration changes.',
-        'Declare integration ownership in the reviewed guide; do not smuggle worker-path edits.',
-        outside,
-      )
-    : { ok: true, value: true };
+  return {
+    ok: true,
+    value: outside.flatMap((file) => {
+      const owners = guide.units.filter((unit) => builderOwnsPath(unit, file));
+      return owners.length
+        ? owners.map((unit) => ({ file, owning_unit: unit.id, stage }))
+        : [{ file, owning_unit: 'unmapped', stage }];
+    }),
+  };
 }
 
 export async function verifyBuilderComposition(
@@ -640,6 +643,7 @@ export async function composeBuilderUnits(
       guide,
       baseline.value.value.source_sha,
       head.value,
+      'import',
     );
     if (!integration.ok) return integration;
     const coders = guide.units.filter((unit) => unit.role === 'coder');
@@ -708,6 +712,7 @@ export async function composeBuilderUnits(
       integration_sha: composed.value,
       files: [],
       checks: [],
+      warnings: integration.value,
     });
   }
   if (!SHA.test(input.sha) || input.sha !== head.value)
@@ -736,6 +741,7 @@ export async function composeBuilderUnits(
     guide,
     imported.value.value.integration_sha,
     input.sha,
+    'verify',
   );
   if (!integration.ok) return integration;
   const checks = compositionChecks(guide);
@@ -755,6 +761,10 @@ export async function composeBuilderUnits(
     artifact_sha: input.sha,
     files: snapshot,
     checks: [],
+    warnings: [
+      ...(imported.value.value.warnings ?? []).filter((warning) => warning.stage === 'import'),
+      ...integration.value,
+    ],
   };
   let failed = false;
   for (const check of checks.value) {

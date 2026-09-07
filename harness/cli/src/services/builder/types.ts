@@ -324,6 +324,13 @@ export interface UnitDelivery {
   baseline_sha: string;
 }
 
+/** Advisory map comparison, retained with the stage that observed it. */
+export interface OwnershipWarning {
+  file: string;
+  owning_unit: string;
+  stage: 'import' | 'verify';
+}
+
 /** Import is not proof. artifact_sha is set only after committed-tree verification. */
 export interface CompositionReceipt {
   record_type: 'composition';
@@ -335,6 +342,8 @@ export interface CompositionReceipt {
   artifact_sha?: string;
   files: FileDigest[];
   checks: CheckReceipt[];
+  /** Absent on historical receipts. Never an authorization or proof gate. */
+  warnings?: OwnershipWarning[];
 }
 export interface CompositionDeps extends BuilderDeps {
   readiness: AssessReadiness;

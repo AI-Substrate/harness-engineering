@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
@@ -74,6 +75,102 @@ function assertBootstrap(planPath) {
     'team/model-settings.template.json',
   ]) assert.ok(existsSync(join(assets, relative)), `bootstrap includes ${relative}`);
   assert.ok(existsSync(join(assets, 'impl-guide.dd.json')), 'initialization delegates the separate guide to its owning command');
+}
+
+function compositionWarnings() {
+  // Seeded import evidence isolates the real composition CLI/Git path. This
+  // fixture does not claim native dispatch, review, or live lane acceptance.
+  const cwd = join(root, 'composition');
+  git(root, 'clone', '--no-hardlinks', seed, cwd);
+  git(cwd, 'checkout', '-b', 'builder/warnings');
+  git(cwd, 'config', 'user.name', 'Harness fixture');
+  git(cwd, 'config', 'user.email', 'harness-fixture@example.invalid');
+  cpSync(join(packageRoot, '.dd/schemas/builder'), join(cwd, '.dd/schemas/builder'), { recursive: true });
+  const planDir = 'docs/plans/001-warnings';
+  const planPath = `${planDir}/plan.dd.json`;
+  const guidePath = `${planDir}/assets/impl-guide.dd.json`;
+  const teamDir = `${planDir}/assets/team`;
+  const save = (path, data) => {
+    mkdirSync(dirname(join(cwd, path)), { recursive: true });
+    writeFileSync(join(cwd, path), typeof data === 'string' ? data : `${JSON.stringify(data, null, 2)}\n`);
+  };
+  const doc = (schema, sections) => ({
+    dd: { schema }, sections: Object.entries(sections).map(([name, value]) => ({ name, value })),
+  });
+  const digest = (path) => ({
+    path, sha256: createHash('sha256').update(readFileSync(join(cwd, path))).digest('hex'),
+  });
+  const check = {
+    id: 'vd-0001', description: 'Read the actual composed worker file',
+    command: process.execPath,
+    args: ['--input-type=module', '-e',
+      "import{readFileSync}from'node:fs';if(readFileSync('worker.txt','utf8')!=='composed\\n')process.exit(7);console.log('composed bytes checked');"],
+    cwd: '.', timeout_ms: 10000,
+  };
+  const unit = (id, role, paths) => ({
+    id, name: id, role, responsibility: 'Warning fixture', paths, reads: [],
+    interface: 'File content', depends_on: [], wave: 0, acceptance: [], proof: ['#checks/vd-0001'],
+  });
+  save(planPath, doc('builder/plan', {
+    meta: { title: 'Warning fixture', status: 'ready' },
+    summary: 'Exercise real composition checks despite ownership-map deviations.',
+    acceptance_criteria: [],
+  }));
+  save(guidePath, doc('builder/impl-guide', {
+    meta: { title: 'Warning fixture guide', plan: '../plan.dd.json#meta', version: 1 },
+    architecture: { principles: 'Exercise real committed bytes', composition_root: 'worker.txt', contracts: [] },
+    fan_out: { decision: 'coders', rationale: 'Seeded imported-worker fixture, not a live fleet' },
+    capabilities: [],
+    units: [unit('tk-0001', 'pm', ['integration.mjs']), unit('tk-0002', 'coder', ['worker.txt'])],
+    baseline: { files: ['seed.txt'], proof: [], receipt: 'team/baseline.dd.json' },
+    isolation: { mode: 'clone-per-coder', allocation_owner: 'external', note: 'Fixture only' },
+    roles: [], checks: [check],
+    composition: { owner: 'tk-0001', order: ['tk-0002'], steps: ['Check composed bytes'], proof: ['#checks/vd-0001'] },
+    review: { when: 'Not exercised by this fixture', inputs: [], proof: [] },
+  }));
+  save('worker.txt', 'before\n');
+  save(`${teamDir}/fixture-review.txt`, 'Seeded baseline reference; not an executed review.\n');
+  git(cwd, 'add', '--', '.dd', 'docs', 'worker.txt');
+  git(cwd, 'commit', '-m', 'Seed committed warning scenario');
+  const baselineSha = git(cwd, 'rev-parse', 'HEAD');
+  const recordedAt = new Date().toISOString();
+  save(`${teamDir}/baseline.dd.json`, doc('builder/team', { baseline: {
+    record_type: 'baseline', id: 'baseline-fixture', recorded_at: recordedAt,
+    source_sha: baselineSha, plan: digest(planPath), guide: digest(guidePath),
+    files: [digest('seed.txt')], checks: [], review: digest(`${teamDir}/fixture-review.txt`),
+  } }));
+  save(`${teamDir}/composition.dd.json`, doc('builder/team', { composition: {
+    record_type: 'composition', id: 'composition-fixture', recorded_at: recordedAt,
+    baseline: digest(`${teamDir}/baseline.dd.json`), integration_sha: baselineSha,
+    units: [{ unit_id: 'tk-0002', peer_id: 'fixture-worker', workspace: cwd,
+      commit_sha: baselineSha, packet_sha256: '0'.repeat(64), baseline_sha: baselineSha }],
+    files: [], checks: [],
+  } }));
+  save('worker.txt', 'composed\n');
+  save('extra.txt', 'PM work outside the map\n');
+  git(cwd, 'add', '--', 'worker.txt', 'extra.txt');
+  git(cwd, 'commit', '-m', 'Compose across mapped ownership');
+  const candidate = git(cwd, 'rev-parse', 'HEAD');
+  const result = cli(cwd, ['builder', 'compose', planPath, '--verify', candidate]);
+  const warnings = [
+    { file: 'extra.txt', owning_unit: 'unmapped', stage: 'verify' },
+    { file: 'worker.txt', owning_unit: 'tk-0002', stage: 'verify' },
+  ];
+  assert.deepEqual(result.data.composition.value.warnings, warnings);
+  assert.equal(result.data.composition.value.checks[0].exit_code, 0);
+  assert.equal(result.data.composition.value.checks[0].stdout.trim(), 'composed bytes checked');
+  const readable = readFileSync(join(cwd, teamDir, 'composition.dd.md'), 'utf8');
+  assert.ok(readable.includes('worker.txt') && readable.includes('tk-0002') && readable.includes('unmapped'),
+    'reviewer-visible receipt includes the files and mapped owners');
+  save('worker.txt', 'broken\n');
+  git(cwd, 'add', '--', 'worker.txt');
+  git(cwd, 'commit', '-m', 'Keep actual proof failure visible');
+  const red = cli(cwd, ['builder', 'compose', planPath, '--verify', git(cwd, 'rev-parse', 'HEAD')], 1);
+  assert.equal(red.error.code, ErrorCodes.BUILDER_PROOF);
+  const receipt = JSON.parse(readFileSync(join(cwd, teamDir, 'composition.dd.json'), 'utf8')).sections[0].value;
+  assert.equal(receipt.checks[0].exit_code, 7);
+  assert.deepEqual(receipt.warnings, warnings, 'red proof retains ownership observations');
+  checks.push('real-git-composition-warnings', 'rendered-warning-owners', 'real-check-failure-with-warnings');
 }
 
 try {
@@ -195,6 +292,8 @@ try {
   cli(external, ['builder', 'guide', adoptedPlan, '--init']);
   assert.ok(existsSync(adoptedGuide), 'explicit guide initialization consumes the packaged capability');
   checks.push('external-adoption-preserves-identity-and-content', 'explicit-guide-initialization');
+
+  compositionWarnings();
 
   complete = true;
   process.stdout.write(`${JSON.stringify({ status: 'ok', mode: packedMode ? 'packed-consumer' : 'source', package_integrity: packageIntegrity, scope: 'public briefings, workspace, bootstrap, guide, readiness and ownership CLI contracts', checks }, null, 2)}\n`);

@@ -122,6 +122,8 @@ harness builder advance <plan> --now <canonical-node>
 
 `deliveries.json` is an array of `UnitDelivery`: `unit_id`, `peer_id`, `workspace`, `commit_sha`, `packet_sha256`, `baseline_sha`. Import verifies basis/fences and integrates in guide order; only verify sets the composed `artifact_sha` with actual check receipts. Independent review binds that SHA, plan/guide digests, requested/observed reviewer, report digest and findings. Artifact drift needs fresh proof/review.
 
+The PM's path map is guidance, not permission. PM changes outside that map do not stop import or verification and require no declaration or justification. `composition.value.warnings` records each `file`, its `owning_unit` (or `unmapped`), and the `stage` (`import` or `verify`); a file mapped to several units has one row per owner. Verification retains import observations and refreshes its own warning list; real check failures still fail and retain the warnings beside their output. Read the generated composition receipt when reviewing the actual artifact. This is the composition increment of plan 099; the separate coder-delivery and acknowledgement cutover is not implied.
+
 No silent review fallback: unavailable requested cross-model review is unfulfilled. A justified solo implementation does not change this promise.
 
 ## Record the actual proof

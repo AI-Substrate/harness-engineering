@@ -1,0 +1,135 @@
+{
+  "dd": {
+    "schema": "builder/backpressure"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Warning-first Builder proof selection",
+        "plan": "../plan.dd.json#meta",
+        "certainty": "Partial",
+        "basis_sha": "384fcbb3c1d6f8ea46eaf3b87955cc78ab1fad6bf3c48feb2e7c8861b7939dec"
+      }
+    },
+    {
+      "name": "rows",
+      "value": [
+        {
+          "id": "bp-0001",
+          "criterion": "ac-0001: The implementation guide retains units[].paths and read maps, and packets still carry the assigned unit, its job and observable done conditions; these maps guide work rather than granting write permission.",
+          "phase": "ph-0889",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "EXTEND→RUN: keep map data and update packet guidance assertions in builder-guide.test.ts, builder-dispatch.test.ts and builder-skills.test.ts; run the existing targeted Vitest suites.",
+          "state": "unchecked",
+          "probe": "Guide paths and packet producer located in guide-service.ts and packet-service.ts; tests exist under harness/cli/test/services."
+        },
+        {
+          "id": "bp-0002",
+          "criterion": "ac-0002: A committed PM change outside mapped PM paths produces file-by-file ownership warnings in the composition receipt and command result, then executes every configured composition check without amendment, justification or an ownership-caused nonzero exit.",
+          "phase": "ph-1886",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "EXTEND→RUN: turn lifecycle out-of-fence examples into warning-and-check-execution assertions, preserve integrity contrasts, then run builder-lifecycle.test.ts and npm run smoke:builder against a real committed candidate.",
+          "state": "unchecked",
+          "probe": "composition-service.ts integrationFence is shared by import and verify; CompositionReceipt, acts output and reviewer/close consumers need warning visibility."
+        },
+        {
+          "id": "bp-0003",
+          "criterion": "ac-0003: Coder delivery and advancement/import report out-of-map history as the same warning list, including mapped owning unit(s) or an explicit unmapped result, and continue when actual integrity checks pass. No remaining ownership-only check in Builder may refuse.",
+          "phase": "ph-638c",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "EXTEND→RUN: extend builder-dispatch, builder-guide, builder-contracts and builder-lifecycle suites so ownership-only cases warn across all callers and integrity cases still refuse.",
+          "state": "unchecked",
+          "probe": "validateDelivery checks each delivered commit; guide overlap/read-owner/baseline-owner issues currently flow into readiness refusal."
+        },
+        {
+          "id": "bp-0004",
+          "criterion": "ac-0004: A self-serve on-track command works in the coder clone and on the PM integration delta, including selected committed and current work as documented; it returns the same comparison and warnings with exit 0, performs no release/import/approval and does not change source.",
+          "phase": "ph-638c",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "BUILD→RUN: implement the new on-track surface and real CLI/Git cases for coder and PM deltas, warning parity, unchanged source, and exit 0; add it to scripts/builder-smoke.mjs. This command does not exist yet.",
+          "state": "unchecked",
+          "probe": "commands.ts/acts/builder.ts register public operations; reuse existing path comparison helpers and output envelope, not a new policy engine."
+        },
+        {
+          "id": "bp-0005",
+          "criterion": "ac-0005: The packet begins with plain-language ownership/read map, job and done conditions before mechanics. Its embedded unit remains available; first-use instructions lead directly to useful work rather than acknowledgement ceremony.",
+          "phase": "ph-0889",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "EXTEND→RUN: inspect real generated packet output for map/job/done-first ordering and retain behavior-focused packet/skill tests; run builder-dispatch.test.ts and builder-skills.test.ts.",
+          "state": "unchecked",
+          "probe": "packet-service.ts prepareBuilderPacket currently places acknowledgement mechanics ahead of work instructions; teaching templates mirror the old order."
+        },
+        {
+          "id": "bp-0006",
+          "criterion": "ac-0006: A coder can run one advisory self-check of expected clone, source commit and packet digest. Mismatch, drift or normal startup metadata yields named observations/warnings and repair advice rather than a work-release gate; there is no required second receipt, second nonce or clock window.",
+          "phase": "ph-0889",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "BUILD→RUN: exercise the single self-check in a real clone with valid inputs, wrong root/commit, digest mismatch and startup metadata; verify warnings and no release mutation. Integrate the scenario into the existing Builder smoke.",
+          "state": "unchecked",
+          "probe": "dispatch-service.ts acknowledgeBuilderUnit/confirmRelease and packet schema own the current two-stage acknowledgement; new self-check is not implemented."
+        },
+        {
+          "id": "bp-0007",
+          "criterion": "ac-0007: Dispatch, delivery, import, advance and review no longer depend on pre-work/post-release acknowledgement receipt IDs, phase nonces, canary challenge or plus/minus-five-second timing to authorize work; old records remain readable and need no replay or fabricated upgrade.",
+          "phase": "ph-0889",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "EXTEND→RUN: change old ack/release tests to prove delivery/import/advance continue without the retired handshake, with old receipts readable and no fabricated second receipt; run builder-dispatch.test.ts and builder-lifecycle.test.ts.",
+          "state": "unchecked",
+          "probe": "validateDelivery requires ack/release records today; contracts readiness and lifecycle call composition verification downstream."
+        },
+        {
+          "id": "bp-0008",
+          "criterion": "ac-0008: At import, wrong tree/commit lineage, forged or mismatched delivery/packet evidence, duplicate peer and rewritten baseline still refuse before an incorrect composition mutation. Each integrity refusal names the actual cause and corrective next step; legitimate descendant source and evidence-only commits retain their supported path.",
+          "phase": "ph-638c",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "EXTEND→RUN: preserve and sharpen negative real-Git and fake-port tests for wrong tree, invalid digest/identity, duplicate peer and rewritten baseline, asserting no incorrect import and actionable cause/fix.",
+          "state": "unchecked",
+          "probe": "Existing builder-workspace, builder-dispatch, builder-contracts and builder-lifecycle tests cover integrity boundaries; do not classify by E477/E474 code alone."
+        },
+        {
+          "id": "bp-0009",
+          "criterion": "ac-0009: Reviewers receive the recorded ownership warning list alongside the exact composed bytes; warnings do not veto review or advancement by themselves, and the PM cannot approve its own artifact as the independent reviewer.",
+          "phase": "ph-1886",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "EXTEND→RUN: independent reviewer consumes warning-bearing composition, warning-only drift does not refuse, same-PM review still refuses; run builder-lifecycle.test.ts plus actual review evidence in the consumer proof.",
+          "state": "unchecked",
+          "probe": "review-service.ts already excludes current PM and recorded implementation peers; warnings add visibility, not amendment-declarer bookkeeping."
+        },
+        {
+          "id": "bp-000a",
+          "criterion": "ac-000a: The supported runtime, help, schemas, docs, skills and examples contain no amendment requirement or competing two-receipt startup path. PR #200 remains closed without merge; no alias or legacy gate revives its declaration design.",
+          "phase": "ph-638c",
+          "mode": "EXTEND",
+          "tier": "computational",
+          "proof": "EXTEND→RUN: update builder-skills and command tests, source/packed smoke, docs/flows/doctrine parity checks; verify no live amend or old two-receipt instructions.",
+          "state": "unchecked",
+          "probe": "npm scripts smoke:builder, smoke:builder:packed, check:docs, check:flows and check:doctrine-parity exist; #200 closed without merge."
+        },
+        {
+          "id": "bp-000b",
+          "criterion": "ac-000b: A real CLI/Git consumer scenario demonstrates map-first dispatch, one optional advisory self-check, cross-map coder/PM edits, warning-preserving import/composition, independent review and receipt-only archival re-observation; contrasting integrity failures still refuse and existing historical evidence remains unmodified.",
+          "phase": "ph-638c",
+          "mode": "BUILD",
+          "tier": "computational",
+          "proof": "BUILD→RUN: extend scripts/builder-smoke.mjs with a real-Git advisory workflow and archive re-observation, then run source and packed smokes and capture a live consumer receipt after authorized deployment.",
+          "state": "unchecked",
+          "probe": "Existing source and packed Builder smoke are real CLI front doors; previous mocked deltas did not prove complete archived lifecycle, and live proof must remain separate."
+        }
+      ]
+    },
+    {
+      "name": "sensors",
+      "value": []
+    }
+  ]
+}
