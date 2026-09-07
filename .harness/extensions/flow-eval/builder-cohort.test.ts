@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -33,6 +33,7 @@ describe('Builder cohort source and packaging', () => {
     const sources: Record<string, string> = {
       'package/package.json': JSON.stringify({ name: '@ai-substrate/engineering-harness', version: '1.0.0', type: 'module', dependencies: {} }),
       'package/harness/cli/bin/harness.js': "console.log('local-packaged-cli');",
+      'package/.dd/schemas/builder/plan/schema.json': JSON.stringify({ $id: 'builder/plan', type: 'object' }),
     };
     for (const name of ['builder', 'eng-harness-flow', 'eng-harness-0-harnessability-assessment']) sources[`package/skills/${name}/SKILL.md`] = `# ${name} locally packaged source`;
     for (const [path, text] of Object.entries(sources)) { mkdirSync(dirname(join(staged, path)), { recursive: true }); writeFileSync(join(staged, path), text); }
@@ -44,6 +45,7 @@ describe('Builder cohort source and packaging', () => {
       '--dependencies', join(temp, 'dependencies'), '--out', out, '--evidence', retained], { encoding: 'utf8' }));
     expect(preparation.base_sha).toMatch(/^[a-f0-9]{40}$/);
     expect(preparation.package_sha256).toMatch(/^[a-f0-9]{64}$/);
+    expect(readFileSync(join(out, 'node_modules/@ai-substrate/engineering-harness/.dd/schemas/builder/plan/schema.json'), 'utf8')).toBe(sources['package/.dd/schemas/builder/plan/schema.json']);
     expect(existsSync(join(out, 'live-testing'))).toBe(false);
     expect(existsSync(join(out, 'docs/plans/098-builder-team-lifecycle'))).toBe(false);
     expect(readdirSync(join(out, '.claude/skills')).sort()).toEqual(['builder', 'eng-harness-0-harnessability-assessment', 'eng-harness-flow']);
@@ -54,6 +56,50 @@ describe('Builder cohort source and packaging', () => {
     expect(execFileSync(process.execPath, [join(clone, 'node_modules/.bin/harness')], { encoding: 'utf8' }).trim()).toBe('local-packaged-cli');
     expect(() => execFileSync(process.execPath, [join(scenario, 'prepare-consumer.mjs'), '--package', archive,
       '--dependencies', join(temp, 'dependencies'), '--out', out, '--evidence', retained], { stdio: 'pipe' })).toThrow();
+    // Accept the shipped schema bytes, never evaluator/private files in or beside that namespace.
+    for (const [index, forbidden] of ['package/.dd/schemas/builder/plan/private-notes.md', 'package/live-testing/scenarios/private/assertions.json'].entries()) {
+      mkdirSync(dirname(join(staged, forbidden)), { recursive: true });
+      writeFileSync(join(staged, forbidden), 'private evaluation material');
+      const forbiddenArchive = join(temp, `forbidden-${index}.tgz`);
+      execFileSync('tar', ['-czf', forbiddenArchive, '-C', staged, ...Object.keys(sources), forbidden]);
+      const blockedOut = join(temp, `blocked-consumer-${index}`);
+      const blockedEvidence = join(temp, `blocked-evidence-${index}`);
+      expect(() => execFileSync(process.execPath, [join(scenario, 'prepare-consumer.mjs'), '--package', forbiddenArchive,
+        '--dependencies', join(temp, 'dependencies'), '--out', blockedOut, '--evidence', blockedEvidence], { stdio: 'pipe' })).toThrow('archive contains non-product paths');
+      expect(existsSync(blockedOut)).toBe(false);
+      expect(existsSync(blockedEvidence)).toBe(false);
+    }
+  });
+  it.each(['flowspace', 'local-native-jsonl'])('preserves verified %s evidence and the complete local workspace', (source) => {
+    const temp = mkdtempSync(join(tmpdir(), 'builder-preservation-')); temporary.push(temp);
+    const root = join(temp, 'subject'); mkdirSync(root);
+    writeFileSync(join(root, 'artifact.txt'), 'delivered artifact');
+    for (const args of [['init'], ['config', 'user.name', 'Fixture'], ['config', 'user.email', 'fixture@example.invalid'], ['add', 'artifact.txt'], ['commit', '-m', 'fixture']]) execFileSync('git', args, { cwd: root, stdio: 'pipe' });
+    const head = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
+    mkdirSync(join(root, 'node_modules')); writeFileSync(join(root, 'node_modules/runtime.txt'), 'local runtime');
+    const reportDir = join(temp, 'report'); mkdirSync(reportDir);
+    const reportPath = join(reportDir, 'report.json');
+    const report = { provenance: { evidence: { source, peers: [{ root }] } } };
+    writeFileSync(reportPath, JSON.stringify(report));
+    symlinkSync('report.json', join(reportDir, 'relative-proof.json'), 'file');
+    const out = join(temp, 'preserved');
+    const receipt = JSON.parse(execFileSync(process.execPath, [join(scenario, 'preserve-run.mjs'), '--report', reportPath, '--out', out], { encoding: 'utf8' }));
+    expect(receipt.complete).toBe(true);
+    expect(receipt.archives).toHaveLength(1);
+    expect(JSON.parse(readFileSync(join(out, 'evaluation/report.json'), 'utf8')).provenance.evidence.source).toBe(source);
+    expect(execFileSync('git', ['bundle', 'list-heads', receipt.archives[0].bundle], { encoding: 'utf8' })).toContain(head);
+    expect(execFileSync('tar', ['-xOf', receipt.archives[0].archive, './node_modules/runtime.txt'], { encoding: 'utf8' })).toBe('local runtime');
+    report.provenance.evidence.source = 'unverified'; writeFileSync(reportPath, JSON.stringify(report));
+    expect(JSON.parse(readFileSync(join(out, 'evaluation/relative-proof.json'), 'utf8')).provenance.evidence.source).toBe(source);
+    const refused = join(temp, 'refused');
+    expect(() => execFileSync(process.execPath, [join(scenario, 'preserve-run.mjs'), '--report', reportPath, '--out', refused], { stdio: 'pipe' })).toThrow('report has no native peer/root provenance');
+    expect(existsSync(refused)).toBe(false);
+    report.provenance.evidence.source = source; writeFileSync(reportPath, JSON.stringify(report));
+    const outside = join(temp, 'outside.txt'); writeFileSync(outside, 'not independently preserved');
+    symlinkSync(outside, join(reportDir, 'outside-link.txt'), 'file');
+    const escaped = join(temp, 'escaped');
+    expect(() => execFileSync(process.execPath, [join(scenario, 'preserve-run.mjs'), '--report', reportPath, '--out', escaped], { stdio: 'pipe' })).toThrow('retained evidence link escapes');
+    expect(existsSync(join(escaped, 'preservation.json'))).toBe(false);
   });
   it('preserves native source/provenance and unknown telemetry through report, ledger and rerender', async () => {
     const fs = new FakeFs({
