@@ -1,0 +1,16 @@
+.harness/extensions/flow-eval/builder-cohort.test.ts
+  h_9e71e8b09f7cf2 2,73-103
+live-testing/scenarios/builder-team-md-to-pdf/preserve-run.mjs
+  h_9e71e8b09f7cf2 1,3,12,20-25,35-36,44-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "8a5cb719e04a7473960b00c070de994d15c560a0",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
