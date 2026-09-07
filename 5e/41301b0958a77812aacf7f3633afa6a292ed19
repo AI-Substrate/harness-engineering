@@ -1,0 +1,21 @@
+harness/cli/src/services/builder/composition-service.ts
+  s_f1a7ee9f435ed3::t_bf9e591080e1be 549-550,566,718-721,729
+harness/cli/test/services/builder-lifecycle.test.ts
+  s_f1a7ee9f435ed3::t_6bda824544f403 932-953
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "5e41301b0958a77812aacf7f3633afa6a292ed19",
+  "prompts": {},
+  "sessions": {
+    "s_f1a7ee9f435ed3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6616ca6a-61c0-4a92-b9be-3512605a2826",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
