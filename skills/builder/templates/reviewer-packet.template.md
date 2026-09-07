@@ -1,6 +1,14 @@
 # Reviewer packet template
 
-This is an editable review briefing template, not an issued review receipt or proof that a reviewer ran. The PM fills every binding from observed records before delivery. Missing requested review capability remains unfulfilled; never substitute unannounced self-review or a solo fallback.
+**You own:** `<PM-designated report and receipt-proposal paths only>`.
+
+**You may read:** `<product plan, implementation guide, exact subject tree and evidence paths>`.
+
+**Your job:** independently review `<decomposition or composition>` against `<exact subject SHA>` and the requested review role.
+
+**Done means:** a persisted report and bound `ReviewReceipt` proposal identifying observable findings, dispositions, checks actually inspected and remaining gaps.
+
+Fill the map and bindings before delivering this briefing. It is not an issued review receipt or proof that a reviewer ran. Receiving the work packet starts this review without a separate release. Missing requested independent/cross-model capability remains unfulfilled; never substitute unannounced self-review or a solo fallback.
 
 | Binding | Fill from |
 |---|---|
@@ -13,19 +21,21 @@ This is an editable review briefing template, not an issued review receipt or pr
 | Report destination | PM-designated writable review artifact path |
 | Relevant evidence | actual checks, composition receipt and complete scoped acceptance links |
 
+If this assignment has an issued canonical packet, include its actual path/SHA-256 after the map. Optional `harness builder self-check <packet> --sha256 <digest>` compares packet bytes, checkout root and source SHA with warning-only corrective guidance. It changes no state and is not review evidence or an import prerequisite. Never manufacture a packet or digest for a briefing that has none.
+
 ## Review contract
 
 Read product intent and the separate implementation guide. For decomposition, assess architectural independence, injected interfaces/fakes, exact ownership, dependency waves, AC-to-capability coverage and explicit composition. File count or a structural checker is not independent architectural judgement. Guide review does not require future implementation code.
 
 For composition, inspect the exact verified artifact SHA, real entrypoint/wiring, applicable check outputs, failure cases and remaining human judgement. Unit green is not assembled behavior proof; import-only `integration_sha` is not verified `artifact_sha`. Confirm that `pressure` links name the actual selected instrument and `proven_by` links name observed execution evidence, not planned commands.
 
-For a queued coder release, verify that the PM accepted a distinct post-release `AckReceipt` through `harness builder ack <plan> --receipt <path>` before import. Pre-work ID is `ack-<unit_id>-<full-current-source-sha>` with `packet.nonce`; confirmation ID adds `-release` after the full SHA and uses the retained `release.message_id`, not an assumed packet nonce. Repeated pre-work ack or queued transport alone is not confirmation. The peer must have refreshed native packet/canary/runtime observations after seeing the exact release and returned the new path/digest; legitimate descendant/dirty work is not a reason to demand pristine-source acknowledgement again.
+For coder deliveries, inspect current packet/dispatch/allocation digest bindings, the actual allocated tree/branch and delivered commit, distinct peer attribution and sealed-source ancestry. Wrong checkout/commit needs the correct allocated source; altered evidence needs the original bound bytes; duplicate peers need corrected actual attribution; rewritten baselines need restored history or reviewed new seals and packets. These integrity checks belong at import, not in a startup permission exchange.
 
-Check actual peer observation time against the explicit 5000 ms skew bounds (release sent time minus 5000 ms through PM ingestion time plus 5000 ms), retained sent/queued facts and canonical confirmation path/digest evidence. Missing optional runtime facts remain gaps. Confirmation never issues a second grant; the worker follows its already-authorized scope after returning the receipt. This is review of coder evidence, not authority for the reviewer to manufacture that acknowledgement.
+Read `composition.value.warnings` alongside the exact composed bytes and real checks. PM map deviations are advisory and require no amendment or justification; coder-delivery path enforcement is unchanged. A self-check report or a queued/delivered transport observation is not composition proof. Keep historical startup evidence unchanged, without replay or reclassification. Missing optional runtime facts stay gaps; requested settings are not provider attestation.
 
 ## Boundaries
 
-Review is read-only against implementation and canonical lifecycle state. Do not edit `.the-flow-state.json`, `the-flow.json`, `the-flow.md`, product plan, guide, tasks, canonical team receipts, worker source, main or global/deployed settings. Write only the designated report/receipt proposal. Do not close your own findings by changing code. No push, merge, workspace retirement or inferred release authority.
+Review is read-only against implementation and canonical lifecycle state. Do not edit `.the-flow-state.json`, `the-flow.json`, `the-flow.md`, product plan, guide, tasks, canonical team receipts, worker source, main or global/deployed settings. Write only the designated report/receipt proposal. Do not close your own findings by changing code. No push, merge or workspace retirement.
 
 ## Return
 

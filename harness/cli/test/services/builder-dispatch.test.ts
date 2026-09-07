@@ -15,7 +15,6 @@ import { NodeExec } from '../../src/adapters/exec/node-exec.js';
 import { NodeFs } from '../../src/adapters/fs/node-fs.js';
 import { ErrorCodes } from '../../src/output/error-codes.js';
 import {
-  acknowledgeBuilderUnit,
   checkBuilderPeerReleased,
   dispatchBuilderUnit,
   verifyBuilderParentWorktreeAuthority,
@@ -36,7 +35,6 @@ import {
 } from '../../src/services/builder/records.js';
 import { resolveBuilderRoles } from '../../src/services/builder/role-settings.js';
 import type {
-  AckReceipt,
   AllocationRecord,
   BuilderResult,
   DispatchDeps,
@@ -52,7 +50,6 @@ import {
   BUILDER_FIXTURE_PLAN,
   BUILDER_FIXTURE_SHA,
   builderFixture,
-  fixtureAck,
   fixtureAllocation,
   fixtureBaseline,
   fixtureGuide,
@@ -71,30 +68,22 @@ const PEER = 'peer-coder';
 const PARENT = 'peer-pm';
 const MODEL = 'github-copilot/gpt-6-astra';
 
-function scenario(unit = 'tk-0002') {
+function scenario() {
+  const unit = 'tk-0002';
   const fixture = builderFixture();
   const { fs, clock, guide } = fixture;
-  if (unit !== 'tk-0002') {
-    guide.units = guide.units.map((entry) =>
-      entry.id === 'tk-0002' ? { ...entry, id: unit } : entry,
-    );
-    const doc = value(
-      readBuilderDocument(fixture.deps, BUILDER_FIXTURE_GUIDE, 'builder/impl-guide'),
-    );
-    value(
-      writeBuilderDocument(
-        fixture.deps,
-        BUILDER_FIXTURE_GUIDE,
-        {
-          ...doc.value,
-          sections: doc.value.sections.map((section) =>
-            section.name === 'units' ? { ...section, value: guide.units } : section,
-          ),
-        },
-        { expectedSha256: doc.ref.sha256 },
-      ),
-    );
-  }
+  const product = JSON.parse(fs.readText(`/repo/${BUILDER_FIXTURE_PLAN}`)!);
+  product.sections.find(
+    (section: { name: string }) => section.name === 'acceptance_criteria',
+  ).value = [
+    {
+      id: 'ac-0001',
+      claim: 'Input text produces the contracted parsed document.',
+      state: 'unchecked',
+    },
+    { id: 'ac-0002', claim: 'The parsed document renders to output bytes.', state: 'unchecked' },
+  ];
+  fs.writeText(`/repo/${BUILDER_FIXTURE_PLAN}`, JSON.stringify(product));
   const context = value(builderContext(fixture.deps, BUILDER_FIXTURE_PLAN));
   const review = value(
     writeBuilderRecord(
@@ -155,10 +144,8 @@ function scenario(unit = 'tk-0002') {
     readiness: 'ready',
     delivery: 'queued',
     malformed: '',
-    gitStatus: '',
     rootSha: BUILDER_FIXTURE_SHA,
     planSha: BUILDER_FIXTURE_SHA,
-    rootBranch: 'builder/example/parser',
     rootPath: ROOT,
     ancestor: true,
     provisionKind: 'clone',
@@ -219,10 +206,9 @@ function scenario(unit = 'tk-0002') {
           else if (args[0] === 'rev-parse')
             script = {
               code: 0,
-              stdout: `${options.cwd === ROOT ? flags.rootPath : options.cwd}\n${options.cwd === ROOT ? flags.rootSha : options.cwd === '/repo' ? flags.planSha : BUILDER_FIXTURE_SHA}\n${args.includes('--abbrev-ref') ? `${flags.rootBranch}\n` : ''}`,
+              stdout: `${options.cwd === ROOT ? flags.rootPath : options.cwd}\n${options.cwd === ROOT ? flags.rootSha : options.cwd === '/repo' ? flags.planSha : BUILDER_FIXTURE_SHA}\n`,
             };
           else if (args[0] === 'merge-base') script = { code: flags.ancestor ? 0 : 1 };
-          else if (args[0] === 'status') script = { code: 0, stdout: flags.gitStatus };
         } else if (command === 'tmux') script = { code: 0, stdout: 'observed-session\n' };
         scripts[[command, ...args].join(' ')] = script;
         return exec.run(command, args, options);
@@ -273,25 +259,6 @@ function scenario(unit = 'tk-0002') {
     parent: PARENT,
     role: fixtureRole(),
   };
-  const ackPath = `${ROOT}/scratch/ack.json`;
-  function acknowledgement(result: DispatchResult, override: Partial<AckReceipt> = {}) {
-    const ack = fixtureAck({
-      id: `ack-${result.packet.value.unit.id}-${baseline.value.source_sha}`,
-      unit_id: result.packet.value.unit.id,
-      peer_id: result.dispatch.value.observed.peer_id,
-      nonce: result.packet.value.nonce,
-      packet_sha256: result.packet.ref.sha256,
-      baseline_sha: baseline.value.source_sha,
-      native_root: ROOT,
-      shell_cwd: ROOT,
-      canary_nonce: fs.readText(`${ROOT}/${result.packet.value.canary.path}`) ?? '',
-      observed: result.dispatch.value.observed,
-      ...override,
-    });
-    fs.mkdirp(`${ROOT}/scratch`);
-    fs.writeText(ackPath, JSON.stringify(ack));
-    return ack;
-  }
   function advanceSeal(sourceSha: string) {
     const current = value(readBuilderDocument(deps, BUILDER_FIXTURE_GUIDE, 'builder/impl-guide'));
     const path = builderRecordPath(context, 'baseline', sourceSha);
@@ -336,8 +303,6 @@ function scenario(unit = 'tk-0002') {
     flags,
     provisioned,
     input,
-    ackPath,
-    acknowledgement,
     advanceSeal,
   };
 }
@@ -345,581 +310,6 @@ function scenario(unit = 'tk-0002') {
 function sends(s: ReturnType<typeof scenario>) {
   return s.exec.calls.filter((call) => call.command === 'pij-rs' && call.args[0] === 'send');
 }
-function releases(s: ReturnType<typeof scenario>) {
-  return sends(s).filter((call) =>
-    call.args.some((arg) => arg.startsWith('IMPLEMENTATION RELEASE')),
-  );
-}
-
-async function releasedScenario(delivery = 'queued', unit = 'tk-0002') {
-  const s = scenario(unit);
-  s.flags.delivery = delivery;
-  const dispatched = value(await dispatchBuilderUnit(s.deps, s.input));
-  const primary = s.acknowledgement(dispatched);
-  let released = value(
-    await acknowledgeBuilderUnit(s.deps, { plan: BUILDER_FIXTURE_PLAN, receipt: s.ackPath }),
-  );
-  const confirmationPath = `${ROOT}/scratch/release-ack.json`;
-  const canonicalPath = builderRecordPath(
-    s.context,
-    'ack',
-    `${s.input.unit}-${BUILDER_FIXTURE_SHA}-release`,
-  );
-  function confirmation(overrides: Partial<AckReceipt> = {}) {
-    const ack: AckReceipt = {
-      ...primary,
-      id: `${primary.id}-release`,
-      nonce: released.dispatch.value.release!.message_id,
-      recorded_at: s.clock.nowIso(),
-      observed: {
-        ...released.dispatch.value.observed,
-        evidence: ['Native peer observed the exact retained release.'],
-      },
-      ...overrides,
-    };
-    s.fs.writeText(confirmationPath, JSON.stringify(ack));
-    return ack;
-  }
-  function replaceDispatch(change: Partial<DispatchReceipt>) {
-    const updated = { ...released.dispatch.value, ...change };
-    for (const field of ['release', 'acknowledgement'] as const)
-      if (updated[field] === undefined) delete updated[field];
-    released = {
-      ...released,
-      dispatch: value(
-        writeBuilderRecord(s.deps, released.dispatch.ref.path, updated, {
-          expectedSha256: released.dispatch.ref.sha256,
-        }),
-      ),
-    };
-    return released;
-  }
-  const submit = () =>
-    acknowledgeBuilderUnit(s.deps, { plan: BUILDER_FIXTURE_PLAN, receipt: confirmationPath });
-  const storedDispatch = () =>
-    value(readBuilderRecord<DispatchReceipt>(s.deps, released.dispatch.ref.path, 'dispatch'));
-  s.clock.advance(1000);
-  return {
-    ...s,
-    dispatched,
-    primary,
-    released,
-    confirmationPath,
-    canonicalPath,
-    confirmation,
-    replaceDispatch,
-    submit,
-    storedDispatch,
-  };
-}
-
-describe('Builder release-phase namespace', () => {
-  it('keeps primary and release identities distinct for a release-prefixed unit', async () => {
-    const s = await releasedScenario('queued', 'release-tk-0002');
-    expect(s.primary.id).toBe(`ack-release-tk-0002-${BUILDER_FIXTURE_SHA}`);
-    expect(
-      value(
-        await acknowledgeBuilderUnit(s.deps, { plan: BUILDER_FIXTURE_PLAN, receipt: s.ackPath }),
-      ).dispatch.value.release?.outcome,
-    ).toBe('queued');
-    const confirmation = s.confirmation();
-    expect(confirmation.id).toBe(`ack-release-tk-0002-${BUILDER_FIXTURE_SHA}-release`);
-    expect(value(await s.submit()).dispatch.value.release?.outcome).toBe('delivered');
-    expect(value(readBuilderRecord<AckReceipt>(s.deps, s.canonicalPath, 'ack')).value.id).toBe(
-      confirmation.id,
-    );
-    expect(releases(s)).toHaveLength(1);
-  });
-
-  it('does not treat a post-release receipt as permission to issue the first grant', async () => {
-    const s = scenario();
-    const dispatched = value(await dispatchBuilderUnit(s.deps, s.input));
-    s.acknowledgement(dispatched, { id: `ack-${s.input.unit}-${BUILDER_FIXTURE_SHA}-release` });
-    expect(
-      await acknowledgeBuilderUnit(s.deps, { plan: BUILDER_FIXTURE_PLAN, receipt: s.ackPath }),
-    ).toMatchObject({ ok: false, code: ErrorCodes.BUILDER_ACK });
-    expect(releases(s)).toHaveLength(0);
-    expect(
-      value(readBuilderRecord<DispatchReceipt>(s.deps, dispatched.dispatch.ref.path, 'dispatch'))
-        .value.release,
-    ).toBeUndefined();
-  });
-});
-
-describe('Builder retained release transport guard', () => {
-  it.each([
-    'held',
-    'refused',
-  ])('never promotes retained %s transport to observed delivery', async (outcome) => {
-    const s = await releasedScenario();
-    s.confirmation();
-    const path = `/repo/${s.released.dispatch.ref.path}`;
-    const doc = JSON.parse(s.fs.readText(path)!);
-    doc.sections[0].value.release.outcome = outcome;
-    s.fs.writeText(path, JSON.stringify(doc));
-    expect((await s.submit()).ok).toBe(false);
-    expect(s.fs.exists(s.canonicalPath)).toBe(false);
-    expect(JSON.parse(s.fs.readText(path)!).sections[0].value.release.outcome).toBe(outcome);
-    expect(releases(s)).toHaveLength(1);
-  });
-});
-
-describe('Builder post-release acknowledgement confirmation', () => {
-  it('teaches exact phase ids, independent nonces and the same public acknowledgement command', async () => {
-    const s = await releasedScenario();
-    const instructions = s.dispatched.packet.value.instructions.join('\n');
-    expect(instructions).toContain(`id ${s.primary.id}, nonce equal to packet.nonce`);
-    expect(instructions).toContain(`id ${s.primary.id}-release`);
-    expect(instructions).toContain('nonce to the already-issued release.message_id');
-    expect(instructions.match(/builder ack <plan> --receipt <path>/g)).toHaveLength(2);
-    expect(instructions).toContain('minus 5000 ms');
-    expect(instructions).toContain('plus 5000 ms');
-    expect(instructions).toContain('without waiting for another release');
-  });
-
-  it.each([
-    'queued',
-    'delivered',
-  ])('records actual receipt after %s transport without sending another grant', async (transport) => {
-    const s = await releasedScenario(transport);
-    const originalRelease = s.released.dispatch.value.release;
-    const refs = [
-      s.released.packet.ref,
-      s.released.dispatch.value.acknowledgement!,
-      s.released.dispatch.value.allocation,
-    ];
-    const before = refs.map((ref) =>
-      s.fs.readText(ref.path.startsWith('/') ? ref.path : `/repo/${ref.path}`),
-    );
-    const seedBytes = s.released.dispatch.value.seed_files.map((ref) =>
-      s.fs.readText(`${ROOT}/${ref.path}`),
-    );
-    const ack = s.confirmation();
-    const ingestionStart = Date.parse(s.clock.nowIso());
-    const confirmed = value(await s.submit());
-    expect(confirmed.dispatch.value.release).toEqual({ ...originalRelease, outcome: 'delivered' });
-    expect(confirmed.dispatch.value.acknowledgement).toEqual(
-      s.released.dispatch.value.acknowledgement,
-    );
-    const canonical = value(readBuilderRecord<AckReceipt>(s.deps, s.canonicalPath, 'ack'));
-    expect(canonical.value).toEqual(ack);
-    const evidence = confirmed.dispatch.value.observed.evidence.find((entry) =>
-      entry.startsWith('builder release confirmation: '),
-    );
-    const proof = JSON.parse(evidence!.slice('builder release confirmation: '.length));
-    expect(proof).toMatchObject({
-      transport: originalRelease,
-      confirmation: canonical.ref,
-      observed_at: ack.recorded_at,
-    });
-    expect(Date.parse(proof.ingested_at)).toBeGreaterThanOrEqual(ingestionStart);
-    expect(Date.parse(proof.ingested_at)).toBeLessThanOrEqual(Date.parse(s.clock.nowIso()));
-    expect(
-      refs.map((ref) => s.fs.readText(ref.path.startsWith('/') ? ref.path : `/repo/${ref.path}`)),
-    ).toEqual(before);
-    expect(
-      s.released.dispatch.value.seed_files.map((ref) => s.fs.readText(`${ROOT}/${ref.path}`)),
-    ).toEqual(seedBytes);
-    expect(releases(s)).toHaveLength(1);
-  });
-
-  it('does not promote a queued release when its strict-prefix primary receipt is retried', async () => {
-    const s = await releasedScenario();
-    s.flags.rootSha = 'b'.repeat(40);
-    s.flags.gitStatus = ' M src/parser.ts\0';
-    const retry = value(
-      await acknowledgeBuilderUnit(s.deps, { plan: BUILDER_FIXTURE_PLAN, receipt: s.ackPath }),
-    );
-    expect(`${s.primary.id}-release`.startsWith(s.primary.id)).toBe(true);
-    expect(retry).toEqual(s.released);
-    expect(retry.dispatch.value.release?.outcome).toBe('queued');
-    expect(s.fs.exists(s.canonicalPath)).toBe(false);
-    expect(releases(s)).toHaveLength(1);
-  });
-
-  it('derives the post-release nonce from the retained message rather than the packet nonce', async () => {
-    const s = await releasedScenario();
-    const changed = s.replaceDispatch({
-      release: { ...s.released.dispatch.value.release!, message_id: 'independent-release-message' },
-    });
-    expect(changed.dispatch.value.release?.message_id).not.toBe(s.primary.nonce);
-    s.confirmation({ nonce: s.primary.nonce });
-    expect(await s.submit()).toMatchObject({ ok: false, code: ErrorCodes.BUILDER_ACK });
-    expect(s.storedDispatch().value.release?.outcome).toBe('queued');
-    expect(
-      value(
-        await acknowledgeBuilderUnit(s.deps, { plan: BUILDER_FIXTURE_PLAN, receipt: s.ackPath }),
-      ).dispatch.value.release?.outcome,
-    ).toBe('queued');
-    s.confirmation();
-    expect(value(await s.submit()).dispatch.value.release).toEqual({
-      ...changed.dispatch.value.release,
-      outcome: 'delivered',
-    });
-    expect(releases(s)).toHaveLength(1);
-  });
-
-  it('confirms an already-working descendant on its allocated branch without pristine-source checks', async () => {
-    const s = await releasedScenario();
-    s.confirmation();
-    s.flags.rootSha = 'b'.repeat(40);
-    s.flags.gitStatus = ' M src/parser.ts\0?? source-in-progress.ts\0';
-    s.fs.mkdirp(`${ROOT}/src`);
-    s.fs.writeText(`${ROOT}/src/parser.ts`, 'already authorized work');
-    const start = s.exec.calls.length;
-    expect(value(await s.submit()).dispatch.value.release?.outcome).toBe('delivered');
-    const calls = s.exec.calls.slice(start);
-    expect(calls.find((call) => call.args[0] === 'merge-base')?.args).toEqual([
-      'merge-base',
-      '--is-ancestor',
-      BUILDER_FIXTURE_SHA,
-      'b'.repeat(40),
-    ]);
-    expect(calls.some((call) => call.command === 'git' && call.args[0] === 'status')).toBe(false);
-    expect(s.fs.readText(`${ROOT}/src/parser.ts`)).toBe('already authorized work');
-    expect(releases(s)).toHaveLength(1);
-  });
-
-  it.each([
-    'primary',
-    'extra suffix',
-    'release prefix',
-    'other source',
-  ])('refuses an inexact post-release phase id: %s', async (kind) => {
-    const s = await releasedScenario();
-    const id =
-      kind === 'primary'
-        ? s.primary.id
-        : kind === 'extra suffix'
-          ? `${s.primary.id}-release-extra`
-          : kind === 'release prefix'
-            ? `ack-release-${s.input.unit}-${BUILDER_FIXTURE_SHA}`
-            : `ack-${s.input.unit}-${'b'.repeat(40)}-release`;
-    s.confirmation({ id });
-    expect(await s.submit()).toMatchObject({ ok: false, code: ErrorCodes.BUILDER_ACK });
-    expect(s.storedDispatch().value.release?.outcome).toBe('queued');
-    expect(s.fs.exists(s.canonicalPath)).toBe(false);
-  });
-
-  it.each([
-    'unit_id',
-    'peer_id',
-    'nonce',
-    'packet_sha256',
-    'baseline_sha',
-    'native_root',
-    'shell_cwd',
-    'canary_nonce',
-  ] as const)('refuses mismatched post-release %s without promotion', async (field) => {
-    const s = await releasedScenario();
-    s.confirmation({ [field]: 'different' });
-    expect(await s.submit()).toMatchObject({ ok: false, code: ErrorCodes.BUILDER_ACK });
-    expect(s.storedDispatch().value.release?.outcome).toBe('queued');
-    expect(s.fs.exists(s.canonicalPath)).toBe(false);
-    expect(releases(s)).toHaveLength(1);
-  });
-
-  it.each([
-    'peer_id',
-    'root',
-    'ready',
-    'harness',
-    'model',
-    'effort',
-    'native_session',
-    'pid',
-  ] as const)('refuses mismatched post-release observation %s', async (field) => {
-    const s = await releasedScenario();
-    s.confirmation({
-      observed: {
-        ...s.released.dispatch.value.observed,
-        [field]: field === 'pid' ? 999 : field === 'ready' ? false : 'different',
-      },
-    });
-    expect((await s.submit()).ok).toBe(false);
-    expect(s.storedDispatch().value.release?.outcome).toBe('queued');
-    expect(s.fs.exists(s.canonicalPath)).toBe(false);
-  });
-
-  it.each([
-    'session',
-    'model',
-    'pid',
-    'liveness',
-    'parent',
-    'branch',
-    'root',
-    'ancestry',
-  ])('re-observes live %s before accepting confirmation', async (drift) => {
-    const s = await releasedScenario();
-    s.confirmation();
-    if (drift === 'session') s.seat.session = 'replacement-session';
-    if (drift === 'model') s.state.boundModel = 'replacement-model';
-    if (drift === 'pid') s.state.pid = 999;
-    if (drift === 'liveness') s.state.liveness = 'dead';
-    if (drift === 'parent') s.parent.id = 'different-pm';
-    if (drift === 'branch') s.flags.rootBranch = 'different-branch';
-    if (drift === 'root') s.flags.rootPath = '/other-root';
-    if (drift === 'ancestry') s.flags.ancestor = false;
-    expect((await s.submit()).ok).toBe(false);
-    expect(s.storedDispatch().value.release?.outcome).toBe('queued');
-    expect(s.fs.exists(s.canonicalPath)).toBe(false);
-  });
-
-  it.each([
-    'release',
-    'acknowledgement',
-    'canonical acknowledgement',
-    'canary',
-    'packet',
-  ])('requires the retained %s before recording confirmation', async (missing) => {
-    const s = await releasedScenario();
-    s.confirmation();
-    if (missing === 'release') s.replaceDispatch({ release: undefined });
-    if (missing === 'acknowledgement') s.replaceDispatch({ acknowledgement: undefined });
-    if (missing === 'canonical acknowledgement')
-      s.fs.deleteFile(`/repo/${s.released.dispatch.value.acknowledgement!.path}`);
-    if (missing === 'canary')
-      s.fs.writeText(`${ROOT}/${s.released.packet.value.canary.path}`, 'changed');
-    if (missing === 'packet') s.fs.writeText(`/repo/${s.released.packet.ref.path}`, '{}');
-    expect((await s.submit()).ok).toBe(false);
-    expect(s.storedDispatch().value.release?.outcome).not.toBe('delivered');
-    expect(s.fs.exists(s.canonicalPath)).toBe(false);
-  });
-
-  it.each([
-    'nonce',
-    'baseline_sha',
-    'native_root',
-    'canary_nonce',
-  ] as const)('revalidates accepted primary %s instead of trusting a matching digest alone', async (field) => {
-    const s = await releasedScenario();
-    s.confirmation();
-    const prior = value(
-      readBuilderRecord<AckReceipt>(s.deps, s.released.dispatch.value.acknowledgement!.path, 'ack'),
-    );
-    const changed = value(
-      writeBuilderRecord(
-        s.deps,
-        prior.ref.path,
-        { ...prior.value, [field]: field === 'baseline_sha' ? 'b'.repeat(40) : 'different' },
-        { expectedSha256: prior.ref.sha256 },
-      ),
-    );
-    s.replaceDispatch({ acknowledgement: changed.ref });
-    expect(await s.submit()).toMatchObject({ ok: false, code: ErrorCodes.BUILDER_ACK });
-    expect(s.storedDispatch().value.release?.outcome).toBe('queued');
-  });
-
-  it('keeps successful retries immutable and side-effect free except for the unit claim', async () => {
-    const s = await releasedScenario();
-    s.confirmation();
-    const confirmed = value(await s.submit());
-    const bytes = s.fs.readText(s.canonicalPath);
-    const created: string[] = [];
-    const create = s.fs.createExclusive.bind(s.fs);
-    s.fs.createExclusive = (path, content) => {
-      created.push(path);
-      return create(path, content);
-    };
-    const start = s.exec.calls.length;
-    expect(
-      value(
-        await acknowledgeBuilderUnit(s.deps, {
-          plan: BUILDER_FIXTURE_PLAN,
-          receipt: s.canonicalPath,
-        }),
-      ),
-    ).toEqual(confirmed);
-    expect(created).toEqual([
-      `${builderRecordPath(s.context, 'dispatch', s.input.unit)}.operation-lock`,
-    ]);
-    expect(s.exec.calls.slice(start).some((call) => call.args[0] === 'state')).toBe(true);
-    expect(s.fs.readText(s.canonicalPath)).toBe(bytes);
-    expect(releases(s)).toHaveLength(1);
-  });
-
-  it.each([
-    'raw content',
-    'canonical bytes',
-    'evidence binding',
-  ])('refuses changed immutable confirmation %s on retry', async (changed) => {
-    const s = await releasedScenario();
-    const ack = s.confirmation();
-    const confirmed = value(await s.submit());
-    if (changed === 'raw content')
-      s.confirmation({
-        ...ack,
-        observed: { ...ack.observed, evidence: ['different observation'] },
-      });
-    if (changed === 'canonical bytes')
-      s.fs.writeText(s.canonicalPath, `${s.fs.readText(s.canonicalPath)} `);
-    if (changed === 'evidence binding') {
-      const evidence = confirmed.dispatch.value.observed.evidence.map((entry) => {
-        if (!entry.startsWith('builder release confirmation: ')) return entry;
-        const proof = JSON.parse(entry.slice('builder release confirmation: '.length));
-        return `builder release confirmation: ${JSON.stringify({ ...proof, confirmation: { ...proof.confirmation, sha256: '0'.repeat(64) } })}`;
-      });
-      value(
-        writeBuilderRecord(
-          s.deps,
-          confirmed.dispatch.ref.path,
-          {
-            ...confirmed.dispatch.value,
-            observed: { ...confirmed.dispatch.value.observed, evidence },
-          },
-          { expectedSha256: confirmed.dispatch.ref.sha256 },
-        ),
-      );
-    }
-    const retained = s.fs.readText(s.canonicalPath);
-    expect(await s.submit()).toMatchObject({ ok: false, code: ErrorCodes.BUILDER_ACK });
-    expect(s.fs.readText(s.canonicalPath)).toBe(retained);
-    expect(releases(s)).toHaveLength(1);
-  });
-
-  it('recovers an identical immutable acknowledgement after dispatch compare-and-swap fails', async () => {
-    const s = await releasedScenario();
-    s.confirmation();
-    const dispatchPath = `/repo/${s.released.dispatch.ref.path}`;
-    const create = s.fs.createExclusive.bind(s.fs);
-    let raced = false;
-    s.fs.createExclusive = (path, content) => {
-      if (!raced && path === `${dispatchPath}.lock`) {
-        raced = true;
-        s.fs.writeText(dispatchPath, `${s.fs.readText(dispatchPath)} `);
-      }
-      return create(path, content);
-    };
-    expect(await s.submit()).toMatchObject({ ok: false, code: ErrorCodes.BUILDER_CONFLICT });
-    expect(s.storedDispatch().value.release?.outcome).toBe('queued');
-    const preserved = s.fs.readText(s.canonicalPath);
-    expect(preserved).not.toBeNull();
-    expect(value(await s.submit()).dispatch.value.release?.outcome).toBe('delivered');
-    expect(s.fs.readText(s.canonicalPath)).toBe(preserved);
-    expect(releases(s)).toHaveLength(1);
-  });
-
-  it('retains the unit operation lock across asynchronous confirmation observation', async () => {
-    const s = await releasedScenario();
-    s.confirmation();
-    let entered!: () => void;
-    let resume!: () => void;
-    const observing = new Promise<void>((resolve) => {
-      entered = resolve;
-    });
-    const gate = new Promise<void>((resolve) => {
-      resume = resolve;
-    });
-    const run = s.deps.exec.run.bind(s.deps.exec);
-    let paused = false;
-    s.deps.exec.run = async (command, args, options) => {
-      if (!paused && command === 'git' && args[0] === 'merge-base') {
-        paused = true;
-        entered();
-        await gate;
-      }
-      return run(command, args, options);
-    };
-    const pending = s.submit();
-    await observing;
-    let competing: BuilderResult<DispatchResult>;
-    try {
-      competing = await s.submit();
-    } finally {
-      resume();
-    }
-    const completed = await pending;
-    expect(competing).toMatchObject({ ok: false, code: ErrorCodes.BUILDER_CONFLICT });
-    expect(completed.ok).toBe(true);
-    expect(releases(s)).toHaveLength(1);
-  });
-
-  it.each([
-    'current seal',
-    'allocation',
-    'dispatch',
-  ])('rechecks %s changed during native observation', async (changed) => {
-    const s = await releasedScenario();
-    s.confirmation();
-    const run = s.deps.exec.run.bind(s.deps.exec);
-    let mutated = false;
-    s.deps.exec.run = async (command, args, options) => {
-      const result = await run(command, args, options);
-      if (!mutated && command === 'pij-rs' && args[0] === 'whoami') {
-        mutated = true;
-        if (changed === 'current seal') s.advanceSeal('b'.repeat(40));
-        else {
-          const ref =
-            changed === 'allocation'
-              ? s.released.dispatch.value.allocation
-              : s.released.dispatch.ref;
-          const path = ref.path.startsWith('/') ? ref.path : `/repo/${ref.path}`;
-          s.fs.writeText(path, `${s.fs.readText(path)} `);
-        }
-      }
-      return result;
-    };
-    expect((await s.submit()).ok).toBe(false);
-    expect(s.fs.exists(s.canonicalPath)).toBe(false);
-    expect(s.storedDispatch().value.release?.outcome).toBe('queued');
-  });
-
-  it('does not return historical confirmation success after the guide-bound seal changes', async () => {
-    const s = await releasedScenario();
-    s.confirmation();
-    value(await s.submit());
-    const preserved = s.fs.readText(s.canonicalPath);
-    s.advanceSeal('b'.repeat(40));
-    expect(await s.submit()).toMatchObject({
-      ok: false,
-      code: ErrorCodes.BUILDER_ACK,
-      message: 'Current sealed-baseline authorization is missing or mismatched.',
-    });
-    expect(s.fs.readText(s.canonicalPath)).toBe(preserved);
-    expect(releases(s)).toHaveLength(1);
-  });
-
-  it.each([
-    ['sent minus tolerance', 'sent', -5000, true],
-    ['before sent boundary', 'sent', -5001, false],
-    ['ingestion plus tolerance', 'ingested', 5000, true],
-    ['after ingestion boundary', 'ingested', 5001, false],
-  ] as const)('enforces explicit clock skew at %s', async (_label, origin, offset, accepted) => {
-    const s = await releasedScenario();
-    const reference =
-      origin === 'sent' ? s.released.dispatch.value.release!.recorded_at : s.clock.nowIso();
-    s.confirmation({ recorded_at: new Date(Date.parse(reference) + offset).toISOString() });
-    const result = await s.submit();
-    expect(result.ok).toBe(accepted);
-    if (!accepted)
-      expect(result).toMatchObject({
-        code: ErrorCodes.BUILDER_ACK,
-        message: expect.stringContaining('5000 ms clock-skew'),
-        next_action: expect.stringContaining('clock skew'),
-      });
-    expect(s.storedDispatch().value.release?.outcome).toBe(accepted ? 'delivered' : 'queued');
-  });
-
-  it.each([
-    'peer',
-    'sent',
-  ])('refuses invalid %s timestamps with clock-skew or incorrect-receipt guidance', async (source) => {
-    const s = await releasedScenario();
-    if (source === 'sent')
-      s.replaceDispatch({
-        release: { ...s.released.dispatch.value.release!, recorded_at: 'not-a-timestamp' },
-      });
-    s.confirmation(source === 'peer' ? { recorded_at: 'not-a-timestamp' } : {});
-    expect(await s.submit()).toMatchObject({
-      ok: false,
-      code: ErrorCodes.BUILDER_ACK,
-      next_action: expect.stringContaining('incorrect or tampered timestamp'),
-    });
-    expect(s.storedDispatch().value.release?.outcome).toBe('queued');
-    expect(s.fs.exists(s.canonicalPath)).toBe(false);
-  });
-});
 
 describe('Builder PM sibling-worktree authority', () => {
   it('routes an existing native PM through verified target authority without relabeling or moving workers', async () => {
@@ -1148,7 +538,7 @@ describe('Builder role settings', () => {
 });
 
 describe('Builder isolated dispatch', () => {
-  it('uses injected provisioning, observed session bootstrap, immutable seeds and acknowledgement-only delivery', async () => {
+  it('delivers scoped work and its measured packet digest from the verified native launch', async () => {
     const s = scenario();
     const result = value(await dispatchBuilderUnit(s.deps, s.input));
     const attempt = `${s.input.unit}-${BUILDER_FIXTURE_SHA}`;
@@ -1200,10 +590,11 @@ describe('Builder isolated dispatch', () => {
     expect(result.dispatch.value.observed.gaps.join(' ')).toContain('unverified');
     expect(result.dispatch.value.requested).not.toHaveProperty('effort');
     expect(result.dispatch.value.observed).not.toHaveProperty('effort');
-    expect(result.packet.value.canary).toEqual({ path: expect.any(String) });
-    const challenge = s.fs.readText(`${ROOT}/${result.packet.value.canary.path}`);
-    expect(challenge).not.toBe(result.packet.value.nonce);
-    expect(JSON.stringify(result.packet.value)).not.toContain(challenge);
+    expect(result.packet.value.source_sha).toBe(BUILDER_FIXTURE_SHA);
+    expect(result.packet.value.canary).toBeUndefined();
+    expect(result.dispatch.value.seed_files.some((seed) => seed.path.includes('canary-'))).toBe(
+      false,
+    );
     expect(s.fs.readText(`${ROOT}/${result.packet.ref.path}`)).toBe(
       s.fs.readText(`/repo/${result.packet.ref.path}`),
     );
@@ -1221,7 +612,26 @@ describe('Builder isolated dispatch', () => {
     );
     expect(allocation.value.peer_id).toBe(PEER);
     expect(result.packet.value.allocation.sha256).toBe(allocation.ref.sha256);
-    expect(releases(s)).toHaveLength(0);
+    const body = sends(s)[0]?.args[sends(s)[0]!.args.indexOf('--body') + 1] ?? '';
+    for (const path of result.packet.value.unit.paths) expect(body).toContain(path);
+    for (const read of result.packet.value.unit.reads)
+      for (const path of read.paths) expect(body).toContain(path);
+    expect(body).toContain(result.packet.value.unit.responsibility);
+    expect(body).toContain(result.packet.value.unit.interface);
+    expect(body).toContain(result.packet.ref.sha256);
+    expect(body).toContain(result.packet.ref.path);
+    const plan = value(readBuilderDocument(s.deps, BUILDER_FIXTURE_PLAN, 'builder/plan'));
+    const criteria = plan.value.sections.find((section) => section.name === 'acceptance_criteria')!
+      .value as Array<{ id: string; claim: string }>;
+    expect(body).toContain(criteria.find((criterion) => criterion.id === 'ac-0001')!.claim);
+    expect(result.packet.value.instructions[0]).toContain(result.packet.value.unit.paths[0]);
+    expect(result.packet.value.instructions[1]).toContain('contracts.ts');
+    expect(result.packet.value.instructions[2]).toContain(result.packet.value.unit.responsibility);
+    expect(result.packet.value.instructions[3]).toContain(result.packet.value.unit.interface);
+    expect(result.dispatch.value.delivery).toMatchObject({
+      outcome: 'queued',
+      message_id: sends(s)[0]?.args[sends(s)[0]!.args.indexOf('--msg-id') + 1],
+    });
     expect(sends(s)).toHaveLength(1);
     expect(result.dispatch.value).not.toHaveProperty('acknowledgement');
     expect(result.dispatch.value).not.toHaveProperty('release');
@@ -1255,7 +665,6 @@ describe('Builder isolated dispatch', () => {
       pid: 123,
     });
     expect(sends(s)).toHaveLength(1);
-    expect(releases(s)).toHaveLength(0);
   });
   it('refuses seed conflicts without overwriting the target', () => {
     const s = scenario();
@@ -1319,7 +728,7 @@ describe('Builder isolated dispatch', () => {
     });
     expect(allocation.exec.calls.some((call) => call.args[0] === 'spawn')).toBe(false);
   });
-  it('records accepted-but-unbound launch without sending a packet or releasing work', async () => {
+  it('records accepted-but-unbound launch without sending a work packet', async () => {
     const s = scenario();
     s.spawn.bound = false;
     s.state.liveness = 'dead';
@@ -1438,134 +847,49 @@ describe('Builder isolated dispatch', () => {
   });
 });
 
-describe('Builder exact acknowledgement release', () => {
-  it('persists an exact acknowledgement before truthful queued release and makes replay a no-op', async () => {
-    const s = scenario();
-    const dispatched = value(await dispatchBuilderUnit(s.deps, s.input));
-    s.acknowledgement(dispatched);
-    const released = value(
-      await acknowledgeBuilderUnit(s.deps, { plan: BUILDER_FIXTURE_PLAN, receipt: s.ackPath }),
-    );
-    expect(released.dispatch.value.release).toMatchObject({
-      message_id: dispatched.packet.value.nonce,
-      outcome: 'queued',
-    });
-    expect(released.dispatch.value.acknowledgement).toBeDefined();
-    const ackPath = builderRecordPath(s.context, 'ack', `${s.input.unit}-${BUILDER_FIXTURE_SHA}`);
-    expect(`/repo/${released.dispatch.value.acknowledgement?.path}`).toBe(ackPath);
-    expect(value(readBuilderRecord<AckReceipt>(s.deps, ackPath, 'ack')).value.id).toBe(
-      `ack-${s.input.unit}-${BUILDER_FIXTURE_SHA}`,
-    );
-    expect(releases(s)).toHaveLength(1);
-    expect(
-      value(
-        await acknowledgeBuilderUnit(s.deps, { plan: BUILDER_FIXTURE_PLAN, receipt: s.ackPath }),
-      ),
-    ).toEqual(released);
-    expect(releases(s)).toHaveLength(1);
-    expect(s.fs.readText(`/repo/${dispatched.packet.ref.path}`)).toBe(
-      s.fs.readText(`${ROOT}/${dispatched.packet.ref.path}`),
-    );
-  });
+describe('Builder direct work transport', () => {
   it.each([
-    'nonce',
-    'packet_sha256',
-    'baseline_sha',
-    'peer_id',
-    'unit_id',
-    'native_root',
-    'shell_cwd',
-    'canary_nonce',
-  ] as const)('does not release a mismatched %s', async (field) => {
+    'queued',
+    'delivered',
+  ] as const)('records native launch before sending and retains the observed %s transport outcome', async (outcome) => {
     const s = scenario();
-    const dispatched = value(await dispatchBuilderUnit(s.deps, s.input));
-    s.acknowledgement(dispatched, { [field]: 'different' });
+    s.flags.delivery = outcome;
+    const run = s.deps.exec.run.bind(s.deps.exec);
+    let beforeSend: DispatchReceipt | undefined;
+    s.deps.exec.run = async (command, args, options) => {
+      if (command === 'pij-rs' && args[0] === 'send')
+        beforeSend = value(
+          readBuilderRecord<DispatchReceipt>(
+            s.deps,
+            builderRecordPath(s.context, 'dispatch', `${s.input.unit}-${BUILDER_FIXTURE_SHA}`),
+            'dispatch',
+          ),
+        ).value;
+      return run(command, args, options);
+    };
+    const result = value(await dispatchBuilderUnit(s.deps, s.input));
+    expect(beforeSend?.observed).toMatchObject({ ready: true, peer_id: PEER, root: ROOT });
+    expect(beforeSend?.delivery).toBeUndefined();
+    expect(result.dispatch.value.delivery?.outcome).toBe(outcome);
     expect(
-      (await acknowledgeBuilderUnit(s.deps, { plan: BUILDER_FIXTURE_PLAN, receipt: s.ackPath })).ok,
-    ).toBe(false);
-    expect(releases(s)).toHaveLength(0);
+      value(readBuilderRecord<DispatchReceipt>(s.deps, result.dispatch.ref.path, 'dispatch')).value
+        .delivery?.outcome,
+    ).toBe(outcome);
+    expect(sends(s)).toHaveLength(1);
   });
+
   it.each([
-    'harness',
-    'model',
-    'effort',
-    'native_session',
-    'pid',
-    'root',
-    'ready',
-  ] as const)('does not release a false observed %s', async (field) => {
+    'held',
+    'refused',
+    'malformed',
+  ])('preserves the launched peer without inventing successful %s delivery or duplicating work', async (outcome) => {
     const s = scenario();
-    const dispatched = value(await dispatchBuilderUnit(s.deps, s.input));
-    s.acknowledgement(dispatched, {
-      observed: {
-        ...dispatched.dispatch.value.observed,
-        [field]: field === 'pid' ? 999 : field === 'ready' ? false : 'different',
-      },
+    if (outcome === 'malformed') s.flags.malformed = 'send';
+    else s.flags.delivery = outcome;
+    expect(await dispatchBuilderUnit(s.deps, s.input)).toMatchObject({
+      ok: false,
+      code: ErrorCodes.BUILDER_RUNTIME,
     });
-    expect(
-      (await acknowledgeBuilderUnit(s.deps, { plan: BUILDER_FIXTURE_PLAN, receipt: s.ackPath })).ok,
-    ).toBe(false);
-    expect(releases(s)).toHaveLength(0);
-  });
-  it('refuses missing and malformed ack, tampered packet, seed and contract bytes', async () => {
-    for (const changed of ['missing', 'malformed', 'packet', 'seed', 'contract'] as const) {
-      const s = scenario();
-      const dispatched = value(await dispatchBuilderUnit(s.deps, s.input));
-      s.acknowledgement(dispatched);
-      if (changed === 'missing') s.fs.deleteFile(s.ackPath);
-      if (changed === 'malformed') s.fs.writeText(s.ackPath, '{}');
-      if (changed === 'packet') s.fs.writeText(`/repo/${dispatched.packet.ref.path}`, '{}');
-      if (changed === 'seed')
-        s.fs.writeText(`${ROOT}/${dispatched.packet.value.canary.path}`, 'tampered');
-      if (changed === 'contract') s.fs.writeText(`${ROOT}/contracts.ts`, 'changed before release');
-      expect(
-        (await acknowledgeBuilderUnit(s.deps, { plan: BUILDER_FIXTURE_PLAN, receipt: s.ackPath }))
-          .ok,
-      ).toBe(false);
-      expect(releases(s)).toHaveLength(0);
-    }
-  });
-  it('permits only exact seed files as untracked and rejects pre-release edits', async () => {
-    const s = scenario();
-    const dispatched = value(await dispatchBuilderUnit(s.deps, s.input));
-    s.acknowledgement(dispatched);
-    s.flags.gitStatus = `?? ${dispatched.packet.value.canary.path}\0?? unrelated.txt\0`;
-    expect(
-      await acknowledgeBuilderUnit(s.deps, { plan: BUILDER_FIXTURE_PLAN, receipt: s.ackPath }),
-    ).toMatchObject({ ok: false, code: ErrorCodes.BUILDER_ACK });
-    expect(releases(s)).toHaveLength(0);
-    s.flags.gitStatus = ` M src/parser.ts\0`;
-    expect(
-      (await acknowledgeBuilderUnit(s.deps, { plan: BUILDER_FIXTURE_PLAN, receipt: s.ackPath })).ok,
-    ).toBe(false);
-    s.flags.gitStatus = `?? ${dispatched.packet.value.canary.path}\0`;
-    expect(
-      (await acknowledgeBuilderUnit(s.deps, { plan: BUILDER_FIXTURE_PLAN, receipt: s.ackPath })).ok,
-    ).toBe(true);
-  });
-  it('rechecks live session identity, model and HEAD rather than trusting an old ack', async () => {
-    for (const drift of ['session', 'model', 'head']) {
-      const s = scenario();
-      const dispatched = value(await dispatchBuilderUnit(s.deps, s.input));
-      s.acknowledgement(dispatched);
-      if (drift === 'session') s.seat.session = 'replacement-session';
-      if (drift === 'model') s.state.boundModel = 'replacement-model';
-      if (drift === 'head') s.flags.rootSha = 'b'.repeat(40);
-      expect(
-        (await acknowledgeBuilderUnit(s.deps, { plan: BUILDER_FIXTURE_PLAN, receipt: s.ackPath }))
-          .ok,
-      ).toBe(false);
-      expect(releases(s)).toHaveLength(0);
-    }
-  });
-  it('keeps a held release distinct from delivery and supports exact retry after the native prerequisite changes', async () => {
-    const s = scenario();
-    const dispatched = value(await dispatchBuilderUnit(s.deps, s.input));
-    s.acknowledgement(dispatched);
-    s.flags.delivery = 'held';
-    expect(
-      await acknowledgeBuilderUnit(s.deps, { plan: BUILDER_FIXTURE_PLAN, receipt: s.ackPath }),
-    ).toMatchObject({ ok: false, code: ErrorCodes.BUILDER_RUNTIME });
     const recorded = value(
       readBuilderRecord<DispatchReceipt>(
         s.deps,
@@ -1573,240 +897,140 @@ describe('Builder exact acknowledgement release', () => {
         'dispatch',
       ),
     );
-    expect(recorded.value.acknowledgement).toBeDefined();
-    expect(recorded.value.release).toBeUndefined();
-    s.flags.delivery = 'delivered';
-    expect(
-      value(
-        await acknowledgeBuilderUnit(s.deps, { plan: BUILDER_FIXTURE_PLAN, receipt: s.ackPath }),
-      ).dispatch.value.release?.outcome,
-    ).toBe('delivered');
+    expect(recorded.value.observed).toMatchObject({ ready: true, peer_id: PEER });
+    expect(recorded.value.delivery).toBeUndefined();
+    expect(await dispatchBuilderUnit(s.deps, s.input)).toMatchObject({
+      ok: false,
+      code: ErrorCodes.BUILDER_CONFLICT,
+    });
+    expect(sends(s)).toHaveLength(1);
+    expect(s.exec.calls.filter((call) => call.args[0] === 'spawn')).toHaveLength(1);
   });
-  it('names recipient refusal without claiming delivered release', async () => {
+
+  it('preserves competing dispatch bytes when delivery recording loses its CAS', async () => {
     const s = scenario();
-    const dispatched = value(await dispatchBuilderUnit(s.deps, s.input));
-    s.acknowledgement(dispatched);
-    s.flags.delivery = 'refused';
+    const run = s.deps.exec.run.bind(s.deps.exec);
+    const path = builderRecordPath(s.context, 'dispatch', `${s.input.unit}-${BUILDER_FIXTURE_SHA}`);
+    let competing = '';
+    s.deps.exec.run = async (command, args, options) => {
+      const result = await run(command, args, options);
+      if (command === 'pij-rs' && args[0] === 'send') {
+        competing = `${s.fs.readText(path)} `;
+        s.fs.writeText(path, competing);
+      }
+      return result;
+    };
+    expect(await dispatchBuilderUnit(s.deps, s.input)).toMatchObject({
+      ok: false,
+      code: ErrorCodes.BUILDER_CONFLICT,
+      details: { peer: PEER, delivery: { outcome: 'queued' } },
+    });
+    expect(s.fs.readText(path)).toBe(competing);
     expect(
-      await acknowledgeBuilderUnit(s.deps, { plan: BUILDER_FIXTURE_PLAN, receipt: s.ackPath }),
-    ).toMatchObject({
+      value(readBuilderRecord<DispatchReceipt>(s.deps, path, 'dispatch')).value.delivery,
+    ).toBeUndefined();
+    expect(await dispatchBuilderUnit(s.deps, s.input)).toMatchObject({
+      ok: false,
+      code: ErrorCodes.BUILDER_CONFLICT,
+    });
+    expect(sends(s)).toHaveLength(1);
+    expect(s.exec.calls.filter((call) => call.args[0] === 'spawn')).toHaveLength(1);
+  });
+
+  it('holds the unit operation claim until asynchronous delivery is recorded', async () => {
+    const s = scenario();
+    let entered!: () => void;
+    let resume!: () => void;
+    const sending = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const gate = new Promise<void>((resolve) => {
+      resume = resolve;
+    });
+    const run = s.deps.exec.run.bind(s.deps.exec);
+    s.deps.exec.run = async (command, args, options) => {
+      if (command === 'pij-rs' && args[0] === 'send') {
+        entered();
+        await gate;
+      }
+      return run(command, args, options);
+    };
+    const pending = dispatchBuilderUnit(s.deps, s.input);
+    await sending;
+    let competing: BuilderResult<DispatchResult>;
+    try {
+      competing = await dispatchBuilderUnit(s.deps, s.input);
+    } finally {
+      resume();
+    }
+    const completed = value(await pending);
+    expect(competing).toMatchObject({ ok: false, code: ErrorCodes.BUILDER_CONFLICT });
+    expect(completed.dispatch.value.delivery?.outcome).toBe('queued');
+    expect(sends(s)).toHaveLength(1);
+  });
+
+  it.each([
+    'model',
+    'root',
+    'session',
+    'pid',
+    'parent',
+    'duplicate roster',
+  ])('records but never sends work to a forged or changed native %s binding', async (drift) => {
+    const s = scenario();
+    if (drift === 'model') s.state.boundModel = 'different-model';
+    if (drift === 'root') s.state.cwd = '/other-root';
+    if (drift === 'session') s.seat.session = 'different-session';
+    if (drift === 'pid') s.state.pid = 999;
+    if (drift === 'parent') s.state.parent = 'different-parent';
+    if (drift === 'duplicate roster') s.otherSeats.push({ ...s.seat });
+    expect(await dispatchBuilderUnit(s.deps, s.input)).toMatchObject({
       ok: false,
       code: ErrorCodes.BUILDER_RUNTIME,
-      next_action: expect.stringContaining('Do not retry'),
     });
-    expect(
-      value(
-        readBuilderRecord<DispatchReceipt>(
-          s.deps,
-          builderRecordPath(s.context, 'dispatch', `${s.input.unit}-${BUILDER_FIXTURE_SHA}`),
-          'dispatch',
-        ),
-      ).value.release,
-    ).toBeUndefined();
+    expect(sends(s)).toHaveLength(0);
+    expect(await dispatchBuilderUnit(s.deps, s.input)).toMatchObject({
+      ok: false,
+      code: ErrorCodes.BUILDER_CONFLICT,
+    });
+    expect(s.exec.calls.filter((call) => call.args[0] === 'spawn')).toHaveLength(1);
+  });
+
+  it.each([
+    'current seal',
+    'allocation',
+    'packet',
+  ])('does not send work when the bound %s changes during native readiness observation', async (changed) => {
+    const s = scenario();
+    const run = s.deps.exec.run.bind(s.deps.exec);
+    s.deps.exec.run = async (command, args, options) => {
+      const result = await run(command, args, options);
+      if (command === 'pij-rs' && args[0] === 'list') {
+        if (changed === 'current seal') s.advanceSeal('b'.repeat(40));
+        else {
+          const path =
+            changed === 'allocation'
+              ? '/repo/.git/harness/builder/allocations/al-0001.dd.json'
+              : builderRecordPath(s.context, 'packet', `${s.input.unit}-${BUILDER_FIXTURE_SHA}`);
+          s.fs.writeText(path, `${s.fs.readText(path)} `);
+        }
+      }
+      return result;
+    };
+    expect(await dispatchBuilderUnit(s.deps, s.input)).toMatchObject({
+      ok: false,
+      code: ErrorCodes.BUILDER_NOT_READY,
+    });
+    expect(sends(s)).toHaveLength(0);
   });
 });
 
 describe('Builder current sealed-baseline authorization', () => {
   const newer = 'b'.repeat(40);
-  it.each([
-    'packet',
-    'ack',
-  ] as const)('does not fall back when the current-qualified %s is absent', async (kind) => {
-    const s = scenario();
-    const dispatched = value(await dispatchBuilderUnit(s.deps, s.input));
-    s.acknowledgement(dispatched);
-    const released = value(
-      await acknowledgeBuilderUnit(s.deps, { plan: BUILDER_FIXTURE_PLAN, receipt: s.ackPath }),
-    );
-    const path = builderRecordPath(s.context, kind, `${s.input.unit}-${BUILDER_FIXTURE_SHA}`);
-    const legacy = builderRecordPath(s.context, kind, s.input.unit);
-    const historical = s.fs.readText(path) ?? '';
-    s.fs.writeText(legacy, historical);
-    s.fs.deleteFile(path);
-    expect(
-      await acknowledgeBuilderUnit(s.deps, { plan: BUILDER_FIXTURE_PLAN, receipt: s.ackPath }),
-    ).toEqual(refusal);
-    expect(s.fs.readText(legacy)).toBe(historical);
-    expect(releases(s)).toHaveLength(1);
-    expect(released.dispatch.value.release).toBeDefined();
-  });
   const refusal = {
     ok: false,
-    code: ErrorCodes.BUILDER_ACK,
-    message: 'Current sealed-baseline authorization is missing or mismatched.',
-    next_action:
-      'Read the current guide-bound seal and prepare its qualified attempt; historical records do not authorize work.',
+    code: ErrorCodes.BUILDER_NOT_READY,
   };
-
-  it.each([
-    'unit-only record',
-    'older qualified record',
-    'wrong-source current filename',
-  ])('refuses %s with the same named current-authorization outcome', async (history) => {
-    const s = scenario();
-    const dispatched = value(await dispatchBuilderUnit(s.deps, s.input));
-    const original = s.fs.readText(`/repo/${dispatched.dispatch.ref.path}`);
-    if (history === 'unit-only record') {
-      value(
-        writeBuilderRecord(s.deps, builderRecordPath(s.context, 'dispatch', s.input.unit), {
-          ...dispatched.dispatch.value,
-          id: `dispatch-${s.input.unit}`,
-        }),
-      );
-      s.fs.deleteFile(`/repo/${dispatched.dispatch.ref.path}`);
-    } else {
-      s.advanceSeal(newer);
-      if (history === 'wrong-source current filename')
-        value(
-          writeBuilderRecord(
-            s.deps,
-            builderRecordPath(s.context, 'dispatch', `${s.input.unit}-${newer}`),
-            { ...dispatched.dispatch.value, id: `dispatch-${s.input.unit}-${newer}` },
-          ),
-        );
-    }
-    s.acknowledgement(dispatched);
-    expect(
-      await acknowledgeBuilderUnit(s.deps, { plan: BUILDER_FIXTURE_PLAN, receipt: s.ackPath }),
-    ).toEqual(refusal);
-    expect(releases(s)).toHaveLength(0);
-    if (history !== 'unit-only record')
-      expect(s.fs.readText(`/repo/${dispatched.dispatch.ref.path}`)).toBe(original);
-  });
-
-  it('checks the current seal before returning an already released historical attempt', async () => {
-    const s = scenario();
-    const dispatched = value(await dispatchBuilderUnit(s.deps, s.input));
-    s.acknowledgement(dispatched);
-    const released = value(
-      await acknowledgeBuilderUnit(s.deps, { plan: BUILDER_FIXTURE_PLAN, receipt: s.ackPath }),
-    );
-    const original = s.fs.readText(`/repo/${released.dispatch.ref.path}`);
-    s.advanceSeal(newer);
-    expect(
-      await acknowledgeBuilderUnit(s.deps, { plan: BUILDER_FIXTURE_PLAN, receipt: s.ackPath }),
-    ).toEqual(refusal);
-    expect(releases(s)).toHaveLength(1);
-    expect(s.fs.readText(`/repo/${released.dispatch.ref.path}`)).toBe(original);
-  });
-
-  it.each([
-    'packet id',
-    'packet path',
-    'dispatch id',
-    'raw ack id',
-    'stored ack id',
-    'stored ack path',
-    'stored ack source',
-  ])('requires uniform attempt identity for %s before release or replay', async (broken) => {
-    const s = scenario();
-    const dispatched = value(await dispatchBuilderUnit(s.deps, s.input));
-    let ack = s.acknowledgement(dispatched);
-    let dispatch = dispatched.dispatch;
-    if (broken.startsWith('stored ack')) {
-      dispatch = value(
-        await acknowledgeBuilderUnit(s.deps, { plan: BUILDER_FIXTURE_PLAN, receipt: s.ackPath }),
-      ).dispatch;
-      const recorded = value(
-        readBuilderRecord<AckReceipt>(s.deps, dispatch.value.acknowledgement?.path ?? '', 'ack'),
-      );
-      const path =
-        broken === 'stored ack path'
-          ? builderRecordPath(s.context, 'ack', s.input.unit)
-          : recorded.ref.path;
-      const changed = value(
-        writeBuilderRecord(
-          s.deps,
-          path,
-          {
-            ...recorded.value,
-            ...(broken === 'stored ack id' && { id: `ack-${s.input.unit}` }),
-            ...(broken === 'stored ack source' && { baseline_sha: newer }),
-          },
-          broken === 'stored ack path' ? undefined : { expectedSha256: recorded.ref.sha256 },
-        ),
-      );
-      value(
-        writeBuilderRecord(
-          s.deps,
-          dispatch.ref.path,
-          { ...dispatch.value, acknowledgement: changed.ref },
-          { expectedSha256: dispatch.ref.sha256 },
-        ),
-      );
-    } else if (broken === 'packet id' || broken === 'packet path') {
-      const path =
-        broken === 'packet path'
-          ? builderRecordPath(s.context, 'packet', s.input.unit)
-          : dispatched.packet.ref.path;
-      const changed = value(
-        writeBuilderRecord(
-          s.deps,
-          path,
-          {
-            ...dispatched.packet.value,
-            ...(broken === 'packet id' && { id: `packet-${s.input.unit}` }),
-          },
-          broken === 'packet path' ? undefined : { expectedSha256: dispatched.packet.ref.sha256 },
-        ),
-      );
-      value(
-        writeBuilderRecord(
-          s.deps,
-          dispatch.ref.path,
-          { ...dispatch.value, packet: changed.ref },
-          { expectedSha256: dispatch.ref.sha256 },
-        ),
-      );
-      ack = { ...ack, packet_sha256: changed.ref.sha256 };
-    } else if (broken === 'dispatch id') {
-      value(
-        writeBuilderRecord(
-          s.deps,
-          dispatch.ref.path,
-          { ...dispatch.value, id: `dispatch-${s.input.unit}` },
-          { expectedSha256: dispatch.ref.sha256 },
-        ),
-      );
-    } else ack = { ...ack, id: `ack-${s.input.unit}` };
-    s.fs.writeText(s.ackPath, JSON.stringify(ack));
-    expect(
-      await acknowledgeBuilderUnit(s.deps, { plan: BUILDER_FIXTURE_PLAN, receipt: s.ackPath }),
-    ).toEqual(refusal);
-    expect(releases(s)).toHaveLength(broken.startsWith('stored ack') ? 1 : 0);
-  });
-
-  it('rejects an old packet baseline even beneath a correctly qualified packet filename', async () => {
-    const s = scenario();
-    const dispatched = value(await dispatchBuilderUnit(s.deps, s.input));
-    const historical = value(
-      writeBuilderRecord(s.deps, builderRecordPath(s.context, 'baseline', 'historical'), {
-        ...s.baseline.value,
-        source_sha: newer,
-      }),
-    );
-    const packet = value(
-      writeBuilderRecord(
-        s.deps,
-        dispatched.packet.ref.path,
-        { ...dispatched.packet.value, baseline: historical.ref },
-        { expectedSha256: dispatched.packet.ref.sha256 },
-      ),
-    );
-    value(
-      writeBuilderRecord(
-        s.deps,
-        dispatched.dispatch.ref.path,
-        { ...dispatched.dispatch.value, packet: packet.ref },
-        { expectedSha256: dispatched.dispatch.ref.sha256 },
-      ),
-    );
-    s.acknowledgement({ ...dispatched, packet });
-    expect(
-      await acknowledgeBuilderUnit(s.deps, { plan: BUILDER_FIXTURE_PLAN, receipt: s.ackPath }),
-    ).toEqual(refusal);
-    expect(releases(s)).toHaveLength(0);
-  });
 
   it('does not let a stale injected baseline select an old producer attempt', async () => {
     const s = scenario();
@@ -1824,7 +1048,7 @@ describe('Builder current sealed-baseline authorization', () => {
         },
       }),
     };
-    expect(await dispatchBuilderUnit(stale, s.input)).toEqual(refusal);
+    expect(await dispatchBuilderUnit(stale, s.input)).toMatchObject(refusal);
     expect(s.provisioned).toHaveLength(0);
     expect(
       prepareBuilderPacket(s.deps, {
@@ -1839,7 +1063,7 @@ describe('Builder current sealed-baseline authorization', () => {
         requested: fixtureRole(),
         nonce: 'fresh-nonce',
       }),
-    ).toEqual(refusal);
+    ).toMatchObject(refusal);
   });
 
   it('keeps operation locks unit-scoped across sealed-baseline attempts', async () => {
@@ -1851,14 +1075,6 @@ describe('Builder current sealed-baseline authorization', () => {
       ok: false,
       code: ErrorCodes.BUILDER_CONFLICT,
     });
-    s.fs.mkdirp(`${ROOT}/scratch`);
-    s.fs.writeText(
-      s.ackPath,
-      JSON.stringify(fixtureAck({ id: `ack-${s.input.unit}-${newer}`, baseline_sha: newer })),
-    );
-    expect(
-      await acknowledgeBuilderUnit(s.deps, { plan: BUILDER_FIXTURE_PLAN, receipt: s.ackPath }),
-    ).toMatchObject({ ok: false, code: ErrorCodes.BUILDER_CONFLICT });
     expect(s.fs.readText(lock)).toBe('prior-attempt-owner');
     expect(s.provisioned).toHaveLength(0);
   });
@@ -1876,7 +1092,7 @@ describe('Builder current sealed-baseline authorization', () => {
     for (const path of historical) s.fs.writeText(path, `preserved:${path}`);
     value(await dispatchBuilderUnit(s.deps, s.input));
     for (const path of historical) expect(s.fs.readText(path)).toBe(`preserved:${path}`);
-    expect(releases(s)).toHaveLength(0);
+    expect(sends(s)).toHaveLength(1);
   });
 });
 

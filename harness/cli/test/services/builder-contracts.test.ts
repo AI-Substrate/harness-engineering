@@ -73,17 +73,6 @@ describe('Builder shared DD record contract', () => {
     expect(fs.exists('/repo/packet.dd.json')).toBe(false);
   });
 
-  it('refuses a packet that discloses the native-root canary answer', () => {
-    const { deps, fs } = builderFixture();
-    const packet = fixturePacket();
-    Reflect.set(packet.canary, 'nonce', 'answer-that-must-be-read-from-the-root');
-    expect(writeBuilderRecord(deps, '/repo/packet.dd.json', packet)).toMatchObject({
-      ok: false,
-      code: 'E470',
-    });
-    expect(fs.exists('/repo/packet.dd.json')).toBe(false);
-  });
-
   it('reads the canonical guide without confusing the product plan schema', () => {
     const { deps } = builderFixture();
     expect(readBuilderDocument(deps, BUILDER_FIXTURE_GUIDE, 'builder/impl-guide').ok).toBe(true);

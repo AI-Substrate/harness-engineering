@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ErrorCodes } from '../harness/cli/dist/output/error-codes.js';
+import { toPosix } from '../harness/cli/dist/services/shared/posix-path.js';
 
 // Real CLI + real Git. Native dispatch/composition/close acceptance is a separate
 // live scenario; this smoke never substitutes a scripted peer for that proof.
@@ -146,11 +147,47 @@ function compositionWarnings() {
       commit_sha: baselineSha, packet_sha256: '0'.repeat(64), baseline_sha: baselineSha }],
     files: [], checks: [],
   } }));
+  const packetPath = `${teamDir}/packet-fixture.dd.json`;
+  save(packetPath, doc('builder/work-packet', { packet: {
+    record_type: 'packet', id: 'packet-fixture', recorded_at: recordedAt, nonce: 'fixture-correlation',
+    source_sha: baselineSha, unit: unit('tk-0002', 'coder', ['worker.txt']),
+    plan: digest(planPath), guide: digest(guidePath),
+    baseline: digest(`${teamDir}/baseline.dd.json`), allocation: digest(`${teamDir}/fixture-review.txt`),
+    workspace: cwd, parent: 'fixture-pm',
+    requested: { role: 'coder', harness: 'omp', model: 'fixture-only', source: {
+      harness: 'guide', model: 'guide', effort: 'guide',
+    } },
+    forbidden: [], instructions: ['You own worker.txt. Your job is to produce the tested content.'],
+  } }));
+  const packetDigest = digest(packetPath).sha256;
+  save('.serena/smoke-metadata', 'Runtime-created metadata is not an acknowledgement gate.\n');
+  const startup = cli(cwd, ['builder', 'self-check', packetPath, '--sha256', packetDigest]).data.self_check;
+  assert.deepEqual(startup.warnings, []);
+  assert.equal(startup.observed.packet_sha256, packetDigest);
+  assert.equal(startup.observed.root, toPosix(cwd));
+  assert.equal(startup.observed.source_sha, baselineSha);
+  const mismatched = cli(cwd, ['builder', 'self-check', packetPath, '--sha256', '0'.repeat(64)]).data.self_check;
+  assert.ok(mismatched.warnings.some((warning) => warning.code === 'packet-digest-mismatch'));
+  assert.equal(mismatched.observed.packet_sha256, packetDigest);
+  const wrongRoot = cli(seed, ['builder', 'self-check', join(cwd, packetPath), '--sha256', packetDigest]).data.self_check;
+  assert.ok(wrongRoot.warnings.some((warning) => warning.code === 'root-mismatch'));
+  assert.equal(wrongRoot.observed.root, toPosix(seed));
+  assert.equal(readFileSync(join(cwd, '.serena/smoke-metadata'), 'utf8'),
+    'Runtime-created metadata is not an acknowledgement gate.\n');
+  // The next scenario uses this fixture as the PM checkout; remove only metadata
+  // this smoke created, not consumer files or the packet evidence.
+  rmSync(join(cwd, '.serena'), { recursive: true });
+  checks.push('advisory-self-check-with-startup-metadata', 'self-check-digest-warning', 'self-check-root-warning');
   save('worker.txt', 'composed\n');
   save('extra.txt', 'PM work outside the map\n');
   git(cwd, 'add', '--', 'worker.txt', 'extra.txt');
   git(cwd, 'commit', '-m', 'Compose across mapped ownership');
   const candidate = git(cwd, 'rev-parse', 'HEAD');
+  const moved = cli(cwd, ['builder', 'self-check', packetPath, '--sha256', packetDigest]).data.self_check;
+  assert.ok(moved.warnings.some((warning) => warning.code === 'source-mismatch'));
+  assert.equal(moved.observed.source_sha, candidate);
+  assert.equal(moved.expected.source_sha, baselineSha);
+  checks.push('self-check-commit-warning');
   const result = cli(cwd, ['builder', 'compose', planPath, '--verify', candidate]);
   const warnings = [
     { file: 'extra.txt', owning_unit: 'unmapped', stage: 'verify' },
@@ -207,7 +244,13 @@ try {
   git(seed, 'config', 'user.name', 'Harness fixture');
   git(seed, 'config', 'user.email', 'harness-fixture@example.invalid');
   writeFileSync(join(seed, 'seed.txt'), 'Builder CLI smoke source\n');
-  git(seed, 'add', '--', 'seed.txt');
+  const legacyPacketSchema = JSON.parse(readFileSync(join(packageRoot, '.dd/schemas/builder/packet/schema.json'), 'utf8'));
+  assert.ok(legacyPacketSchema.sections.packet.shape.required.includes('canary'));
+  legacyPacketSchema.description = 'Consumer-customized historical packet schema; preserve exactly.';
+  const legacyPacketBytes = `${JSON.stringify(legacyPacketSchema, null, 2)}\n`;
+  mkdirSync(join(seed, '.dd/schemas/builder/packet'), { recursive: true });
+  writeFileSync(join(seed, '.dd/schemas/builder/packet/schema.json'), legacyPacketBytes);
+  git(seed, 'add', '--', 'seed.txt', '.dd/schemas/builder/packet/schema.json');
   git(seed, 'commit', '-m', 'Seed the isolated Builder smoke');
   const sourceSha = git(seed, 'rev-parse', 'HEAD');
 
@@ -216,7 +259,6 @@ try {
   assert.match(help.stdout, /builder\s+architecture-enabled team delivery/);
   const briefing = cli(seed, ['instructions', 'builder']);
   assert.match(briefing.data.instructions, /assets\/impl-guide\.dd\.json/);
-  assert.match(briefing.data.instructions, /full sealed source SHA/);
   const unsupportedInjection = cli(seed, ['instructions', 'builder', '--inject'], 2);
   assert.match(unsupportedInjection.next_action, /only defined for commit guidance/);
   assert.equal(existsSync(join(seed, 'AGENTS.md')), false, 'Builder briefing never injects the commit-only block');
@@ -245,6 +287,11 @@ try {
     assert.equal(git(workspace, 'rev-parse', 'HEAD'), sourceSha);
     assert.equal(lstatSync(join(workspace, '.git')).isDirectory(), kind === 'clone');
     assertBootstrap(created.plan);
+    assert.equal(readFileSync(join(workspace, '.dd/schemas/builder/packet/schema.json'), 'utf8'), legacyPacketBytes);
+    assert.equal(readFileSync(join(seed, '.dd/schemas/builder/packet/schema.json'), 'utf8'), legacyPacketBytes);
+    assert.ok(existsSync(join(workspace, '.dd/schemas/builder/work-packet/schema.json')),
+      'current packet schema is staged before native launch without overwriting legacy customization');
+    checks.push(`${kind}-packet-schema-upgrade-preserves-customization`);
     const flow = JSON.parse(readFileSync(created.flow, 'utf8'));
     assert.equal(flow.nodes.length, 12);
     assert.ok(flow.nodes.some((node) => node.id === 'impl-guide'));

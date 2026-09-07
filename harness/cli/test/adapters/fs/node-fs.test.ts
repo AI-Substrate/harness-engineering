@@ -11,6 +11,7 @@ import {
 import { platform, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { FakeFs } from '../../../src/adapters/fs/fake-fs.js';
 import { NodeFs } from '../../../src/adapters/fs/node-fs.js';
 import { provenLabel, SYMLINK_CAPABLE, trySymlink } from '../../support/symlink-capability.js';
 
@@ -75,6 +76,30 @@ describe('NodeFs — bounded no-follow text reads (P063 T003)', () => {
     });
   });
 
+  it('preserves exact bytes within the optional raw-read bound in both adapters', () => {
+    /*
+    Test Doc:
+    - Why: packet digests must hash original bytes, not UTF-8 replacement text.
+    - Contract: exact ceiling succeeds without decoding; oversize and out-of-root reads fail.
+    - Usage Notes: invalid UTF-8 distinguishes raw data from a text round trip.
+    - Quality Contribution: prevents false packet-digest observations and adapter drift.
+    */
+    withTempDir((dir) => {
+      const path = join(dir, 'packet.json');
+      const contents = Uint8Array.from([0xf0, 0x90, 0x80]);
+      for (const fs of [new NodeFs(), new FakeFs()]) {
+        fs.writeBytes(path, contents);
+        expect(Array.from(fs.readBytesNoFollow(path, { maxBytes: 3, root: dir }) ?? [])).toEqual(
+          Array.from(contents),
+        );
+        expect(fs.readBytesNoFollow(path, { maxBytes: 2, root: dir })).toBeNull();
+        expect(
+          fs.readBytesNoFollow(path, { maxBytes: 3, root: join(dir, 'other-root') }),
+        ).toBeNull();
+      }
+    });
+  });
+
   it(
     provenLabel(
       'distinguishes missing, symlink, non-file, and oversize paths without following them',
@@ -135,6 +160,7 @@ describe('NodeFs — bounded no-follow text reads (P063 T003)', () => {
         status: 'unavailable',
         reason: 'oversize',
       });
+      expect(new NodeFs().readBytesNoFollow(path, { maxBytes: 1024, root: dir })).toBeNull();
     });
   });
 

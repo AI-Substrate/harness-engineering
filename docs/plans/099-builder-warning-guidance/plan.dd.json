@@ -48,8 +48,9 @@
         {
           "id": "ac-0001",
           "claim": "The implementation guide retains units[].paths and read maps, and packets still carry the assigned unit, its job and observable done conditions; these maps guide work rather than granting write permission.",
-          "state": "unchecked",
-          "pressure": "assets/backpressure.dd.json#rows/bp-0001"
+          "state": "checked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0001",
+          "proven_by": "assets/execution-log.dd.json#entries/lg-0002"
         },
         {
           "id": "ac-0002",
@@ -73,20 +74,23 @@
         {
           "id": "ac-0005",
           "claim": "The packet begins with plain-language ownership/read map, job and done conditions before mechanics. Its embedded unit remains available; first-use instructions lead directly to useful work rather than acknowledgement ceremony.",
-          "state": "unchecked",
-          "pressure": "assets/backpressure.dd.json#rows/bp-0005"
+          "state": "checked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0005",
+          "proven_by": "assets/execution-log.dd.json#entries/lg-0002"
         },
         {
           "id": "ac-0006",
           "claim": "A coder can run one advisory self-check of expected clone, source commit and packet digest. Mismatch, drift or normal startup metadata yields named observations/warnings and repair advice rather than a work-release gate; there is no required second receipt, second nonce or clock window.",
-          "state": "unchecked",
-          "pressure": "assets/backpressure.dd.json#rows/bp-0006"
+          "state": "checked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0006",
+          "proven_by": "assets/execution-log.dd.json#entries/lg-0002"
         },
         {
           "id": "ac-0007",
           "claim": "Dispatch, delivery, import, advance and review no longer depend on pre-work/post-release acknowledgement receipt IDs, phase nonces, canary challenge or plus/minus-five-second timing to authorize work; old records remain readable and need no replay or fabricated upgrade.",
-          "state": "unchecked",
-          "pressure": "assets/backpressure.dd.json#rows/bp-0007"
+          "state": "checked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0007",
+          "proven_by": "assets/execution-log.dd.json#entries/lg-0002"
         },
         {
           "id": "ac-0008",
@@ -129,7 +133,7 @@
           "id": "ph-0889",
           "title": "Map-first packets and advisory self-checks",
           "brief": "Replace the startup ceremony with work-first packets and one advisory self-check, removing release dependencies on the old acknowledgement sequence from every reader. Keep existing histories readable.",
-          "state": "unchecked",
+          "state": "checked",
           "depends_on": [
             "ph-1886"
           ],

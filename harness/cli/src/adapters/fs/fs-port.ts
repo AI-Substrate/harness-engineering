@@ -41,8 +41,8 @@ export interface FsPort {
         status: 'unavailable';
         reason: 'missing' | 'symlink' | 'non-file' | 'oversize' | 'io-error';
       };
-  /** Raw regular-file bytes without following symlinks, or null for missing/non-regular input. */
-  readBytesNoFollow(path: string): Uint8Array | null;
+  /** Raw regular-file bytes. Options add an opened-file byte ceiling and optional root confinement. */
+  readBytesNoFollow(path: string, options?: { maxBytes: number; root?: string }): Uint8Array | null;
   /** Sorted POSIX-relative regular files, or null if root contains a symlink/non-regular entry. */
   listRegularFilesNoFollow(root: string): string[] | null;
   /** Last-modified epoch milliseconds, or null if missing/unreadable (never throws). */

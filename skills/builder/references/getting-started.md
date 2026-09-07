@@ -14,7 +14,7 @@ flowchart LR
   plan -.-> pressure[Backpressure survey] -.-> guide
 ```
 
-The diagram's repeated phase relation describes successive phase nodes, not a cycle in persisted flow state. The stored DAG is `research → plan → impl-guide → (phase-N → review-N)* → post-flight → ship`. Workshops, ADRs, backpressure, fix-loops and optional upstream reconciliation are excursions, not extra mandatory milestones. Baseline, packet/ack, dispatch and composition are implementation substeps, never another team lifecycle.
+The diagram's repeated phase relation describes successive phase nodes, not a cycle in persisted flow state. The stored DAG is `research → plan → impl-guide → (phase-N → review-N)* → post-flight → ship`. Workshops, ADRs, backpressure, fix-loops and optional upstream reconciliation are excursions, not extra mandatory milestones. Baseline, work-packet dispatch and composition are implementation substeps, never another team lifecycle.
 
 ## Entry
 
@@ -44,7 +44,7 @@ Simple mode reduces phases, not rigor: it still has product intent, an implement
 
 Good: parser and renderer consume a committed shared document DTO, have injected collaborators/fakes, own disjoint implementation paths and can be tested without sibling source. The PM composes them only after deliveries. Bad: two file-based assignments share mutable globals, import each other's unfinished implementations or both edit the same dispatcher. Splitting files did not split responsibility.
 
-The guide captures that judgement and the deterministic checker verifies its stated ownership/dependencies/links. A structural green is not architectural approval. Read `team-lifecycle.md` for the exact new/adopt/guide/ready/contracts/settings/dispatch/ack/advance/compose/review/close/tidy grammar and envelopes.
+The guide captures that judgement and the deterministic checker verifies its stated ownership/dependencies/links. A structural green is not architectural approval. Read `team-lifecycle.md` for the exact new/adopt/guide/ready/contracts/settings/dispatch/self-check/advance/compose/review/close/tidy grammar and envelopes.
 
 Run the real worked example:
 
@@ -81,6 +81,6 @@ docs/plans/<ordinal>-<slug>/
     ship/
 ```
 
-PM owns canonical state; workers own only their packets' source/test paths. Exact pristine-source/native relative-canary/runtime acknowledgement `ack-<unit_id>-<full-current-source-sha>` uses `packet.nonce` before release. After observing the exact release, the peer refreshes native evidence and returns the new path/digest for `ack-<unit_id>-<full-current-source-sha>-release`, whose nonce is retained `release.message_id`; it then follows already-authorized work without another grant. The PM ingests both phases with `harness builder ack <plan> --receipt <path>`; queued delivery stays unconfirmed until the second receipt is accepted. See [team operations](./team-lifecycle.md) for exact identity, optional observation and clock-skew boundaries. Import is not composition proof. Close preserves artifacts, WIP, reports, observations, telemetry and refs outside every retiring root; tidy separately re-verifies ownership and runtime release. Idle does not mean closed.
+PM owns canonical state; workers own their packets' source/test paths. Each work briefing starts with owned paths, read paths/owners, the job/interface and observable done conditions, followed by the exact packet pointer/digest. Receiving the packet starts the unit without a separate release. Optional `harness builder self-check <packet> --sha256 <digest>` compares bytes, checkout root and source SHA with warning-only corrective guidance; it changes no state. Import checks the real tree/branch/commit, current immutable bindings, distinct peers and sealed ancestry, not startup receipts or transport outcome. See [team operations](./team-lifecycle.md) for cause/fix guidance. Historical receipts stay unchanged and are never replayed or reclassified. Import is not composition proof. Close preserves artifacts, WIP, reports, observations, telemetry and refs outside every retiring root; tidy separately re-verifies ownership and runtime release. Idle does not mean closed.
 
 Completed historical Markdown/DD plans remain readable without conversion, retroactive guide gates or node resurrection. Existing archive paths resume only when explicitly named, never automatically as active work. New writes use DD and the separate guide; do not establish a second convention beside them.

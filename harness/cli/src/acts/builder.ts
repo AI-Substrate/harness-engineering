@@ -12,7 +12,6 @@ import {
   sealBuilderContracts,
 } from '../services/builder/contracts-service.js';
 import {
-  acknowledgeBuilderUnit,
   checkBuilderPeerReleased,
   dispatchBuilderUnit,
 } from '../services/builder/dispatch-service.js';
@@ -26,6 +25,7 @@ import {
 } from '../services/builder/records.js';
 import { recordBuilderReview } from '../services/builder/review-service.js';
 import { resolveBuilderRoles } from '../services/builder/role-settings.js';
+import { selfCheckBuilderPacket } from '../services/builder/self-check-service.js';
 import type {
   AllocationRecord,
   BaselineReceipt,
@@ -266,8 +266,14 @@ async function executeBuilder(
         },
       );
     }
-    case 'ack':
-      return acknowledgeBuilderUnit(deps, { plan: argument, receipt: options.receipt as string });
+    case 'self-check':
+      return named(
+        'self_check',
+        await selfCheckBuilderPacket(deps, {
+          packet: argument,
+          sha256: options.sha256 as string,
+        }),
+      );
     case 'advance':
       return advanceBuilderStage(deps, { plan: argument, now: options.now as string });
     case 'compose': {

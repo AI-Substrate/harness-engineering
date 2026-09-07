@@ -255,15 +255,18 @@ export interface Packet {
   guide: FileDigest;
   baseline: FileDigest;
   allocation: FileDigest;
+  /** Present on current packets; historical packets recover it from their bound baseline. */
+  source_sha?: string;
   workspace: string;
   parent: string;
   requested: RoleBinding;
   forbidden: string[];
-  /** The answer lives only in the root-local file; its digest is in DispatchReceipt.seed_files. */
-  canary: { path: string };
+  /** Historical packet metadata; no current producer creates a root challenge. */
+  canary?: { path: string };
   instructions: string[];
 }
 
+/** Historical evidence, read only for provenance and independent-review exclusions. */
 export interface AckReceipt {
   record_type: 'ack';
   id: string;
@@ -291,6 +294,9 @@ export interface DispatchReceipt {
   observed: RuntimeObservation;
   /** Exact immutable seed files, not a broad untracked-file exemption. */
   seed_files: FileDigest[];
+  /** Observed transport outcome for the work packet, never an acknowledgement gate. */
+  delivery?: { message_id: string; outcome: 'queued' | 'delivered'; recorded_at: string };
+  /** Historical handshake metadata; current dispatch/import do not consume it. */
   acknowledgement?: FileDigest;
   release?: { message_id: string; outcome: 'queued' | 'delivered'; recorded_at: string };
 }
@@ -307,8 +313,15 @@ export interface DispatchInput extends BuilderTarget {
   /** Omission/guide resolves from isolation.mode; an explicit kind overrides it. */
   kind?: WorkspaceKindSelector;
 }
-export interface AckInput extends BuilderTarget {
-  receipt: string;
+export interface SelfCheckInput {
+  packet: string;
+  sha256: string;
+}
+export interface SelfCheckReport {
+  packet: string;
+  expected: { packet_sha256: string; root?: string; source_sha?: string };
+  observed: { packet_sha256?: string; root?: string; source_sha?: string };
+  warnings: BuilderIssue[];
 }
 export interface DispatchResult {
   dispatch: Stored<DispatchReceipt>;

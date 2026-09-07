@@ -1,6 +1,6 @@
 # Builder team operations
 
-The skill decides and explains; `harness builder` checks and records. The existing canonical flow owns lifecycle position. Baseline, dispatch, acknowledgement and composition are implementation substeps, not another stage graph. Team DD records are facts, never a second independently advanced state machine.
+The skill decides and explains; `harness builder` checks and records. The existing canonical flow owns lifecycle position. Baseline, work-packet dispatch and composition are implementation substeps, not another stage graph. Team DD records are facts, never a second independently advanced state machine.
 
 ## Capability and envelope contract
 
@@ -20,8 +20,8 @@ These forms follow `harness/cli/src/services/builder/commands.ts`; angle-bracket
 | Readiness | `harness builder ready <plan> [--unit <id>]` | `status, issues, context, guide, baseline`; re-observes current basis |
 | Contracts | `harness builder contracts <plan> [--seal --review <path>]` | `baseline`; seal and review must occur together; checked committed inputs |
 | Settings | `harness builder settings <plan> [--role coder|reviewer] [--harness <name>] [--model <selector>] [--effort <level>]` | `roles`; any explicit setting requires role, per-field provenance |
-| Dispatch | `harness builder dispatch <plan> --unit <id> --workspace <path> --parent <id> [--kind guide|worktree|clone] [--harness <name>] [--model <selector>] [--effort <level>]` | `dispatch, packet`; acknowledgement-only setup, not work release |
-| Acknowledge | `harness builder ack <plan> --receipt <path>` | `dispatch, packet`; exact pre-work or post-release AckReceipt identity, phase-derived nonce and current native bindings; confirmation never grants/sends a release |
+| Dispatch | `harness builder dispatch <plan> --unit <id> --workspace <path> --parent <id> [--kind guide|worktree|clone] [--harness <name>] [--model <selector>] [--effort <level>]` | `dispatch, packet`; delivers the work packet directly; transport observation is not permission |
+| Self-check | `harness builder self-check <packet> --sha256 <digest>` | `packet, expected, observed, warnings`; optional read-only orientation; mismatches warn and do not change state |
 | Advance | `harness builder advance <plan> --now <node>` | `flow, now`; checks canonical departure gates, never another lifecycle |
 | Compose | `harness builder compose <plan> --import <path>` OR `harness builder compose <plan> --verify <sha>` | `composition`; exactly one mode; import is not proof |
 | Review | `harness builder review <plan> --receipt <path>` | `review`; independent decomposition/composition evidence bound to subject and documents |
@@ -42,40 +42,47 @@ harness builder settings "${PLAN}"
 harness builder ready "${PLAN}" --unit "${UNIT}"
 ```
 
-**Order of commits around the seal.** Commit the SOURCE (contract unit, checks, fixtures) first — that commit is the seal's `source_sha`. The seal receipt and the review receipt are then written to disk; commit them whenever you like. Dispatch accepts a plan-repository HEAD that *is* the sealed source **or a descendant of it** — every frozen artifact is digest-checked against the seal, so receipt and evidence commits on top of the sealed source never block a dispatch, and the dispatch record names the plan-root HEAD it observed. What is refused: a HEAD the sealed source is not an ancestor of (a rewritten baseline, a checkout moved off its history). The coder clone is different: it must start at exactly the sealed source, and its acknowledgements are checked against that.
+**Order of commits around the seal.** Commit the SOURCE (contract unit, checks, fixtures) first — that commit is the seal's `source_sha`. The seal receipt and the review receipt are then written to disk; commit them whenever you like. Dispatch accepts a plan-repository HEAD that *is* the sealed source **or a descendant of it** — every frozen artifact is digest-checked against the seal, so receipt and evidence commits on top of the sealed source never block a dispatch, and the dispatch record names the plan-root HEAD it observed. A HEAD outside that ancestry is a rewritten or displaced baseline: restore the intended checkout, or review and seal a new source rather than relabelling old evidence. The coder clone starts at the sealed source; new packets carry that `source_sha` explicitly.
 
 Roles resolve repo < guide < explicit fields. Requested model/harness/effort and observed runtime are distinct. Omitted effort stays absent; PID/argv/environment/native-session evidence is recorded only where observed. Provider-served identity remains unverified unless independently attested.
 
-## Dispatch and acknowledgement
+## Map-first dispatch and advisory self-check
 
-Packets freeze scope, allowed writes/reads, interfaces, dependencies, proof, parent, allocation, plan/guide/baseline digests and requested role. Forbid canonical flow/plan/guide/receipt writes, other units, global/deployed settings, main, pushes and unapproved deletion. Workspace kind is not allocation authority. The authority record must survive removing the workspace.
+Begin every worker briefing with the actual unit map, not bookkeeping:
 
-Derive the attempt from the **current guide-bound sealed source**, not a caller's old delivery: `<unit_id>-<full-current-source-sha>`. Packet and dispatch IDs use their kind plus this attempt. The unchanged `harness builder ack <plan> --receipt <path>` accepts two exact `AckReceipt.id` values:
+1. **You own** the complete assigned source/test paths.
+2. **You may read** the named contract and dependency paths, with their owners.
+3. **Your job** is the unit's responsibility and frozen interface.
+4. **Done means** its observable acceptance criteria, proof commands and delivery interface.
 
-| Phase | Exact receipt ID | Expected `nonce` | Meaning |
-|---|---|---|---|
-| Pre-work | `ack-<unit_id>-<full-current-source-sha>` | `packet.nonce` | Pristine-source acknowledgement before work release |
-| Post-release | `ack-<unit_id>-<full-current-source-sha>-release` | Already-recorded `release.message_id` | Fresh observation that the already-issued exact release was received |
+Then provide the canonical packet path and SHA-256 from the dispatch result. Packets bind source SHA, scope, reads, interfaces, dependencies, proof, parent, allocation, plan/guide/baseline digests and requested role. Forbid canonical flow/plan/guide/receipt writes, other units, global/deployed settings, main, pushes and unapproved deletion. Workspace kind is not allocation authority; the authority record must survive removing the workspace.
 
-Phase comes from exact ID equality, never a filename, loose prefix, release presence or an older source. The `-release` suffix follows the full SHA, so a unit whose ID starts with `release-` cannot collide. Retrying the pre-work receipt remains idempotent and **cannot** confirm queued delivery. A unit-only or stale record is never an authorization fallback. Original records stay immutable; operation locks stay unit-scoped across attempts.
+Packet and dispatch IDs use `<unit_id>-<full-current-source-sha>` from the current guide-bound seal. The packet's nonce is only a correlation value. Dispatch sends the work packet itself and records the observed message ID, outcome and time in `DispatchReceipt.delivery`. Queued transport is not proof that a peer received anything; neither queued nor delivered transport is an import permission gate. Receiving the packet means do the assigned work, with no separate acknowledgement or release.
 
-Dispatch seeds a clone/worktree-only relative canary. The packet contains only its path, never the answer. Read packet and canary through native repository-relative file tools; shell `cd` or an absolute read cannot establish native-root binding. Both phases use the existing raw `AckReceipt` fields: `record_type`, `id`, `recorded_at`, `unit_id`, `peer_id`, `nonce`, `packet_sha256`, `baseline_sha`, `native_root`, `shell_cwd`, `canary_nonce`, `observed`. `baseline_sha` is the full Git source SHA, not the baseline file digest.
+The worker may run one orientation check from its actual checkout:
 
-1. **Before release:** the peer observes the pristine source, native root and actual supported runtime, writes the pre-work receipt, and sends its path/SHA-256. The PM ingests it through `harness builder ack <plan> --receipt <pre-work-receipt>`. No work until the peer actually sees its exact-bound release; `queued` is not received.
-2. **After observing that release:** the peer natively re-reads packet/canary, refreshes runtime observations, and writes a **new** post-release receipt at a new private path. Its nonce is the retained release's `message_id`, independently of `packet.nonce` even if their values happen to match. Use the received release identity bound to the PM's retained DispatchReceipt, never an invented or assumed message ID. Send the new path/SHA-256, then follow the already-granted scope; **do not wait for a second grant**. A peer that has already completed that scope can confirm its real retained release without replaying work again.
-3. **Before import:** the PM ingests that exact fresh receipt through the same command: `harness builder ack <plan> --receipt <post-release-receipt>`. It records observed delivery only, never sends or grants another release. A queued dispatch remains refused by composition until confirmation is accepted; do not hand-edit its outcome or weaken import. Already-delivered transport remains valid; confirmation may still be retained without changing the original grant.
+```bash
+harness builder self-check <packet> --sha256 <digest>
+```
 
-Post-release checks preserve unit/peer/packet/current-source/root/canary/runtime bindings and re-observe the allocated branch/source ancestry. They do **not** require a pristine checkout or HEAD equal to baseline: already-authorized work may have started. The pre-work pristine-source check stays intact. Record only observed optional harness/model/effort/session/PID/argv fields; unsupported facts belong in `observed.gaps`. Requested settings and launch configuration are not provider attestation.
+The report compares expected and observed packet SHA-256, repository root and HEAD/source SHA. Every mismatch or unavailable observation is a warning with cause and corrective `next_action`, not a refusal or state mutation. A historical packet without `source_sha` uses its in-root digest-bound baseline when readable; missing evidence stays missing. The check neither attests a native runtime nor establishes cleanliness, permission or a clock window. Do not add a receipt exchange around it.
 
-Use the peer's actual new receipt creation time for `recorded_at`. The explicit peer-clock skew tolerance is **5000 ms**: the timestamp must parse and fall inclusively between `release.recorded_at - 5000 ms` and PM ingestion time `+ 5000 ms`. Outside that interval, report clock skew or an incorrect/tampered receipt; never backdate it or silently widen the tolerance. PM records peer observation and ingestion times in `observed.evidence`, preserves the original sent time/message ID and queued transport facts, and binds the canonical confirmation path/digest there.
-
-Identical confirmation retries are safe, including a receipt persisted before a dispatch-CAS failure; changed immutable bytes refuse. Neither path resends a release. Independent review considers every recorded implementation identity, including historical attempts, without treating historical receipts as current authorization.
+Retain historical packets, acknowledgements and release records unchanged as evidence. Do not replay completed work, rewrite their transport facts or reclassify them as requirements for the current flow. Requested runtime settings remain distinct from observed facts; unsupported optional observations remain absent with named gaps. Independent review still considers historical implementation identities when checking reviewer independence.
 
 ## Composition and review
 
-Workers deliver committed `UnitDelivery` records (`unit_id, peer_id, workspace, commit_sha, packet_sha256, baseline_sha`). Import consumes a JSON array of those records, verifies current basis/ownership and confirmed release delivery, and integrates in guide order. Missing/queued confirmation is resolved by ingesting the peer's fresh `-release` AckReceipt through `harness builder ack`, not by retrying the pre-work receipt. The PM then wires the composition root, regenerates owned generated assets, commits, and runs `compose --verify <exact composed SHA>`. Only verification sets `artifact_sha` with actual check receipts. A changed artifact requires fresh verification/review.
+Workers deliver committed `UnitDelivery` records (`unit_id, peer_id, workspace, commit_sha, packet_sha256, baseline_sha`). `baseline_sha` is a full Git source SHA; a FileDigest `sha256` binds bytes. Import consumes an array of these records, verifies the exact current packet/dispatch/external-allocation bindings and source/ownership basis, and integrates in guide order. It does not require a self-check report, acknowledgement, release, transport outcome, nonce challenge or timestamp window. The PM then wires the composition root, regenerates owned generated assets, commits, and runs `compose --verify <exact composed SHA>`. Only verification sets `artifact_sha` with actual check receipts. A changed artifact requires fresh verification/review.
 
-PM composition has no ownership veto: use the guide map to orient, then write the correct integration without an amendment or justification. Both PM comparison points continue with `composition.value.warnings`: each row names `file`, `owning_unit` (unit ID or `unmapped`), and `stage` (`import` or `verify`); overlapping owners have separate rows. Import observations remain; repeated verification replaces only verify-stage observations. Review these rows alongside the composed bytes, including when a real check is red. Warnings are not permission, proof, or an extra approval requirement. The current composition increment does not claim that the separate coder-delivery/acknowledgement cutover has shipped.
+Integrity failures remain actionable refusals before mutation:
+
+| Cause | Corrective action |
+|---|---|
+| Wrong checkout root, allocated branch or delivered commit | Return to the allocated tree/branch and deliver its actual committed SHA. |
+| Forged, altered or mismatched packet/dispatch/allocation evidence | Recover the exact immutable records and measured digests; never edit evidence to match a claim. |
+| One peer identity reused for independent unit deliveries | Use the actual distinct dispatched peers; correct attribution instead of inventing identities. |
+| Rewritten baseline or a commit outside sealed-source ancestry | Restore the intended source history or obtain reviewed, newly sealed contracts and new packets. |
+
+PM composition has no ownership veto: use the guide map to orient, then write the correct integration without an amendment or justification. Both PM comparison points continue with `composition.value.warnings`: each row names `file`, `owning_unit` (unit ID or `unmapped`), and `stage` (`import` or `verify`); overlapping owners have separate rows. Import observations remain; repeated verification replaces only verify-stage observations. Review these rows alongside the composed bytes, including when a real check is red. Warnings are not permission, proof, or an extra approval requirement. Coder-delivery path ownership still has its existing enforcement; this startup change does not convert it to warnings.
 
 Independent composition review consumes product intent, guide, exact composed artifact, checks and the composition warning list. `ReviewReceipt` records `scope`, `subject_sha`, plan/guide file digests, reviewer identity, requested/observed role, verdict, report digest and findings/dispositions. Same-model self-review is not requested cross-model review. Missing reviewer capability is blocked/not-executed, never silent solo fallback. A solo implementation still owes whatever review was requested.
 

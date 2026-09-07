@@ -61,6 +61,32 @@ describe('Builder CLI composition boundary', () => {
     expect(result.envelope.next_action).toBeTruthy();
   });
 
+  it('reports an unavailable self-check packet as actionable warnings with exit zero', async () => {
+    /*
+    Test Doc:
+    - Why: startup orientation must not become a replacement acknowledgement gate.
+    - Contract: unreadable packet inspection returns warnings, not a CLI error exit.
+    - Usage Notes: the existing fake filesystem contains no selected packet.
+    - Quality Contribution: catches accidental error-envelope mapping at the act boundary.
+    */
+    const result = await runBuilder([
+      'self-check',
+      'missing-packet.dd.json',
+      '--sha256',
+      '0'.repeat(64),
+    ]);
+    expect(result.code).toBe(0);
+    expect(result.envelope.error).toBeUndefined();
+    expect(result.envelope.data).toMatchObject({
+      self_check: {
+        expected: { packet_sha256: '0'.repeat(64) },
+        warnings: expect.arrayContaining([
+          expect.objectContaining({ message: expect.any(String), next_action: expect.any(String) }),
+        ]),
+      },
+    });
+  });
+
   it('applies a role-scoped invocation override without changing the guide', async () => {
     const fixture = builderFixture();
     const result = await runBuilder(

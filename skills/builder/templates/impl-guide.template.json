@@ -203,7 +203,7 @@
       "value": {
         "mode": "clone-per-coder",
         "allocation_owner": "harness",
-        "note": "Native roots and canaries checked separately; owner is not checkout kind."
+        "note": "Packets name the checkout root and sealed source for advisory orientation; import verifies allocated tree/source integrity. Owner is not checkout kind."
       }
     },
     {

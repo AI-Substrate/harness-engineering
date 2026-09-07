@@ -86,32 +86,22 @@ const cases = {
     const fixtureInputs = { sourceSha, root: '/example/worker', contractBytes: await readFile(join(here, 'contracts.mjs')), guideBytes, planBytes: 'explicit teaching plan bytes' };
     const fixtures = lifecycleFixtures(fixtureInputs);
     assert.equal(fixtures.kind, 'teaching-fixtures-not-live-evidence');
-    assert.deepEqual(Object.keys(fixtures.packet.canary), ['path']);
-    assert.equal(fixtures.packetBytes.includes(fixtures.canary.trim()), false);
-    assert.equal(fixtures.ack.packet_sha256, createHash('sha256').update(fixtures.packetBytes).digest('hex'));
-    assert.notEqual(fixtures.ack.packet_sha256, createHash('sha256').update(`${fixtures.packetBytes}changed`).digest('hex'));
-    assert.equal(fixtures.ack.baseline_sha, sourceSha);
-    assert.equal(fixtures.packet.id, `packet-${fixtures.packet.unit.id}-${sourceSha}`);
-    assert.equal(fixtures.ack.id, `ack-${fixtures.packet.unit.id}-${sourceSha}`);
-    assert.equal(fixtures.ack.nonce, fixtures.packet.nonce);
-    assert.equal(fixtures.releaseAck.record_type, 'ack');
-    assert.equal(fixtures.releaseAck.id, `ack-${fixtures.packet.unit.id}-${sourceSha}-release`);
-    assert.notEqual(fixtures.releaseAck.id, fixtures.ack.id, 'Confirmation has its own exact phase identity, not the original acknowledgement');
-    assert.equal(fixtures.releaseAck.nonce, fixtures.release.message_id);
-    assert.notEqual(fixtures.releaseAck.nonce, fixtures.packet.nonce, 'This fixture deliberately proves release message ID is independent of packet nonce');
-    assert.equal(fixtures.release.outcome, 'queued', 'Constructing a teaching receipt does not send or confirm live delivery');
-    assert.equal(Number.isFinite(Date.parse(fixtures.releaseAck.recorded_at)), true);
-    for (const field of ['unit_id', 'peer_id', 'packet_sha256', 'baseline_sha', 'native_root', 'shell_cwd', 'canary_nonce']) {
-      assert.equal(fixtures.releaseAck[field], fixtures.ack[field], `Confirmation preserves ${field}`);
-    }
-    assert.equal('effort' in fixtures.releaseAck.observed, false);
-    assert.equal('pid' in fixtures.releaseAck.observed, false, 'The teaching fixture must not invent native process evidence');
+    assert.equal(fixtures.delivery.packet_sha256, createHash('sha256').update(fixtures.packetBytes).digest('hex'));
+    assert.notEqual(fixtures.delivery.packet_sha256, createHash('sha256').update(`${fixtures.packetBytes}changed`).digest('hex'));
+    assert.equal(fixtures.packet.source_sha, sourceSha);
+    assert.equal(fixtures.dispatch.packet.sha256, fixtures.delivery.packet_sha256);
+    assert.equal(fixtures.selfCheck.observed.packet_sha256, fixtures.delivery.packet_sha256);
+    assert.equal('root' in fixtures.selfCheck.observed, false, 'No checkout inspection was performed');
+    assert.equal('source_sha' in fixtures.selfCheck.observed, false, 'Supplied source identity is expected, not observed in the synthetic worker');
+    assert.equal(fixtures.selfCheck.warnings[0].code, 'EXAMPLE_UNOBSERVED');
+    assert.equal(fixtures.dispatch.delivery.outcome, 'queued', 'Synthetic transport must not claim native delivery');
+    assert.equal(fixtures.dispatch.observed.ready, false, 'A teaching fixture cannot attest native readiness');
+    assert.equal('model' in fixtures.dispatch.observed, false, 'Requested settings are not observations');
+    assert.equal('pid' in fixtures.dispatch.observed, false, 'No native process evidence was collected');
     const fresh = lifecycleFixtures(fixtureInputs);
-    assert.equal(fresh.packet.id, fixtures.packet.id, 'One unit and sealed source select one attempt key, not a nonce-derived filename');
-    assert.notEqual(fresh.packet.nonce, fixtures.packet.nonce, 'A fresh packet must not reuse the anti-replay nonce');
-    assert.notEqual(fresh.ack.packet_sha256, fixtures.ack.packet_sha256, 'Old acknowledgement bytes cannot bind a freshly issued packet');
-    assert.equal('effort' in fixtures.packet.requested, false);
-    assert.notEqual(fixtures.review.requested.model, fixtures.packet.requested.model);
+    assert.equal(fresh.packet.id, fixtures.packet.id, 'One unit and sealed source select one attempt identity');
+    assert.notEqual(fresh.delivery.packet_sha256, fixtures.delivery.packet_sha256, 'A fresh packet has distinct immutable bytes even for the same unit and source');
+    assert.equal(fixtures.review.verdict, 'blocked', 'The example does not execute the requested independent review');
     assert.equal('artifact_sha' in fixtures.composition, false, 'Import-only cannot claim verified composition');
     const root = await mkdtemp(join(tmpdir(), 'builder-preserve-example-'));
     try {

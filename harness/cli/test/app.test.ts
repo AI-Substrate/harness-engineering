@@ -169,27 +169,6 @@ describe('buildProgram — composition root wiring', () => {
     ]);
   });
 
-  it('registers every Builder subcommand rather than merely its family', () => {
-    const program = buildProgram('1.2.3', io, deps(), { verbs: [], records: [] });
-    const builder = program.commands.find((command) => command.name() === 'builder');
-    expect(builder?.commands.map((command) => command.name())).toEqual([
-      'new',
-      'adopt',
-      'guide',
-      'ready',
-      'contracts',
-      'settings',
-      'dispatch',
-      'ack',
-      'advance',
-      'compose',
-      'review',
-      'close',
-      'tidy',
-    ]);
-    expect(program.commands.some((command) => command.name() === 'new')).toBe(true);
-  });
-
   it('registers core commands including sensors, registry verbs, and --no-extensions', () => {
     const registry = { verbs: [mkVerb('hello'), mkVerb('build')], records: [] };
     const program = buildProgram('1.2.3', io, deps(), registry);

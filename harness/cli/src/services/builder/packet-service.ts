@@ -1,11 +1,5 @@
 import { ErrorCodes } from '../../output/error-codes.js';
-import {
-  isWithin,
-  posixDirname,
-  posixJoin,
-  posixRelative,
-  resolveInRepo,
-} from '../shared/posix-path.js';
+import { isWithin, posixDirname, posixRelative, resolveInRepo } from '../shared/posix-path.js';
 import {
   builderFailure,
   builderRecordPath,
@@ -30,13 +24,13 @@ import type {
 
 export function builderAttemptFailure() {
   return builderFailure(
-    ErrorCodes.BUILDER_ACK,
+    ErrorCodes.BUILDER_NOT_READY,
     'Current sealed-baseline authorization is missing or mismatched.',
     'Read the current guide-bound seal and prepare its qualified attempt; historical records do not authorize work.',
   );
 }
 
-/** Resolve authority from the live guide, never from a caller-supplied acknowledgement SHA. */
+/** Resolve the dispatch baseline from the live guide, never a caller-supplied SHA. */
 export function readCurrentBuilderBaseline(
   deps: BuilderDeps,
   context: BuilderContext,
@@ -121,7 +115,7 @@ export function seedBuilderFile(
       );
     }
   } else {
-    // Missing seed files are DD JSON, rendered text, or a plaintext root challenge.
+    // Missing seed files are immutable DD JSON or rendered text.
     // Frozen source/binary files must already exist in the baseline checkout.
     let text: string;
     try {
@@ -223,37 +217,35 @@ export function prepareBuilderPacket(
     );
   }
   const root = allocation.value.root;
-  const canaryPath = posixRelative(
-    deps.repoRoot,
-    posixJoin(context.teamDir, `canary-${attempt}.txt`),
-  );
-  const canaryTarget = resolveInRepo(canaryPath, root);
-  const challenge = deps.nonce();
-  if (!challenge || challenge === nonce || !/^[A-Za-z0-9_-]+$/.test(challenge)) {
-    return builderFailure(
-      ErrorCodes.BUILDER_INVALID,
-      'Root challenge must be distinct from the public packet nonce.',
-      'Provide independent unique nonces for packet and native-root challenge.',
-    );
-  }
-  if (
-    deps.fs.normalizeBundleTargetIdentity(canaryTarget) !== canaryTarget ||
-    !unaliasedParent(deps, root, canaryTarget)
-  ) {
-    return builderFailure(
-      ErrorCodes.BUILDER_OWNERSHIP,
-      'Root challenge target is aliased.',
-      'Remove seed-path aliases before dispatch.',
-    );
-  }
-  deps.fs.mkdirp(posixDirname(canaryTarget));
-  if (!deps.fs.createExclusive(canaryTarget, challenge)) {
-    return builderFailure(
-      ErrorCodes.BUILDER_CONFLICT,
-      'Root challenge already exists or cannot be created.',
-      'Keep the original challenge; investigate the interrupted dispatch before retrying.',
-    );
-  }
+  const plan = readBuilderDocument(deps, context.planPath, 'builder/plan');
+  if (!plan.ok) return plan;
+  if (plan.value.ref.sha256 !== baseline.value.plan.sha256) return builderAttemptFailure();
+  const criteria = plan.value.value.sections.find(
+    (section) => section.name === 'acceptance_criteria',
+  )?.value;
+  const claims = new Map<string, string>();
+  if (Array.isArray(criteria))
+    for (const criterion of criteria)
+      if (
+        criterion !== null &&
+        typeof criterion === 'object' &&
+        'id' in criterion &&
+        typeof criterion.id === 'string' &&
+        'claim' in criterion &&
+        typeof criterion.claim === 'string'
+      )
+        claims.set(criterion.id, criterion.claim);
+  const acceptance = unit.acceptance.map((address) => {
+    const [file, anchor, extra] = address.split('#');
+    const id = /^acceptance_criteria\/([^/]+)$/.exec(anchor ?? '')?.[1];
+    const claim =
+      extra === undefined &&
+      resolveInRepo(file, posixDirname(context.guidePath)) === context.planPath &&
+      id
+        ? claims.get(id)
+        : undefined;
+    return claim ? `${claim} (${address})` : address;
+  });
   const packet: Packet = {
     record_type: 'packet',
     id: `packet-${attempt}`,
@@ -263,6 +255,7 @@ export function prepareBuilderPacket(
     plan: baseline.value.plan,
     guide: baseline.value.guide,
     baseline: baseline.ref,
+    source_sha: baseline.value.source_sha,
     allocation: { ...allocation.ref, path: resolveInRepo(allocation.ref.path, deps.repoRoot) },
     workspace: root,
     parent,
@@ -278,20 +271,19 @@ export function prepareBuilderPacket(
       'All source paths outside unit.paths; sibling implementations; global settings and deployed skills.',
       'Pushes, merges, canonical lifecycle mutations and nested peers without PM approval.',
     ],
-    canary: { path: canaryPath },
     instructions: [
-      'ACKNOWLEDGEMENT ONLY. Read this packet and the canary through native repository-relative file tools, not shell cwd or absolute-path substitution.',
-      `Confirm HEAD ${baseline.value.source_sha}, native root ${root}, peer/session/PID and observed runtime configuration. Requested launch settings are not provider attestation; omit unspecified effort and name observation gaps.`,
-      `Before work, write a raw AckReceipt JSON with record_type ack, id ack-${attempt}, nonce equal to packet.nonce, recorded_at, unit_id, peer_id, packet_sha256, baseline_sha (full Git SHA), native_root, shell_cwd, canary_nonce and observed. RuntimeObservation includes peer_id, root, ready, evidence, gaps and only actually observed harness/model/effort/native_session/pid/argv.`,
-      `Send its path and SHA-256 to ${parent} for ingestion through builder ack <plan> --receipt <path>. Do not edit source until an IMPLEMENTATION RELEASE names your peer, unit, nonce and exact packet digest. Queued transport is not observed receipt.`,
-      `Only after observing that exact release, natively re-read this packet and canary and create a NEW raw AckReceipt with id ack-${attempt}-release. Keep the same unit/peer/packet/baseline/root/canary and freshly observed runtime bindings; set nonce to the already-issued release.message_id, independently of packet.nonce. Use your actual receipt creation time as recorded_at: it must not precede release.recorded_at minus 5000 ms or exceed PM ingestion time plus 5000 ms. Never reuse or overwrite the pre-work receipt.`,
-      `Send the new post-release receipt path and SHA-256 to ${parent} for the SAME builder ack <plan> --receipt <path> command before import. This confirms an existing grant; it never requests or sends a second grant. Continue the already-authorized scoped work without waiting for another release.`,
-      'After release, implement the complete unit responsibility/interface/acceptance within unit.paths; consume frozen reads rather than sibling implementation code. Already-working descendants can confirm their retained release without replaying work. Report scoped committed delivery and evidence to the PM.',
+      `You own ${unit.paths.join(', ')}.`,
+      `You may read ${unit.reads.map((read) => `${read.paths.join(', ')} (owner ${read.owner})`).join('; ')}; immutable plan ${baseline.value.plan.path} and guide ${baseline.value.guide.path}.`,
+      `Your job: ${unit.responsibility}`,
+      `Done means ${acceptance.join('; ')}. Interface: ${unit.interface}. Proof: ${unit.proof.join(', ')}.`,
+      `Work packet: ${posixRelative(deps.repoRoot, builderRecordPath(context, 'packet', attempt))}. Use the measured SHA-256 in the dispatch message for the optional advisory builder self-check.`,
+      `Expected checkout ${root}; source commit ${baseline.value.source_sha}. A self-check warning names a mismatch to inspect; it is not permission or a second work grant.`,
+      `Receiving this packet means do the unit within its map. Consume frozen reads rather than sibling implementation code. Return scoped commits and proof to ${parent}.`,
     ],
   };
   const stored = writeBuilderRecord(deps, builderRecordPath(context, 'packet', attempt), packet);
   if (!stored.ok) return stored;
-  const seeds: FileDigest[] = [{ path: canaryPath, sha256: sha256(challenge) }];
+  const seeds: FileDigest[] = [];
   const copied = seedBuilderFile(deps, root, stored.value.ref);
   if (!copied.ok) return copied;
   seeds.push(...copied.value);

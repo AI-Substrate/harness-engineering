@@ -312,19 +312,6 @@ function scenario() {
           }),
           builderRecordPath(context, 'packet', key),
         );
-        const ack = store(
-          fixtureAck({
-            id: `ack-${key}`,
-            unit_id: unit.id,
-            peer_id: observation.peer_id,
-            nonce: packet.value.nonce,
-            native_root: root,
-            shell_cwd: root,
-            observed: observation,
-            packet_sha256: packet.ref.sha256,
-          }),
-          builderRecordPath(context, 'ack', key),
-        );
         store(
           fixtureDispatch({
             id: `dispatch-${key}`,
@@ -333,10 +320,9 @@ function scenario() {
             packet: packet.ref,
             allocation: allocationRef,
             baseline: baseline.ref,
-            acknowledgement: ack.ref,
-            release: {
+            delivery: {
               message_id: 'message',
-              outcome: 'delivered',
+              outcome: 'queued',
               recorded_at: BUILDER_FIXTURE_TIME,
             },
           }),
@@ -459,7 +445,7 @@ describe('Builder committed composition', () => {
     'unit-only',
     'older-qualified',
     'wrong-source-content',
-  ])('refuses %s dispatch evidence without selecting old authorization', async (kind) => {
+  ])('refuses %s dispatch evidence without selecting historical records', async (kind) => {
     const s = scenario();
     const deliveries = s.deliveries();
     const current = builderRecordPath(s.context, 'dispatch', `tk-0002-${A}`);
@@ -484,7 +470,6 @@ describe('Builder committed composition', () => {
     ).toMatchObject({
       ok: false,
       code: 'E474',
-      message: 'No matching current-baseline authorization for tk-0002.',
     });
     expect(s.fs.readText(retained)).toBe(retainedBytes);
     expect(
@@ -501,75 +486,98 @@ describe('Builder committed composition', () => {
     ).toMatchObject({
       ok: false,
       code: 'E474',
-      message: 'No matching current-baseline authorization for tk-0002.',
     });
     expect(s.calls.some((call) => call.args.includes('fetch'))).toBe(false);
   });
 
   it.each([
-    'packet',
-    'ack',
-  ])('rejects wrong-source %s content under the current qualified filename', async (kind) => {
+    'identity',
+    'source-sha',
+    'baseline-digest',
+    'unit',
+    'allocation-path',
+    'allocation-digest',
+  ])('rejects mismatched packet %s even when its digest is rebound', async (kind) => {
     const s = scenario();
     const deliveries = s.deliveries();
-    const path = builderRecordPath(s.context, kind, `tk-0002-${A}`);
+    const path = builderRecordPath(s.context, 'packet', `tk-0002-${A}`);
     const doc = JSON.parse(s.fs.readText(path) as string);
-    doc.sections[0].value.id = `${kind}-tk-0002-${D}`;
-    if (kind === 'ack') doc.sections[0].value.baseline_sha = D;
+    const packet = doc.sections[0].value;
+    if (kind === 'identity') packet.id = `packet-tk-0002-${D}`;
+    if (kind === 'source-sha') packet.source_sha = D;
+    if (kind === 'baseline-digest') packet.baseline.sha256 = 'e'.repeat(64);
+    if (kind === 'unit') packet.unit.paths = ['unrelated.ts'];
+    if (kind === 'allocation-path') packet.allocation.path = '/repo/authority/other.dd.json';
+    if (kind === 'allocation-digest') packet.allocation.sha256 = 'e'.repeat(64);
     const changed = JSON.stringify(doc);
     s.fs.writeText(path, changed);
     const dispatchPath = builderRecordPath(s.context, 'dispatch', `tk-0002-${A}`);
     const dispatch = JSON.parse(s.fs.readText(dispatchPath) as string);
-    dispatch.sections[0].value[kind === 'packet' ? 'packet' : 'acknowledgement'].sha256 =
-      sha256(changed);
-    if (kind === 'packet') (deliveries[0] as UnitDelivery).packet_sha256 = sha256(changed);
+    dispatch.sections[0].value.packet.sha256 = sha256(changed);
+    (deliveries[0] as UnitDelivery).packet_sha256 = sha256(changed);
     s.fs.writeText(dispatchPath, JSON.stringify(dispatch));
     expect(
       await composeBuilderUnits(s.deps, { plan: BUILDER_FIXTURE_PLAN, mode: 'import', deliveries }),
     ).toMatchObject({ ok: false, code: 'E474' });
-    expect(s.calls.some((call) => call.args.includes('fetch'))).toBe(false);
+    expect(
+      s.calls.some((call) => call.args.includes('fetch') || call.args.includes('cherry-pick')),
+    ).toBe(false);
   });
 
-  it.each([
-    'queued',
-    'missing',
-  ])('names %s release confirmation only after validating the current attempt', async (outcome) => {
+  it('imports historical packets without source_sha while ignoring malformed old acknowledgement evidence', async () => {
     const s = scenario();
     const deliveries = s.deliveries();
-    const key = `tk-0002-${A}`;
-    const dispatchPath = builderRecordPath(s.context, 'dispatch', key);
-    const packetPath = builderRecordPath(s.context, 'packet', key);
-    const ackPath = builderRecordPath(s.context, 'ack', key);
-    const dispatch = JSON.parse(s.fs.readText(dispatchPath) as string);
-    if (outcome === 'queued') dispatch.sections[0].value.release.outcome = 'queued';
-    else delete dispatch.sections[0].value.release;
-    s.fs.writeText(dispatchPath, JSON.stringify(dispatch));
-    const before = [dispatchPath, packetPath, ackPath].map((path) => s.fs.readText(path));
-    const result = await composeBuilderUnits(s.deps, {
-      plan: BUILDER_FIXTURE_PLAN,
-      mode: 'import',
-      deliveries,
-    });
-    expect(result).toMatchObject({
-      ok: false,
-      code: 'E474',
-      message: `Release delivery confirmation is ${outcome} for tk-0002.`,
-      details: {
-        unit_id: 'tk-0002',
-        baseline_sha: A,
-        release_outcome: outcome,
-        confirmation_id: `ack-${key}-release`,
-        canonical_confirmation_path: builderRecordPath(s.context, 'ack', `${key}-release`),
-      },
-    });
-    if (result.ok) throw new Error('Unconfirmed release unexpectedly authorized import.');
-    expect(result.next_action).toContain(
-      `builder ack ${JSON.stringify(s.context.planPath)} --receipt <path-to-fresh-release-ack.json>`,
+    const retained: string[] = [];
+    for (const delivery of deliveries) {
+      const key = `${delivery.unit_id}-${A}`;
+      const packetPath = builderRecordPath(s.context, 'packet', key);
+      const dispatchPath = builderRecordPath(s.context, 'dispatch', key);
+      const ackPath = builderRecordPath(s.context, 'ack', key);
+      const packet = JSON.parse(s.fs.readText(packetPath) as string);
+      packet.dd.schema = 'builder/packet';
+      delete packet.sections[0].value.source_sha;
+      packet.sections[0].value.canary = { path: '/missing/historical-canary.json' };
+      packet.sections[0].value.nonce = 'historical-correlation-only';
+      packet.sections[0].value.recorded_at = '2000-01-01T00:00:00.000Z';
+      s.fs.writeText(packetPath, JSON.stringify(packet));
+      delivery.packet_sha256 = s.digest(packetPath).sha256;
+      const dispatch = JSON.parse(s.fs.readText(dispatchPath) as string);
+      dispatch.sections[0].value.packet.sha256 = delivery.packet_sha256;
+      dispatch.sections[0].value.acknowledgement = { path: ackPath, sha256: '0'.repeat(64) };
+      dispatch.sections[0].value.release = {
+        message_id: 'historical-queued-release',
+        outcome: 'queued',
+        recorded_at: '2000-01-01T00:00:00.000Z',
+      };
+      delete dispatch.sections[0].value.delivery;
+      s.fs.writeText(dispatchPath, JSON.stringify(dispatch));
+      s.fs.writeText(ackPath, '{malformed historical acknowledgement');
+      retained.push(packetPath, dispatchPath, ackPath);
+    }
+    const before = retained.map((path) => s.fs.readText(path));
+    const imported = value(
+      await composeBuilderUnits(s.deps, { plan: BUILDER_FIXTURE_PLAN, mode: 'import', deliveries }),
     );
-    expect(result.next_action).toContain(`id ack-${key}-release`);
-    expect(result.next_action).toContain('nonce derived from dispatch.release.message_id');
-    if (outcome === 'missing') expect(result.next_action).toContain('No release is recorded');
-    expect([dispatchPath, packetPath, ackPath].map((path) => s.fs.readText(path))).toEqual(before);
+    expect(imported.value.units).toEqual(deliveries);
+    expect(
+      s.calls
+        .filter((call) => call.args.includes('cherry-pick'))
+        .map((call) => call.args[call.args.length - 1]),
+    ).toEqual([B, D]);
+    expect(retained.map((path) => s.fs.readText(path))).toEqual(before);
+  });
+
+  it.each(['packet', 'allocation'])('rejects changed %s bytes before importing', async (kind) => {
+    const s = scenario();
+    const deliveries = s.deliveries();
+    const path =
+      kind === 'packet'
+        ? builderRecordPath(s.context, 'packet', `tk-0002-${A}`)
+        : '/repo/authority/tk-0002.dd.json';
+    s.fs.writeText(path, `${s.fs.readText(path)}\n`);
+    expect(
+      await composeBuilderUnits(s.deps, { plan: BUILDER_FIXTURE_PLAN, mode: 'import', deliveries }),
+    ).toMatchObject({ ok: false, code: 'E474' });
     expect(
       s.calls.some((call) => call.args.includes('fetch') || call.args.includes('cherry-pick')),
     ).toBe(false);
@@ -577,97 +585,85 @@ describe('Builder committed composition', () => {
   });
 
   it.each([
-    'dispatch-source',
-    'packet-digest',
-    'pre-work-nonce',
-    'release-id-as-pre-work',
-  ])('rejects %s before suggesting current release confirmation', async (kind) => {
+    'source',
+    'peer',
+    'root',
+    'unit',
+    'retired',
+  ])('rejects forged allocation %s even with matching packet and dispatch digests', async (kind) => {
     const s = scenario();
     const deliveries = s.deliveries();
-    const key = `tk-0002-${A}`;
-    const dispatchPath = builderRecordPath(s.context, 'dispatch', key);
+    const path = '/repo/authority/tk-0002.dd.json';
+    const doc = JSON.parse(s.fs.readText(path) as string);
+    const allocation = doc.sections[0].value;
+    if (kind === 'source') allocation.base_sha = D;
+    if (kind === 'peer') allocation.peer_id = 'different-peer';
+    if (kind === 'root') allocation.root = '/different-root';
+    if (kind === 'unit') allocation.unit_id = 'tk-0003';
+    if (kind === 'retired') allocation.retired_at = BUILDER_FIXTURE_TIME;
+    s.fs.writeText(path, JSON.stringify(doc));
+    const packetPath = builderRecordPath(s.context, 'packet', `tk-0002-${A}`);
+    const packet = JSON.parse(s.fs.readText(packetPath) as string);
+    packet.sections[0].value.allocation.sha256 = s.digest(path).sha256;
+    s.fs.writeText(packetPath, JSON.stringify(packet));
+    const dispatchPath = builderRecordPath(s.context, 'dispatch', `tk-0002-${A}`);
     const dispatch = JSON.parse(s.fs.readText(dispatchPath) as string);
-    dispatch.sections[0].value.release.outcome = 'queued';
-    if (kind === 'dispatch-source') dispatch.sections[0].value.baseline.sha256 = '0'.repeat(64);
-    else if (kind === 'packet-digest')
-      s.fs.writeText(builderRecordPath(s.context, 'packet', key), '{changed packet');
-    else {
-      const ackPath = builderRecordPath(s.context, 'ack', key);
-      const ack = JSON.parse(s.fs.readText(ackPath) as string);
-      if (kind === 'pre-work-nonce') ack.sections[0].value.nonce = 'wrong-pre-work-nonce';
-      else ack.sections[0].value.id = `ack-${key}-release`;
-      s.fs.writeText(ackPath, JSON.stringify(ack));
-      dispatch.sections[0].value.acknowledgement.sha256 = s.digest(ackPath).sha256;
-    }
+    dispatch.sections[0].value.allocation.sha256 = s.digest(path).sha256;
+    dispatch.sections[0].value.packet.sha256 = s.digest(packetPath).sha256;
+    (deliveries[0] as UnitDelivery).packet_sha256 = s.digest(packetPath).sha256;
     s.fs.writeText(dispatchPath, JSON.stringify(dispatch));
-    const result = await composeBuilderUnits(s.deps, {
-      plan: BUILDER_FIXTURE_PLAN,
-      mode: 'import',
-      deliveries,
-    });
-    expect(result).toMatchObject({ ok: false, code: 'E474' });
-    if (result.ok) throw new Error('Invalid attempt unexpectedly authorized import.');
-    expect(result.next_action).not.toContain('builder ack ');
-    expect(
-      s.calls.some((call) => call.args.includes('fetch') || call.args.includes('cherry-pick')),
-    ).toBe(false);
-  });
-
-  it('requires a delivered dispatch even when committed work and a release acknowledgement file exist', async () => {
-    const s = scenario();
-    const deliveries = s.deliveries();
-    const key = `tk-0002-${A}`;
-    const dispatchPath = builderRecordPath(s.context, 'dispatch', key);
-    const ackPath = builderRecordPath(s.context, 'ack', key);
-    const dispatch = JSON.parse(s.fs.readText(dispatchPath) as string);
-    dispatch.sections[0].value.release.outcome = 'queued';
-    s.fs.writeText(dispatchPath, JSON.stringify(dispatch));
-    const primaryBytes = s.fs.readText(ackPath) as string;
-    const primary = JSON.parse(primaryBytes).sections[0].value;
-    const confirmation = s.store(
-      fixtureAck({
-        ...primary,
-        id: `ack-${key}-release`,
-        nonce: dispatch.sections[0].value.release.message_id,
-      }),
-      builderRecordPath(s.context, 'ack', `${key}-release`),
-    );
     expect(
       await composeBuilderUnits(s.deps, { plan: BUILDER_FIXTURE_PLAN, mode: 'import', deliveries }),
-    ).toMatchObject({
-      ok: false,
-      code: 'E474',
-      details: { release_outcome: 'queued', confirmation_id: `ack-${key}-release` },
-    });
+    ).toMatchObject({ ok: false, code: 'E474' });
     expect(
       s.calls.some((call) => call.args.includes('fetch') || call.args.includes('cherry-pick')),
     ).toBe(false);
-    expect(
-      JSON.parse(s.fs.readText(dispatchPath) as string).sections[0].value.release.outcome,
-    ).toBe('queued');
-    // Supply the producer's confirmed state; this consumer never performs that transition.
-    dispatch.sections[0].value.release.outcome = 'delivered';
-    s.fs.writeText(dispatchPath, JSON.stringify(dispatch));
-    expect(
-      (
-        await composeBuilderUnits(s.deps, {
-          plan: BUILDER_FIXTURE_PLAN,
-          mode: 'import',
-          deliveries,
-        })
-      ).ok,
-    ).toBe(true);
-    expect(s.fs.readText(ackPath)).toBe(primaryBytes);
-    expect(s.digest(confirmation.ref.path)).toEqual(confirmation.ref);
   });
 
-  it('imports every coder once in dependency order and does not claim proof', async () => {
+  it('rejects a native dispatch runtime that differs from the bound packet request', async () => {
+    const s = scenario();
+    const deliveries = s.deliveries();
+    const path = builderRecordPath(s.context, 'dispatch', `tk-0002-${A}`);
+    const doc = JSON.parse(s.fs.readText(path) as string);
+    doc.sections[0].value.observed.model = 'different-model';
+    s.fs.writeText(path, JSON.stringify(doc));
+    expect(
+      await composeBuilderUnits(s.deps, { plan: BUILDER_FIXTURE_PLAN, mode: 'import', deliveries }),
+    ).toMatchObject({ ok: false, code: 'E474' });
+    expect(
+      s.calls.some((call) => call.args.includes('fetch') || call.args.includes('cherry-pick')),
+    ).toBe(false);
+  });
+
+  it.each([
+    ['root', 'rev-parse --show-toplevel', '/different-root'],
+    ['branch', 'symbolic-ref --quiet --short HEAD', 'builder/different-branch'],
+    ['ancestry', `merge-base --is-ancestor ${A} ${B}`, ''],
+  ])('rejects wrong actual Git %s before any import', async (kind, command, stdout) => {
+    const s = scenario();
+    const deliveries = s.deliveries();
+    s.scripts[`git -c core.hooksPath= ${command}`] = {
+      code: kind === 'ancestry' ? 1 : 0,
+      stdout,
+      stderr: '',
+      ok: kind !== 'ancestry',
+    };
+    expect(
+      await composeBuilderUnits(s.deps, { plan: BUILDER_FIXTURE_PLAN, mode: 'import', deliveries }),
+    ).toMatchObject({ ok: false, code: kind === 'ancestry' ? 'E475' : 'E477' });
+    expect(
+      s.calls.some((call) => call.args.includes('fetch') || call.args.includes('cherry-pick')),
+    ).toBe(false);
+  });
+
+  it('imports each coder once without acknowledgement or release despite queued transport, then advances after verification', async () => {
     const s = scenario();
     const deliveries = s.deliveries().reverse();
     const result = value(
       await composeBuilderUnits(s.deps, { plan: BUILDER_FIXTURE_PLAN, mode: 'import', deliveries }),
     );
     expect(result.value.units.map((unit) => unit.unit_id)).toEqual(['tk-0002', 'tk-0003']);
+    expect(s.fs.exists(builderRecordPath(s.context, 'ack', `tk-0002-${A}`))).toBe(false);
     expect(result.value.artifact_sha).toBeUndefined();
     expect(result.value.checks).toEqual([]);
     expect(
@@ -679,6 +675,13 @@ describe('Builder committed composition', () => {
     expect(
       await composeBuilderUnits(s.deps, { plan: BUILDER_FIXTURE_PLAN, mode: 'import', deliveries }),
     ).toMatchObject({ ok: false, code: 'E472' });
+    value(
+      await composeBuilderUnits(s.deps, { plan: BUILDER_FIXTURE_PLAN, mode: 'verify', sha: C }),
+    );
+    s.setFlow('phase-1');
+    expect(
+      await advanceBuilderStage(s.deps, { plan: BUILDER_FIXTURE_PLAN, now: 'review-1' }),
+    ).toMatchObject({ ok: true, value: { now: 'review-1' } });
   });
 
   it.each([
@@ -687,6 +690,7 @@ describe('Builder committed composition', () => {
     'wrong-baseline',
     'wrong-peer',
     'wrong-packet',
+    'wrong-workspace',
   ])('rejects %s deliveries before any import', async (kind) => {
     const s = scenario();
     const deliveries = s.deliveries();
@@ -695,6 +699,7 @@ describe('Builder committed composition', () => {
     if (kind === 'wrong-baseline') (deliveries[0] as UnitDelivery).baseline_sha = D;
     if (kind === 'wrong-peer') (deliveries[0] as UnitDelivery).peer_id = 'someone-else';
     if (kind === 'wrong-packet') (deliveries[0] as UnitDelivery).packet_sha256 = '0'.repeat(64);
+    if (kind === 'wrong-workspace') (deliveries[0] as UnitDelivery).workspace = '/someone-else';
     expect(
       (
         await composeBuilderUnits(s.deps, {

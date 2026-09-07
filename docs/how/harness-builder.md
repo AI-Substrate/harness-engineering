@@ -5,7 +5,7 @@ Builder separates the product plan from the implementation guide, then operates 
 - **Product plan** — `plan.dd.json`: WHAT/WHY, scope, observable acceptance criteria and outcome checkpoints.
 - **Implementation guide** — `assets/impl-guide.dd.json`: architecture, injected contracts, ownership, dependencies/waves, role settings, composition and proof.
 - **Backpressure** — `assets/backpressure.dd.json`: selected RUN/EXTEND/BUILD/ABSENT approach per AC/failure mode, schema `builder/backpressure`.
-- **Evidence** — task assertions, execution-log entries, baseline/packet/ack/composition/review/preservation records. Their existence is not automatically proof that the corresponding work ran.
+- **Evidence** — task assertions, execution-log entries, baseline/packet/dispatch/composition/review/preservation records. Their existence is not automatically proof that the corresponding work ran.
 
 The skill journey is `/builder 1b plan` → `/builder 4 guide` → tasks/implementation → review → post-flight → optional ship. The persisted spine remains one DAG: `research → plan → impl-guide → (phase-N → review-N)* → post-flight → ship`. Harness boot, survey, observe, drain and harvest remain mandatory-to-surface, human-declinable chores.
 
@@ -43,7 +43,7 @@ Settings resolve repo < guide < explicit fields, with per-field `source`. `--har
 | Source basename | Target relative to plan directory | Content |
 |---|---|---|
 | `backpressure.template.json` | `assets/backpressure.dd.json` | `builder/backpressure` draft: meta with Partial certainty, empty rows/sensors |
-| `coder-packet.template.md` | `assets/team/coder-packet.template.md` | editable coder briefing, not an issued packet or release |
+| `coder-packet.template.md` | `assets/team/coder-packet.template.md` | editable map-first coder briefing, not an issued packet |
 | `reviewer-packet.template.md` | `assets/team/reviewer-packet.template.md` | editable independent-review briefing, not an executed review receipt |
 | `roles.template.json` | `assets/team/model-settings.template.json` | coder/reviewer harness/model profiles, effort omitted; not live/global settings |
 
@@ -73,9 +73,9 @@ node skills/builder/examples/verify.mjs
 node skills/builder/examples/verify.mjs --case composition
 ```
 
-The verifier executes injected services and the real filesystem CLI, plus solo/bad and preservation/refusal scenarios. Its report explicitly distinguishes teaching-fixture checks from real peer/review acceptance. `lifecycle.mjs` constructs reusable packet/ack/review/allocation shapes with measured example-byte digests; it does not launch or attest a reviewer.
+The verifier executes injected services and the real filesystem CLI, plus solo/bad and preservation/refusal scenarios. Its report explicitly distinguishes teaching-fixture checks from real peer/review acceptance. `lifecycle.mjs` constructs reusable packet/direct-delivery/self-check/review/allocation shapes with measured example-byte digests. The transport and runtime records are explicitly synthetic, unavailable observations stay absent, and no peer or reviewer is launched or attested.
 
-## Seal, dispatch, acknowledge
+## Seal, dispatch, start work
 
 The PM implements and commits the shared contract unit, exercises its checks, then records/seals the independent decomposition basis:
 
@@ -84,31 +84,30 @@ harness builder review <plan> --receipt <decomposition-review.dd.json>
 harness builder contracts <plan> --seal --review <decomposition-review.dd.json>
 harness builder ready <plan> --unit <unit-id>
 harness builder dispatch <plan> --unit <unit-id> --workspace <new-path> --parent <pm-id>
-harness builder ack <plan> --receipt <pre-work-ack.json>
 ```
 
-`ready` must actually report `ready`; `not-ready` or `cant-tell` never releases work. Commit the contract source first (that commit is the seal's `source_sha`); the seal and review receipts may be committed before or after dispatch — dispatch accepts a plan-repository HEAD that is the sealed source or a descendant of it, with every frozen artifact digest-checked, and records the HEAD it observed. It refuses a HEAD the sealed source is not an ancestor of. The coder clone must start at exactly the sealed source. Dispatch defaults `--kind guide`, or explicitly accepts `worktree|clone`, with optional role overrides. `solo` guides are not dispatched as coders.
+`ready` must actually report `ready`; `not-ready` or `cant-tell` does not authorize dispatch. Commit the contract source first (that commit is the seal's `source_sha`); seal and review receipts may be committed before or after dispatch. Dispatch accepts a plan-repository HEAD at or descended from the sealed source, with every frozen artifact digest-checked, and records its observed HEAD. A rewritten baseline needs restored history or a reviewed new seal, not relabelled evidence. The coder clone starts at the sealed source. Dispatch defaults `--kind guide`, or accepts `worktree|clone`, with optional role overrides. `solo` guides are not dispatched as coders.
 
-Packet binds plan/guide/baseline/allocation bytes, source SHA, ownership fence, interfaces, proof and role. It contains only a **relative canary path**, never the expected answer. Before work, the peer reads packet/canary through native relative file tools, verifies pristine source, root versus shell cwd and available actual runtime observations, and returns a raw `AckReceipt` path/SHA-256. The PM ingests it through the command above before release.
+The work message begins with a useful map:
 
-The same command distinguishes two **exact receipt IDs**, not filenames or prefixes:
+1. **You own** the unit's source/test paths.
+2. **You may read** the named contract/dependency paths and their owners.
+3. **Your job** is its responsibility and frozen interface.
+4. **Done means** observable ACs, actual proof commands and the committed delivery.
 
-| Receipt | ID | `nonce` |
-|---|---|---|
-| Pre-work | `ack-<unit_id>-<full-current-source-sha>` | `packet.nonce` |
-| Post-release | `ack-<unit_id>-<full-current-source-sha>-release` | Retained `release.message_id` |
+Then provide the exact packet pointer and SHA-256. The packet binds plan/guide/baseline/allocation bytes, `source_sha`, ownership, interfaces, proof and role. Receiving it starts that unit; there is no separate acknowledgement or release. `DispatchReceipt.delivery` records only the observed transport message ID, outcome and time. A queued message is not proof of receipt, and neither queued nor delivered transport is an import gate.
 
-After actually seeing the exact release, the peer natively re-reads packet/canary, refreshes runtime observations and creates a **new** post-release receipt with actual `recorded_at`. It sends the new private path/SHA-256, then follows already-granted work without waiting for a second grant. It derives the nonce from the retained release independently of the packet nonce. Already-started descendant/dirty work is legitimate; do not repeat pristine-source checks after authorization or replay completed work just to confirm its retained release.
+Current packets use the separately staged `builder/work-packet` schema. Provisioning installs that missing package before native launch; it does not overwrite an existing consumer `builder/packet` schema or its customizations. Historical packets and acknowledgements continue to use their original schema and remain readable. No legacy canary field is invented to make a new packet fit an old schema.
 
-Before importing a queued delivery, the PM runs:
+From the worker's actual checkout, one optional orientation check is:
 
 ```bash
-harness builder ack <plan> --receipt <post-release-ack.json>
+harness builder self-check <packet> --sha256 <digest>
 ```
 
-Confirmation observes delivery and grants/sends nothing. Retrying the pre-work receipt cannot promote queued to delivered; changed immutable confirmation bytes, wrong phase/current-source/runtime bindings or missing accepted ack/release refuse. Identical confirmation retries do not resend, including after a partial receipt-write/dispatch-CAS failure. Direct delivered transport remains valid.
+This read-only report returns `packet`, `expected`, `observed` and `warnings`: expected/observed packet SHA-256, repository root and HEAD/source SHA, with a cause and corrective `next_action` for every mismatch or unavailable observation. It warns rather than refusing and writes no state. Historical packets without `source_sha` use their in-root digest-bound baseline when readable; absent evidence stays absent. It does not attest a native runtime, require a pristine checkout or impose a clock window. Do not build a receipt exchange around it.
 
-`AckReceipt.baseline_sha` and `UnitDelivery.baseline_sha` are full Git source SHAs; FileDigest `sha256` binds bytes. Omit unavailable optional runtime fields and name `observed.gaps`; requested settings are not provider attestation. Peer receipt time must parse and lie inclusively between the retained release sent time minus **5000 ms** and PM ingestion time plus **5000 ms**. An out-of-window/invalid time needs clock-skew or incorrect-receipt guidance, not backdating or widened tolerance. PM preserves the original sent/queued facts and records observation/ingestion times and canonical confirmation path/digest in `observed.evidence`. Neither phase rewrites historical receipts.
+Keep historical acknowledgement and release records readable and unchanged; do not replay completed work or reclassify old evidence as a current prerequisite. Requested settings are not provider attestation, and unavailable optional runtime observations belong in `observed.gaps`, not invented fields.
 
 ## Import is not composition proof
 
@@ -120,9 +119,11 @@ harness builder review <plan> --receipt <composition-review.dd.json>
 harness builder advance <plan> --now <canonical-node>
 ```
 
-`deliveries.json` is an array of `UnitDelivery`: `unit_id`, `peer_id`, `workspace`, `commit_sha`, `packet_sha256`, `baseline_sha`. Import verifies basis/fences and integrates in guide order; only verify sets the composed `artifact_sha` with actual check receipts. Independent review binds that SHA, plan/guide digests, requested/observed reviewer, report digest and findings. Artifact drift needs fresh proof/review.
+`deliveries.json` is an array of `UnitDelivery`: `unit_id`, `peer_id`, `workspace`, `commit_sha`, `packet_sha256`, `baseline_sha`. `baseline_sha` is the full Git source SHA, while FileDigest `sha256` binds bytes. Import verifies current packet/dispatch/external-allocation digests, tree/branch/commit, distinct peer attribution, sealed ancestry and coder fences before integrating in guide order. It does not consult self-check reports, acknowledgements, release or transport outcome, nonce challenges or timing. Only verify sets the composed `artifact_sha` with actual check receipts. Independent review binds that SHA, plan/guide digests, requested/observed reviewer, report digest and findings. Artifact drift needs fresh proof/review.
 
-The PM's path map is guidance, not permission. PM changes outside that map do not stop import or verification and require no declaration or justification. `composition.value.warnings` records each `file`, its `owning_unit` (or `unmapped`), and the `stage` (`import` or `verify`); a file mapped to several units has one row per owner. Verification retains import observations and refreshes its own warning list; real check failures still fail and retain the warnings beside their output. Read the generated composition receipt when reviewing the actual artifact. This is the composition increment of plan 099; the separate coder-delivery and acknowledgement cutover is not implied.
+Integrity refusals still name cause and fix: wrong tree/branch/commit → return to the allocated checkout and deliver its actual committed SHA; forged/mismatched evidence → recover original bound bytes and measured digests; duplicate peer attribution → use the actual distinct dispatched workers; rewritten baseline → restore sealed history or review/seal new contracts and issue new packets. An orientation warning does not waive these import checks.
+
+The PM's path map is guidance, not permission. PM changes outside that map do not stop import or verification and require no declaration or justification. `composition.value.warnings` records each `file`, its `owning_unit` (or `unmapped`), and the `stage` (`import` or `verify`); a file mapped to several units has one row per owner. Verification retains import observations and refreshes its own warning list; real check failures still fail and retain the warnings beside their output. Read the generated composition receipt when reviewing the actual artifact. Coder-delivery path ownership retains its existing enforcement; this startup change does not convert it to warnings.
 
 No silent review fallback: unavailable requested cross-model review is unfulfilled. A justified solo implementation does not change this promise.
 

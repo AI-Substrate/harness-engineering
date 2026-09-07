@@ -8,21 +8,79 @@
       "value": {
         "title": "Map-first packets and advisory self-checks",
         "slug": "phase-2",
-        "status": "draft",
+        "status": "ready",
         "summary": "Replace the startup ceremony with work-first packets and one advisory self-check, removing release dependencies on the old acknowledgement sequence from every reader. Keep existing histories readable."
       }
     },
     {
       "name": "summary",
-      "value": "Replace the startup ceremony with work-first packets and one advisory self-check, removing release dependencies on the old acknowledgement sequence from every reader. Keep existing histories readable. Detailed implementation tasks are not issued at the product-planning stage."
+      "value": "Map-first packet production, direct work-packet delivery, one nonmutating advisory self-check, and import consumers detached from the retired acknowledgement handshake. Detailed role/slice contracts are in the implementation guide; no later on-track or coder-map warning completion is implied."
     },
     {
       "name": "tasks",
-      "value": []
+      "value": [
+        {
+          "id": "tk-0001",
+          "title": "Deliver map-first work packets and replace acknowledgement gates with an advisory self-check",
+          "state": "unchecked",
+          "phase": "ph-0889",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001",
+            "../../../plan.dd.json#acceptance_criteria/ac-0005",
+            "../../../plan.dd.json#acceptance_criteria/ac-0006",
+            "../../../plan.dd.json#acceptance_criteria/ac-0007"
+          ],
+          "satisfies_toward": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0008",
+            "../../../plan.dd.json#acceptance_criteria/ac-000a"
+          ],
+          "notes": "Three independent source slices share the PM-owned type/CLI/schema contract. No live native dispatch or provider attestation is claimed by tool delegation.",
+          "done": "#done_when/tk-0001",
+          "receipt": "../../execution-log.dd.json#entries/lg-0002"
+        }
+      ]
     },
     {
       "name": "done_when",
-      "value": {}
+      "value": {
+        "tk-0001": [
+          {
+            "id": "dw-0001",
+            "assertion": "New packets and work messages lead with map/read paths/job/done expectations and do not ask for acknowledgement before work.",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0005",
+            "proven_by": "../../execution-log.dd.json#entries/lg-0002"
+          },
+          {
+            "id": "dw-0002",
+            "assertion": "The self-check command reports actual root/HEAD/packet digest, returns actionable warnings with exit zero on mismatch or unavailable data, and performs no writes or native sends.",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0006",
+            "proven_by": "../../execution-log.dd.json#entries/lg-0002"
+          },
+          {
+            "id": "dw-0003",
+            "assertion": "Import accepts correctly bound delivered code without any ack/release record, while wrong root/peer/digest/baseline still refuses before mutation.",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0007",
+            "proven_by": "../../execution-log.dd.json#entries/lg-0002"
+          },
+          {
+            "id": "dw-0004",
+            "assertion": "All live source skills/help/templates/teaching examples use the self-check and direct work packet, with old records readable only as historical evidence.",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0007",
+            "proven_by": "../../execution-log.dd.json#entries/lg-0002"
+          },
+          {
+            "id": "dw-0005",
+            "assertion": "Real CLI/Git source and packed smoke exercise advisory mismatches and startup metadata; full checks and independent code review name their exact revision and proof limits.",
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0006",
+            "proven_by": "../../execution-log.dd.json#entries/lg-0002"
+          }
+        ]
+      }
     },
     {
       "name": "goals",
