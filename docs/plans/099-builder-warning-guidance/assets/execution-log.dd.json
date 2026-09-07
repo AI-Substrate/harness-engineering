@@ -1,0 +1,30 @@
+{
+  "dd": {
+    "schema": "builder/execution-log"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Observed implementation evidence",
+        "plan": "../plan.dd.json#meta"
+      }
+    },
+    {
+      "name": "entries",
+      "value": [
+        {
+          "id": "lg-0001",
+          "at": "2026-09-07T22:05:49.537Z",
+          "text": "Increment 1 source 46f237be8c92678e2ae75b0f656d6a2f0eeb5cb0: PM composition map deviations now persist scalar file/owning_unit/stage warnings at import and verify. The final source and packed Builder smoke passed real Git/CLI composition with seeded imported evidence, readable warning owners, executed check output, and retained warnings on an actual exit-7 check. This is not a native dispatch/review or live consumer run. HARNESS_TEST_SCOPE=all node harness/cli/bin/harness.js checks --json returned degraded: tests, Biome, typecheck, docs/flows/telemetry/doctrine drift, root invocation and skills checks passed; architecture, Markdown and Windows findings remain nonblocking advisories. Independent exact-source review found no material findings, static scope only. Earlier scoped run: 184 tests in 3 files; it preceded the scalar owner adjustment and is not substituted for the final all-scope gate.",
+          "links": [
+            "../plan.dd.json#acceptance_criteria/ac-0002",
+            "../plan.dd.json#acceptance_criteria/ac-0009",
+            "backpressure.dd.json#rows/bp-0002",
+            "backpressure.dd.json#rows/bp-0009"
+          ]
+        }
+      ]
+    }
+  ]
+}

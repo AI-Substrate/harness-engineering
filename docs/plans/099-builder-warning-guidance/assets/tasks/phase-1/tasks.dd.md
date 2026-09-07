@@ -35,7 +35,7 @@ Ship the permanent composition-warning path first: correct PM integration reache
 
 | id | title | domain | phase | state | note | receipt | done | success | notes | satisfies | satisfies_toward |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| tk-0001 | Record and expose nonblocking PM composition warnings | — | ph-1886 | [ ] unchecked | — | — | [ ] 0/4 [tk-0001](#tk-0001) | — | PM owns the coupled receipt/schema/import/verify slice; no coder release. Integrity and actual checks stay intact. | [ac-0002](../../../plan.dd.md#acceptance-criteria), [ac-0009](../../../plan.dd.md#acceptance-criteria) | — |
+| tk-0001 | Record and expose nonblocking PM composition warnings | — | ph-1886 | [ ] unchecked | — | ../../execution-log.dd.json#entries/lg-0001 | [x] 4/4 [tk-0001](#tk-0001) | — | PM owns the coupled receipt/schema/import/verify slice; no coder release. Integrity and actual checks stay intact. | [ac-0002](../../../plan.dd.md#acceptance-criteria), [ac-0009](../../../plan.dd.md#acceptance-criteria) | — |
 
 <a id="done-when"></a>
 
@@ -43,12 +43,12 @@ Ship the permanent composition-warning path first: correct PM integration reache
 
 ### tk-0001
 
-| id | assertion | state | pressure |
-| --- | --- | --- | --- |
-| dw-0001 | PM out-of-map writes in import and verify persist file and owning-unit (or unmapped) warning rows, and reach real checks without amendment. | [ ] unchecked | [bp-0002](../../backpressure.dd.md#rows) |
-| dw-0002 | Repeated verify refreshes current warnings, keeps import warnings, and persists warning evidence even when an actual check fails. | [ ] unchecked | [bp-0002](../../backpressure.dd.md#rows) |
-| dw-0003 | The rendered receipt and CLI result show warnings to reviewers; a warning does not disqualify independent review, while same-PM and integrity failures remain refused. | [ ] unchecked | [bp-0009](../../backpressure.dd.md#rows) |
-| dw-0004 | Real CLI/Git source and packed smoke exercise warning-bearing committed composition; reported validation names exact scope and revision. | [ ] unchecked | [bp-0002](../../backpressure.dd.md#rows) |
+| id | assertion | state | pressure | proven_by |
+| --- | --- | --- | --- | --- |
+| dw-0001 | PM out-of-map writes in import and verify persist file and owning-unit (or unmapped) warning rows, and reach real checks without amendment. | [x] checked | [bp-0002](../../backpressure.dd.md#rows) | [lg-0001](../../execution-log.dd.md#entries) |
+| dw-0002 | Repeated verify refreshes current warnings, keeps import warnings, and persists warning evidence even when an actual check fails. | [x] checked | [bp-0002](../../backpressure.dd.md#rows) | [lg-0001](../../execution-log.dd.md#entries) |
+| dw-0003 | The rendered receipt and CLI result show warnings to reviewers; a warning does not disqualify independent review, while same-PM and integrity failures remain refused. | [x] checked | [bp-0009](../../backpressure.dd.md#rows) | [lg-0001](../../execution-log.dd.md#entries) |
+| dw-0004 | Real CLI/Git source and packed smoke exercise warning-bearing committed composition; reported validation names exact scope and revision. | [x] checked | [bp-0002](../../backpressure.dd.md#rows) | [lg-0001](../../execution-log.dd.md#entries) |
 
 <a id="goals"></a>
 

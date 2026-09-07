@@ -29,7 +29,8 @@
             "../../../plan.dd.json#acceptance_criteria/ac-0009"
           ],
           "notes": "PM owns the coupled receipt/schema/import/verify slice; no coder release. Integrity and actual checks stay intact.",
-          "done": "#done_when/tk-0001"
+          "done": "#done_when/tk-0001",
+          "receipt": "../../execution-log.dd.json#entries/lg-0001"
         }
       ]
     },
@@ -40,26 +41,30 @@
           {
             "id": "dw-0001",
             "assertion": "PM out-of-map writes in import and verify persist file and owning-unit (or unmapped) warning rows, and reach real checks without amendment.",
-            "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-0002"
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0002",
+            "proven_by": "../../execution-log.dd.json#entries/lg-0001"
           },
           {
             "id": "dw-0002",
             "assertion": "Repeated verify refreshes current warnings, keeps import warnings, and persists warning evidence even when an actual check fails.",
-            "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-0002"
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0002",
+            "proven_by": "../../execution-log.dd.json#entries/lg-0001"
           },
           {
             "id": "dw-0003",
             "assertion": "The rendered receipt and CLI result show warnings to reviewers; a warning does not disqualify independent review, while same-PM and integrity failures remain refused.",
-            "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-0009"
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0009",
+            "proven_by": "../../execution-log.dd.json#entries/lg-0001"
           },
           {
             "id": "dw-0004",
             "assertion": "Real CLI/Git source and packed smoke exercise warning-bearing committed composition; reported validation names exact scope and revision.",
-            "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-0002"
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0002",
+            "proven_by": "../../execution-log.dd.json#entries/lg-0001"
           }
         ]
       }

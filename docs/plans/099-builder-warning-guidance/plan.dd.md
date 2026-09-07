@@ -12,11 +12,11 @@
 | title | Builder warning-first guidance |
 | slug | builder-warning-guidance |
 | ordinal | 99 |
-| status | ready |
+| status | in-progress |
 | complexity | CS-4 |
 | summary | Builder uses the implementation guide as a map, not a permission system. Coders and PMs get actionable ownership warnings and a self-serve on-track view; work continues without declarations or acknowledgement ceremony. Import retains deterministic identity and evidence-integrity checks. This follow-on supersedes the ownership and two-receipt acknowledgement policies of plan 098 without rewriting their historical evidence. |
 | backpressure | [rows](assets/backpressure.dd.md#rows) |
-| log | — |
+| log | [entries](assets/execution-log.dd.md#entries) |
 | mode | Full |
 | plan_version | 1.0.0 |
 | created | — |
@@ -54,14 +54,14 @@ Builder uses the implementation guide as a map, not a permission system. Coders 
 | id | claim | state | note | receipt | pressure | proven_by |
 | --- | --- | --- | --- | --- | --- | --- |
 | ac-0001 | The implementation guide retains units[].paths and read maps, and packets still carry the assigned unit, its job and observable done conditions; these maps guide work rather than granting write permission. | [ ] unchecked | — | — | [bp-0001](assets/backpressure.dd.md#rows) | — |
-| ac-0002 | A committed PM change outside mapped PM paths produces file-by-file ownership warnings in the composition receipt and command result, then executes every configured composition check without amendment, justification or an ownership-caused nonzero exit. | [ ] unchecked | — | — | [bp-0002](assets/backpressure.dd.md#rows) | — |
+| ac-0002 | A committed PM change outside mapped PM paths produces file-by-file ownership warnings in the composition receipt and command result, then executes every configured composition check without amendment, justification or an ownership-caused nonzero exit. | [x] checked | — | — | [bp-0002](assets/backpressure.dd.md#rows) | [lg-0001](assets/execution-log.dd.md#entries) |
 | ac-0003 | Coder delivery and advancement/import report out-of-map history as the same warning list, including mapped owning unit(s) or an explicit unmapped result, and continue when actual integrity checks pass. No remaining ownership-only check in Builder may refuse. | [ ] unchecked | — | — | [bp-0003](assets/backpressure.dd.md#rows) | — |
 | ac-0004 | A self-serve on-track command works in the coder clone and on the PM integration delta, including selected committed and current work as documented; it returns the same comparison and warnings with exit 0, performs no release/import/approval and does not change source. | [ ] unchecked | — | — | [bp-0004](assets/backpressure.dd.md#rows) | — |
 | ac-0005 | The packet begins with plain-language ownership/read map, job and done conditions before mechanics. Its embedded unit remains available; first-use instructions lead directly to useful work rather than acknowledgement ceremony. | [ ] unchecked | — | — | [bp-0005](assets/backpressure.dd.md#rows) | — |
 | ac-0006 | A coder can run one advisory self-check of expected clone, source commit and packet digest. Mismatch, drift or normal startup metadata yields named observations/warnings and repair advice rather than a work-release gate; there is no required second receipt, second nonce or clock window. | [ ] unchecked | — | — | [bp-0006](assets/backpressure.dd.md#rows) | — |
 | ac-0007 | Dispatch, delivery, import, advance and review no longer depend on pre-work/post-release acknowledgement receipt IDs, phase nonces, canary challenge or plus/minus-five-second timing to authorize work; old records remain readable and need no replay or fabricated upgrade. | [ ] unchecked | — | — | [bp-0007](assets/backpressure.dd.md#rows) | — |
 | ac-0008 | At import, wrong tree/commit lineage, forged or mismatched delivery/packet evidence, duplicate peer and rewritten baseline still refuse before an incorrect composition mutation. Each integrity refusal names the actual cause and corrective next step; legitimate descendant source and evidence-only commits retain their supported path. | [ ] unchecked | — | — | [bp-0008](assets/backpressure.dd.md#rows) | — |
-| ac-0009 | Reviewers receive the recorded ownership warning list alongside the exact composed bytes; warnings do not veto review or advancement by themselves, and the PM cannot approve its own artifact as the independent reviewer. | [ ] unchecked | — | — | [bp-0009](assets/backpressure.dd.md#rows) | — |
+| ac-0009 | Reviewers receive the recorded ownership warning list alongside the exact composed bytes; warnings do not veto review or advancement by themselves, and the PM cannot approve its own artifact as the independent reviewer. | [x] checked | — | — | [bp-0009](assets/backpressure.dd.md#rows) | [lg-0001](assets/execution-log.dd.md#entries) |
 | ac-000a | The supported runtime, help, schemas, docs, skills and examples contain no amendment requirement or competing two-receipt startup path. PR #200 remains closed without merge; no alias or legacy gate revives its declaration design. | [ ] unchecked | — | — | [bp-000a](assets/backpressure.dd.md#rows) | — |
 | ac-000b | A real CLI/Git consumer scenario demonstrates map-first dispatch, one optional advisory self-check, cross-map coder/PM edits, warning-preserving import/composition, independent review and receipt-only archival re-observation; contrasting integrity failures still refuse and existing historical evidence remains unmodified. | [ ] unchecked | — | — | [bp-000b](assets/backpressure.dd.md#rows) | — |
 
@@ -71,7 +71,7 @@ Builder uses the implementation guide as a map, not a permission system. Coders 
 
 | id | title | brief | state | note | receipt | depends_on | tasks | objective | delivers | key_risks |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| ph-1886 | Composition warnings unblock integration | Ship the permanent composition-warning path first: correct PM integration reaches actual checks, with deviations recorded and visible to independent review. No declaration or consumer-specific bypass; preserve integrity refusals and prior evidence. | [ ] unchecked | — | — | — | [tasks](assets/tasks/phase-1/tasks.dd.md#tasks) | — | — | — |
+| ph-1886 | Composition warnings unblock integration | Ship the permanent composition-warning path first: correct PM integration reaches actual checks, with deviations recorded and visible to independent review. No declaration or consumer-specific bypass; preserve integrity refusals and prior evidence. | [x] checked | — | — | — | [tasks](assets/tasks/phase-1/tasks.dd.md#tasks) | — | — | — |
 | ph-0889 | Map-first packets and advisory self-checks | Replace the startup ceremony with work-first packets and one advisory self-check, removing release dependencies on the old acknowledgement sequence from every reader. Keep existing histories readable. | [ ] unchecked | — | — | ph-1886 | [tasks](assets/tasks/phase-2/tasks.dd.md#tasks) | — | — | — |
 | ph-638c | Warning-first delivery and end-to-end proof | Complete shared on-track and delivery-warning semantics across all ownership checks; prove the actual CLI/Git consumer workflow, integrity contrasts, documentation/skill cutover and archive re-observation. | [ ] unchecked | — | — | ph-0889 | [tasks](assets/tasks/phase-3/tasks.dd.md#tasks) | — | — | — |
 

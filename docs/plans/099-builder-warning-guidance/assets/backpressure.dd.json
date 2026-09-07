@@ -9,7 +9,7 @@
         "title": "Warning-first Builder proof selection",
         "plan": "../plan.dd.json#meta",
         "certainty": "Partial",
-        "basis_sha": "384fcbb3c1d6f8ea46eaf3b87955cc78ab1fad6bf3c48feb2e7c8861b7939dec"
+        "basis_sha": "8257576f76990416be1a224846b63c54870a9704168d1078e49bc69f38398565"
       }
     },
     {
@@ -32,8 +32,9 @@
           "mode": "EXTEND",
           "tier": "computational",
           "proof": "EXTEND→RUN: turn lifecycle out-of-fence examples into warning-and-check-execution assertions, preserve integrity contrasts, then run builder-lifecycle.test.ts and npm run smoke:builder against a real committed candidate.",
-          "state": "unchecked",
-          "probe": "composition-service.ts integrationFence is shared by import and verify; CompositionReceipt, acts output and reviewer/close consumers need warning visibility."
+          "state": "checked",
+          "probe": "composition-service.ts integrationFence is shared by import and verify; CompositionReceipt, acts output and reviewer/close consumers need warning visibility.",
+          "receipt": "execution-log.dd.json#entries/lg-0001"
         },
         {
           "id": "bp-0003",
@@ -102,8 +103,9 @@
           "mode": "EXTEND",
           "tier": "computational",
           "proof": "EXTEND→RUN: independent reviewer consumes warning-bearing composition, warning-only drift does not refuse, same-PM review still refuses; run builder-lifecycle.test.ts plus actual review evidence in the consumer proof.",
-          "state": "unchecked",
-          "probe": "review-service.ts already excludes current PM and recorded implementation peers; warnings add visibility, not amendment-declarer bookkeeping."
+          "state": "checked",
+          "probe": "review-service.ts already excludes current PM and recorded implementation peers; warnings add visibility, not amendment-declarer bookkeeping.",
+          "receipt": "execution-log.dd.json#entries/lg-0001"
         },
         {
           "id": "bp-000a",
