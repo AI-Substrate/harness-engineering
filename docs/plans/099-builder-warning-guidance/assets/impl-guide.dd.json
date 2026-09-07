@@ -1,0 +1,336 @@
+{
+  "dd": {
+    "schema": "builder/impl-guide"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Builder warning-first guidance: staged composition and startup cutover",
+        "plan": "../plan.dd.json#meta",
+        "version": 1
+      }
+    },
+    {
+      "name": "architecture",
+      "value": {
+        "principles": "Keep acts thin and services port-injected. Ownership path comparisons return data, never permission failures. Reuse builderOwnsPath and logical POSIX paths; use one typed warning format, persist observations in receipts, and preserve actual check results separately. No amendment code. First increment keeps the coupled composition writer/reader/schema change together; subsequent startup and delivery changes reuse that warning seam.",
+        "composition_root": "harness/cli/src/acts/builder.ts registers commands and renders existing envelopes; services/builder/composition-service.ts owns import and verify side effects.",
+        "contracts": [
+          "Increment 1: CompositionReceipt.warnings is an optional array for historical read compatibility; new receipts write an array. Each OwnershipWarning contains exact file, owning_unit (one unit ID, or unmapped), and stage (import or verify). Multiple mapped owners yield separate rows. Scalar owner labels remain visible in the standard DD renderer; this is observation, never authorization.",
+          "Import warnings describe pre-import PM integration; verify preserves import-stage warnings and replaces verify-stage warnings for the current candidate so retries do not accumulate stale current-state warnings. Owning units derive from the complete guide map, using existing prefix matching.",
+          "The path comparison still propagates actual Git/ancestry failures with cause and fix. Crossing a mapped ownership path is always a successful comparison result. Real build/test failures remain red and persist warnings beside failure evidence.",
+          "Reviewers read composition warnings alongside the artifact. No warning-resolution decision, declared_by field, policy flag, receipt mutation gate or additional review prerequisite is added.",
+          "Later increments: reuse the same comparison for on-track and delivery; replace acknowledgement-dependent release with one optional self-check. Final CLI grammar will be fixed before those changes; do not ship speculative commands in increment 1."
+        ]
+      }
+    },
+    {
+      "name": "fan_out",
+      "value": {
+        "decision": "solo-pm",
+        "rationale": "Increment 1 is one small coupled transaction across the composition result, schema, test and readable evidence. Keeping it with one integration owner avoids an artificial contract/re-delivery cycle; independent review remains separate. This does not claim fleet execution; later increments may revise decomposition before dispatch if they expose genuine independent units."
+      }
+    },
+    {
+      "name": "capabilities",
+      "value": [
+        {
+          "id": "ac-0001",
+          "criterion": "../plan.dd.json#acceptance_criteria/ac-0001",
+          "owner": "tk-0001",
+          "path": "Subsequent checkpoint: The implementation guide retains units[].paths and read maps, and packets still carry the assigned unit, its job and observable done conditions; these maps guide work rather than granting write permission.",
+          "proof": [
+            "#checks/vd-0002",
+            "#checks/vd-0003"
+          ]
+        },
+        {
+          "id": "ac-0002",
+          "criterion": "../plan.dd.json#acceptance_criteria/ac-0002",
+          "owner": "tk-0001",
+          "path": "compose import/verify -> mapped warning list -> composition receipt and reviewer",
+          "proof": [
+            "#checks/vd-0002",
+            "#checks/vd-0003"
+          ]
+        },
+        {
+          "id": "ac-0003",
+          "criterion": "../plan.dd.json#acceptance_criteria/ac-0003",
+          "owner": "tk-0001",
+          "path": "Subsequent checkpoint: Coder delivery and advancement/import report out-of-map history as the same warning list, including mapped owning unit(s) or an explicit unmapped result, and continue when actual integrity checks pass. No remaining ownership-only check in Builder may refuse.",
+          "proof": [
+            "#checks/vd-0002",
+            "#checks/vd-0003"
+          ]
+        },
+        {
+          "id": "ac-0004",
+          "criterion": "../plan.dd.json#acceptance_criteria/ac-0004",
+          "owner": "tk-0001",
+          "path": "Subsequent checkpoint: A self-serve on-track command works in the coder clone and on the PM integration delta, including selected committed and current work as documented; it returns the same comparison and warnings with exit 0, performs no release/import/approval and does not change source.",
+          "proof": [
+            "#checks/vd-0002",
+            "#checks/vd-0003"
+          ]
+        },
+        {
+          "id": "ac-0005",
+          "criterion": "../plan.dd.json#acceptance_criteria/ac-0005",
+          "owner": "tk-0001",
+          "path": "Subsequent checkpoint: The packet begins with plain-language ownership/read map, job and done conditions before mechanics. Its embedded unit remains available; first-use instructions lead directly to useful work rather than acknowledgement ceremony.",
+          "proof": [
+            "#checks/vd-0002",
+            "#checks/vd-0003"
+          ]
+        },
+        {
+          "id": "ac-0006",
+          "criterion": "../plan.dd.json#acceptance_criteria/ac-0006",
+          "owner": "tk-0001",
+          "path": "Subsequent checkpoint: A coder can run one advisory self-check of expected clone, source commit and packet digest. Mismatch, drift or normal startup metadata yields named observations/warnings and repair advice rather than a work-release gate; there is no required second receipt, second nonce or clock window.",
+          "proof": [
+            "#checks/vd-0002",
+            "#checks/vd-0003"
+          ]
+        },
+        {
+          "id": "ac-0007",
+          "criterion": "../plan.dd.json#acceptance_criteria/ac-0007",
+          "owner": "tk-0001",
+          "path": "Subsequent checkpoint: Dispatch, delivery, import, advance and review no longer depend on pre-work/post-release acknowledgement receipt IDs, phase nonces, canary challenge or plus/minus-five-second timing to authorize work; old records remain readable and need no replay or fabricated upgrade.",
+          "proof": [
+            "#checks/vd-0002",
+            "#checks/vd-0003"
+          ]
+        },
+        {
+          "id": "ac-0008",
+          "criterion": "../plan.dd.json#acceptance_criteria/ac-0008",
+          "owner": "tk-0001",
+          "path": "Subsequent checkpoint: At import, wrong tree/commit lineage, forged or mismatched delivery/packet evidence, duplicate peer and rewritten baseline still refuse before an incorrect composition mutation. Each integrity refusal names the actual cause and corrective next step; legitimate descendant source and evidence-only commits retain their supported path.",
+          "proof": [
+            "#checks/vd-0002",
+            "#checks/vd-0003"
+          ]
+        },
+        {
+          "id": "ac-0009",
+          "criterion": "../plan.dd.json#acceptance_criteria/ac-0009",
+          "owner": "tk-0001",
+          "path": "compose import/verify -> mapped warning list -> composition receipt and reviewer",
+          "proof": [
+            "#checks/vd-0002",
+            "#checks/vd-0003"
+          ]
+        },
+        {
+          "id": "ac-000a",
+          "criterion": "../plan.dd.json#acceptance_criteria/ac-000a",
+          "owner": "tk-0001",
+          "path": "Subsequent checkpoint: The supported runtime, help, schemas, docs, skills and examples contain no amendment requirement or competing two-receipt startup path. PR #200 remains closed without merge; no alias or legacy gate revives its declaration design.",
+          "proof": [
+            "#checks/vd-0002",
+            "#checks/vd-0003"
+          ]
+        },
+        {
+          "id": "ac-000b",
+          "criterion": "../plan.dd.json#acceptance_criteria/ac-000b",
+          "owner": "tk-0001",
+          "path": "Subsequent checkpoint: A real CLI/Git consumer scenario demonstrates map-first dispatch, one optional advisory self-check, cross-map coder/PM edits, warning-preserving import/composition, independent review and receipt-only archival re-observation; contrasting integrity failures still refuse and existing historical evidence remains unmodified.",
+          "proof": [
+            "#checks/vd-0002",
+            "#checks/vd-0003"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "units",
+      "value": [
+        {
+          "id": "tk-0001",
+          "name": "PM warning-first integration",
+          "role": "pm",
+          "responsibility": "Own increment 1 end-to-end; preserve the approved later checkpoints without claiming them complete. Add file/owner warning evidence, update schema/readable docs and exercise actual composition.",
+          "paths": [
+            "harness/cli/src/services/builder/**",
+            "harness/cli/src/acts/builder.ts",
+            "harness/cli/test/services/builder-lifecycle.test.ts",
+            "harness/cli/test/acts/builder.test.ts",
+            ".dd/schemas/builder/team/schema.json",
+            "scripts/builder-smoke.mjs",
+            "docs/how/harness-builder.md",
+            "skills/builder/**",
+            "skills/eng-harness-flow/**",
+            "harness/cli/src/services/docs/docs-content.ts",
+            "harness/cli/src/services/flow/schemas-content.ts",
+            "docs/plans/099-builder-warning-guidance/**"
+          ],
+          "reads": [],
+          "interface": "Existing composeBuilderUnits returns Stored<CompositionReceipt>; warnings extend that receipt as optional historical-compatible data. No public command changes in increment 1.",
+          "depends_on": [],
+          "wave": 0,
+          "acceptance": [
+            "../plan.dd.json#acceptance_criteria/ac-0001",
+            "../plan.dd.json#acceptance_criteria/ac-0002",
+            "../plan.dd.json#acceptance_criteria/ac-0003",
+            "../plan.dd.json#acceptance_criteria/ac-0004",
+            "../plan.dd.json#acceptance_criteria/ac-0005",
+            "../plan.dd.json#acceptance_criteria/ac-0006",
+            "../plan.dd.json#acceptance_criteria/ac-0007",
+            "../plan.dd.json#acceptance_criteria/ac-0008",
+            "../plan.dd.json#acceptance_criteria/ac-0009",
+            "../plan.dd.json#acceptance_criteria/ac-000a",
+            "../plan.dd.json#acceptance_criteria/ac-000b"
+          ],
+          "proof": [
+            "#checks/vd-0001",
+            "#checks/vd-0002",
+            "#checks/vd-0003"
+          ],
+          "notes": "Paths are the map under the ruling, not an authority gate. No coder release or two-receipt ceremony is necessary for this solo first increment."
+        }
+      ]
+    },
+    {
+      "name": "baseline",
+      "value": {
+        "files": [
+          "harness/cli/src/services/builder/types.ts",
+          ".dd/schemas/builder/team/schema.json"
+        ],
+        "proof": [
+          "#checks/vd-0001"
+        ],
+        "receipt": "team/baseline.dd.json"
+      }
+    },
+    {
+      "name": "isolation",
+      "value": {
+        "mode": "solo",
+        "allocation_owner": "harness",
+        "note": "Work is isolated in the allocated plan worktree; shared main/global link remains untouched. No coder workspaces provisioned."
+      }
+    },
+    {
+      "name": "roles",
+      "value": []
+    },
+    {
+      "name": "checks",
+      "value": [
+        {
+          "id": "vd-0001",
+          "description": "Type-check public receipt and injected service contracts",
+          "command": "node",
+          "args": [
+            "node_modules/typescript/bin/tsc",
+            "-p",
+            "harness/cli/tsconfig.json",
+            "--noEmit"
+          ],
+          "cwd": ".",
+          "timeout_ms": 120000
+        },
+        {
+          "id": "vd-0002",
+          "description": "Behavioral composition/act/contract regressions, including continued proof and retained integrity failures",
+          "command": "node",
+          "args": [
+            "../../node_modules/vitest/vitest.mjs",
+            "run",
+            "test/services/builder-lifecycle.test.ts",
+            "test/acts/builder.test.ts",
+            "test/services/builder-contracts.test.ts"
+          ],
+          "cwd": "harness/cli",
+          "timeout_ms": 120000
+        },
+        {
+          "id": "vd-0003",
+          "description": "Real CLI/Git source smoke; extend for warning-bearing committed composition before claiming AC proof",
+          "command": "node",
+          "args": [
+            "scripts/builder-smoke.mjs"
+          ],
+          "cwd": ".",
+          "timeout_ms": 180000
+        },
+        {
+          "id": "vd-0004",
+          "description": "Installed package CLI smoke; run after building the intended source",
+          "command": "node",
+          "args": [
+            "scripts/builder-smoke.mjs",
+            "--packed"
+          ],
+          "cwd": ".",
+          "timeout_ms": 180000
+        }
+      ]
+    },
+    {
+      "name": "composition",
+      "value": {
+        "owner": "tk-0001",
+        "order": [],
+        "steps": [
+          "Implement and verify the receipt contract and composition warning paths with the PM as the only source owner.",
+          "Run existing targeted tests with changed warning behavior and unchanged integrity contrasts; exercise real Git/CLI, including warnings on failed checks.",
+          "Commit the exact source, obtain independent review, and run the full repository gate. Publish increment 1 separately; send PR and exact head to the prime for merge/activation confirmation.",
+          "Do not mark later packet/self-check/delivery acceptance complete. Start subsequent increments from the approved staged order; preserve both source and red evidence from consumers."
+        ],
+        "proof": [
+          "#checks/vd-0002",
+          "#checks/vd-0003",
+          "#checks/vd-0004"
+        ]
+      }
+    },
+    {
+      "name": "review",
+      "value": {
+        "when": "Independent design/source review before publishing increment 1 and each subsequent checkpoint; PM cannot self-approve.",
+        "inputs": [
+          "Exact source SHA, plan/guide and recorded warning/check evidence",
+          "Warning records identify file and owning units, or unmapped",
+          "Original integrity fixtures and real-Git smoke output; no claim of live fleet execution from tests"
+        ],
+        "proof": [
+          "Existing independent review must assess the actual bytes and warning evidence; no new warning-approval gate",
+          "Separate static review, test proof, CLI smoke and deployed consumer receipt claims",
+          "Increment 1 uses independent tool-driven source review; it does not claim a native Builder review receipt or provider/model attestation. No new role profile is asserted for an unobserved reviewer runtime."
+        ]
+      }
+    },
+    {
+      "name": "risks",
+      "value": [
+        {
+          "id": "rk-0001",
+          "text": "Replacing the shared integrationFence may accidentally swallow Git/ancestry errors.",
+          "check": "Contrast ownership warning with failed ancestry and failed check; warnings cannot hide these failures."
+        },
+        {
+          "id": "rk-0002",
+          "text": "Repeated verification may preserve obsolete verify warnings or drop import warnings.",
+          "check": "Stage-aware warning replacement; retry and red-check persistence assertions."
+        },
+        {
+          "id": "rk-0003",
+          "text": "A new field that is omitted from DD render/schema would be invisible to reviewers.",
+          "check": "Schema-backed warning list plus readable receipt output and named reviewer input."
+        },
+        {
+          "id": "rk-0004",
+          "text": "Staged rollout is misrepresented as the complete new lifecycle.",
+          "check": "Each PR names current and later checkpoint scope; all unexercised ACs stay unchecked."
+        }
+      ]
+    }
+  ]
+}

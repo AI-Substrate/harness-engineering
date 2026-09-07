@@ -767,13 +767,82 @@ describe('Builder committed composition', () => {
     expect((await verifyBuilderComposition(s.deps, s.context, s.guide)).ok).toBe(false);
   });
 
-  it('rejects PM edits outside its declared integration fence', async () => {
+  it('warns on PM map deviations and still executes proof, retaining warnings across retries', async () => {
+    /*
+    Test Doc:
+    - Why: a PM integration touching worker files used to stop before real checks.
+    - Contract: mapped and unmapped files warn; verify refreshes its own observations
+      without discarding import warnings or disguising a genuinely failing check.
+    - Usage Notes: injected Git deltas exercise comparison branches, not real ancestry.
+    - Quality Contribution: catches ownership vetoes, stale retry warnings and lost red evidence.
+    */
     const s = scenario();
-    s.composition({ artifact_sha: undefined, checks: [] });
+    const importWarning = {
+      file: 'bootstrap.ts',
+      owning_unit: 'unmapped',
+      stage: 'import' as const,
+    };
+    s.composition({ artifact_sha: undefined, checks: [], warnings: [importWarning] });
+    s.state.delta = 'src/parser.ts\0extra.ts\0';
+    const result = value(
+      await composeBuilderUnits(s.deps, { plan: BUILDER_FIXTURE_PLAN, mode: 'verify', sha: C }),
+    );
+    expect(result.value.warnings).toEqual([
+      importWarning,
+      { file: 'src/parser.ts', owning_unit: 'tk-0002', stage: 'verify' },
+      { file: 'extra.ts', owning_unit: 'unmapped', stage: 'verify' },
+    ]);
+    expect(result.value.checks).toMatchObject([
+      { exit_code: 0, stdout: 'actual integration output' },
+    ]);
     s.state.delta = 'src/parser.ts\0';
+    s.state.proofCode = 1;
     expect(
       await composeBuilderUnits(s.deps, { plan: BUILDER_FIXTURE_PLAN, mode: 'verify', sha: C }),
-    ).toMatchObject({ ok: false, code: 'E477' });
+    ).toMatchObject({ ok: false, code: 'E475' });
+    const red = value(
+      readBuilderRecord<CompositionReceipt>(s.deps, `${TEAM}/composition.dd.json`, 'composition'),
+    );
+    expect(red.value.warnings).toEqual([
+      importWarning,
+      { file: 'src/parser.ts', owning_unit: 'tk-0002', stage: 'verify' },
+    ]);
+    expect(red.value.checks[0]).toMatchObject({ exit_code: 1, stderr: 'integration failed' });
+  });
+
+  it('records PM warnings during import without blocking valid deliveries or independent review', async () => {
+    /*
+    Test Doc:
+    - Why: the same PM comparison also runs before import and must not retain a veto there.
+    - Contract: import records mapped warnings, a clean verify retains them, and an
+      independent reviewer can record approval with those observations still present.
+    - Usage Notes: native review identity is the existing injected fixture, not a live peer.
+    - Quality Contribution: catches a one-callsite-only fix or an implicit warning review gate.
+    */
+    const s = scenario();
+    const deliveries = s.deliveries();
+    s.state.delta = 'src/parser.ts\0';
+    const imported = value(
+      await composeBuilderUnits(s.deps, { plan: BUILDER_FIXTURE_PLAN, mode: 'import', deliveries }),
+    );
+    expect(imported.value.warnings).toEqual([
+      { file: 'src/parser.ts', owning_unit: 'tk-0002', stage: 'import' },
+    ]);
+    s.state.delta = '';
+    value(
+      await composeBuilderUnits(s.deps, { plan: BUILDER_FIXTURE_PLAN, mode: 'verify', sha: C }),
+    );
+    expect(
+      (
+        await recordBuilderReview(s.deps, {
+          plan: BUILDER_FIXTURE_PLAN,
+          receipt: s.review('composition'),
+        })
+      ).ok,
+    ).toBe(true);
+    expect(
+      value(await verifyBuilderComposition(s.deps, s.context, s.guide)).value.warnings,
+    ).toEqual(imported.value.warnings);
   });
 
   it('never imports or verifies on main', async () => {

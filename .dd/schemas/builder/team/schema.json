@@ -446,6 +446,18 @@
           "artifact_sha": {
             "type": "string"
           },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["file", "owning_unit", "stage"],
+              "fields": {
+                "file": { "type": "string" },
+                "owning_unit": { "type": "string" },
+                "stage": { "type": "string" }
+              }
+            }
+          },
           "files": {
             "type": "array",
             "items": {
