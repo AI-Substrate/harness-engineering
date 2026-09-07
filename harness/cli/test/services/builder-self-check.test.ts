@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { sha256, writeBuilderRecord } from '../../src/services/builder/records.js';
+import {
+  sha256,
+  writeBuilderDocument,
+  writeBuilderRecord,
+} from '../../src/services/builder/records.js';
 import { selfCheckBuilderPacket } from '../../src/services/builder/self-check-service.js';
 import type { BuilderResult, Packet, SelfCheckInput } from '../../src/services/builder/types.js';
 import {
@@ -20,8 +24,22 @@ function scenario(historical = false) {
   const { deps, fs } = fixture;
   const baseline = value(writeBuilderRecord(deps, '/repo/baseline.dd.json', fixtureBaseline()));
   const record: Packet = fixturePacket({ workspace: '/repo', baseline: baseline.ref });
-  if (historical) delete record.source_sha;
-  const packet = value(writeBuilderRecord(deps, '/repo/packet.dd.json', record));
+  if (historical) {
+    delete record.source_sha;
+    record.canary = { path: 'historical-canary.txt' };
+  }
+  const packet = historical
+    ? {
+        ref: value(
+          writeBuilderDocument(deps, '/repo/packet.dd.json', {
+            dd: { schema: 'builder/packet' },
+            sections: [{ name: 'packet', value: record }],
+            references: [],
+          }),
+        ).ref,
+        value: record,
+      }
+    : value(writeBuilderRecord(deps, '/repo/packet.dd.json', record));
   const input = { packet: packet.ref.path, sha256: packet.ref.sha256 };
   async function check(selected: SelfCheckInput = input) {
     const before = {
@@ -207,12 +225,13 @@ describe('Builder advisory packet self-check', () => {
           : { path: 'baseline.dd.json', sha256: sha256('{}') };
       if (kind === 'invalid') s.fs.writeText('/repo/baseline.dd.json', '{}');
       const changed = value(
-        writeBuilderRecord(
+        writeBuilderDocument(
           s.deps,
           '/repo/packet.dd.json',
           {
-            ...s.packet.value,
-            baseline: ref,
+            dd: { schema: 'builder/packet' },
+            sections: [{ name: 'packet', value: { ...s.packet.value, baseline: ref } }],
+            references: [],
           },
           { expectedSha256: s.packet.ref.sha256 },
         ),

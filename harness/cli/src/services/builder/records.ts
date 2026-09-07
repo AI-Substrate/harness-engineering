@@ -24,12 +24,14 @@ import type {
 } from './types.js';
 
 const MAX_RECORD_BYTES = 4 * 1024 * 1024;
+const READABLE_PACKET_SCHEMAS = ['builder/work-packet', 'builder/packet'] as const;
 const WRITABLE_SCHEMAS = new Set([
   'builder/plan',
   'builder/backpressure',
   'builder/impl-guide',
   'builder/allocation',
   'builder/packet',
+  'builder/work-packet',
   'builder/team',
 ]);
 
@@ -161,7 +163,8 @@ export function sameBuilderDocumentIntent(left: DdDoc, right: DdDoc, planId: str
 
 export function recordSchema(kind: RecordKind): string {
   if (kind === 'allocation') return 'builder/allocation';
-  if (kind === 'packet' || kind === 'ack') return 'builder/packet';
+  if (kind === 'packet') return 'builder/work-packet';
+  if (kind === 'ack') return 'builder/packet';
   return 'builder/team';
 }
 
@@ -240,7 +243,7 @@ function validateBuilderDocument(
 export function readBuilderDocument(
   deps: BuilderDeps,
   input: string,
-  schema: string,
+  schema: string | readonly string[],
 ): BuilderResult<Stored<DdDoc>> {
   const path = resolveInRepo(input, deps.repoRoot);
   const loaded = deps.fs.readTextFileNoFollow(posixDirname(path), path, MAX_RECORD_BYTES);
@@ -251,10 +254,13 @@ export function readBuilderDocument(
       'Supply a readable, bounded regular DD JSON document.',
     );
   const doc = parse(loaded.text);
-  if (Array.isArray(doc) || doc.dd.schema !== schema) {
+  if (
+    Array.isArray(doc) ||
+    (typeof schema === 'string' ? doc.dd.schema !== schema : !schema.includes(doc.dd.schema))
+  ) {
     return builderFailure(
       ErrorCodes.BUILDER_INVALID,
-      `${path} must be a ${schema} document.`,
+      `${path} must be a ${typeof schema === 'string' ? schema : schema.join(' or ')} document.`,
       'Use the corresponding packaged Builder schema and canonical DD JSON source.',
       Array.isArray(doc) ? doc : undefined,
     );
@@ -269,7 +275,11 @@ export function readBuilderRecord<T extends BuilderRecord>(
   path: string,
   kind: T['record_type'],
 ): BuilderResult<Stored<T>> {
-  const loaded = readBuilderDocument(deps, path, recordSchema(kind));
+  const loaded = readBuilderDocument(
+    deps,
+    path,
+    kind === 'packet' ? READABLE_PACKET_SCHEMAS : recordSchema(kind),
+  );
   if (!loaded.ok) return loaded;
   const sections = loaded.value.value.sections;
   const value = sections[0]?.value;

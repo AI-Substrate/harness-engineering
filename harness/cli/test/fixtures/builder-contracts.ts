@@ -28,7 +28,15 @@ export const BUILDER_FIXTURE_PLAN = 'docs/plans/001-example/plan.dd.json';
 export const BUILDER_FIXTURE_GUIDE = 'docs/plans/001-example/assets/impl-guide.dd.json';
 export const BUILDER_FIXTURE_SHA = 'a'.repeat(40);
 export const BUILDER_FIXTURE_TIME = '2026-09-05T00:00:00.000Z';
-const schemaNames = ['plan', 'impl-guide', 'allocation', 'packet', 'team', 'backpressure'];
+const schemaNames = [
+  'plan',
+  'impl-guide',
+  'allocation',
+  'packet',
+  'work-packet',
+  'team',
+  'backpressure',
+];
 const schemaFiles = Object.fromEntries(
   schemaNames.map((name) => [
     name,

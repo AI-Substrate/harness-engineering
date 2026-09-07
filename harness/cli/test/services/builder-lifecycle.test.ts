@@ -534,6 +534,7 @@ describe('Builder committed composition', () => {
       const dispatchPath = builderRecordPath(s.context, 'dispatch', key);
       const ackPath = builderRecordPath(s.context, 'ack', key);
       const packet = JSON.parse(s.fs.readText(packetPath) as string);
+      packet.dd.schema = 'builder/packet';
       delete packet.sections[0].value.source_sha;
       packet.sections[0].value.canary = { path: '/missing/historical-canary.json' };
       packet.sections[0].value.nonce = 'historical-correlation-only';

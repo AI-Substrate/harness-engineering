@@ -29,7 +29,8 @@
           "New DispatchReceipt.delivery optional transport outcome with message_id/outcome/recorded_at. Persist native observation before send, then CAS the observed work-packet delivery. It is a transport fact, not acknowledgement/permission. Retired acknowledgement/release remain historical decode fields only.",
           "Read explicitly selected bounded regular packet, measure digest even if mismatched, compare actual repository root and HEAD with packet workspace and source_sha. For a historical packet lacking source_sha, use its in-root digest-bound baseline. Missing/unreadable/invalid packet/baseline or Git inspection yields warnings and no pretend success observation. Do not read arbitrary baseline paths outside the checkout. No clock window, root challenge, cleanliness/metadata veto, native seat handshake or state write.",
           "Bind exact current packet, dispatch and external allocation digests to delivery peer/workspace/source/unit. Validate root/branch and baseline ancestry before mutation. Compare packet.source_sha when present. Do not consult AckReceipt, acknowledgement, release outcome, delivery outcome, nonce/time-window or canary. Existing coder path-ownership warning conversion is checkpoint 3, not this change.",
-          "FsPort.readBytesNoFollow(path, {maxBytes, root?}) optionally uses the existing bounded opened-file/confinement reader for exact packet-byte hashing. One-argument callers keep their existing behavior. Baseline reads supply the actual repository root; invalid UTF-8 remains observed bytes plus a warning, not a decoded-text digest claim."
+          "FsPort.readBytesNoFollow(path, {maxBytes, root?}) optionally uses the existing bounded opened-file/confinement reader for exact packet-byte hashing. One-argument callers keep their existing behavior. Baseline reads supply the actual repository root; invalid UTF-8 remains observed bytes plus a warning, not a decoded-text digest claim.",
+          "Format evolution: current packets use builder/work-packet with source_sha; provisioning stages the missing package before native launch. Existing builder/packet schemas and historical packet/ack records remain unchanged/readable. This is an explicit new record schema, not a handshake shim or schema-validation bypass."
         ]
       }
     },
@@ -185,7 +186,9 @@
             "harness/cli/test/services/builder-contracts.test.ts",
             "harness/cli/test/fixtures/builder-contracts.ts",
             "harness/cli/test/app.test.ts",
-            ".dd/schemas/builder/packet/schema.json"
+            ".dd/schemas/builder/packet/schema.json",
+            ".dd/schemas/builder/work-packet/schema.json",
+            "harness/cli/test/acts/instructions.test.ts"
           ],
           "reads": [],
           "interface": "Existing composeBuilderUnits returns Stored<CompositionReceipt>; warnings extend that receipt as optional historical-compatible data. No public command changes in increment 1.",

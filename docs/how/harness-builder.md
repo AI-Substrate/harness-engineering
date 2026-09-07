@@ -97,6 +97,8 @@ The work message begins with a useful map:
 
 Then provide the exact packet pointer and SHA-256. The packet binds plan/guide/baseline/allocation bytes, `source_sha`, ownership, interfaces, proof and role. Receiving it starts that unit; there is no separate acknowledgement or release. `DispatchReceipt.delivery` records only the observed transport message ID, outcome and time. A queued message is not proof of receipt, and neither queued nor delivered transport is an import gate.
 
+Current packets use the separately staged `builder/work-packet` schema. Provisioning installs that missing package before native launch; it does not overwrite an existing consumer `builder/packet` schema or its customizations. Historical packets and acknowledgements continue to use their original schema and remain readable. No legacy canary field is invented to make a new packet fit an old schema.
+
 From the worker's actual checkout, one optional orientation check is:
 
 ```bash

@@ -24,7 +24,8 @@ export function stageBuilderSchemas(deps: BuilderDeps, root: string): BuilderRes
   if (
     !packages.includes('allocation') ||
     !packages.includes('plan') ||
-    !packages.includes('impl-guide')
+    !packages.includes('impl-guide') ||
+    !packages.includes('work-packet')
   ) {
     return builderFailure(
       ErrorCodes.BUILDER_INVALID,

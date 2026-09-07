@@ -15,7 +15,12 @@ const absoluteRoot = (value: unknown): value is string =>
 function inspectionRecord(bytes: Uint8Array, kind: 'packet' | 'baseline') {
   try {
     const doc = parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
-    if (Array.isArray(doc) || doc.dd.schema !== recordSchema(kind) || doc.sections.length !== 1)
+    if (
+      Array.isArray(doc) ||
+      (doc.dd.schema !== recordSchema(kind) &&
+        !(kind === 'packet' && doc.dd.schema === 'builder/packet')) ||
+      doc.sections.length !== 1
+    )
       return undefined;
     const section = doc.sections[0];
     return section?.name === kind && object(section.value) && section.value.record_type === kind

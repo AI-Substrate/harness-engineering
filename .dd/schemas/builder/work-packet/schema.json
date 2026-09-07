@@ -1,6 +1,6 @@
 {
   "dd_schema": 1,
-  "description": "Immutable Builder dispatch packets and exact peer acknowledgements.",
+  "description": "Current map-first Builder work packets; the legacy packet schema remains readable without consumer edits.",
   "sections": {
     "packet": {
       "shape": {
@@ -19,8 +19,8 @@
           "parent",
           "requested",
           "forbidden",
-          "canary",
-          "instructions"
+          "instructions",
+          "source_sha"
         ],
         "fields": {
           "record_type": {
@@ -33,6 +33,9 @@
             "type": "string"
           },
           "nonce": {
+            "type": "string"
+          },
+          "source_sha": {
             "type": "string"
           },
           "unit": {
@@ -237,130 +240,10 @@
               "type": "string"
             }
           },
-          "canary": {
-            "type": "object",
-            "required": [
-              "path"
-            ],
-            "fields": {
-              "path": {
-                "type": "string"
-              }
-            },
-            "allowAdditional": false
-          },
           "instructions": {
             "type": "array",
             "items": {
               "type": "string"
-            }
-          }
-        }
-      }
-    },
-    "ack": {
-      "shape": {
-        "type": "object",
-        "required": [
-          "record_type",
-          "id",
-          "recorded_at",
-          "unit_id",
-          "peer_id",
-          "nonce",
-          "packet_sha256",
-          "baseline_sha",
-          "native_root",
-          "shell_cwd",
-          "canary_nonce",
-          "observed"
-        ],
-        "fields": {
-          "record_type": {
-            "type": "string"
-          },
-          "id": {
-            "type": "string"
-          },
-          "recorded_at": {
-            "type": "string"
-          },
-          "unit_id": {
-            "type": "string"
-          },
-          "peer_id": {
-            "type": "string"
-          },
-          "nonce": {
-            "type": "string"
-          },
-          "packet_sha256": {
-            "type": "string"
-          },
-          "baseline_sha": {
-            "type": "string"
-          },
-          "native_root": {
-            "type": "string"
-          },
-          "shell_cwd": {
-            "type": "string"
-          },
-          "canary_nonce": {
-            "type": "string"
-          },
-          "observed": {
-            "type": "object",
-            "required": [
-              "peer_id",
-              "root",
-              "ready",
-              "evidence",
-              "gaps"
-            ],
-            "fields": {
-              "peer_id": {
-                "type": "string"
-              },
-              "root": {
-                "type": "string"
-              },
-              "ready": {
-                "type": "bool"
-              },
-              "harness": {
-                "type": "string"
-              },
-              "model": {
-                "type": "string"
-              },
-              "effort": {
-                "type": "string"
-              },
-              "native_session": {
-                "type": "string"
-              },
-              "pid": {
-                "type": "int"
-              },
-              "argv": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "evidence": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "gaps": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              }
             }
           }
         }

@@ -32,7 +32,7 @@ export function lifecycleFixtures({ sourceSha, root, contractBytes, guideBytes, 
     'Receiving this work packet starts the assigned unit without a separate release. Commit owned paths and return UnitDelivery (unit_id, peer_id, workspace, commit_sha, packet_sha256, baseline_sha) plus actual proof and friction.',
     'This packet is a synthetic teaching fixture, not a native dispatch or observed delivery.',
   ] };
-  const packetBytes = `${JSON.stringify({ dd: { schema: 'builder/packet' }, sections: [{ name: 'packet', value: packet }], references: [] }, null, 2)}\n`;
+  const packetBytes = `${JSON.stringify({ dd: { schema: 'builder/work-packet' }, sections: [{ name: 'packet', value: packet }], references: [] }, null, 2)}\n`;
   const packetRef = { path: 'assets/team/packet.dd.json', sha256: digest(packetBytes) };
   // These records demonstrate shapes, not a sent message or a successful native session.
   const dispatch = { record_type: 'dispatch', id: `dispatch-${attempt}`, recorded_at, unit_id: unit.id, packet: packetRef, baseline: packet.baseline, allocation: packet.allocation, requested: role, observed, seed_files: [], delivery: { message_id: `synthetic-work-${nonce}`, outcome: 'queued', recorded_at } };

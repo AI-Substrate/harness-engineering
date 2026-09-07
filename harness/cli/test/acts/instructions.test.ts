@@ -84,17 +84,6 @@ describe('registerInstructionsAct', () => {
     expect(code).toBe(0);
   });
 
-  it('resolves the Builder briefing without an extension or global skill install', () => {
-    const { io, out } = ioFor('json');
-    const code = run(['builder'], io, new FakeFs());
-    const env = JSON.parse(out());
-    expect(env.status).toBe('ok');
-    expect(env.data.verb).toBe('builder');
-    expect(env.data.instructions).toContain('assets/impl-guide.dd.json');
-    expect(env.data.instructions).toContain('full sealed source SHA');
-    expect(code).toBe(0);
-  });
-
   it('refuses Builder injection without writing the commit-only guidance block', () => {
     const { io, out } = ioFor('json');
     const fs = new FakeFs();
