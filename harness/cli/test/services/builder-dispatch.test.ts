@@ -157,6 +157,7 @@ function scenario(unit = 'tk-0002') {
     malformed: '',
     gitStatus: '',
     rootSha: BUILDER_FIXTURE_SHA,
+    planSha: BUILDER_FIXTURE_SHA,
     rootBranch: 'builder/example/parser',
     rootPath: ROOT,
     ancestor: true,
@@ -218,7 +219,7 @@ function scenario(unit = 'tk-0002') {
           else if (args[0] === 'rev-parse')
             script = {
               code: 0,
-              stdout: `${options.cwd === ROOT ? flags.rootPath : options.cwd}\n${options.cwd === ROOT ? flags.rootSha : BUILDER_FIXTURE_SHA}\n${args.includes('--abbrev-ref') ? `${flags.rootBranch}\n` : ''}`,
+              stdout: `${options.cwd === ROOT ? flags.rootPath : options.cwd}\n${options.cwd === ROOT ? flags.rootSha : options.cwd === '/repo' ? flags.planSha : BUILDER_FIXTURE_SHA}\n${args.includes('--abbrev-ref') ? `${flags.rootBranch}\n` : ''}`,
             };
           else if (args[0] === 'merge-base') script = { code: flags.ancestor ? 0 : 1 };
           else if (args[0] === 'status') script = { code: 0, stdout: flags.gitStatus };
@@ -1341,6 +1342,7 @@ describe('Builder isolated dispatch', () => {
     changed.fs.writeText('/repo/contracts.ts', 'changed');
     expect((await dispatchBuilderUnit(changed.deps, changed.input)).ok).toBe(false);
     expect(changed.provisioned).toHaveLength(0);
+    // The pristine coder clone must start from EXACTLY the sealed source.
     const stale = scenario();
     stale.flags.rootSha = 'b'.repeat(40);
     expect(await dispatchBuilderUnit(stale.deps, stale.input)).toMatchObject({
@@ -1348,12 +1350,55 @@ describe('Builder isolated dispatch', () => {
       code: ErrorCodes.BUILDER_RUNTIME,
     });
     expect(stale.exec.calls.some((call) => call.args[0] === 'spawn')).toBe(false);
+    // A plan-root HEAD that is NOT a descendant of the sealed source (rewritten
+    // baseline, or a checkout moved off its history) is stale and refuses.
+    const rewritten = scenario();
+    rewritten.flags.planSha = 'b'.repeat(40);
+    rewritten.flags.ancestor = false;
+    expect(await dispatchBuilderUnit(rewritten.deps, rewritten.input)).toMatchObject({
+      ok: false,
+      code: ErrorCodes.BUILDER_RUNTIME,
+    });
+    expect(rewritten.exec.calls.some((call) => call.args[0] === 'spawn')).toBe(false);
     const nested = scenario();
     nested.input.workspace = '/repo/nested';
     expect(await dispatchBuilderUnit(nested.deps, nested.input)).toMatchObject({
       ok: false,
       code: ErrorCodes.BUILDER_OWNERSHIP,
     });
+  });
+  it('dispatches from a plan-root HEAD that is a descendant of the sealed source and records that HEAD (row 45)', async () => {
+    /*
+    Test Doc:
+    - Why: the PM commits the seal receipt and review evidence ON TOP of the sealed
+      source (contracts-service allows exactly that), so at dispatch HEAD is a
+      descendant of source_sha, not equal to it. Requiring equality refused every
+      real dispatch the moment evidence was committed (Unisphere Plan001, E473 ×3).
+    - Contract: same root + sealed source is an ancestor of HEAD + frozen digests
+      unchanged ⇒ dispatch proceeds; the dispatch record's observed evidence names
+      the plan-root HEAD and the sealed source. The coder clone check stays exact.
+    - Usage Notes: `flags.planSha` moves the plan-root (/repo) HEAD — `rootSha` is the coder clone; `flags.ancestor` scripts
+      `git merge-base --is-ancestor <source> <head>`.
+    - Quality Contribution: the opposite is visible — the stale case above sets
+      ancestor=false on the same moved HEAD and is refused before any spawn.
+    */
+    const moved = scenario();
+    const head = 'c'.repeat(40);
+    moved.flags.planSha = head;
+    moved.flags.ancestor = true;
+    const result = await dispatchBuilderUnit(moved.deps, moved.input);
+    expect(result.ok).toBe(true);
+    expect(
+      moved.exec.calls.find(
+        (call) => call.args[0] === 'merge-base' && call.args[2] === BUILDER_FIXTURE_SHA,
+      )?.args,
+    ).toEqual(['merge-base', '--is-ancestor', BUILDER_FIXTURE_SHA, head]);
+    if (result.ok) {
+      const evidence = result.value.dispatch.value.observed.evidence.join('\n');
+      expect(evidence).toContain(`plan root HEAD at dispatch: ${head}`);
+      expect(evidence).toContain(`sealed source ${BUILDER_FIXTURE_SHA}`);
+      expect(evidence).toContain('descendant');
+    }
   });
   it('never duplicates a dispatch and detects allocation CAS races', async () => {
     const s = scenario();

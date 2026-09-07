@@ -311,6 +311,49 @@ async function verifyRoot(
   return { ok: true, value: true };
 }
 
+/**
+ * The PM's plan repository at dispatch time: same root, and the sealed source
+ * is HEAD or an ANCESTOR of HEAD. Equality is deliberately not required here —
+ * the seal receipt and review evidence are committed on top of the sealed
+ * source (contracts-service treats them the same way: "publishing receipts and
+ * later implementation commits are allowed; rewriting the baseline is not"),
+ * and every frozen artifact has already been digest-checked by `verifyRef`.
+ * Requiring HEAD === source_sha only forbade committing evidence before
+ * dispatch (backlog row 45). The pristine coder checkout keeps the strict
+ * equality check in `verifyRoot`: it must start from exactly the sealed source.
+ * Returns the observed HEAD so the dispatch record can name it.
+ */
+async function verifyPlanRoot(
+  deps: BuilderDeps,
+  root: string,
+  sourceSha: string,
+): Promise<BuilderResult<string>> {
+  if (deps.fs.realpath(root) !== root)
+    return runtimeFailure('Workspace root is missing or aliased.');
+  const result = await deps.exec.run('git', ['rev-parse', '--show-toplevel', 'HEAD'], {
+    cwd: root,
+    timeoutMs: 10000,
+  });
+  const lines = result.stdout.trim().split(/\r?\n/);
+  const head = lines[1] ?? '';
+  if (!result.ok || lines.length !== 2 || lines[0] !== root || !/^[0-9a-f]{40}$/.test(head))
+    return runtimeFailure(
+      'Native Git root or HEAD does not match the frozen workspace baseline.',
+      result,
+    );
+  if (head === sourceSha) return { ok: true, value: head };
+  const ancestor = await deps.exec.run('git', ['merge-base', '--is-ancestor', sourceSha, head], {
+    cwd: root,
+    timeoutMs: 10000,
+  });
+  if (!ancestor.ok)
+    return runtimeFailure(
+      'The sealed source is neither HEAD nor an ancestor of HEAD in the plan repository; the baseline was rewritten or the checkout moved off its history.',
+      { head, source_sha: sourceSha, result: ancestor },
+    );
+  return { ok: true, value: head };
+}
+
 function verifyRef(deps: BuilderDeps, ref: FileDigest): BuilderResult<true> {
   const current = digestBuilderFile(deps, ref.path);
   if (!current.ok) return current;
@@ -1017,8 +1060,9 @@ export async function dispatchBuilderUnit(
       const checked = verifyRef(deps, ref);
       if (!checked.ok) return checked;
     }
-    const planRoot = await verifyRoot(deps, deps.repoRoot, baseline.value.source_sha);
+    const planRoot = await verifyPlanRoot(deps, deps.repoRoot, baseline.value.source_sha);
     if (!planRoot.ok) return planRoot;
+    const planHead = planRoot.value;
     const slug = context.planDir.split('/').at(-1)?.replace(/^\d+-/, '');
     if (!slug)
       return builderFailure(
@@ -1153,7 +1197,13 @@ export async function dispatchBuilderUnit(
       baseline: baseline.ref,
       allocation: { ...bound.value.ref, path: resolveInRepo(bound.value.ref.path, deps.repoRoot) },
       requested: input.role,
-      observed: observation,
+      observed: {
+        ...observation,
+        evidence: [
+          ...observation.evidence,
+          `plan root HEAD at dispatch: ${planHead} (sealed source ${baseline.value.source_sha}${planHead === baseline.value.source_sha ? '' : ', a descendant: receipts/evidence committed after the seal'})`,
+        ],
+      },
       seed_files: [...seeded.value, ...prepared.value.seeds],
     };
     const stored = writeBuilderRecord(deps, dispatchPath, receipt);

@@ -87,7 +87,7 @@ harness builder dispatch <plan> --unit <unit-id> --workspace <new-path> --parent
 harness builder ack <plan> --receipt <pre-work-ack.json>
 ```
 
-`ready` must actually report `ready`; `not-ready` or `cant-tell` never releases work. Dispatch defaults `--kind guide`, or explicitly accepts `worktree|clone`, with optional role overrides. `solo` guides are not dispatched as coders.
+`ready` must actually report `ready`; `not-ready` or `cant-tell` never releases work. Commit the contract source first (that commit is the seal's `source_sha`); the seal and review receipts may be committed before or after dispatch — dispatch accepts a plan-repository HEAD that is the sealed source or a descendant of it, with every frozen artifact digest-checked, and records the HEAD it observed. It refuses a HEAD the sealed source is not an ancestor of. The coder clone must start at exactly the sealed source. Dispatch defaults `--kind guide`, or explicitly accepts `worktree|clone`, with optional role overrides. `solo` guides are not dispatched as coders.
 
 Packet binds plan/guide/baseline/allocation bytes, source SHA, ownership fence, interfaces, proof and role. It contains only a **relative canary path**, never the expected answer. Before work, the peer reads packet/canary through native relative file tools, verifies pristine source, root versus shell cwd and available actual runtime observations, and returns a raw `AckReceipt` path/SHA-256. The PM ingests it through the command above before release.
 
