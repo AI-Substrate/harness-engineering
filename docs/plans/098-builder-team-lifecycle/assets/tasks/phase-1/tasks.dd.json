@@ -1,0 +1,536 @@
+{
+  "dd": {
+    "schema": "builder/plan"
+  },
+  "sections": [
+    {
+      "name": "meta",
+      "value": {
+        "title": "Phase 1: complete Builder team lifecycle",
+        "slug": "phase-1",
+        "status": "draft",
+        "complexity": "CS-5",
+        "summary": "One cohesive delivery phase with a PM contract baseline, six isolated coder units and PM-owned public composition/proof; the actual final blind run follows committed product review.",
+        "backpressure": "../../backpressure.dd.json#rows"
+      }
+    },
+    {
+      "name": "summary",
+      "value": "Execute the reviewed guide, not a one-coder-per-ceremony split. Unit completion is partial evidence; only composed observable behavior plus independent review satisfies the product acceptance criteria."
+    },
+    {
+      "name": "tasks",
+      "value": [
+        {
+          "id": "tk-0001",
+          "title": "Seal shared interfaces and evidence contracts",
+          "phase": "ph-d5d7",
+          "state": "unchecked",
+          "success": "Freeze the settled shared interfaces, public command/record contracts and independently executable fixtures before fan-out.",
+          "notes": "Guide unit ../../impl-guide.dd.json#units/tk-0001; PM-owned wave 0. The creation/adoption ownership boundary is resolved; executable baseline proof and independent review remain required.",
+          "satisfies_toward": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0005",
+            "../../../plan.dd.json#acceptance_criteria/ac-0007",
+            "../../../plan.dd.json#acceptance_criteria/ac-0004",
+            "../../../plan.dd.json#acceptance_criteria/ac-0008"
+          ],
+          "done": "tasks.dd.json#done_when/tk-0001"
+        },
+        {
+          "id": "tk-0002",
+          "title": "Implement guide validation and baseline readiness",
+          "phase": "ph-d5d7",
+          "state": "unchecked",
+          "success": "Load/author the separate implementation guide; prove graph/fence/coverage structure and seal/verify shared contract evidence. Keep human architectural judgement distinct from deterministic readiness.",
+          "notes": "Guide unit ../../impl-guide.dd.json#units/tk-0002; wave 1. Reject empty units/proof/contracts/capability maps, unknown/cyclic dependencies, backward waves, read-owner gaps, overlapping write fences and missing observable AC owners. A digest or SHA drift invalidates the seal and any dependent dispatch.",
+          "satisfies_toward": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0005",
+            "../../../plan.dd.json#acceptance_criteria/ac-0006",
+            "../../../plan.dd.json#acceptance_criteria/ac-0007"
+          ],
+          "done": "tasks.dd.json#done_when/tk-0002"
+        },
+        {
+          "id": "tk-0003",
+          "title": "Implement owned workspace allocation and reclamation",
+          "phase": "ph-d5d7",
+          "state": "unchecked",
+          "success": "Reserve and initialize portable workspaces with provenance, stage missing packaged DD schemas without clobbering customization, adopt externally created resources honestly and reclaim only safe owned resources after preservation.",
+          "notes": "Guide unit ../../impl-guide.dd.json#units/tk-0003; wave 1. Harness-owned creation and external-only adoption are now authorized by the accepted scope. Reservation must precede Git mutation, use exclusive creation in shared-repository storage, scan all existing/sibling allocations and never reuse tombstones. Reject escaping paths, existing targets, dirty/unpushed/unmerged work, unowned resources and a sole archive inside the resource being removed. Full clones are supported isolated working directories, not .git rewrites.",
+          "satisfies_toward": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0002",
+            "../../../plan.dd.json#acceptance_criteria/ac-0003",
+            "../../../plan.dd.json#acceptance_criteria/ac-0004",
+            "../../../plan.dd.json#acceptance_criteria/ac-000e",
+            "../../../plan.dd.json#acceptance_criteria/ac-0012"
+          ],
+          "done": "tasks.dd.json#done_when/tk-0003"
+        },
+        {
+          "id": "tk-0004",
+          "title": "Implement role settings and acknowledged dispatch",
+          "phase": "ph-d5d7",
+          "state": "unchecked",
+          "success": "Resolve role settings with provenance, prepare immutable scope packets, provision through the injected workspace operation, invoke the declared runtime and release work only after observed readiness and exact packet acknowledgement.",
+          "notes": "Guide unit ../../impl-guide.dd.json#units/tk-0004; wave 1. Read the existing settings loader; do not create a parallel settings parser, mutate global configuration or treat descriptor/requested model values as actual inference evidence. Local peer clones avoid remote publication. A spawn accepted by tmux is not a ready peer. No shell or main-then-cd fallback.",
+          "satisfies_toward": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0008",
+            "../../../plan.dd.json#acceptance_criteria/ac-0009"
+          ],
+          "done": "tasks.dd.json#done_when/tk-0004"
+        },
+        {
+          "id": "tk-0005",
+          "title": "Implement canonical lifecycle and composition evidence",
+          "phase": "ph-d5d7",
+          "state": "unchecked",
+          "success": "Advance the existing flow only from valid evidence, compose accepted unit commits on the plan branch, bind review to the composed artifact and complete post-flight/archive without inventing shipping authorization.",
+          "notes": "Guide unit ../../impl-guide.dd.json#units/tk-0005; wave 1. Fail red or stale evidence honestly, preserve conflict state, never mutate main or accept out-of-fence commits, and reject unresolved material findings. An archive must survive later workspace removal; stage preservation outside the removable root and verify content/references before any tidy call.",
+          "satisfies_toward": [
+            "../../../plan.dd.json#acceptance_criteria/ac-000a",
+            "../../../plan.dd.json#acceptance_criteria/ac-000b",
+            "../../../plan.dd.json#acceptance_criteria/ac-000c",
+            "../../../plan.dd.json#acceptance_criteria/ac-000d"
+          ],
+          "done": "tasks.dd.json#done_when/tk-0005"
+        },
+        {
+          "id": "tk-0006",
+          "title": "Update Builder routing templates and worked examples",
+          "phase": "ph-d5d7",
+          "state": "unchecked",
+          "success": "Cleanly separate product planning from implementation guidance throughout the existing Builder skill and supply executable good/bad architecture examples, packets/settings and preservation cases.",
+          "notes": "Guide unit ../../impl-guide.dd.json#units/tk-0006; wave 1. Update registry/router/core planning, tasks, implementation, review, post-flight, ship, flight-plan schema/template, source templates and every consumer together. Coordinate the in-flight structured-backpressure change; do not restore Markdown-only truth or edit deployed home-directory skills. Never claim a solo fallback executed requested cross-model review.",
+          "satisfies_toward": [
+            "../../../plan.dd.json#acceptance_criteria/ac-000f",
+            "../../../plan.dd.json#acceptance_criteria/ac-0010",
+            "../../../plan.dd.json#acceptance_criteria/ac-0012"
+          ],
+          "done": "tasks.dd.json#done_when/tk-0006"
+        },
+        {
+          "id": "tk-0007",
+          "title": "Compose public capabilities and prove complete delivery",
+          "phase": "ph-d5d7",
+          "state": "unchecked",
+          "success": "Own the CLI and package composition root, expose every accepted capability, integrate completed units, run the real surface/consumer smoke and preserve complete manual dogfood and independent review evidence.",
+          "notes": "Guide unit ../../impl-guide.dd.json#units/tk-0007; wave 2. Only the PM integrates. Run final validation once the composition is stable; reviewers receive committed SHA plus immutable plan/guide hashes. No remote push/PR/merge or unsafe teardown is implicit in completion.",
+          "satisfies": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0001",
+            "../../../plan.dd.json#acceptance_criteria/ac-0002",
+            "../../../plan.dd.json#acceptance_criteria/ac-0003",
+            "../../../plan.dd.json#acceptance_criteria/ac-0004",
+            "../../../plan.dd.json#acceptance_criteria/ac-0005",
+            "../../../plan.dd.json#acceptance_criteria/ac-0006",
+            "../../../plan.dd.json#acceptance_criteria/ac-0007",
+            "../../../plan.dd.json#acceptance_criteria/ac-0008",
+            "../../../plan.dd.json#acceptance_criteria/ac-0009",
+            "../../../plan.dd.json#acceptance_criteria/ac-000a",
+            "../../../plan.dd.json#acceptance_criteria/ac-000b",
+            "../../../plan.dd.json#acceptance_criteria/ac-000c",
+            "../../../plan.dd.json#acceptance_criteria/ac-000d",
+            "../../../plan.dd.json#acceptance_criteria/ac-000e",
+            "../../../plan.dd.json#acceptance_criteria/ac-000f",
+            "../../../plan.dd.json#acceptance_criteria/ac-0010",
+            "../../../plan.dd.json#acceptance_criteria/ac-0012"
+          ],
+          "satisfies_toward": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0011"
+          ],
+          "done": "tasks.dd.json#done_when/tk-0007"
+        },
+        {
+          "id": "tk-0008",
+          "title": "Extend evaluator for blind Builder team delivery",
+          "phase": "ph-d5d7",
+          "state": "unchecked",
+          "success": "Extend the existing flow-eval evaluator and its thin run router for a blind DD-native Builder-team Markdown-to-PDF delivery. Keep the scorer architecture; own native evidence acquisition, subject/base binding, meaningful team/artifact checks and the isolated task fixture, not Builder lifecycle or telemetry capture.",
+          "notes": "Guide unit ../../impl-guide.dd.json#units/tk-0008; wave 1. Tests defend false-positive refusal and honest partial native evidence; the PM-owned final blind run is outside this phase task.",
+          "satisfies_toward": [
+            "../../../plan.dd.json#acceptance_criteria/ac-0013"
+          ],
+          "done": "tasks.dd.json#done_when/tk-0008"
+        }
+      ]
+    },
+    {
+      "name": "done_when",
+      "value": {
+        "tk-0001": [
+          {
+            "id": "dw-0001",
+            "assertion": "The reviewed shared guide/packet/receipt interfaces and typed DD schemas are committed, with existing injected fake adapters and no unit-implementation imports.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0005",
+            "proven_by": "../../execution.dd.json#entries/lg-0014"
+          },
+          {
+            "id": "dw-0002",
+            "assertion": "The shared serialization/ownership/argv contract fixture is runnable and its real passing proof is bound to the observed contract-baseline SHA and file digests.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0007",
+            "proven_by": "../../execution.dd.json#entries/lg-0014"
+          },
+          {
+            "id": "dw-0003",
+            "assertion": "Owner and workspace kind are distinct in the allocation contract; externally owned resources cannot be silently promoted to owned or reaped.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0004",
+            "proven_by": "../../execution.dd.json#entries/lg-0014"
+          },
+          {
+            "id": "dw-0004",
+            "assertion": "Requested model/effort, observed runtime configuration and unverified provider identity have distinct fields and tested serialization; omitted effort is not fabricated.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0008",
+            "proven_by": "../../execution.dd.json#entries/lg-0014"
+          }
+        ],
+        "tk-0002": [
+          {
+            "id": "dw-0005",
+            "assertion": "A valid non-empty guide loads/renders with SRP units, declared write/read ownership, executable proof links and a justified solo/coders decision.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0005"
+          },
+          {
+            "id": "dw-0006",
+            "assertion": "Behavior tests reject vacuous guides, unknown/cyclic dependencies, invalid waves, ownership conflicts and an AC whose internal producer exists but observable capability has no owner.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0006"
+          },
+          {
+            "id": "dw-0007",
+            "assertion": "Sealing runs required proof against an observed commit and declared digests; changed, missing or red baseline evidence deterministically blocks dispatch readiness.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0007"
+          }
+        ],
+        "tk-0003": [
+          {
+            "id": "dw-0008",
+            "assertion": "Concurrent real/fake harness-owned allocation scenarios reserve distinct ordinals before branch/workspace mutation and preserve resumable reservations/tombstones; collisions and escaping paths never clobber existing work.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0002",
+            "note": "Allocation authority is resolved; implementation and proof are still outstanding."
+          },
+          {
+            "id": "dw-0009",
+            "assertion": "Fresh initialization stages missing packaged schemas and creates the numbered plan/guide/templates/canonical flow without a global install or destructive retry.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0003"
+          },
+          {
+            "id": "dw-000a",
+            "assertion": "Adoption records observed owner/kind/root/branch/base/ordinal/actor facts; an external resource is never claimed, reallocated or automatically removed.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0004"
+          },
+          {
+            "id": "dw-000b",
+            "assertion": "Teardown verifies clean/merged/preserved owned state and a surviving archive outside the removable root; dirty, unpushed, unowned, ambiguous or sole-copy cases refuse and partial failure resumes safely.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-000e"
+          },
+          {
+            "id": "dw-0026",
+            "assertion": "The scaffold seeds assets/backpressure.dd.json and plan meta.backpressure without overwriting existing survey data or claiming proof was run.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0012"
+          }
+        ],
+        "tk-0004": [
+          {
+            "id": "dw-000c",
+            "assertion": "Behavior tests prove repo < guide < explicit role-setting precedence, settings provenance, omitted effort and a truthful separation of requested versus observed runtime configuration.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0008"
+          },
+          {
+            "id": "dw-000d",
+            "assertion": "Dispatch uses the injected workspace/readiness boundary, publishes a resolvable immutable fence packet and refuses work release until registered peer/root readiness plus exact nonce/packet/baseline acknowledgement match; unsupported runtime/model/root cases fail explicitly.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0009"
+          }
+        ],
+        "tk-0005": [
+          {
+            "id": "dw-000e",
+            "assertion": "Stage advancement uses the existing canonical flow kernel and rejects due unreceipted chores, failed DD gates, stale evidence and out-of-fence completion; no team-local phase field is advanced.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-000a"
+          },
+          {
+            "id": "dw-000f",
+            "assertion": "Composition checks unit fences and bases, integrates committed units in dependency order on the plan branch, records the actual composed SHA and runs the guide proof; conflicts/red proof remain visible and main is untouched.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-000b"
+          },
+          {
+            "id": "dw-0010",
+            "assertion": "Review binds verdict and findings to the composed SHA plus plan/guide hashes; a changed artifact or unresolved material finding blocks closure even when unit tests passed.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-000c"
+          },
+          {
+            "id": "dw-0011",
+            "assertion": "Close-out requires actual Builder/harness/post-flight evidence, archives the complete plan, re-anchors flow links and verifies a surviving copy before tidy, without inventing shipping authorization.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-000d"
+          }
+        ],
+        "tk-0006": [
+          {
+            "id": "dw-0012",
+            "assertion": "The tracked Builder registry/router/core and all stage/flight-plan consumers use distinct plan versus implementation guide and one canonical lifecycle; updated harness seams use the canonical backpressure DD source and completed historical plans remain readable.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-000f"
+          },
+          {
+            "id": "dw-0013",
+            "assertion": "The shipped examples actually execute injected services and explicit composition, demonstrate good/bad independence and AC coverage, and supply coherent role/packet/acknowledgement/review/preservation examples without placeholder implementations.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0010"
+          },
+          {
+            "id": "dw-0025",
+            "assertion": "Both tracked skills and all affected stage/templates invoke local ddocs for the canonical survey, actual approach/proof selection, AC pressure/proven_by and assertion pressure links; no legacy Markdown-only truth or removed harness dd command is taught.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0012"
+          }
+        ],
+        "tk-0007": [
+          {
+            "id": "dw-0014",
+            "assertion": "At the committed composition, the actual public/packed surface and corresponding recorded proof establish ac-0001: The packaged CLI exposes the Builder lifecycle through discoverable help and instructions with the existing JSON envelope/exit conventions; missing prerequisites, name collisions and unsupported runtime capabilities are explicit rather than silent success.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0001"
+          },
+          {
+            "id": "dw-0015",
+            "assertion": "At the committed composition, the actual public/packed surface and corresponding recorded proof establish ac-0002: New workspace creation atomically reserves the next ordinal against the shared repository and sibling worktrees, records a resumable allocation before Git mutation, never reuses closed reservations, and refuses conflicting or escaping paths without clobbering existing work.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0002"
+          },
+          {
+            "id": "dw-0016",
+            "assertion": "At the committed composition, the actual public/packed surface and corresponding recorded proof establish ac-0003: A successful initialization creates the branch, worktree, correctly numbered plan folder, separate implementation-guide source, packet/model-setting templates and complete canonical Builder flow with required harness chores; retries preserve existing content.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0003"
+          },
+          {
+            "id": "dw-0017",
+            "assertion": "At the committed composition, the actual public/packed surface and corresponding recorded proof establish ac-0004: Allocation metadata is a deterministic document with explicit owner, worktree, branch, base SHA, ordinal, actor and lifecycle/tombstone state; externally created worktrees are recorded as externally owned and are never silently reallocated or reaped.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0004"
+          },
+          {
+            "id": "dw-0018",
+            "assertion": "At the committed composition, the actual public/packed surface and corresponding recorded proof establish ac-0005: The implementation guide has a declared schema and generated Markdown face, with non-empty SRP responsibilities, exact write/read ownership, settled contracts, dependencies/waves, per-unit proof, composition ownership and a justified solo-or-coders decision.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0005"
+          },
+          {
+            "id": "dw-0019",
+            "assertion": "At the committed composition, the actual public/packed surface and corresponding recorded proof establish ac-0006: Readiness rejects empty/vacuous guides, unknown or cyclic dependencies, unresolved ownership collisions, missing contract/proof declarations and ACs with no observable capability owner; architectural judgement is reported separately from structural proof.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0006"
+          },
+          {
+            "id": "dw-001a",
+            "assertion": "At the committed composition, the actual public/packed surface and corresponding recorded proof establish ac-0007: The contracts stage binds declared shared interfaces, fixtures and required proof to an observed baseline commit/digest, and dispatch refuses changed or absent baseline evidence rather than relying on a status flag.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0007"
+          },
+          {
+            "id": "dw-001b",
+            "assertion": "At the committed composition, the actual public/packed surface and corresponding recorded proof establish ac-0008: Repository role defaults and plan/dispatch overrides have documented precedence for harness, model and effort, are recorded with the run, and preserve the distinction between requested launch settings and observed/acknowledged runtime identity.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0008"
+          },
+          {
+            "id": "dw-001c",
+            "assertion": "At the committed composition, the actual public/packed surface and corresponding recorded proof establish ac-0009: Dispatch provisions each coder in its own isolated Git checkout (linked worktree or full clone, with kind recorded) at the approved baseline, publishes a scoped packet with resolvable inputs, invokes the declared runtime, records its identity/readiness, and refuses work release until nonce/packet-hash acknowledgement matches the dispatched contract.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0009"
+          },
+          {
+            "id": "dw-001d",
+            "assertion": "At the committed composition, the actual public/packed surface and corresponding recorded proof establish ac-000a: Builder stage advancement uses the existing flow state/mutation kernel and refuses unmet DD gates, required harness chores without receipts, missing or stale evidence and unit completion claims outside the declared fence.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-000a"
+          },
+          {
+            "id": "dw-001e",
+            "assertion": "At the committed composition, the actual public/packed surface and corresponding recorded proof establish ac-000b: The PM composes completed units in dependency order on the plan branch, records the composed SHA and runs the guide-named integration proof against that artifact; conflicts or red proof leave an explicit incomplete state and do not mutate main.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-000b"
+          },
+          {
+            "id": "dw-001f",
+            "assertion": "At the committed composition, the actual public/packed surface and corresponding recorded proof establish ac-000c: Review records name the composed SHA and exact plan/guide basis; a changed SHA, missing verdict, unresolved material findings or unsupported closure claim prevents review completion, including when unit checks were green.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-000c"
+          },
+          {
+            "id": "dw-0020",
+            "assertion": "At the committed composition, the actual public/packed surface and corresponding recorded proof establish ac-000d: Close-out verifies required Builder and engineering-harness lifecycle evidence, produces/validates the post-flight record, archives the whole plan folder and re-anchors flow/document references without treating optional shipping as automatically authorized.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-000d"
+          },
+          {
+            "id": "dw-0021",
+            "assertion": "At the committed composition, the actual public/packed surface and corresponding recorded proof establish ac-000e: Teardown preserves required WIP/reports/observations and a verifiable surviving archive before removal, refuses unowned/dirty/unpushed/unmerged or ambiguous resources by default, is resumable after partial failure and retains allocation tombstones.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-000e"
+          },
+          {
+            "id": "dw-0022",
+            "assertion": "At the committed composition, the actual public/packed surface and corresponding recorded proof establish ac-000f: Tracked Builder source separates plan and implementation-guide stages and updates registry, routing, templates, tasks/implement/review/post-flight/ship consumers consistently, with capability checks and no second independently advanced flow; completed historical plans retain their existing read path.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-000f"
+          },
+          {
+            "id": "dw-0023",
+            "assertion": "At the committed composition, the actual public/packed surface and corresponding recorded proof establish ac-0010: The shipped skill/docs include runnable architecture-enabled good and bad decomposition examples, injectable service contracts, dependency waves, AC-to-capability coverage, model settings, packet acknowledgement, composition/review proof and preservation/refusal cases.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0010"
+          },
+          {
+            "id": "dw-0024",
+            "assertion": "The implementation-owned portion of ac-0011 is proven: deterministic behavior tests and disposable real-Git/packed-consumer smoke pass, and an immutable composed SHA with plan/guide inputs and receipts is prepared for independent review. Actual review and complete manual close-out remain later lifecycle evidence, not prerequisites for entering those stages.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0011",
+            "note": "Partial satisfaction only; do not create a temporal cycle by requiring review/post-flight completion to leave implementation."
+          },
+          {
+            "id": "dw-0027",
+            "assertion": "The documented ddocs survey/AC/assertion/evidence recipe is executed through the real CLI and packed consumer, and typed links plus generated views validate.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0012"
+          }
+        ],
+        "tk-0008": [
+          {
+            "id": "dw-0028",
+            "assertion": "The existing evaluator rejects inherited subject plans, wrong base/plan bindings and nonempty but unresolved pressure/satisfies/proof links; semantic checks delegate to local ddocs and the existing complete plan validator rather than a second link interpreter.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0013"
+          },
+          {
+            "id": "dw-0029",
+            "assertion": "Explicit native OMP evidence uses the public rs native-session identity and verified Flowspace source, bounded windows of at most 200 each side, complete cutoff coverage and honest timestamps. Unsupported segments, checks, refusals, usage or opaque execution remain unknown; no buffer label or synthetic vendor environment is used.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0013"
+          },
+          {
+            "id": "dw-002a",
+            "assertion": "Team evidence binds declared units, actual distinct peer/root identities, frozen contract/packet hashes, nonce acknowledgements, nonempty implementation commits and the composed review SHA. Reviewer-only or checker-only padding, shared roots, stale acknowledgements and detached reviews cannot satisfy implementation fan-out.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0013"
+          },
+          {
+            "id": "dw-002b",
+            "assertion": "The new versioned scenario and thin run router expose the task and Builder method mandate without rubric, stage choreography or prescribed unit boundaries. A runnable local packaged-consumer fixture exposes delivered skills/CLI assets without global installs or hidden evaluation artifacts.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0013"
+          },
+          {
+            "id": "dw-002c",
+            "assertion": "Behavioral regression controls exercise missing/partial native evidence, pagination boundaries, inherited artifacts, invalid links, stale binding and missing output; the evaluator test command fails when it collects zero tests. Reports preserve source/provenance and keep process evidence separate from independently exercised capability.",
+            "state": "unchecked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0013"
+          }
+        ]
+      }
+    },
+    {
+      "name": "goals",
+      "value": [
+        "Keep every unit independently implementable against frozen injected contracts.",
+        "Expose and prove every accepted capability through the actual packaged CLI and source Builder workflow.",
+        "Preserve the complete manual Builder/harness record, archive and owned-resource safety even while shipping awaits authorization."
+      ]
+    },
+    {
+      "name": "non_goals",
+      "value": [
+        "No source changes to pij, Flowspace or deployed/global skills.",
+        "No silent model/root fallback, new competing flow state, remote push/PR/merge or unowned resource removal."
+      ]
+    },
+    {
+      "name": "acceptance_criteria",
+      "value": []
+    },
+    {
+      "name": "phases",
+      "value": []
+    },
+    {
+      "name": "research_context",
+      "value": "Use ../../research-dossier.md and ../../impl-guide.dd.json; these preserve the prior-art handoff and the exact delivery/ownership contracts."
+    },
+    {
+      "name": "testing_strategy",
+      "value": {
+        "approach": "Hybrid: test-first for state transitions, readiness predicates, allocation/preservation and failure paths; direct behavioral smoke for the public CLI.",
+        "rationale": "The risk is false success or data loss, not syntax; injected fakes prove ordering/refusals and disposable real Git repositories prove the user-facing lifecycle.",
+        "focus_areas": "Non-vacuity; atomic ordinal reservation; path containment; owner checks; stale evidence; contract drift; pending acknowledgements; composition and review SHA binding; required lifecycle receipts; archive preservation and teardown refusal.",
+        "excluded": "No timing thresholds, mocked internal modules, source-text tests as behavioral proof, or live shared-tree validation by concurrent coders.",
+        "mock_usage": "Existing injected port fakes and real isolated fixtures only; no vi.mock/vi.spyOn/monkey-patching."
+      }
+    },
+    {
+      "name": "documentation_strategy",
+      "value": {
+        "location": "Tracked skills/builder and skills/eng-harness-flow source, bundled harness docs/instructions, schema/template examples, and this plan assets directory.",
+        "rationale": "One canonical method and one command surface; examples demonstrate injectable services, good/bad splits, dependency waves, AC ownership and safe closure, while the detailed run log preserves the manual dogfood evidence."
+      }
+    },
+    {
+      "name": "risks_assumptions",
+      "value": "Portable allocation is harness-owned; manual and adopted resources remain external. OMP peers use full local clones, isolated dependencies and actual native-root/message canaries. Typed backpressure is ../../backpressure.dd.json. Source-level design does not substitute for baseline, runtime or product proof."
+    },
+    {
+      "name": "open_questions",
+      "value": []
+    },
+    {
+      "name": "workshop_opportunities",
+      "value": []
+    },
+    {
+      "name": "clarifications",
+      "value": []
+    },
+    {
+      "name": "planning_seam",
+      "value": []
+    },
+    {
+      "name": "gate_matrix",
+      "value": []
+    },
+    {
+      "name": "implementation_summary",
+      "value": ""
+    },
+    {
+      "name": "key_findings",
+      "value": []
+    },
+    {
+      "name": "acceptance_coverage",
+      "value": []
+    },
+    {
+      "name": "risks",
+      "value": []
+    },
+    {
+      "name": "execution_guardrails",
+      "value": []
+    }
+  ]
+}

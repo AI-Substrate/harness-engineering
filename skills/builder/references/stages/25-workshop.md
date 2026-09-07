@@ -611,15 +611,11 @@ Refinement:
 
 ## Integration with neighbouring verbs (via artifacts — the wire protocol)
 
-### From the specify verb
-- The spec identifies Workshop Opportunities
-- This verb's `--from-spec` flag picks from that list
-
-### Into the architect verb
-- The architect checks for `assets/workshops/*.md` (legacy root `workshops/`) in the plan folder
-- Incorporates workshop decisions into phase planning (they are authoritative)
-- Reduces discovery work for workshopped topics
-- References workshop documents in relevant phases
+### Product and implementation decisions
+- Product intent and Workshop Opportunities come from `plan.dd.json`; `--from-spec` retains historical read compatibility.
+- Product decisions refine the product plan. Architecture, ownership, interfaces, waves and proof decisions refine `assets/impl-guide.dd.json`.
+- Both owners read authoritative `assets/workshops/*.md` decisions before updating their source. Preserve links and invalidate affected downstream review/baseline bindings rather than silently folding implementation into the product plan.
+- Source tests and runnable examples are evidence; a workshop judgement does not claim an unexecuted check or cross-model review passed.
 
 ### Standalone Use
 - Can be run anytime during planning

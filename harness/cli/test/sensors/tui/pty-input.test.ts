@@ -101,7 +101,9 @@ with tempfile.TemporaryDirectory(prefix='harness-pty-input-') as work:
     child = subprocess.Popen(
         args,
         cwd=child_cwd,
-        env={**os.environ, 'TERM': 'xterm-256color', 'HARNESS_NO_TELEMETRY': '1'},
+        # Model an interactive terminal even when the test runner itself is in CI.
+        # CI-mode rendering is deliberately outside this interactive first-frame contract.
+        env={**os.environ, 'CI': 'false', 'TERM': 'xterm-256color', 'HARNESS_NO_TELEMETRY': '1'},
         stdin=slave,
         stdout=slave,
         stderr=slave,

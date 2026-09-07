@@ -39,6 +39,22 @@ The variant decides the drive style too: the mandated variant takes **no stage
 nudges** (the subject's own cadence is scored) and the orchestrator answers flow
 gates under the **fixed gate-conduct policy** in its `prompts/orchestrator.md`.
 
+### `builder-team-md-to-pdf` — delivered method and capability
+
+Use the versioned, isolated packaged-consumer route in
+[`docs/how/flow-conformance-eval.md`](../../../docs/how/flow-conformance-eval.md#blind-builder-team-cohort-version-1).
+It owns preparation, native positive control, score bindings and retained evidence.
+Do not use the historical worktree/telemetry recipe below for this cohort.
+
+Deliver only the scenario's `prompts/subject.md` plus root/reply instructions.
+Builder is mandated; decomposition, stages and checks are not prescribed. Keep
+assertions, the evaluator runbook and reports out of every subject/worker root.
+Use `--evidence-source native --subject-plan <new plan.dd.json> --base-ref <consumer
+preparation SHA>` from the evaluator root. Native Flowspace turns are not telemetry
+segments. Requested/observed configuration is not provider attestation. Require
+working PDF/Mermaid output, independent composed-SHA review and preserved evidence;
+the process score alone never decides acceptance.
+
 ### `dd-native-builder` — do the GATES do any work?
 
 | Scenario | Packet | Measures | Base ref |

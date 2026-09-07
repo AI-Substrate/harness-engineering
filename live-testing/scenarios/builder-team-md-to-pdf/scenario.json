@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "slug": "builder-team-md-to-pdf",
+  "title": "Blind Builder team Markdown-to-PDF delivery",
+  "task": "Deliver a reusable Markdown-to-PDF harness extension with rendered Mermaid diagrams.",
+  "base": { "repo": "isolated-local-packaged-consumer", "ref": "RUN_PREPARATION_BASE" },
+  "subject": { "harness": "omp", "model": "github-copilot/gpt-6-astra" },
+  "flow": { "mode": "builder", "stages": [] },
+  "prompts": { "orchestrator": "prompts/orchestrator.md", "subject": "prompts/subject.md" },
+  "placeholder_policy": "unknown",
+  "intent": { "reason": "Measure complete delivered capability and authentic architecture-derived team work without teaching the rubric.", "vibe": "A normal task, with Builder as the method; no stage nudges or prescribed decomposition." },
+  "assertions": "assertions.json"
+}

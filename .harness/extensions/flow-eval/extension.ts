@@ -43,6 +43,7 @@ import type { ResolveContext, SessionEvidence } from './resolvers.js';
 import { isPlaceholderToken, parseSessionEvidence } from './resolvers.js';
 import { buildJudgeProvenance, join, loadScenario } from './scenario.js';
 import { scoreScenario } from './scorer.js';
+import { prepareNativeRun } from './run-evidence.js';
 
 /** Where committed scenario bundles live, relative to the repo cwd. */
 function scenariosRoot(cwd: string): string {
@@ -289,7 +290,11 @@ async function runScore(ctx: VerbContext): Promise<VerbResult> {
 
   const worktree = strOpt(ctx, 'worktree') ?? ctx.cwd;
   const startedAt = ctx.clock.nowIso();
-  const { evidence, reason: evidenceReason } = await fetchEvidence(ctx, session, strOpt(ctx, 'worktree'));
+  const source = strOpt(ctx, 'evidenceSource') ?? 'telemetry';
+  if (source !== 'telemetry' && source !== 'native') return ctx.error('E_ARGS', '--evidence-source must be telemetry or native');
+  const { evidence, reason: evidenceReason } = source === 'native'
+    ? { evidence: null, reason: 'explicit native source selected; telemetry fields are unsupported' }
+    : await fetchEvidence(ctx, session, strOpt(ctx, 'worktree'));
 
   // F-A: the HONEST subject + base_ref. `--subject-*` / `--base-ref` overrides win
   // over `scenario.json#subject` / `base.ref`; they cascade to the report header,
@@ -308,7 +313,7 @@ async function runScore(ctx: VerbContext): Promise<VerbResult> {
   // The base-ref finding is tracked SEPARATELY from the general warning list: it is the
   // one that persists into report.json as `base_ref_warning`, and taking `warnings[0]`
   // for it would mislabel whichever warning happened to land first.
-  const baseRefWarning = worktreeOpt ? await baseRefFinding(ctx, worktreeOpt, baseRef) : null;
+  const baseRefWarning = worktreeOpt && source === 'telemetry' ? await baseRefFinding(ctx, worktreeOpt, baseRef) : null;
   const warnings: string[] = [];
   // Say WHY the telemetry lane is empty. `telemetry.available: false` alone leaves an
   // operator guessing between "no session", "a degraded envelope" and "a payload we
@@ -347,12 +352,23 @@ async function runScore(ctx: VerbContext): Promise<VerbResult> {
     resolutions,
     placeholderPolicy,
   };
+  const runId = makeRunId(startedAt, session);
+  let nativeProvenance: Awaited<ReturnType<typeof prepareNativeRun>> | undefined;
+  if (source === 'native') {
+    try {
+      nativeProvenance = await prepareNativeRun(ctx, rc, session, strOpt(ctx, 'subjectPlan'), baseRef,
+        join(ctx.cwd, '.harness/live-testing', slug, runId, 'evidence'));
+      if (rc.subject) rc.subject.requestedModel = subjectModel;
+    } catch (error) {
+      return ctx.error('E_EVIDENCE', String(error), { next_action: 'Run the evaluator outside all disposable roots with a local harness/ddocs installation.' });
+    }
+  }
   const scored = await scoreScenario(loaded.scenario.assertions, rc, loaded.scenario.config.judge);
   const finishedAt = ctx.clock.nowIso();
-  const runId = makeRunId(startedAt, session);
   const provenance = {
     judge: buildJudgeProvenance(loaded.scenario.config.judge, subjectModel),
     ...(Object.keys(resolutions).length > 0 && { resolutions }),
+    ...(nativeProvenance && { evidence: nativeProvenance }),
   };
 
   // Seed-tuple hashes: the `--compare` match key (scenario_hash + base_ref) + a
@@ -469,7 +485,8 @@ async function runScore(ctx: VerbContext): Promise<VerbResult> {
       total: d.total,
       required_failed: d.required_failed,
       judged_pending: scored.judged.length,
-      telemetry: { available: evidence !== null, segments: evidence?.segments ?? 0 },
+      telemetry: { available: evidence !== null, segments: source === 'native' ? null : evidence?.segments ?? 0 },
+      ...(nativeProvenance && { native: nativeProvenance }),
       report_dir: written.dir,
       files: written.files,
       ...(written.ledger !== undefined && { ledger: written.ledger }),
@@ -827,6 +844,8 @@ const flowEval: HarnessVerb = {
   options: [
     { flags: '--scenario <slug>', description: '(score|ledger) Scenario slug under live-testing/scenarios/' },
     { flags: '--session <pij-id>', description: '(score) The pij session id whose telemetry to score' },
+    { flags: '--evidence-source <source>', description: '(score) telemetry (historical default) or native (verified Flowspace OMP turns; unsupported fields stay unknown)' },
+    { flags: '--subject-plan <path>', description: '(score native) Explicit NEW subject plan.dd.json, bound to --base-ref' },
     {
       flags: '--worktree <path>',
       description: "(score) The subject's worktree root (fs lane + telemetry locator); defaults to cwd",

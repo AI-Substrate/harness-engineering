@@ -77,6 +77,7 @@ export const BUNDLED_FLOW_SCHEMAS: Record<string, unknown> = {
       'adr',
       'backpressure',
       'plan',
+      'impl-guide',
       'phase',
       'fix-loop',
       'review',
@@ -217,7 +218,7 @@ export const BUNDLED_FLOW_TEMPLATES: Record<string, unknown> = {
   },
   'flight-plan': {
     _comment:
-      "FULL FLIGHT-PLAN SEED (plan 040 / D1, AC-06, AC-13). The REAL, pre-authored, deterministic create-seed the-flow passes to `harness flow create flight-plan --template <this>` (see references/00-routing.md create routine). It is the FULL 11-node starter — the 6-node SDD spine (research → plan → phase-1 → review-1 → post-flight → ship) PLUS the 5 harness chores baked in (backpressure off `plan`; boot-1/observe-1/retro-1 off `phase-1` + retro-harvest off `post-flight`) — so an empty flow is fully ready at create with ZERO inference: even a weak model on a cheap tier gets the whole spine, the chores, AND pre-authored per-node `instructions[]` (the static 'bone' a model reads via `harness flow orient`). D1 REVERSES the plan-039 split: there is NO create-time conditional chore apply and NO router/provisioned gate — the template carries the chores directly. Chores seed at status 'known' (designed, definite work — never speculative) and are MANDATORY FOR THE AGENT, declinable only by the human (`importance` grades advisory strength for the human, never agent licence); an un-harnessed repo carries them un-run, not absent (harmless — it reads as 'here's how to adopt'). The CLI consumes `cursor` (→ nav.now) + `nodes` VERBATIM and stamps root identity (provenance / created_at / events / nav / per-node created_at). The shared chore/seam SHAPE is owned by the doctrine-parity:039 block (references/harness-seams.md — the single source of truth); this template is one CONSUMER that bakes that shape in, eng-harness-flow standalone is the other (workshop 001 WS-2). The plan-complete additive expander splices phases 2..N + their per-phase trio from that SAME shared shape. Instruction TEXT is read by `orient`, never rendered in the diagram (only a 📝N badge). The 'copy this shape' worked example lives at flight-plan.example.json (+ .example.md). Round-trip-verified: `harness flow create flight-plan --template <this> --schema flight-plan.schema.json` + `harness flow orient` + `harness flow render`. DD GATES (plan 071 ac-7110): `phase-N` carries a COMPLETION gate on its own task file (`assets/tasks/phase-N/tasks.dd.json#tasks` — a BARE ORDINAL, the stated amendment to #90's `phase-N-<kebab-title>`: a static template can bake an ordinal before titles exist, and retitling a phase must never move its task-file address), and the LAST review carries the CHECK gate (`{address: plan.dd.json, check: plan-validate}`), which refuses departure until `harness plan validate --complete` is green. Both addresses are written RELATIVE TO THE PLAN FOLDER and `harness flow create --plan-dir <dir>` anchors them at the repo root on the way in — a flow's dd_link is repo-root anchored (fromPath null) and a static template cannot know its plan folder. OMIT --plan-dir and every departure refuses E441. The expander MOVES the check gate to the new last review when it splices phases 2..N: a whole-plan check left on review-1 of a multi-phase flight would refuse a departure that is legitimately mid-plan. See references/flight-plan-ops.md §3c.",
+      'Full 12-node source seed: research → plan → impl-guide → phase-1 → review-1 → post-flight → ship, plus five mandatory/human-declinable harness chores. Product intent and implementation architecture are separate. The canonical flow is the only lifecycle; builder advance checks its departure. Guide/decomposition exit does not require future contract code. Phase gates read bare-ordinal tasks. Whole-plan plan-validate is armed only at post-flight EXIT after closeout evidence, never at review. Expansion preserves that placement. Pass --plan-dir to anchor relative DD addresses. Chore shape is mirrored in the doctrine-parity:039 block; source schema/template overrides support isolated tests before packaging.',
     cursor: 'research',
     nodes: [
       {
@@ -239,13 +240,29 @@ export const BUNDLED_FLOW_TEMPLATES: Record<string, unknown> = {
         label: 'Plan',
         status: 'assumed',
         command: '/builder 1b plan',
-        next: ['phase-1'],
+        next: ['impl-guide'],
         instructions: [
-          'Write ONE planning document in a single atomic pass — `## Business Specification` (WHAT/WHY) on top, `## Implementation Plan` (HOW: phases, task tables, acceptance criteria, gates G1–G7) below.',
+          'Specify WHAT/WHY, observable acceptance criteria and scope in plan.dd.json; architecture, contracts, owners and composition belong to the separate implementation guide.',
           'Run /builder 1b plan "<intent>" (add --simple for a one-phase flow); it front-loads the clarifying questions, then auto-runs /validate-v2.',
-          'Done when plan.dd.json carries both halves and reads Status: READY — DRAFT means a gate FAILed, so resolve the gaps and re-run. The plan is dd-native: plan.dd.json plus its GENERATED plan.dd.md sibling, and no <slug>-plan.md exists.',
+          'Product intent is ready when plan.dd.json has resolved claims and constraints; this is not baseline readiness or proof. Never pre-check future work.',
           'Scaffold and fill through the CLI: harness plan new <slug> --title "<title>" --phase "<title>", then node_modules/.bin/ddocs set / node_modules/.bin/ddocs add (add --mint ac for criteria). Validation runs BEFORE every write and the sibling rebuilds in the same operation — never hand-edit either file.',
           'Create the flow with harness flow create flight-plan --plan-dir "<plan dir>" — without it the baked gate addresses stay plan-relative and every departure refuses E441.',
+        ],
+      },
+      {
+        id: 'impl-guide',
+        type: 'impl-guide',
+        label: 'Implementation guide',
+        status: 'known',
+        zone: 'preflight',
+        command: '/builder 4 guide',
+        next: ['phase-1'],
+        instructions: [
+          'Run /builder 4 guide --plan <plan path>; initialize assets/impl-guide.dd.json with harness builder guide <plan> --init and author through node_modules/.bin/ddocs.',
+          'Declare injected contracts, exact write/read ownership, capability-to-AC proof, dependency waves, explicit composition and a justified solo-pm or coders decision.',
+          'Run harness builder guide <plan> --check and obtain independent decomposition review. Structural validity is not architectural judgement; do not claim unavailable cross-model review ran.',
+          'Exit after guide/decomposition approval, not after the future code baseline. The PM implements, commits and seals the shared contract baseline during implementation before any dispatch.',
+          'Use the canonical assets/backpressure.dd.json recipe: actual RUN/EXTEND/BUILD/ABSENT selection, AC and assertion pressure links, observed proven_by links; certainty Partial|Confident|Proven.',
         ],
       },
       {
@@ -258,9 +275,12 @@ export const BUNDLED_FLOW_TEMPLATES: Record<string, unknown> = {
         next: ['review-1'],
         dd_link: { address: 'assets/tasks/phase-1/tasks.dd.json#tasks' },
         instructions: [
-          "Implement exactly ONE phase using the plan's testing approach and domain placement rules — keep the task table and execution.log.md live as you go.",
+          'Implement exactly ONE phase from the reviewed guide and selected proof approach; the PM owns canonical task state and execution receipts, workers return fenced committed deliveries.',
           'Run /builder 6 implement --plan "<plan path>"; log discoveries, tagging any Deferred/Noteworthy a human must see before ship.',
           "Done when the phase's acceptance criteria are met, the tests pass, and the execution log records what changed plus the proof.",
+          'Before dispatch, seal the committed contracts with harness builder contracts <plan> --seal --review <receipt>, inspect settings and ready, then ingest pristine pre-work AckReceipt ack-<unit_id>-<full-current-source-sha> with packet.nonce through harness builder ack <plan> --receipt <path>. After observing the exact release, the peer refreshes native packet/canary/runtime evidence and returns a new path/digest for ack-<unit_id>-<full-current-source-sha>-release with nonce from retained release.message_id; follow already-granted work without a second grant. See team-lifecycle.md for optional observations and the 5000 ms clock-skew bounds.',
+          'Before importing queued delivery, the PM ingests the fresh -release AckReceipt through harness builder ack <plan> --receipt <path>; retrying the pre-work ack cannot confirm delivery and confirmation sends/grants nothing. Then harness builder compose <plan> --import <deliveries>; the PM wires and commits, then uses --verify <sha>. Import alone is not proof. Solo execution never substitutes for requested independent review.',
+          'Use node_modules/.bin/ddocs to maintain assets/backpressure.dd.json, assertion pressure and AC proven_by links to actual execution-log entries; never mark an unexecuted test as proof.',
           'Mutate task state through the CLI, never an editor: node_modules/.bin/ddocs set "<plan dir>/assets/tasks/phase-N/tasks.dd.json#tasks/tk-XXXX/state" checked (and #done_when/tk-XXXX/dw-XXXX/state for each assertion). The .dd.md sibling is GENERATED — editing it is drift.',
           'Rehearse this node\'s gate before you try to leave: harness plan validate "<plan dir>/plan.dd.json" --address "<plan dir>/assets/tasks/phase-N/tasks.dd.json#tasks". Gate-terminal states are checked, human-skipped, na; unchecked and blocked hold it.',
           'Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.',
@@ -276,14 +296,12 @@ export const BUNDLED_FLOW_TEMPLATES: Record<string, unknown> = {
         command: '/builder 7 review',
         next: ['post-flight'],
         zone: 'flight',
-        dd_link: { address: 'plan.dd.json', check: 'plan-validate' },
         instructions: [
           "Review exactly ONE phase's diff against its acceptance criteria — confirm the tests prove behaviour and nothing risky slipped in.",
           'Run /builder 7 review — it inspects the newest assets/reviews/*.md and surfaces a verdict; REQUEST_CHANGES loops back to fix, clean continues to the next phase or post-flight.',
           'Done when the verdict is recorded (one finding line) and either accepted or routed to a fix-loop.',
-          'This node carries the plan-validate CHECK gate: departure is refused until harness plan validate "<plan dir>/plan.dd.json" --complete is green (zero errors AND zero warnings). Run it BEFORE you try to leave — the refusal quotes every finding, but reading them early is cheaper.',
-          'Close criteria through the CLI: node_modules/.bin/ddocs set "<plan dir>/plan.dd.json#acceptance_criteria/ac-XXXX/state" checked, and re-verify any moved basis with node_modules/.bin/ddocs link verify-basis <address> --sha <sha> --update <doc>.',
-          "If the gate refuses and departing anyway is the HUMAN's decision, they pass --force — it records a defended override. An agent may not force a dd gate on its own judgment.",
+          'Review the exact composed artifact and current plan/guide basis. Record an independent composition ReviewReceipt with harness builder review <plan> --receipt <path>; unavailable review stays unfulfilled.',
+          'Close only criteria proven by observed receipts through node_modules/.bin/ddocs. Whole-plan --complete is not a review-exit gate: closeout work is still future work.',
         ],
       },
       {
@@ -294,10 +312,13 @@ export const BUNDLED_FLOW_TEMPLATES: Record<string, unknown> = {
         command: '/builder 7b post-flight',
         next: ['ship'],
         zone: 'postflight',
+        dd_link: { address: 'plan.dd.json', check: 'plan-validate' },
         instructions: [
           'Close out the flight BEFORE any ship: every phase and review is done; the terminal harness harvest fires at this edge, then the plan folder is archived — this stage runs whether or not the work ever ships.',
-          'Run /builder 7b post-flight --plan "<plan path>" — it verifies completion, writes assets/post-flight.md (close-out note + open-items digest), then moves the WHOLE plan folder to docs/plans/archive/<ord>-<slug>/ (git mv, layout intact). Land every flight-plan receipt before the move — the flow file\'s path changes with the folder.',
-          'Done when the close-out note exists and the plan folder lives under docs/plans/archive/ — ship (optional, later) resolves --plan from the archive path.',
+          'Run /builder 7b post-flight --plan <plan path>: write factual closeout progress and evidence, then harness builder close <plan> --survivor <path> --allocations <path> --evidence <path> preserves and archives. Land seam receipts before relocation.',
+          "Whole-plan completion gates this node's EXIT after closeout evidence: harness plan validate <archived plan> --complete must be green. Never pre-check closeout to leave an earlier review.",
+          "If the gate refuses and departing anyway is the HUMAN's decision, they pass --force — it records a defended override. An agent may not force a dd gate on its own judgment.",
+          'Tidy is separate: harness builder tidy <allocation> --preservation <receipt> re-verifies ownership, runtime release and surviving bytes/refs; external ownership or idle-only evidence cannot authorize removal.',
         ],
       },
       {
@@ -307,6 +328,7 @@ export const BUNDLED_FLOW_TEMPLATES: Record<string, unknown> = {
         status: 'assumed',
         command: '/builder 8 ship',
         next: [],
+        zone: 'postflight',
         instructions: [
           "Get the work out — push the branch, open a PR (using the repo's PR guidance), watch its CI checks, and report problems; the merge itself is optional.",
           'Run /builder 8 ship --plan "<plan path>" — the plan folder was archived at post-flight, so resolve --plan under docs/plans/archive/<ord>-<slug>/; push and PR-open each pause for a separate confirm, and any merge waits for a typed PROCEED.',
@@ -324,7 +346,8 @@ export const BUNDLED_FLOW_TEMPLATES: Record<string, unknown> = {
         chore: { kind: 'command', importance: 'optional' },
         instructions: [
           "Pre-coding seam: survey what the harness can PROVE about the plan's coverage versus what was only eyeballed, then re-plan informed by it.",
-          'Run /eng-harness-flow --hook pre-coding --json — a REAL invocation, never narrated; the plan verb does not auto-read the coverage, so fold the findings in yourself.',
+          'Run /eng-harness-flow --hook pre-coding --json — a REAL invocation. Canonical survey assets/backpressure.dd.json uses local node_modules/.bin/ddocs and feeds both product intent and the implementation guide.',
+          'Select RUN/EXTEND/BUILD/ABSENT explicitly; link every AC and task assertion by pressure, and actual execution evidence by proven_by. Certainty is Partial|Confident|Proven, never inferred success.',
           'On done, receipt first, status second: harness flow comment --path <flow-path> --node backpressure --kind validation --source agent --text "decision:<…> verdict:<…> time:<…> basis_sha256:<full SHA-256 of the plan file>" THEN harness flow status --path <flow-path> --node backpressure --to done. Mandatory unless the human declines — a decline is: harness flow comment --path <flow-path> --node backpressure --kind decision --source user --text "<their verbatim words>" THEN harness flow status --path <flow-path> --node backpressure --to skipped; never a narrated skip.',
           "Basis is the LATEST plan: on each guided entry recompute the plan file's SHA-256 — a mismatch with (or absence of) the recorded basis_sha256 re-opens this seam via a deterministic new chore, id backpressure-<first 12 hex of that SHA-256> (full hash in its receipt; same bytes re-use this node + receipt, changed bytes create exactly one new node; never resurrect this one — D5).",
           'Router missing, or envelope noop/UNAVAILABLE → same two calls with the detection receipt/envelope as the text: harness flow comment --path <flow-path> --node backpressure --kind validation --source agent --text "decision:unavailable reason:<…> time:<…>" THEN harness flow status --path <flow-path> --node backpressure --to done — a completed attempt, not a skip.',

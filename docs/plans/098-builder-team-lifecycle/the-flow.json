@@ -1,0 +1,593 @@
+{
+  "schema_version": 1,
+  "kind": "flight-plan",
+  "slug": "builder-team-lifecycle",
+  "nav": {
+    "now": "plan",
+    "next": null,
+    "intent": "Promote the accepted 12-step architecture-enabled team lifecycle into Builder and first-class harness builder commands; separate plan and implementation guide, dogfood manually with detailed plan-folder evidence, run both complete skill lifecycles, use isolated OMP github-copilot/gpt-6-astra coders and github-copilot/claude-opus-5 high reviewers.",
+    "bag": {
+      "mode": "Full",
+      "status": "active"
+    }
+  },
+  "created_at": "2026-09-04T23:40:53.958Z",
+  "provenance": {
+    "record_kind": "flow",
+    "harness_version": "0.14.0",
+    "branch": "s098/builder-team-lifecycle",
+    "repo": "https://github.com/AI-Substrate/harness-engineering",
+    "created_at": "2026-09-04T23:40:53.958Z",
+    "agent": "the-flow",
+    "plan_id": "098-builder-team-lifecycle"
+  },
+  "events": [
+    {
+      "id": "CRT-001",
+      "kind": "created",
+      "origin": "engine",
+      "fired_at": "2026-09-04T23:40:53.989Z",
+      "details": {
+        "kind": "flight-plan",
+        "slug": "builder-team-lifecycle"
+      }
+    },
+    {
+      "id": "UPD-001",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-09-04T23:44:44.502Z",
+      "details": {
+        "node": "research",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-001",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-09-04T23:44:45.032Z",
+      "details": {
+        "node": "research",
+        "from": "in_progress",
+        "to": "done"
+      }
+    },
+    {
+      "id": "CUR-001",
+      "kind": "cursor-moved",
+      "origin": "engine",
+      "fired_at": "2026-09-04T23:44:45.721Z",
+      "details": {
+        "from": "research",
+        "to": "plan"
+      }
+    },
+    {
+      "id": "UPD-002",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-09-05T00:54:06.056Z",
+      "details": {
+        "node": "backpressure",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-002",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-09-05T00:54:06.454Z",
+      "details": {
+        "node": "backpressure",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "optional"
+        }
+      }
+    },
+    {
+      "id": "UPD-003",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-09-05T03:00:22.519Z",
+      "details": {
+        "node": "review-1",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "UPD-004",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-09-05T03:00:22.905Z",
+      "details": {
+        "node": "review-1",
+        "fields": [
+          "dd_link"
+        ]
+      }
+    },
+    {
+      "id": "UPD-005",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-09-05T03:00:22.905Z",
+      "details": {
+        "node": "post-flight",
+        "fields": [
+          "dd_link"
+        ]
+      }
+    },
+    {
+      "id": "NOD-001",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-09-05T03:50:09.824Z",
+      "details": {
+        "node": "backpressure-3ff1a41e89db",
+        "type": "backpressure",
+        "chore": {
+          "kind": "command",
+          "importance": "optional"
+        }
+      }
+    },
+    {
+      "id": "UPD-006",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-09-05T03:50:10.165Z",
+      "details": {
+        "node": "backpressure-3ff1a41e89db",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-003",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-09-05T03:50:10.485Z",
+      "details": {
+        "node": "backpressure-3ff1a41e89db",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "optional"
+        }
+      }
+    },
+    {
+      "id": "UPD-007",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-09-05T03:52:14.470Z",
+      "details": {
+        "node": "boot-1",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-004",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-09-05T03:52:14.804Z",
+      "details": {
+        "node": "boot-1",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "recommended"
+        }
+      }
+    },
+    {
+      "id": "UPD-008",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-09-05T04:32:26.195Z",
+      "details": {
+        "node": "review-1",
+        "fields": [
+          "instructions"
+        ]
+      }
+    },
+    {
+      "id": "UPD-009",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-09-05T04:32:26.195Z",
+      "details": {
+        "node": "post-flight",
+        "fields": [
+          "instructions"
+        ]
+      }
+    },
+    {
+      "id": "NOD-002",
+      "kind": "node-created",
+      "origin": "engine",
+      "fired_at": "2026-09-05T04:37:13.280Z",
+      "details": {
+        "node": "backpressure-fd1790c364a2",
+        "type": "backpressure",
+        "chore": {
+          "kind": "command",
+          "importance": "optional"
+        }
+      }
+    },
+    {
+      "id": "UPD-010",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-09-05T04:37:13.671Z",
+      "details": {
+        "node": "backpressure-fd1790c364a2",
+        "fields": [
+          "comments"
+        ]
+      }
+    },
+    {
+      "id": "STA-005",
+      "kind": "status-changed",
+      "origin": "engine",
+      "fired_at": "2026-09-05T04:37:14.052Z",
+      "details": {
+        "node": "backpressure-fd1790c364a2",
+        "from": "known",
+        "to": "done",
+        "chore": {
+          "kind": "command",
+          "importance": "optional"
+        }
+      }
+    }
+  ],
+  "nodes": [
+    {
+      "id": "research",
+      "type": "research",
+      "label": "Research",
+      "status": "done",
+      "command": "/builder 1a explore",
+      "next": [
+        "plan"
+      ],
+      "instructions": [
+        "Explore how the relevant code works before you plan — start cheap, climb only when the evidence demands it; never jump straight to a plan.",
+        "Run /builder 1a explore \"<intent>\" — it produces research-dossier.md, a decision packet (not a transcript) with evidence links.",
+        "Done when the dossier names the core decision the plan must resolve and the findings that bound it."
+      ],
+      "comments": [
+        {
+          "at": "2026-09-04T23:44:44.502Z",
+          "text": "Research complete: assets/research-dossier.md records current plan/flow/ports reuse, source-skill ownership, architecture and preservation evidence, runtime model pins, and the allocation ownership decision requiring resolution before contract freeze.",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "modified_at": "2026-09-04T23:44:45.032Z",
+      "ran_at": "2026-09-04T23:44:45.032Z"
+    },
+    {
+      "id": "plan",
+      "type": "plan",
+      "label": "Plan",
+      "status": "assumed",
+      "command": "/builder 1b plan",
+      "next": [
+        "phase-1"
+      ],
+      "instructions": [
+        "Write ONE planning document in a single atomic pass — `## Business Specification` (WHAT/WHY) on top, `## Implementation Plan` (HOW: phases, task tables, acceptance criteria, gates G1–G7) below.",
+        "Run /builder 1b plan \"<intent>\" (add --simple for a one-phase flow); it front-loads the clarifying questions, then auto-runs /validate-v2.",
+        "Done when plan.dd.json carries both halves and reads Status: READY — DRAFT means a gate FAILed, so resolve the gaps and re-run. The plan is dd-native: plan.dd.json plus its GENERATED plan.dd.md sibling, and no <slug>-plan.md exists.",
+        "Scaffold and fill through the CLI: harness plan new <slug> --title \"<title>\" --phase \"<title>\", then node_modules/.bin/ddocs set / node_modules/.bin/ddocs add (add --mint ac for criteria). Validation runs BEFORE every write and the sibling rebuilds in the same operation — never hand-edit either file.",
+        "Create the flow with harness flow create flight-plan --plan-dir \"<plan dir>\" — without it the baked gate addresses stay plan-relative and every departure refuses E441."
+      ]
+    },
+    {
+      "id": "phase-1",
+      "type": "phase",
+      "phase": 1,
+      "label": "P1: Implementation",
+      "status": "known",
+      "command": "/builder 6 implement",
+      "next": [
+        "review-1"
+      ],
+      "dd_link": {
+        "address": "docs/plans/098-builder-team-lifecycle/assets/tasks/phase-1/tasks.dd.json#tasks"
+      },
+      "instructions": [
+        "Implement exactly ONE phase using the plan's testing approach and domain placement rules — keep the task table and execution.log.md live as you go.",
+        "Run /builder 6 implement --plan \"<plan path>\"; log discoveries, tagging any Deferred/Noteworthy a human must see before ship.",
+        "Done when the phase's acceptance criteria are met, the tests pass, and the execution log records what changed plus the proof.",
+        "Mutate task state through the CLI, never an editor: node_modules/.bin/ddocs set \"<plan dir>/assets/tasks/phase-N/tasks.dd.json#tasks/tk-XXXX/state\" checked (and #done_when/tk-XXXX/dw-XXXX/state for each assertion). The .dd.md sibling is GENERATED — editing it is drift.",
+        "Rehearse this node's gate before you try to leave: harness plan validate \"<plan dir>/plan.dd.json\" --address \"<plan dir>/assets/tasks/phase-N/tasks.dd.json#tasks\". Gate-terminal states are checked, human-skipped, na; unchecked and blocked hold it.",
+        "Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.",
+        "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
+        "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
+      ]
+    },
+    {
+      "id": "review-1",
+      "type": "review",
+      "label": "Review: P1",
+      "status": "assumed",
+      "command": "/builder 7 review",
+      "next": [
+        "post-flight"
+      ],
+      "zone": "flight",
+      "dd_link": {
+        "address": "docs/plans/098-builder-team-lifecycle/plan.dd.json",
+        "check": "plan-validate",
+        "gate": false
+      },
+      "instructions": [
+        "Review exactly ONE phase's diff against its acceptance criteria — confirm the tests prove behaviour and nothing risky slipped in.",
+        "Run /builder 7 review — it inspects the newest assets/reviews/*.md and surfaces a verdict; REQUEST_CHANGES loops back to fix, clean continues to the next phase or post-flight.",
+        "Done when the verdict is recorded (one finding line) and either accepted or routed to a fix-loop."
+      ],
+      "comments": [
+        {
+          "at": "2026-09-05T03:00:22.519Z",
+          "text": "Whole-plan completion includes post-flight/archive obligations. Source check in flow-dd-gate.ts confirms the current review exit runs complete:true and would require those future obligations before reaching them. Move that same complete-plan gate atomically to post-flight exit, preserving the phase task gate and required independent review. This is gate relocation, not a force override or a completion claim.",
+          "source": "agent",
+          "kind": "decision"
+        }
+      ],
+      "modified_at": "2026-09-05T04:32:26.195Z"
+    },
+    {
+      "id": "post-flight",
+      "type": "post-flight",
+      "label": "Post-flight",
+      "status": "assumed",
+      "command": "/builder 7b post-flight",
+      "next": [
+        "ship"
+      ],
+      "zone": "postflight",
+      "instructions": [
+        "Close out the flight BEFORE any ship: every phase and review is done; the terminal harness harvest fires at this edge, then the plan folder is archived — this stage runs whether or not the work ever ships.",
+        "Run /builder 7b post-flight --plan \"<plan path>\" — it verifies completion, writes assets/post-flight.md (close-out note + open-items digest), then moves the WHOLE plan folder to docs/plans/archive/<ord>-<slug>/ (git mv, layout intact). Land every flight-plan receipt before the move — the flow file's path changes with the folder.",
+        "Done when the close-out note exists and the plan folder lives under docs/plans/archive/ — ship (optional, later) resolves --plan from the archive path.",
+        "This node carries the plan-validate CHECK gate: departure is refused until harness plan validate \"<plan dir>/plan.dd.json\" --complete is green (zero errors AND zero warnings). Run it BEFORE you try to leave — the refusal quotes every finding, but reading them early is cheaper.",
+        "Close criteria through the CLI: node_modules/.bin/ddocs set \"<plan dir>/plan.dd.json#acceptance_criteria/ac-XXXX/state\" checked, and re-verify any moved basis with node_modules/.bin/ddocs link verify-basis <address> --sha <sha> --update <doc>.",
+        "If the gate refuses and departing anyway is the HUMAN's decision, they pass --force — it records a defended override. An agent may not force a dd gate on its own judgment.",
+        "A human-forced departure is a recorded degraded override, not completion proof. An agent may not force a dd gate on its own judgment; human-skipped or na on the individual items is the legitimate way a gate passes without the work."
+      ],
+      "dd_link": {
+        "address": "docs/plans/098-builder-team-lifecycle/plan.dd.json",
+        "check": "plan-validate",
+        "gate": true
+      },
+      "modified_at": "2026-09-05T04:32:26.195Z"
+    },
+    {
+      "id": "ship",
+      "type": "ship",
+      "label": "Ship",
+      "status": "assumed",
+      "command": "/builder 8 ship",
+      "next": [],
+      "instructions": [
+        "Get the work out — push the branch, open a PR (using the repo's PR guidance), watch its CI checks, and report problems; the merge itself is optional.",
+        "Run /builder 8 ship --plan \"<plan path>\" — the plan folder was archived at post-flight, so resolve --plan under docs/plans/archive/<ord>-<slug>/; push and PR-open each pause for a separate confirm, and any merge waits for a typed PROCEED.",
+        "Done when the PR is open and its checks are green (or the failures are reported with a fix-loop offer); a diverged base hands off to 8c reconcile."
+      ]
+    },
+    {
+      "id": "backpressure",
+      "type": "backpressure",
+      "label": "Backpressure survey",
+      "status": "done",
+      "branch_of": "plan",
+      "next": [
+        "plan"
+      ],
+      "command": "run /eng-harness-flow --hook pre-coding --json",
+      "chore": {
+        "kind": "command",
+        "importance": "optional"
+      },
+      "instructions": [
+        "Pre-coding seam: survey what the harness can PROVE about the plan's coverage versus what was only eyeballed, then re-plan informed by it.",
+        "Run /eng-harness-flow --hook pre-coding --json — a REAL invocation, never narrated; the plan verb does not auto-read the coverage, so fold the findings in yourself.",
+        "On done, receipt first, status second: harness flow comment --path <flow-path> --node backpressure --kind validation --source agent --text \"decision:<…> verdict:<…> time:<…> basis_sha256:<full SHA-256 of the plan file>\" THEN harness flow status --path <flow-path> --node backpressure --to done. Mandatory unless the human declines — a decline is: harness flow comment --path <flow-path> --node backpressure --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node backpressure --to skipped; never a narrated skip.",
+        "Basis is the LATEST plan: on each guided entry recompute the plan file's SHA-256 — a mismatch with (or absence of) the recorded basis_sha256 re-opens this seam via a deterministic new chore, id backpressure-<first 12 hex of that SHA-256> (full hash in its receipt; same bytes re-use this node + receipt, changed bytes create exactly one new node; never resurrect this one — D5).",
+        "Router missing, or envelope noop/UNAVAILABLE → same two calls with the detection receipt/envelope as the text: harness flow comment --path <flow-path> --node backpressure --kind validation --source agent --text \"decision:unavailable reason:<…> time:<…>\" THEN harness flow status --path <flow-path> --node backpressure --to done — a completed attempt, not a skip."
+      ],
+      "comments": [
+        {
+          "at": "2026-09-05T00:54:06.056Z",
+          "text": "Ran /eng-harness-flow --hook pre-coding --json as the source-backed DD survey procedure, aligned with the fixed PR193 recipe (6186b2d0). Inventoried the single package and CLI/extension/test/schema/skill roots; selected 10 existing paved instruments and 18 criterion rows: 12 EXTEND, 5 BUILD, 1 ABSENT/human-judgement. All rows remain unchecked and certainty Partial. Canonical assets/backpressure.dd.json is linked from plan meta, every AC and phase assertions via ddocs; basis_sha is the post-link SHA-256 of plan bytes. Verdict: extend the existing suites and build the named smoke/example checks within approved scope; independent judgement and actual lifecycle evidence remain separate. Allocator ownership still awaits human ratification; the advisory survey does not change that decision.",
+          "source": "agent",
+          "kind": "validation",
+          "refs": [
+            "docs/plans/098-builder-team-lifecycle/assets/backpressure.dd.json",
+            "docs/plans/098-builder-team-lifecycle/assets/impl-guide.dd.json"
+          ]
+        }
+      ],
+      "modified_at": "2026-09-05T00:54:06.454Z",
+      "ran_at": "2026-09-05T00:54:06.454Z"
+    },
+    {
+      "id": "boot-1",
+      "type": "harness-boot",
+      "label": "Boot check",
+      "status": "done",
+      "branch_of": "phase-1",
+      "next": [
+        "phase-1"
+      ],
+      "command": "run /eng-harness-flow --hook pre-flight --json",
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      },
+      "instructions": [
+        "Pre-flight seam: confirm the harness is healthy before you start coding this phase.",
+        "Run /eng-harness-flow --hook pre-flight --json — a REAL invocation; narrate its envelope verbatim, never fabricate one. A manual `harness boot` (or any prior evidence) never satisfies this seam.",
+        "Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.",
+        "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
+        "On done, receipt first, status second: harness flow comment --path <flow-path> --node boot-1 --kind validation --source agent --text \"verdict:<…> time:<…>\" (router missing / envelope noop/UNAVAILABLE → text \"decision:unavailable reason:<…> time:<…>\" — a completed attempt, not a skip) THEN harness flow status --path <flow-path> --node boot-1 --to done. Mandatory unless the human declines — a decline is: harness flow comment --path <flow-path> --node boot-1 --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node boot-1 --to skipped."
+      ],
+      "comments": [
+        {
+          "at": "2026-09-05T03:52:14.470Z",
+          "text": "Executed /eng-harness-flow --hook pre-flight --plan-dir docs/plans/098-builder-team-lifecycle --phase ph-d5d7 --json through the installed router and boot procedure. Self-briefing and live help returned ok; just test initially found the existing ErrorCodes exhaustive expectation, which was updated for the confirmed E470-E477 allocation. Repaired boot passed 342 files / 5302 tests with declared fast scope and coverage. Doctor returned degraded: missing globally resolved biome and an existing missing extension briefing, with 13 extensions loaded and zero failed; local biome and CLI execution work. Verdict UNHEALTHY on those declared health layers, not a fabricated healthy verdict or an adoption request. Advisory attempt completed. Captures: scratch/plan-098/implementation-preflight-boot-repaired.result.json and implementation-preflight-interact.json / implementation-preflight-observe.json. time:2026-09-05T03:52:14.154520+00:00",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "modified_at": "2026-09-05T03:52:14.804Z",
+      "ran_at": "2026-09-05T03:52:14.804Z"
+    },
+    {
+      "id": "observe-1",
+      "type": "observe",
+      "label": "Observe: P1",
+      "status": "known",
+      "branch_of": "phase-1",
+      "next": [
+        "phase-1"
+      ],
+      "command": "harness observe \"<what>\" --kind <kind>",
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      },
+      "instructions": [
+        "Mid-phase capture: record observations (decisions, gotchas, surprises) AS you code, so they don't evaporate as remembered prose.",
+        "Run harness observe \"<what>\" --kind <kind> — a real capture, never a narrated one, repeated through the phase; it stays due the whole time the cursor sits on this phase.",
+        "Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.",
+        "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
+        "Terminalize at phase end BEFORE the retro drain, receipt first, status second: harness flow comment --path <flow-path> --node observe-1 --kind validation --source agent --text \"captures:<count> pointer:<real capture record> time:<…>\" THEN harness flow status --path <flow-path> --node observe-1 --to done — done only after at least one real capture. Human decline instead: harness flow comment --path <flow-path> --node observe-1 --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node observe-1 --to skipped.",
+        "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
+      ]
+    },
+    {
+      "id": "retro-1",
+      "type": "harness-retro",
+      "label": "Retro: P1 (drain)",
+      "status": "known",
+      "branch_of": "phase-1",
+      "next": [
+        "phase-1"
+      ],
+      "command": "run /eng-harness-flow --hook post-coding --json",
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      },
+      "instructions": [
+        "Post-coding seam: drain this phase's observe buffer into durable retro notes before moving on.",
+        "Run /eng-harness-flow --hook post-coding --json — a REAL invocation; narrate its envelope verbatim.",
+        "Runs after this phase's observe chore is terminalized (real capture receipt, or human decline). On done, receipt first, status second: harness flow comment --path <flow-path> --node retro-1 --kind validation --source agent --text \"verdict:<…> time:<…>\" (router missing / envelope noop/UNAVAILABLE → text \"decision:unavailable reason:<…> time:<…>\" — a completed attempt, not a skip) THEN harness flow status --path <flow-path> --node retro-1 --to done. Mandatory unless the human declines — a decline is: harness flow comment --path <flow-path> --node retro-1 --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node retro-1 --to skipped."
+      ]
+    },
+    {
+      "id": "retro-harvest",
+      "type": "harness-retro",
+      "label": "Retro: post-flight (harvest)",
+      "status": "known",
+      "branch_of": "post-flight",
+      "next": [
+        "post-flight"
+      ],
+      "command": "run /eng-harness-flow --hook post-flight --json",
+      "chore": {
+        "kind": "command",
+        "importance": "recommended"
+      },
+      "instructions": [
+        "Post-flight seam: the terminal long-horizon harvest — fold this flight's learnings into durable memory at the pre-ship close-out, BEFORE the plan folder archives (so it runs even on work that never ships).",
+        "Run /eng-harness-flow --hook post-flight --json — a REAL invocation; narrate its envelope verbatim.",
+        "On done, receipt first, status second: harness flow comment --path <flow-path> --node retro-harvest --kind validation --source agent --text \"verdict:<…> time:<…>\" (router missing / envelope noop/UNAVAILABLE → text \"decision:unavailable reason:<…> time:<…>\" — a completed attempt, not a skip) THEN harness flow status --path <flow-path> --node retro-harvest --to done. Mandatory unless the human declines — a decline is: harness flow comment --path <flow-path> --node retro-harvest --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node retro-harvest --to skipped."
+      ]
+    },
+    {
+      "id": "backpressure-3ff1a41e89db",
+      "type": "backpressure",
+      "label": "Backpressure: revised team and live acceptance scope",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-09-05T03:50:09.824Z",
+      "modified_at": "2026-09-05T03:50:10.485Z",
+      "branch_of": "plan",
+      "instructions": [
+        "Pre-coding seam: survey what the harness can PROVE about the plan's coverage versus what was only eyeballed, then re-plan informed by it.",
+        "Run /eng-harness-flow --hook pre-coding --json — a REAL invocation, never narrated; the plan verb does not auto-read the coverage, so fold the findings in yourself.",
+        "On done, receipt first, status second: harness flow comment --path <flow-path> --node backpressure-3ff1a41e89db --kind validation --source agent --text \"decision:<…> verdict:<…> time:<…> basis_sha256:<full SHA-256 of the plan file>\" THEN harness flow status --path <flow-path> --node backpressure-3ff1a41e89db --to done. Mandatory unless the human declines — a decline is: harness flow comment --path <flow-path> --node backpressure-3ff1a41e89db --kind decision --source user --text \"<their verbatim words>\" THEN harness flow status --path <flow-path> --node backpressure-3ff1a41e89db --to skipped; never a narrated skip.",
+        "Basis is the LATEST plan: on each guided entry recompute the plan file's SHA-256 — a mismatch with (or absence of) the recorded basis_sha256 re-opens this seam via a deterministic new chore, id backpressure-<first 12 hex of that SHA-256> (full hash in its receipt; same bytes re-use this node + receipt, changed bytes create exactly one new node; never resurrect this one — D5).",
+        "Router missing, or envelope noop/UNAVAILABLE → same two calls with the detection receipt/envelope as the text: harness flow comment --path <flow-path> --node backpressure-3ff1a41e89db --kind validation --source agent --text \"decision:unavailable reason:<…> time:<…>\" THEN harness flow status --path <flow-path> --node backpressure-3ff1a41e89db --to done — a completed attempt, not a skip."
+      ],
+      "command": "run /eng-harness-flow --hook pre-coding --json",
+      "chore": {
+        "kind": "command",
+        "importance": "optional"
+      },
+      "comments": [
+        {
+          "at": "2026-09-05T03:50:10.165Z",
+          "text": "Executed /eng-harness-flow --hook pre-coding --json with the explicit DD plan and the source-backed DD recipe already adopted from PR193 (6186b2d0); no legacy Markdown-only coverage file. Reused the verified single-package sensor inventory and added the actual shared-contract test surface. Surveyed all 19 current criteria: 13 EXTEND, 5 BUILD, 1 ABSENT/independent judgement; certainty Partial, all acceptance rows remain unchecked. Recorded chosen commands, evaluator scope/unknowns and actual local ddocs validate/links/build --check proof. The initial extra allocator ratification requirement was withdrawn, not silently skipped. basis_sha256:3ff1a41e89db62df8617e330efbc0dfb8d135e532e1ffdc25cb6e4d1a71cfb02 time:2026-09-05T03:50:09.832069+00:00",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-09-05T03:50:10.485Z"
+    },
+    {
+      "id": "backpressure-fd1790c364a2",
+      "type": "backpressure",
+      "label": "Backpressure: complete acceptance coverage",
+      "status": "done",
+      "next": [
+        "plan"
+      ],
+      "created_at": "2026-09-05T04:37:13.279Z",
+      "modified_at": "2026-09-05T04:37:14.052Z",
+      "command": "run /eng-harness-flow --hook pre-coding --json",
+      "chore": {
+        "kind": "command",
+        "importance": "optional"
+      },
+      "branch_of": "plan",
+      "comments": [
+        {
+          "at": "2026-09-05T04:37:13.671Z",
+          "text": "decision:retain the verified source-backed DD proof strategy; verdict:Partial. Re-assessed the changed coverage/baseline seam using the canonical assets/backpressure.dd.json and the existing instrument inventory, not a new Markdown truth or a claimed separate skill process. All 19 ACs now have coverage-map entries; all remain unchecked. Pressure identities and 13 EXTEND/5 BUILD/1 ABSENT selections remain unchanged. The revised shared selector/capability source passed 42 focused tests and source typecheck; local ddocs validate, links and build --check each exited 0 after the coverage/link writes. Independent architectural approval remains outstanding. basis_sha256:fd1790c364a221a75260cf8480c1b4a69175a91ee84490b53944e00678d4bfe2 time:2026-09-05T04:37:13.324700+00:00",
+          "source": "agent",
+          "kind": "validation"
+        }
+      ],
+      "ran_at": "2026-09-05T04:37:14.052Z"
+    }
+  ],
+  "plan_dir": "docs/plans/098-builder-team-lifecycle"
+}

@@ -82,8 +82,8 @@ describe('bundled flight-plan flow type (plan 081 phase 1)', () => {
     expect(code).toBe(0);
     const data = env.data as { node_count: number; kind: string };
     expect(data.kind).toBe('flight-plan');
-    // The full 11-node seed travels with the bundle, not just the overlay.
-    expect(data.node_count).toBe(11);
+    // The complete seed includes the separate implementation-guide stage.
+    expect(data.node_count).toBe(12);
   });
 
   it('the created flow reads back through a flow read verb (rail)', async () => {

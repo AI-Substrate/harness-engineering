@@ -7,10 +7,7 @@ import { ErrorCodes } from '../output/error-codes.js';
 import { exitWithEnvelope } from '../output/exit.js';
 import { type CliIo, createOutputPort, type OutputPort } from '../output/output-port.js';
 import type { VerbRegistry } from '../services/extensions/registry.js';
-import {
-  CORE_INSTRUCTION_PAGES,
-  injectAgentsBlock,
-} from '../services/instructions/commit-guidance.js';
+import { injectAgentsBlock } from '../services/instructions/commit-guidance.js';
 import {
   buildCoreInstructions,
   loadVerbInstructions,
@@ -41,10 +38,11 @@ export function registerInstructionsAct(
 ): void {
   program
     .command('instructions')
-    .description(
-      "Print the harness's agent briefing, or one verb's instructions.md (the calling agent's role)",
+    .description("Print the harness's agent briefing, or a core or extension verb briefing")
+    .argument(
+      '[verb]',
+      'verb whose core or extension briefing to print; omit for the core briefing',
     )
-    .argument('[verb]', 'verb whose extension briefing to print; omit for the core briefing')
     .option(
       '--inject',
       'For `commit`: write or refresh the managed harness:commit-guidance block in AGENTS.md (idempotent; only ever touches the region between its own markers)',
@@ -73,11 +71,11 @@ export function registerInstructionsAct(
  */
 function emitInject(verb: string, io: CliIo, deps: InstructionsActDeps): void {
   const command = `instructions ${verb} --inject`;
-  if (CORE_INSTRUCTION_PAGES[verb] === undefined) {
+  if (verb !== 'commit') {
     exitWithEnvelope(
       formatUnconfigured(
         command,
-        `\`--inject\` is only defined for core guidance pages; \`${verb}\` has none. Run \`harness instructions commit --inject\` (the pages that support it: ${Object.keys(CORE_INSTRUCTION_PAGES).join(', ')}).`,
+        `\`--inject\` is only defined for commit guidance, not \`${verb}\`. Read \`harness instructions ${verb}\` without --inject; use \`harness instructions commit --inject\` only for the commit-guidance block.`,
         deps.clock,
       ),
       createOutputPort(io.mode === 'json' ? 'json' : 'human', io.writers),

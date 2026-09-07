@@ -27,7 +27,7 @@ The flight plan (`the-flow.json` → rendered `the-flow.md`) is mutated **only**
 ## §3 — Verb cheat-sheet
 
 ```bash
-# create — Route A (plan 040 / D1): instantiate the FULL 11-node seed (spine + 5 chores + per-node instructions[]) in ONE call (--template). ALWAYS --agent the-flow.
+# create — Route A (plan 040 / D1): instantiate the FULL 12-node seed (spine + 5 chores + per-node instructions[]) in ONE call (--template). ALWAYS --agent the-flow.
 harness flow create flight-plan --slug <slug> --path <flow.json> \
   --schema "<skill base>/references/flight-plan.schema.json" \
   --template "<skill base>/references/flight-plan.template.json" --agent the-flow [--title "<t>"] [--plan-id <id>]
@@ -53,7 +53,7 @@ harness flow mv-node     --path <f> --id <id> (--after <n>|--before <n>|--branch
 
 The shipped, worked canonical harness-chore `apply` batch that used to live here is **deleted** (plan 040 / D1). The chore *shape* is **no longer carried in this skill at all** — there is no skill-side copy to re-synthesize or drift. It is owned by the **single shared shape doctrine**, the `doctrine-parity:039` block in [`harness-seams.md`](./harness-seams.md), and **materialised two ways** (workshop 001 WS-2, C1):
 
-- **the-flow present** → the shape is **baked into [`flight-plan.template.json`](./flight-plan.template.json)** at `create` (the full 11-node seed — spine + 5 chores + per-node `instructions[]`, **no create-time apply, no gate**); the plan-complete additive expander reads that *same* doctrine to splice phases 2..N's `review-N` + trios.
+- **the-flow present** → the shape is **baked into [`flight-plan.template.json`](./flight-plan.template.json)** at `create` (the full 12-node seed — spine + 5 chores + per-node `instructions[]`, **no create-time apply, no gate**); the plan-complete additive expander reads that *same* doctrine to splice phases 2..N's `review-N` + trios.
 - **eng-harness-flow standalone** → the same shape is instantiated into its own `.harness/loop.flow.json` (it never reads any the-flow file).
 
 General `apply` mechanics survive here (they describe the verb, not the chore shape):
@@ -61,41 +61,36 @@ General `apply` mechanics survive here (they describe the verb, not the chore sh
 - **Op kinds**: `add | upsert | set | insert | mv | remove`. `upsert` dedups on `id` (a byte-stable no-op when the node is identical) — which is what makes the plan-complete expander idempotent on re-run.
 - **D5 terminal guard**: no op flips a `done`/`skipped` node back to `todo`; `remove`/`mv` of a terminal needs `--force`; a `remove`-then-re-`add`/`upsert` of the same terminal id in one batch cannot launder it (the guard is batch-wide).
 
-### §3c — dd gates: what `create` bakes, and the ONE thing the expander must move (plan 071, ac-7110)
+### §3c — DD gates: phase completion and post-flight EXIT
 
-The flight-plan seed carries **both** gate kinds. You do not add them; you preserve them.
+The source seed carries legal existing gate shapes, never an invented core check name:
 
-| node | `dd_link` | what it refuses |
-|------|-----------|-----------------|
-| `phase-N` | `{"address": "assets/tasks/phase-N/tasks.dd.json#tasks"}` | departing a phase whose task rows are not all gate-terminal |
-| the **last** `review-N` | `{"address": "plan.dd.json", "check": "plan-validate"}` | departing toward ship while `harness plan validate --complete` is not green |
+| node | `dd_link` | departure contract |
+|---|---|---|
+| `phase-N` | `{"address":"assets/tasks/phase-N/tasks.dd.json#tasks"}` | this phase's assertions are gate-terminal |
+| `post-flight` | `{"address":"plan.dd.json","check":"plan-validate"}` | whole-plan `--complete` after closeout evidence |
 
-- **Addresses are written relative to the PLAN FOLDER, and `create` anchors them.** Pass **`harness flow create … --plan-dir "<plan dir>"`**: it records `plan_dir` on the root and prefixes every relative `dd_link.address` with it, because a flow's `dd_link` is repo-root anchored and a static template cannot know which plan folder it lands in. **Omit the flag and the gates will not resolve** — the addresses stay plan-relative and every departure refuses `E441 target-invalid`. Never hand-assemble the absolute address: a gate address built by paraphrase is a gate that fails the day the paraphrase drifts. The value must be **repo-relative**: an absolute path or one that escapes the repo with `..` is **refused** (`E108`, nothing written), because a machine-specific or out-of-repo gate address is one only its author can ever check.
-- **Bare ordinal, always.** `assets/tasks/phase-2/…`, never `phase-2-<kebab-title>` — a static template can bake an ordinal before titles exist, and retitling a phase must never move its task-file address. (Stated amendment to #90's convention.)
-- **The expander DISARMS the old check gate and arms a new one.** When you splice phases 2..N, the whole-plan check must end up on the NEW last review and must stop refusing on the old one — a `plan-validate` gate sitting on `review-1` of a multi-phase flight would refuse a departure that is legitimately mid-plan (phase 2 has not been written yet, so `--complete` cannot be green). The gate move and the splice are **one batch**, because they depend on each other: the new gate needs the node the splice creates, and the spliced nodes need the edges that make them reachable (an `upsert` that leaves a node with no edges in or out is refused `E309 orphan`). This is the **whole** batch for expanding to phase 2 — substitute `<plan dir>` and it runs as printed:
+The `impl-guide` stage exits after guide/decomposition approval; its future code baseline is not a gate. `harness builder advance <plan> --now <node>` checks team preconditions and delegates canonical movement. Never add a second lifecycle or use raw nav as a bypass.
 
-  ```json
-  [{"op":"set","id":"review-1","dd_link":{"address":"<plan dir>/plan.dd.json","check":"plan-validate","gate":false}},
-   {"op":"upsert","id":"phase-2","type":"phase","label":"Phase 2","zone":"flight","next":["review-2"],"dd_link":{"address":"<plan dir>/assets/tasks/phase-2/tasks.dd.json#tasks"}},
-   {"op":"upsert","id":"review-2","type":"review","label":"Review 2","zone":"flight","next":["post-flight"],"dd_link":{"address":"<plan dir>/plan.dd.json","check":"plan-validate"}},
-   {"op":"set","id":"review-1","next":["phase-2"]}]
-  ```
+Pass `--plan-dir <repo-relative directory>` on create to anchor DD addresses; missing/escaping targets refuse instead of passing empty. Keep phase paths bare ordinal. New review nodes carry no whole-plan check. In an explicitly adopted active old flow, disarm every old review's plan-validate link with `gate:false` and arm post-flight in the SAME batch as expansion; do not rewrite completed historical flows.
 
-  > ⚠️ **`gate: false` DISARMS the old gate; it does NOT remove it.** `review-1` keeps its `dd_link`, and the renderer may still badge that node — **the badge does not mean a gate is live.** Removing a `dd_link` is currently **impossible through any surface** (`{"dd_link": null}` is refused `E108`, and there is no `--dd-link` clear flag): that is **issue #137**, and until it lands, disarming is the whole of the move.
-  >
-  > **Nothing you can run will tell you `review-1` is disarmed.** A disarmed gate permits departure *exactly* as a satisfied one does, and exactly as a node that was never gated does — three states, one identical observation. There is no error to read and no badge to trust; **the stored `gate: false` field is the only witness.** If you need to know, read the field.
+```json
+[{"op":"set","id":"review-1","dd_link":{"address":"<plan dir>/plan.dd.json","check":"plan-validate","gate":false}},
+ {"op":"upsert","id":"phase-2","type":"phase","label":"Phase 2","status":"known","zone":"flight","next":["review-2"],"dd_link":{"address":"<plan dir>/assets/tasks/phase-2/tasks.dd.json#tasks"}},
+ {"op":"upsert","id":"review-2","type":"review","label":"Review 2","status":"known","zone":"flight","next":["post-flight"]},
+ {"op":"set","id":"review-1","next":["phase-2"]},
+ {"op":"set","id":"post-flight","dd_link":{"address":"<plan dir>/plan.dd.json","check":"plan-validate"}}]
+```
 
-  **The op shapes above are the whole point of the example** — every field sits at the **top level** of the op. An `upsert` that nests its fields under `"node"` is refused (`parseOp` reads `id` and the spec from the top level), and there is no `path`/`value` op shape at all. These match the gate table in **§3c two paragraphs above**, which is authoritative; if this example and that table ever disagree, the table is right.
+For a fresh flow omit the old-review disarm op (there is nothing to disarm). Copy each source node's authored instructions and each new phase's boot/observe/drain trio into the same structural batch; the JSON above isolates the edge/gate component, not the full chore expansion. Preserve terminal statuses and existing historical links; `gate:false` disarms without removing a link. Fields live at op top-level, never a nested node object. Expansion never moves the whole-plan gate back to the last review.
 
-  Each spliced `phase-N` carries its own completion gate at `<plan dir>/assets/tasks/phase-N/tasks.dd.json#tasks` — anchored, because ops run after `create` and are not re-anchored. For phases 3..N, repeat the middle two ops with the ordinal bumped and re-point the previous review at the new phase.
-- **A pre-JIT departure REFUSES, and that is correct.** Between `1b plan` and `5 tasks` the task file does not exist, so `phase-N`'s gate answers `E441 target-invalid` rather than passing with zero items. A gate that reports success because it found nothing to check reports safety it never verified. Birth the task file; do not `--force` past it.
-- **`--force` is the human's, never yours.** Both kinds record a defended override as a `dd-gate-override` event and return a **degraded** envelope. An agent may not force a dd gate on its own judgment.
+Run the selected proofs and write factual closeout progress before attempting post-flight departure. An early `--complete` refusal is not permission to mark future work checked. Human override remains explicit and degraded; an agent never forces the gate on its own judgement.
 
 ## §4 — Spine vs excursion (the rule that keeps the rail clean)
 
 The rail walks the MAIN SPINE only and excludes any node with `branch_of`.
 
-- **SPINE** = the SDD journey: research → plan → (phase-N → review-N)* → post-flight → ship.
+- **SPINE** = the SDD journey: research → plan → impl-guide → (phase-N → review-N)* → post-flight → ship.
   - wire with `--next`; reveal phases at the plan pass via `insert-node --after <prev>`.
 - **EXCURSIONS** = workshops, ADRs, backpressure, fix-loops, harness seams, **reconcile** (the upstream-reconcile excursion off `ship`/a phase, only when the base has diverged).
   - attach with `insert-node --branch-of <node> [--rejoin <node>]` — the branch point's `next` is UNCHANGED.

@@ -23,6 +23,7 @@
     "harness/cli/bin",
     "harness/cli/dist",
     "skills",
+    ".dd/schemas/builder/**/schema.json",
     "LICENSE"
   ],
   "publishConfig": {
@@ -43,6 +44,8 @@
     "check:doctrine-parity": "node scripts/doctrine-parity.mjs --check",
     "build": "npm run gen:docs && npm run gen:flows && tsc -p harness/cli/tsconfig.json",
     "prepare": "npm run build",
+    "smoke:builder": "node scripts/builder-smoke.mjs",
+    "smoke:builder:packed": "node scripts/builder-smoke.mjs --packed",
     "test": "cd harness/cli && vitest run --coverage",
     "lint": "biome check harness/cli",
     "lint:md": "node harness/cli/bin/harness.js markdown-lint",

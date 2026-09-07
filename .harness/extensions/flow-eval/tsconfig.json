@@ -1,0 +1,6 @@
+{
+  "extends": "../../../harness/cli/tsconfig.json",
+  "compilerOptions": { "rootDir": "../../..", "noEmit": true },
+  "include": ["./*.ts", "../../../harness/cli/src/types/*.d.ts"],
+  "exclude": ["./*.test.ts"]
+}

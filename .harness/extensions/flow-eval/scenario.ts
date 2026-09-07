@@ -13,7 +13,7 @@
  */
 
 /** The lane(s) an assertion is proven from — `source` in the assertion schema. */
-export type AssertionSource = 'telemetry' | 'fs' | 'fs+telemetry' | 'judged';
+export type AssertionSource = 'telemetry' | 'fs' | 'fs+telemetry' | 'native' | 'fs+native' | 'judged';
 
 /**
  * The scorecard **axis** an assertion contributes to (workshop 003 §D1). This is a
@@ -242,6 +242,11 @@ export type LoadResult = { ok: true; scenario: LoadedScenario } | { ok: false; e
  * the workshop §3 taxonomy appears here.
  */
 export const ASSERTION_TYPES: Record<string, AssertionSource[]> = {
+  'subject-plan-complete': ['fs'],
+  'builder-team-bound': ['fs+native'],
+  'pdf-capability': ['fs'],
+  'native-evidence-complete': ['native'],
+  'native-command-ran': ['native'],
   // Lane A — telemetry (joins the subject's segments by PIJ_SESSION_ID).
   'skill-called': ['telemetry'],
   'skill-sequence': ['telemetry'],
@@ -274,6 +279,11 @@ export const ASSERTION_TYPES: Record<string, AssertionSource[]> = {
  * safety `forbidden-state` is an `fs` lane. Only `capability` + `safety` can cap the verdict.
  */
 export const ASSERTION_AXES: Record<string, Axis> = {
+  'subject-plan-complete': 'safety',
+  'builder-team-bound': 'safety',
+  'pdf-capability': 'capability',
+  'native-evidence-complete': 'process',
+  'native-command-ran': 'process',
   // Process — the prescribed ritual (telemetry-shaped lanes never cap).
   'skill-called': 'process',
   'skill-sequence': 'process',
@@ -303,6 +313,8 @@ export function axisFor(type: string): Axis {
 
 const VALID_SOURCES: ReadonlySet<AssertionSource> = new Set<AssertionSource>([
   'telemetry',
+  'native',
+  'fs+native',
   'fs',
   'fs+telemetry',
   'judged',
@@ -490,7 +502,7 @@ function validateAssertion(raw: unknown, index: number, seen: Set<string>, issue
   }
   const source = raw.source;
   if (typeof source !== 'string' || !VALID_SOURCES.has(source as AssertionSource)) {
-    issues.push(`${at}: 'source' must be one of telemetry|fs|fs+telemetry|judged`);
+    issues.push(`${at}: 'source' must be one of telemetry|fs|fs+telemetry|native|fs+native|judged`);
     ok = false;
   } else if (allowedLanes && !allowedLanes.includes(source as AssertionSource)) {
     issues.push(

@@ -79,9 +79,31 @@ describe('registerInstructionsAct', () => {
     expect(env.command).toBe('instructions');
     expect(env.status).toBe('ok');
     expect(env.data.instructions).toBe(CORE_INSTRUCTIONS);
-    expect(env.data.verbs_with_instructions).toEqual(['commit', 'flow']);
+    expect(env.data.verbs_with_instructions).toEqual(['commit', 'builder', 'flow']);
     expect(env.next_action).toContain('harness instructions');
     expect(code).toBe(0);
+  });
+
+  it('resolves the Builder briefing without an extension or global skill install', () => {
+    const { io, out } = ioFor('json');
+    const code = run(['builder'], io, new FakeFs());
+    const env = JSON.parse(out());
+    expect(env.status).toBe('ok');
+    expect(env.data.verb).toBe('builder');
+    expect(env.data.instructions).toContain('assets/impl-guide.dd.json');
+    expect(env.data.instructions).toContain('full sealed source SHA');
+    expect(code).toBe(0);
+  });
+
+  it('refuses Builder injection without writing the commit-only guidance block', () => {
+    const { io, out } = ioFor('json');
+    const fs = new FakeFs();
+    const code = run(['builder', '--inject'], io, fs);
+    const env = JSON.parse(out());
+    expect(env.status).toBe('unconfigured');
+    expect(env.next_action).toContain('only defined for commit guidance');
+    expect(code).toBe(2);
+    expect(fs.writes).toHaveLength(0);
   });
 
   it('human mode prints the briefing text itself (the agent reads it directly)', () => {

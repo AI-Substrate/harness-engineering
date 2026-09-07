@@ -1,0 +1,10 @@
+{
+  "scenario": "builder-team-md-to-pdf",
+  "version": 1,
+  "assertions": [
+    { "id": "B1", "type": "native-evidence-complete", "source": "native", "params": {}, "required": true, "describe": "Verified native subject evidence covers every turn through its frozen cutoff" },
+    { "id": "B2", "type": "subject-plan-complete", "source": "fs", "params": {}, "required": true, "describe": "Explicit new subject plan is bound to its base and passes DD plus complete semantic validation" },
+    { "id": "B3", "type": "builder-team-bound", "source": "fs+native", "params": {}, "required": true, "describe": "Architecture-supported implementation peers, frozen contracts, exact acknowledgements, isolated roots, real commits and independent composed-SHA review" },
+    { "id": "B4", "type": "pdf-capability", "source": "fs", "params": {}, "required": true, "describe": "Independent fresh inputs produce readable PDFs with rendered Mermaid and preserved visual evidence" }
+  ]
+}

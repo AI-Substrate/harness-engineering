@@ -1,101 +1,35 @@
 # post-flight
 
-> Sub-skill — part of a verb library. Knows nothing about any flow:
-> no stage ids, no successor/predecessor names, no flow commands.
-> Composition is the bundling flow's job.
+> Sub-skill — owns closeout artifacts and archival, not lifecycle position.
 
 **Verb**: post-flight
-**Purpose**: Close out a finished flight **before** any ship: verify every phase and review is done, write a short close-out note, then **archive the whole plan folder** to `docs/plans/archive/<ord>-<slug>/` — the durable home for completed plans. Shipping is optional and later; this close-out is not, and it runs whether or not the work ever ships.
-**Consumes**: a plan folder (`--plan`, or auto-detect from cwd) whose phases and reviews are complete — task tables (`assets/tasks/*/tasks.md`, legacy root `tasks/`), execution log (`assets/execution.log.md`, legacy root), newest review verdict (Full: `assets/tasks/*/reviews/` · Simple: `assets/reviews/`; legacy roots). Open items are surfaced, never silently archived over.
-**Flags**: `--plan "<abs path to docs/plans/<ordinal>-<slug>/>"` (optional; auto-detect from cwd)
-**Produces**: `${PLAN_DIR}/assets/post-flight.md` (close-out note: completion evidence, open/deferred digest, archive record) · the plan folder relocated to `docs/plans/archive/<ord>-<slug>/` (layout intact, `git mv`).
-**Side effects**: one repo-local `git mv` (in-tree and reversible — nothing outward-facing: no push, no PR, no network).
-
----
+**Purpose**: Close out completed work before optional shipping; preserve required evidence before any workspace can retire.
+**Consumes**: plan, guide, final unit/composition/review evidence, task assertions, observations, telemetry and allocation records. Historical completed plans remain readable without new guide requirements.
+**Flags**: `--plan "<plan path or folder>"`
+**Produces**: `assets/post-flight.md`, archived canonical plan and preservation receipt outside retiring roots. Retirement is separate and ownership-checked.
 
 ## Procedure
 
-> Elegance: the close-out note is **output** — record the facts a later reader needs (what finished, what's open, where the folder went), not a play-by-play. Doctrine + the seven-function line test: `references/00-routing.md` § Shared conventions.
+1. Resolve `plan.dd.json` before historical `*-plan.md`/`*-spec.md`. An already archived plan is read-only on re-entry unless new factual evidence must be explicitly incorporated; do not silently regenerate its guide or reopen completed nodes.
+2. Read all phase/task assertions, AC proof links, independent review verdict and exact composition artifact. Surface every open/blocked/deferred finding. The human may explicitly accept a limitation, but it stays named; never convert missing proof to a clean result.
+3. Write the closeout note: what finished, exact tested/reviewed artifact SHA, proof pointers, open/deferred digest, remaining human calls, observations and the highest-leverage encodable improvement. Record factual completion through `node_modules/.bin/ddocs`, including the actual closeout work just done. Do not pre-check future closeout at an earlier review.
+4. Verify pressure/proof links through `../backpressure-recipe.md`: `assets/backpressure.dd.json` is the survey source, AC `proven_by` points to actual execution evidence. Generated views and selected commands are not proof. Final progress must preserve material plan/guide/code bindings rather than triggering circular rebaselining.
+5. For Builder-managed team work, load `../team-lifecycle.md` and use the deterministic close operation. Required evidence includes artifacts, WIP, reports, observations, telemetry and required Git refs. `--allocations` is a JSON array of `Stored<AllocationRecord>`; `--evidence` is a JSON array of `{path, category}`. The survivor must be outside every retiring root, with ownership authority likewise outside the removable workspace.
 
-```md
-User input:
-
-$ARGUMENTS
-# Optional flags:
-# --plan "<abs path to docs/plans/<ordinal>-<slug>/>"   # plan folder (auto-detect if in plan dir)
+```bash
+harness builder close "${PLAN}" --survivor "${SURVIVOR}" --allocations "${ALLOCATIONS}" --evidence "${EVIDENCE}"
 ```
 
-1) **Input resolution**
+6. Read the returned archive/preservation locations; do not guess relocated paths. Close archives and repairs canonical document/flow bindings. Do not run a second manual move. For a historical non-team Markdown plan only, retain its established whole-folder archival/read path; collision or missing target is a named refusal, never overwrite history.
+7. Whole-plan completion is checked at **this stage's EXIT**, after closeout evidence exists. Run `harness plan validate <archived plan.dd.json> --complete`; zero errors and warnings are needed to claim a clean closeout. The parent alone moves the canonical flow through `harness builder advance`; this module never edits nav/status files. Lifecycle seam receipts belong to the parent and must be landed before relocation.
+8. Retirement is explicitly separate:
 
-   - `PLAN_DIR` = provided `--plan` OR auto-detect from cwd (look for `*-plan.md`, or a legacy `*-spec.md`; a dd-native plan has `plan.dd.json` and NO `*-plan.md`)
-   - `ORD_SLUG` = the plan folder's basename (e.g. `035-flow-ship-stage`)
-   - `DEST` = `docs/plans/archive/${ORD_SLUG}`
-   - `FLOW_SLUG` = the flight plan driving this journey — `harness flow list --json` and take the flow whose `plan_dir` is `${PLAN_DIR}`. Empty (no dd-native flow) → skip the relocate in step 4 and say so.
-   - Already under `docs/plans/archive/` → report "already archived", print the close-out note path if present, STOP (idempotent re-run, not an error).
-   - `DEST` already exists with different content → STOP and report the collision; never overwrite an archived plan.
+```bash
+harness builder tidy "${ALLOCATION}" --preservation "${PRESERVATION}"
+```
 
-2) **Completion check (read-only)** — gather, don't gate:
-
-   - every phase's task table complete (`assets/tasks/*/tasks.md`, legacy root `tasks/`; Simple mode: the plan's inline task table)
-   - acceptance criteria met (plan `## Acceptance Criteria` vs execution log)
-   - newest review verdict clean/APPROVE (Full mode: `assets/tasks/*/reviews/*.md` · Simple mode: `assets/reviews/*.md`; legacy root `tasks/*/reviews/` / `reviews/` as fallback)
-   - leftover `Deferred` / `Noteworthy` rows, skipped/blocked tasks, unresolved review findings
-
-   **All clean** → proceed. **Open items** → list them verbatim and ask: proceed (archive anyway — the digest is recorded in the close-out note) or stop to finish first. Never silently archive over open findings; never block a user who says go.
-
-3) **Write the close-out note** to `${PLAN_DIR}/assets/post-flight.md`:
-
-   ```markdown
-   # Post-flight — ${ORD_SLUG}
-
-   **Closed out**: <ISO timestamp>
-   **Archived to**: docs/plans/archive/${ORD_SLUG}/
-   **Shipped**: not yet — ship is optional and may run later from the archive path
-
-   ## Completion
-
-   | Check | Result |
-   |-------|--------|
-   | Phases / tasks | ${all complete | N open — listed below} |
-   | Acceptance criteria | ${met | N unmet} |
-   | Latest review | ${verdict} |
-
-   ## Open / deferred items
-
-   _${none — flight fully clean | carried into the archive on the user's explicit go-ahead}_
-
-   | Kind | Item | Where | Note |
-   |------|------|-------|------|
-   ```
-
-4) **Archive move — the LAST act of this verb** (any bookkeeping that writes into the folder must already be finished; the mover moves last):
-
-   ```
-   mkdir -p docs/plans/archive
-   git mv "${PLAN_DIR}" "${DEST}"
-   harness flow relocate --slug "${FLOW_SLUG}" --to "${DEST}"   # dd-native plans only
-   ```
-
-   Untracked files inside the folder ride along with a plain `mv` if `git mv` leaves them. The folder's internal layout is untouched, so every relative link inside it keeps working. Print `old → new` path.
-
-   **The relocate is not optional on a dd-native plan.** A flow's `dd_link` gate addresses are anchored at the REPO ROOT, so the `git mv` strands every one of them — and nothing catches it: `dd doctor` sweeps `*.dd.json`, a flow is `.harness/flows/<slug>.json`, so the corpus reads perfectly clean while the gates point at a folder that no longer exists. On an archived plan there are no departures left to refuse, so the breakage has no discovery moment at all. `flow relocate` reads the folder the flow recorded at create time (`plan_dir`) and re-points only the addresses inside it, rebuilding the sibling in the same operation. Do **not** hand-edit the addresses: an address assembled by a model is a gate that fails the day the wording changes. A flow with no `plan_dir` refuses rather than guessing — say so in the report instead of patching it by hand.
-
-5) **Report** (terminal summary):
-
-   ```
-   ✅ Post-flight complete: ${ORD_SLUG}
-      Archived: docs/plans/archive/${ORD_SLUG}/
-      Close-out note: docs/plans/archive/${ORD_SLUG}/assets/post-flight.md
-      Open items: ${none | N — recorded in the note}
-      Ship later (optional): resolve --plan at the archive path.
-   ```
-
-## Notes
-
-- **Reversible**: `git mv` back restores the pre-archive state exactly.
-- **Idempotent**: a folder already under `docs/plans/archive/` re-runs as a no-op report.
-- **Read-only until step 4**: the only mutations are the close-out note and the move itself.
+It re-verifies ownership, runtime release, source drift and surviving bytes/refs immediately before removal. Idle is not closed. Externally/pij-owned allocations, live/unknown runtime, dirty/new WIP, survivor under a retiring root, missing evidence or altered preserved bytes must not be removed. Preserve buffered telemetry warnings; no claim of drained attribution without evidence.
 
 ## Exit
 
-Print the output-contract summary (✅ block above). Then STOP. Do not name a next stage. If invoked standalone, end with exactly: "Routing is the flow's job — run the parent flow bare to continue."
+Report archive and surviving-evidence paths, tested/reviewed SHA, strict completion outcome, open findings and what was or was not retired. No push, PR or merge. Shipping is optional and can run later from the archive. Routing is the flow's job — run the parent flow bare to continue.

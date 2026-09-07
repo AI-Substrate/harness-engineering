@@ -136,6 +136,14 @@ describe('ErrorCodes table', () => {
       DD_FENCE_VIOLATION: 'E460',
       DD_FENCE_INVALID: 'E461',
       DD_PLAN_NOT_READY: 'E462',
+      BUILDER_INVALID: 'E470',
+      BUILDER_NOT_READY: 'E471',
+      BUILDER_CONFLICT: 'E472',
+      BUILDER_RUNTIME: 'E473',
+      BUILDER_ACK: 'E474',
+      BUILDER_PROOF: 'E475',
+      BUILDER_PRESERVATION: 'E476',
+      BUILDER_OWNERSHIP: 'E477',
     });
   });
 

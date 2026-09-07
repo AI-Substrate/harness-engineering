@@ -101,7 +101,7 @@ export interface RunRecord {
   /** Fraction `unknown` per axis — a dropped sensor stays visible, not masked (003 Q3). */
   unknown_rate_by_axis?: { capability: number; process: number };
   /** Additive provenance for non-deterministic surfaces; absent on legacy records. */
-  provenance?: { judge: JudgeProvenance | null; resolutions?: Record<string, string> };
+  provenance?: { judge: JudgeProvenance | null; resolutions?: Record<string, string>; evidence?: Record<string, unknown> };
 }
 
 /**
@@ -217,6 +217,7 @@ export const RUN_RECORD_SCHEMA = {
       properties: {
         judge: { type: ['object', 'null'] },
         resolutions: { type: 'object' },
+        evidence: { type: 'object' },
       },
     },
   },
@@ -278,7 +279,7 @@ export interface BuildRunRecordInput {
   session_export?: string | null;
   /** Denormalized cost totals; `null` honestly when absent (never zero-filled). */
   telemetry_summary?: TelemetrySummary | null;
-  provenance?: { judge: JudgeProvenance | null; resolutions?: Record<string, string> };
+  provenance?: { judge: JudgeProvenance | null; resolutions?: Record<string, string>; evidence?: Record<string, unknown> };
 }
 
 /**
@@ -346,6 +347,7 @@ export function buildRunRecord(input: BuildRunRecordInput): RunRecord {
     ...(input.provenance !== undefined && {
       provenance: {
         judge: input.provenance.judge ?? null,
+        ...(input.provenance.evidence && { evidence: input.provenance.evidence }),
         ...(input.provenance.resolutions && Object.keys(input.provenance.resolutions).length > 0
           ? { resolutions: input.provenance.resolutions }
           : {}),

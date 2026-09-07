@@ -30,7 +30,7 @@ const PURPOSE =
   "The agent-friendly front door to this repo's engineering harness. " +
   'Verbs are owned by extensions: each is a little package at `./.harness/extensions/<name>/` ' +
   '(entry `extension.ts`, briefing `instructions.md`) and becomes a `harness <verb>` command. ' +
-  '`help`, `doctor`, `new`, `docs`, `skills`, `record`, `sensors`, and `instructions` are always available.';
+  '`help`, `doctor`, `new`, `builder`, `docs`, `skills`, `record`, `sensors`, and `instructions` are always available.';
 
 const AGENTS_START_HERE =
   'npx harness instructions — the agent briefing (then `harness instructions <verb>` per verb)';
@@ -67,6 +67,7 @@ export function buildHelp(registry: VerbRegistry, fs: FsPort): HelpContent {
     'harness doctor — see which extensions loaded (and any that failed)',
     'harness docs — list the bundled docs (then `harness docs <id>` to read one)',
     'harness new <name> — scaffold a new extension (add --wrap "<cmd>" to wrap a real command)',
+    'harness builder --help — operate architecture-enabled team delivery',
     "harness skills install --target <cli> — install this harness's skills into your CLI",
     'harness help --json — the machine-readable verb list',
   ];
@@ -133,6 +134,9 @@ export function renderHelpText(content: HelpContent, useColor = false): string {
   lines.push(`  docs [id]           ${c.dim('list the bundled docs, or print one by id')}`);
   lines.push(
     `  sensors             ${c.dim('inspect, run, watch, snapshot, or check typed sensors')}`,
+  );
+  lines.push(
+    `  builder             ${c.dim('architecture-enabled team delivery and preservation')}`,
   );
   lines.push('', c.extHeading('Extensions:'));
   if (content.verbs.length === 0) {

@@ -1,4 +1,7 @@
+import { randomUUID } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
+import { registerBuilderAct } from './acts/builder.js';
 import { registerCommitAct } from './acts/commit.js';
 import { buildSilentConvoSync, registerConvoAct, runConvoAfterBoot } from './acts/convo.js';
 import { registerDocsAct } from './acts/docs.js';
@@ -500,6 +503,31 @@ export function buildProgram(
   registerRetroAct(program, io, deps);
   registerFlowAct(program, io, deps, version);
   registerPlanAct(program, io, deps);
+  registerBuilderAct(program, io, {
+    fs: deps.fs,
+    exec: deps.exec,
+    clock: deps.clock,
+    env: deps.env,
+    repoRoot: toPosix(deps.proc.cwd()),
+    schemasDir: toPosix(fileURLToPath(new URL('../../../.dd/schemas/builder', import.meta.url))),
+    templatesDir: toPosix(
+      fileURLToPath(new URL('../../../skills/builder/templates', import.meta.url)),
+    ),
+    harness: {
+      command: process.execPath,
+      args: [fileURLToPath(new URL('../bin/harness.js', import.meta.url))],
+    },
+    ddocs: {
+      command: process.execPath,
+      args: [
+        fileURLToPath(
+          new URL('./bin/ddocs.js', import.meta.resolve('@ai-substrate/dd/package.json')),
+        ),
+      ],
+    },
+    pij: { command: 'pij-rs', args: [] },
+    nonce: randomUUID,
+  });
   registerSensorsAct(
     program,
     io,

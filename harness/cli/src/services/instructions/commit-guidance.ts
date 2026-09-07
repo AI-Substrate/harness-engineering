@@ -1,6 +1,7 @@
 import type { FsPort } from '../../adapters/fs/fs-port.js';
 import type { CommitMode } from '../commit/commit-service.js';
 import { posixJoin, toPosix } from '../shared/posix-path.js';
+import { BUILDER_INSTRUCTIONS } from './builder-guidance.js';
 
 /**
  * COMMIT GUIDANCE (plan 074 · ac-0008) — the durable answer to "how do I commit
@@ -339,6 +340,7 @@ recovery command, they never run it.
  */
 export const CORE_INSTRUCTION_PAGES: Readonly<Record<string, string>> = Object.freeze({
   commit: COMMIT_INSTRUCTIONS,
+  builder: BUILDER_INSTRUCTIONS,
 });
 
 /** The fenced markers that delimit the managed block. Idempotency hangs off these. */

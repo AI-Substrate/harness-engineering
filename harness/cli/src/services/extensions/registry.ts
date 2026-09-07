@@ -87,6 +87,7 @@ export const RESERVED_NAMES: ReadonlySet<string> = new Set([
   'flow',
   'dd',
   'plan',
+  'builder',
   'sensors',
   'commit',
   'convo',

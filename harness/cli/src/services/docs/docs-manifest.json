@@ -91,6 +91,13 @@
       "summary": "Recompute a read-only cross-plan report over committed retro records: tolerant scanning, deterministic clusters, ranking, provenance, stale flags, and honest epistemics.",
       "audience": "both",
       "sourcePath": "docs/how/harness-retro-insights.md"
+    },
+    {
+      "id": "harness-builder",
+      "title": "Builder: product intent to verified delivery",
+      "summary": "Separate product intent from implementation architecture; operate contracts, readiness, isolated dispatch, composition proof, independent review and archive preservation.",
+      "audience": "both",
+      "sourcePath": "docs/how/harness-builder.md"
     }
   ]
 }

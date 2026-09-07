@@ -23,7 +23,7 @@ Every human-mode turn opens with a one-line rail, then a blank line, then the na
 [eng-harness-flow] ⚙ ◆─◐─◇─◇─◇ ↺  boot · [backpressure] · observe · retro · improve
 
  now  · post-spec — running the backpressure survey (boot ✓ this pass)
- next · ▸ /plan-3   architect — consumes backpressure-coverage.md
+ next · ▸ /builder 4 guide — consumes assets/backpressure.dd.json
 ```
 
 The five loop pips are Boot · Backpressure · Observe · Retro · Improve, in that order, and the legend rides **on the rail line itself**: two spaces after the pips, the stage names in pip order joined by ` · `, the **current** one wrapped in `[…]`. Brackets follow the `◐`; on a settled rail bracket the next stage up. Same rule as `the-flow`'s rail.
@@ -106,7 +106,7 @@ The teach-half of the Insight beat is drawn from this fixed table (never invente
 
 Distinct from the single Insight (curiosity), the Flag beat surfaces the **decision-relevant must-sees** the user can't afford to miss (safety). Rules, lifted in spirit from `the-flow`:
 
-- **Lift, never derive** — quote the routed artifact's own alarm fields (a degraded `doctor` reason, a Critical/High harnessability gap, an `UNAVAILABLE`/failed/SLOW boot, ABSENT/BUILDABLE sensors, a recommended Phase 0, pending retro entries). Never invented.
+- **Lift, never derive** — quote the routed artifact's own alarm fields (a degraded `doctor` reason, a Critical/High harnessability gap, an `UNAVAILABLE`/failed/SLOW boot, ABSENT/BUILD sensors, a recommended Phase 0, pending retro entries). Never invented.
 - **Cap it** — a few max; this is a highlight, not a dump.
 - **Silent when clean** — nothing flagged → one line ("nothing flagged — clean") or skip the beat entirely. No manufactured alarms.
 - **Never a gate** — "just making sure you saw" — the user acts on it or waves past. It never blocks the next step.
@@ -119,12 +119,12 @@ Distinct from the single Insight (curiosity), the Flag beat surfaces the **decis
 | Governance | doc absent, or stamped-but-empty (no boot command yet) — boot reports `UNAVAILABLE` until `harness init` runs and S4 builds boot |
 | Inject | no injection point recorded yet (so the parent flow won't know where to call back) |
 | Build + run boot | `UNAVAILABLE`, a **failed/SLOW** boot, or a signal-readiness dimension reported "not declared" |
-| Backpressure | **ABSENT / BUILDABLE** sensors (the eyeball-gaps); a recommended **Phase 0** |
+| Backpressure | **ABSENT / BUILD** sensors (the eyeball-gaps); a recommended **Phase 0** |
 | Retro drain | the save prompt the user just saw (keep all · pick · skip, or take them further); N notes pending |
 | Retro harvest | clustered/stale friction across the plan; unencoded magic-wands |
 | Ambiguous | the candidate plans found (so the user can pick) |
 
-> **Backpressure → defend the proof (optional).** When the survey flags `ABSENT`/`BUILDABLE` sensors (thin coverage), offer `/grill-agent-done` before architect — a standalone peer skill (`skills/grill-agent-done/`, **not** a routed stage) that defends the definition of done one claim at a time, lining each against the right proof grade. The deep-interrogation companion the survey deliberately isn't. Never blocks; offer once, skip freely.
+> **Backpressure → defend the proof (optional).** When the survey flags `ABSENT`/`BUILD` sensors (thin coverage), offer `/grill-agent-done` before architect — a standalone peer skill (`skills/grill-agent-done/`, **not** a routed stage) that defends the definition of done one claim at a time, lining each against the right proof grade. The deep-interrogation companion the survey deliberately isn't. Never blocks; offer once, skip freely.
 
 > **Retro drain → plain words, never codes.** When you offer the drain, describe the choice in plain language — *"I jotted a few notes on what slowed us down; want me to save them so they're not lost? You can keep all, pick which to keep, or skip."* **Never** surface the internal `[s/t/p/e/d/a]` / `[r/w/s]` letter codes in narration, and **never guess what they expand to** — they are *keep-all / pick / skip*, with *tasks / plan / diffs* to take them further (the codes are emphatically **not** "trim"/"promote"; parroting them is how the prompt became arcane). The codes are an implementation detail; the user sees plain choices and a recommended default. Harvest marks are the same: "done" / "won't-fix" / "stale", never `[r/w/s]`.
 
