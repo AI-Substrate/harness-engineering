@@ -1,0 +1,96 @@
+.dd/schemas/builder/packet/schema.json
+  h_9e71e8b09f7cf2 3,37
+.dd/schemas/builder/team/schema.json
+  h_9e71e8b09f7cf2 333-341
+docs/how/harness-builder.md
+  h_9e71e8b09f7cf2 8,46,76,78,89,91,93-96,98,100,103,106,108,120-122,124
+docs/plans/099-builder-warning-guidance/assets/impl-guide.dd.json
+  h_9e71e8b09f7cf2 11,24-32,40,165,178-188,234,303-304
+docs/plans/099-builder-warning-guidance/assets/impl-guide.dd.md
+  h_9e71e8b09f7cf2 14,25,34,60,80,107
+docs/plans/099-builder-warning-guidance/assets/tasks/phase-2/tasks.dd.json
+  h_9e71e8b09f7cf2 11,17,21-40,44-77
+docs/plans/099-builder-warning-guidance/assets/tasks/phase-2/tasks.dd.md
+  h_9e71e8b09f7cf2 15,30,36-38,44-52
+docs/plans/099-builder-warning-guidance/the-flow.json
+  h_9e71e8b09f7cf2 29-40,108-112,119-120
+docs/plans/099-builder-warning-guidance/the-flow.md
+  h_9e71e8b09f7cf2 4
+harness/cli/src/acts/builder.ts
+  h_9e71e8b09f7cf2 28,269-276
+harness/cli/src/adapters/fs/fake-fs.ts
+  h_9e71e8b09f7cf2 142-145,147-151,154-159
+harness/cli/src/adapters/fs/fs-port.ts
+  h_9e71e8b09f7cf2 44-45
+harness/cli/src/adapters/fs/node-fs.ts
+  h_9e71e8b09f7cf2 154-166,208,225-236
+harness/cli/src/services/builder/commands.ts
+  h_9e71e8b09f7cf2 14,152,172-174,176-180,182
+harness/cli/src/services/builder/composition-service.ts
+  h_9e71e8b09f7cf2 285-290,301-305,307-311,314-320,323-329,332,334-343,345-349,352-353,355-359,364,369-372,375,377-388,397-398,400-402
+harness/cli/src/services/builder/dispatch-service.ts
+  h_9e71e8b09f7cf2 238,254-257,259-263,313-318,419,425,433,538,702,705-723,728-733,741-757
+harness/cli/src/services/builder/packet-service.ts
+  h_9e71e8b09f7cf2 2,27,33,118,220-248,258,275-281,286
+harness/cli/src/services/builder/self-check-service.ts
+  h_9e71e8b09f7cf2 1-196
+harness/cli/src/services/builder/types.ts
+  h_9e71e8b09f7cf2 258-259,264-265,269,297-299,316-324
+harness/cli/src/services/docs/docs-content.ts
+  h_9e71e8b09f7cf2 130
+harness/cli/src/services/flow/schemas-content.ts
+  h_9e71e8b09f7cf2 278-282
+harness/cli/src/services/instructions/builder-guidance.ts
+  h_9e71e8b09f7cf2 8-11,28-45,58-59
+harness/cli/test/acts/builder.test.ts
+  h_9e71e8b09f7cf2 64-89
+harness/cli/test/adapters/fs/node-fs.test.ts
+  h_9e71e8b09f7cf2 14,79-102,163
+harness/cli/test/fixtures/builder-contracts.ts
+  h_9e71e8b09f7cf2 260,266-268,272,301
+harness/cli/test/services/builder-dispatch.test.ts
+  h_9e71e8b09f7cf2 71-72,75-86,209,541,593-597,615-634,731,850,852-854,856-873,875-878,880,882-885,887-891,900-902,904,906-907,910,912-928,930-937,940,942-964,966-969,972-979,981-996,1000-1003,1005-1024,1026,1028-1033,1051,1066,1095
+harness/cli/test/services/builder-lifecycle.test.ts
+  h_9e71e8b09f7cf2 323,325,448,494-500,503,505-511,516-517,522-524,527,530-558,560-579,587-592,595-608,610-612,614-616,622,625-628,631,635-649,651-652,654-655,658,665,677-683,692,701
+harness/cli/test/services/builder-self-check.test.ts
+  h_9e71e8b09f7cf2 1-236
+scripts/builder-smoke.mjs
+  h_9e71e8b09f7cf2 149-179,185-189
+skills/builder/SKILL.md
+  h_9e71e8b09f7cf2 62
+skills/builder/examples/lifecycle.mjs
+  h_9e71e8b09f7cf2 24-25,27-34,36-41,43
+skills/builder/examples/verify.mjs
+  h_9e71e8b09f7cf2 89-100,102-104
+skills/builder/references/flight-plan.example.json
+  h_9e71e8b09f7cf2 86-90
+skills/builder/references/flight-plan.template.json
+  h_9e71e8b09f7cf2 37-41
+skills/builder/references/getting-started.md
+  h_9e71e8b09f7cf2 17,47,84
+skills/builder/references/harness-seams.md
+  h_9e71e8b09f7cf2 46-47
+skills/builder/references/stages/60-implement.md
+  h_9e71e8b09f7cf2 16,20
+skills/builder/references/team-lifecycle.md
+  h_9e71e8b09f7cf2 3,23-24,45,49,51,53-56,58,60,62,64-66,68,70,74-83,85
+skills/builder/templates/coder-packet.template.md
+  h_9e71e8b09f7cf2 3-11,18-19,23,25,27-29,31,33
+skills/builder/templates/impl-guide.template.json
+  h_9e71e8b09f7cf2 206
+skills/builder/templates/reviewer-packet.template.md
+  h_9e71e8b09f7cf2 3-11,24-25,32,34,38
+skills/eng-harness-flow/SKILL.md
+  h_9e71e8b09f7cf2 91-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "fe3a2de0b752bb0641913656c6c40ce361e91e0d",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
