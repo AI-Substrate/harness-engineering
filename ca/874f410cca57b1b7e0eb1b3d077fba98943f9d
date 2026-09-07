@@ -1,0 +1,35 @@
+docs/how/harness-builder.md
+  s_f1a7ee9f435ed3::t_2ef63962a94c9c 90
+harness/cli/src/acts/builder.ts
+  s_f1a7ee9f435ed3::t_c01b0d02863947 9-13,31,313-337
+harness/cli/src/services/builder/commands.ts
+  s_f1a7ee9f435ed3::t_c9020b91829d4d 17,209-234
+harness/cli/src/services/builder/composition-service.ts
+  s_f1a7ee9f435ed3::t_c1a89b766cfd76 3,23,32,490-505,512,519,523-524,530,536-634,859
+harness/cli/src/services/builder/review-service.ts
+  s_f1a7ee9f435ed3::t_e7ccb863995886 32
+harness/cli/src/services/builder/types.ts
+  s_f1a7ee9f435ed3::t_57195366083db5 327-343,355
+harness/cli/src/services/docs/docs-content.ts
+  s_f1a7ee9f435ed3::t_e8a7fa9134ced8 130
+harness/cli/test/services/builder-lifecycle.test.ts
+  s_f1a7ee9f435ed3::t_177e93b374da33 12,780-854
+skills/builder/references/team-lifecycle.md
+  s_f1a7ee9f435ed3::t_ca066b4ed7942f 49-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "ca874f410cca57b1b7e0eb1b3d077fba98943f9d",
+  "prompts": {},
+  "sessions": {
+    "s_f1a7ee9f435ed3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6616ca6a-61c0-4a92-b9be-3512605a2826",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
