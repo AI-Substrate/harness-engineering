@@ -35,7 +35,8 @@
             "../../../plan.dd.json#acceptance_criteria/ac-000a"
           ],
           "notes": "Three independent source slices share the PM-owned type/CLI/schema contract. No live native dispatch or provider attestation is claimed by tool delegation.",
-          "done": "#done_when/tk-0001"
+          "done": "#done_when/tk-0001",
+          "receipt": "../../execution-log.dd.json#entries/lg-0002"
         }
       ]
     },
@@ -46,32 +47,37 @@
           {
             "id": "dw-0001",
             "assertion": "New packets and work messages lead with map/read paths/job/done expectations and do not ask for acknowledgement before work.",
-            "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-0005"
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0005",
+            "proven_by": "../../execution-log.dd.json#entries/lg-0002"
           },
           {
             "id": "dw-0002",
             "assertion": "The self-check command reports actual root/HEAD/packet digest, returns actionable warnings with exit zero on mismatch or unavailable data, and performs no writes or native sends.",
-            "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-0006"
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0006",
+            "proven_by": "../../execution-log.dd.json#entries/lg-0002"
           },
           {
             "id": "dw-0003",
             "assertion": "Import accepts correctly bound delivered code without any ack/release record, while wrong root/peer/digest/baseline still refuses before mutation.",
-            "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-0007"
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0007",
+            "proven_by": "../../execution-log.dd.json#entries/lg-0002"
           },
           {
             "id": "dw-0004",
             "assertion": "All live source skills/help/templates/teaching examples use the self-check and direct work packet, with old records readable only as historical evidence.",
-            "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-0007"
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0007",
+            "proven_by": "../../execution-log.dd.json#entries/lg-0002"
           },
           {
             "id": "dw-0005",
             "assertion": "Real CLI/Git source and packed smoke exercise advisory mismatches and startup metadata; full checks and independent code review name their exact revision and proof limits.",
-            "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-0006"
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0006",
+            "proven_by": "../../execution-log.dd.json#entries/lg-0002"
           }
         ]
       }

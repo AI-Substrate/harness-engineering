@@ -35,7 +35,7 @@ Map-first packet production, direct work-packet delivery, one nonmutating adviso
 
 | id | title | domain | phase | state | note | receipt | done | success | notes | satisfies | satisfies_toward |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| tk-0001 | Deliver map-first work packets and replace acknowledgement gates with an advisory self-check | — | ph-0889 | [ ] unchecked | — | — | [ ] 0/5 [tk-0001](#tk-0001) | — | Three independent source slices share the PM-owned type/CLI/schema contract. No live native dispatch or provider attestation is claimed by tool delegation. | [ac-0001](../../../plan.dd.md#acceptance-criteria), [ac-0005](../../../plan.dd.md#acceptance-criteria), [ac-0006](../../../plan.dd.md#acceptance-criteria), [ac-0007](../../../plan.dd.md#acceptance-criteria) | [ac-0008](../../../plan.dd.md#acceptance-criteria), [ac-000a](../../../plan.dd.md#acceptance-criteria) |
+| tk-0001 | Deliver map-first work packets and replace acknowledgement gates with an advisory self-check | — | ph-0889 | [ ] unchecked | — | ../../execution-log.dd.json#entries/lg-0002 | [x] 5/5 [tk-0001](#tk-0001) | — | Three independent source slices share the PM-owned type/CLI/schema contract. No live native dispatch or provider attestation is claimed by tool delegation. | [ac-0001](../../../plan.dd.md#acceptance-criteria), [ac-0005](../../../plan.dd.md#acceptance-criteria), [ac-0006](../../../plan.dd.md#acceptance-criteria), [ac-0007](../../../plan.dd.md#acceptance-criteria) | [ac-0008](../../../plan.dd.md#acceptance-criteria), [ac-000a](../../../plan.dd.md#acceptance-criteria) |
 
 <a id="done-when"></a>
 
@@ -43,13 +43,13 @@ Map-first packet production, direct work-packet delivery, one nonmutating adviso
 
 ### tk-0001
 
-| id | assertion | state | pressure |
-| --- | --- | --- | --- |
-| dw-0001 | New packets and work messages lead with map/read paths/job/done expectations and do not ask for acknowledgement before work. | [ ] unchecked | [bp-0005](../../backpressure.dd.md#rows) |
-| dw-0002 | The self-check command reports actual root/HEAD/packet digest, returns actionable warnings with exit zero on mismatch or unavailable data, and performs no writes or native sends. | [ ] unchecked | [bp-0006](../../backpressure.dd.md#rows) |
-| dw-0003 | Import accepts correctly bound delivered code without any ack/release record, while wrong root/peer/digest/baseline still refuses before mutation. | [ ] unchecked | [bp-0007](../../backpressure.dd.md#rows) |
-| dw-0004 | All live source skills/help/templates/teaching examples use the self-check and direct work packet, with old records readable only as historical evidence. | [ ] unchecked | [bp-0007](../../backpressure.dd.md#rows) |
-| dw-0005 | Real CLI/Git source and packed smoke exercise advisory mismatches and startup metadata; full checks and independent code review name their exact revision and proof limits. | [ ] unchecked | [bp-0006](../../backpressure.dd.md#rows) |
+| id | assertion | state | pressure | proven_by |
+| --- | --- | --- | --- | --- |
+| dw-0001 | New packets and work messages lead with map/read paths/job/done expectations and do not ask for acknowledgement before work. | [x] checked | [bp-0005](../../backpressure.dd.md#rows) | [lg-0002](../../execution-log.dd.md#entries) |
+| dw-0002 | The self-check command reports actual root/HEAD/packet digest, returns actionable warnings with exit zero on mismatch or unavailable data, and performs no writes or native sends. | [x] checked | [bp-0006](../../backpressure.dd.md#rows) | [lg-0002](../../execution-log.dd.md#entries) |
+| dw-0003 | Import accepts correctly bound delivered code without any ack/release record, while wrong root/peer/digest/baseline still refuses before mutation. | [x] checked | [bp-0007](../../backpressure.dd.md#rows) | [lg-0002](../../execution-log.dd.md#entries) |
+| dw-0004 | All live source skills/help/templates/teaching examples use the self-check and direct work packet, with old records readable only as historical evidence. | [x] checked | [bp-0007](../../backpressure.dd.md#rows) | [lg-0002](../../execution-log.dd.md#entries) |
+| dw-0005 | Real CLI/Git source and packed smoke exercise advisory mismatches and startup metadata; full checks and independent code review name their exact revision and proof limits. | [x] checked | [bp-0006](../../backpressure.dd.md#rows) | [lg-0002](../../execution-log.dd.md#entries) |
 
 <a id="goals"></a>
 
