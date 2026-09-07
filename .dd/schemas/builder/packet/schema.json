@@ -1,6 +1,6 @@
 {
   "dd_schema": 1,
-  "description": "Immutable Builder dispatch packets and exact peer acknowledgements.",
+  "description": "Map-first Builder work packets and readable historical acknowledgement evidence.",
   "sections": {
     "packet": {
       "shape": {
@@ -19,7 +19,6 @@
           "parent",
           "requested",
           "forbidden",
-          "canary",
           "instructions"
         ],
         "fields": {
@@ -35,6 +34,7 @@
           "nonce": {
             "type": "string"
           },
+          "source_sha": { "type": "string" },
           "unit": {
             "type": "object",
             "required": [

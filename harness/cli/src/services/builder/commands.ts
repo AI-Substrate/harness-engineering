@@ -11,7 +11,7 @@ export type BuilderVerb =
   | 'contracts'
   | 'settings'
   | 'dispatch'
-  | 'ack'
+  | 'self-check'
   | 'advance'
   | 'compose'
   | 'review'
@@ -149,7 +149,7 @@ export const BUILDER_COMMANDS: BuilderCommand[] = [
     name: 'dispatch',
     argument: '<plan>',
     description:
-      'Prepare an isolated coder and frozen packet; withhold work release until acknowledgement',
+      'Prepare an isolated coder and send a map-first work packet; no acknowledgement gate',
     options: [
       {
         flags: '--unit <id>',
@@ -169,14 +169,17 @@ export const BUILDER_COMMANDS: BuilderCommand[] = [
     results: ['dispatch', 'packet'],
   },
   {
-    name: 'ack',
-    argument: '<plan>',
-    description:
-      'Verify the exact peer, nonce, packet, baseline and native-root acknowledgement before releasing work',
+    name: 'self-check',
+    argument: '<packet>',
+    description: 'Inspect clone, source commit and packet digest; report advisory warnings, exit 0',
     options: [
-      { flags: '--receipt <path>', description: 'Peer AckReceipt DD document', required: true },
+      {
+        flags: '--sha256 <digest>',
+        description: 'Expected packet digest from the dispatch message',
+        required: true,
+      },
     ],
-    results: ['dispatch', 'packet'],
+    results: ['self_check'],
   },
   {
     name: 'advance',

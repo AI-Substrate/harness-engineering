@@ -26,6 +26,18 @@
         "kind": "flight-plan",
         "slug": "builder-warning-guidance"
       }
+    },
+    {
+      "id": "UPD-001",
+      "kind": "node-updated",
+      "origin": "engine",
+      "fired_at": "2026-09-07T22:35:37.819Z",
+      "details": {
+        "node": "phase-1",
+        "fields": [
+          "instructions"
+        ]
+      }
     }
   ],
   "nodes": [
@@ -93,18 +105,19 @@
         "address": "docs/plans/099-builder-warning-guidance/assets/tasks/phase-1/tasks.dd.json#tasks"
       },
       "instructions": [
-        "Implement exactly ONE phase from the reviewed guide and selected proof approach; the PM owns canonical task state and execution receipts, workers return fenced committed deliveries.",
-        "Run /builder 6 implement --plan \"<plan path>\"; log discoveries, tagging any Deferred/Noteworthy a human must see before ship.",
-        "Done when the phase's acceptance criteria are met, the tests pass, and the execution log records what changed plus the proof.",
-        "Before dispatch, seal the committed contracts with harness builder contracts <plan> --seal --review <receipt>, inspect settings and ready, then ingest pristine pre-work AckReceipt ack-<unit_id>-<full-current-source-sha> with packet.nonce through harness builder ack <plan> --receipt <path>. After observing the exact release, the peer refreshes native packet/canary/runtime evidence and returns a new path/digest for ack-<unit_id>-<full-current-source-sha>-release with nonce from retained release.message_id; follow already-granted work without a second grant. See team-lifecycle.md for optional observations and the 5000 ms clock-skew bounds.",
-        "Before importing queued delivery, the PM ingests the fresh -release AckReceipt through harness builder ack <plan> --receipt <path>; retrying the pre-work ack cannot confirm delivery and confirmation sends/grants nothing. Then harness builder compose <plan> --import <deliveries>; the PM wires and commits, then uses --verify <sha>. Import alone is not proof. Solo execution never substitutes for requested independent review.",
+        "You own the PM composition and canonical task/receipt paths named in the reviewed guide; each worker owns its assigned source/test paths. Read the product ACs, unit read paths/owners, shared contracts and selected proof before implementation.",
+        "Your job is exactly ONE approved phase. Run /builder 6 implement --plan \"<plan path>\"; log discoveries, tagging any Deferred/Noteworthy a human must see before ship.",
+        "Done means the phase's acceptance criteria are met, its selected checks actually ran, the composition is verified at its committed SHA, and the execution log links the observed proof.",
+        "Before dispatch, seal committed contracts with harness builder contracts <plan> --seal --review <receipt>, inspect settings and ready, then send a work packet led by owned paths, read paths, job and done conditions. Follow with its actual pointer/digest. Receiving it starts the unit without a separate release. Optional harness builder self-check <packet> --sha256 <digest> gives warning-only root/source/digest orientation and writes no state.",
+        "Import committed deliveries with harness builder compose <plan> --import <deliveries>; it verifies current evidence bindings, actual tree/branch/commit, distinct peers and sealed ancestry, not startup receipts or transport outcomes. The PM wires and commits, then uses --verify <sha>. PM map deviations remain composition warnings; coder path enforcement is unchanged. Import alone is not proof. Preserve historical receipts without replay or reclassification. Solo execution never substitutes for requested independent review.",
         "Use node_modules/.bin/ddocs to maintain assets/backpressure.dd.json, assertion pressure and AC proven_by links to actual execution-log entries; never mark an unexecuted test as proof.",
         "Mutate task state through the CLI, never an editor: node_modules/.bin/ddocs set \"<plan dir>/assets/tasks/phase-N/tasks.dd.json#tasks/tk-XXXX/state\" checked (and #done_when/tk-XXXX/dw-XXXX/state for each assertion). The .dd.md sibling is GENERATED — editing it is drift.",
         "Rehearse this node's gate before you try to leave: harness plan validate \"<plan dir>/plan.dd.json\" --address \"<plan dir>/assets/tasks/phase-N/tasks.dd.json#tasks\". Gate-terminal states are checked, human-skipped, na; unchecked and blocked hold it.",
         "Spend tokens where they can change the outcome; use `--quiet` for routine flow mutations.",
         "Match model tier to work: chores -> cheap subagent, analysis -> Opus-class, judgement -> lead; context may override (§ Shared conventions).",
         "Environment friction is work, not an apology: fix small things, otherwise `harness observe` it — is this environment working for us? (builder SKILL.md invariant #14)"
-      ]
+      ],
+      "modified_at": "2026-09-07T22:35:37.819Z"
     },
     {
       "id": "review-1",

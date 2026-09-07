@@ -330,6 +330,15 @@
               }
             }
           },
+          "delivery": {
+            "type": "object",
+            "required": ["message_id", "outcome", "recorded_at"],
+            "fields": {
+              "message_id": { "type": "string" },
+              "outcome": { "type": "enum", "enum": "delivery_outcome" },
+              "recorded_at": { "type": "string" }
+            }
+          },
           "acknowledgement": {
             "type": "object",
             "required": [

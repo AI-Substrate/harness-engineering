@@ -1,37 +1,36 @@
 # Coder packet template
 
-This is an editable briefing template, not an issued `builder/packet` record or implementation release. The PM fills the binding table from the canonical dispatch record; the dispatch writer creates the immutable DD packet and its digest. Never invent identities, hashes, ownership or runtime observations.
+**You own:** `<complete assigned source/test paths>`.
+
+**You may read:** `<contract/dependency paths and their owners>`.
+
+**Your job:** `<unit responsibility and frozen interface; dependencies and wave>`.
+
+**Done means:** `<observable acceptance criteria, proof commands and required committed delivery>`.
+
+Fill these four lines from the reviewed unit, including every scoped supplement. Reuse shared contracts and injected adapters/fakes; do not import a same-wave sibling implementation or silently renegotiate interfaces. This is an editable briefing, not an issued `builder/packet` record. The PM fills the bindings below from the canonical dispatch; never invent identities, hashes, ownership or runtime observations.
 
 | Binding | Fill from |
 |---|---|
 | Unit and responsibility | reviewed implementation guide unit |
 | Native peer and workspace root | observed allocation/runtime binding |
 | Parent | governing PM identity |
-| Source baseline SHA | sealed baseline `source_sha` |
-| Canonical packet path, SHA-256 and nonce | actual dispatch result |
+| Source baseline SHA | current packet `source_sha`, bound to the sealed baseline |
+| Canonical packet path and SHA-256 | actual dispatch result |
 | Plan, guide and allocation | packet's path/digest bindings |
 | Requested harness, model and optional effort | resolved role plus field provenance |
-| Native-root challenge | packet's relative `canary.path`; never include its answer |
 
-## Scope
+## Start the work
 
-Copy the complete assigned unit's write fence, explicit reads/owners, frozen interface, dependencies/wave, acceptance links and proof commands. Include every scoped supplement. Reuse shared contracts and injected adapters/fakes; do not import a same-wave sibling implementation or renegotiate the interface silently.
+Receiving the actual work packet means carry out its unit, without a separate release. Read the packet and the named contract paths. For optional orientation from your actual checkout, use the packet pointer and digest supplied by dispatch:
 
-## Pre-work and post-release acknowledgements
+```bash
+harness builder self-check <packet> --sha256 <digest>
+```
 
-Before work, read the canonical packet through the native repository-relative file tool. Verify the pristine source baseline, packet digest, native root, shell cwd, peer identity/session/PID and actual harness/model argv/environment where available. Read the clone/worktree-only canary by its relative native file-tool path; a shell directory change does not prove native-root binding.
+This one read-only check compares packet bytes, repository root and HEAD/source SHA. Missing or mismatched observations warn with a cause and corrective `next_action`; they do not refuse work, write state or supply an import permission. No receipt response is required. Historical startup records remain unchanged; never replay completed work or reclassify old receipts.
 
-Return the exact `AckReceipt` fields: `record_type`, `id`, `recorded_at`, `unit_id`, `peer_id`, `nonce`, `packet_sha256`, `baseline_sha`, `native_root`, `shell_cwd`, `canary_nonce`, `observed`. `baseline_sha` is the full Git source SHA, not the baseline file digest. Unsupported observations go in `observed.gaps`; omitted effort stays absent and provider-served identity remains unverified.
-
-Use `ack-<unit_id>-<full-current-source-sha>` for the pre-work receipt, with `nonce = packet.nonce`. The current guide-bound verified seal selects the source, not a caller-supplied old delivery. Send the new private receipt path and SHA-256; the PM ingests it with `harness builder ack <plan> --receipt <path>`. No work until you observe the exact-bound explicit release. Queued does not mean received.
-
-After observing that release, natively re-read packet/canary and refresh runtime observations. Write a **distinct new** raw `AckReceipt` with ID `ack-<unit_id>-<full-current-source-sha>-release`, `nonce = release.message_id` from the already-recorded exact release, and your actual new receipt creation time. Do not derive this phase's nonce from `packet.nonce`, even when their values happen to match. Preserve the original pre-work receipt. All unit/peer/packet/source/root/canary bindings still apply; source ancestry and allocated branch remain checked, but authorized work need not still be pristine or at the baseline HEAD.
-
-Send the post-release receipt's new private path/SHA-256, then follow the **already-granted** scope without waiting for a second grant. If the work is already complete, confirm the real retained release without replaying it. The PM submits the fresh receipt with the same `harness builder ack <plan> --receipt <path>` before importing a queued delivery. Confirmation grants/sends nothing. Retrying the initial receipt cannot promote queued to delivered; neither a filename nor a loose ID prefix identifies the phase.
-
-Use valid actual `recorded_at`, with the explicit **5000 ms** peer-clock skew tolerance: no earlier than the retained release sent time minus 5000 ms and no later than PM ingestion time plus 5000 ms. PM records both observation and ingestion times in `observed.evidence`; do not fake a timestamp to fit. Invalid/out-of-window time needs clock-skew or incorrect-receipt guidance, never a silently wider tolerance. Omit unavailable optional runtime fields and name gaps; configuration is not provider attestation.
-
-Missing current-qualified authorization, an older-qualified record, wrong phase/binding or changed immutable confirmation requires a named refusal, never a unit-only fallback or manual delivered flag. Identical confirmation retries are safe without resending a release. Keep every original packet, acknowledgement and release record unchanged.
+Import still verifies actual tree/branch/commit, exact current packet/dispatch/allocation digests, distinct peer attribution and sealed-source ancestry. Wrong checkout or commit: deliver from the allocated branch with its actual SHA. Mismatched evidence: recover the original bound bytes rather than altering them to fit. Duplicate peer: correct attribution to the actual distinct dispatched workers. Rewritten baseline: restore its history or ask the PM for reviewed, newly sealed contracts and new packets.
 
 ## Boundaries
 

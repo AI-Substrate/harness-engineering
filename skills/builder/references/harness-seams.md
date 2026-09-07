@@ -43,6 +43,8 @@ This is the **canonical** statement of how harness seams are laid onto an SDD fl
 
 **Builder lifecycle and proof source.** Fresh flows include `impl-guide` between product plan and implementation. Guide/decomposition approval precedes implementation; committed contract sealing precedes dispatch, not guide exit. Phase gates remain scoped; whole-plan completion is armed at post-flight EXIT after factual closeout evidence. Completed historical flows keep their read path without retroactive guide gates. Both skills use local `node_modules/.bin/ddocs` and canonical `assets/backpressure.dd.json` (`builder/backpressure`) for actual RUN/EXTEND/BUILD/ABSENT selection, every AC/assertion `pressure`, and observed AC `proven_by` links; certainty is `Partial|Confident|Proven`. Builder `references/backpressure-recipe.md` is the shared writer recipe.
 
+**Builder worker startup.** Lead with owned paths, allowed reads, the job and observable done conditions, then the actual packet pointer/digest. Receiving the work packet starts the unit; optional `harness builder self-check <packet> --sha256 <digest>` is warning-only orientation and writes no state. Import enforces current evidence and source integrity, not a startup receipt or separate release. Historical receipts stay unchanged and are never replayed or reclassified. This does not change the harness hook model or coder-delivery path enforcement.
+
 <!-- /doctrine-parity:039 v2 -->
 
 > The sections below are the-flow's detailed seam *mechanics* (how the engine fires the call, the seam map, node emission, lifecycle) — they implement the canonical block above; where they once said "`coding`/observe is unwired," 039 wires `observe` as the per-phase chore named above.

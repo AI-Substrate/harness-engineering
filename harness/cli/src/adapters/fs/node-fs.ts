@@ -151,6 +151,19 @@ export class NodeFs implements FsPort, FileSystemWritePort {
     path: string,
     maxBytes: number,
   ): ReturnType<FsPort['readTextFileNoFollow']> {
+    const result = this.readBoundedBytesNoFollow(root, path, maxBytes);
+    return result.status === 'ok'
+      ? { status: 'ok', bytes: result.bytes, text: result.contents.toString('utf8') }
+      : result;
+  }
+
+  private readBoundedBytesNoFollow(
+    root: string,
+    path: string,
+    maxBytes: number,
+  ):
+    | { status: 'ok'; bytes: number; contents: Buffer }
+    | Exclude<ReturnType<FsPort['readTextFileNoFollow']>, { status: 'ok' }> {
     const confined = this.confinedRegularFile(root, path, maxBytes);
     if (confined.status === 'unavailable') return confined;
 
@@ -192,7 +205,7 @@ export class NodeFs implements FsPort, FileSystemWritePort {
       return {
         status: 'ok',
         bytes: offset,
-        text: contents.subarray(0, offset).toString('utf8'),
+        contents: contents.subarray(0, offset),
       };
     } catch (error) {
       return { status: 'unavailable', reason: this.noFollowFailure(error) };
@@ -209,7 +222,18 @@ export class NodeFs implements FsPort, FileSystemWritePort {
     return 'io-error';
   }
 
-  readBytesNoFollow(path: string): Uint8Array | null {
+  readBytesNoFollow(
+    path: string,
+    options?: { maxBytes: number; root?: string },
+  ): Uint8Array | null {
+    if (options !== undefined) {
+      const result = this.readBoundedBytesNoFollow(
+        options.root ?? dirname(resolve(path)),
+        path,
+        options.maxBytes,
+      );
+      return result.status === 'ok' ? result.contents : null;
+    }
     try {
       const stat = lstatSync(path);
       return stat.isFile() && !stat.isSymbolicLink() ? Uint8Array.from(readFileSync(path)) : null;

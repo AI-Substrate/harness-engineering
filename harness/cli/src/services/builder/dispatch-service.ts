@@ -15,19 +15,13 @@ import {
   seedBuilderInputs,
 } from './packet-service.js';
 import {
-  builderContext,
   builderFailure,
   builderRecordPath,
   digestBuilderFile,
   readBuilderRecord,
-  sha256,
   writeBuilderRecord,
 } from './records.js';
 import type {
-  AckInput,
-  AckReceipt,
-  AllocationRecord,
-  BuilderContext,
   BuilderDeps,
   BuilderResult,
   DispatchDeps,
@@ -35,10 +29,8 @@ import type {
   DispatchReceipt,
   DispatchResult,
   FileDigest,
-  Packet,
   RoleBinding,
   RuntimeObservation,
-  Stored,
 } from './types.js';
 
 type JsonObject = Record<string, unknown>;
@@ -53,14 +45,6 @@ const runtimeFailure = (message: string, details?: unknown) =>
     'Use a supported native pij-rs/OMP runtime in the declared checkout; inspect the named prerequisite without switching model, actor or root.',
     details,
   );
-const ackFailure = (message: string) =>
-  builderFailure(
-    ErrorCodes.BUILDER_ACK,
-    message,
-    'Keep work paused. Re-read the exact native packet and root challenge, then submit a fresh matching acknowledgement.',
-  );
-const RELEASE_ACK_CLOCK_SKEW_MS = 5000;
-const RELEASE_CONFIRMATION_EVIDENCE = 'builder release confirmation: ';
 
 /** Only the observed public v2 envelope; never a legacy/private descriptor projection. */
 async function native(
@@ -251,7 +235,7 @@ async function observePeer(
       ],
       gaps: [
         'Provider-served inference identity is unverified; these observations bind launch/session configuration only.',
-        'Native public state does not expose process argv or environment; the peer acknowledgement must name its observation limits.',
+        'Native public state does not expose process argv or environment.',
         ...(row.effort == null
           ? ['Effective effort is unverified; no effort override was observed.']
           : []),
@@ -264,50 +248,19 @@ async function verifyRoot(
   deps: BuilderDeps,
   root: string,
   sha: string,
-  branch?: string,
 ): Promise<BuilderResult<true>> {
   if (deps.fs.realpath(root) !== root)
     return runtimeFailure('Workspace root is missing or aliased.');
-  const result = await deps.exec.run(
-    'git',
-    [
-      'rev-parse',
-      '--show-toplevel',
-      'HEAD',
-      ...(branch === undefined ? [] : ['--abbrev-ref', 'HEAD']),
-    ],
-    { cwd: root, timeoutMs: 10000 },
-  );
+  const result = await deps.exec.run('git', ['rev-parse', '--show-toplevel', 'HEAD'], {
+    cwd: root,
+    timeoutMs: 10000,
+  });
   const lines = result.stdout.trim().split(/\r?\n/);
-  if (branch === undefined) {
-    if (!result.ok || lines.length !== 2 || lines[0] !== root || lines[1] !== sha)
-      return runtimeFailure(
-        'Native Git root or HEAD does not match the frozen workspace baseline.',
-        result,
-      );
-  } else {
-    if (
-      !result.ok ||
-      lines.length !== 3 ||
-      lines[0] !== root ||
-      !/^[0-9a-f]{40}$/.test(lines[1] ?? '') ||
-      !branch ||
-      lines[2] !== branch
-    )
-      return runtimeFailure(
-        'Native Git root or branch no longer matches the released allocation.',
-        result,
-      );
-    const ancestry = await deps.exec.run('git', ['merge-base', '--is-ancestor', sha, lines[1]!], {
-      cwd: root,
-      timeoutMs: 10000,
-    });
-    if (!ancestry.ok)
-      return runtimeFailure(
-        'Released checkout is not descended from the current sealed source.',
-        ancestry,
-      );
-  }
+  if (!result.ok || lines.length !== 2 || lines[0] !== root || lines[1] !== sha)
+    return runtimeFailure(
+      'Native Git root or HEAD does not match the frozen workspace baseline.',
+      result,
+    );
   return { ok: true, value: true };
 }
 
@@ -357,7 +310,12 @@ async function verifyPlanRoot(
 function verifyRef(deps: BuilderDeps, ref: FileDigest): BuilderResult<true> {
   const current = digestBuilderFile(deps, ref.path);
   if (!current.ok) return current;
-  if (current.value.sha256 !== ref.sha256) return ackFailure(`Bound artifact changed: ${ref.path}`);
+  if (current.value.sha256 !== ref.sha256)
+    return builderFailure(
+      ErrorCodes.BUILDER_NOT_READY,
+      `Bound artifact changed: ${ref.path}`,
+      'Restore the sealed artifact or assess and seal the changed baseline before dispatch.',
+    );
   return { ok: true, value: true };
 }
 
@@ -439,476 +397,6 @@ export async function checkBuilderPeerReleased(
   return { ok: true, value: true };
 }
 
-function parseAck(deps: BuilderDeps, input: string): BuilderResult<AckReceipt> {
-  const path = resolveInRepo(input, deps.repoRoot);
-  const loaded = deps.fs.readTextFileNoFollow(posixDirname(path), path, 1024 * 1024);
-  if (loaded.status !== 'ok') return ackFailure(`Cannot read acknowledgement: ${loaded.reason}`);
-  let value: unknown;
-  try {
-    value = JSON.parse(loaded.text);
-  } catch {
-    return ackFailure('Acknowledgement is not JSON.');
-  }
-  if (object(value) && object(value.dd)) {
-    const canonical = readBuilderRecord<AckReceipt>(deps, path, 'ack');
-    if (!canonical.ok) return canonical;
-    value = canonical.value.value;
-  }
-  if (
-    !object(value) ||
-    value.record_type !== 'ack' ||
-    ![
-      'id',
-      'recorded_at',
-      'unit_id',
-      'peer_id',
-      'nonce',
-      'packet_sha256',
-      'baseline_sha',
-      'native_root',
-      'shell_cwd',
-      'canary_nonce',
-    ].every((field) => text(value[field])) ||
-    !object(value.observed)
-  )
-    return ackFailure('Acknowledgement is missing required raw AckReceipt fields.');
-  const observed = value.observed;
-  if (
-    !text(observed.peer_id) ||
-    !text(observed.root) ||
-    typeof observed.ready !== 'boolean' ||
-    !Array.isArray(observed.evidence) ||
-    !observed.evidence.every(text) ||
-    !Array.isArray(observed.gaps) ||
-    !observed.gaps.every(text)
-  )
-    return ackFailure('RuntimeObservation is malformed.');
-  for (const field of ['harness', 'model', 'effort', 'native_session']) {
-    if (observed[field] !== undefined && !text(observed[field]))
-      return ackFailure(`Malformed observed ${field}.`);
-  }
-  if (
-    (observed.pid !== undefined &&
-      (!Number.isSafeInteger(observed.pid) || (observed.pid as number) <= 0)) ||
-    (observed.argv !== undefined && (!Array.isArray(observed.argv) || !observed.argv.every(text)))
-  )
-    return ackFailure('Malformed runtime PID or argv.');
-  if (!key(value.unit_id as string) || !key(value.nonce as string) || !key(value.peer_id as string))
-    return ackFailure('Malformed acknowledgement identity.');
-  return { ok: true, value: value as unknown as AckReceipt };
-}
-
-function verifyAckBindings(
-  ack: AckReceipt,
-  receipt: DispatchReceipt,
-  contract: Packet,
-  nonce: string,
-): BuilderResult<true> {
-  if (
-    ack.unit_id !== receipt.unit_id ||
-    ack.unit_id !== contract.unit.id ||
-    ack.peer_id !== receipt.observed.peer_id ||
-    ack.nonce !== nonce ||
-    ack.packet_sha256 !== receipt.packet.sha256 ||
-    ack.native_root !== contract.workspace ||
-    ack.shell_cwd !== contract.workspace ||
-    ack.observed.root !== contract.workspace ||
-    ack.observed.peer_id !== ack.peer_id ||
-    ack.observed.ready !== true ||
-    JSON.stringify(receipt.requested) !== JSON.stringify(contract.requested)
-  )
-    return ackFailure(
-      'Acknowledgement does not match the dispatched unit, peer, phase nonce, packet, root or settings.',
-    );
-  return { ok: true, value: true };
-}
-
-async function observeAcknowledgement(
-  deps: BuilderDeps,
-  ack: AckReceipt,
-  receipt: DispatchReceipt,
-  contract: Packet,
-): Promise<BuilderResult<RuntimeObservation>> {
-  const current = await observePeer(
-    deps,
-    ack.peer_id,
-    contract.workspace,
-    receipt.requested,
-    contract.parent,
-  );
-  if (!current.ok) return current;
-  for (const field of ['harness', 'model', 'effort', 'native_session', 'pid'] as const) {
-    if (
-      ack.observed[field] !== current.value[field] ||
-      (receipt.observed.ready && receipt.observed[field] !== current.value[field])
-    )
-      return ackFailure(`Observed ${field} changed or was not acknowledged exactly.`);
-  }
-  const sender = await actor(deps, contract.parent);
-  return sender.ok ? current : sender;
-}
-
-/** Receipt of an existing grant is observation, never a second grant or a pristine-source check. */
-async function confirmRelease(
-  deps: BuilderDeps,
-  context: BuilderContext,
-  ack: AckReceipt,
-  dispatch: Stored<DispatchReceipt>,
-  packet: Stored<Packet>,
-  allocation: AllocationRecord,
-): Promise<BuilderResult<DispatchResult>> {
-  const receipt = dispatch.value;
-  const release = receipt.release;
-  if (!release || !receipt.acknowledgement)
-    return ackFailure(
-      'Post-release confirmation requires an accepted pre-work acknowledgement and an already-issued release.',
-    );
-  if (release.outcome !== 'queued' && release.outcome !== 'delivered')
-    return ackFailure(
-      'Post-release confirmation requires a recorded queued or delivered release, not a held or refused transport.',
-    );
-  const ingestedAt = deps.clock.nowIso();
-  const observedTime = Date.parse(ack.recorded_at);
-  const sentTime = Date.parse(release.recorded_at);
-  const ingestedTime = Date.parse(ingestedAt);
-  if (
-    !text(release.recorded_at) ||
-    ![observedTime, sentTime, ingestedTime].every(Number.isFinite) ||
-    observedTime < sentTime - RELEASE_ACK_CLOCK_SKEW_MS ||
-    observedTime > ingestedTime + RELEASE_ACK_CLOCK_SKEW_MS
-  ) {
-    return builderFailure(
-      ErrorCodes.BUILDER_ACK,
-      'Post-release receipt has invalid timestamps or exceeds the explicit 5000 ms clock-skew tolerance.',
-      'Check peer/PM clock skew and the original release time; submit a correctly timed receipt, not an incorrect or tampered timestamp.',
-    );
-  }
-  const root = await verifyRoot(
-    deps,
-    packet.value.workspace,
-    allocation.base_sha,
-    allocation.branch,
-  );
-  if (!root.ok) return root;
-  const current = await observeAcknowledgement(deps, ack, receipt, packet.value);
-  if (!current.ok) return current;
-  const authority = readCurrentBuilderBaseline(deps, context);
-  if (
-    !authority.ok ||
-    authority.value.ref.sha256 !== receipt.baseline.sha256 ||
-    authority.value.value.source_sha !== allocation.base_sha
-  )
-    return builderAttemptFailure();
-  for (const ref of [
-    dispatch.ref,
-    receipt.packet,
-    receipt.baseline,
-    receipt.allocation,
-    receipt.acknowledgement,
-    packet.value.baseline,
-    packet.value.allocation,
-    packet.value.plan,
-    packet.value.guide,
-  ]) {
-    const verified = verifyRef(deps, ref);
-    if (!verified.ok) return verified;
-  }
-  const confirmationPath = builderRecordPath(
-    context,
-    'ack',
-    `${receipt.unit_id}-${allocation.base_sha}-release`,
-  );
-  const confirmations = receipt.observed.evidence.filter((entry) =>
-    entry.startsWith(RELEASE_CONFIRMATION_EVIDENCE),
-  );
-  if (confirmations.length) {
-    const recorded = readBuilderRecord<AckReceipt>(deps, confirmationPath, 'ack');
-    let proof: unknown;
-    try {
-      proof = JSON.parse(confirmations[0]!.slice(RELEASE_CONFIRMATION_EVIDENCE.length));
-    } catch {
-      return ackFailure('Recorded release confirmation evidence is malformed.');
-    }
-    if (
-      confirmations.length !== 1 ||
-      !recorded.ok ||
-      JSON.stringify(recorded.value.value) !== JSON.stringify(ack) ||
-      !object(proof) ||
-      !object(proof.confirmation) ||
-      !text(proof.confirmation.path) ||
-      resolveInRepo(proof.confirmation.path, deps.repoRoot) !== confirmationPath ||
-      proof.confirmation.sha256 !== recorded.value.ref.sha256 ||
-      proof.observed_at !== ack.recorded_at ||
-      !text(proof.ingested_at) ||
-      !Number.isFinite(Date.parse(proof.ingested_at)) ||
-      !object(proof.transport) ||
-      proof.transport.message_id !== release.message_id ||
-      proof.transport.recorded_at !== release.recorded_at ||
-      !['queued', 'delivered'].includes(String(proof.transport.outcome)) ||
-      release.outcome !== 'delivered'
-    )
-      return ackFailure(
-        'Immutable post-release acknowledgement or its canonical evidence binding changed.',
-      );
-    return { ok: true, value: { dispatch, packet } };
-  }
-  // Create-only publication also admits byte-identical recovery after a dispatch-CAS failure.
-  const stored = writeBuilderRecord(deps, confirmationPath, ack);
-  if (!stored.ok) return stored;
-  const evidence = `${RELEASE_CONFIRMATION_EVIDENCE}${JSON.stringify({ transport: release, confirmation: stored.value.ref, observed_at: ack.recorded_at, ingested_at: ingestedAt })}`;
-  const confirmed = writeBuilderRecord(
-    deps,
-    dispatch.ref.path,
-    {
-      ...receipt,
-      observed: {
-        ...current.value,
-        ...(ack.observed.argv && { argv: ack.observed.argv }),
-        evidence: [
-          ...receipt.observed.evidence,
-          ...current.value.evidence,
-          ...ack.observed.evidence,
-          evidence,
-        ],
-        gaps: [...new Set([...receipt.observed.gaps, ...current.value.gaps, ...ack.observed.gaps])],
-      },
-      release: { ...release, outcome: 'delivered' },
-    },
-    { expectedSha256: dispatch.ref.sha256 },
-  );
-  return confirmed.ok ? { ok: true, value: { dispatch: confirmed.value, packet } } : confirmed;
-}
-
-/** Ack is durable before release. The per-unit claim spans the external send and both CAS writes. */
-export async function acknowledgeBuilderUnit(
-  deps: BuilderDeps,
-  input: AckInput,
-): Promise<BuilderResult<DispatchResult>> {
-  const context = builderContext(deps, input.plan);
-  if (!context.ok) return context;
-  const parsed = parseAck(deps, input.receipt);
-  if (!parsed.ok) return parsed;
-  const ack = parsed.value;
-  const claim = lockUnit(
-    deps,
-    `${builderRecordPath(context.value, 'dispatch', ack.unit_id)}.operation-lock`,
-  );
-  if (!claim.ok) return claim;
-  try {
-    const baseline = readCurrentBuilderBaseline(deps, context.value);
-    if (!baseline.ok) return baseline;
-    const sourceSha = baseline.value.value.source_sha;
-    const attempt = `${ack.unit_id}-${sourceSha}`;
-    const dispatchPath = builderRecordPath(context.value, 'dispatch', attempt);
-    const packetPath = builderRecordPath(context.value, 'packet', attempt);
-    const ackPath = builderRecordPath(context.value, 'ack', attempt);
-    const confirmation = ack.id === `ack-${attempt}-release`;
-    if (ack.baseline_sha !== sourceSha || (!confirmation && ack.id !== `ack-${attempt}`))
-      return builderAttemptFailure();
-    const dispatch = readBuilderRecord<DispatchReceipt>(deps, dispatchPath, 'dispatch');
-    if (!dispatch.ok) return builderAttemptFailure();
-    const receipt = dispatch.value.value;
-    if (
-      receipt.id !== `dispatch-${attempt}` ||
-      receipt.unit_id !== ack.unit_id ||
-      resolveInRepo(receipt.packet.path, deps.repoRoot) !== packetPath ||
-      receipt.baseline.sha256 !== baseline.value.ref.sha256 ||
-      resolveInRepo(receipt.baseline.path, deps.repoRoot) !==
-        resolveInRepo(baseline.value.ref.path, deps.repoRoot)
-    )
-      return builderAttemptFailure();
-    const packetCheck = verifyRef(deps, receipt.packet);
-    if (!packetCheck.ok) return builderAttemptFailure();
-    const packet = readBuilderRecord<Packet>(deps, packetPath, 'packet');
-    if (!packet.ok) return builderAttemptFailure();
-    const contract = packet.value.value;
-    if (
-      contract.id !== `packet-${attempt}` ||
-      contract.unit.id !== ack.unit_id ||
-      contract.baseline.sha256 !== baseline.value.ref.sha256 ||
-      resolveInRepo(contract.baseline.path, deps.repoRoot) !==
-        resolveInRepo(baseline.value.ref.path, deps.repoRoot) ||
-      contract.plan.sha256 !== baseline.value.value.plan.sha256 ||
-      contract.guide.sha256 !== baseline.value.value.guide.sha256
-    )
-      return builderAttemptFailure();
-    if (confirmation && (!receipt.acknowledgement || !receipt.release))
-      return ackFailure(
-        'Post-release confirmation requires an accepted pre-work acknowledgement and an already-issued release.',
-      );
-    const binding = verifyAckBindings(
-      ack,
-      receipt,
-      contract,
-      confirmation ? receipt.release!.message_id : contract.nonce,
-    );
-    if (!binding.ok) return binding;
-    for (const ref of [
-      receipt.baseline,
-      receipt.allocation,
-      contract.baseline,
-      contract.allocation,
-      contract.plan,
-      contract.guide,
-    ]) {
-      const verified = verifyRef(deps, ref);
-      if (!verified.ok) return verified;
-    }
-    if (
-      receipt.baseline.sha256 !== contract.baseline.sha256 ||
-      receipt.allocation.sha256 !== contract.allocation.sha256
-    )
-      return ackFailure('Packet and dispatch bind different baseline or allocation bytes.');
-    const allocation = readBuilderRecord<AllocationRecord>(
-      deps,
-      receipt.allocation.path,
-      'allocation',
-    );
-    if (!allocation.ok) return allocation;
-    if (allocation.value.value.base_sha !== sourceSha) return builderAttemptFailure();
-    if (
-      ack.baseline_sha !== baseline.value.value.source_sha ||
-      allocation.value.value.base_sha !== ack.baseline_sha ||
-      allocation.value.value.root !== contract.workspace ||
-      allocation.value.value.peer_id !== ack.peer_id ||
-      allocation.value.value.unit_id !== ack.unit_id ||
-      allocation.value.value.retired_at !== undefined
-    )
-      return ackFailure('Acknowledgement baseline or allocation ownership no longer matches.');
-    if (
-      resolveInRepo(contract.plan.path, deps.repoRoot) !== context.value.planPath ||
-      baseline.value.value.plan.sha256 !== contract.plan.sha256 ||
-      baseline.value.value.guide.sha256 !== contract.guide.sha256
-    )
-      return ackFailure('Acknowledgement belongs to a different or changed plan.');
-    if (receipt.acknowledgement) {
-      if (resolveInRepo(receipt.acknowledgement.path, deps.repoRoot) !== ackPath)
-        return builderAttemptFailure();
-      const recorded = readBuilderRecord<AckReceipt>(deps, ackPath, 'ack');
-      if (
-        !recorded.ok ||
-        recorded.value.value.id !== `ack-${attempt}` ||
-        recorded.value.value.unit_id !== ack.unit_id ||
-        recorded.value.value.baseline_sha !== sourceSha
-      )
-        return builderAttemptFailure();
-      if (recorded.value.ref.sha256 !== receipt.acknowledgement.sha256)
-        return ackFailure('The accepted pre-work acknowledgement bytes changed.');
-      if (confirmation) {
-        const prior = verifyAckBindings(recorded.value.value, receipt, contract, contract.nonce);
-        if (!prior.ok) return prior;
-        if (recorded.value.value.canary_nonce !== ack.canary_nonce)
-          return ackFailure(
-            'Post-release challenge differs from the accepted pre-work acknowledgement.',
-          );
-        for (const field of ['harness', 'model', 'effort', 'native_session', 'pid'] as const) {
-          if (recorded.value.value.observed[field] !== receipt.observed[field])
-            return ackFailure(`Accepted pre-work ${field} no longer matches the dispatch.`);
-        }
-      } else {
-        if (JSON.stringify(recorded.value.value) !== JSON.stringify(ack))
-          return ackFailure('A different acknowledgement is already bound to this dispatch.');
-        if (receipt.release)
-          return { ok: true, value: { dispatch: dispatch.value, packet: packet.value } };
-      }
-    }
-    for (const seed of receipt.seed_files) {
-      const path = resolveInRepo(seed.path, contract.workspace);
-      if (
-        !isWithin(contract.workspace, path) ||
-        posixRelative(contract.workspace, path) !== seed.path ||
-        deps.fs.normalizeBundleTargetIdentity(path) !== path
-      )
-        return ackFailure('Dispatch seed path is not confined to its native root.');
-      const bytes = deps.fs.readBytesNoFollow(path);
-      if (bytes === null || sha256(bytes) !== seed.sha256)
-        return ackFailure(`Native immutable seed changed: ${seed.path}`);
-    }
-    const challenges = receipt.seed_files.filter((seed) => seed.path === contract.canary.path);
-    if (challenges.length !== 1 || challenges[0]?.sha256 !== sha256(ack.canary_nonce))
-      return ackFailure('Native relative-file challenge does not match.');
-    if (confirmation)
-      return await confirmRelease(
-        deps,
-        context.value,
-        ack,
-        dispatch.value,
-        packet.value,
-        allocation.value.value,
-      );
-    const root = await verifyRoot(deps, contract.workspace, ack.baseline_sha);
-    if (!root.ok) return root;
-    for (const file of baseline.value.value.files) {
-      const source = resolveInRepo(file.path, deps.repoRoot);
-      if (!isWithin(deps.repoRoot, source))
-        return ackFailure('Frozen source path escapes its repository.');
-      const bytes = deps.fs.readBytesNoFollow(
-        resolveInRepo(posixRelative(deps.repoRoot, source), contract.workspace),
-      );
-      if (bytes === null || sha256(bytes) !== file.sha256)
-        return ackFailure(`Frozen source changed before release: ${file.path}`);
-    }
-    const status = await deps.exec.run(
-      'git',
-      ['status', '--porcelain=v1', '-z', '--untracked-files=all'],
-      { cwd: contract.workspace, timeoutMs: 10000 },
-    );
-    if (!status.ok) return ackFailure('Cannot inspect the native checkout before release.');
-    const allowed = new Set(receipt.seed_files.map((seed) => seed.path));
-    for (const entry of status.stdout.split('\0').filter(Boolean)) {
-      if (!entry.startsWith('?? ') || !allowed.has(entry.slice(3)))
-        return ackFailure(
-          'Checkout changed before work release; only exact immutable seed files may be untracked.',
-        );
-    }
-    const current = await observeAcknowledgement(deps, ack, receipt, contract);
-    if (!current.ok) return current;
-    const authority = readCurrentBuilderBaseline(deps, context.value);
-    if (
-      !authority.ok ||
-      authority.value.ref.sha256 !== baseline.value.ref.sha256 ||
-      authority.value.value.source_sha !== sourceSha
-    )
-      return builderAttemptFailure();
-    const storedAck = writeBuilderRecord(deps, ackPath, ack);
-    if (!storedAck.ok) return storedAck;
-    const acknowledged = writeBuilderRecord(
-      deps,
-      dispatchPath,
-      {
-        ...receipt,
-        observed: {
-          ...current.value,
-          ...(ack.observed.argv && { argv: ack.observed.argv }),
-          evidence: [...current.value.evidence, ...ack.observed.evidence],
-          gaps: [...new Set([...current.value.gaps, ...ack.observed.gaps])],
-        },
-        acknowledgement: storedAck.value.ref,
-      },
-      { expectedSha256: dispatch.value.ref.sha256 },
-    );
-    if (!acknowledged.ok) return acknowledged;
-    const sent = await sendMessage(
-      deps,
-      contract.parent,
-      ack.peer_id,
-      `IMPLEMENTATION RELEASE — ${ack.peer_id} / ${ack.unit_id}; nonce ${ack.nonce}; packet ${ack.packet_sha256}; baseline ${ack.baseline_sha}. Implement only the immutable scoped packet.`,
-      contract.nonce,
-    );
-    if (!sent.ok) return sent;
-    const released = writeBuilderRecord(
-      deps,
-      dispatchPath,
-      { ...acknowledged.value.value, release: { ...sent.value, recorded_at: deps.clock.nowIso() } },
-      { expectedSha256: acknowledged.value.ref.sha256 },
-    );
-    if (!released.ok) return released;
-    return { ok: true, value: { dispatch: released.value, packet: packet.value } };
-  } finally {
-    claim.value.release();
-  }
-}
-
 async function sendMessage(
   deps: BuilderDeps,
   from: string,
@@ -928,13 +416,13 @@ async function sendMessage(
   if (receipt.outcome.outcome === 'refused')
     return builderFailure(
       ErrorCodes.BUILDER_RUNTIME,
-      'The recipient refused delivery; no successful release is recorded.',
+      'The recipient refused the work packet; no successful delivery is recorded.',
       'Do not retry this refused message. Resolve the recipient decision explicitly.',
       receipt,
     );
   if (receipt.outcome.outcome !== 'queued' && receipt.outcome.outcome !== 'delivered')
     return runtimeFailure(
-      'Native delivery was held or unobservable; no successful release is recorded.',
+      'Work-packet delivery was held or unobservable; no successful delivery is recorded.',
       receipt,
     );
   if (receipt.outcome.outcome === 'delivered' && !text(receipt.outcome.origin))
@@ -942,7 +430,7 @@ async function sendMessage(
   return { ok: true, value: { message_id: messageId, outcome: receipt.outcome.outcome } };
 }
 
-/** Provision through the shared boundary, launch at that native root, then publish acknowledgement-only work. */
+/** Record the observed native launch, publish work, then CAS the transport outcome. */
 export async function dispatchBuilderUnit(
   deps: DispatchDeps,
   input: DispatchInput,
@@ -1047,7 +535,7 @@ export async function dispatchBuilderUnit(
       return builderFailure(
         ErrorCodes.BUILDER_CONFLICT,
         'This unit already has a durable dispatch.',
-        'Acknowledge or explicitly reconcile that dispatch; never spawn a duplicate peer.',
+        'Inspect the recorded peer and transport outcome; reconcile that dispatch without spawning a duplicate.',
       );
     }
     for (const ref of [
@@ -1211,14 +699,38 @@ export async function dispatchBuilderUnit(
     const result = { dispatch: stored.value, packet: prepared.value.packet };
     if (!observation.ready)
       return runtimeFailure(
-        'Launch is recorded but not ready; no packet or work release was sent.',
+        'Launch is recorded but native readiness does not match; no work packet was sent.',
         result,
       );
+    const current = readCurrentBuilderBaseline(deps, context);
+    if (
+      !current.ok ||
+      current.value.ref.sha256 !== baseline.ref.sha256 ||
+      current.value.value.source_sha !== baseline.value.source_sha
+    )
+      return builderAttemptFailure();
+    for (const ref of [
+      prepared.value.packet.ref,
+      bound.value.ref,
+      baseline.ref,
+      baseline.value.plan,
+      baseline.value.guide,
+      baseline.value.review,
+      ...baseline.value.files,
+    ]) {
+      const checked = verifyRef(deps, ref);
+      if (!checked.ok) return checked;
+    }
     const sent = await sendMessage(
       deps,
       input.parent,
       launched.id,
-      `ACKNOWLEDGEMENT ONLY — ${unit.id}. Read native repository-relative packet ${prepared.value.packet.ref.path}; SHA-256 ${prepared.value.packet.ref.sha256}; nonce ${prepared.value.packet.value.nonce}; baseline ${baseline.value.source_sha}. Read the packet canary through native relative file tools, send your raw AckReceipt pointer, then WAIT for explicit IMPLEMENTATION RELEASE.`,
+      [
+        ...prepared.value.packet.value.instructions.slice(0, 4),
+        `Work packet ${prepared.value.packet.ref.path}; SHA-256 ${prepared.value.packet.ref.sha256}.`,
+        `Optional advisory self-check: harness builder self-check ${JSON.stringify(prepared.value.packet.ref.path)} --sha256 ${prepared.value.packet.ref.sha256}`,
+        'Receiving this packet means do the unit within its declared map. Report scoped committed delivery and proof to the PM.',
+      ].join('\n'),
       deps.nonce(),
     );
     if (!sent.ok)
@@ -1226,7 +738,23 @@ export async function dispatchBuilderUnit(
         ...sent,
         details: { failure: sent.details, dispatch: stored.value.ref, peer: launched.id },
       };
-    return { ok: true, value: result };
+    const delivered = writeBuilderRecord(
+      deps,
+      dispatchPath,
+      { ...stored.value.value, delivery: { ...sent.value, recorded_at: deps.clock.nowIso() } },
+      { expectedSha256: stored.value.ref.sha256 },
+    );
+    if (!delivered.ok)
+      return {
+        ...delivered,
+        details: {
+          failure: delivered.details,
+          dispatch: stored.value.ref,
+          peer: launched.id,
+          delivery: sent.value,
+        },
+      };
+    return { ok: true, value: { dispatch: delivered.value, packet: prepared.value.packet } };
   } finally {
     claim.value.release();
   }

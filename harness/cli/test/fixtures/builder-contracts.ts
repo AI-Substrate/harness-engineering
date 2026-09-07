@@ -257,16 +257,19 @@ export function fixturePacket(overrides: Partial<Packet> = {}): Packet {
     plan: fixtureDigest(BUILDER_FIXTURE_PLAN),
     guide: fixtureDigest(BUILDER_FIXTURE_GUIDE),
     baseline: fixtureDigest('docs/plans/001-example/assets/team/baseline.dd.json'),
+    source_sha: BUILDER_FIXTURE_SHA,
     allocation: fixtureDigest('.git/harness/builder/allocations/al-0001.dd.json'),
     workspace: '/workers/example',
     parent: 'peer-pm',
     requested: fixtureRole(),
     forbidden: ['.the-flow-state.json', 'the-flow.json', 'the-flow.md'],
-    canary: { path: 'canary.txt' },
-    instructions: ['Read the packet and acknowledge before making changes.'],
+    instructions: [
+      'You own the assigned unit map. Implement the responsibility and return committed evidence.',
+    ],
     ...overrides,
   };
 }
+/** Legacy record fixture only; new dispatch never asks a peer to produce it. */
 export function fixtureAck(overrides: Partial<AckReceipt> = {}): AckReceipt {
   return {
     record_type: 'ack',
@@ -295,7 +298,7 @@ export function fixtureDispatch(overrides: Partial<DispatchReceipt> = {}): Dispa
     allocation: fixtureDigest('allocation.dd.json'),
     requested: fixtureRole(),
     observed: fixtureObservation(),
-    seed_files: [fixtureDigest('canary.txt', 'native-root-nonce')],
+    seed_files: [],
     ...overrides,
   };
 }

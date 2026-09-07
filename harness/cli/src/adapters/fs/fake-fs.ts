@@ -139,13 +139,24 @@ export class FakeFs implements FsPort, FileSystemWritePort {
     return { status: 'ok', bytes: probe.bytes, text };
   }
 
-  readBytesNoFollow(path: string): Uint8Array | null {
+  readBytesNoFollow(
+    path: string,
+    options?: { maxBytes: number; root?: string },
+  ): Uint8Array | null {
     this.reads.push(path);
+    if (options !== undefined) {
+      const normalized = path.replace(/\\/g, '/');
+      const root = options.root ?? (normalized.slice(0, normalized.lastIndexOf('/')) || '/');
+      if (this.probeRegularFileNoFollow(root, path, options.maxBytes).status !== 'ok') return null;
+    }
     if (this.nonRegularPaths.has(path)) return null;
     const bytes = this.byteFiles.get(path);
-    if (bytes !== undefined) return Uint8Array.from(bytes);
-    const text = this.files[path];
-    return text === undefined ? null : new TextEncoder().encode(text);
+    const contents =
+      bytes ??
+      (this.files[path] === undefined ? undefined : new TextEncoder().encode(this.files[path]));
+    if (contents === undefined || (options !== undefined && contents.byteLength > options.maxBytes))
+      return null;
+    return bytes === undefined ? contents : Uint8Array.from(contents);
   }
 
   listRegularFilesNoFollow(root: string): string[] | null {

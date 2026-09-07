@@ -14,7 +14,6 @@ import {
   writeBuilderRecord,
 } from './records.js';
 import type {
-  AckReceipt,
   AllocationRecord,
   BaselineReceipt,
   BuilderContext,
@@ -283,13 +282,13 @@ async function validateDelivery(
       'Restore a valid sealed baseline before accepting any delivery.',
     );
   const key = `${unit.id}-${source}`;
-  const refused = () =>
-    builderFailure(
-      ErrorCodes.BUILDER_ACK,
-      `No matching current-baseline authorization for ${unit.id}.`,
-      'Use the packet, acknowledgement and dispatch qualified by the current sealed source; historical records never authorize this attempt.',
+  const refused = (cause: string, fix: string) =>
+    builderFailure(ErrorCodes.BUILDER_ACK, `${cause} for ${unit.id}.`, fix);
+  if (delivery.baseline_sha !== source)
+    return refused(
+      'Delivery source differs from the current sealed baseline',
+      `Deliver commits based on ${source}; do not select a historical baseline.`,
     );
-  if (delivery.baseline_sha !== source) return refused();
   if (!SHA.test(delivery.commit_sha))
     return builderFailure(
       ErrorCodes.BUILDER_PROOF,
@@ -298,59 +297,95 @@ async function validateDelivery(
     );
   const dispatchPath = builderRecordPath(context, 'dispatch', key);
   const packetPath = builderRecordPath(context, 'packet', key);
-  const ackPath = builderRecordPath(context, 'ack', key);
   const dispatch = readBuilderRecord<DispatchReceipt>(deps, dispatchPath, 'dispatch');
-  if (!dispatch.ok) return refused();
+  if (!dispatch.ok)
+    return refused(
+      `Current dispatch is unreadable at ${dispatchPath}: ${dispatch.message}`,
+      'Recover the dispatch qualified by the current unit and sealed source; historical dispatches cannot substitute.',
+    );
   const d = dispatch.value.value;
+  if (d.id !== `dispatch-${key}` || d.unit_id !== unit.id)
+    return refused(
+      'Dispatch identity does not match the current unit and source',
+      `Use dispatch-${key} from the current dispatch path.`,
+    );
   if (
-    d.id !== `dispatch-${key}` ||
-    d.unit_id !== unit.id ||
     resolveInRepo(d.packet.path, deps.repoRoot) !== packetPath ||
-    d.packet.sha256 !== delivery.packet_sha256 ||
+    d.packet.sha256 !== delivery.packet_sha256
+  )
+    return refused(
+      'Delivery packet binding differs from the current dispatch',
+      'Use the exact current packet path and digest recorded by dispatch.',
+    );
+  if (
     d.observed.peer_id !== delivery.peer_id ||
-    !d.observed.ready ||
     d.observed.root !== delivery.workspace ||
+    !d.observed.ready
+  )
+    return refused(
+      'Dispatch native observation does not identify the delivery peer and ready workspace',
+      'Recover the observed dispatch for the allocated peer and its exact native checkout.',
+    );
+  if (
     d.baseline.sha256 !== baseline.ref.sha256 ||
     resolveInRepo(d.baseline.path, deps.repoRoot) !==
-      resolveInRepo(baseline.ref.path, deps.repoRoot) ||
-    !d.acknowledgement ||
-    resolveInRepo(d.acknowledgement.path, deps.repoRoot) !== ackPath
+      resolveInRepo(baseline.ref.path, deps.repoRoot)
   )
-    return refused();
-  for (const ref of [d.packet, d.allocation, d.acknowledgement]) {
+    return refused(
+      'Dispatch baseline binding differs from the current sealed source',
+      'Use the dispatch bound to the current baseline path and digest.',
+    );
+  if (resolveInRepo(d.allocation.path, deps.repoRoot) !== d.allocation.path)
+    return refused(
+      'Dispatch allocation path is not absolute',
+      'Use the absolute allocation authority path recorded when the workspace was allocated.',
+    );
+  for (const ref of [d.packet, d.allocation]) {
     const verified = sameBuilderFile(deps, ref);
-    if (!verified.ok) return refused();
+    if (!verified.ok)
+      return refused(
+        `Dispatch evidence cannot be verified: ${verified.message}`,
+        verified.next_action,
+      );
   }
-  if (resolveInRepo(d.allocation.path, deps.repoRoot) !== d.allocation.path) return refused();
   const packet = readBuilderRecord<Packet>(deps, packetPath, 'packet');
+  if (!packet.ok)
+    return refused(`Current packet is unreadable: ${packet.message}`, packet.next_action);
   const allocation = readBuilderRecord<AllocationRecord>(deps, d.allocation.path, 'allocation');
-  const ack = readBuilderRecord<AckReceipt>(deps, ackPath, 'ack');
-  if (!packet.ok || !allocation.ok || !ack.ok) return refused();
+  if (!allocation.ok)
+    return refused(
+      `Allocated workspace record is unreadable: ${allocation.message}`,
+      allocation.next_action,
+    );
   const p = packet.value.value;
   const a = allocation.value.value;
-  const receipt = ack.value.value;
   if (
     p.id !== `packet-${key}` ||
-    receipt.id !== `ack-${key}` ||
-    receipt.baseline_sha !== source ||
+    (p.source_sha !== undefined && p.source_sha !== source) ||
     p.baseline.sha256 !== baseline.ref.sha256 ||
     resolveInRepo(p.baseline.path, deps.repoRoot) !==
       resolveInRepo(baseline.ref.path, deps.repoRoot)
   )
-    return refused();
+    return refused(
+      'Packet identity or source binding differs from the current sealed baseline',
+      `Use packet-${key} bound to the current baseline path, digest and source ${source}.`,
+    );
   if (
-    a.peer_id !== delivery.peer_id ||
-    receipt.unit_id !== unit.id ||
     p.allocation.sha256 !== d.allocation.sha256 ||
-    p.baseline.sha256 !== d.baseline.sha256 ||
-    receipt.observed.harness !== p.requested.harness ||
-    receipt.observed.model !== p.requested.model ||
-    (p.requested.effort !== undefined && receipt.observed.effort !== p.requested.effort)
+    resolveInRepo(p.allocation.path, deps.repoRoot) !== d.allocation.path
   )
-    return builderFailure(
-      ErrorCodes.BUILDER_ACK,
-      `Allocation or runtime binding changed for ${unit.id}.`,
-      'Use the CAS-bound peer allocation and its matching native acknowledgement.',
+    return refused(
+      'Packet allocation binding differs from dispatch',
+      'Use the same immutable allocation path and digest in the packet and dispatch.',
+    );
+  if (
+    d.observed.harness !== p.requested.harness ||
+    d.observed.model !== p.requested.model ||
+    (p.requested.effort !== undefined && d.observed.effort !== p.requested.effort)
+  )
+    return refused(
+      'Observed dispatch runtime differs from the packet request',
+      'Use the native harness, model and requested effort observed for this packet.',
     );
   if (
     p.unit.id !== unit.id ||
@@ -359,42 +394,13 @@ async function validateDelivery(
     a.root !== delivery.workspace ||
     a.unit_id !== unit.id ||
     a.base_sha !== baseline.value.source_sha ||
-    a.retired_at ||
-    receipt.nonce !== p.nonce ||
-    receipt.packet_sha256 !== delivery.packet_sha256 ||
-    receipt.baseline_sha !== baseline.value.source_sha ||
-    receipt.peer_id !== delivery.peer_id ||
-    receipt.native_root !== delivery.workspace ||
-    receipt.shell_cwd !== delivery.workspace ||
-    !receipt.observed.ready ||
-    receipt.observed.peer_id !== delivery.peer_id ||
-    receipt.observed.root !== delivery.workspace
+    a.peer_id !== delivery.peer_id ||
+    a.retired_at
   )
-    return builderFailure(
-      ErrorCodes.BUILDER_ACK,
-      `Packet, allocation or acknowledgement mismatch for ${unit.id}.`,
-      'Recover the accepted immutable records; do not infer provenance from a branch name.',
+    return refused(
+      'Packet unit or allocated peer, workspace or source does not match the delivery',
+      'Use the current guide unit and its active allocation with the exact peer, checkout and sealed source.',
     );
-  if (d.release?.outcome !== 'delivered') {
-    const confirmationId = `ack-${key}-release`;
-    const harnessCommand = [deps.harness.command, ...deps.harness.args]
-      .map((argument) => JSON.stringify(argument))
-      .join(' ');
-    return builderFailure(
-      ErrorCodes.BUILDER_ACK,
-      `Release delivery confirmation is ${d.release ? 'queued' : 'missing'} for ${unit.id}.`,
-      `${d.release ? '' : 'No release is recorded; recover its issuance through the owning acknowledgement flow first. '}After ${delivery.peer_id} observes the exact issued release, collect a fresh raw AckReceipt with id ${confirmationId} and nonce derived from dispatch.release.message_id. Run ${harnessCommand} builder ack ${JSON.stringify(context.planPath)} --receipt <path-to-fresh-release-ack.json>, then retry composition only after the dispatch records delivered. A queued send, pre-work acknowledgement retry or delivered-code claim is not confirmation.`,
-      {
-        unit_id: unit.id,
-        baseline_sha: source,
-        dispatch_path: dispatch.value.ref.path,
-        release_outcome: d.release?.outcome ?? 'missing',
-        release_message_id: d.release?.message_id ?? null,
-        confirmation_id: confirmationId,
-        canonical_confirmation_path: builderRecordPath(context, 'ack', `${key}-release`),
-      },
-    );
-  }
   const root = await builderGit(deps, ['rev-parse', '--show-toplevel'], delivery.workspace);
   const branch = await builderGit(
     deps,

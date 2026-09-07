@@ -172,25 +172,6 @@ describe('Builder source lifecycle and runnable examples', () => {
     expect(run.stdout.includes(boundary)).toBe(override);
   });
 
-  it('orients implementation to fresh release confirmation through the unchanged ack command', () => {
-    const root = temp();
-    const doc = create(root);
-    const path = join(root, 'the-flow.json');
-    new NodeFs().writeText(path, JSON.stringify({ ...doc, nav: { now: 'phase-1', next: null } }));
-    const run = spawnSync(
-      process.execPath,
-      [join(ROOT, 'harness/cli/bin/harness.js'), 'flow', 'orient', '--path', path],
-      { cwd: root, encoding: 'utf8', timeout: 10000 },
-    );
-    expect(run.error).toBeUndefined();
-    expect(run.status, `${run.stdout}\n${run.stderr}`).toBe(0);
-    expect(run.stdout).toContain('ack-<unit_id>-<full-current-source-sha>-release');
-    expect(run.stdout).toContain('retained release.message_id');
-    expect(run.stdout).toContain('harness builder ack <plan> --receipt <path>');
-    expect(run.stdout).toContain('without a second grant');
-    expect(run.stdout).toContain('confirmation sends/grants nothing');
-  });
-
   it('expands phases through the real batch API without rearming whole-plan review gates', () => {
     const root = temp();
     const doc = create(root);
