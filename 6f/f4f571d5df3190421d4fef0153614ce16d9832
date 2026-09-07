@@ -1,0 +1,100 @@
+.dd/schemas/builder/team/schema.json
+  h_9e71e8b09f7cf2 125-140,349-364,498-502
+docs/how/harness-builder.md
+  h_9e71e8b09f7cf2 35,100-101,114-132,143,147,186
+docs/plans/099-builder-warning-guidance/assets/impl-guide.dd.json
+  h_9e71e8b09f7cf2 11,33-39,313-314,330-331
+docs/plans/099-builder-warning-guidance/assets/impl-guide.dd.md
+  h_9e71e8b09f7cf2 14,25,107,117
+docs/plans/099-builder-warning-guidance/assets/tasks/phase-3/tasks.dd.json
+  h_9e71e8b09f7cf2 11,17,21-45,49-102
+docs/plans/099-builder-warning-guidance/assets/tasks/phase-3/tasks.dd.md
+  h_9e71e8b09f7cf2 15,30,36-39,45-61
+harness/cli/src/acts/builder.ts
+  h_9e71e8b09f7cf2 20,278-288
+harness/cli/src/services/builder/commands.ts
+  h_9e71e8b09f7cf2 15,185-209,215,221
+harness/cli/src/services/builder/composition-service.ts
+  h_9e71e8b09f7cf2 4,266,269,411-430,445-447,449-452,454-455,461-467,497,510-511,515,641,664-676,694-701,703,719-720,735-740,763,790
+harness/cli/src/services/builder/contracts-service.ts
+  h_9e71e8b09f7cf2 29,45,52-55,66,68-76,78,82,100,383,390,407,599,601-604,613,619,627,634-635,639,647,649,651,662,664,667,671,680,682,684,696
+harness/cli/src/services/builder/dispatch-service.ts
+  h_9e71e8b09f7cf2 696
+harness/cli/src/services/builder/guide-service.ts
+  h_9e71e8b09f7cf2 10,24,125-141,165,169-170,173-194,275,280,285-293,296-298,300,309-311,314-331,364-370,374-376,378-380,385,394-401,432,435-436,466,468-470,476
+harness/cli/src/services/builder/lifecycle-service.ts
+  h_9e71e8b09f7cf2 20,246,251,304-307
+harness/cli/src/services/builder/on-track-service.ts
+  h_9e71e8b09f7cf2 1-198
+harness/cli/src/services/builder/ownership-service.ts
+  h_9e71e8b09f7cf2 1-65
+harness/cli/src/services/builder/packet-service.ts
+  h_9e71e8b09f7cf2 271-272,281-283
+harness/cli/src/services/builder/types.ts
+  h_9e71e8b09f7cf2 150,166,171,234,300,348-371,425
+harness/cli/src/services/docs/docs-content.ts
+  h_9e71e8b09f7cf2 130
+harness/cli/src/services/flow/schemas-content.ts
+  h_9e71e8b09f7cf2 262-263,282-284
+harness/cli/src/services/instructions/builder-guidance.ts
+  h_9e71e8b09f7cf2 4,8,11,41-44,58-78
+harness/cli/test/acts/builder.test.ts
+  h_9e71e8b09f7cf2 90-111
+harness/cli/test/services/builder-contracts.test.ts
+  h_9e71e8b09f7cf2 40-51,55-66
+harness/cli/test/services/builder-dispatch.test.ts
+  h_9e71e8b09f7cf2 22,45,73,77-87,232-242,662-703
+harness/cli/test/services/builder-guide.test.ts
+  h_9e71e8b09f7cf2 83,99,105-117,120,126-133,136,245,254,261,275,366,383-395,399-400,402,405,420-495,741-816
+harness/cli/test/services/builder-lifecycle.test.ts
+  h_9e71e8b09f7cf2 21,40,160-163,440,443-449,454-471,690-763,820,823-861,863-867,933-948,954,956,961-966,976,1017-1063
+harness/cli/test/services/builder-on-track.test.ts
+  h_9e71e8b09f7cf2 1-318
+scripts/builder-smoke.mjs
+  h_9e71e8b09f7cf2 183-195,204-211,218-222
+skills/builder/SKILL.md
+  h_9e71e8b09f7cf2 62-64,104
+skills/builder/examples/lifecycle.mjs
+  h_9e71e8b09f7cf2 27,32-33
+skills/builder/references/00-routing.md
+  h_9e71e8b09f7cf2 320
+skills/builder/references/flight-plan.example.json
+  h_9e71e8b09f7cf2 66-67,90-92
+skills/builder/references/flight-plan.template.json
+  h_9e71e8b09f7cf2 27-28,41-43
+skills/builder/references/getting-started.md
+  h_9e71e8b09f7cf2 47,84-86
+skills/builder/references/harness-seams.md
+  h_9e71e8b09f7cf2 46
+skills/builder/references/stages/40-impl-guide.md
+  h_9e71e8b09f7cf2 16,18,21,24-25
+skills/builder/references/stages/50-phase-tasks.md
+  h_9e71e8b09f7cf2 15,43
+skills/builder/references/stages/60-implement.md
+  h_9e71e8b09f7cf2 16,18,20-21,24-25
+skills/builder/references/stages/62-progress.md
+  h_9e71e8b09f7cf2 13
+skills/builder/references/stages/70-review.md
+  h_9e71e8b09f7cf2 22-23
+skills/builder/references/team-lifecycle.md
+  h_9e71e8b09f7cf2 19-20,25-26,59,73-89,92,103
+skills/builder/templates/coder-packet.template.md
+  h_9e71e8b09f7cf2 11,35-46,49,53
+skills/builder/templates/impl-guide.template.json
+  h_9e71e8b09f7cf2 288
+skills/builder/templates/reviewer-packet.template.md
+  h_9e71e8b09f7cf2 28,34-36
+skills/eng-harness-flow/SKILL.md
+  h_9e71e8b09f7cf2 91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "6ff4f571d5df3190421d4fef0153614ce16d9832",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
