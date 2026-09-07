@@ -183,6 +183,7 @@ describe('buildProgram — composition root wiring', () => {
       'ack',
       'advance',
       'compose',
+      'amend',
       'review',
       'close',
       'tidy',
