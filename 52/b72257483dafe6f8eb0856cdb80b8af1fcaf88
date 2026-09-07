@@ -1,0 +1,40 @@
+.dd/schemas/builder/packet/schema.json
+  h_9e71e8b09f7cf2 3,22
+.dd/schemas/builder/work-packet/schema.json
+  h_9e71e8b09f7cf2 1-274
+docs/how/harness-builder.md
+  h_9e71e8b09f7cf2 100-101
+docs/plans/099-builder-warning-guidance/assets/impl-guide.dd.json
+  h_9e71e8b09f7cf2 32-33,189-191
+docs/plans/099-builder-warning-guidance/assets/impl-guide.dd.md
+  h_9e71e8b09f7cf2 25,60
+harness/cli/src/services/builder/records.ts
+  h_9e71e8b09f7cf2 27,34,166-167,246,257-260,263,278-282
+harness/cli/src/services/builder/schema-service.ts
+  h_9e71e8b09f7cf2 27-28
+harness/cli/src/services/builder/self-check-service.ts
+  h_9e71e8b09f7cf2 18-23
+harness/cli/src/services/docs/docs-content.ts
+  h_9e71e8b09f7cf2 130
+harness/cli/test/fixtures/builder-contracts.ts
+  h_9e71e8b09f7cf2 31-39
+harness/cli/test/services/builder-lifecycle.test.ts
+  h_9e71e8b09f7cf2 537
+harness/cli/test/services/builder-self-check.test.ts
+  h_9e71e8b09f7cf2 2-6,27-42,228,232-234
+scripts/builder-smoke.mjs
+  h_9e71e8b09f7cf2 9,151,167,174,247-253,290-294
+skills/builder/examples/lifecycle.mjs
+  h_9e71e8b09f7cf2 35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "52b72257483dafe6f8eb0856cdb80b8af1fcaf88",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
