@@ -1743,6 +1743,109 @@ describe('Builder already-integrated observation through real Git', () => {
     expect(imported.value.artifact_sha).toBeUndefined();
   }, 30000);
 
+  it('binds historical integration without checking out and keeps later PM edits as verify warnings', async () => {
+    const s = await fixture();
+    await s.apply();
+    const integration = (await s.runGit(['rev-parse', 'HEAD'])).trim();
+    fs.writeText(
+      posixJoin(s.repo, 'src/parser/steady.txt'),
+      'Reviewed PM refinement after integration.\n',
+    );
+    await s.runGit(['add', 'src/parser/steady.txt']);
+    await s.runGit(['commit', '-m', 'PM refinement after matching integration']);
+    const candidate = (await s.runGit(['rev-parse', 'HEAD'])).trim();
+    const before = await s.snapshot();
+    expect(await s.importObserved()).toMatchObject({ ok: false, code: 'E475' });
+    const imported = value(
+      await composeBuilderUnits(s.deps, {
+        plan: BUILDER_FIXTURE_PLAN,
+        mode: 'import',
+        deliveries: s.deliveries,
+        alreadyIntegrated: true,
+        integrationSha: integration.slice(0, 12),
+      }),
+    );
+    expect(imported.value.integration_sha).toBe(integration);
+    expect(imported.value.units).toEqual(s.deliveries);
+    expect(imported.value.artifact_sha).toBeUndefined();
+    expect(await s.snapshot()).toEqual(before);
+    const verified = value(
+      await composeBuilderUnits(s.deps, {
+        plan: BUILDER_FIXTURE_PLAN,
+        mode: 'verify',
+        sha: candidate,
+      }),
+    );
+    expect(verified.value.artifact_sha).toBe(candidate);
+    expect(verified.value.integration_sha).toBe(integration);
+    expect(verified.value.integration_proofs).toEqual(imported.value.integration_proofs);
+    expect(verified.value.warnings).toContainEqual({
+      file: 'src/parser/steady.txt',
+      owning_unit: 'tk-0002',
+      stage: 'verify',
+    });
+    expect(verified.value.checks).toMatchObject([{ exit_code: 0 }]);
+    const current = value(loadBuilderGuide(s.deps, BUILDER_FIXTURE_PLAN));
+    expect((await verifyBuilderComposition(s.deps, current.context, current.guide.value)).ok).toBe(
+      true,
+    );
+    const path = builderRecordPath(s.context, 'composition');
+    const raw = fs.readText(path);
+    if (raw === null || !s.deliveries[0]) throw new Error('Missing fixture composition.');
+    const changed = JSON.parse(raw);
+    changed.sections[0].value.integration_sha = s.deliveries[0].commit_sha;
+    fs.writeText(path, JSON.stringify(changed));
+    expect(
+      await verifyBuilderComposition(s.deps, current.context, current.guide.value),
+    ).toMatchObject({ ok: false, code: 'E475' });
+  }, 30000);
+
+  it.each([
+    'missing',
+    'worker-branch',
+    'before-baseline',
+  ] as const)('refuses an invalid %s integration point before writing or replaying', async (kind) => {
+    const s = await fixture();
+    await s.apply();
+    let selected = 'missing-integration-point';
+    if (kind === 'worker-branch') {
+      const delivery = s.deliveries[0];
+      if (!delivery) throw new Error('Missing fixture delivery.');
+      selected = delivery.commit_sha;
+    } else if (kind === 'before-baseline') {
+      const head = (await s.runGit(['rev-parse', 'HEAD'])).trim();
+      const tree = (await s.runGit(['rev-parse', `${head}^{tree}`])).trim();
+      selected = (
+        await s.runGit(['commit-tree', tree, '-m', 'Unrelated integration point'])
+      ).trim();
+      const joined = (
+        await s.runGit([
+          'commit-tree',
+          tree,
+          '-p',
+          head,
+          '-p',
+          selected,
+          '-m',
+          'Join unrelated history',
+        ])
+      ).trim();
+      await s.runGit(['update-ref', 'HEAD', joined, head]);
+    }
+    const before = await s.snapshot();
+    expect(
+      await composeBuilderUnits(s.deps, {
+        plan: BUILDER_FIXTURE_PLAN,
+        mode: 'import',
+        deliveries: s.deliveries,
+        alreadyIntegrated: true,
+        integrationSha: selected,
+      }),
+    ).toMatchObject({ ok: false, code: 'E475' });
+    expect(fs.exists(builderRecordPath(s.context, 'composition'))).toBe(false);
+    expect(await s.snapshot()).toEqual(before);
+  }, 30000);
+
   it('binds cherry-picked-without-commit then recommitted trees, preserving original non-ancestor identities and all source', async () => {
     const s = await fixture();
     await s.apply();

@@ -51,8 +51,11 @@ Every Builder command has its own \`--help\`; use its real argument contract.
    delivery-touched paths only when no concrete mapped paths exist. Empty scope
    is missing proof. Compare modes/types/Git object IDs and absence, not working
    text. Write the receipt without replaying changes; preserve original worker
-   SHAs. Missing evidence and digest/tree mismatch remain failures. This flag
-   requires --import and conflicts with --verify; it is not product proof.
+   SHAs. With \`--integration-sha <ref>\`, compare at a resolved historical commit
+   between the seal and current HEAD; store it without checking it out. Current
+   verification measures the later PM delta and its warnings. Missing evidence
+   and digest/tree mismatch remain failures. --integration-sha requires both
+   --import and --already-integrated; these flags conflict with --verify.
    Still run \`builder compose --verify <sha>\` and independent composition review.
    Guide, coder delivery and PM map deviations are visible warnings, not an
    ownership veto. Retain file/owning_unit/stage rows in independent review,

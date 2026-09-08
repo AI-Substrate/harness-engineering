@@ -640,6 +640,40 @@ async function integrationWarnings(
   };
 }
 
+/** An integration observation must stay inside the sealed-to-artifact ancestry. */
+async function verifyIntegrationPoint(
+  deps: BuilderDeps,
+  source: string,
+  integration: string,
+  target: string,
+): Promise<BuilderResult<true>> {
+  if (![source, integration, target].every((sha) => SHA.test(sha)))
+    return builderFailure(
+      ErrorCodes.BUILDER_PROOF,
+      'Integration evidence does not name full committed SHAs.',
+      'Resolve the integration commit and preserve the original sealed-source binding.',
+    );
+  for (const [from, to] of [
+    [source, integration],
+    [integration, target],
+  ]) {
+    if (from === to) continue;
+    const ancestor = await deps.exec.run('git', ['merge-base', '--is-ancestor', from, to], {
+      cwd: deps.repoRoot,
+      timeoutMs: 30000,
+      env: { GIT_NO_REPLACE_OBJECTS: '1', GIT_OPTIONAL_LOCKS: '0' },
+    });
+    if (ancestor.code !== 0)
+      return builderFailure(
+        ErrorCodes.BUILDER_PROOF,
+        'Integration commit is outside the sealed-source-to-artifact ancestry.',
+        'Choose an integration commit descended from the seal and ancestral to the current artifact; recover original receipt bindings if they were changed.',
+        { source_sha: source, integration_sha: integration, target_sha: target },
+      );
+  }
+  return { ok: true, value: true };
+}
+
 export async function verifyBuilderComposition(
   deps: BuilderDeps,
   context: BuilderContext,
@@ -664,6 +698,13 @@ export async function verifyBuilderComposition(
       'Composition is imported but not verified against the current baseline.',
       'Commit PM integration, then run builder compose --verify with that SHA.',
     );
+  const integrated = await verifyIntegrationPoint(
+    deps,
+    baseline.value.value.source_sha,
+    value.integration_sha,
+    value.artifact_sha,
+  );
+  if (!integrated.ok) return integrated;
   const roster = compositionRoster(guide, value.units, baseline.value.value.source_sha);
   if (!roster.ok) return roster;
   const basis = await verifyBuilderBasis(deps, context, baseline.value.value);
@@ -736,6 +777,19 @@ export async function composeBuilderUnits(
   deps: CompositionDeps,
   input: ComposeInput,
 ): Promise<BuilderResult<Stored<CompositionReceipt>>> {
+  if (
+    'integrationSha' in input &&
+    input.integrationSha !== undefined &&
+    (input.mode !== 'import' ||
+      !input.alreadyIntegrated ||
+      typeof input.integrationSha !== 'string' ||
+      !input.integrationSha.trim())
+  )
+    return builderFailure(
+      ErrorCodes.BUILDER_INVALID,
+      'An integration commit requires already-integrated import and a nonempty commit reference.',
+      'Use compose --import <deliveries> --already-integrated --integration-sha <commit>.',
+    );
   if (input.mode === 'import' && input.alreadyIntegrated) {
     const exec = deps.exec;
     deps = {
@@ -778,12 +832,37 @@ export async function composeBuilderUnits(
         'Resolve every readiness issue before importing.',
         ready.value,
       );
+    let integrationPoint = head.value;
+    if (input.integrationSha !== undefined) {
+      const resolved = await builderGit(deps, [
+        'rev-parse',
+        '--verify',
+        '--end-of-options',
+        `${input.integrationSha}^{commit}`,
+      ]);
+      if (!resolved.ok || !SHA.test(resolved.value.trim()))
+        return builderFailure(
+          ErrorCodes.BUILDER_PROOF,
+          `Cannot resolve integration commit: ${input.integrationSha}`,
+          'Use an existing commit in the sealed-source-to-HEAD ancestry; no checkout is needed.',
+        );
+      integrationPoint = resolved.value.trim();
+    }
+    if (input.alreadyIntegrated) {
+      const selected = await verifyIntegrationPoint(
+        deps,
+        baseline.value.value.source_sha,
+        integrationPoint,
+        head.value,
+      );
+      if (!selected.ok) return selected;
+    }
     const integration = await integrationWarnings(
       deps,
       context,
       guide,
       baseline.value.value.source_sha,
-      head.value,
+      integrationPoint,
       'import',
     );
     if (!integration.ok) return integration;
@@ -849,7 +928,7 @@ export async function composeBuilderUnits(
     if (input.alreadyIntegrated) {
       const baselineTree = await committedTree(deps, baseline.value.value.source_sha);
       if (!baselineTree.ok) return baselineTree;
-      const pmTree = await committedTree(deps, head.value);
+      const pmTree = await committedTree(deps, integrationPoint);
       if (!pmTree.ok) return pmTree;
       for (const { unit, delivery, paths } of prepared) {
         const proof = await observeIntegratedUnit(
@@ -904,7 +983,7 @@ export async function composeBuilderUnits(
       recorded_at: deps.clock.nowIso(),
       baseline: baseline.value.ref,
       units: prepared.map((row) => row.delivery),
-      integration_sha: composed.value,
+      integration_sha: input.alreadyIntegrated ? integrationPoint : composed.value,
       integration_method: input.alreadyIntegrated ? 'already-integrated' : 'replayed',
       ...(input.alreadyIntegrated && { integration_proofs: proofs }),
       files: [],
@@ -931,6 +1010,13 @@ export async function composeBuilderUnits(
       'The imported baseline changed.',
       'Reconcile the historical evidence before verifying.',
     );
+  const integrated = await verifyIntegrationPoint(
+    deps,
+    baseline.value.value.source_sha,
+    imported.value.value.integration_sha,
+    input.sha,
+  );
+  if (!integrated.ok) return integrated;
   const roster = compositionRoster(
     guide,
     imported.value.value.units,

@@ -406,7 +406,13 @@ export interface CompositionDeps extends BuilderDeps {
 }
 export type ComposeInput = BuilderTarget &
   (
-    | { mode: 'import'; deliveries: UnitDelivery[]; alreadyIntegrated?: boolean }
+    | {
+        mode: 'import';
+        deliveries: UnitDelivery[];
+        alreadyIntegrated?: boolean;
+        /** Optional committed integration point; requires alreadyIntegrated. */
+        integrationSha?: string;
+      }
     | { mode: 'verify'; sha: string }
   );
 

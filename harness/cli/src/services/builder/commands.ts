@@ -236,17 +236,27 @@ export const BUILDER_COMMANDS: BuilderCommand[] = [
       },
       {
         flags: '--already-integrated',
-        description: 'Prove supplied unit projections match committed PM HEAD; do not replay',
+        description:
+          'Prove supplied unit projections match the selected integration commit (HEAD by default); do not replay',
+        conflicts: ['verify'],
+      },
+      {
+        flags: '--integration-sha <ref>',
+        description:
+          'Historical matching commit between sealed source and HEAD; leave the checkout unchanged',
         conflicts: ['verify'],
       },
       {
         flags: '--verify <sha>',
         description: 'Exact composed commit to exercise through the guide checks',
-        conflicts: ['import', 'alreadyIntegrated'],
+        conflicts: ['import', 'alreadyIntegrated', 'integrationSha'],
       },
     ],
     exactlyOne: ['import', 'verify'],
-    requires: { alreadyIntegrated: ['import'] },
+    requires: {
+      alreadyIntegrated: ['import'],
+      integrationSha: ['import', 'alreadyIntegrated'],
+    },
     results: ['composition'],
   },
   {

@@ -325,6 +325,9 @@ async function executeBuilder(
           mode: 'import',
           deliveries: deliveries.value as UnitDelivery[],
           ...(options.alreadyIntegrated === true && { alreadyIntegrated: true }),
+          ...(typeof options.integrationSha === 'string' && {
+            integrationSha: options.integrationSha,
+          }),
         }),
       );
     }

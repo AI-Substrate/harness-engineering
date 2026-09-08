@@ -83,6 +83,16 @@
             "../plan.dd.json#acceptance_criteria/ac-0008",
             "../plan.dd.json#acceptance_criteria/ac-000b"
           ]
+        },
+        {
+          "id": "lg-0008",
+          "at": "2026-09-08T10:35:00.210Z",
+          "text": "Historical integration-point repair: compose --import --already-integrated --integration-sha resolves an explicit ref to a full commit between sealed source and current PM HEAD. It compares original worker projections there and records that integration_sha without replay or checkout; later PM refinements remain current composition input and produce ownership warnings. Ordinary import and exact-artifact verification remain distinct. Missing refs, nonancestor commits, points before the seal and invalid flag combinations refuse; verification and receipt re-observation recheck source-to-integration-to-artifact ancestry. All 257 lifecycle/contracts tests passed. A separate actual CLI/Git smoke first refused current-HEAD equality after a PM edit, then accepted an abbreviated historical integration ref, preserved HEAD/refs/index/source/evidence, ran the real current composition check and retained the PM warning. Its native/review evidence was seeded, so this is not native fleet or live consumer acceptance. The live consumer checkout, original receipts and global installation were not changed. Shared-main merge and activation remain separate authorizations.",
+          "links": [
+            "../plan.dd.json#acceptance_criteria/ac-0003",
+            "../plan.dd.json#acceptance_criteria/ac-0008",
+            "../plan.dd.json#acceptance_criteria/ac-000b"
+          ]
         }
       ]
     }
