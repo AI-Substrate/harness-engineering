@@ -1,0 +1,20 @@
+docs/how/harness-builder.md
+  h_9e71e8b09f7cf2 184-185
+harness/cli/src/services/builder/close-service.ts
+  h_9e71e8b09f7cf2 30,247-249,267-269
+harness/cli/src/services/docs/docs-content.ts
+  h_9e71e8b09f7cf2 130
+harness/cli/test/services/builder-lifecycle.test.ts
+  h_9e71e8b09f7cf2 2028-2030,2049,2053-2067,2127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "82a481e9a482bac03b80c88d726e051d91ecdc74",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
