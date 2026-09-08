@@ -446,6 +446,8 @@ export async function adoptBuilderWorkspace(
               'This checkout already has a different allocation provenance.',
               'Use its original record; adoption never replaces ownership or tombstones.',
             );
+          const bound = bindWorkspaceAllocation(deps, prior);
+          if (!bound.ok) return bound;
           return {
             ok: true,
             value: {
@@ -473,7 +475,9 @@ export async function adoptBuilderWorkspace(
           journal: ['adopted'],
           plan_path: posixRelative(deps.repoRoot, context.value.planPath),
         });
-        return saved.ok
+        if (!saved.ok) return saved;
+        const bound = bindWorkspaceAllocation(deps, saved.value);
+        return bound.ok
           ? {
               ok: true,
               value: {
@@ -482,7 +486,7 @@ export async function adoptBuilderWorkspace(
                 flow: context.value.flowPath,
               },
             }
-          : saved;
+          : bound;
       },
     );
   } catch (error) {

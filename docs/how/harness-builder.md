@@ -22,6 +22,8 @@ harness builder adopt <plan> --actor <pm-id> --owner external
 
 New reserves the ordinal before allocation and returns `allocation`, `plan`, `flow`; use those returned paths rather than reconstructing them. Adopt records existing ownership without reallocating it. `kind: clone|worktree` says how Git is isolated; `owner: harness|external|pij` says who may retire it. Allocation authority must live outside the removable workspace.
 
+Both initialized managed workspaces and adopted external/pij plan workspaces carry a stable `<git-dir>/builder/allocation-ref` locator to their original allocation record. Repeating `builder adopt` repairs a missing locator from an older adoption without changing that allocation's identity or ownership. This enables child provisioning; it does not grant the harness permission to retire an externally owned workspace.
+
 ## Review the guide before code fan-out
 
 ```bash
