@@ -8,8 +8,8 @@
       "value": {
         "title": "Warning-first Builder proof selection",
         "plan": "../plan.dd.json#meta",
-        "certainty": "Partial",
-        "basis_sha": "9c4b9e98ed5551ea2cb3ca37677a30c2bf75e13ed269c44d7ffdfaab2612c6b5"
+        "certainty": "Proven",
+        "basis_sha": "8177e14a41fbdabb156003807fc337cc6dee9062930154e1671e388be1464aab"
       }
     },
     {
@@ -19,117 +19,122 @@
           "id": "bp-0001",
           "criterion": "ac-0001: The implementation guide retains units[].paths and read maps, and packets still carry the assigned unit, its job and observable done conditions; these maps guide work rather than granting write permission.",
           "phase": "ph-0889",
-          "mode": "EXTEND",
+          "mode": "EXISTS",
           "tier": "computational",
-          "proof": "EXTEND→RUN: keep map data and update packet guidance assertions in builder-guide.test.ts, builder-dispatch.test.ts and builder-skills.test.ts; run the existing targeted Vitest suites.",
+          "proof": "RUN: existing guide, packet, dispatch and skill behavior suites plus source/packed packet smoke.",
           "state": "checked",
-          "probe": "Guide paths and packet producer located in guide-service.ts and packet-service.ts; tests exist under harness/cli/test/services.",
+          "probe": "Guide maps and embedded units remain; current work-packet output leads with owned/read paths, job and observable done conditions.",
           "receipt": "execution-log.dd.json#entries/lg-0002"
         },
         {
           "id": "bp-0002",
           "criterion": "ac-0002: A committed PM change outside mapped PM paths produces file-by-file ownership warnings in the composition receipt and command result, then executes every configured composition check without amendment, justification or an ownership-caused nonzero exit.",
           "phase": "ph-1886",
-          "mode": "EXTEND",
+          "mode": "EXISTS",
           "tier": "computational",
-          "proof": "EXTEND→RUN: turn lifecycle out-of-fence examples into warning-and-check-execution assertions, preserve integrity contrasts, then run builder-lifecycle.test.ts and npm run smoke:builder against a real committed candidate.",
+          "proof": "RUN: lifecycle warning cases and real source/packed Git composition smoke, including an actual failing check retaining its warnings.",
           "state": "checked",
-          "probe": "composition-service.ts integrationFence is shared by import and verify; CompositionReceipt, acts output and reviewer/close consumers need warning visibility.",
+          "probe": "Shared ownership comparison records scalar file/owning_unit/stage rows; PM writes require no amendment and configured checks still run.",
           "receipt": "execution-log.dd.json#entries/lg-0001"
         },
         {
           "id": "bp-0003",
           "criterion": "ac-0003: Coder delivery and advancement/import report out-of-map history as the same warning list, including mapped owning unit(s) or an explicit unmapped result, and continue when actual integrity checks pass. No remaining ownership-only check in Builder may refuse.",
           "phase": "ph-638c",
-          "mode": "EXTEND",
+          "mode": "EXISTS",
           "tier": "computational",
-          "proof": "EXTEND→RUN: extend builder-dispatch, builder-guide, builder-contracts and builder-lifecycle suites so ownership-only cases warn across all callers and integrity cases still refuse.",
-          "state": "unchecked",
-          "probe": "validateDelivery checks each delivered commit; guide overlap/read-owner/baseline-owner issues currently flow into readiness refusal."
+          "proof": "RUN: guide/dispatch/contracts/lifecycle behavior suites, history cases and actual native warning-bearing delivery/import/advance receipts.",
+          "state": "checked",
+          "probe": "Guide map policy is advisory; actual dependency proof is based on declared checks/deliveries/snapshots, not path ownership. Warnings survive operational failure envelopes.",
+          "receipt": "execution-log.dd.json#entries/lg-0003"
         },
         {
           "id": "bp-0004",
           "criterion": "ac-0004: A self-serve on-track command works in the coder clone and on the PM integration delta, including selected committed and current work as documented; it returns the same comparison and warnings with exit 0, performs no release/import/approval and does not change source.",
           "phase": "ph-638c",
-          "mode": "BUILD",
+          "mode": "EXISTS",
           "tier": "computational",
-          "proof": "BUILD→RUN: implement the new on-track surface and real CLI/Git cases for coder and PM deltas, warning parity, unchanged source, and exit 0; add it to scripts/builder-smoke.mjs. This command does not exist yet.",
-          "state": "unchecked",
-          "probe": "commands.ts/acts/builder.ts register public operations; reuse existing path comparison helpers and output envelope, not a new policy engine."
+          "proof": "RUN: builder on-track source/packed real Git smoke for unit history, tracked/untracked selection, PM comparison parity and exit-zero observations.",
+          "state": "checked",
+          "probe": "The public on-track surface exists and reuses ownership-service; missing or malformed comparison evidence is reported without mutation or a fabricated clean comparison.",
+          "receipt": "execution-log.dd.json#entries/lg-0003"
         },
         {
           "id": "bp-0005",
           "criterion": "ac-0005: The packet begins with plain-language ownership/read map, job and done conditions before mechanics. Its embedded unit remains available; first-use instructions lead directly to useful work rather than acknowledgement ceremony.",
           "phase": "ph-0889",
-          "mode": "EXTEND",
+          "mode": "EXISTS",
           "tier": "computational",
-          "proof": "EXTEND→RUN: inspect real generated packet output for map/job/done-first ordering and retain behavior-focused packet/skill tests; run builder-dispatch.test.ts and builder-skills.test.ts.",
+          "proof": "RUN: generated work-packet and command/skill tests, source/packed smoke and actual native packet dispatch.",
           "state": "checked",
-          "probe": "packet-service.ts prepareBuilderPacket currently places acknowledgement mechanics ahead of work instructions; teaching templates mirror the old order.",
+          "probe": "Current packet-service prepares map-first useful work; no acknowledgement startup procedure precedes the job.",
           "receipt": "execution-log.dd.json#entries/lg-0002"
         },
         {
           "id": "bp-0006",
           "criterion": "ac-0006: A coder can run one advisory self-check of expected clone, source commit and packet digest. Mismatch, drift or normal startup metadata yields named observations/warnings and repair advice rather than a work-release gate; there is no required second receipt, second nonce or clock window.",
           "phase": "ph-0889",
-          "mode": "BUILD",
+          "mode": "EXISTS",
           "tier": "computational",
-          "proof": "BUILD→RUN: exercise the single self-check in a real clone with valid inputs, wrong root/commit, digest mismatch and startup metadata; verify warnings and no release mutation. Integrate the scenario into the existing Builder smoke.",
+          "proof": "RUN: real source/packed self-check for packet bytes, wrong root/digest/commit and startup metadata; native worker correct and deliberately wrong digest observations.",
           "state": "checked",
-          "probe": "dispatch-service.ts acknowledgeBuilderUnit/confirmRelease and packet schema own the current two-stage acknowledgement; new self-check is not implemented.",
+          "probe": "One optional local inspection returns warnings without receipt writes, native sends or a release gate. A wrong digest did not stop the native worker.",
           "receipt": "execution-log.dd.json#entries/lg-0002"
         },
         {
           "id": "bp-0007",
           "criterion": "ac-0007: Dispatch, delivery, import, advance and review no longer depend on pre-work/post-release acknowledgement receipt IDs, phase nonces, canary challenge or plus/minus-five-second timing to authorize work; old records remain readable and need no replay or fabricated upgrade.",
           "phase": "ph-0889",
-          "mode": "EXTEND",
+          "mode": "EXISTS",
           "tier": "computational",
-          "proof": "EXTEND→RUN: change old ack/release tests to prove delivery/import/advance continue without the retired handshake, with old receipts readable and no fabricated second receipt; run builder-dispatch.test.ts and builder-lifecycle.test.ts.",
+          "proof": "RUN: delivery/import/advance regressions without acknowledgement records, legacy-schema preservation smoke and actual native dispatch/delivery.",
           "state": "checked",
-          "probe": "validateDelivery requires ack/release records today; contracts readiness and lifecycle call composition verification downstream.",
+          "probe": "Current delivery consumers no longer demand ack/release nonces, canary or clock-window evidence; historical schema readers remain explicit.",
           "receipt": "execution-log.dd.json#entries/lg-0002"
         },
         {
           "id": "bp-0008",
           "criterion": "ac-0008: At import, wrong tree/commit lineage, forged or mismatched delivery/packet evidence, duplicate peer and rewritten baseline still refuse before an incorrect composition mutation. Each integrity refusal names the actual cause and corrective next step; legitimate descendant source and evidence-only commits retain their supported path.",
           "phase": "ph-638c",
-          "mode": "EXTEND",
+          "mode": "EXISTS",
           "tier": "computational",
-          "proof": "EXTEND→RUN: preserve and sharpen negative real-Git and fake-port tests for wrong tree, invalid digest/identity, duplicate peer and rewritten baseline, asserting no incorrect import and actionable cause/fix.",
-          "state": "unchecked",
-          "probe": "Existing builder-workspace, builder-dispatch, builder-contracts and builder-lifecycle tests cover integrity boundaries; do not classify by E477/E474 code alone."
+          "proof": "RUN: existing and extended workspace/dispatch/contracts/lifecycle integrity cases plus a real native mismatched-packet import refusing before HEAD mutation.",
+          "state": "checked",
+          "probe": "Wrong evidence, duplicate peer, tree/branch/source/baseline integrity remain failures; valid artifact ancestors of later worker evidence commits are accepted.",
+          "receipt": "execution-log.dd.json#entries/lg-0003"
         },
         {
           "id": "bp-0009",
           "criterion": "ac-0009: Reviewers receive the recorded ownership warning list alongside the exact composed bytes; warnings do not veto review or advancement by themselves, and the PM cannot approve its own artifact as the independent reviewer.",
           "phase": "ph-1886",
-          "mode": "EXTEND",
+          "mode": "EXISTS",
           "tier": "computational",
-          "proof": "EXTEND→RUN: independent reviewer consumes warning-bearing composition, warning-only drift does not refuse, same-PM review still refuses; run builder-lifecycle.test.ts plus actual review evidence in the consumer proof.",
+          "proof": "RUN: independent-review integrity cases and actual native warning-bearing composition review and advancement.",
           "state": "checked",
-          "probe": "review-service.ts already excludes current PM and recorded implementation peers; warnings add visibility, not amendment-declarer bookkeeping.",
+          "probe": "The independent native reviewer approved the exact artifact after correcting its own inconsistent disposition; the rejected original review remains preserved.",
           "receipt": "execution-log.dd.json#entries/lg-0001"
         },
         {
           "id": "bp-000a",
           "criterion": "ac-000a: The supported runtime, help, schemas, docs, skills and examples contain no amendment requirement or competing two-receipt startup path. PR #200 remains closed without merge; no alias or legacy gate revives its declaration design.",
           "phase": "ph-638c",
-          "mode": "EXTEND",
+          "mode": "EXISTS",
           "tier": "computational",
-          "proof": "EXTEND→RUN: update builder-skills and command tests, source/packed smoke, docs/flows/doctrine parity checks; verify no live amend or old two-receipt instructions.",
-          "state": "unchecked",
-          "probe": "npm scripts smoke:builder, smoke:builder:packed, check:docs, check:flows and check:doctrine-parity exist; #200 closed without merge."
+          "proof": "RUN: full-scope checks including docs/flows/doctrine drift, command/skill tests and a fresh offline packed consumer smoke.",
+          "state": "checked",
+          "probe": "Current help/docs/skills/schemas expose warning guidance and on-track/self-check without a live ack/amend path. PR #200 remains closed without merge.",
+          "receipt": "execution-log.dd.json#entries/lg-0003"
         },
         {
           "id": "bp-000b",
           "criterion": "ac-000b: A real CLI/Git consumer scenario demonstrates map-first dispatch, one optional advisory self-check, cross-map coder/PM edits, warning-preserving import/composition, independent review and receipt-only archival re-observation; contrasting integrity failures still refuse and existing historical evidence remains unmodified.",
           "phase": "ph-638c",
-          "mode": "BUILD",
+          "mode": "EXISTS",
           "tier": "computational",
-          "proof": "BUILD→RUN: extend scripts/builder-smoke.mjs with a real-Git advisory workflow and archive re-observation, then run source and packed smokes and capture a live consumer receipt after authorized deployment.",
-          "state": "unchecked",
-          "probe": "Existing source and packed Builder smoke are real CLI front doors; previous mocked deltas did not prove complete archived lifecycle, and live proof must remain separate."
+          "proof": "RUN: source/packed CLI/Git smoke plus the separately retained actual native operational scenario, including warning-preserving archive re-observation and independent durable evidence verification.",
+          "state": "checked",
+          "probe": "Actual native PM, two workers and independent reviewer completed the operational pipeline using pinned private runtimes after two supported product repairs. Strict run compliance is false; hook/provider/replay limits and original failures remain explicit in lg-0004.",
+          "receipt": "execution-log.dd.json#entries/lg-0004"
         }
       ]
     },

@@ -35,8 +35,8 @@ Final advisory ownership cutover, shared on-track comparison and a fresh local-o
 
 | id | title | domain | phase | state | note | receipt | done | success | notes | satisfies | satisfies_toward |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| tk-0001 | Complete shared delivery and on-track warnings without weakening real integrity | — | ph-638c | [ ] unchecked | — | — | [ ] 0/4 [tk-0001](#tk-0001) | — | — | [ac-0003](../../../plan.dd.md#acceptance-criteria), [ac-0004](../../../plan.dd.md#acceptance-criteria), [ac-000a](../../../plan.dd.md#acceptance-criteria) | — |
-| tk-0002 | Exercise the revised pipeline with actual isolated native participants | — | ph-638c | [ ] unchecked | — | — | [ ] 0/4 [tk-0002](#tk-0002) | — | — | [ac-0008](../../../plan.dd.md#acceptance-criteria), [ac-000b](../../../plan.dd.md#acceptance-criteria) | — |
+| tk-0001 | Complete shared delivery and on-track warnings without weakening real integrity | — | ph-638c | [x] checked | — | — | [x] 4/4 [tk-0001](#tk-0001) | — | — | [ac-0003](../../../plan.dd.md#acceptance-criteria), [ac-0004](../../../plan.dd.md#acceptance-criteria), [ac-000a](../../../plan.dd.md#acceptance-criteria) | — |
+| tk-0002 | Exercise the revised pipeline with actual isolated native participants | — | ph-638c | [x] checked | — | — | [x] 4/4 [tk-0002](#tk-0002) | — | — | [ac-0008](../../../plan.dd.md#acceptance-criteria), [ac-000b](../../../plan.dd.md#acceptance-criteria) | — |
 
 <a id="done-when"></a>
 
@@ -44,21 +44,21 @@ Final advisory ownership cutover, shared on-track comparison and a fresh local-o
 
 ### tk-0001
 
-| id | assertion | state | pressure |
-| --- | --- | --- | --- |
-| dw-0001 | Guide ownership policies warn and remain visible through readiness, baseline, dispatch, import and advancement. | [ ] unchecked | [bp-0003](../../backpressure.dd.md#rows) |
-| dw-0002 | Committed coder history, including reverted out-of-map writes, produces the same file/owner rows in on-track and delivery. | [ ] unchecked | [bp-0003](../../backpressure.dd.md#rows) |
-| dw-0003 | On-track selects and names its actual basis, committed/working/untracked scope and incomplete observations, with exit zero and no mutation. | [ ] unchecked | [bp-0004](../../backpressure.dd.md#rows) |
-| dw-0004 | Live help, source skills, templates, packets and examples consistently describe guidance rather than ownership permission. | [ ] unchecked | [bp-000a](../../backpressure.dd.md#rows) |
+| id | assertion | state | pressure | proven_by |
+| --- | --- | --- | --- | --- |
+| dw-0001 | Guide ownership policies warn and remain visible through readiness, baseline, dispatch, import and advancement. | [x] checked | [bp-0003](../../backpressure.dd.md#rows) | [lg-0003](../../execution-log.dd.md#entries) |
+| dw-0002 | Committed coder history, including reverted out-of-map writes, produces the same file/owner rows in on-track and delivery. | [x] checked | [bp-0003](../../backpressure.dd.md#rows) | [lg-0003](../../execution-log.dd.md#entries) |
+| dw-0003 | On-track selects and names its actual basis, committed/working/untracked scope and incomplete observations, with exit zero and no mutation. | [x] checked | [bp-0004](../../backpressure.dd.md#rows) | [lg-0003](../../execution-log.dd.md#entries) |
+| dw-0004 | Live help, source skills, templates, packets and examples consistently describe guidance rather than ownership permission. | [x] checked | [bp-000a](../../backpressure.dd.md#rows) | [lg-0003](../../execution-log.dd.md#entries) |
 
 ### tk-0002
 
-| id | assertion | state | pressure |
-| --- | --- | --- | --- |
-| dw-0005 | A fresh local-only native run performs actual packet dispatch, self-check/on-track observations, out-of-map deliveries and PM composition with warning evidence. | [ ] unchecked | [bp-000b](../../backpressure.dd.md#rows) |
-| dw-0006 | Actual wrong/mismatched delivery inputs refuse before mutation; valid pinned deliveries and later evidence remain usable. | [ ] unchecked | [bp-0008](../../backpressure.dd.md#rows) |
-| dw-0007 | An independent native reviewer assesses actual composed bytes, and canonical advancement/archival re-observation records the real outcomes without rewriting older runs. | [ ] unchecked | [bp-000b](../../backpressure.dd.md#rows) |
-| dw-0008 | Local transcripts, command receipts and Git/source artifacts are preserved with explicit proof limits and no Flowspace ingestion. | [ ] unchecked | [bp-000b](../../backpressure.dd.md#rows) |
+| id | assertion | state | pressure | proven_by |
+| --- | --- | --- | --- | --- |
+| dw-0005 | A fresh local-only native run performs actual packet dispatch, self-check/on-track observations, out-of-map deliveries and PM composition with warning evidence. | [x] checked | [bp-000b](../../backpressure.dd.md#rows) | [lg-0004](../../execution-log.dd.md#entries) |
+| dw-0006 | Actual wrong/mismatched delivery inputs refuse before mutation; valid pinned deliveries and later evidence remain usable. | [x] checked | [bp-0008](../../backpressure.dd.md#rows) | [lg-0004](../../execution-log.dd.md#entries) |
+| dw-0007 | An independent native reviewer assesses actual composed bytes, and canonical advancement/archival re-observation records the real outcomes without rewriting older runs. | [x] checked | [bp-000b](../../backpressure.dd.md#rows) | [lg-0004](../../execution-log.dd.md#entries) |
+| dw-0008 | Local transcripts, command receipts and Git/source artifacts are preserved with explicit proof limits and no Flowspace ingestion. | [x] checked | [bp-000b](../../backpressure.dd.md#rows) | [lg-0004](../../execution-log.dd.md#entries) |
 
 <a id="goals"></a>
 

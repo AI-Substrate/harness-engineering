@@ -16,7 +16,7 @@
         "complexity_breakdown": "S2 + I2 + D2 + N1 + F1 + T1 = 9; three checkpoints, staged CLI-first rollout and retained evidence.",
         "mode": "Full",
         "plan_version": "1.0.0",
-        "confidence": "Product intent settled by ruling; implementation and runtime behavior remain unproven.",
+        "confidence": "All eleven acceptance criteria have observed source/packed and native operational evidence after two tested corrections. Strict run compliance and full guided-skill conformance are not claimed. Increment 3 merge and global activation require separate authorization.",
         "log": "assets/execution-log.dd.json#entries"
       }
     },
@@ -62,14 +62,16 @@
         {
           "id": "ac-0003",
           "claim": "Coder delivery and advancement/import report out-of-map history as the same warning list, including mapped owning unit(s) or an explicit unmapped result, and continue when actual integrity checks pass. No remaining ownership-only check in Builder may refuse.",
-          "state": "unchecked",
-          "pressure": "assets/backpressure.dd.json#rows/bp-0003"
+          "state": "checked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0003",
+          "proven_by": "assets/execution-log.dd.json#entries/lg-0003"
         },
         {
           "id": "ac-0004",
           "claim": "A self-serve on-track command works in the coder clone and on the PM integration delta, including selected committed and current work as documented; it returns the same comparison and warnings with exit 0, performs no release/import/approval and does not change source.",
-          "state": "unchecked",
-          "pressure": "assets/backpressure.dd.json#rows/bp-0004"
+          "state": "checked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0004",
+          "proven_by": "assets/execution-log.dd.json#entries/lg-0003"
         },
         {
           "id": "ac-0005",
@@ -95,8 +97,9 @@
         {
           "id": "ac-0008",
           "claim": "At import, wrong tree/commit lineage, forged or mismatched delivery/packet evidence, duplicate peer and rewritten baseline still refuse before an incorrect composition mutation. Each integrity refusal names the actual cause and corrective next step; legitimate descendant source and evidence-only commits retain their supported path.",
-          "state": "unchecked",
-          "pressure": "assets/backpressure.dd.json#rows/bp-0008"
+          "state": "checked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-0008",
+          "proven_by": "assets/execution-log.dd.json#entries/lg-0003"
         },
         {
           "id": "ac-0009",
@@ -108,14 +111,16 @@
         {
           "id": "ac-000a",
           "claim": "The supported runtime, help, schemas, docs, skills and examples contain no amendment requirement or competing two-receipt startup path. PR #200 remains closed without merge; no alias or legacy gate revives its declaration design.",
-          "state": "unchecked",
-          "pressure": "assets/backpressure.dd.json#rows/bp-000a"
+          "state": "checked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-000a",
+          "proven_by": "assets/execution-log.dd.json#entries/lg-0003"
         },
         {
           "id": "ac-000b",
           "claim": "A real CLI/Git consumer scenario demonstrates map-first dispatch, one optional advisory self-check, cross-map coder/PM edits, warning-preserving import/composition, independent review and receipt-only archival re-observation; contrasting integrity failures still refuse and existing historical evidence remains unmodified.",
-          "state": "unchecked",
-          "pressure": "assets/backpressure.dd.json#rows/bp-000b"
+          "state": "checked",
+          "pressure": "assets/backpressure.dd.json#rows/bp-000b",
+          "proven_by": "assets/execution-log.dd.json#entries/lg-0004"
         }
       ]
     },
@@ -143,7 +148,7 @@
           "id": "ph-638c",
           "title": "Warning-first delivery and end-to-end proof",
           "brief": "Complete shared on-track and delivery-warning semantics across all ownership checks; prove the actual CLI/Git consumer workflow, integrity contrasts, documentation/skill cutover and archive re-observation.",
-          "state": "unchecked",
+          "state": "checked",
           "depends_on": [
             "ph-0889"
           ],

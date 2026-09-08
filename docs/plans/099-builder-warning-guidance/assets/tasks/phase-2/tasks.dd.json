@@ -22,7 +22,7 @@
         {
           "id": "tk-0001",
           "title": "Deliver map-first work packets and replace acknowledgement gates with an advisory self-check",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "ph-0889",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0001",

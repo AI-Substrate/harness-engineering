@@ -35,7 +35,7 @@ Map-first packet production, direct work-packet delivery, one nonmutating adviso
 
 | id | title | domain | phase | state | note | receipt | done | success | notes | satisfies | satisfies_toward |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| tk-0001 | Deliver map-first work packets and replace acknowledgement gates with an advisory self-check | — | ph-0889 | [ ] unchecked | — | ../../execution-log.dd.json#entries/lg-0002 | [x] 5/5 [tk-0001](#tk-0001) | — | Three independent source slices share the PM-owned type/CLI/schema contract. No live native dispatch or provider attestation is claimed by tool delegation. | [ac-0001](../../../plan.dd.md#acceptance-criteria), [ac-0005](../../../plan.dd.md#acceptance-criteria), [ac-0006](../../../plan.dd.md#acceptance-criteria), [ac-0007](../../../plan.dd.md#acceptance-criteria) | [ac-0008](../../../plan.dd.md#acceptance-criteria), [ac-000a](../../../plan.dd.md#acceptance-criteria) |
+| tk-0001 | Deliver map-first work packets and replace acknowledgement gates with an advisory self-check | — | ph-0889 | [x] checked | — | ../../execution-log.dd.json#entries/lg-0002 | [x] 5/5 [tk-0001](#tk-0001) | — | Three independent source slices share the PM-owned type/CLI/schema contract. No live native dispatch or provider attestation is claimed by tool delegation. | [ac-0001](../../../plan.dd.md#acceptance-criteria), [ac-0005](../../../plan.dd.md#acceptance-criteria), [ac-0006](../../../plan.dd.md#acceptance-criteria), [ac-0007](../../../plan.dd.md#acceptance-criteria) | [ac-0008](../../../plan.dd.md#acceptance-criteria), [ac-000a](../../../plan.dd.md#acceptance-criteria) |
 
 <a id="done-when"></a>
 

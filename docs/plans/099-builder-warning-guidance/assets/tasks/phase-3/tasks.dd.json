@@ -22,7 +22,7 @@
         {
           "id": "tk-0001",
           "title": "Complete shared delivery and on-track warnings without weakening real integrity",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "ph-638c",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0003",
@@ -34,7 +34,7 @@
         {
           "id": "tk-0002",
           "title": "Exercise the revised pipeline with actual isolated native participants",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "ph-638c",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0008",
@@ -51,52 +51,60 @@
           {
             "id": "dw-0001",
             "assertion": "Guide ownership policies warn and remain visible through readiness, baseline, dispatch, import and advancement.",
-            "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-0003"
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0003",
+            "proven_by": "../../execution-log.dd.json#entries/lg-0003"
           },
           {
             "id": "dw-0002",
             "assertion": "Committed coder history, including reverted out-of-map writes, produces the same file/owner rows in on-track and delivery.",
-            "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-0003"
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0003",
+            "proven_by": "../../execution-log.dd.json#entries/lg-0003"
           },
           {
             "id": "dw-0003",
             "assertion": "On-track selects and names its actual basis, committed/working/untracked scope and incomplete observations, with exit zero and no mutation.",
-            "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-0004"
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0004",
+            "proven_by": "../../execution-log.dd.json#entries/lg-0003"
           },
           {
             "id": "dw-0004",
             "assertion": "Live help, source skills, templates, packets and examples consistently describe guidance rather than ownership permission.",
-            "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-000a"
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-000a",
+            "proven_by": "../../execution-log.dd.json#entries/lg-0003"
           }
         ],
         "tk-0002": [
           {
             "id": "dw-0005",
             "assertion": "A fresh local-only native run performs actual packet dispatch, self-check/on-track observations, out-of-map deliveries and PM composition with warning evidence.",
-            "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-000b"
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-000b",
+            "proven_by": "../../execution-log.dd.json#entries/lg-0004"
           },
           {
             "id": "dw-0006",
             "assertion": "Actual wrong/mismatched delivery inputs refuse before mutation; valid pinned deliveries and later evidence remain usable.",
-            "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-0008"
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-0008",
+            "proven_by": "../../execution-log.dd.json#entries/lg-0004"
           },
           {
             "id": "dw-0007",
             "assertion": "An independent native reviewer assesses actual composed bytes, and canonical advancement/archival re-observation records the real outcomes without rewriting older runs.",
-            "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-000b"
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-000b",
+            "proven_by": "../../execution-log.dd.json#entries/lg-0004"
           },
           {
             "id": "dw-0008",
             "assertion": "Local transcripts, command receipts and Git/source artifacts are preserved with explicit proof limits and no Flowspace ingestion.",
-            "state": "unchecked",
-            "pressure": "../../backpressure.dd.json#rows/bp-000b"
+            "state": "checked",
+            "pressure": "../../backpressure.dd.json#rows/bp-000b",
+            "proven_by": "../../execution-log.dd.json#entries/lg-0004"
           }
         ]
       }
