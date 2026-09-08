@@ -8,6 +8,7 @@
 
 ### Features
 
+* **builder:** select a historical already-integrated commit with `compose --import --already-integrated --integration-sha <ref>`, retaining the current checkout and original worker SHAs. The selected commit must descend from the seal and precede the current artifact; later PM edits reach verification with ownership warnings.
 * **builder:** bind existing native peers with `dispatch --adopt-peer` and observe committed deliveries with `compose --import --already-integrated`, retaining original ownership and SHAs without spawning or replaying source ([#206](https://github.com/AI-Substrate/harness-engineering/pull/206)). Sealed inputs are verified against original Git blobs rather than mutable PM files; factual progress remains separate from product intent.
 * **exec:** opt into exact-byte stdout with `stdoutEncoding: 'base64'`; the result explicitly marks encoded output while default text behavior stays unchanged.
 * **cli:** portable verb I/O (plan 031) — new optional capabilities on the verb contract so extensions run cross-platform with **no** `bash`/coreutil shell-outs: `ctx.fsWrite` (write / mkdir / rename / CWE-59-confined copy), `ctx.fs.realpath`, `ctx.clock.sleep`, and `ctx.background.spawnDetached` (detached fire-and-forget worker; reuses the core `.cmd` resolver, never a bare `.cmd` spawn).

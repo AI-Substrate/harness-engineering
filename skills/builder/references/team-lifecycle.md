@@ -24,7 +24,7 @@ These forms follow `harness/cli/src/services/builder/commands.ts`; angle-bracket
 | Self-check | `harness builder self-check <packet> --sha256 <digest>` | `packet, expected, observed, warnings`; optional read-only orientation; mismatches warn and do not change state |
 | On-track | `harness builder on-track <plan> [--unit <id>] [--from <ref>] [--to <ref>] [--untracked]` | `compared, mode, basis, from, to, includes_worktree, includes_untracked, warnings, issues`; read-only advisory comparison, exit 0, no readiness or receipt prerequisite |
 | Advance | `harness builder advance <plan> --now <node>` | `flow, now, warnings`; checks canonical departure gates, never another lifecycle |
-| Compose | `harness builder compose <plan> --import <path> [--already-integrated]` OR `harness builder compose <plan> --verify <sha>` | `composition`; exactly one mode; already-integrated requires import and conflicts with verify; import is not product proof |
+| Compose | `harness builder compose <plan> --import <path> [--already-integrated [--integration-sha <ref>]]` OR `harness builder compose <plan> --verify <sha>` | `composition`; integration-sha requires already-integrated import; import is not product proof |
 | Review | `harness builder review <plan> --receipt <path>` | `review`; independent decomposition/composition evidence bound to subject and documents |
 | Close | `harness builder close <plan> --survivor <path> --allocations <path> --evidence <path>` | `archive, preservation`; surviving evidence outside all retiring roots |
 | Tidy | `harness builder tidy <allocation> --preservation <path>` | `allocation, removed`; refuses without ownership, runtime release and reverified preservation |
@@ -104,6 +104,8 @@ Workers deliver committed `UnitDelivery` records (`unit_id, peer_id, workspace, 
 ### Already-integrated import
 
 When the PM has already integrated every supplied unit, use `harness builder compose <plan> --import <deliveries.json> --already-integrated`. It is an import modifier, not a verification mode; it cannot be used without `--import` or with `--verify`. It retains the normal source/evidence/native-identity checks but does not fetch, cherry-pick, reset, commit or mutate the index/working source. It preserves original worker `UnitDelivery.commit_sha` values and pins integration to the current committed PM HEAD.
+
+Use `--integration-sha <ref>` when integration matched at an earlier commit and the PM subsequently refined coder-owned paths. It requires already-integrated import and resolves to a full SHA in the sealed-source-to-current-HEAD ancestry. Compare projections there, record that SHA as `integration_sha`, and leave the checkout unchanged. Current `--verify` measures the later PM delta and retains its warnings. Do not switch to detached HEAD or rewrite execution-root receipts in a temporary checkout.
 
 For each unit, compare the frozen unit write-map projection from baseline, delivery and PM trees, including absence/deletion, modes, object types and Git object IDs. If no concrete mapped paths exist, compare actual delivery-touched paths; an empty fallback scope is missing proof. Every unit must match before writing the receipt, and the final PM HEAD/cleanliness must still agree. Working-file equality, missing evidence, digest mismatch or the flag itself cannot substitute for this proof.
 

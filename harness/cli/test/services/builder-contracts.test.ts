@@ -526,6 +526,9 @@ describe('Builder public command grammar', () => {
     ['compose', 'plan', '--already-integrated'],
     ['compose', 'plan', '--verify', 'abc', '--already-integrated'],
     ['compose', 'plan', '--import', 'units.json', '--already-integrated', '--verify', 'abc'],
+    ['compose', 'plan', '--integration-sha', 'HEAD'],
+    ['compose', 'plan', '--import', 'units.json', '--integration-sha', 'HEAD'],
+    ['compose', 'plan', '--verify', 'abc', '--integration-sha', 'HEAD'],
     [
       'dispatch',
       'plan',
@@ -629,6 +632,25 @@ describe('Builder public command grammar', () => {
         verb: 'compose',
         argument: 'plan',
         options: { import: 'units.json', alreadyIntegrated: true },
+      },
+    ]);
+  });
+  it('selects an explicit historical integration commit only with observed import', async () => {
+    const { calls, parse } = parser();
+    await parse([
+      'compose',
+      'plan',
+      '--import',
+      'units.json',
+      '--already-integrated',
+      '--integration-sha',
+      'HEAD~1',
+    ]);
+    expect(calls).toEqual([
+      {
+        verb: 'compose',
+        argument: 'plan',
+        options: { import: 'units.json', alreadyIntegrated: true, integrationSha: 'HEAD~1' },
       },
     ]);
   });
