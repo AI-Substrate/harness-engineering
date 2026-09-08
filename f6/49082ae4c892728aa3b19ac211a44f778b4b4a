@@ -1,0 +1,36 @@
+docs/plans/099-builder-warning-guidance/assets/backpressure.dd.json
+  h_9e71e8b09f7cf2 11-12,22,24,26,33,35,37,44,46-49,55,57-60,66,68,70,77,79,81,88,90,92,99,101-104,110,112,114,121,123-126,132,134-137
+docs/plans/099-builder-warning-guidance/assets/backpressure.dd.md
+  h_9e71e8b09f7cf2 14-15,23-33
+docs/plans/099-builder-warning-guidance/assets/execution-log.dd.json
+  h_9e71e8b09f7cf2 37-58
+docs/plans/099-builder-warning-guidance/assets/execution-log.dd.md
+  h_9e71e8b09f7cf2 24-25
+docs/plans/099-builder-warning-guidance/assets/tasks/phase-1/tasks.dd.json
+  h_9e71e8b09f7cf2 25
+docs/plans/099-builder-warning-guidance/assets/tasks/phase-1/tasks.dd.md
+  h_9e71e8b09f7cf2 38
+docs/plans/099-builder-warning-guidance/assets/tasks/phase-2/tasks.dd.json
+  h_9e71e8b09f7cf2 25
+docs/plans/099-builder-warning-guidance/assets/tasks/phase-2/tasks.dd.md
+  h_9e71e8b09f7cf2 38
+docs/plans/099-builder-warning-guidance/assets/tasks/phase-3/tasks.dd.json
+  h_9e71e8b09f7cf2 25,37,54-56,61-63,68-70,75-77,84-86,91-93,98-100,105-107
+docs/plans/099-builder-warning-guidance/assets/tasks/phase-3/tasks.dd.md
+  h_9e71e8b09f7cf2 38-39,47-52,56-61
+docs/plans/099-builder-warning-guidance/plan.dd.json
+  h_9e71e8b09f7cf2 19,65-67,72-74,100-102,114-116,121-123,151
+docs/plans/099-builder-warning-guidance/plan.dd.md
+  h_9e71e8b09f7cf2 23,58-59,63,65-66,76
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f649082ae4c892728aa3b19ac211a44f778b4b4a",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
