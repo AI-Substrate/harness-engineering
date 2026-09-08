@@ -382,7 +382,9 @@ export function registerBuilderAct(program: Command, io: CliIo, deps: BuilderDep
     if (!result.ok) {
       envelope = formatError(command, result.code, result.message, deps.clock, {
         next_action: result.next_action,
-        details: result.details,
+        details: result.warnings?.length
+          ? { cause: result.details, warnings: result.warnings }
+          : result.details,
       });
     } else if (verb === 'ready' && isObject(result.value) && result.value.status !== 'ready') {
       const reading = result.value;

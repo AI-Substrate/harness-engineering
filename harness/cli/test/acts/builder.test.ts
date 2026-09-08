@@ -5,6 +5,7 @@ import type { Envelope } from '../../src/output/envelope.js';
 import { ErrorCodes } from '../../src/output/error-codes.js';
 import { writeBuilderRecord } from '../../src/services/builder/records.js';
 import {
+  BUILDER_FIXTURE_GUIDE,
   BUILDER_FIXTURE_PLAN,
   builderFixture,
   fixtureAllocation,
@@ -104,6 +105,47 @@ describe('Builder CLI composition boundary', () => {
         includes_untracked: true,
         issues: expect.arrayContaining([
           expect.objectContaining({ message: expect.any(String), next_action: expect.any(String) }),
+        ]),
+      },
+    });
+  });
+
+  it.each([
+    'contracts',
+    'dispatch',
+  ])('keeps ownership warnings visible in %s failure envelopes', async (verb) => {
+    const fixture = builderFixture();
+    fixture.guide.units[0].paths = [];
+    fixture.guide.checks[0].cwd = '..';
+    fixture.fs.writeText(
+      `/repo/${BUILDER_FIXTURE_GUIDE}`,
+      JSON.stringify({
+        dd: { schema: 'builder/impl-guide' },
+        sections: Object.entries(fixture.guide).map(([name, value]) => ({ name, value })),
+        references: [],
+      }),
+    );
+    const args =
+      verb === 'contracts'
+        ? ['contracts', BUILDER_FIXTURE_PLAN, '--seal', '--review', 'missing-review.dd.json']
+        : [
+            'dispatch',
+            BUILDER_FIXTURE_PLAN,
+            '--unit',
+            'tk-0002',
+            '--workspace',
+            '/worker',
+            '--parent',
+            'peer-pm',
+          ];
+    const result = await runBuilder(args, fixture);
+    expect(result.code).toBe(1);
+    expect(result.envelope.error).toMatchObject({
+      code: ErrorCodes.BUILDER_NOT_READY,
+      details: {
+        cause: expect.arrayContaining([expect.objectContaining({ code: 'executable-check' })]),
+        warnings: expect.arrayContaining([
+          expect.objectContaining({ file: 'contracts.ts', owning_unit: 'unmapped' }),
         ]),
       },
     });

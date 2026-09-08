@@ -49,10 +49,7 @@ const proofId = (address: string) => address.slice(address.lastIndexOf('/') + 1)
 const sameRef = (left: FileDigest, right: FileDigest) =>
   left.path === right.path && left.sha256 === right.sha256;
 
-function loadInputs(
-  deps: BuilderDeps,
-  plan: string,
-): BuilderResult<Inputs> & { warnings?: OwnershipWarning[] } {
+function loadInputs(deps: BuilderDeps, plan: string): BuilderResult<Inputs> {
   const context = builderContext(deps, plan);
   if (!context.ok) return context;
   const loaded = readBuilderGuide(deps, { plan });
@@ -310,7 +307,15 @@ export async function sealBuilderContracts(
 ): Promise<BuilderResult<Stored<BaselineReceipt>>> {
   const loaded = loadInputs(deps, input.plan);
   if (!loaded.ok) return { ...loaded, next_action: `${loaded.next_action} ${FRESH_SEAL_ACTION}` };
-  const inputs = loaded.value;
+  const result = await sealLoadedContracts(deps, input, loaded.value);
+  return result.ok ? result : { ...result, warnings: loaded.value.warnings };
+}
+
+async function sealLoadedContracts(
+  deps: BuilderDeps,
+  input: BaselineInput,
+  inputs: Inputs,
+): Promise<BuilderResult<Stored<BaselineReceipt>>> {
   const previous = deps.fs.exists(inputs.receiptPath)
     ? readBuilderRecord<BaselineReceipt>(deps, inputs.receiptPath, 'baseline')
     : null;
@@ -522,21 +527,10 @@ async function dependencyEvidence(
     for (const dependency of units.get(id)?.depends_on ?? []) visit(dependency);
   };
   unit.depends_on.forEach(visit);
-  const files = new Set(baseline.value.files.map((file) => file.path));
-  const boundPath = (path: string, evidence: readonly FileDigest[]) =>
-    path.endsWith('/**')
-      ? evidence.some((file) => file.path.startsWith(path.slice(0, -2)))
-      : evidence.some((file) => file.path === path || file.path.startsWith(`${path}/`));
   const checks = new Set(inputs.checks.map((check) => check.id));
   const missing = [...required].filter((id) => {
     const dependency = units.get(id);
-    return (
-      !dependency ||
-      dependency.paths.some((path) =>
-        path.endsWith('/**') ? !boundPath(path, baseline.value.files) : !files.has(path),
-      ) ||
-      dependency.proof.some((address) => !checks.has(proofId(address)))
-    );
+    return !dependency || dependency.proof.some((address) => !checks.has(proofId(address)));
   });
   if (missing.length === 0) return { ok: true, value: [] };
   const composition = readBuilderRecord<CompositionReceipt>(
@@ -568,7 +562,7 @@ async function dependencyEvidence(
         receipt.units.filter(
           (delivery) =>
             delivery.unit_id === id && delivery.baseline_sha === baseline.value.source_sha,
-        ).length !== 1 || units.get(id)?.paths.some((path) => !boundPath(path, receipt.files)),
+        ).length !== 1,
     )
   ) {
     return builderFailure(

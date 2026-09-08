@@ -29,6 +29,7 @@ import type {
   DispatchReceipt,
   DispatchResult,
   FileDigest,
+  ReadinessReport,
   RoleBinding,
   RuntimeObservation,
 } from './types.js';
@@ -454,14 +455,27 @@ export async function dispatchBuilderUnit(
     );
   const ready = await deps.readiness({ plan: input.plan, unit: input.unit });
   if (!ready.ok) return ready;
-  if (ready.value.status !== 'ready')
-    return builderFailure(
-      ErrorCodes.BUILDER_NOT_READY,
-      'The unit is not ready for dispatch.',
-      'Resolve every named guide/baseline prerequisite before provisioning.',
-      ready.value.issues,
-    );
-  const { context, guide, baseline } = ready.value;
+  if (ready.value.status !== 'ready') {
+    return {
+      ...builderFailure(
+        ErrorCodes.BUILDER_NOT_READY,
+        'The unit is not ready for dispatch.',
+        'Resolve the named structural or proof prerequisite; map warnings do not prevent dispatch.',
+        ready.value.issues,
+      ),
+      warnings: ready.value.warnings ?? [],
+    };
+  }
+  const result = await dispatchReadyUnit(deps, input, ready.value);
+  return result.ok ? result : { ...result, warnings: ready.value.warnings ?? [] };
+}
+
+async function dispatchReadyUnit(
+  deps: DispatchDeps,
+  input: DispatchInput,
+  ready: Extract<ReadinessReport, { status: 'ready' }>,
+): Promise<BuilderResult<DispatchResult>> {
+  const { context, guide, baseline } = ready;
   const kind = resolveBuilderDispatchKind(guide.isolation.mode, input.kind);
   if (!kind.ok) return kind;
   if (kind.value === 'worktree')
@@ -693,7 +707,7 @@ export async function dispatchBuilderUnit(
         ],
       },
       seed_files: [...seeded.value, ...prepared.value.seeds],
-      warnings: ready.value.warnings ?? baseline.value.warnings ?? [],
+      warnings: ready.warnings ?? baseline.value.warnings ?? [],
     };
     const stored = writeBuilderRecord(deps, dispatchPath, receipt);
     if (!stored.ok) return stored;

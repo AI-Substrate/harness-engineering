@@ -32,6 +32,7 @@ export interface BuilderFailure {
   message: string;
   next_action: string;
   details?: unknown;
+  warnings?: OwnershipWarning[];
 }
 
 export type BuilderResult<T> = { ok: true; value: T } | BuilderFailure;

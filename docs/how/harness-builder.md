@@ -99,6 +99,8 @@ Then provide the exact packet pointer and SHA-256. The packet binds plan/guide/b
 
 The map guides both coder and PM work; it is not a source-path permission fence. Out-of-map edits need no approval or justification. Prefer the shared interfaces that make independent work possible, coordinate changes that break consumers, and surface the comparison warnings rather than inventing a second approval process.
 
+Map warnings remain visible when an actual structural, proof or runtime failure prevents sealing or dispatch: the error envelope carries them at `error.details.warnings`, with prior failure detail retained as `error.details.cause`. A dependency's path hints never create proof prerequisites; readiness uses its declared checks and actual committed dependency evidence.
+
 Current packets use the separately staged `builder/work-packet` schema. Provisioning installs that missing package before native launch; it does not overwrite an existing consumer `builder/packet` schema or its customizations. Historical packets and acknowledgements continue to use their original schema and remain readable. No legacy canary field is invented to make a new packet fit an old schema.
 
 From the worker's actual checkout, one optional orientation check is:

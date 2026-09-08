@@ -701,6 +701,23 @@ describe('Builder isolated dispatch', () => {
     );
     expect(result.packet.value.unit.paths).toEqual([]);
   });
+
+  it('retains map warnings when actual work-packet delivery is refused', async () => {
+    const s = scenario((guide) => {
+      guide.units[1].paths = [];
+    });
+    s.flags.delivery = 'refused';
+    expect(await dispatchBuilderUnit(s.deps, s.input)).toMatchObject({
+      ok: false,
+      warnings: expect.arrayContaining([
+        expect.objectContaining({
+          code: 'map-empty',
+          file: '<guide:units/tk-0002/paths>',
+          owning_unit: 'tk-0002',
+        }),
+      ]),
+    });
+  });
   it('accepts an explicit clone override, but refuses solo and unsupported worktree before allocation', async () => {
     const overridden = scenario();
     overridden.guide.isolation.mode = 'worktree-per-coder';

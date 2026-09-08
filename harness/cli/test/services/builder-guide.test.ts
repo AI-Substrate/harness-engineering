@@ -776,6 +776,61 @@ describe('contract sealing and readiness', () => {
     expect(value(await fixture.seal())).toEqual(sealed);
     expect(fixture.fs.readText(`/repo/${baselinePath}`)).toBe(bytes);
   });
+
+  it('does not turn a dependency ownership hint into a proof prerequisite', async () => {
+    /*
+    Test Doc:
+    - Why: dependency.paths indirectly vetoed readiness after ownership checks became advisory.
+    - Contract: only actual declared proof and committed dependency evidence determine readiness.
+    - Usage Notes: the invalid map hint is not a baseline input and is never read.
+    - Quality Contribution: catches an ownership gate hidden behind dependency proof selection.
+    */
+    const guide = fixtureGuide();
+    guide.units[0].paths.push('../outside.ts');
+    const fixture = contractFixture(guide);
+    const seal = value(await fixture.seal());
+    expect(seal.value.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'map-path',
+          file: '../outside.ts',
+          owning_unit: 'tk-0001',
+        }),
+      ]),
+    );
+    expect(value(await fixture.ready('tk-0002')).status).toBe('ready');
+    fixture.changeRecord<BaselineReceipt>(baselinePath, 'baseline', (receipt) => {
+      receipt.checks[0].exit_code = 1;
+    });
+    expect(value(await fixture.ready('tk-0002'))).toMatchObject({
+      status: 'not-ready',
+      issues: expect.arrayContaining([expect.objectContaining({ code: 'baseline-proof' })]),
+    });
+  });
+
+  it.each([
+    'git',
+    'check',
+  ] as const)('preserves map warnings when sealing fails at %s', async (failure) => {
+    const guide = fixtureGuide();
+    guide.units[0].paths = [];
+    const fixture = contractFixture(guide);
+    fixture.scripts[
+      failure === 'git' ? 'git rev-parse --show-toplevel' : 'node test/contracts.mjs'
+    ] = { code: 1, stderr: 'operational proof failure' };
+    const result = await fixture.seal();
+    expect(result).toMatchObject({
+      ok: false,
+      warnings: expect.arrayContaining([
+        expect.objectContaining({
+          file: 'contracts.ts',
+          owning_unit: 'unmapped',
+          code: 'baseline-owner',
+        }),
+      ]),
+    });
+    expect(fixture.fs.exists(`/repo/${baselinePath}`)).toBe(false);
+  });
   it('retains advisory warnings alongside actual proof failures and unavailable Git evidence', async () => {
     const guide = fixtureGuide();
     guide.units[0].paths = [];
