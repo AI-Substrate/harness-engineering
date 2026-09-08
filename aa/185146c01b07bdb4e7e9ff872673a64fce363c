@@ -1,0 +1,54 @@
+CHANGELOG.md
+  h_9e71e8b09f7cf2 11
+docs/how/harness-builder.md
+  h_9e71e8b09f7cf2 175-177
+docs/plans/099-builder-warning-guidance/assets/execution-log.dd.json
+  h_9e71e8b09f7cf2 86-95
+docs/plans/099-builder-warning-guidance/assets/execution-log.dd.md
+  h_9e71e8b09f7cf2 29
+harness/cli/src/acts/builder.ts
+  h_9e71e8b09f7cf2 328-330
+harness/cli/src/services/builder/commands.ts
+  h_9e71e8b09f7cf2 239-246,252,256-259
+harness/cli/src/services/builder/composition-service.ts
+  h_9e71e8b09f7cf2 643-676,701-707,780-792,835-859,865,931,986,1013-1019
+harness/cli/src/services/builder/types.ts
+  h_9e71e8b09f7cf2 409-415
+harness/cli/src/services/docs/docs-content.ts
+  h_9e71e8b09f7cf2 130
+harness/cli/src/services/flow/schemas-content.ts
+  h_9e71e8b09f7cf2 285
+harness/cli/src/services/instructions/builder-guidance.ts
+  h_9e71e8b09f7cf2 54-58
+harness/cli/test/services/builder-contracts.test.ts
+  h_9e71e8b09f7cf2 529-531,638-656
+harness/cli/test/services/builder-lifecycle.test.ts
+  h_9e71e8b09f7cf2 1746-1848
+skills/builder/SKILL.md
+  h_9e71e8b09f7cf2 66-67
+skills/builder/references/flight-plan.example.json
+  h_9e71e8b09f7cf2 93
+skills/builder/references/flight-plan.template.json
+  h_9e71e8b09f7cf2 44
+skills/builder/references/getting-started.md
+  h_9e71e8b09f7cf2 88-89
+skills/builder/references/stages/60-implement.md
+  h_9e71e8b09f7cf2 24
+skills/builder/references/team-lifecycle.md
+  h_9e71e8b09f7cf2 27,108-109
+skills/builder/templates/coder-packet.template.md
+  h_9e71e8b09f7cf2 58-59
+skills/builder/templates/reviewer-packet.template.md
+  h_9e71e8b09f7cf2 34-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "aa185146c01b07bdb4e7e9ff872673a64fce363c",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
