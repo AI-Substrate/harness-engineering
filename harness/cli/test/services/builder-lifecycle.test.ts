@@ -2025,6 +2025,9 @@ describe('Builder archival through real filesystem and local Git adapters', () =
       expect(fs.exists(posixJoin(planDir, 'assets/team/preservation.dd.json'))).toBe(false);
       unlinkSync(alias);
       expect(fs.exists(otherRetiring)).toBe(true);
+      // A second real repository carries its own schema packages. These copies
+      // must survive as evidence without colliding with the control receipt's schema.
+      await runGit(['clone', '--no-hardlinks', repo, otherRetiring]);
       const requiredCacheEvidence = evidence[2]?.path as string;
       const originalCacheEvidence = fs.readText(requiredCacheEvidence) as string;
       fs.deleteFile(requiredCacheEvidence);
@@ -2043,10 +2046,25 @@ describe('Builder archival through real filesystem and local Git adapters', () =
         await closeBuilderPlan(deps, {
           plan: BUILDER_FIXTURE_PLAN,
           survivor: posixJoin(temporary, 'survivor'),
-          allocations: [allocation],
+          allocations: [allocation, otherAllocation],
           evidence,
         }),
       );
+      expect(value(readBuilderRecord(deps, result.preservation.ref.path, 'preservation'))).toEqual(
+        result.preservation,
+      );
+      const copiedTeamSchemas = result.preservation.value.inventory.filter((item) =>
+        item.source.endsWith('/.dd/schemas/builder/team/schema.json'),
+      );
+      expect(copiedTeamSchemas.map((item) => item.source).sort()).toEqual(
+        [
+          posixJoin(repo, '.dd/schemas/builder/team/schema.json'),
+          posixJoin(otherRetiring, '.dd/schemas/builder/team/schema.json'),
+        ].sort(),
+      );
+      for (const item of copiedTeamSchemas) {
+        expect(fs.readBytesNoFollow(item.destination)).toEqual(fs.readBytesNoFollow(item.source));
+      }
       expect(result.archive).toBe(posixJoin(repo, 'docs/plans/archive/001-example'));
       expect(fs.exists(planDir)).toBe(false);
       const relocated = JSON.parse(fs.readText(posixJoin(result.archive, 'the-flow.json')) ?? '{}');
@@ -2106,7 +2124,7 @@ describe('Builder archival through real filesystem and local Git adapters', () =
         await closeBuilderPlan(deps, {
           plan: result.archive,
           survivor: posixJoin(temporary, 'survivor'),
-          allocations: [allocation],
+          allocations: [allocation, otherAllocation],
           evidence: [
             {
               path: posixJoin(result.archive, 'assets/observations.json'),

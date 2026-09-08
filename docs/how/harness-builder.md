@@ -181,6 +181,8 @@ harness builder tidy <allocation.dd.json> --preservation <preservation.dd.json>
 
 `allocations.json` contains `Stored<AllocationRecord>` wrappers (`ref: {path, sha256}`, `value`). Evidence rows are `{path, category}`, with `artifact|wip|report|observation|telemetry`. Close preserves required bytes and Git refs, archives, and repairs bindings; never repeat the archive move by hand. Tidy separately re-verifies ownership, runtime release and surviving evidence before removal. Idle is not closed; external/pij ownership, live/unknown runtime, dirty source, changed preserved bytes or a survivor under a retiring root refuse removal.
 
+Each preservation generation writes its authoritative record under `receipt/preservation.dd.json`, with a separately staged schema namespace beside that control record. Copied workspace schemas remain evidence in sibling data directories, so several repositories cannot make the receipt's schema ambiguous. Use the returned receipt path rather than constructing it. A failed close may already have archived the plan; retry through `builder close` on that archived path into a fresh generation, preserving the failed generation and never moving the plan back by hand.
+
 Completed historical DD/Markdown plans retain their read path without conversion, new guide gates or node resurrection. Factual progress and archive relocation preserve material intent/guide/code bindings without circular rebaseline demands.
 
 ## Result and permission boundaries
