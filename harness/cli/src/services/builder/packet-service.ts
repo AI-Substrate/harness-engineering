@@ -97,44 +97,43 @@ export function seedBuilderFile(
       'Use a regular, isolated checkout without seed-path symlinks.',
     );
   }
-  const bytes = deps.fs.readBytesNoFollow(source);
-  if (bytes === null || sha256(bytes) !== ref.sha256) {
-    return builderFailure(
-      ErrorCodes.BUILDER_NOT_READY,
-      `Immutable input changed: ${ref.path}`,
-      'Reassess readiness and freeze a new baseline before dispatch.',
-    );
-  }
   const existing = deps.fs.readBytesNoFollow(target);
   if (existing !== null) {
-    if (sha256(existing) !== ref.sha256) {
+    if (sha256(existing) !== ref.sha256)
       return builderFailure(
         ErrorCodes.BUILDER_CONFLICT,
         `Seed conflicts with clone contents: ${relative}`,
-        'Preserve the differing checkout; provision a clean workspace at the approved baseline.',
+        'Preserve the differing checkout; restore its original immutable inputs or review a changed baseline before retrying. Never overwrite existing work.',
       );
-    }
-  } else {
-    // Missing seed files are immutable DD JSON or rendered text.
-    // Frozen source/binary files must already exist in the baseline checkout.
-    let text: string;
-    try {
-      text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-    } catch {
-      return builderFailure(
-        ErrorCodes.BUILDER_INVALID,
-        `Seed is not UTF-8 text: ${relative}`,
-        'Commit binary inputs into the approved baseline rather than overlaying them.',
-      );
-    }
-    deps.fs.mkdirp(posixDirname(target));
-    if (!deps.fs.createExclusive(target, text)) {
-      return builderFailure(
-        ErrorCodes.BUILDER_CONFLICT,
-        `Cannot exclusively seed ${relative}.`,
-        'Inspect the existing path; do not overwrite another writer.',
-      );
-    }
+    // The clone already carries the immutable input, even if PM progress has moved on.
+    return { ok: true, value: [{ path: relative, sha256: ref.sha256 }] };
+  }
+  const bytes = deps.fs.readBytesNoFollow(source);
+  if (bytes === null || sha256(bytes) !== ref.sha256)
+    return builderFailure(
+      ErrorCodes.BUILDER_NOT_READY,
+      `Immutable input changed: ${ref.path}`,
+      'Recover the original sealed input in this checkout; do not overwrite existing work.',
+    );
+  // Missing seed files are immutable DD JSON or rendered text.
+  // Frozen source/binary files must already exist in the baseline checkout.
+  let text: string;
+  try {
+    text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    return builderFailure(
+      ErrorCodes.BUILDER_INVALID,
+      `Seed is not UTF-8 text: ${relative}`,
+      'Commit binary inputs into the approved baseline rather than overlaying them.',
+    );
+  }
+  deps.fs.mkdirp(posixDirname(target));
+  if (!deps.fs.createExclusive(target, text)) {
+    return builderFailure(
+      ErrorCodes.BUILDER_CONFLICT,
+      `Cannot exclusively seed ${relative}.`,
+      'Inspect the existing path; do not overwrite another writer.',
+    );
   }
   return { ok: true, value: [{ path: relative, sha256: ref.sha256 }] };
 }
@@ -154,6 +153,9 @@ export function seedBuilderInputs(
     const copied = seedBuilderFile(deps, root, ref);
     if (!copied.ok) return copied;
     seeds.push(...copied.value);
+    const currentSource = deps.fs.readBytesNoFollow(resolveInRepo(ref.path, deps.repoRoot));
+    // A newer PM progress view must not replace the clone's historical rendered view.
+    if (currentSource === null || sha256(currentSource) !== ref.sha256) continue;
     const face = ref.path.endsWith('.dd.json') ? `${ref.path.slice(0, -5)}.md` : undefined;
     if (face && deps.fs.exists(resolveInRepo(face, deps.repoRoot))) {
       const digest = digestBuilderFile(deps, face);
@@ -178,7 +180,7 @@ export function seedBuilderInputs(
       return builderFailure(
         ErrorCodes.BUILDER_NOT_READY,
         `Clone does not contain frozen input ${ref.path}.`,
-        'Provision from the exact baseline commit; never overlay changed source files.',
+        'Restore the sealed input from its original commit or review a changed contract; never overwrite other existing work.',
       );
     }
   }
@@ -195,6 +197,8 @@ export function prepareBuilderPacket(
     parent: string;
     requested: RoleBinding;
     nonce: string;
+    /** Existing work is bound, not released again; source_sha still names the sealed baseline. */
+    adoptedHead?: string;
   },
 ): BuilderResult<{ packet: Stored<Packet>; seeds: FileDigest[] }> {
   const { context, baseline, allocation, unit, parent, requested, nonce } = input;
@@ -216,8 +220,18 @@ export function prepareBuilderPacket(
       'Supply a unique filename-safe nonce.',
     );
   }
+  if (input.adoptedHead !== undefined && !/^[a-f0-9]{40}$/.test(input.adoptedHead))
+    return builderFailure(
+      ErrorCodes.BUILDER_INVALID,
+      'Existing-peer binding has no full observed HEAD SHA.',
+      'Observe the existing checkout before preparing its packet; do not invent a source binding.',
+    );
   const root = allocation.value.root;
-  const plan = readBuilderDocument(deps, context.planPath, 'builder/plan');
+  const plan = readBuilderDocument(
+    deps,
+    resolveInRepo(posixRelative(deps.repoRoot, context.planPath), root),
+    'builder/plan',
+  );
   if (!plan.ok) return plan;
   if (plan.value.ref.sha256 !== baseline.value.plan.sha256) return builderAttemptFailure();
   const criteria = plan.value.value.sections.find(
@@ -277,8 +291,12 @@ export function prepareBuilderPacket(
       `Your job: ${unit.responsibility}`,
       `Done means ${acceptance.join('; ')}. Interface: ${unit.interface}. Proof: ${unit.proof.join(', ')}.`,
       `Work packet: ${posixRelative(deps.repoRoot, builderRecordPath(context, 'packet', attempt))}. Use the measured SHA-256 in the dispatch message for the optional advisory builder self-check.`,
-      `Expected checkout ${root}; source commit ${baseline.value.source_sha}. A self-check warning names a mismatch to inspect; it is not permission or a second work grant.`,
-      `Receiving this packet means do the unit. Its write/read maps guide you, not fence source access; out-of-map edits need no approval or justification. Prefer frozen interfaces for independent work. Return committed changes, proof and visible file/owning_unit warnings to ${parent}.`,
+      input.adoptedHead === undefined
+        ? `Expected checkout ${root}; source commit ${baseline.value.source_sha}. A self-check warning names a mismatch to inspect; it is not permission or a second work grant.`
+        : `Existing checkout ${root} was observed at ${input.adoptedHead}; its sealed source is ${baseline.value.source_sha}. A progressed-HEAD self-check warning is orientation, not a demand to undo work.`,
+      input.adoptedHead === undefined
+        ? `Receiving this packet means do the unit. Its write/read maps guide you, not fence source access; out-of-map edits need no approval or justification. Prefer frozen interfaces for independent work. Return committed changes, proof and visible file/owning_unit warnings to ${parent}.`
+        : `This packet binds existing work; it is not a new work release. Preserve completed commits and current work, continue only remaining unit work, and return the intended committed delivery with this packet digest to ${parent}. Maps remain guidance; no replay or out-of-map approval is required.`,
       `Optional read-only comparison: harness builder on-track ${baseline.value.plan.path} --unit ${unit.id} [--from <ref>] [--to <ref>] [--untracked]. No readiness, seal, review or receipt prerequisite; no writes; exit 0. Show compared, basis, measured from/to SHAs, includes_worktree/includes_untracked, warnings and issues. Unavailable comparison returns compared:false plus actionable issues.`,
       `On-track defaults to the sealed source, otherwise HEAD; malformed basis is an issue, not fallback. It includes committed touched paths (even reverted writes) plus tracked staged/unstaged work; --untracked explicitly adds new paths. Explicit --to is committed-only. Omitting --unit compares PM maps using imported integration_sha, otherwise the sealed source or HEAD.`,
     ],

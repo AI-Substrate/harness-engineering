@@ -1,6 +1,7 @@
 import type { DdDoc } from '@ai-substrate/dd';
 import { Command } from 'commander';
 import { describe, expect, it } from 'vitest';
+import type { ExecResult } from '../../src/adapters/exec/exec-port.js';
 import {
   registerBuilderCommandContract,
   resolveBuilderDispatchKind,
@@ -13,6 +14,7 @@ import {
   runBuilderCheck,
   sameBuilderDocumentIntent,
   sha256,
+  verifyBuilderFilesAtCommit,
   writeBuilderDocument,
   writeBuilderRecord,
 } from '../../src/services/builder/records.js';
@@ -20,10 +22,12 @@ import type { AllocationRecord, BuilderRecord } from '../../src/services/builder
 import {
   BUILDER_FIXTURE_GUIDE,
   BUILDER_FIXTURE_PLAN,
+  BUILDER_FIXTURE_SHA,
   builderFixture,
   fixtureAck,
   fixtureAllocation,
   fixtureBaseline,
+  fixtureCommittedGit,
   fixtureComposition,
   fixtureDispatch,
   fixturePacket,
@@ -338,6 +342,147 @@ describe('Builder executable checks', () => {
   });
 });
 
+describe('Builder immutable committed file bindings', () => {
+  function historicalFixture() {
+    const fixture = builderFixture();
+    const bytes = new Uint8Array([0, 255, 128, 13, 10, 239, 191, 189]);
+    const path = 'contracts[*].bin';
+    const files = new Map([[path, bytes]]);
+    const commits = new Map([[BUILDER_FIXTURE_SHA, files]]);
+    fixture.deps.exec = {
+      run: async (command, args, options) => {
+        await fixture.exec.run(command, args, options);
+        const result = fixtureCommittedGit(commits, args, options);
+        if (!result) throw new Error(`Unscripted historical command: ${command} ${args.join(' ')}`);
+        return result;
+      },
+    };
+    return { ...fixture, bytes, path, files, ref: { path, sha256: sha256(bytes) } };
+  }
+
+  it('verifies literal-path binary bytes absent from the current workspace, not their UTF-8 decoding', async () => {
+    const fixture = historicalFixture();
+    expect(
+      await verifyBuilderFilesAtCommit(fixture.deps, BUILDER_FIXTURE_SHA, [fixture.ref]),
+    ).toEqual({ ok: true, value: true });
+    expect(
+      await verifyBuilderFilesAtCommit(fixture.deps, BUILDER_FIXTURE_SHA, [
+        { ...fixture.ref, sha256: sha256(Buffer.from(fixture.bytes).toString('utf8')) },
+      ]),
+    ).toMatchObject({ ok: false, code: 'E475', message: expect.stringContaining('sealed digest') });
+  });
+
+  it.each([
+    [
+      'unsupported byte capture',
+      'cat-file',
+      (result: ExecResult) => {
+        const { stdoutEncoding: _encoding, ...textOnly } = result;
+        return textOnly;
+      },
+    ],
+    [
+      'noncanonical base64',
+      'cat-file',
+      (result: ExecResult) => ({
+        ...result,
+        stdout: `${result.stdout}\n`,
+      }),
+    ],
+    [
+      'wrong byte count',
+      'ls-tree',
+      (result: ExecResult) => ({
+        ...result,
+        stdout: result.stdout.replace(' 8\t', ' 9\t'),
+      }),
+    ],
+    [
+      'symlink blob',
+      'ls-tree',
+      (result: ExecResult) => ({
+        ...result,
+        stdout: result.stdout.replace('100644', '120000'),
+      }),
+    ],
+    [
+      'duplicate tree entry',
+      'ls-tree',
+      (result: ExecResult) => ({
+        ...result,
+        stdout: result.stdout + result.stdout,
+      }),
+    ],
+    [
+      'truncated tree metadata',
+      'ls-tree',
+      (result: ExecResult) => ({
+        ...result,
+        stdout: result.stdout.slice(0, -1),
+      }),
+    ],
+    [
+      'rewritten source resolution',
+      'rev-parse',
+      (result: ExecResult) => ({
+        ...result,
+        stdout: `${'b'.repeat(40)}\n`,
+      }),
+    ],
+    [
+      'failed blob read',
+      'cat-file',
+      (result: ExecResult) => ({
+        ...result,
+        code: 128,
+        ok: false,
+        stderr: 'corrupt object',
+      }),
+    ],
+  ] as const)('refuses %s rather than accepting ambiguous historical proof', async (_name, command, change) => {
+    const fixture = historicalFixture();
+    const execute = fixture.deps.exec.run.bind(fixture.deps.exec);
+    fixture.deps.exec = {
+      run: async (binary, args, options) => {
+        const result = await execute(binary, args, options);
+        return args.includes(command) ? change(result) : result;
+      },
+    };
+    expect(
+      await verifyBuilderFilesAtCommit(fixture.deps, BUILDER_FIXTURE_SHA, [fixture.ref]),
+    ).toMatchObject({ ok: false, code: 'E475' });
+  });
+
+  it('refuses missing source commits and missing historical files even when current bytes match', async () => {
+    const fixture = historicalFixture();
+    fixture.fs.writeBytes(`/repo/${fixture.path}`, fixture.bytes);
+    expect(
+      await verifyBuilderFilesAtCommit(fixture.deps, 'b'.repeat(40), [fixture.ref]),
+    ).toMatchObject({ ok: false, code: 'E475', message: expect.stringContaining('source commit') });
+    fixture.files.clear();
+    expect(
+      await verifyBuilderFilesAtCommit(fixture.deps, BUILDER_FIXTURE_SHA, [fixture.ref]),
+    ).toMatchObject({ ok: false, code: 'E475', message: expect.stringContaining('missing') });
+  });
+
+  it.each([
+    '../outside.bin',
+    '/repo/contracts.bin',
+    './contracts.bin',
+    'dir/../contracts.bin',
+    'dir/',
+    'file://outside',
+  ])('refuses noncanonical or escaping historical path %s before observing Git', async (path) => {
+    const fixture = historicalFixture();
+    expect(
+      await verifyBuilderFilesAtCommit(fixture.deps, BUILDER_FIXTURE_SHA, [
+        { ...fixture.ref, path },
+      ]),
+    ).toMatchObject({ ok: false, code: 'E475' });
+    expect(fixture.exec.calls).toEqual([]);
+  });
+});
+
 function parser() {
   const calls: Array<{ verb: string; argument: string; options: Record<string, unknown> }> = [];
   const program = new Command()
@@ -378,6 +523,31 @@ describe('Builder public command grammar', () => {
     ['settings', 'plan', '--model', 'provider/model'],
     ['compose', 'plan'],
     ['compose', 'plan', '--import', 'units.json', '--verify', 'abc'],
+    ['compose', 'plan', '--already-integrated'],
+    ['compose', 'plan', '--verify', 'abc', '--already-integrated'],
+    ['compose', 'plan', '--import', 'units.json', '--already-integrated', '--verify', 'abc'],
+    [
+      'dispatch',
+      'plan',
+      '--unit',
+      'tk-0002',
+      '--workspace',
+      '/workers/one',
+      '--adopt-peer',
+      'coder',
+    ],
+    ['dispatch', 'plan', '--unit', 'tk-0002', '--parent', 'pm', '--adopt-peer', 'coder'],
+    [
+      'dispatch',
+      'plan',
+      '--unit',
+      'tk-0002',
+      '--workspace',
+      '/workers/one',
+      '--parent',
+      'pm',
+      '--adopt-peer',
+    ],
     ['advance', 'plan', '--now', 'phase-1', '--force'],
     ['tidy', 'allocation.dd.json'],
   ])('refuses incomplete, conflicting or unsafe arguments: %j', async (...args) => {
@@ -410,6 +580,57 @@ describe('Builder public command grammar', () => {
       },
     });
     expect(calls[0]?.options).not.toHaveProperty('effort');
+  });
+  it('binds an existing peer with explicit parent, isolation and role controls', async () => {
+    const { calls, parse } = parser();
+    await parse([
+      'dispatch',
+      'plan',
+      '--unit',
+      'tk-0002',
+      '--workspace',
+      '/workers/existing root',
+      '--parent',
+      'pm',
+      '--adopt-peer',
+      'running-coder',
+      '--kind',
+      'clone',
+      '--harness',
+      'omp',
+      '--model',
+      'provider/model',
+      '--effort',
+      'high',
+    ]);
+    expect(calls).toEqual([
+      {
+        verb: 'dispatch',
+        argument: 'plan',
+        options: {
+          unit: 'tk-0002',
+          workspace: '/workers/existing root',
+          parent: 'pm',
+          adoptPeer: 'running-coder',
+          kind: 'clone',
+          harness: 'omp',
+          model: 'provider/model',
+          effort: 'high',
+        },
+      },
+    ]);
+  });
+
+  it('selects already-integrated only as an import modifier', async () => {
+    const { calls, parse } = parser();
+    await parse(['compose', 'plan', '--import', 'units.json', '--already-integrated']);
+    expect(calls).toEqual([
+      {
+        verb: 'compose',
+        argument: 'plan',
+        options: { import: 'units.json', alreadyIntegrated: true },
+      },
+    ]);
   });
 });
 

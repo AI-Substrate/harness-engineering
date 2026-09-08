@@ -1,17 +1,21 @@
 import { parse } from '@ai-substrate/dd';
 import { ErrorCodes } from '../../output/error-codes.js';
 import { isWithin, posixDirname, posixJoin, resolveInRepo } from '../shared/posix-path.js';
-import { committedDeliveryPaths, ownershipWarnings } from './ownership-service.js';
+import { builderOwnsPath, committedDeliveryPaths, ownershipWarnings } from './ownership-service.js';
 import {
   builderContext,
   builderFailure,
   builderRecordPath,
   digestBuilderFile,
   readBuilderDocument,
+  readBuilderGitText,
   readBuilderRecord,
+  relocatedRef,
+  resolveDocumentAddresses,
   runBuilderCheck,
   sameBuilderDocumentIntent,
   sha256,
+  verifyBuilderFilesAtCommit,
   writeBuilderRecord,
 } from './records.js';
 import type {
@@ -28,6 +32,7 @@ import type {
   DispatchReceipt,
   FileDigest,
   Guide,
+  IntegratedUnitProof,
   OwnershipWarning,
   Packet,
   Stored,
@@ -91,11 +96,11 @@ export function loadBuilderGuide(
   };
 }
 
-export function loadBuilderBaseline(
+export async function loadBuilderBaseline(
   deps: BuilderDeps,
   context: BuilderContext,
   guide: Guide,
-): BuilderResult<Stored<BaselineReceipt>> {
+): Promise<BuilderResult<Stored<BaselineReceipt>>> {
   const path = resolveInRepo(guide.baseline.receipt, posixDirname(context.guidePath));
   if (!isWithin(context.planDir, path))
     return builderFailure(
@@ -105,10 +110,23 @@ export function loadBuilderBaseline(
     );
   const baseline = readBuilderRecord<BaselineReceipt>(deps, path, 'baseline');
   if (!baseline.ok) return baseline;
-  for (const file of baseline.value.value.files) {
-    const actual = sameBuilderFile(deps, file);
-    if (!actual.ok) return actual;
-  }
+  if (
+    baseline.value.value.files.length !== guide.baseline.files.length ||
+    guide.baseline.files.some(
+      (path) => baseline.value.value.files.filter((file) => file.path === path).length !== 1,
+    )
+  )
+    return builderFailure(
+      ErrorCodes.BUILDER_PROOF,
+      'The declared baseline paths differ from the sealed file bindings.',
+      'Restore the original guide or review and seal a new baseline; never relabel historical paths.',
+    );
+  const historical = await verifyBuilderFilesAtCommit(
+    deps,
+    baseline.value.value.source_sha,
+    baseline.value.value.files,
+  );
+  if (!historical.ok) return historical;
   return baseline;
 }
 
@@ -144,17 +162,27 @@ export async function verifyBuilderBasis(
     [basis.plan, context.planPath],
     [basis.guide, context.guidePath],
   ] as const) {
+    if (resolveInRepo(relocatedRef(ref, basis, context).path, deps.repoRoot) !== current)
+      return builderFailure(
+        ErrorCodes.BUILDER_PROOF,
+        'The evidence belongs to a different plan or guide.',
+        'Use the original plan or its canonical archive relocation.',
+      );
     const actual = readBuilderDocument(
       deps,
       current,
       current === context.planPath ? 'builder/plan' : 'builder/impl-guide',
     );
     if (!actual.ok) return actual;
-    if (actual.value.ref.sha256 === ref.sha256) continue;
+    if (
+      actual.value.ref.sha256 === ref.sha256 &&
+      resolveInRepo(ref.path, deps.repoRoot) === current
+    )
+      continue;
     const saved = deps.fs.readText(posixJoin(context.teamDir, `basis-${ref.sha256}.json`));
     const historical =
       saved === null
-        ? await builderGit(deps, ['show', `${basis.source_sha}:${ref.path}`])
+        ? await readBuilderGitText(deps, ['show', `${basis.source_sha}:${ref.path}`])
         : { ok: true as const, value: saved };
     if (!historical.ok) return historical;
     if (sha256(historical.value) !== ref.sha256)
@@ -170,7 +198,11 @@ export async function verifyBuilderBasis(
       if (
         Array.isArray(before) ||
         Array.isArray(after) ||
-        !sameBuilderDocumentIntent(before, after, planId)
+        !sameBuilderDocumentIntent(
+          resolveDocumentAddresses(before, resolveInRepo(ref.path, deps.repoRoot), deps.repoRoot),
+          resolveDocumentAddresses(after, current, deps.repoRoot),
+          planId,
+        )
       )
         return builderFailure(
           ErrorCodes.BUILDER_PROOF,
@@ -272,7 +304,8 @@ async function validateDelivery(
   guide: Guide,
   unit: Unit,
   delivery: UnitDelivery,
-): Promise<BuilderResult<{ commits: string[]; warnings: OwnershipWarning[] }>> {
+  replay: boolean,
+): Promise<BuilderResult<{ commits: string[]; paths: string[]; warnings: OwnershipWarning[] }>> {
   const source = baseline.value.source_sha;
   if (!SHA.test(source))
     return builderFailure(
@@ -440,18 +473,20 @@ async function validateDelivery(
     delivery.workspace,
   );
   if (!ancestor.ok) return ancestor;
-  const merges = await builderGit(
-    deps,
-    ['rev-list', '--merges', `${baseline.value.source_sha}..${delivery.commit_sha}`],
-    delivery.workspace,
-  );
-  if (!merges.ok) return merges;
-  if (merges.value.trim())
-    return builderFailure(
-      ErrorCodes.BUILDER_PROOF,
-      'Worker delivery contains merge commits that cannot be replayed without a mainline choice.',
-      'Prepare an equivalent linear delivery on the sealed baseline, then retry; this is a Git replay limitation, not an ownership restriction.',
+  if (replay) {
+    const merges = await builderGit(
+      deps,
+      ['rev-list', '--merges', `${baseline.value.source_sha}..${delivery.commit_sha}`],
+      delivery.workspace,
     );
+    if (!merges.ok) return merges;
+    if (merges.value.trim())
+      return builderFailure(
+        ErrorCodes.BUILDER_PROOF,
+        'Worker delivery contains merge commits that cannot be replayed without a mainline choice.',
+        'Prepare an equivalent linear delivery on the sealed baseline, then retry; this is a Git replay limitation, not an ownership restriction.',
+      );
+  }
   const history = await committedDeliveryPaths(
     (args) => builderGit(deps, args, delivery.workspace),
     source,
@@ -468,7 +503,90 @@ async function validateDelivery(
     ok: true,
     value: {
       commits: history.value.commits,
+      paths: history.value.paths,
       warnings: ownershipWarnings(guide.units, history.value.paths, [unit], 'delivery', unit.id),
+    },
+  };
+}
+
+type TreeEntry = readonly [mode: string, type: string, objectId: string];
+
+/** Read only tree metadata: Git object identity preserves binary bytes, modes and symlinks. */
+async function committedTree(
+  deps: BuilderDeps,
+  sha: string,
+  cwd = deps.repoRoot,
+): Promise<BuilderResult<Map<string, TreeEntry>>> {
+  const tree = await readBuilderGitText(deps, ['ls-tree', '-r', '-z', '--full-tree', sha], cwd);
+  if (!tree.ok) return tree;
+  if (tree.value && !tree.value.endsWith('\0'))
+    return builderFailure(
+      ErrorCodes.BUILDER_PROOF,
+      `Incomplete Git tree listing at ${sha} in ${cwd}.`,
+      'Recover the complete committed tree observation before recording integration.',
+    );
+  const entries = new Map<string, TreeEntry>();
+  for (const entry of nulPaths(tree.value)) {
+    const match = /^([0-7]{6}) (blob|commit) ([a-f0-9]{40})\t([\s\S]+)$/.exec(entry);
+    if (!match || entries.has(match[4]))
+      return builderFailure(
+        ErrorCodes.BUILDER_PROOF,
+        `Invalid Git tree entry at ${sha} in ${cwd}.`,
+        'Restore readable, unique committed tree entries before observing integration.',
+      );
+    entries.set(match[4], [match[1], match[2], match[3]]);
+  }
+  return { ok: true, value: entries };
+}
+
+async function observeIntegratedUnit(
+  deps: BuilderDeps,
+  unit: Unit,
+  delivery: UnitDelivery,
+  touchedPaths: string[],
+  baselineTree: Map<string, TreeEntry>,
+  pmTree: Map<string, TreeEntry>,
+): Promise<BuilderResult<IntegratedUnitProof>> {
+  const delivered = await committedTree(deps, delivery.commit_sha, delivery.workspace);
+  if (!delivered.ok) return delivered;
+  // Include baseline-only paths (deletions) and PM-only paths (unexpected additions).
+  const paths = [
+    ...new Set([...baselineTree.keys(), ...delivered.value.keys(), ...pmTree.keys()]),
+  ].filter((path) => builderOwnsPath(unit, path));
+  const scope = paths.length ? 'unit-map' : 'delivery-changes';
+  if (!paths.length) paths.push(...touchedPaths);
+  if (!paths.length)
+    return builderFailure(
+      ErrorCodes.BUILDER_PROOF,
+      `No concrete file proof for already-integrated unit ${unit.id}.`,
+      'Map concrete committed unit paths or supply a delivery with actual touched files; an empty projection cannot prove integration.',
+    );
+  const projection: Array<readonly [string, string | null, string | null, string | null]> = [];
+  for (const path of paths.sort()) {
+    const expected = delivered.value.get(path);
+    const observed = pmTree.get(path);
+    if (
+      expected?.[0] !== observed?.[0] ||
+      expected?.[1] !== observed?.[1] ||
+      expected?.[2] !== observed?.[2]
+    )
+      return builderFailure(
+        ErrorCodes.BUILDER_PROOF,
+        `Already-integrated tree mismatch for ${unit.id} at ${path}.`,
+        `Commit the delivered path, mode, type and bytes (or deletion) from ${delivery.commit_sha} in the PM checkout, or use normal import if replay is intended.`,
+        { unit_id: unit.id, path, delivery: expected ?? null, pm: observed ?? null },
+      );
+    projection.push([path, ...(expected ?? ([null, null, null] as const))]);
+  }
+  return {
+    ok: true,
+    value: {
+      unit_id: unit.id,
+      delivery_sha: delivery.commit_sha,
+      scope,
+      compared_paths: paths.length,
+      // Canonical sorted tree projection, NOT a raw-file SHA256 or artifact-check proof.
+      tree_sha256: sha256(JSON.stringify(projection)),
     },
   };
 }
@@ -534,7 +652,7 @@ export async function verifyBuilderComposition(
   );
   if (!composition.ok) return composition;
   const value = composition.value.value;
-  const baseline = loadBuilderBaseline(deps, context, guide);
+  const baseline = await loadBuilderBaseline(deps, context, guide);
   if (!baseline.ok) return baseline;
   if (
     !value.artifact_sha ||
@@ -618,11 +736,24 @@ export async function composeBuilderUnits(
   deps: CompositionDeps,
   input: ComposeInput,
 ): Promise<BuilderResult<Stored<CompositionReceipt>>> {
+  if (input.mode === 'import' && input.alreadyIntegrated) {
+    const exec = deps.exec;
+    deps = {
+      ...deps,
+      exec: {
+        run: (command, args, opts) =>
+          exec.run(command, args, {
+            ...opts,
+            env: { ...opts.env, GIT_OPTIONAL_LOCKS: '0', GIT_NO_REPLACE_OBJECTS: '1' },
+          }),
+      },
+    };
+  }
   const loaded = loadBuilderGuide(deps, input.plan);
   if (!loaded.ok) return loaded;
   const { context, guide: storedGuide } = loaded.value;
   const guide = storedGuide.value;
-  const baseline = loadBuilderBaseline(deps, context, guide);
+  const baseline = await loadBuilderBaseline(deps, context, guide);
   if (!baseline.ok) return baseline;
   const basis = await verifyBuilderBasis(deps, context, baseline.value.value);
   if (!basis.ok) return basis;
@@ -679,8 +810,10 @@ export async function composeBuilderUnits(
         'Use each unit’s distinct allocated native peer and matching dispatch evidence before importing.',
       );
     const prepared: Array<{
+      unit: Unit;
       delivery: UnitDelivery;
       commits: string[];
+      paths: string[];
       warnings: OwnershipWarning[];
     }> = [];
     for (const id of order) {
@@ -707,31 +840,64 @@ export async function composeBuilderUnits(
         guide,
         unit,
         delivery,
+        !input.alreadyIntegrated,
       );
       if (!validated.ok) return validated;
-      prepared.push({ delivery, ...validated.value });
+      prepared.push({ unit, delivery, ...validated.value });
     }
-    for (const { delivery, commits } of prepared) {
-      const fetched = await builderGit(deps, [
-        'fetch',
-        '--no-tags',
-        '--no-write-fetch-head',
-        '--',
-        delivery.workspace,
-        delivery.commit_sha,
-      ]);
-      if (!fetched.ok) return fetched;
-      const imported = await builderGit(deps, ['cherry-pick', '-x', ...commits]);
-      if (!imported.ok)
-        return builderFailure(
-          ErrorCodes.BUILDER_CONFLICT,
-          `Composition replay stopped at ${delivery.unit_id}; Git state is preserved.`,
-          'Inspect the cherry-pick error and resolve its conflict, empty commit or other replay limitation; this is not an ownership refusal. Do not claim completed composition or reset unrelated work.',
-          imported,
+    const proofs: IntegratedUnitProof[] = [];
+    if (input.alreadyIntegrated) {
+      const baselineTree = await committedTree(deps, baseline.value.value.source_sha);
+      if (!baselineTree.ok) return baselineTree;
+      const pmTree = await committedTree(deps, head.value);
+      if (!pmTree.ok) return pmTree;
+      for (const { unit, delivery, paths } of prepared) {
+        const proof = await observeIntegratedUnit(
+          deps,
+          unit,
+          delivery,
+          paths,
+          baselineTree.value,
+          pmTree.value,
         );
+        if (!proof.ok) return proof;
+        proofs.push(proof.value);
+      }
+    } else {
+      for (const { delivery, commits } of prepared) {
+        const fetched = await builderGit(deps, [
+          'fetch',
+          '--no-tags',
+          '--no-write-fetch-head',
+          '--',
+          delivery.workspace,
+          delivery.commit_sha,
+        ]);
+        if (!fetched.ok) return fetched;
+        const imported = await builderGit(deps, ['cherry-pick', '-x', ...commits]);
+        if (!imported.ok)
+          return builderFailure(
+            ErrorCodes.BUILDER_CONFLICT,
+            `Composition replay stopped at ${delivery.unit_id}; Git state is preserved.`,
+            'Inspect the cherry-pick error and resolve its conflict, empty commit or other replay limitation; this is not an ownership refusal. Do not claim completed composition or reset unrelated work.',
+            imported,
+          );
+      }
+    }
+    if (input.alreadyIntegrated) {
+      const unchanged = await cleanBuilderSource(deps, context);
+      if (!unchanged.ok) return unchanged;
     }
     const composed = await builderHead(deps);
     if (!composed.ok) return composed;
+    if (input.alreadyIntegrated) {
+      if (composed.value !== head.value)
+        return builderFailure(
+          ErrorCodes.BUILDER_PROOF,
+          'PM HEAD changed while observing already-integrated deliveries.',
+          'Keep the PM checkout at a stable committed HEAD and repeat the observation.',
+        );
+    }
     return writeBuilderRecord(deps, path, {
       record_type: 'composition',
       id: deps.nonce(),
@@ -739,6 +905,8 @@ export async function composeBuilderUnits(
       baseline: baseline.value.ref,
       units: prepared.map((row) => row.delivery),
       integration_sha: composed.value,
+      integration_method: input.alreadyIntegrated ? 'already-integrated' : 'replayed',
+      ...(input.alreadyIntegrated && { integration_proofs: proofs }),
       files: [],
       checks: [],
       warnings: [
@@ -821,6 +989,10 @@ export async function composeBuilderUnits(
       'A check changed HEAD.',
       'Restore a stable committed artifact and repeat verification.',
     );
+  const retainedSeal = sameBuilderFile(deps, baseline.value.ref);
+  if (!retainedSeal.ok) return retainedSeal;
+  const retainedBasis = await verifyBuilderBasis(deps, context, baseline.value.value);
+  if (!retainedBasis.ok) return retainedBasis;
   for (const ref of snapshot) {
     const current = sameBuilderFile(deps, ref);
     if (!current.ok) return current;

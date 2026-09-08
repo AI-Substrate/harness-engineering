@@ -309,6 +309,7 @@ export interface DispatchReceipt {
 export interface DispatchDeps extends BuilderDeps {
   readiness: AssessReadiness;
   provision: ProvisionWorkspace;
+  adoptUnit: ProvisionWorkspace;
 }
 export interface DispatchInput extends BuilderTarget {
   unit: string;
@@ -317,6 +318,8 @@ export interface DispatchInput extends BuilderTarget {
   role: RoleBinding;
   /** Omission/guide resolves from isolation.mode; an explicit kind overrides it. */
   kind?: WorkspaceKindSelector;
+  /** Bind this existing native peer without provisioning or spawning another checkout. */
+  adoptPeer?: string;
 }
 export interface SelfCheckInput {
   packet: string;
@@ -372,6 +375,15 @@ export interface OnTrackReport {
   issues: BuilderIssue[];
 }
 
+/** Equality of a canonical Git tree projection, not a new product-check receipt. */
+export interface IntegratedUnitProof {
+  unit_id: string;
+  delivery_sha: string;
+  scope: 'unit-map' | 'delivery-changes';
+  compared_paths: number;
+  tree_sha256: string;
+}
+
 /** Import is not proof. artifact_sha is set only after committed-tree verification. */
 export interface CompositionReceipt {
   record_type: 'composition';
@@ -385,12 +397,18 @@ export interface CompositionReceipt {
   checks: CheckReceipt[];
   /** Absent on historical receipts. Never an authorization or proof gate. */
   warnings?: OwnershipWarning[];
+  /** Absent on historical receipts; importing still does not establish artifact proof. */
+  integration_method?: 'replayed' | 'already-integrated';
+  integration_proofs?: IntegratedUnitProof[];
 }
 export interface CompositionDeps extends BuilderDeps {
   readiness: AssessReadiness;
 }
 export type ComposeInput = BuilderTarget &
-  ({ mode: 'import'; deliveries: UnitDelivery[] } | { mode: 'verify'; sha: string });
+  (
+    | { mode: 'import'; deliveries: UnitDelivery[]; alreadyIntegrated?: boolean }
+    | { mode: 'verify'; sha: string }
+  );
 
 export interface ReviewFinding {
   id: string;

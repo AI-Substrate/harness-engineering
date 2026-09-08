@@ -484,6 +484,41 @@
           "integration_sha": {
             "type": "string"
           },
+          "integration_method": {
+            "type": "enum",
+            "enum": "integration_method"
+          },
+          "integration_proofs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "unit_id",
+                "delivery_sha",
+                "scope",
+                "compared_paths",
+                "tree_sha256"
+              ],
+              "fields": {
+                "unit_id": {
+                  "type": "string"
+                },
+                "delivery_sha": {
+                  "type": "string"
+                },
+                "scope": {
+                  "type": "enum",
+                  "enum": "integration_scope"
+                },
+                "compared_paths": {
+                  "type": "int"
+                },
+                "tree_sha256": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "artifact_sha": {
             "type": "string"
           },
@@ -909,6 +944,18 @@
     }
   },
   "enums": {
+    "integration_method": {
+      "values": [
+        "replayed",
+        "already-integrated"
+      ]
+    },
+    "integration_scope": {
+      "values": [
+        "unit-map",
+        "delivery-changes"
+      ]
+    },
     "builder_role": {
       "values": [
         "coder",

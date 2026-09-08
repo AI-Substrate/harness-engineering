@@ -8,6 +8,7 @@ import {
   toPosix,
 } from '../shared/posix-path.js';
 import { resolveBuilderDispatchKind } from './commands.js';
+import { verifyBuilderBasis } from './composition-service.js';
 import {
   builderAttemptFailure,
   prepareBuilderPacket,
@@ -19,6 +20,7 @@ import {
   builderRecordPath,
   digestBuilderFile,
   readBuilderRecord,
+  verifyBuilderFilesAtCommit,
   writeBuilderRecord,
 } from './records.js';
 import type {
@@ -245,42 +247,12 @@ async function observePeer(
   };
 }
 
+/** Fresh clones stay pristine; PM and explicitly adopted workers may have progressed. */
 async function verifyRoot(
   deps: BuilderDeps,
   root: string,
-  sha: string,
-): Promise<BuilderResult<true>> {
-  if (deps.fs.realpath(root) !== root)
-    return runtimeFailure('Workspace root is missing or aliased.');
-  const result = await deps.exec.run('git', ['rev-parse', '--show-toplevel', 'HEAD'], {
-    cwd: root,
-    timeoutMs: 10000,
-  });
-  const lines = result.stdout.trim().split(/\r?\n/);
-  if (!result.ok || lines.length !== 2 || lines[0] !== root || lines[1] !== sha)
-    return runtimeFailure(
-      'Native Git root or HEAD does not match the frozen workspace baseline.',
-      result,
-    );
-  return { ok: true, value: true };
-}
-
-/**
- * The PM's plan repository at dispatch time: same root, and the sealed source
- * is HEAD or an ANCESTOR of HEAD. Equality is deliberately not required here —
- * the seal receipt and review evidence are committed on top of the sealed
- * source (contracts-service treats them the same way: "publishing receipts and
- * later implementation commits are allowed; rewriting the baseline is not"),
- * and every frozen artifact has already been digest-checked by `verifyRef`.
- * Requiring HEAD === source_sha only forbade committing evidence before
- * dispatch (backlog row 45). The pristine coder checkout keeps the strict
- * equality check in `verifyRoot`: it must start from exactly the sealed source.
- * Returns the observed HEAD so the dispatch record can name it.
- */
-async function verifyPlanRoot(
-  deps: BuilderDeps,
-  root: string,
   sourceSha: string,
+  allowDescendant = false,
 ): Promise<BuilderResult<string>> {
   if (deps.fs.realpath(root) !== root)
     return runtimeFailure('Workspace root is missing or aliased.');
@@ -290,19 +262,29 @@ async function verifyPlanRoot(
   });
   const lines = result.stdout.trim().split(/\r?\n/);
   const head = lines[1] ?? '';
-  if (!result.ok || lines.length !== 2 || lines[0] !== root || !/^[0-9a-f]{40}$/.test(head))
+  if (
+    !result.ok ||
+    lines.length !== 2 ||
+    toPosix(lines[0] ?? '') !== root ||
+    !/^[0-9a-f]{40}$/.test(head)
+  )
     return runtimeFailure(
       'Native Git root or HEAD does not match the frozen workspace baseline.',
       result,
     );
   if (head === sourceSha) return { ok: true, value: head };
+  if (!allowDescendant)
+    return runtimeFailure(
+      'Native Git root or HEAD does not match the frozen workspace baseline.',
+      result,
+    );
   const ancestor = await deps.exec.run('git', ['merge-base', '--is-ancestor', sourceSha, head], {
     cwd: root,
     timeoutMs: 10000,
   });
   if (!ancestor.ok)
     return runtimeFailure(
-      'The sealed source is neither HEAD nor an ancestor of HEAD in the plan repository; the baseline was rewritten or the checkout moved off its history.',
+      'The sealed source is neither HEAD nor an ancestor of HEAD in this repository; the baseline was rewritten or the checkout moved off its history.',
       { head, source_sha: sourceSha, result: ancestor },
     );
   return { ok: true, value: head };
@@ -431,15 +413,19 @@ async function sendMessage(
   return { ok: true, value: { message_id: messageId, outcome: receipt.outcome.outcome } };
 }
 
-/** Record the observed native launch, publish work, then CAS the transport outcome. */
+/** Record a native launch or existing peer binding, then publish its work packet. */
 export async function dispatchBuilderUnit(
   deps: DispatchDeps,
   input: DispatchInput,
 ): Promise<BuilderResult<DispatchResult>> {
-  if (!key(input.unit) || !key(input.parent))
+  if (
+    !key(input.unit) ||
+    !key(input.parent) ||
+    (input.adoptPeer !== undefined && (!text(input.adoptPeer) || !key(input.adoptPeer)))
+  )
     return builderFailure(
       ErrorCodes.BUILDER_INVALID,
-      'Invalid unit or parent identity.',
+      'Invalid unit, parent or existing-peer identity.',
       'Use the exact guide unit and registered governing peer.',
     );
   if (
@@ -466,8 +452,20 @@ export async function dispatchBuilderUnit(
       warnings: ready.value.warnings ?? [],
     };
   }
-  const result = await dispatchReadyUnit(deps, input, ready.value);
-  return result.ok ? result : { ...result, warnings: ready.value.warnings ?? [] };
+  const peerClaim =
+    input.adoptPeer === undefined
+      ? undefined
+      : lockUnit(
+          deps,
+          `${builderRecordPath(ready.value.context, 'dispatch', `peer-${input.adoptPeer}-${ready.value.baseline.value.source_sha}`)}.operation-lock`,
+        );
+  if (peerClaim && !peerClaim.ok) return { ...peerClaim, warnings: ready.value.warnings ?? [] };
+  try {
+    const result = await dispatchReadyUnit(deps, input, ready.value);
+    return result.ok ? result : { ...result, warnings: ready.value.warnings ?? [] };
+  } finally {
+    if (peerClaim?.ok) peerClaim.value.release();
+  }
 }
 
 async function dispatchReadyUnit(
@@ -476,6 +474,7 @@ async function dispatchReadyUnit(
   ready: Extract<ReadinessReport, { status: 'ready' }>,
 ): Promise<BuilderResult<DispatchResult>> {
   const { context, guide, baseline } = ready;
+  const adopting = input.adoptPeer !== undefined;
   const kind = resolveBuilderDispatchKind(guide.isolation.mode, input.kind);
   if (!kind.ok) return kind;
   if (kind.value === 'worktree')
@@ -504,7 +503,7 @@ async function dispatchReadyUnit(
   const sender = await actor(deps, input.parent);
   if (!sender.ok) return sender;
   const sessionArgs: string[] = [];
-  if (!deps.env.get('TMUX_PANE')) {
+  if (!adopting && !deps.env.get('TMUX_PANE')) {
     if (!text(sender.value.pane) || !/^%\d+$/.test(sender.value.pane))
       return runtimeFailure('Headless dispatch has no observed parent tmux pane.');
     const session = await deps.exec.run(
@@ -518,7 +517,7 @@ async function dispatchReadyUnit(
         session,
       );
     sessionArgs.push('--session', session.stdout.trim());
-  } else if (deps.env.get('TMUX_PANE') !== sender.value.pane) {
+  } else if (deps.env.get('TMUX_PANE') && deps.env.get('TMUX_PANE') !== sender.value.pane) {
     return runtimeFailure('Ambient tmux pane does not belong to the declared parent.');
   }
   const claim = lockUnit(deps, `${builderRecordPath(context, 'dispatch', unit.id)}.operation-lock`);
@@ -552,17 +551,19 @@ async function dispatchReadyUnit(
         'Inspect the recorded peer and transport outcome; reconcile that dispatch without spawning a duplicate.',
       );
     }
-    for (const ref of [
-      baseline.ref,
-      baseline.value.plan,
-      baseline.value.guide,
-      baseline.value.review,
-      ...baseline.value.files,
-    ]) {
+    for (const ref of [baseline.ref, baseline.value.review]) {
       const checked = verifyRef(deps, ref);
       if (!checked.ok) return checked;
     }
-    const planRoot = await verifyPlanRoot(deps, deps.repoRoot, baseline.value.source_sha);
+    const documents = await verifyBuilderBasis(deps, context, baseline.value);
+    if (!documents.ok) return documents;
+    const sealedFiles = await verifyBuilderFilesAtCommit(
+      deps,
+      baseline.value.source_sha,
+      baseline.value.files,
+    );
+    if (!sealedFiles.ok) return sealedFiles;
+    const planRoot = await verifyRoot(deps, deps.repoRoot, baseline.value.source_sha, true);
     if (!planRoot.ok) return planRoot;
     const planHead = planRoot.value;
     const slug = context.planDir.split('/').at(-1)?.replace(/^\d+-/, '');
@@ -572,7 +573,35 @@ async function dispatchReadyUnit(
         'Cannot resolve the canonical plan slug.',
         'Pass the guide-owned plan path.',
       );
-    const workspace = await deps.provision({
+    if (input.adoptPeer !== undefined) {
+      const existingPeer = await observePeer(deps, input.adoptPeer, root, input.role, input.parent);
+      if (!existingPeer.ok) return existingPeer;
+      const existingRoot = await verifyRoot(deps, root, baseline.value.source_sha, true);
+      if (!existingRoot.ok) return existingRoot;
+      for (const candidate of guide.units) {
+        if (candidate.role !== 'coder' || candidate.id === unit.id) continue;
+        const candidateKey = `${candidate.id}-${baseline.value.source_sha}`;
+        const candidatePath = builderRecordPath(context, 'dispatch', candidateKey);
+        if (!deps.fs.exists(candidatePath)) continue;
+        const prior = readBuilderRecord<DispatchReceipt>(deps, candidatePath, 'dispatch');
+        if (!prior.ok) return prior;
+        if (
+          prior.value.value.id !== `dispatch-${candidateKey}` ||
+          prior.value.value.unit_id !== candidate.id ||
+          prior.value.value.baseline.sha256 !== baseline.ref.sha256
+        )
+          return builderAttemptFailure();
+        if (prior.value.value.observed.peer_id === input.adoptPeer)
+          return builderFailure(
+            ErrorCodes.BUILDER_ACK,
+            `Existing peer ${input.adoptPeer} is already bound to ${prior.value.value.unit_id}.`,
+            'Use the correct distinct existing peer for each independent unit; preserve the recorded dispatch.',
+            prior.value.ref,
+          );
+      }
+    }
+    const bindWorkspace = adopting ? deps.adoptUnit : deps.provision;
+    const workspace = await bindWorkspace({
       purpose: 'unit',
       slug,
       target: root,
@@ -591,64 +620,92 @@ async function dispatchReadyUnit(
       allocation.purpose !== 'unit' ||
       allocation.unit_id !== unit.id ||
       allocation.base_sha !== baseline.value.source_sha ||
-      allocation.actor !== input.parent ||
+      (!adopting && allocation.actor !== input.parent) ||
       allocation.retired_at !== undefined ||
-      allocation.peer_id !== undefined ||
-      allocation.owner !== guide.isolation.allocation_owner ||
+      (allocation.peer_id !== undefined && allocation.peer_id !== input.adoptPeer) ||
+      (!adopting && allocation.owner !== guide.isolation.allocation_owner) ||
       allocation.git_dir !== resolveInRepo('.git', root) ||
       isWithin(root, allocation.authority_root) ||
       !isWithin(allocation.authority_root, resolveInRepo(allocated.ref.path, deps.repoRoot))
     )
       return builderFailure(
         ErrorCodes.BUILDER_OWNERSHIP,
-        'Provisioning returned a different or already-bound allocation.',
+        'Workspace binding returned a different or incompatible allocation.',
         'Inspect the allocation authority; dispatch never repurposes or silently changes a checkout.',
         allocated,
       );
-    const nativeRoot = await verifyRoot(deps, root, baseline.value.source_sha);
+    const nativeRoot = await verifyRoot(deps, root, baseline.value.source_sha, adopting);
     if (!nativeRoot.ok) return nativeRoot;
+    if (adopting) {
+      const branch = await deps.exec.run('git', ['symbolic-ref', '--quiet', '--short', 'HEAD'], {
+        cwd: root,
+        timeoutMs: 10000,
+      });
+      if (!branch.ok || branch.stdout.trim() !== allocation.branch)
+        return runtimeFailure(
+          'Existing peer checkout no longer matches its allocated branch.',
+          branch,
+        );
+    }
     const seeded = seedBuilderInputs(deps, root, baseline);
     if (!seeded.ok) return seeded;
-    const spawn = await native(
-      deps,
-      [
-        'spawn',
-        '--harness',
-        input.role.harness,
-        '--bin',
-        'omp',
-        '--model',
-        input.role.model,
-        ...(input.role.effort !== undefined ? ['--effort', input.role.effort] : []),
-        '--cwd',
-        root,
-        '--parent',
-        input.parent,
-        ...sessionArgs,
-      ],
-      'pij spawn',
-    );
-    if (!spawn.ok) return spawn;
-    const launched = spawn.value;
-    if (!text(launched.id) || !key(launched.id) || launched.dispatched !== true)
-      return runtimeFailure(
-        'Spawn returned no observable peer identity; inspect the launch before retrying.',
-        launched,
+    let peerId: string;
+    let launched: JsonObject | undefined;
+    if (input.adoptPeer !== undefined) {
+      peerId = input.adoptPeer;
+    } else {
+      const spawn = await native(
+        deps,
+        [
+          'spawn',
+          '--harness',
+          input.role.harness,
+          '--bin',
+          'omp',
+          '--model',
+          input.role.model,
+          ...(input.role.effort !== undefined ? ['--effort', input.role.effort] : []),
+          '--cwd',
+          root,
+          '--parent',
+          input.parent,
+          ...sessionArgs,
+        ],
+        'pij spawn',
       );
-    const bound = writeBuilderRecord(
-      deps,
-      resolveInRepo(allocated.ref.path, deps.repoRoot),
-      {
-        ...allocation,
-        peer_id: launched.id,
-        journal: [...allocation.journal, `peer-launched:${launched.id}`],
-      },
-      { root: allocation.authority_root, expectedSha256: allocated.ref.sha256 },
-    );
+      if (!spawn.ok) return spawn;
+      launched = spawn.value;
+      if (!text(launched.id) || !key(launched.id) || launched.dispatched !== true)
+        return runtimeFailure(
+          'Spawn returned no observable peer identity; inspect the launch before retrying.',
+          launched,
+        );
+      peerId = launched.id;
+    }
+    const bound =
+      allocation.peer_id === peerId
+        ? { ok: true as const, value: allocated }
+        : writeBuilderRecord(
+            deps,
+            resolveInRepo(allocated.ref.path, deps.repoRoot),
+            {
+              ...allocation,
+              peer_id: peerId,
+              journal: [
+                ...allocation.journal,
+                `${adopting ? 'peer-adopted' : 'peer-launched'}:${peerId}`,
+              ],
+            },
+            { root: allocation.authority_root, expectedSha256: allocated.ref.sha256 },
+          );
     if (!bound.ok)
       return {
         ...bound,
-        details: { failure: bound.details, launched_peer: launched.id, allocation: allocated.ref },
+        details: {
+          failure: bound.details,
+          ...(adopting ? { adopted_peer: peerId } : { launched_peer: peerId }),
+          allocation: allocated.ref,
+        },
       };
     const prepared = prepareBuilderPacket(deps, {
       context,
@@ -658,37 +715,41 @@ async function dispatchReadyUnit(
       parent: input.parent,
       requested: input.role,
       nonce: deps.nonce(),
+      ...(adopting && { adoptedHead: nativeRoot.value }),
     });
     if (!prepared.ok)
       return {
         ...prepared,
         details: {
           failure: prepared.details,
-          launched_peer: launched.id,
+          ...(adopting ? { adopted_peer: peerId } : { launched_peer: peerId }),
           allocation: bound.value.ref,
         },
       };
-    const observed = await observePeer(deps, launched.id, root, input.role, input.parent);
+    const observed = await observePeer(deps, peerId, root, input.role, input.parent);
     const launchMatches =
-      launched.folder === root &&
-      launched.parent === input.parent &&
-      launched.harness === input.role.harness &&
-      launched.model === input.role.model &&
       observed.ok &&
-      (launched.session == null || launched.session === observed.value.native_session) &&
-      (launched.pid == null || launched.pid === observed.value.pid);
+      (launched === undefined ||
+        (launched.folder === root &&
+          launched.parent === input.parent &&
+          launched.harness === input.role.harness &&
+          launched.model === input.role.model &&
+          (launched.session == null || launched.session === observed.value.native_session) &&
+          (launched.pid == null || launched.pid === observed.value.pid)));
     const observation: RuntimeObservation =
       observed.ok && launchMatches
         ? observed.value
         : {
-            peer_id: launched.id,
+            peer_id: peerId,
             root: '',
             ready: false,
             evidence: [
-              `pij-rs spawn: ${JSON.stringify(launched)}`,
+              ...(launched
+                ? [`pij-rs spawn: ${JSON.stringify(launched)}`]
+                : [`Existing peer adoption: ${peerId}; no spawn performed.`]),
               ...(observed.ok ? observed.value.evidence : [observed.message]),
             ],
-            gaps: ['Launch accepted, but exact native readiness is not established.'],
+            gaps: ['Peer binding is recorded, but exact native readiness is not established.'],
           };
     const receipt: DispatchReceipt = {
       record_type: 'dispatch',
@@ -703,18 +764,38 @@ async function dispatchReadyUnit(
         ...observation,
         evidence: [
           ...observation.evidence,
+          ...(adopting
+            ? [
+                `Existing native peer adopted without spawning; worker HEAD observed before metadata seeding: ${nativeRoot.value}. Existing commits and work were retained.`,
+              ]
+            : []),
           `plan root HEAD at dispatch: ${planHead} (sealed source ${baseline.value.source_sha}${planHead === baseline.value.source_sha ? '' : ', a descendant: receipts/evidence committed after the seal'})`,
         ],
       },
       seed_files: [...seeded.value, ...prepared.value.seeds],
-      warnings: ready.warnings ?? baseline.value.warnings ?? [],
+      warnings: [
+        ...(ready.warnings ?? baseline.value.warnings ?? []),
+        ...(adopting && allocation.owner !== guide.isolation.allocation_owner
+          ? [
+              {
+                file: '<guide:isolation/allocation_owner>',
+                owning_unit: unit.id,
+                stage: 'guide' as const,
+                code: 'adopted-allocation-owner',
+                message: `Existing ${allocation.owner} ownership is retained instead of the guide's ${guide.isolation.allocation_owner} allocation expectation.`,
+                next_action:
+                  'Use the original ownership and preservation rules; binding an existing peer does not grant retirement authority.',
+              },
+            ]
+          : []),
+      ],
     };
     const stored = writeBuilderRecord(deps, dispatchPath, receipt);
     if (!stored.ok) return stored;
     const result = { dispatch: stored.value, packet: prepared.value.packet };
     if (!observation.ready)
       return runtimeFailure(
-        'Launch is recorded but native readiness does not match; no work packet was sent.',
+        'Peer binding is recorded but native readiness does not match; no work packet was sent.',
         result,
       );
     const current = readCurrentBuilderBaseline(deps, context);
@@ -728,30 +809,37 @@ async function dispatchReadyUnit(
       prepared.value.packet.ref,
       bound.value.ref,
       baseline.ref,
-      baseline.value.plan,
-      baseline.value.guide,
       baseline.value.review,
-      ...baseline.value.files,
     ]) {
       const checked = verifyRef(deps, ref);
       if (!checked.ok) return checked;
     }
+    const retainedDocuments = await verifyBuilderBasis(deps, context, baseline.value);
+    if (!retainedDocuments.ok) return retainedDocuments;
+    const retainedFiles = await verifyBuilderFilesAtCommit(
+      deps,
+      baseline.value.source_sha,
+      baseline.value.files,
+    );
+    if (!retainedFiles.ok) return retainedFiles;
     const sent = await sendMessage(
       deps,
       input.parent,
-      launched.id,
+      peerId,
       [
         ...prepared.value.packet.value.instructions.slice(0, 4),
         `Work packet ${prepared.value.packet.ref.path}; SHA-256 ${prepared.value.packet.ref.sha256}.`,
         `Optional advisory self-check: harness builder self-check ${JSON.stringify(prepared.value.packet.ref.path)} --sha256 ${prepared.value.packet.ref.sha256}`,
-        'Receiving this packet means do the unit within its declared map. Report scoped committed delivery and proof to the PM.',
+        adopting
+          ? 'This packet binds your existing work. Retain completed commits and current work; do not replay implementation. Return the intended committed delivery and its proof using this packet digest, and continue only remaining unit work.'
+          : 'Receiving this packet means do the unit within its declared map. Report scoped committed delivery and proof to the PM.',
       ].join('\n'),
       deps.nonce(),
     );
     if (!sent.ok)
       return {
         ...sent,
-        details: { failure: sent.details, dispatch: stored.value.ref, peer: launched.id },
+        details: { failure: sent.details, dispatch: stored.value.ref, peer: peerId },
       };
     const delivered = writeBuilderRecord(
       deps,
@@ -765,7 +853,7 @@ async function dispatchReadyUnit(
         details: {
           failure: delivered.details,
           dispatch: stored.value.ref,
-          peer: launched.id,
+          peer: peerId,
           delivery: sent.value,
         },
       };

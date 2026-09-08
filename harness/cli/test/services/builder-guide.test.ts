@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -30,6 +29,7 @@ import {
   builderFixture,
   fixtureBaseline,
   fixtureCheck,
+  fixtureCommittedGit,
   fixtureComposition,
   fixtureGuide,
   fixtureReview,
@@ -643,37 +643,20 @@ function contractFixture(guide = fixtureGuide()) {
     const bytes = fs.readBytesNoFollow(`/repo/${path}`);
     if (bytes) files.set(path, bytes);
   }
-  const blob = (bytes: Uint8Array) =>
-    createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex');
+  const commits = new Map([[BUILDER_FIXTURE_SHA, files]]);
   const execute = exec.run.bind(exec);
   let observedHead = BUILDER_FIXTURE_SHA;
   deps.exec = {
     run: async (command, args, options) => {
       const scripted = await execute(command, args, options);
       if ([command, ...args].join(' ') in scripts || command !== 'git') return scripted;
+      const historical = fixtureCommittedGit(commits, args, options);
+      if (historical) return historical;
       let stdout = '';
       if (args.join(' ') === 'rev-parse --show-toplevel') stdout = '/repo\n';
       else if (args.join(' ') === 'rev-parse --verify HEAD^{commit}') stdout = `${observedHead}\n`;
       else if (args[0] === 'merge-base') stdout = '';
-      else if (args[0] === '--literal-pathspecs' && args[1] === 'ls-tree') {
-        stdout = args
-          .slice(args.indexOf('--') + 1)
-          .map((path) =>
-            files.has(path) ? `100644 blob ${blob(files.get(path) as Uint8Array)}\t${path}\0` : '',
-          )
-          .join('');
-      } else if (args[0] === 'hash-object') {
-        stdout = args
-          .slice(args.indexOf('--') + 1)
-          .map((path) => {
-            const bytes = fs.readBytesNoFollow(`/repo/${path}`);
-            return bytes ? blob(bytes) : 'missing';
-          })
-          .join('\n');
-      } else if (args[0] === 'show') {
-        const path = args[1].slice(args[1].indexOf(':') + 1);
-        stdout = Buffer.from(files.get(path) ?? []).toString('utf8');
-      } else
+      else
         return {
           ok: false,
           code: 127,
@@ -710,11 +693,13 @@ function contractFixture(guide = fixtureGuide()) {
     guide,
     scripts,
     files,
+    commits,
     seal,
     ready,
     changeRecord,
     moveHead: (sha: string) => {
       observedHead = sha;
+      if (!commits.has(sha)) commits.set(sha, new Map(files));
     },
   };
 }
@@ -933,7 +918,7 @@ describe('contract sealing and readiness', () => {
       expect(native.readBytesNoFollow(posixJoin(root, 'contracts.ts'))).toEqual(bytes);
       expect(value(await fixture.ready()).status).toBe('ready');
       native.writeBytes(posixJoin(root, 'contracts.ts'), new Uint8Array([0, 255, 129, 10]));
-      expect(value(await fixture.ready()).status).toBe('not-ready');
+      expect(value(await fixture.ready()).status).toBe('ready');
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -958,17 +943,39 @@ describe('contract sealing and readiness', () => {
     });
     expect(fixture.fs.exists(`/repo/${baselinePath}`)).toBe(false);
   });
-  it.each(['contracts.ts', reportPath, reviewPath])('blocks changed evidence %s', async (path) => {
+  it.each([reportPath, reviewPath])('blocks changed review evidence %s', async (path) => {
     const fixture = contractFixture();
     value(await fixture.seal());
     fixture.fs.writeText(`/repo/${path}`, 'changed');
     expect(value(await fixture.ready()).status).toBe('not-ready');
   });
-  it('blocks a missing baseline file', async () => {
+  it.each([
+    'let-chain',
+    'comment',
+    'binary',
+    'deleted',
+  ] as const)('keeps historical readiness and the original receipt after a PM %s edit', async (change) => {
     const fixture = contractFixture();
-    value(await fixture.seal());
-    fixture.fs.deleteFile('/repo/contracts.ts');
-    expect(value(await fixture.ready()).status).toBe('not-ready');
+    const sealed = value(await fixture.seal());
+    const source = fixture.fs.readBytesNoFollow(`/repo/${baselinePath}`);
+    const face = fixture.fs.readBytesNoFollow(`/repo/${baselinePath.replace('.json', '.md')}`);
+    if (change === 'deleted') fixture.fs.deleteFile('/repo/contracts.ts');
+    else if (change === 'binary')
+      fixture.fs.writeBytes('/repo/contracts.ts', new Uint8Array([0, 255, 128, 10]));
+    else
+      fixture.fs.writeText(
+        '/repo/contracts.ts',
+        change === 'comment'
+          ? '// PM comment-only integration edit\n'
+          : 'if let Some(value) = input && let Some(next) = value.next() {}\n',
+      );
+    fixture.moveHead('b'.repeat(40));
+    expect(value(await fixture.ready('tk-0002')).status).toBe('ready');
+    expect(value(await fixture.seal())).toEqual(sealed);
+    expect(fixture.fs.readBytesNoFollow(`/repo/${baselinePath}`)).toEqual(source);
+    expect(fixture.fs.readBytesNoFollow(`/repo/${baselinePath.replace('.json', '.md')}`)).toEqual(
+      face,
+    );
   });
   it.each([
     [
@@ -1110,6 +1117,29 @@ describe('contract sealing and readiness', () => {
 });
 
 describe('historical baseline binding', () => {
+  it('rejects a forged sealed contract digest rather than accepting matching PM bytes', async () => {
+    const fixture = contractFixture();
+    value(await fixture.seal());
+    fixture.fs.writeText('/repo/contracts.ts', 'PM revised bytes');
+    fixture.changeRecord<BaselineReceipt>(baselinePath, 'baseline', (receipt) => {
+      receipt.files[0] = value(digestBuilderFile(fixture.deps, 'contracts.ts'));
+    });
+    expect(value(await fixture.ready())).toMatchObject({
+      status: 'not-ready',
+      issues: [expect.objectContaining({ message: expect.stringContaining('sealed digest') })],
+    });
+  });
+  it('rejects a forged baseline path even when the substituted historical blob exists', async () => {
+    const fixture = contractFixture();
+    value(await fixture.seal());
+    const original = fixture.files.get('contracts.ts');
+    if (original === undefined) throw new Error('Missing fixture contract.');
+    fixture.files.set('substitute.ts', original);
+    fixture.changeRecord<BaselineReceipt>(baselinePath, 'baseline', (receipt) => {
+      receipt.files[0].path = 'substitute.ts';
+    });
+    expect(value(await fixture.ready()).status).toBe('not-ready');
+  });
   it('allows factual state and plan status changes without rewriting the seal', async () => {
     const fixture = contractFixture();
     const seal = value(await fixture.seal());
@@ -1268,11 +1298,14 @@ describe('dependency evidence', () => {
     const fixture = laterWave(subtree);
     const baseline = value(await fixture.seal());
     const parserPath = subtree ? 'src/parser/index.ts' : 'src/parser.ts';
+    const compositionFiles = new Map(fixture.files);
     const files = [parserPath, 'test/parser.test.ts'].map((path) => {
       fixture.fs.writeText(`/repo/${path}`, `Implemented ${path}`);
-      fixture.files.set(path, new TextEncoder().encode(`Implemented ${path}`));
+      compositionFiles.set(path, new TextEncoder().encode(`Implemented ${path}`));
       return value(digestBuilderFile(fixture.deps, path));
     });
+    fixture.commits.set('c'.repeat(40), compositionFiles);
+    fixture.moveHead('c'.repeat(40));
     const path = 'docs/plans/001-example/assets/team/composition.dd.json';
     const imported = value(
       writeBuilderRecord(
@@ -1341,15 +1374,12 @@ describe('immutable baseline seals', () => {
     expect(fixture.exec.calls.filter((call) => call.command === 'node')).toHaveLength(1);
   });
   it.each([
-    'contract',
     'guide',
     'corrupt-receipt',
     'red-proof',
   ] as const)('refuses %s changes without modifying or refreshing the existing seal', async (change) => {
     const fixture = contractFixture();
     value(await fixture.seal());
-    if (change === 'contract')
-      fixture.fs.writeText('/repo/contracts.ts', 'revised shared contract');
     if (change === 'guide') {
       fixture.guide.architecture.principles = 'Revised decomposition';
       fixture.fs.writeText(`/repo/${BUILDER_FIXTURE_GUIDE}`, guideJson(fixture.guide));
@@ -1420,7 +1450,10 @@ describe('immutable baseline seals', () => {
     fixture.guide.baseline.receipt = 'team/baseline-v2.dd.json';
     const updatedGuide = guideJson(fixture.guide);
     fixture.fs.writeText(`/repo/${BUILDER_FIXTURE_GUIDE}`, updatedGuide);
-    fixture.files.set(BUILDER_FIXTURE_GUIDE, new TextEncoder().encode(updatedGuide));
+    fixture.commits.set(
+      'b'.repeat(40),
+      new Map(fixture.files).set(BUILDER_FIXTURE_GUIDE, new TextEncoder().encode(updatedGuide)),
+    );
     fixture.moveHead('b'.repeat(40));
     await fixture.clock.sleep(1000);
     const review = 'docs/plans/001-example/assets/team/review-decomposition-v2.dd.json';
@@ -1446,13 +1479,11 @@ describe('immutable baseline seals', () => {
     expect(fixture.fs.readText(`/repo/${reviewPath}`)).toBe(oldReview);
     expect(fixture.exec.calls.filter((call) => call.command === 'node')).toHaveLength(2);
   });
-  it('preserves the old seal and names a fresh identity when revised inputs are missing', async () => {
+  it('preserves and reuses the original seal when a PM deletes a baseline input', async () => {
     const fixture = contractFixture();
     const original = value(await fixture.seal());
     fixture.fs.deleteFile('/repo/contracts.ts');
-    expect(await fixture.seal()).toMatchObject({
-      ok: false,
-    });
+    expect(value(await fixture.seal())).toEqual(original);
     expect(
       value(readBuilderRecord<BaselineReceipt>(fixture.deps, baselinePath, 'baseline')),
     ).toEqual(original);

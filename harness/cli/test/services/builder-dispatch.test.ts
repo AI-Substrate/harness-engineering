@@ -54,6 +54,7 @@ import {
   builderFixture,
   fixtureAllocation,
   fixtureBaseline,
+  fixtureCommittedGit,
   fixtureGuide,
   fixtureReview,
   fixtureRole,
@@ -159,6 +160,7 @@ function scenario(configureGuide?: (guide: Guide) => void) {
     malformed: '',
     rootSha: BUILDER_FIXTURE_SHA,
     planSha: BUILDER_FIXTURE_SHA,
+    rootBranch: 'builder/example/parser',
     rootPath: ROOT,
     ancestor: true,
     provisionKind: 'clone',
@@ -168,6 +170,16 @@ function scenario(configureGuide?: (guide: Guide) => void) {
     omitPeer: false,
   };
   const provisioned: WorkspaceInput[] = [];
+  const adopted: WorkspaceInput[] = [];
+  const sealedContract = fs.readBytesNoFollow('/repo/contracts.ts');
+  if (sealedContract === null) throw new Error('Missing sealed fixture contract.');
+  const sealedTree = new Map([['contracts.ts', new Uint8Array(sealedContract)]]);
+  for (const path of [BUILDER_FIXTURE_PLAN, BUILDER_FIXTURE_GUIDE]) {
+    const bytes = fs.readBytesNoFollow(`/repo/${path}`);
+    if (bytes === null) throw new Error(`Missing sealed fixture document: ${path}`);
+    sealedTree.set(path, new Uint8Array(bytes));
+  }
+  const commits = new Map([[BUILDER_FIXTURE_SHA, sealedTree]]);
   const json = (command: string, data: unknown): ExecScript => ({
     code: 0,
     stdout: JSON.stringify({ ok: true, v: 2, command, data }),
@@ -176,6 +188,13 @@ function scenario(configureGuide?: (guide: Guide) => void) {
     ...fixture.deps,
     exec: {
       async run(command, args, options) {
+        const gitArgs = args[0] === '-c' && args[1] === 'core.hooksPath=' ? args.slice(2) : args;
+        const committed =
+          command === 'git' ? fixtureCommittedGit(commits, gitArgs, options) : undefined;
+        if (committed) {
+          await exec.run(command, args, options);
+          return committed;
+        }
         let script: ExecScript = { code: 0 };
         if (command === 'pij-rs') {
           if (flags.malformed === args[0]) script = { code: 0, stdout: '{not-json' };
@@ -222,6 +241,7 @@ function scenario(configureGuide?: (guide: Guide) => void) {
               stdout: `${options.cwd === ROOT ? flags.rootPath : options.cwd}\n${options.cwd === ROOT ? flags.rootSha : options.cwd === '/repo' ? flags.planSha : BUILDER_FIXTURE_SHA}\n`,
             };
           else if (args[0] === 'merge-base') script = { code: flags.ancestor ? 0 : 1 };
+          else if (args[0] === 'symbolic-ref') script = { code: 0, stdout: flags.rootBranch };
         } else if (command === 'tmux') script = { code: 0, stdout: 'observed-session\n' };
         scripts[[command, ...args].join(' ')] = script;
         return exec.run(command, args, options);
@@ -257,7 +277,9 @@ function scenario(configureGuide?: (guide: Guide) => void) {
       provisioned.push(input);
       fs.mkdirp(ROOT);
       fs.mkdirp(`${ROOT}/.git`);
-      fs.writeText(`${ROOT}/contracts.ts`, fs.readText('/repo/contracts.ts') ?? '');
+      const tree = commits.get(input.base ?? BUILDER_FIXTURE_SHA);
+      if (!tree) throw new Error('Missing explicit fixture source commit.');
+      for (const [path, bytes] of tree) fs.writeBytes(`${ROOT}/${path}`, bytes);
       const record = fixtureAllocation({
         kind: flags.provisionKind as 'clone' | 'worktree',
         unit_id: unit,
@@ -266,6 +288,20 @@ function scenario(configureGuide?: (guide: Guide) => void) {
         deps,
         '/repo/.git/harness/builder/allocations/al-0001.dd.json',
         record,
+      );
+      return stored.ok
+        ? {
+            ok: true,
+            value: { allocation: stored.value, plan: BUILDER_FIXTURE_PLAN, flow: 'the-flow.json' },
+          }
+        : stored;
+    },
+    adoptUnit: async (input) => {
+      adopted.push(input);
+      const stored = readBuilderRecord<AllocationRecord>(
+        deps,
+        '/repo/.git/harness/builder/allocations/al-0001.dd.json',
+        'allocation',
       );
       return stored.ok
         ? {
@@ -283,6 +319,7 @@ function scenario(configureGuide?: (guide: Guide) => void) {
     role: fixtureRole(),
   };
   function advanceSeal(sourceSha: string) {
+    commits.set(sourceSha, sealedTree);
     const current = value(readBuilderDocument(deps, BUILDER_FIXTURE_GUIDE, 'builder/impl-guide'));
     const path = builderRecordPath(context, 'baseline', sourceSha);
     guide.baseline.receipt = `team/baseline-${sourceSha}.dd.json`;
@@ -307,6 +344,9 @@ function scenario(configureGuide?: (guide: Guide) => void) {
         guide: updated.ref,
       }),
     );
+    const committedGuide = fs.readBytesNoFollow(`/repo/${BUILDER_FIXTURE_GUIDE}`);
+    if (committedGuide === null) throw new Error('Missing revised fixture guide.');
+    commits.set(sourceSha, new Map([...sealedTree, [BUILDER_FIXTURE_GUIDE, committedGuide]]));
     return baseline;
   }
   return {
@@ -325,6 +365,7 @@ function scenario(configureGuide?: (guide: Guide) => void) {
     unavailable,
     flags,
     provisioned,
+    adopted,
     input,
     advanceSeal,
   };
@@ -557,6 +598,233 @@ describe('Builder role settings', () => {
       ok: false,
       code: ErrorCodes.BUILDER_INVALID,
     });
+  });
+});
+
+describe('Builder existing-peer dispatch', () => {
+  function existingPeer(s: ReturnType<typeof scenario>, alreadyBound = false) {
+    s.fs.mkdirp(ROOT);
+    s.fs.mkdirp(`${ROOT}/.git`);
+    s.fs.writeText(`${ROOT}/contracts.ts`, s.fs.readText('/repo/contracts.ts') ?? '');
+    s.fs.writeText(`${ROOT}/src/parser.ts`, 'Existing committed implementation.\n');
+    s.fs.writeText(`${ROOT}/draft.txt`, 'Uncommitted work remains here.\n');
+    s.flags.rootSha = 'b'.repeat(40);
+    s.input.adoptPeer = PEER;
+    for (const ref of [s.baseline.value.plan, s.baseline.value.guide])
+      value(seedBuilderFile(s.deps, ROOT, ref));
+    return value(
+      writeBuilderRecord(
+        s.deps,
+        '/repo/.git/harness/builder/allocations/al-0001.dd.json',
+        fixtureAllocation({
+          owner: 'pij',
+          actor: 'original-allocation-creator',
+          journal: ['adopted-existing-workspace'],
+          ...(alreadyBound && { peer_id: PEER }),
+        }),
+      ),
+    );
+  }
+
+  it('binds progressed existing work without a spawn, provisioning, or source rewrite', async () => {
+    const s = scenario();
+    existingPeer(s);
+    delete s.parent.pane; // Existing workers do not need a new tmux launch target.
+    const result = value(await dispatchBuilderUnit(s.deps, s.input));
+    expect(result.dispatch.value.observed).toMatchObject({
+      peer_id: PEER,
+      root: ROOT,
+      ready: true,
+      native_session: 'native-coder',
+      pid: 123,
+    });
+    expect(result.packet.value.source_sha).toBe(BUILDER_FIXTURE_SHA);
+    const allocation = value(
+      readBuilderRecord<AllocationRecord>(
+        s.deps,
+        result.dispatch.value.allocation.path,
+        'allocation',
+      ),
+    );
+    expect(allocation.value).toMatchObject({
+      owner: 'pij',
+      actor: 'original-allocation-creator',
+      peer_id: PEER,
+      base_sha: BUILDER_FIXTURE_SHA,
+    });
+    expect(result.dispatch.value.warnings).toContainEqual(
+      expect.objectContaining({
+        code: 'adopted-allocation-owner',
+        owning_unit: s.input.unit,
+      }),
+    );
+    expect(s.fs.readText(`${ROOT}/src/parser.ts`)).toBe('Existing committed implementation.\n');
+    expect(s.fs.readText(`${ROOT}/draft.txt`)).toBe('Uncommitted work remains here.\n');
+    expect(s.adopted).toHaveLength(1);
+    expect(s.provisioned).toHaveLength(0);
+    expect(
+      s.exec.calls.some((call) =>
+        ['spawn', 'clone', 'checkout', 'reset', 'cherry-pick'].includes(call.args[0] ?? ''),
+      ),
+    ).toBe(false);
+    expect(s.exec.calls.some((call) => call.command === 'tmux')).toBe(false);
+    expect(sends(s)).toHaveLength(1);
+    expect(
+      value(digestBuilderFile({ ...s.deps, repoRoot: ROOT }, result.packet.ref.path)).sha256,
+    ).toBe(result.dispatch.value.packet.sha256);
+  });
+
+  it('keeps sealed worker inputs while PM baseline files change for either dispatch mode', async () => {
+    for (const adopting of [false, true]) {
+      const s = scenario();
+      const original = s.fs.readText('/repo/contracts.ts');
+      if (adopting) existingPeer(s);
+      s.fs.writeText('/repo/contracts.ts', 'PM integration is free to change this source.\n');
+      const result = value(await dispatchBuilderUnit(s.deps, s.input));
+      expect(result.packet.value.baseline).toEqual(s.baseline.ref);
+      expect(s.fs.readText('/repo/contracts.ts')).toBe(
+        'PM integration is free to change this source.\n',
+      );
+      expect(s.fs.readText(`${ROOT}/contracts.ts`)).toBe(original);
+      expect(result.dispatch.value.observed.ready).toBe(true);
+    }
+  });
+
+  it('binds historical clone inputs without overwriting factual PM plan progress', async () => {
+    const s = scenario();
+    existingPeer(s);
+    const originalPlan = s.fs.readText(`${ROOT}/${BUILDER_FIXTURE_PLAN}`);
+    const current = value(readBuilderDocument(s.deps, BUILDER_FIXTURE_PLAN, 'builder/plan'));
+    const updated = structuredClone(current.value);
+    updated.sections.push({
+      name: 'implementation_summary',
+      value: 'Completed implementation; this is factual evidence, not new requirements.',
+    });
+    value(
+      writeBuilderDocument(s.deps, BUILDER_FIXTURE_PLAN, updated, {
+        expectedSha256: current.ref.sha256,
+      }),
+    );
+    s.fs.writeText(
+      `${ROOT}/${BUILDER_FIXTURE_PLAN.replace('.json', '.md')}`,
+      'Original clone view.\n',
+    );
+    const currentPlan = s.fs.readText(`/repo/${BUILDER_FIXTURE_PLAN}`);
+    const result = value(await dispatchBuilderUnit(s.deps, s.input));
+    expect(result.packet.value.plan.sha256).toBe(s.baseline.value.plan.sha256);
+    expect(s.fs.readText(`/repo/${BUILDER_FIXTURE_PLAN}`)).toBe(currentPlan);
+    expect(s.fs.readText(`${ROOT}/${BUILDER_FIXTURE_PLAN}`)).toBe(originalPlan);
+    expect(s.fs.readText(`${ROOT}/${BUILDER_FIXTURE_PLAN.replace('.json', '.md')}`)).toBe(
+      'Original clone view.\n',
+    );
+  });
+
+  it('still refuses changed product intent before adopting an existing peer', async () => {
+    const s = scenario();
+    existingPeer(s);
+    const current = value(readBuilderDocument(s.deps, BUILDER_FIXTURE_PLAN, 'builder/plan'));
+    const changed = structuredClone(current.value);
+    const summary = changed.sections.find((section) => section.name === 'summary');
+    if (!summary) throw new Error('Missing fixture product summary.');
+    summary.value = 'A different product is now requested.';
+    value(
+      writeBuilderDocument(s.deps, BUILDER_FIXTURE_PLAN, changed, {
+        expectedSha256: current.ref.sha256,
+      }),
+    );
+    expect(await dispatchBuilderUnit(s.deps, s.input)).toMatchObject({ ok: false, code: 'E475' });
+    expect(s.adopted).toHaveLength(0);
+    expect(sends(s)).toHaveLength(0);
+  });
+
+  it('keeps an already-bound allocation immutable and never duplicates a durable dispatch', async () => {
+    const s = scenario();
+    const original = existingPeer(s, true);
+    const result = value(await dispatchBuilderUnit(s.deps, s.input));
+    expect(result.dispatch.value.allocation.sha256).toBe(original.ref.sha256);
+    expect(
+      value(readBuilderRecord<AllocationRecord>(s.deps, original.ref.path, 'allocation')),
+    ).toEqual(original);
+    expect(await dispatchBuilderUnit(s.deps, s.input)).toMatchObject({ ok: false, code: 'E472' });
+    expect(s.adopted).toHaveLength(1);
+    expect(sends(s)).toHaveLength(1);
+    expect(s.exec.calls.some((call) => call.args[0] === 'spawn')).toBe(false);
+  });
+
+  it.each([
+    'dead',
+    'parent',
+    'root',
+    'model',
+    'process',
+  ] as const)('rejects a mismatched %s observation before binding existing work', async (failure) => {
+    const s = scenario();
+    existingPeer(s);
+    if (failure === 'dead') s.state.liveness = 'dead';
+    if (failure === 'parent') s.state.parent = 'another-parent';
+    if (failure === 'root') s.state.cwd = '/another-root';
+    if (failure === 'model') s.state.boundModel = 'another-model';
+    if (failure === 'process') s.state.pid = 999;
+    expect(await dispatchBuilderUnit(s.deps, s.input)).toMatchObject({ ok: false, code: 'E473' });
+    expect(s.adopted).toHaveLength(0);
+    expect(s.provisioned).toHaveLength(0);
+    expect(sends(s)).toHaveLength(0);
+    expect(
+      s.fs.exists(builderRecordPath(s.context, 'packet', `tk-0002-${BUILDER_FIXTURE_SHA}`)),
+    ).toBe(false);
+  });
+
+  it('retains work when sealed ancestry, branch identity or frozen inputs disagree', async () => {
+    const unrelated = scenario();
+    existingPeer(unrelated);
+    unrelated.flags.ancestor = false;
+    expect(await dispatchBuilderUnit(unrelated.deps, unrelated.input)).toMatchObject({
+      ok: false,
+      code: 'E473',
+    });
+    expect(unrelated.adopted).toHaveLength(0);
+    const wrongBranch = scenario();
+    existingPeer(wrongBranch);
+    wrongBranch.flags.rootBranch = 'different-branch';
+    expect(await dispatchBuilderUnit(wrongBranch.deps, wrongBranch.input)).toMatchObject({
+      ok: false,
+      code: 'E473',
+    });
+    const changed = scenario();
+    existingPeer(changed);
+    changed.fs.writeText(`${ROOT}/contracts.ts`, 'Changed frozen contract.\n');
+    expect(await dispatchBuilderUnit(changed.deps, changed.input)).toMatchObject({
+      ok: false,
+      code: 'E471',
+    });
+    expect(changed.fs.readText(`${ROOT}/contracts.ts`)).toBe('Changed frozen contract.\n');
+    expect(changed.fs.readText(`${ROOT}/draft.txt`)).toBe('Uncommitted work remains here.\n');
+    expect(sends(changed)).toHaveLength(0);
+  });
+
+  it('refuses binding one existing peer to two independent units', async () => {
+    const s = scenario();
+    existingPeer(s);
+    value(await dispatchBuilderUnit(s.deps, s.input));
+    expect(await dispatchBuilderUnit(s.deps, { ...s.input, unit: 'tk-0003' })).toMatchObject({
+      ok: false,
+      code: 'E474',
+    });
+    expect(s.adopted).toHaveLength(1);
+    expect(sends(s)).toHaveLength(1);
+  });
+
+  it('serializes concurrent bindings of the same existing peer', async () => {
+    const s = scenario();
+    existingPeer(s);
+    const results = await Promise.all([
+      dispatchBuilderUnit(s.deps, s.input),
+      dispatchBuilderUnit(s.deps, { ...s.input, unit: 'tk-0003' }),
+    ]);
+    expect(results.filter((result) => result.ok)).toHaveLength(1);
+    expect(results.find((result) => !result.ok)).toMatchObject({ ok: false, code: 'E472' });
+    expect(s.adopted).toHaveLength(1);
+    expect(sends(s)).toHaveLength(1);
   });
 });
 
@@ -828,9 +1096,9 @@ describe('Builder isolated dispatch', () => {
     expect(stored.value.observed).toMatchObject({ ready: false, peer_id: PEER, root: '' });
     expect(sends(s)).toHaveLength(0);
   });
-  it('refuses changed source, stale Git baseline and aliased native roots before launch', async () => {
+  it('refuses rewritten seals, stale Git baseline and aliased native roots before launch', async () => {
     const changed = scenario();
-    changed.fs.writeText('/repo/contracts.ts', 'changed');
+    changed.fs.writeText(`/repo/${changed.baseline.ref.path}`, 'rewritten seal');
     expect((await dispatchBuilderUnit(changed.deps, changed.input)).ok).toBe(false);
     expect(changed.provisioned).toHaveLength(0);
     // The pristine coder clone must start from EXACTLY the sealed source.

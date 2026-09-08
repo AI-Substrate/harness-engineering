@@ -20,11 +20,11 @@ These forms follow `harness/cli/src/services/builder/commands.ts`; angle-bracket
 | Readiness | `harness builder ready <plan> [--unit <id>]` | `status, issues, context, guide, baseline, warnings`; re-observes current basis; map warnings do not block readiness |
 | Contracts | `harness builder contracts <plan> [--seal --review <path>]` | `baseline`; seal and review must occur together; checked committed inputs |
 | Settings | `harness builder settings <plan> [--role coder|reviewer] [--harness <name>] [--model <selector>] [--effort <level>]` | `roles`; any explicit setting requires role, per-field provenance |
-| Dispatch | `harness builder dispatch <plan> --unit <id> --workspace <path> --parent <id> [--kind guide|worktree|clone] [--harness <name>] [--model <selector>] [--effort <level>]` | `dispatch, packet`; delivers the work packet directly; transport observation is not permission |
+| Dispatch | `harness builder dispatch <plan> --unit <id> --workspace <path> --parent <id> [--adopt-peer <id>] [--kind guide|worktree|clone] [--harness <name>] [--model <selector>] [--effort <level>]` | `dispatch, packet`; new work or binding to an existing native peer; adoption never spawns or grants new work |
 | Self-check | `harness builder self-check <packet> --sha256 <digest>` | `packet, expected, observed, warnings`; optional read-only orientation; mismatches warn and do not change state |
 | On-track | `harness builder on-track <plan> [--unit <id>] [--from <ref>] [--to <ref>] [--untracked]` | `compared, mode, basis, from, to, includes_worktree, includes_untracked, warnings, issues`; read-only advisory comparison, exit 0, no readiness or receipt prerequisite |
 | Advance | `harness builder advance <plan> --now <node>` | `flow, now, warnings`; checks canonical departure gates, never another lifecycle |
-| Compose | `harness builder compose <plan> --import <path>` OR `harness builder compose <plan> --verify <sha>` | `composition`; exactly one mode; import is not proof |
+| Compose | `harness builder compose <plan> --import <path> [--already-integrated]` OR `harness builder compose <plan> --verify <sha>` | `composition`; exactly one mode; already-integrated requires import and conflicts with verify; import is not product proof |
 | Review | `harness builder review <plan> --receipt <path>` | `review`; independent decomposition/composition evidence bound to subject and documents |
 | Close | `harness builder close <plan> --survivor <path> --allocations <path> --evidence <path>` | `archive, preservation`; surviving evidence outside all retiring roots |
 | Tidy | `harness builder tidy <allocation> --preservation <path>` | `allocation, removed`; refuses without ownership, runtime release and reverified preservation |
@@ -45,6 +45,8 @@ harness builder ready "${PLAN}" --unit "${UNIT}"
 
 **Order of commits around the seal.** Commit the SOURCE (contract unit, checks, fixtures) first — that commit is the seal's `source_sha`. The seal receipt and the review receipt are then written to disk; commit them whenever you like. Dispatch accepts a plan-repository HEAD that *is* the sealed source **or a descendant of it** — every frozen artifact is digest-checked against the seal, so receipt and evidence commits on top of the sealed source never block a dispatch, and the dispatch record names the plan-root HEAD it observed. A HEAD outside that ancestry is a rewritten or displaced baseline: restore the intended checkout, or review and seal a new source rather than relabelling old evidence. The coder clone starts at the sealed source; new packets carry that `source_sha` explicitly.
 
+Sealed file digests describe the original Git commit, not a permanent restriction on PM working bytes. Historical verification is binary-safe; PM edits or deletions reach current composition checks and a fresh composed-artifact snapshot. Factual plan state, proof links and `implementation_summary` may progress without re-reviewing unchanged intent. Existing clones retain their matching sealed plan inputs; late binding never replaces them with newer PM progress views. Material requirements/guide drift and forged seal bindings still fail.
+
 Roles resolve repo < guide < explicit fields. Requested model/harness/effort and observed runtime are distinct. Omitted effort stays absent; PID/argv/environment/native-session evidence is recorded only where observed. Provider-served identity remains unverified unless independently attested.
 
 ## Map-first dispatch and advisory self-check
@@ -58,7 +60,7 @@ Begin every worker briefing with the actual unit map, not bookkeeping:
 
 Then provide the canonical packet path and SHA-256 from the dispatch result. Current packets use `builder/work-packet` and bind source SHA, maps, interfaces, dependencies, proof, parent, allocation, plan/guide/baseline digests and requested role. Write/read maps guide both coders and PM; they are not mandatory source fences. An out-of-map edit needs no approval or justification. Canonical flow/plan/guide/receipt mutation still belongs to the PM, not a worker's source commit. Global/deployed settings, unrelated workspaces, main, outward push/PR/merge and destructive operations require their own user authorization. Workspace kind is not allocation authority; the authority record must survive removing the workspace.
 
-Packet and dispatch IDs use `<unit_id>-<full-current-source-sha>` from the current guide-bound seal. The packet's nonce is only a correlation value. Dispatch sends the work packet itself and records the observed message ID, outcome and time in `DispatchReceipt.delivery`. Queued transport is not proof that a peer received anything; neither queued nor delivered transport is an import permission gate. Receiving the packet means do the assigned work, with no separate acknowledgement or release.
+Packet and dispatch IDs use `<unit_id>-<full-current-source-sha>` from the current guide-bound seal. The packet's nonce is only a correlation value. Dispatch sends the packet and records the observed message ID, outcome and time in `DispatchReceipt.delivery`. Queued transport is not proof that a peer received anything; neither queued nor delivered transport is an import permission gate. For a new dispatch, receiving the packet means do the assigned work, with no separate acknowledgement or release. Existing-peer binding is not a new work grant.
 
 The worker may run one orientation check from its actual checkout:
 
@@ -69,6 +71,14 @@ harness builder self-check <packet> --sha256 <digest>
 The report compares expected and observed packet SHA-256, repository root and HEAD/source SHA. Every mismatch or unavailable observation is a warning with cause and corrective `next_action`, not a refusal or state mutation. A historical packet without `source_sha` uses its in-root digest-bound baseline when readable; missing evidence stays missing. The check neither attests a native runtime nor establishes cleanliness, permission or a clock window. Do not add a receipt exchange around it.
 
 Retain historical packets, acknowledgements and release records unchanged as evidence. Do not replay completed work, rewrite their transport facts or reclassify them as requirements for the current flow. Requested runtime settings remain distinct from observed facts; unsupported optional observations remain absent with named gaps. Independent review still considers historical implementation identities when checking reviewer independence.
+
+### Existing-peer binding
+
+For an already-running worker use `harness builder dispatch <plan> --unit <id> --workspace <existing-root> --parent <pm-id> --adopt-peer <peer-id>`. Keep the actual parent and resolved kind/role controls. Builder cross-observes the native peer and binds the unit to the original external/pij adoption or matching unit allocation; it does not claim harness ownership or provider-served identity. Original allocation authority/locator, sealed source, progressed descendant HEAD and WIP remain intact. Missing metadata may be seeded, but no peer is spawned, source replayed, checkout reset or new work granted. The binding message must not ask for completed work again.
+
+Current allocation/packet/baseline digests, real root/branch/ancestry and native actor/model/session/process observations still matter. Missing or mismatched evidence is a real failure, not a map warning. Do not manufacture a fresh peer, source SHA or ownership claim to force a binding.
+
+Current native OMP dispatch/binding requires a full clone; a linked-worktree selection remains an explicit unsupported capability, with no silent fallback. Reusing a matching allocation binding is not a second dispatch: an existing durable dispatch still conflicts. Inspect/reuse the original peer, packet and evidence, never resend or respawn to work around it.
 
 ## On-track at any time
 
@@ -90,6 +100,14 @@ Map warnings name `file`, scalar `owning_unit` (a unit ID or `unmapped`) and `st
 ## Composition and review
 
 Workers deliver committed `UnitDelivery` records (`unit_id, peer_id, workspace, commit_sha, packet_sha256, baseline_sha`). `baseline_sha` is a full Git source SHA; a FileDigest `sha256` binds bytes. Import consumes an array of these records, verifies the exact current packet/dispatch/external-allocation bindings and source integrity, and integrates in guide order. Maps inform comparison, not permission. Import does not require a self-check/on-track report, acknowledgement, release, transport outcome, nonce challenge or timestamp window. The PM then wires the composition root, regenerates generated assets, commits, and runs `compose --verify <exact composed SHA>`. Only verification sets `artifact_sha` with actual check receipts. A changed artifact requires fresh verification/review.
+
+### Already-integrated import
+
+When the PM has already integrated every supplied unit, use `harness builder compose <plan> --import <deliveries.json> --already-integrated`. It is an import modifier, not a verification mode; it cannot be used without `--import` or with `--verify`. It retains the normal source/evidence/native-identity checks but does not fetch, cherry-pick, reset, commit or mutate the index/working source. It preserves original worker `UnitDelivery.commit_sha` values and pins integration to the current committed PM HEAD.
+
+For each unit, compare the frozen unit write-map projection from baseline, delivery and PM trees, including absence/deletion, modes, object types and Git object IDs. If no concrete mapped paths exist, compare actual delivery-touched paths; an empty fallback scope is missing proof. Every unit must match before writing the receipt, and the final PM HEAD/cleanliness must still agree. Working-file equality, missing evidence, digest mismatch or the flag itself cannot substitute for this proof.
+
+Optional additive receipt fields are `integration_method: replayed|already-integrated` and `integration_proofs: [{unit_id, delivery_sha, scope, compared_paths, tree_sha256}]`, where scope is `unit-map|delivery-changes` and the digest binds the sorted Git-tree projection. Historical receipts need no new fields and consumer schemas are not forcibly overwritten. This proves scoped equality, not whole-patch equivalence or that the product works. Map deviations remain advisory and visible. The PM still runs `compose --verify <exact composed SHA>` and obtains independent composition review; a flag or receipt alone cannot close an AC.
 
 Integrity failures remain actionable refusals before mutation:
 

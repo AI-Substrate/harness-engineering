@@ -1,4 +1,4 @@
-import { type DdDoc, parse } from '@ai-substrate/dd';
+import { parse } from '@ai-substrate/dd';
 import { ErrorCodes } from '../../output/error-codes.js';
 import { isWithin, posixDirname, posixRelative, resolveInRepo } from '../shared/posix-path.js';
 import { checkBuilderGuide, readBuilderGuide } from './guide-service.js';
@@ -8,10 +8,14 @@ import {
   builderRecordPath,
   digestBuilderFile,
   readBuilderDocument,
+  readBuilderGitText,
   readBuilderRecord,
+  relocatedRef,
+  resolveDocumentAddresses,
   runBuilderCheck,
   sameBuilderDocumentIntent,
   sha256,
+  verifyBuilderFilesAtCommit,
   writeBuilderRecord,
 } from './records.js';
 import type {
@@ -39,7 +43,6 @@ type Inputs = {
   guide: Guide;
   planRef: FileDigest;
   guideRef: FileDigest;
-  files: FileDigest[];
   checks: Check[];
   receiptPath: string;
   warnings: OwnershipWarning[];
@@ -73,12 +76,6 @@ function loadInputs(deps: BuilderDeps, plan: string): BuilderResult<Inputs> {
     };
   const guideRef = digestBuilderFile(deps, context.value.guidePath);
   if (!guideRef.ok) return { ...guideRef, warnings };
-  const files: FileDigest[] = [];
-  for (const path of loaded.value.baseline.files) {
-    const digest = confinedDigest(deps, path);
-    if (!digest.ok) return { ...digest, warnings };
-    files.push(digest.value);
-  }
   const required = new Set(loaded.value.baseline.proof.map(proofId));
   const receiptPath = resolveInRepo(
     loaded.value.baseline.receipt,
@@ -91,7 +88,6 @@ function loadInputs(deps: BuilderDeps, plan: string): BuilderResult<Inputs> {
       guide: loaded.value,
       planRef: document.value.ref,
       guideRef: guideRef.value,
-      files,
       checks: loaded.value.checks.filter((check) => required.has(check.id)),
       receiptPath,
       warnings,
@@ -158,54 +154,6 @@ async function head(deps: BuilderDeps): Promise<BuilderResult<string>> {
         'Git did not return a full committed HEAD.',
         'Create or restore the source commit before sealing.',
       );
-}
-
-/** Compare raw blobs, not decoded git-show output: contracts can include binary fixtures. */
-async function committedFiles(
-  deps: BuilderDeps,
-  sha: string,
-  files: readonly FileDigest[],
-): Promise<BuilderResult<true>> {
-  if (!OBJECT_ID.test(sha))
-    return builderFailure(
-      ErrorCodes.BUILDER_PROOF,
-      'The baseline does not name a full Git object ID.',
-      'Seal evidence against an observed commit.',
-    );
-  const paths = [...new Set(files.map((file) => file.path))];
-  const tree = await git(deps, ['--literal-pathspecs', 'ls-tree', '-z', sha, '--', ...paths]);
-  if (!tree.ok) return tree;
-  const blobs = new Map<string, string>();
-  for (const entry of tree.value.split('\0').filter(Boolean)) {
-    const match = /^(100644|100755) blob ([a-f0-9]+)\t([\s\S]+)$/.exec(entry);
-    if (!match || !OBJECT_ID.test(match[2]) || blobs.has(match[3]))
-      return builderFailure(
-        ErrorCodes.BUILDER_PROOF,
-        'A committed input is not a unique regular-file blob.',
-        'Commit regular files, not symlinks, trees or submodules, as baseline inputs.',
-      );
-    blobs.set(match[3], match[2]);
-  }
-  if (paths.some((path) => !blobs.has(path)))
-    return builderFailure(
-      ErrorCodes.BUILDER_PROOF,
-      'Declared evidence is missing from the source commit.',
-      'Commit every declared contract, plan and guide before sealing.',
-    );
-  const hashes = await git(deps, ['hash-object', '--no-filters', '--', ...paths]);
-  if (!hashes.ok) return hashes;
-  const actual = hashes.value.trim().split('\n');
-  if (
-    actual.length !== paths.length ||
-    paths.some((path, index) => blobs.get(path) !== actual[index])
-  ) {
-    return builderFailure(
-      ErrorCodes.BUILDER_PROOF,
-      'Working evidence differs from the committed baseline.',
-      'Restore the sealed bytes or deliberately review and seal a new committed baseline.',
-    );
-  }
-  return { ok: true, value: true };
 }
 
 function unchanged(deps: BuilderDeps, refs: readonly FileDigest[]): BuilderResult<true> {
@@ -322,7 +270,11 @@ async function sealLoadedContracts(
   if (previous) {
     if (!previous.ok) return immutableSealConflict(inputs.receiptPath, previous);
     const requestedReview = confinedDigest(deps, input.review);
-    const recordedReview = relocatedRef(previous.value.value.review, previous.value.value, inputs);
+    const recordedReview = relocatedRef(
+      previous.value.value.review,
+      previous.value.value,
+      inputs.context,
+    );
     if (!requestedReview.ok || !sameRef(requestedReview.value, recordedReview)) {
       return immutableSealConflict(
         inputs.receiptPath,
@@ -344,8 +296,14 @@ async function sealLoadedContracts(
   if (!source.ok) return source;
   const review = reviewEvidence(deps, input.review, inputs, source.value);
   if (!review.ok) return review;
-  const refs = [inputs.planRef, inputs.guideRef, ...inputs.files];
-  const committed = await committedFiles(deps, source.value, refs);
+  const files: FileDigest[] = [];
+  for (const path of inputs.guide.baseline.files) {
+    const digest = confinedDigest(deps, path);
+    if (!digest.ok) return digest;
+    files.push(digest.value);
+  }
+  const refs = [inputs.planRef, inputs.guideRef, ...files];
+  const committed = await verifyBuilderFilesAtCommit(deps, source.value, refs);
   if (!committed.ok) return committed;
   const checks: CheckReceipt[] = [];
   for (const check of inputs.checks) {
@@ -382,7 +340,7 @@ async function sealLoadedContracts(
     source_sha: source.value,
     plan: inputs.planRef,
     guide: inputs.guideRef,
-    files: inputs.files,
+    files,
     checks,
     review: review.value.ref,
     warnings: inputs.warnings,
@@ -412,47 +370,6 @@ function notReady(
   return { ok: true, value: { status, issues, warnings } };
 }
 
-/** Only the canonical plan-to-archive move can relocate immutable evidence. */
-function relocatedRef(ref: FileDigest, baseline: BaselineReceipt, inputs: Inputs): FileDigest {
-  const oldDir = posixDirname(baseline.plan.path);
-  const currentDir = posixRelative(inputs.context.repoRoot, inputs.context.planDir);
-  if (currentDir === oldDir) return ref;
-  const plan = /^docs\/plans\/(?:archive\/)?([^/]+)$/.exec(oldDir);
-  if (!plan || ![`docs/plans/${plan[1]}`, `docs/plans/archive/${plan[1]}`].includes(currentDir))
-    return ref;
-  return ref.path.startsWith(`${oldDir}/`)
-    ? { ...ref, path: `${currentDir}${ref.path.slice(oldDir.length)}` }
-    : ref;
-}
-
-/** Resolve local DD addresses using their real source locations; shared records owns intent policy. */
-function resolveDocumentAddresses(doc: DdDoc, documentPath: string, repoRoot: string): DdDoc {
-  const resolvePath = (path: string) =>
-    /^[a-z]+:\/\//i.test(path)
-      ? path
-      : posixRelative(repoRoot, resolveInRepo(path, posixDirname(documentPath)));
-  const resolveValue = (value: unknown): unknown => {
-    if (typeof value === 'string') {
-      const address = /^([^\s#]*\.dd\.(?:json|md))(#[^\s]*)?$/.exec(value);
-      return address ? `${resolvePath(address[1])}${address[2] ?? ''}` : value;
-    }
-    if (Array.isArray(value)) return value.map(resolveValue);
-    if (value !== null && typeof value === 'object')
-      return Object.fromEntries(
-        Object.entries(value).map(([key, child]) => [key, resolveValue(child)]),
-      );
-    return value;
-  };
-  return {
-    ...doc,
-    sections: doc.sections.map((section) => ({ ...section, value: resolveValue(section.value) })),
-    references: (doc.references ?? []).map((reference) => ({
-      ...reference,
-      path: resolvePath(reference.path),
-    })),
-  };
-}
-
 async function historicalDocuments(
   deps: BuilderDeps,
   inputs: Inputs,
@@ -462,13 +379,16 @@ async function historicalDocuments(
     [baseline.plan, inputs.planRef],
     [baseline.guide, inputs.guideRef],
   ]) {
-    if (relocatedRef(original, baseline, inputs).path !== current.path)
+    if (relocatedRef(original, baseline, inputs.context).path !== current.path)
       return builderFailure(
         ErrorCodes.BUILDER_PROOF,
         'The baseline belongs to a different plan or guide.',
         'Select the original plan or its canonical archive relocation.',
       );
-    const historical = await git(deps, ['show', `${baseline.source_sha}:${original.path}`]);
+    const historical = await readBuilderGitText(deps, [
+      'show',
+      `${baseline.source_sha}:${original.path}`,
+    ]);
     if (!historical.ok) return historical;
     if (sha256(historical.value) !== original.sha256)
       return builderFailure(
@@ -552,7 +472,7 @@ async function dependencyEvidence(
     deps.repoRoot,
   );
   if (
-    !sameRef(relocatedRef(receipt.baseline, baseline.value, inputs), baseline.ref) ||
+    !sameRef(relocatedRef(receipt.baseline, baseline.value, inputs.context), baseline.ref) ||
     !receipt.artifact_sha ||
     !OBJECT_ID.test(receipt.artifact_sha) ||
     proof.length > 0 ||
@@ -580,7 +500,7 @@ async function dependencyEvidence(
   if (!ancestor.ok) return ancestor;
   const stable = unchanged(deps, receipt.files);
   if (!stable.ok) return stable;
-  const committed = await committedFiles(deps, receipt.artifact_sha, receipt.files);
+  const committed = await verifyBuilderFilesAtCommit(deps, receipt.artifact_sha, receipt.files);
   if (!committed.ok) return committed;
   return { ok: true, value: [composition.value.ref, ...receipt.files] };
 }
@@ -613,21 +533,21 @@ export async function checkBuilderReadiness(
   if (!stored.ok) return unavailable(stored);
   const baseline = stored.value.value;
   if (
-    baseline.files.length !== inputs.files.length ||
-    inputs.files.some(
-      (file) => baseline.files.filter((candidate) => sameRef(file, candidate)).length !== 1,
+    baseline.files.length !== inputs.guide.baseline.files.length ||
+    inputs.guide.baseline.files.some(
+      (path) => baseline.files.filter((candidate) => candidate.path === path).length !== 1,
     )
   ) {
     return unavailable({
-      message: 'The plan, guide or shared contract files differ from the sealed baseline.',
+      message: 'The declared shared contract paths differ from the sealed baseline.',
       next_action:
-        'Restore the bound inputs or deliberately review and seal a new committed baseline.',
+        'Restore the original path bindings or review and seal a new committed baseline.',
     });
   }
   const proof = proofIssues(inputs.checks, baseline.checks, deps.repoRoot);
   if (proof.length > 0)
     return { ok: true, value: { status: 'not-ready', issues: proof, warnings: inputs.warnings } };
-  const relocate = (ref: FileDigest) => relocatedRef(ref, baseline, inputs);
+  const relocate = (ref: FileDigest) => relocatedRef(ref, baseline, inputs.context);
   const reviewRef = relocate(baseline.review);
   const reviewDigest = unchanged(deps, [reviewRef]);
   if (!reviewDigest.ok) return unavailable(reviewDigest);
@@ -656,8 +576,8 @@ export async function checkBuilderReadiness(
   if (!ancestor.ok) return unavailable(ancestor);
   const documents = await historicalDocuments(deps, inputs, baseline);
   if (!documents.ok) return unavailable(documents);
-  const refs = [inputs.planRef, inputs.guideRef, ...inputs.files];
-  const committed = await committedFiles(deps, baseline.source_sha, inputs.files);
+  const refs = [inputs.planRef, inputs.guideRef];
+  const committed = await verifyBuilderFilesAtCommit(deps, baseline.source_sha, baseline.files);
   if (!committed.ok) return unavailable(committed);
   const dependencies = unit
     ? await dependencyEvidence(deps, inputs, stored.value, unit, source.value)

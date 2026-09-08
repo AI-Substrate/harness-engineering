@@ -195,7 +195,9 @@
             ".dd/schemas/builder/packet/schema.json",
             ".dd/schemas/builder/work-packet/schema.json",
             "harness/cli/test/acts/instructions.test.ts",
-            "harness/cli/test/services/builder-workspace.test.ts"
+            "harness/cli/test/services/builder-workspace.test.ts",
+            "harness/cli/src/adapters/exec/**",
+            "harness/cli/test/adapters/exec/fake-exec.test.ts"
           ],
           "reads": [],
           "interface": "Existing composeBuilderUnits returns Stored<CompositionReceipt>; warnings extend that receipt as optional historical-compatible data. No public command changes in increment 1.",

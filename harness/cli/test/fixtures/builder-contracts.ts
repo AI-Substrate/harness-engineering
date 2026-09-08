@@ -1,7 +1,9 @@
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { buildPlanScaffold } from '../../src/acts/plan/scaffold.js';
 import { FakeClock } from '../../src/adapters/clock/fake-clock.js';
 import { FakeEnv } from '../../src/adapters/env/fake-env.js';
+import type { ExecOptions, ExecResult } from '../../src/adapters/exec/exec-port.js';
 import { type ExecScript, FakeExec } from '../../src/adapters/exec/fake-exec.js';
 import { FakeFs } from '../../src/adapters/fs/fake-fs.js';
 import { ErrorCodes } from '../../src/output/error-codes.js';
@@ -390,6 +392,60 @@ export function fixturePreservation(
     ],
     ...overrides,
   };
+}
+
+/** Only caller-supplied historical snapshots are observed; never consult mutable working bytes. */
+export function fixtureCommittedGit(
+  commits: ReadonlyMap<string, ReadonlyMap<string, Uint8Array>>,
+  args: readonly string[],
+  options: ExecOptions,
+): ExecResult | undefined {
+  const success = (stdout: string): ExecResult => ({ ok: true, code: 0, stdout, stderr: '' });
+  const missing = (): ExecResult => ({
+    ok: false,
+    code: 128,
+    stdout: '',
+    stderr: `Missing historical Git object: ${args.join(' ')}`,
+  });
+  const blobId = (bytes: Uint8Array) =>
+    createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex');
+  if (args.slice(0, 3).join(' ') === 'rev-parse --verify --end-of-options') {
+    const sha = args[3]?.replace(/\^\{commit\}$/, '') ?? '';
+    return commits.has(sha) ? success(`${sha}\n`) : missing();
+  }
+  if (args[0] === '--literal-pathspecs' && args[1] === 'ls-tree') {
+    const separator = args.indexOf('--');
+    const files = commits.get(args[separator - 1] ?? '');
+    if (!files) return missing();
+    return success(
+      args
+        .slice(separator + 1)
+        .map((path) => {
+          const bytes = files.get(path);
+          return bytes ? `100644 blob ${blobId(bytes)} ${bytes.length}\t${path}\0` : '';
+        })
+        .join(''),
+    );
+  }
+  if (args[0] === 'cat-file' && args[1] === 'blob') {
+    for (const files of commits.values())
+      for (const bytes of files.values())
+        if (blobId(bytes) === args[2]) {
+          const result = success(Buffer.from(bytes).toString(options.stdoutEncoding ?? 'utf8'));
+          return options.stdoutEncoding === 'base64'
+            ? { ...result, stdoutEncoding: 'base64' }
+            : result;
+        }
+    return missing();
+  }
+  if (args[0] === 'show' && args[1]?.includes(':')) {
+    const separator = args[1].indexOf(':');
+    const bytes = commits.get(args[1].slice(0, separator))?.get(args[1].slice(separator + 1));
+    if (!bytes) return missing();
+    const result = success(Buffer.from(bytes).toString(options.stdoutEncoding ?? 'utf8'));
+    return options.stdoutEncoding === 'base64' ? { ...result, stdoutEncoding: 'base64' } : result;
+  }
+  return undefined;
 }
 
 export function builderFixture(

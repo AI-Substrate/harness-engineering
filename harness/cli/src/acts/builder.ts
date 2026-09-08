@@ -46,6 +46,7 @@ import type {
   WorkspaceKindSelector,
 } from '../services/builder/types.js';
 import {
+  adoptBuilderUnitWorkspace,
   adoptBuilderWorkspace,
   provisionBuilderWorkspace,
   tidyBuilderWorkspace,
@@ -256,12 +257,14 @@ async function executeBuilder(
           ...deps,
           readiness: (input) => checkBuilderReadiness(deps, input),
           provision: (input) => provisionBuilderWorkspace(deps, input),
+          adoptUnit: (input) => adoptBuilderUnitWorkspace(deps, input),
         },
         {
           plan: argument,
           unit: options.unit as string,
           workspace: options.workspace as string,
           parent: options.parent as string,
+          ...(typeof options.adoptPeer === 'string' && { adoptPeer: options.adoptPeer }),
           role,
           kind: options.kind as WorkspaceKindSelector,
         },
@@ -321,6 +324,7 @@ async function executeBuilder(
           plan: argument,
           mode: 'import',
           deliveries: deliveries.value as UnitDelivery[],
+          ...(options.alreadyIntegrated === true && { alreadyIntegrated: true }),
         }),
       );
     }

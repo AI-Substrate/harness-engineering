@@ -10,7 +10,7 @@ flowchart TD
     research["Research 📝3"]:::wip
     plan["Plan 📝5"]:::assumed
     impl_guide["Implementation guide 📝5"]:::known
-    phase_1["P1: Implementation 📝11 ⛨"]:::known
+    phase_1["P1: Implementation 📝15 ⛨"]:::known
     review_1["Review: P1 📝5"]:::assumed
     post_flight["Post-flight 📝5 ⛨"]:::assumed
     ship["Ship 📝3"]:::assumed
