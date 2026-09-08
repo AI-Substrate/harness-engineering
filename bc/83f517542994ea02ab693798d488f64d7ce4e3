@@ -1,0 +1,26 @@
+docs/how/harness-builder.md
+  h_9e71e8b09f7cf2 153-154
+docs/plans/099-builder-warning-guidance/assets/execution-log.dd.json
+  h_9e71e8b09f7cf2 59-67
+docs/plans/099-builder-warning-guidance/assets/execution-log.dd.md
+  h_9e71e8b09f7cf2 26
+harness/cli/src/services/builder/composition-service.ts
+  h_9e71e8b09f7cf2 211-216,231,239,571,576,589-590,787-791
+harness/cli/src/services/docs/docs-content.ts
+  h_9e71e8b09f7cf2 130
+harness/cli/test/services/builder-lifecycle.test.ts
+  h_9e71e8b09f7cf2 1077-1147
+scripts/builder-smoke.mjs
+  h_9e71e8b09f7cf2 7,81,228-266,274-275,409
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "bc83f517542994ea02ab693798d488f64d7ce4e3",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
