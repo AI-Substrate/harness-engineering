@@ -12,7 +12,7 @@
 
 1. Resolve the canonical plan, phase ID and guide unit(s). Preserve historical Markdown dossiers under their original read path; completed history is not rewritten. Simple mode still has a real phase task file and guide; it does not hide implementation tasks in product intent.
 2. Read relevant prior-phase exports, proof, gotchas and open findings, not every transcript. Load domain rules only when domain mode is enabled; preserve existing opted-in domain context.
-3. Use the guide's responsibility, exact write/read paths, frozen interfaces, waves, AC coverage and composition ownership. Do not re-decompose by file count or silently move ownership. An unresolved interface returns to the guide owner before dispatch.
+3. Use the guide's responsibility, write/read maps, frozen interfaces, waves, AC coverage and composition ownership. Maps orient implementation; they are not source-access fences. Do not re-decompose by file count. An unresolved interface returns to the guide owner before dispatch.
 4. Each task has a stable minted ID, title, phase, success, notes, `done` link and `satisfies` array. Use `satisfies_toward` for incremental work that contributes but does not close a whole AC. Each `done_when` assertion names an observable behavior and its actual `pressure` instrument. Every AC must be accounted for; no empty catch-all task to silence orphan warnings.
 5. Inherit the selected proof from `assets/backpressure.dd.json`: RUN now, extend then run, build then run, or explicit ABSENT judgement. Do not convert an intended command into a passed receipt. Follow `../backpressure-recipe.md` for AC pressure and eventual proven_by links.
 6. Make feasibility spikes precede dependent work; preserve decisions and observed results, not throwaway experiment code. Choose the fewest task groups that respect real dependencies. Include PM wiring and assembled behavior, not only unit implementation.
@@ -40,7 +40,7 @@ Use real returned IDs. The phase scaffold already exists when `harness plan new`
 
 ## Subtasks and fixes
 
-Attach subtasks to their stable parent task ID and retain the same scope/proof contract. A review fix cites the finding and a behavioral assertion that would fail on recurrence. Keep work-accounting links in the owning task corpus; a side note alone cannot close a parent. `--fix --list` is read-only. A fix outside the reviewed fence needs an explicit guide/scope change, not silent expansion.
+Attach subtasks to their stable parent task ID and retain the same scope/proof contract. A review fix cites the finding and a behavioral assertion that would fail on recurrence. Keep work-accounting links in the owning task corpus; a side note alone cannot close a parent. `--fix --list` is read-only. A fix outside a path map needs no approval or justification; a changed product requirement or broken shared interface still needs its owning decision, not silent scope expansion.
 
 ## Exit
 

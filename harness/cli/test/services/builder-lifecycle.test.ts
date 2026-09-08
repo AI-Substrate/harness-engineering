@@ -18,6 +18,7 @@ import {
   builderChoresSatisfied,
   verifyBuilderPreservation,
 } from '../../src/services/builder/lifecycle-service.js';
+import { inspectBuilderOnTrack } from '../../src/services/builder/on-track-service.js';
 import {
   builderContext,
   builderRecordPath,
@@ -36,6 +37,7 @@ import type {
   BuilderResult,
   CompositionDeps,
   CompositionReceipt,
+  OwnershipWarning,
   ReviewReceipt,
   Stored,
   UnitDelivery,
@@ -155,6 +157,10 @@ function scenario() {
             opts.cwd === '/repo' ? state.branch : `builder/${opts.cwd.split('/').pop()}`,
           );
         if (rest.join(' ') === 'rev-parse HEAD') return success(state.head);
+        if (rest.slice(0, 3).join(' ') === 'rev-parse --verify --end-of-options') {
+          const ref = rest[3]?.replace(/\^\{commit\}$/, '');
+          return success(ref === 'HEAD' ? state.head : ref);
+        }
         if (rest.join(' ') === 'rev-parse --show-toplevel') return success(opts.cwd);
         if (rest[0] === 'rev-list')
           return success(rest.includes('--merges') ? '' : opts.cwd.endsWith('tk-0002') ? B : D);
@@ -431,12 +437,37 @@ describe('Builder canonical advancement', () => {
   });
 
   it('does not depart implementation on imported-only evidence', async () => {
+    // Imported warnings are observations, not a substitute for the missing artifact proof.
     const s = scenario();
     s.setFlow('phase-1');
-    s.composition({ artifact_sha: undefined, checks: [] });
+    s.composition({
+      artifact_sha: undefined,
+      checks: [],
+      warnings: [
+        { file: 'extra.ts', owning_unit: 'unmapped', stage: 'delivery', unit_id: 'tk-0002' },
+      ],
+    });
     expect(
       await advanceBuilderStage(s.deps, { plan: BUILDER_FIXTURE_PLAN, now: 'review-1' }),
     ).toMatchObject({ ok: false, code: 'E475' });
+  });
+
+  it('returns warning evidence while advancing verified composition', async () => {
+    const s = scenario();
+    const warnings: OwnershipWarning[] = [
+      { file: 'extra.ts', owning_unit: 'unmapped', stage: 'delivery', unit_id: 'tk-0002' },
+      { file: 'src/parser.ts', owning_unit: 'tk-0002', stage: 'verify' },
+    ];
+    s.composition({ warnings });
+    s.setFlow('phase-1');
+    const advanced = value(
+      await advanceBuilderStage(s.deps, {
+        plan: BUILDER_FIXTURE_PLAN,
+        now: 'review-1',
+      }),
+    );
+    expect(advanced.warnings).toEqual(warnings);
+    expect(JSON.parse(s.fs.readText(FLOW) ?? '{}').nav.now).toBe('review-1');
   });
 });
 
@@ -656,6 +687,80 @@ describe('Builder committed composition', () => {
     ).toBe(false);
   });
 
+  it('imports the pinned artifact when the worker HEAD contains later evidence', async () => {
+    const s = scenario();
+    const deliveries = s.deliveries();
+    const imported = value(
+      await composeBuilderUnits(s.deps, {
+        plan: BUILDER_FIXTURE_PLAN,
+        mode: 'import',
+        deliveries,
+      }),
+    );
+    expect(imported.value.units[0]?.commit_sha).toBe(B);
+    expect(
+      s.calls.filter((call) => call.args.includes('cherry-pick')).map((call) => call.args.at(-1)),
+    ).toEqual([B, D]);
+  });
+
+  it('refuses a delivered sibling commit not reachable from the allocated checkout', async () => {
+    const s = scenario();
+    const deliveries = s.deliveries();
+    s.scripts[`git -c core.hooksPath= merge-base --is-ancestor ${B} ${C}`] = {
+      code: 1,
+      stdout: '',
+      stderr: 'not an ancestor',
+      ok: false,
+    };
+    expect(
+      await composeBuilderUnits(s.deps, {
+        plan: BUILDER_FIXTURE_PLAN,
+        mode: 'import',
+        deliveries,
+      }),
+    ).toMatchObject({ ok: false, code: 'E475', next_action: expect.any(String) });
+    expect(
+      s.calls.some((call) => call.args.includes('fetch') || call.args.includes('cherry-pick')),
+    ).toBe(false);
+  });
+
+  it('refuses duplicate native peers before importing any unit', async () => {
+    const s = scenario();
+    const deliveries = s.deliveries();
+    (deliveries[1] as UnitDelivery).peer_id = (deliveries[0] as UnitDelivery).peer_id;
+    expect(
+      await composeBuilderUnits(s.deps, {
+        plan: BUILDER_FIXTURE_PLAN,
+        mode: 'import',
+        deliveries,
+      }),
+    ).toMatchObject({ ok: false, code: 'E474', next_action: expect.any(String) });
+    expect(
+      s.calls.some((call) => call.args.includes('fetch') || call.args.includes('cherry-pick')),
+    ).toBe(false);
+  });
+
+  it('reports unsupported merge replay as an operational proof failure, not ownership policy', async () => {
+    const s = scenario();
+    const deliveries = s.deliveries();
+    s.scripts[`git -c core.hooksPath= rev-list --merges ${A}..${B}`] = {
+      code: 0,
+      stdout: B,
+      stderr: '',
+      ok: true,
+    };
+    expect(
+      await composeBuilderUnits(s.deps, {
+        plan: BUILDER_FIXTURE_PLAN,
+        mode: 'import',
+        deliveries,
+      }),
+    ).toMatchObject({ ok: false, code: 'E475', next_action: expect.any(String) });
+    expect(
+      s.calls.some((call) => call.args.includes('fetch') || call.args.includes('cherry-pick')),
+    ).toBe(false);
+  });
+
   it('imports each coder once without acknowledgement or release despite queued transport, then advances after verification', async () => {
     const s = scenario();
     const deliveries = s.deliveries().reverse();
@@ -712,16 +817,54 @@ describe('Builder committed composition', () => {
     expect(s.calls.some((call) => call.args.includes('cherry-pick'))).toBe(false);
   });
 
-  it('rejects out-of-fence history even when the final tree could hide it', async () => {
+  it('retains reverted coder history as the same warnings observed by on-track', async () => {
     const s = scenario();
     const deliveries = s.deliveries();
-    s.scripts[
-      `git -c core.hooksPath= diff-tree --no-commit-id --name-only --no-renames -r -z ${B}`
-    ] = { code: 0, stdout: 'unrelated.ts\0', stderr: '', ok: true };
+    const first = 'e'.repeat(40);
+    s.scripts[`git -c core.hooksPath= rev-list --reverse ${A}..${B}`] = {
+      code: 0,
+      stdout: `${first}\n${B}`,
+      stderr: '',
+      ok: true,
+    };
+    for (const commit of [first, B]) {
+      s.scripts[
+        `git -c core.hooksPath= diff-tree --no-commit-id --name-only --no-renames -m -r -z ${commit}`
+      ] = {
+        code: 0,
+        stdout: 'unrelated.ts\0src/renderer.ts\0',
+        stderr: '',
+        ok: true,
+      };
+    }
+    // The final endpoint hides both writes; committed history still observes each once.
+    s.state.delta = '';
+    const inspected = value(
+      await inspectBuilderOnTrack(s.deps, {
+        plan: BUILDER_FIXTURE_PLAN,
+        unit: 'tk-0002',
+        to: B,
+      }),
+    );
+    expect(inspected.compared).toBe(true);
+    expect(inspected.warnings).toEqual([
+      { file: 'src/renderer.ts', owning_unit: 'tk-0003', stage: 'delivery', unit_id: 'tk-0002' },
+      { file: 'unrelated.ts', owning_unit: 'unmapped', stage: 'delivery', unit_id: 'tk-0002' },
+    ]);
+    const imported = value(
+      await composeBuilderUnits(s.deps, {
+        plan: BUILDER_FIXTURE_PLAN,
+        mode: 'import',
+        deliveries,
+      }),
+    );
+    expect(imported.value.warnings).toEqual(inspected.warnings);
     expect(
-      await composeBuilderUnits(s.deps, { plan: BUILDER_FIXTURE_PLAN, mode: 'import', deliveries }),
-    ).toMatchObject({ ok: false, code: 'E477' });
-    expect(s.calls.some((call) => call.args.includes('cherry-pick'))).toBe(false);
+      s.calls.filter((call) => call.args.includes('cherry-pick')).map((call) => call.args.slice(2)),
+    ).toEqual([
+      ['cherry-pick', '-x', first, B],
+      ['cherry-pick', '-x', D],
+    ]);
   });
 
   it('keeps conflict state visible and never resets or records completed composition', async () => {
@@ -787,19 +930,40 @@ describe('Builder committed composition', () => {
       owning_unit: 'unmapped',
       stage: 'import' as const,
     };
-    s.composition({ artifact_sha: undefined, checks: [], warnings: [importWarning] });
+    const guideWarning: OwnershipWarning = {
+      file: '<guide:composition.owner>',
+      owning_unit: 'unmapped',
+      stage: 'guide',
+      code: 'map-owner',
+      message: 'Owner declaration is unmapped.',
+      next_action: 'Review the owner map.',
+    };
+    const deliveryWarning: OwnershipWarning = {
+      file: 'reverted.ts',
+      owning_unit: 'unmapped',
+      stage: 'delivery',
+      unit_id: 'tk-0002',
+    };
+    const retained = [guideWarning, deliveryWarning, importWarning];
+    s.composition({ artifact_sha: undefined, checks: [], warnings: retained });
     s.state.delta = 'src/parser.ts\0extra.ts\0';
     const result = value(
       await composeBuilderUnits(s.deps, { plan: BUILDER_FIXTURE_PLAN, mode: 'verify', sha: C }),
     );
     expect(result.value.warnings).toEqual([
-      importWarning,
-      { file: 'src/parser.ts', owning_unit: 'tk-0002', stage: 'verify' },
+      ...retained,
       { file: 'extra.ts', owning_unit: 'unmapped', stage: 'verify' },
+      { file: 'src/parser.ts', owning_unit: 'tk-0002', stage: 'verify' },
     ]);
     expect(result.value.checks).toMatchObject([
       { exit_code: 0, stdout: 'actual integration output' },
     ]);
+    const inspected = value(
+      await inspectBuilderOnTrack(s.deps, { plan: BUILDER_FIXTURE_PLAN, to: C }),
+    );
+    expect(inspected.warnings).toEqual(
+      result.value.warnings?.filter((warning) => warning.stage === 'verify'),
+    );
     s.state.delta = 'src/parser.ts\0';
     s.state.proofCode = 1;
     expect(
@@ -809,7 +973,7 @@ describe('Builder committed composition', () => {
       readBuilderRecord<CompositionReceipt>(s.deps, `${TEAM}/composition.dd.json`, 'composition'),
     );
     expect(red.value.warnings).toEqual([
-      importWarning,
+      ...retained,
       { file: 'src/parser.ts', owning_unit: 'tk-0002', stage: 'verify' },
     ]);
     expect(red.value.checks[0]).toMatchObject({ exit_code: 1, stderr: 'integration failed' });
@@ -848,6 +1012,53 @@ describe('Builder committed composition', () => {
     expect(
       value(await verifyBuilderComposition(s.deps, s.context, s.guide)).value.warnings,
     ).toEqual(imported.value.warnings);
+  });
+
+  it('persists baseline and current guide warnings alongside PM import observations', async () => {
+    const s = scenario();
+    const baselineWarning: OwnershipWarning = {
+      file: 'contracts.ts',
+      owning_unit: 'unmapped',
+      stage: 'guide',
+      code: 'baseline-map',
+    };
+    const guideWarning: OwnershipWarning = {
+      file: '<guide:capabilities.owner>',
+      owning_unit: 'unmapped',
+      stage: 'guide',
+      code: 'owner-map',
+    };
+    s.baseline.value.warnings = [baselineWarning];
+    const baseline = value(
+      writeBuilderRecord(s.deps, `${TEAM}/baseline.dd.json`, s.baseline.value, {
+        expectedSha256: s.baseline.ref.sha256,
+      }),
+    );
+    Object.assign(s.baseline, baseline);
+    s.deps.readiness = async () => ({
+      ok: true,
+      value: {
+        status: 'ready',
+        issues: [],
+        context: s.context,
+        guide: s.guide,
+        baseline,
+        warnings: [guideWarning],
+      },
+    });
+    s.state.delta = 'src/parser.ts\0';
+    const imported = value(
+      await composeBuilderUnits(s.deps, {
+        plan: BUILDER_FIXTURE_PLAN,
+        mode: 'import',
+        deliveries: s.deliveries(),
+      }),
+    );
+    expect(imported.value.warnings).toEqual([
+      baselineWarning,
+      guideWarning,
+      { file: 'src/parser.ts', owning_unit: 'tk-0002', stage: 'import' },
+    ]);
   });
 
   it('never imports or verifies on main', async () => {
@@ -1814,6 +2025,9 @@ describe('Builder archival through real filesystem and local Git adapters', () =
       expect(fs.exists(posixJoin(planDir, 'assets/team/preservation.dd.json'))).toBe(false);
       unlinkSync(alias);
       expect(fs.exists(otherRetiring)).toBe(true);
+      // A second real repository carries its own schema packages. These copies
+      // must survive as evidence without colliding with the control receipt's schema.
+      await runGit(['clone', '--no-hardlinks', repo, otherRetiring]);
       const requiredCacheEvidence = evidence[2]?.path as string;
       const originalCacheEvidence = fs.readText(requiredCacheEvidence) as string;
       fs.deleteFile(requiredCacheEvidence);
@@ -1832,10 +2046,25 @@ describe('Builder archival through real filesystem and local Git adapters', () =
         await closeBuilderPlan(deps, {
           plan: BUILDER_FIXTURE_PLAN,
           survivor: posixJoin(temporary, 'survivor'),
-          allocations: [allocation],
+          allocations: [allocation, otherAllocation],
           evidence,
         }),
       );
+      expect(value(readBuilderRecord(deps, result.preservation.ref.path, 'preservation'))).toEqual(
+        result.preservation,
+      );
+      const copiedTeamSchemas = result.preservation.value.inventory.filter((item) =>
+        item.source.endsWith('/.dd/schemas/builder/team/schema.json'),
+      );
+      expect(copiedTeamSchemas.map((item) => item.source).sort()).toEqual(
+        [
+          posixJoin(repo, '.dd/schemas/builder/team/schema.json'),
+          posixJoin(otherRetiring, '.dd/schemas/builder/team/schema.json'),
+        ].sort(),
+      );
+      for (const item of copiedTeamSchemas) {
+        expect(fs.readBytesNoFollow(item.destination)).toEqual(fs.readBytesNoFollow(item.source));
+      }
       expect(result.archive).toBe(posixJoin(repo, 'docs/plans/archive/001-example'));
       expect(fs.exists(planDir)).toBe(false);
       const relocated = JSON.parse(fs.readText(posixJoin(result.archive, 'the-flow.json')) ?? '{}');
@@ -1895,7 +2124,7 @@ describe('Builder archival through real filesystem and local Git adapters', () =
         await closeBuilderPlan(deps, {
           plan: result.archive,
           survivor: posixJoin(temporary, 'survivor'),
-          allocations: [allocation],
+          allocations: [allocation, otherAllocation],
           evidence: [
             {
               path: posixJoin(result.archive, 'assets/observations.json'),

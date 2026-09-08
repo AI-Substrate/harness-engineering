@@ -7,6 +7,7 @@ import {
   posixRelative,
   resolveInRepo,
 } from '../shared/posix-path.js';
+import { builderOwnsPath, ownershipWarnings } from './ownership-service.js';
 import {
   builderContext,
   builderFailure,
@@ -20,6 +21,7 @@ import type {
   Guide,
   GuideCheckReport,
   GuideInput,
+  OwnershipWarning,
 } from './types.js';
 
 /** Loading proves DD shape and document identity, not architectural or delivery readiness. */
@@ -114,18 +116,29 @@ function relativePath(path: string, allowRoot = false): boolean {
   );
 }
 
-function covers(fence: string, path: string): boolean {
-  const root = fence.endsWith('/**') ? fence.slice(0, -3) : fence;
-  const target = path.endsWith('/**') ? path.slice(0, -3) : path;
-  return target === root || target.startsWith(`${root}/`);
-}
-
 /** Structural proof only. Responsibility quality and observable semantics require independent review. */
 export function checkBuilderGuide(
   guide: Guide,
   planCriteria: readonly { id: string }[],
 ): GuideCheckReport {
   const issues: BuilderIssue[] = [];
+  const warnings: OwnershipWarning[] = [];
+  const warn = (
+    code: string,
+    field: string,
+    message: string,
+    owner = 'unmapped',
+    file?: string,
+  ) => {
+    warnings.push({
+      file: file?.trim() ? file : `<guide:${field}>`,
+      owning_unit: owner.trim() || 'unmapped',
+      stage: 'guide',
+      code,
+      message,
+      next_action: `Review ${field} with the named unit and update the ownership guidance if useful; this warning does not block work.`,
+    });
+  };
   const issue = (code: string, path: string, message: string) => {
     issues.push({
       code,
@@ -149,17 +162,35 @@ export function checkBuilderGuide(
       seen.add(id);
     }
   };
-  const paths = (values: readonly string[], path: string, subtrees = false) => {
+  const paths = (values: readonly string[], path: string) => {
     list(values, path);
     unique(values, path);
     for (const value of values)
-      if (!relativePath(subtrees && value.endsWith('/**') ? value.slice(0, -3) : value)) {
-        issue(
-          'path',
-          path,
-          `Not a normalized repository-relative path${subtrees ? ' or explicit /** subtree' : ''}: ${value}`,
-        );
+      if (!relativePath(value)) {
+        issue('path', path, `Not a normalized repository-relative path: ${value}`);
       }
+  };
+  const mapPaths = (values: readonly string[], field: string, owner: string) => {
+    if (values.length === 0) warn('map-empty', field, 'No ownership paths are declared.', owner);
+    const seen = new Set<string>();
+    for (const value of values) {
+      const root = value.endsWith('/**')
+        ? value.slice(0, -3)
+        : value.endsWith('/')
+          ? value.slice(0, -1)
+          : value;
+      if (!relativePath(root))
+        warn(
+          'map-path',
+          field,
+          `Not a normalized repository-relative ownership hint: ${value}`,
+          owner,
+          value,
+        );
+      if (seen.has(value))
+        warn('map-duplicate', field, `Ownership hint is repeated: ${value}`, owner, value);
+      seen.add(value);
+    }
   };
   const units = new Map(guide.units.map((unit) => [unit.id, unit]));
   const checks = new Set(guide.checks.map((check) => check.id));
@@ -208,12 +239,6 @@ export function checkBuilderGuide(
       'capabilities',
       'A guide cannot prove coverage of an empty product acceptance contract.',
     );
-  if (guide.capabilities.length === 0)
-    issue(
-      'empty',
-      'capabilities',
-      'Declare observable capability owners, not just internal producers.',
-    );
   unique(
     guide.units.map((unit) => unit.id),
     'units',
@@ -247,27 +272,32 @@ export function checkBuilderGuide(
       );
     }
   }
-  const fences: Array<{ owner: string; path: string }> = [];
-  for (const unit of guide.units) {
+  for (const [index, unit] of guide.units.entries()) {
     const at = `units/${unit.id}`;
     text(unit.name, `${at}/name`);
     text(unit.responsibility, `${at}/responsibility`);
     text(unit.interface, `${at}/interface`);
-    paths(unit.paths, `${at}/paths`, true);
+    mapPaths(unit.paths, `${at}/paths`, unit.id);
     proof(unit.proof, `${at}/proof`);
     unique(unit.depends_on, `${at}/depends_on`);
     if (!Number.isSafeInteger(unit.wave) || unit.wave < 0)
       issue('wave', `${at}/wave`, 'Waves must be non-negative integers.');
-    for (const path of unit.paths) {
-      for (const previous of fences)
-        if (covers(previous.path, path) || covers(path, previous.path)) {
-          issue(
+    for (let previousIndex = 0; previousIndex < index; previousIndex++) {
+      const previous = guide.units[previousIndex];
+      const overlapping = new Set([
+        ...unit.paths.filter((path) => builderOwnsPath(previous, path)),
+        ...previous.paths.filter((path) => builderOwnsPath(unit, path)),
+      ]);
+      for (const path of overlapping) {
+        for (const owner of [previous.id, unit.id])
+          warn(
             'write-overlap',
             `${at}/paths`,
-            `${path} overlaps ${previous.owner}'s fence ${previous.path}.`,
+            `${path} is mapped to both ${previous.id} and ${unit.id}.`,
+            owner,
+            path,
           );
-        }
-      fences.push({ owner: unit.id, path });
+      }
     }
     for (const dependency of unit.depends_on) {
       const owner = units.get(dependency);
@@ -276,20 +306,29 @@ export function checkBuilderGuide(
       else if (owner.wave >= unit.wave)
         issue('wave', `${at}/wave`, `Dependency ${dependency} must be in an earlier wave.`);
     }
-    for (const read of unit.reads) {
-      paths(read.paths, `${at}/reads`, true);
+    for (const [index, read] of unit.reads.entries()) {
+      const field = `${at}/reads/${index}`;
+      mapPaths(read.paths, `${field}/paths`, read.owner);
       const owner = units.get(read.owner);
       if (!owner || owner.id === unit.id || !unit.depends_on.includes(read.owner)) {
-        issue(
-          'read-owner',
-          `${at}/reads`,
-          `Read owner ${read.owner} must be a different declared dependency.`,
-        );
-      } else
-        for (const path of read.paths)
-          if (!owner.paths.some((fence) => covers(fence, path))) {
-            issue('read-owner', `${at}/reads`, `${read.owner} does not own ${path}.`);
-          }
+        for (const path of read.paths.length ? read.paths : [undefined])
+          warn(
+            'read-owner',
+            `${field}/owner`,
+            `Read owner ${read.owner} is not a different declared dependency.`,
+            read.owner,
+            path,
+          );
+      }
+      for (const path of read.paths)
+        if (!owner || !builderOwnsPath(owner, path))
+          warn(
+            'read-coverage',
+            `${field}/paths`,
+            `${read.owner || 'The declared owner'} has no matching map for ${path}.`,
+            read.owner,
+            path,
+          );
     }
     for (const address of unit.acceptance) {
       const id = criterionId(address);
@@ -322,21 +361,28 @@ export function checkBuilderGuide(
     const at = `capabilities/${capability.id}`;
     const id = criterionId(capability.criterion);
     const owner = units.get(capability.owner);
-    text(capability.path, `${at}/path`);
+    if (!capability.path.trim())
+      warn(
+        'capability-path',
+        `${at}/path`,
+        'The observable capability path is not described.',
+        capability.owner,
+      );
     proof(capability.proof, `${at}/proof`);
     if (!id || !criteria.has(id))
       issue('unknown-criterion', at, `Unknown product criterion: ${capability.criterion}`);
-    else if (!owner) {
-      issue(
+    else covered.add(id);
+    if (!owner)
+      warn(
         'capability-owner',
-        at,
-        `Observable owner ${capability.owner} must name a declared implementation unit.`,
+        `${at}/owner`,
+        `Observable owner ${capability.owner} does not name a declared implementation unit.`,
+        capability.owner,
       );
-    } else covered.add(id);
   }
   for (const id of criteria)
     if (!covered.has(id))
-      issue('capability-gap', 'capabilities', `No observable capability owner covers ${id}.`);
+      warn('capability-gap', 'capabilities', `No observable capability declaration covers ${id}.`);
   paths(guide.baseline.files, 'baseline/files');
   proof(guide.baseline.proof, 'baseline/proof');
   if (!relativePath(guide.baseline.receipt) || !guide.baseline.receipt.endsWith('.dd.json'))
@@ -345,9 +391,14 @@ export function checkBuilderGuide(
       'baseline/receipt',
       'Use a confined DD record path relative to the guide directory.',
     );
-  for (const path of guide.baseline.files)
-    if (!fences.some((fence) => covers(fence.path, path)))
-      issue('baseline-owner', 'baseline/files', `No unit owns shared contract file ${path}.`);
+  for (const warning of ownershipWarnings(guide.units, guide.baseline.files, guide.units, 'guide'))
+    warn(
+      'baseline-owner',
+      'baseline/files',
+      `No unit maps shared contract file ${warning.file}.`,
+      warning.owning_unit,
+      warning.file,
+    );
   const coders = guide.units.filter((unit) => unit.role === 'coder');
   if (
     (guide.fan_out.decision === 'solo-pm' &&
@@ -378,10 +429,11 @@ export function checkBuilderGuide(
   }
   const composition = units.get(guide.composition.owner);
   if (composition?.role !== 'pm')
-    issue(
+    warn(
       'composition-owner',
       'composition/owner',
-      'Composition must belong to a declared PM unit.',
+      'Composition is not mapped to a declared PM unit.',
+      guide.composition.owner,
     );
   list(guide.composition.steps, 'composition/steps');
   proof(guide.composition.proof, 'composition/proof');
@@ -411,14 +463,15 @@ export function checkBuilderGuide(
       composition &&
       (!composition.depends_on.includes(coder.id) || composition.wave <= coder.wave)
     )
-      issue(
+      warn(
         'composition-wave',
-        'composition',
-        `Composition must follow and depend on ${coder.id}.`,
+        'composition/owner',
+        `The declared composition owner does not follow and depend on ${coder.id}.`,
+        composition.id,
       );
   }
   text(guide.review.when, 'review/when');
   list(guide.review.inputs, 'review/inputs');
   list(guide.review.proof, 'review/proof');
-  return { valid: issues.length === 0, issues, architectural_judgement: 'not-performed' };
+  return { valid: issues.length === 0, issues, warnings, architectural_judgement: 'not-performed' };
 }

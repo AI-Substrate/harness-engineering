@@ -22,7 +22,7 @@
         {
           "id": "tk-0001",
           "title": "Record and expose nonblocking PM composition warnings",
-          "state": "unchecked",
+          "state": "checked",
           "phase": "ph-1886",
           "satisfies": [
             "../../../plan.dd.json#acceptance_criteria/ac-0002",

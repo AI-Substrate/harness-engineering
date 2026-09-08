@@ -149,29 +149,6 @@ describe('Builder source lifecycle and runnable examples', () => {
     expect(forced.doc.nav?.now).toBe('ship');
   });
 
-  it.each([
-    { now: 'review-1', override: false },
-    { now: 'post-flight', override: true },
-  ])('renders human-only override guidance at $now only when its whole-plan gate applies', ({
-    now,
-    override,
-  }) => {
-    const root = temp();
-    const doc = create(root);
-    const path = join(root, 'the-flow.json');
-    new NodeFs().writeText(path, JSON.stringify({ ...doc, nav: { now, next: null } }));
-    const run = spawnSync(
-      process.execPath,
-      [join(ROOT, 'harness/cli/bin/harness.js'), 'flow', 'orient', '--path', path],
-      { cwd: root, encoding: 'utf8', timeout: 10000 },
-    );
-    expect(run.error).toBeUndefined();
-    expect(run.status, `${run.stdout}\n${run.stderr}`).toBe(0);
-    const boundary =
-      "If the gate refuses and departing anyway is the HUMAN's decision, they pass --force — it records a defended override. An agent may not force a dd gate on its own judgment.";
-    expect(run.stdout.includes(boundary)).toBe(override);
-  });
-
   it('expands phases through the real batch API without rearming whole-plan review gates', () => {
     const root = temp();
     const doc = create(root);

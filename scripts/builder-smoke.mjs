@@ -180,6 +180,19 @@ function compositionWarnings() {
   checks.push('advisory-self-check-with-startup-metadata', 'self-check-digest-warning', 'self-check-root-warning');
   save('worker.txt', 'composed\n');
   save('extra.txt', 'PM work outside the map\n');
+  const tracked = cli(cwd, ['builder', 'on-track', planPath]).data.on_track;
+  assert.equal(tracked.compared, true);
+  assert.equal(tracked.basis, 'import');
+  assert.equal(tracked.includes_untracked, false);
+  assert.deepEqual(tracked.warnings, [
+    { file: 'worker.txt', owning_unit: 'tk-0002', stage: 'verify' },
+  ]);
+  const allWork = cli(cwd, ['builder', 'on-track', planPath, '--untracked']).data.on_track;
+  assert.equal(allWork.includes_untracked, true);
+  assert.deepEqual(allWork.warnings, [
+    { file: 'extra.txt', owning_unit: 'unmapped', stage: 'verify' },
+    { file: 'worker.txt', owning_unit: 'tk-0002', stage: 'verify' },
+  ]);
   git(cwd, 'add', '--', 'worker.txt', 'extra.txt');
   git(cwd, 'commit', '-m', 'Compose across mapped ownership');
   const candidate = git(cwd, 'rev-parse', 'HEAD');
@@ -188,12 +201,25 @@ function compositionWarnings() {
   assert.equal(moved.observed.source_sha, candidate);
   assert.equal(moved.expected.source_sha, baselineSha);
   checks.push('self-check-commit-warning');
+  const unitInspection = cli(cwd, [
+    'builder', 'on-track', planPath, '--unit', 'tk-0002', '--from', baselineSha, '--to', candidate,
+  ]).data.on_track;
+  assert.equal(unitInspection.compared, true);
+  assert.equal(unitInspection.includes_worktree, false);
+  assert.deepEqual(unitInspection.warnings, [
+    { file: 'extra.txt', owning_unit: 'unmapped', stage: 'delivery', unit_id: 'tk-0002' },
+  ]);
   const result = cli(cwd, ['builder', 'compose', planPath, '--verify', candidate]);
   const warnings = [
     { file: 'extra.txt', owning_unit: 'unmapped', stage: 'verify' },
     { file: 'worker.txt', owning_unit: 'tk-0002', stage: 'verify' },
   ];
   assert.deepEqual(result.data.composition.value.warnings, warnings);
+  const pmInspection = cli(cwd, [
+    'builder', 'on-track', planPath, '--from', baselineSha, '--to', candidate,
+  ]).data.on_track;
+  assert.deepEqual(pmInspection.warnings, result.data.composition.value.warnings);
+  checks.push('on-track-tracked-untracked-selection', 'on-track-unit-history', 'on-track-compose-warning-parity');
   assert.equal(result.data.composition.value.checks[0].exit_code, 0);
   assert.equal(result.data.composition.value.checks[0].stdout.trim(), 'composed bytes checked');
   const readable = readFileSync(join(cwd, teamDir, 'composition.dd.md'), 'utf8');

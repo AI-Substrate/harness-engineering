@@ -27,6 +27,7 @@ import {
   writeBuilderRecord,
 } from './records.js';
 import { verifyBuilderReview } from './review-service.js';
+import { stageBuilderSchemas } from './schema-service.js';
 import type {
   AllocationRecord,
   BuilderDeps,
@@ -243,6 +244,9 @@ export async function closeBuilderPlan(
       'Provide a path-safe nonce.',
     );
   const destination = posixJoin(survivor, generation);
+  // Keep schema discovery for the control record separate from copied workspace data.
+  const receiptRoot = posixJoin(destination, 'receipt');
+  const receiptPath = posixJoin(receiptRoot, 'preservation.dd.json');
   if (deps.fs.exists(destination))
     return builderFailure(
       ErrorCodes.BUILDER_CONFLICT,
@@ -260,6 +264,9 @@ export async function closeBuilderPlan(
         'The destination resolves into a retiring root.',
         'Choose a real independent destination.',
       );
+    deps.fs.mkdirp(receiptRoot);
+    const receiptSchemas = stageBuilderSchemas(deps, receiptRoot);
+    if (!receiptSchemas.ok) return receiptSchemas;
     const preserve = (
       source: string,
       relative: string,
@@ -375,7 +382,6 @@ export async function closeBuilderPlan(
     deps.fs.writeText(postFlightPath, `${JSON.stringify(report, null, 2)}\n`);
     // Reserve discovery before measuring the final tree. This comment is only a
     // locator: the external record is written last and absence fails closed.
-    const receiptPath = posixJoin(destination, 'preservation.dd.json');
     const located = await builderCommand(deps, deps.harness, [
       'flow',
       'comment',

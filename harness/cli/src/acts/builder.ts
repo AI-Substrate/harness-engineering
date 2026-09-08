@@ -17,6 +17,7 @@ import {
 } from '../services/builder/dispatch-service.js';
 import { checkBuilderGuide, readBuilderGuide } from '../services/builder/guide-service.js';
 import { advanceBuilderStage } from '../services/builder/lifecycle-service.js';
+import { inspectBuilderOnTrack } from '../services/builder/on-track-service.js';
 import {
   builderContext,
   builderFailure,
@@ -274,6 +275,17 @@ async function executeBuilder(
           sha256: options.sha256 as string,
         }),
       );
+    case 'on-track':
+      return named(
+        'on_track',
+        await inspectBuilderOnTrack(deps, {
+          plan: argument,
+          ...(typeof options.unit === 'string' && { unit: options.unit }),
+          ...(typeof options.from === 'string' && { from: options.from }),
+          ...(typeof options.to === 'string' && { to: options.to }),
+          ...(options.untracked === true && { untracked: true }),
+        }),
+      );
     case 'advance':
       return advanceBuilderStage(deps, { plan: argument, now: options.now as string });
     case 'compose': {
@@ -370,7 +382,9 @@ export function registerBuilderAct(program: Command, io: CliIo, deps: BuilderDep
     if (!result.ok) {
       envelope = formatError(command, result.code, result.message, deps.clock, {
         next_action: result.next_action,
-        details: result.details,
+        details: result.warnings?.length
+          ? { cause: result.details, warnings: result.warnings }
+          : result.details,
       });
     } else if (verb === 'ready' && isObject(result.value) && result.value.status !== 'ready') {
       const reading = result.value;

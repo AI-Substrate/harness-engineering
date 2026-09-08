@@ -35,7 +35,7 @@ Ship the permanent composition-warning path first: correct PM integration reache
 
 | id | title | domain | phase | state | note | receipt | done | success | notes | satisfies | satisfies_toward |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| tk-0001 | Record and expose nonblocking PM composition warnings | — | ph-1886 | [ ] unchecked | — | ../../execution-log.dd.json#entries/lg-0001 | [x] 4/4 [tk-0001](#tk-0001) | — | PM owns the coupled receipt/schema/import/verify slice; no coder release. Integrity and actual checks stay intact. | [ac-0002](../../../plan.dd.md#acceptance-criteria), [ac-0009](../../../plan.dd.md#acceptance-criteria) | — |
+| tk-0001 | Record and expose nonblocking PM composition warnings | — | ph-1886 | [x] checked | — | ../../execution-log.dd.json#entries/lg-0001 | [x] 4/4 [tk-0001](#tk-0001) | — | PM owns the coupled receipt/schema/import/verify slice; no coder release. Integrity and actual checks stay intact. | [ac-0002](../../../plan.dd.md#acceptance-criteria), [ac-0009](../../../plan.dd.md#acceptance-criteria) | — |
 
 <a id="done-when"></a>
 

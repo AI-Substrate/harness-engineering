@@ -80,6 +80,7 @@ describe('implementation guide structure', () => {
     expect(checkBuilderGuide(fixtureGuide(), criteria)).toEqual({
       valid: true,
       issues: [],
+      warnings: [],
       architectural_judgement: 'not-performed',
     });
   });
@@ -95,27 +96,44 @@ describe('implementation guide structure', () => {
     expect(guide.units[3].acceptance).toEqual([]);
     expect(checkBuilderGuide(guide, criteria).valid).toBe(true);
   });
-  it('accepts explicit subtree fences and detects nested collisions', () => {
+  it('warns for both owners of nested subtree collisions without invalidating the guide', () => {
     const guide = fixtureGuide();
     guide.units[1].paths = ['src/parser/**', 'test/parser.test.ts'];
     guide.units[3].reads[0].paths = ['src/parser/index.ts'];
     expect(checkBuilderGuide(guide, criteria).valid).toBe(true);
     guide.units[2].paths.push('src/parser/nested.ts');
-    expect(checkBuilderGuide(guide, criteria).issues).toContainEqual(
-      expect.objectContaining({ code: 'write-overlap' }),
+    const report = checkBuilderGuide(guide, criteria);
+    expect(report.valid).toBe(true);
+    expect(report.warnings).toEqual(
+      expect.arrayContaining(
+        ['tk-0002', 'tk-0003'].map((owning_unit) =>
+          expect.objectContaining({
+            code: 'write-overlap',
+            file: 'src/parser/nested.ts',
+            owning_unit,
+            stage: 'guide',
+          }),
+        ),
+      ),
     );
   });
-  it('confines subtree reads to their declared owner without prefix sibling leakage', () => {
+  it('warns about subtree read coverage without prefix sibling leakage', () => {
     const guide = fixtureGuide();
     guide.units[1].paths = ['src/parser/**', 'test/parser.test.ts'];
     guide.units[3].reads[0].paths = ['src/parser/**'];
     expect(checkBuilderGuide(guide, criteria).valid).toBe(true);
     guide.units[3].reads[0].paths = ['src/parser-other/**'];
-    expect(checkBuilderGuide(guide, criteria).issues).toContainEqual(
-      expect.objectContaining({ code: 'read-owner' }),
+    const report = checkBuilderGuide(guide, criteria);
+    expect(report.valid).toBe(true);
+    expect(report.warnings).toContainEqual(
+      expect.objectContaining({
+        code: 'read-coverage',
+        file: 'src/parser-other/**',
+        owning_unit: 'tk-0002',
+      }),
     );
   });
-  const invalid: Array<[string, (guide: Guide) => void, string]> = [
+  const cases: Array<[string, (guide: Guide) => void, string]> = [
     [
       'empty units',
       (guide) => {
@@ -224,7 +242,7 @@ describe('implementation guide structure', () => {
     [
       'nested write fence',
       (guide) => {
-        guide.units[2].paths.push('src');
+        guide.units[2].paths.push('src/**');
       },
       'write-overlap',
     ],
@@ -233,14 +251,14 @@ describe('implementation guide structure', () => {
       (guide) => {
         guide.units[1].paths.push('../escape.ts');
       },
-      'path',
+      'map-path',
     ],
     [
       'ambiguous glob fence',
       (guide) => {
         guide.units[1].paths.push('src/*.ts');
       },
-      'path',
+      'map-path',
     ],
     [
       'unknown read owner',
@@ -254,7 +272,7 @@ describe('implementation guide structure', () => {
       (guide) => {
         guide.units[1].reads[0].paths = ['unowned.ts'];
       },
-      'read-owner',
+      'read-coverage',
     ],
     [
       'undeclared read dependency',
@@ -345,7 +363,7 @@ describe('implementation guide structure', () => {
       (guide) => {
         guide.units[3].wave = 1;
       },
-      'composition-wave',
+      'wave',
     ],
     [
       'false solo decision',
@@ -362,15 +380,29 @@ describe('implementation guide structure', () => {
       'empty',
     ],
   ];
-  it.each(invalid)('rejects %s with an actionable issue', (_name, mutate, code) => {
+  const advisoryCodes = new Set([
+    'write-overlap',
+    'map-path',
+    'map-empty',
+    'map-duplicate',
+    'read-owner',
+    'read-coverage',
+    'capability-gap',
+    'capability-owner',
+    'baseline-owner',
+    'composition-owner',
+  ]);
+  it.each(cases)('distinguishes %s from structural failure', (_name, mutate, code) => {
     const guide = fixtureGuide();
     mutate(guide);
     const report = checkBuilderGuide(guide, criteria);
-    expect(report.valid).toBe(false);
+    const advisory = advisoryCodes.has(code);
+    expect(report.valid).toBe(advisory);
     expect(report.architectural_judgement).toBe('not-performed');
-    expect(report.issues).toContainEqual(
+    expect(advisory ? report.warnings : report.issues).toContainEqual(
       expect.objectContaining({ code, next_action: expect.any(String) }),
     );
+    if (advisory) expect(report.issues).toEqual([]);
   });
   it('rejects a vacuous product acceptance contract', () => {
     expect(checkBuilderGuide(fixtureGuide(), []).valid).toBe(false);
@@ -383,6 +415,82 @@ describe('implementation guide structure', () => {
     guide.composition.order.reverse();
     expect(checkBuilderGuide(guide, criteria).issues).toContainEqual(
       expect.objectContaining({ code: 'composition-order' }),
+    );
+  });
+  it('uses exact file matching rather than treating a bare path as a subtree', () => {
+    const guide = fixtureGuide();
+    guide.units[2].paths.push('src');
+    expect(checkBuilderGuide(guide, criteria).warnings).not.toContainEqual(
+      expect.objectContaining({ code: 'write-overlap' }),
+    );
+  });
+  it('keeps empty, repeated and invalid map hints advisory with honest locations', () => {
+    const guide = fixtureGuide();
+    guide.units[0].paths = [];
+    guide.units[1].paths = ['', '../escape.ts', 'src/*.ts', 'same.ts', 'same.ts'];
+    guide.units[1].reads = [{ owner: '', paths: [] }];
+    const report = checkBuilderGuide(guide, criteria);
+    expect(report.valid).toBe(true);
+    expect(report.issues).toEqual([]);
+    expect(report.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'map-empty',
+          file: '<guide:units/tk-0001/paths>',
+          owning_unit: 'tk-0001',
+        }),
+        expect.objectContaining({
+          code: 'map-path',
+          file: '<guide:units/tk-0002/paths>',
+          owning_unit: 'tk-0002',
+        }),
+        expect.objectContaining({ code: 'map-path', file: '../escape.ts', owning_unit: 'tk-0002' }),
+        expect.objectContaining({ code: 'map-path', file: 'src/*.ts', owning_unit: 'tk-0002' }),
+        expect.objectContaining({ code: 'map-duplicate', file: 'same.ts', owning_unit: 'tk-0002' }),
+        expect.objectContaining({
+          code: 'read-owner',
+          file: '<guide:units/tk-0002/reads/0/owner>',
+          owning_unit: 'unmapped',
+        }),
+        expect.objectContaining({
+          code: 'baseline-owner',
+          file: 'contracts.ts',
+          owning_unit: 'unmapped',
+        }),
+      ]),
+    );
+  });
+  it('reports declaration-only owner hints without inventing file paths or hidden ownership vetoes', () => {
+    const guide = fixtureGuide();
+    guide.capabilities[0].owner = '';
+    guide.capabilities[0].path = '';
+    guide.composition.owner = 'tk-0002';
+    const report = checkBuilderGuide(guide, criteria);
+    expect(report.valid).toBe(true);
+    expect(report.issues).toEqual([]);
+    expect(report.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'capability-owner',
+          file: `<guide:capabilities/${guide.capabilities[0].id}/owner>`,
+          owning_unit: 'unmapped',
+        }),
+        expect.objectContaining({
+          code: 'capability-path',
+          file: `<guide:capabilities/${guide.capabilities[0].id}/path>`,
+          owning_unit: 'unmapped',
+        }),
+        expect.objectContaining({
+          code: 'composition-owner',
+          file: '<guide:composition/owner>',
+          owning_unit: 'tk-0002',
+        }),
+        expect.objectContaining({
+          code: 'composition-wave',
+          file: '<guide:composition/owner>',
+          owning_unit: 'tk-0002',
+        }),
+      ]),
     );
   });
 });
@@ -629,6 +737,137 @@ describe('contract sealing and readiness', () => {
     expect(
       fixture.exec.calls.filter((call) => call.command === 'node').map((call) => call.args),
     ).toEqual([['test/contracts.mjs']]);
+  });
+  it('retains ownership guidance through unsealed readiness, sealing, successful readiness and receipt reuse', async () => {
+    const guide = fixtureGuide();
+    guide.units[0].paths = [];
+    guide.units[1].paths.push('src/renderer.ts', '../outside.ts');
+    guide.units[1].reads[0].owner = '';
+    guide.capabilities = [];
+    guide.composition.owner = 'tk-0002';
+    const fixture = contractFixture(guide);
+    const unsealed = value(await fixture.ready('tk-0002'));
+    expect(unsealed.status).toBe('not-ready');
+    expect(unsealed.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'baseline-owner',
+          file: 'contracts.ts',
+          owning_unit: 'unmapped',
+        }),
+        expect.objectContaining({
+          code: 'map-path',
+          file: '../outside.ts',
+          owning_unit: 'tk-0002',
+        }),
+        expect.objectContaining({
+          code: 'composition-owner',
+          file: '<guide:composition/owner>',
+          owning_unit: 'tk-0002',
+        }),
+      ]),
+    );
+    const sealed = value(await fixture.seal());
+    expect(sealed.value.warnings).toEqual(unsealed.warnings);
+    const ready = value(await fixture.ready('tk-0002'));
+    expect(ready.status).toBe('ready');
+    expect(ready.warnings).toEqual(unsealed.warnings);
+    const bytes = fixture.fs.readText(`/repo/${baselinePath}`);
+    expect(value(await fixture.seal())).toEqual(sealed);
+    expect(fixture.fs.readText(`/repo/${baselinePath}`)).toBe(bytes);
+  });
+
+  it('does not turn a dependency ownership hint into a proof prerequisite', async () => {
+    /*
+    Test Doc:
+    - Why: dependency.paths indirectly vetoed readiness after ownership checks became advisory.
+    - Contract: only actual declared proof and committed dependency evidence determine readiness.
+    - Usage Notes: the invalid map hint is not a baseline input and is never read.
+    - Quality Contribution: catches an ownership gate hidden behind dependency proof selection.
+    */
+    const guide = fixtureGuide();
+    guide.units[0].paths.push('../outside.ts');
+    const fixture = contractFixture(guide);
+    const seal = value(await fixture.seal());
+    expect(seal.value.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'map-path',
+          file: '../outside.ts',
+          owning_unit: 'tk-0001',
+        }),
+      ]),
+    );
+    expect(value(await fixture.ready('tk-0002')).status).toBe('ready');
+    fixture.changeRecord<BaselineReceipt>(baselinePath, 'baseline', (receipt) => {
+      receipt.checks[0].exit_code = 1;
+    });
+    expect(value(await fixture.ready('tk-0002'))).toMatchObject({
+      status: 'not-ready',
+      issues: expect.arrayContaining([expect.objectContaining({ code: 'baseline-proof' })]),
+    });
+  });
+
+  it.each([
+    'git',
+    'check',
+  ] as const)('preserves map warnings when sealing fails at %s', async (failure) => {
+    const guide = fixtureGuide();
+    guide.units[0].paths = [];
+    const fixture = contractFixture(guide);
+    fixture.scripts[
+      failure === 'git' ? 'git rev-parse --show-toplevel' : 'node test/contracts.mjs'
+    ] = { code: 1, stderr: 'operational proof failure' };
+    const result = await fixture.seal();
+    expect(result).toMatchObject({
+      ok: false,
+      warnings: expect.arrayContaining([
+        expect.objectContaining({
+          file: 'contracts.ts',
+          owning_unit: 'unmapped',
+          code: 'baseline-owner',
+        }),
+      ]),
+    });
+    expect(fixture.fs.exists(`/repo/${baselinePath}`)).toBe(false);
+  });
+  it('retains advisory warnings alongside actual proof failures and unavailable Git evidence', async () => {
+    const guide = fixtureGuide();
+    guide.units[0].paths = [];
+    const fixture = contractFixture(guide);
+    const sealed = value(await fixture.seal());
+    fixture.scripts['git rev-parse --show-toplevel'] = { code: 1, stderr: 'Git unavailable' };
+    expect(value(await fixture.ready())).toMatchObject({
+      status: 'cant-tell',
+      warnings: sealed.value.warnings,
+    });
+    delete fixture.scripts['git rev-parse --show-toplevel'];
+    fixture.changeRecord<BaselineReceipt>(baselinePath, 'baseline', (receipt) => {
+      receipt.checks[0].exit_code = 1;
+    });
+    expect(value(await fixture.ready())).toMatchObject({
+      status: 'not-ready',
+      warnings: sealed.value.warnings,
+      issues: expect.arrayContaining([expect.objectContaining({ code: 'baseline-proof' })]),
+    });
+  });
+  it('does not discard map guidance when a separate structural check makes readiness unavailable', async () => {
+    const guide = fixtureGuide();
+    guide.units[0].paths = [];
+    guide.checks[0].cwd = '..';
+    const fixture = contractFixture(guide);
+    expect(value(await fixture.ready())).toMatchObject({
+      status: 'not-ready',
+      issues: expect.arrayContaining([expect.objectContaining({ code: 'executable-check' })]),
+      warnings: expect.arrayContaining([
+        expect.objectContaining({
+          code: 'baseline-owner',
+          file: 'contracts.ts',
+          owning_unit: 'unmapped',
+        }),
+      ]),
+    });
+    expect(await fixture.seal()).toMatchObject({ ok: false, code: 'E471' });
   });
   it('accepts receipt-only descendant commits without changing historical source binding', async () => {
     const fixture = contractFixture();
@@ -1126,7 +1365,6 @@ describe('immutable baseline seals', () => {
     expect(await fixture.seal()).toMatchObject({
       ok: false,
       code: 'E472',
-      next_action: expect.stringContaining('fresh guide.baseline.receipt identity'),
     });
     expect(fixture.fs.readText(`/repo/${baselinePath}`)).toBe(source);
     expect(fixture.fs.readText(`/repo/${baselinePath.replace('.json', '.md')}`)).toBe(face);
@@ -1214,7 +1452,6 @@ describe('immutable baseline seals', () => {
     fixture.fs.deleteFile('/repo/contracts.ts');
     expect(await fixture.seal()).toMatchObject({
       ok: false,
-      next_action: expect.stringContaining('fresh guide.baseline.receipt identity'),
     });
     expect(
       value(readBuilderRecord<BaselineReceipt>(fixture.deps, baselinePath, 'baseline')),

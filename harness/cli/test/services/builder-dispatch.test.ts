@@ -19,6 +19,7 @@ import {
   dispatchBuilderUnit,
   verifyBuilderParentWorktreeAuthority,
 } from '../../src/services/builder/dispatch-service.js';
+import { checkBuilderGuide } from '../../src/services/builder/guide-service.js';
 import {
   prepareBuilderPacket,
   seedBuilderFile,
@@ -41,6 +42,7 @@ import type {
   DispatchInput,
   DispatchReceipt,
   DispatchResult,
+  Guide,
   WorkspaceInput,
 } from '../../src/services/builder/types.js';
 import { resolve } from '../../src/services/settings/settings.js';
@@ -68,10 +70,21 @@ const PEER = 'peer-coder';
 const PARENT = 'peer-pm';
 const MODEL = 'github-copilot/gpt-6-astra';
 
-function scenario() {
+function scenario(configureGuide?: (guide: Guide) => void) {
   const unit = 'tk-0002';
   const fixture = builderFixture();
   const { fs, clock, guide } = fixture;
+  if (configureGuide) {
+    configureGuide(guide);
+    fs.writeText(
+      `/repo/${BUILDER_FIXTURE_GUIDE}`,
+      JSON.stringify({
+        dd: { schema: 'builder/impl-guide' },
+        sections: Object.entries(guide).map(([name, value]) => ({ name, value })),
+        references: [],
+      }),
+    );
+  }
   const product = JSON.parse(fs.readText(`/repo/${BUILDER_FIXTURE_PLAN}`)!);
   product.sections.find(
     (section: { name: string }) => section.name === 'acceptance_criteria',
@@ -216,7 +229,17 @@ function scenario() {
     },
     readiness: async () =>
       flags.readiness === 'ready'
-        ? { ok: true, value: { status: 'ready', issues: [], context, guide, baseline } }
+        ? {
+            ok: true,
+            value: {
+              status: 'ready',
+              issues: [],
+              context,
+              guide,
+              baseline,
+              warnings: checkBuilderGuide(guide, [{ id: 'ac-0001' }, { id: 'ac-0002' }]).warnings,
+            },
+          }
         : {
             ok: true,
             value: {
@@ -635,6 +658,65 @@ describe('Builder isolated dispatch', () => {
     expect(sends(s)).toHaveLength(1);
     expect(result.dispatch.value).not.toHaveProperty('acknowledgement');
     expect(result.dispatch.value).not.toHaveProperty('release');
+  });
+  it('dispatches ownership-only guide drift and retains its warnings in the delivered receipt', async () => {
+    const s = scenario((guide) => {
+      guide.units[1].paths = [];
+      guide.units[1].reads[0].owner = '';
+      guide.capabilities[0].owner = '';
+      guide.composition.owner = 'tk-0002';
+    });
+    const result = value(await dispatchBuilderUnit(s.deps, s.input));
+    expect(result.dispatch.value.delivery?.outcome).toBe('queued');
+    const receipt = value(
+      readBuilderRecord<DispatchReceipt>(s.deps, result.dispatch.ref.path, 'dispatch'),
+    );
+    expect(receipt.value.warnings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'map-empty',
+          file: '<guide:units/tk-0002/paths>',
+          owning_unit: 'tk-0002',
+          stage: 'guide',
+        }),
+        expect.objectContaining({
+          code: 'read-owner',
+          file: 'contracts.ts',
+          owning_unit: 'unmapped',
+          stage: 'guide',
+        }),
+        expect.objectContaining({
+          code: 'capability-owner',
+          file: '<guide:capabilities/cp-0001/owner>',
+          owning_unit: 'unmapped',
+          stage: 'guide',
+        }),
+        expect.objectContaining({
+          code: 'composition-owner',
+          file: '<guide:composition/owner>',
+          owning_unit: 'tk-0002',
+          stage: 'guide',
+        }),
+      ]),
+    );
+    expect(result.packet.value.unit.paths).toEqual([]);
+  });
+
+  it('retains map warnings when actual work-packet delivery is refused', async () => {
+    const s = scenario((guide) => {
+      guide.units[1].paths = [];
+    });
+    s.flags.delivery = 'refused';
+    expect(await dispatchBuilderUnit(s.deps, s.input)).toMatchObject({
+      ok: false,
+      warnings: expect.arrayContaining([
+        expect.objectContaining({
+          code: 'map-empty',
+          file: '<guide:units/tk-0002/paths>',
+          owning_unit: 'tk-0002',
+        }),
+      ]),
+    });
   });
   it('accepts an explicit clone override, but refuses solo and unsupported worktree before allocation', async () => {
     const overridden = scenario();

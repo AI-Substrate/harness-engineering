@@ -34,6 +34,16 @@ interface WorkspaceAllocationLocator {
   id: string;
 }
 
+/** A locator identifies provenance; it never changes who may retire the workspace. */
+function finalizedAllocation(value: AllocationRecord): boolean {
+  if (value.retired_at !== undefined) return false;
+  return value.owner === 'harness'
+    ? value.journal.includes('initialized')
+    : value.purpose === 'plan' &&
+        (value.owner === 'external' || value.owner === 'pij') &&
+        value.journal.includes('adopted');
+}
+
 /** A locator only: ownership and mutable facts remain exclusively in the original DD record. */
 function readWorkspaceAllocationLocator(
   deps: BuilderDeps,
@@ -97,17 +107,15 @@ function readWorkspaceAllocationLocator(
   if (
     !record.ok ||
     record.value.value.id !== ref.id ||
-    record.value.value.owner !== 'harness' ||
     allocationPath(record.value.value.authority_root, record.value.value.id) !== ref.path ||
     record.value.value.root !== root ||
     record.value.value.git_dir !== gitDir ||
-    record.value.value.retired_at !== undefined ||
-    !record.value.value.journal.includes('initialized')
+    !finalizedAllocation(record.value.value)
   )
     return builderFailure(
       ErrorCodes.BUILDER_OWNERSHIP,
-      'The workspace locator does not resolve its live initialized harness-owned allocation identity.',
-      'Recover the original creator authority; never replace it with a clone-local allocation.',
+      'The workspace locator does not resolve its live finalized allocation identity.',
+      'Recover the original recorded authority; never replace it with a different allocation.',
     );
   return { ok: true, value: record.value.value };
 }
@@ -119,16 +127,14 @@ export function bindWorkspaceAllocation(
   const value = allocation.value;
   const path = posixJoin(value.git_dir, 'builder/allocation-ref');
   if (
-    value.owner !== 'harness' ||
-    value.retired_at !== undefined ||
-    !value.journal.includes('initialized') ||
+    !finalizedAllocation(value) ||
     allocation.ref.path !== allocationPath(value.authority_root, value.id) ||
     toPosix(deps.fs.normalizeBundleTargetIdentity(path)) !== path
   )
     return builderFailure(
       ErrorCodes.BUILDER_OWNERSHIP,
       'Cannot bind an unfinalized or unverified workspace allocation locator.',
-      'Use the live initialized harness-created allocation and unchanged Git directory.',
+      'Use the initialized managed allocation or adopted external/pij plan record and its unchanged Git directory.',
     );
   // The authority is mutable (for example peer_id binding); only its identity is stable.
   const locator: WorkspaceAllocationLocator = { path: allocation.ref.path, id: value.id };

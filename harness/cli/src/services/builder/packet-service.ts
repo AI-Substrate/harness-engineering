@@ -268,8 +268,8 @@ export function prepareBuilderPacket(
       posixRelative(deps.repoRoot, context.guidePath),
       posixRelative(deps.repoRoot, context.teamDir),
       '.harness/government/',
-      'All source paths outside unit.paths; sibling implementations; global settings and deployed skills.',
-      'Pushes, merges, canonical lifecycle mutations and nested peers without PM approval.',
+      'Global settings, deployed skills, unrelated workspaces and changes on main without user authorization.',
+      'Pushes, PRs, merges and destructive operations without user authorization; canonical lifecycle mutations and nested peers without PM approval.',
     ],
     instructions: [
       `You own ${unit.paths.join(', ')}.`,
@@ -278,7 +278,9 @@ export function prepareBuilderPacket(
       `Done means ${acceptance.join('; ')}. Interface: ${unit.interface}. Proof: ${unit.proof.join(', ')}.`,
       `Work packet: ${posixRelative(deps.repoRoot, builderRecordPath(context, 'packet', attempt))}. Use the measured SHA-256 in the dispatch message for the optional advisory builder self-check.`,
       `Expected checkout ${root}; source commit ${baseline.value.source_sha}. A self-check warning names a mismatch to inspect; it is not permission or a second work grant.`,
-      `Receiving this packet means do the unit within its map. Consume frozen reads rather than sibling implementation code. Return scoped commits and proof to ${parent}.`,
+      `Receiving this packet means do the unit. Its write/read maps guide you, not fence source access; out-of-map edits need no approval or justification. Prefer frozen interfaces for independent work. Return committed changes, proof and visible file/owning_unit warnings to ${parent}.`,
+      `Optional read-only comparison: harness builder on-track ${baseline.value.plan.path} --unit ${unit.id} [--from <ref>] [--to <ref>] [--untracked]. No readiness, seal, review or receipt prerequisite; no writes; exit 0. Show compared, basis, measured from/to SHAs, includes_worktree/includes_untracked, warnings and issues. Unavailable comparison returns compared:false plus actionable issues.`,
+      `On-track defaults to the sealed source, otherwise HEAD; malformed basis is an issue, not fallback. It includes committed touched paths (even reverted writes) plus tracked staged/unstaged work; --untracked explicitly adds new paths. Explicit --to is committed-only. Omitting --unit compares PM maps using imported integration_sha, otherwise the sealed source or HEAD.`,
     ],
   };
   const stored = writeBuilderRecord(deps, builderRecordPath(context, 'packet', attempt), packet);

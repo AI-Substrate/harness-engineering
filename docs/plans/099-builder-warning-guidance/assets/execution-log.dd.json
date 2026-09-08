@@ -34,6 +34,28 @@
             "../plan.dd.json#acceptance_criteria/ac-0006",
             "../plan.dd.json#acceptance_criteria/ac-0007"
           ]
+        },
+        {
+          "id": "lg-0003",
+          "at": "2026-09-08T02:05:17.212578+00:00",
+          "text": "Increment 3 source 82a481e9a482bac03b80c88d726e051d91ecdc74: shared file/owning_unit/stage warnings now cover guide, readiness, sealing, dispatch, delivery, import, verification and advancement. Named-unit on-track compares complete committed history (including reverted writes); PM mode compares the integration delta. Tracked working changes, optional untracked files, explicit committed endpoints and incomplete basis observations are distinct, exit-zero reports without mutation. Actual malformed evidence, duplicate peer, wrong tree/lineage and rewritten baseline still refuse. Focused behavior/integrity regressions and independent initial-plus-corrective-delta reviews passed. The all-scope harness checks envelope at this source reports tests, Biome, typecheck and all drift/skills checks passing; architecture, Markdown and Windows diagnostics remain advisories, not clean grades. A fresh offline packed consumer smoke passed the actual CLI/Git on-track scope/history/parity cases, advisory self-checks, schema preservation, rendered warnings and a real failing composition check retaining warnings. Public help, docs, templates and skills have the warning-first cutover; historical formats are readable but no ack/amend alias or release gate is restored. Native-discovered adopted-plan locator and multi-root preservation-schema failures were fixed in cc26c32152c5a847316b2bcab5cac6f06d94fd65 and 82a481e9a482bac03b80c88d726e051d91ecdc74 with real Git/schema regression proof. This source proof does not claim global activation or a Windows-host native run.",
+          "links": [
+            "../plan.dd.json#acceptance_criteria/ac-0003",
+            "../plan.dd.json#acceptance_criteria/ac-0004",
+            "../plan.dd.json#acceptance_criteria/ac-0008",
+            "../plan.dd.json#acceptance_criteria/ac-000a"
+          ]
+        },
+        {
+          "id": "lg-0004",
+          "at": "2026-09-08T02:14:59.219136+00:00",
+          "text": "New local-only native operational proof at consumer artifact bfb85d69debc4b43d6f81046e1b9973dd035f21a used an actual PM, two distinct worker clones and an independent reviewer. Map-first direct dispatch led to advisory self-check/on-track observations, cross-map worker fixtures, a harmless PM edit in a worker path, warning-bearing import/composition and configured integration output. A deliberately mismatched packet digest refused before PM HEAD mutation; a contradictory approved review with an unresolved material finding was also rejected, then corrected by the reviewer itself. Both original refusals remain. Supported advancement, archival and post-flight departure reached ship; factual flow completion and a final supported close refresh followed. Main independently verified 481 canonical inventory entries, 21 Git refs, 11 canonical receipt hashes, freshness of all 475 ordinary source entries and six WIP patches, plus self-contained retained Git objects. Separate external retention preserved all four participant roots, runtime/source snapshots, original failures and audited local-native JSONL; 9098 files were independently rehashed and contained, with four readable workspace archives and Git bundles. Retained report SHA-256: 28f9f9b295b5f19df3f4d65b47ed38909f03037ff74d975714d72003e2aa210b; outer preservation SHA-256: 2116a438625fc3aa2c46ca4d8eaeaa1fb64cccf84b2ce9506e943fbbcf01be1b. Verdict: operational API proof passed; strict run compliance failed because four reviewer-private git merge --ff-only syncs violated the blanket task restriction, with PM steering requesting a fast-forward. No merge commits or consumer/production merge occurred. Full guided-skill conformance is not claimed: unavailable hook-bridge attempts are explicit. Provider identity is configuration evidence only; consumer error-exit regression coverage and absolute-path replay limits remain accepted caveats. No Flowspace invocation was found in scoped tool-call evidence; explicit telemetry/MCP controls were verified. Earlier plan-098 and consumer outcomes are unchanged. No global activation, publication of the private consumer, retirement or deletion occurred.",
+          "links": [
+            "../plan.dd.json#acceptance_criteria/ac-000b",
+            "../plan.dd.json#acceptance_criteria/ac-0008",
+            "backpressure.dd.json#rows/bp-000b",
+            "tasks/phase-3/tasks.dd.json#done_when/tk-0002"
+          ]
         }
       ]
     }

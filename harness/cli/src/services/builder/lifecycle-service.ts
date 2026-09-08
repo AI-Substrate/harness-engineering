@@ -17,6 +17,7 @@ import type {
   BuilderContext,
   BuilderDeps,
   BuilderResult,
+  OwnershipWarning,
   PreservationReceipt,
 } from './types.js';
 
@@ -242,10 +243,12 @@ export async function advanceBuilderStage(
     if (!reviewed.ok) return reviewed;
     // Baseline sealing is an implementation substep, not a prerequisite for entering it.
   }
+  let warnings: OwnershipWarning[] | undefined;
   if (stage(current, 'phase') || stage(current, 'review') || stage(current, 'post-flight')) {
     if (!loaded.ok) return loaded;
     const composed = await verifyBuilderComposition(deps, context.value, loaded.value.guide.value);
     if (!composed.ok) return composed;
+    warnings = composed.value.value.warnings;
   }
   if (stage(current, 'review') || stage(current, 'post-flight')) {
     if (!loaded.ok) return loaded;
@@ -298,7 +301,10 @@ export async function advanceBuilderStage(
   const after = await readBuilderFlow(deps, context.value);
   if (!after.ok) return after;
   return after.value.nav?.now === input.now
-    ? { ok: true, value: { flow: context.value.flowPath, now: input.now } }
+    ? {
+        ok: true,
+        value: { flow: context.value.flowPath, now: input.now, ...(warnings && { warnings }) },
+      }
     : builderFailure(
         ErrorCodes.BUILDER_PROOF,
         'The owning flow did not reach the requested stage.',
