@@ -1,0 +1,16 @@
+contracts.ts
+  h_9e71e8b09f7cf2 2-3
+test/integration.mjs
+  h_9e71e8b09f7cf2 1-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "f3fc0e331d8ee296a3e72565590aee7c898072a8",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
