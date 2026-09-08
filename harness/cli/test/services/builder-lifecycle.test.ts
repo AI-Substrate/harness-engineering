@@ -1540,11 +1540,14 @@ describe('Builder already-integrated observation through real Git', () => {
       for (const cwd of [repo, ...deliveries.map((delivery) => delivery.workspace)]) {
         const gitDir = posixJoin(cwd, '.git');
         const paths = (await runGit(['ls-files', '-z'], cwd)).split('\0').filter(Boolean);
+        const index = fs.readBytesNoFollow(posixJoin(gitDir, 'index'));
+        if (index === null) throw new Error(`Fixture Git index is unreadable: ${gitDir}`);
         repositories.push({
-          git: (fs.listRegularFilesNoFollow(gitDir) as string[]).map((path) => [
-            path,
-            sha256(fs.readBytesNoFollow(posixJoin(gitDir, path)) as Uint8Array),
-          ]),
+          git: {
+            head: (await runGit(['rev-parse', 'HEAD'], cwd)).trim(),
+            refs: await runGit(['for-each-ref', '--format=%(refname) %(objectname)'], cwd),
+            index: sha256(index),
+          },
           source: paths.map((path) => {
             const absolute = posixJoin(cwd, path);
             const stat = lstatSync(absolute, { throwIfNoEntry: false });
