@@ -1074,6 +1074,77 @@ describe('Builder committed composition', () => {
     expect(s.calls.some((call) => call.args.includes('fetch'))).toBe(false);
   });
 
+  it('keeps harness records outside composition proof and accepts the original review afterward', async () => {
+    const s = scenario();
+    const record = '.harness/records/retro/2026-09-08/001-delivery.md';
+    s.fs.writeText(`/repo/${record}`, 'Observed delivery friction.\n');
+    s.scripts['git -c core.hooksPath= ls-files -z'] = {
+      code: 0,
+      stdout: `contracts.ts\0src/main.ts\0${record}\0`,
+      stderr: '',
+      ok: true,
+    };
+    s.state.dirty = `${record}\0`;
+    s.composition({ artifact_sha: undefined, checks: [] });
+    const proof = value(
+      await composeBuilderUnits(s.deps, { plan: BUILDER_FIXTURE_PLAN, mode: 'verify', sha: C }),
+    );
+    s.fs.writeText(`/repo/${record}`, 'Updated observed delivery friction.\n');
+    s.state.head = D;
+    s.state.delta = `${record}\0`;
+    const receipt = s.review('composition');
+    const accepted = value(
+      await recordBuilderReview(s.deps, { plan: BUILDER_FIXTURE_PLAN, receipt }),
+    );
+    expect(accepted.value.subject_sha).toBe(C);
+    expect(value(await verifyBuilderComposition(s.deps, s.context, s.guide)).ref).toEqual(
+      proof.ref,
+    );
+  });
+
+  it('reads legacy composition snapshots without rebinding mutable harness records', async () => {
+    const s = scenario();
+    const record = '.harness/records/retro/2026-09-08/001-delivery.md';
+    s.fs.writeText(`/repo/${record}`, 'Original record.\n');
+    const proof = s.composition({
+      files: [s.digest('contracts.ts'), s.digest('src/main.ts'), s.digest(record)],
+    });
+    s.fs.writeText(`/repo/${record}`, 'Later record.\n');
+    expect(value(await verifyBuilderComposition(s.deps, s.context, s.guide)).ref).toEqual(
+      proof.ref,
+    );
+    s.fs.writeText('/repo/src/main.ts', 'Unproved source change.\n');
+    expect(await verifyBuilderComposition(s.deps, s.context, s.guide)).toMatchObject({
+      ok: false,
+      code: 'E475',
+    });
+  });
+
+  it('does not exempt extension source or records-prefix siblings alongside record changes', async () => {
+    const s = scenario();
+    s.composition();
+    const record = '.harness/records/retro/2026-09-08/001-delivery.md';
+    for (const source of [
+      '.harness/extensions/example/extension.ts',
+      '.harness/records-extra/source.ts',
+    ]) {
+      s.state.dirty = `${record}\0${source}\0`;
+      expect(await verifyBuilderComposition(s.deps, s.context, s.guide)).toMatchObject({
+        ok: false,
+        code: 'E475',
+        details: [source],
+      });
+      s.state.dirty = '';
+      s.state.head = D;
+      s.state.delta = `${record}\0${source}\0`;
+      expect(await verifyBuilderComposition(s.deps, s.context, s.guide)).toMatchObject({
+        ok: false,
+        code: 'E475',
+      });
+      s.state.delta = '';
+    }
+  });
+
   it('invalidates stale source bytes and post-proof code commits', async () => {
     const s = scenario();
     s.composition();

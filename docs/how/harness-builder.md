@@ -150,6 +150,8 @@ Integrity refusals still name cause and fix: wrong tree/branch/commit → return
 
 Coder and PM maps are guidance, not permission. `composition.value.warnings` retains guide, delivery and import observations, then refreshes verify-stage warnings on each verification. Each row names `file`, scalar `owning_unit` (unit ID or `unmapped`) and `stage` (`guide|delivery|import|verify`); multiple owners produce separate rows and coder delivery rows include the actor `unit_id`. Guide-only declarations may use `<guide:field>` with an actionable `code`, `message` and `next_action` instead of inventing a file. Read these warnings alongside the exact artifact and checks during independent review. Ownership warnings do not block readiness, sealing, dispatch, composition or advance; real Git/replay, filesystem confinement, structural and product-check failures still fail with their warnings visible.
 
+Composition source checks exclude plan-record folders and the reserved `.harness/records/**` namespace. Uncommitted retros and later record-only commits do not invalidate unchanged composed code or require another review. New composition snapshots omit harness records; historical receipts remain unchanged when re-observed. Records still belong in preservation. This does **not** exempt executable `.harness/extensions/**`, newly added source outside the old snapshot, or explicitly sealed baseline files.
+
 No silent review fallback: unavailable requested cross-model review is unfulfilled. A justified solo implementation does not change this promise.
 
 ## Record the actual proof

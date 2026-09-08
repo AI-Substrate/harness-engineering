@@ -56,6 +56,15 @@
             "backpressure.dd.json#rows/bp-000b",
             "tasks/phase-3/tasks.dd.json#done_when/tk-0002"
           ]
+        },
+        {
+          "id": "lg-0005",
+          "at": "2026-09-08T03:16:56.418034+00:00",
+          "text": "Post-activation review-intake repair: mandatory harness retro records were incorrectly treated as changed or uncommitted executable source. The reserved .harness/records namespace is now excluded consistently from source cleanliness, post-proof commit deltas and new composition snapshots; old receipt bytes remain unchanged when re-observed. Explicit baseline bindings and actual source, extension and records-prefix-sibling edits still fail. Snapshot-membership-only delta checks were rejected because they would miss newly added source files. Three focused regressions failed before repair; the complete lifecycle suite passed 115/115 afterward. Source and fresh offline packed-consumer smokes passed actual Git scenarios for untracked, staged, modified and committed records, retained original artifact/warnings, tracked-record snapshot updates and rejection of new extension source. These smokes use seeded composition evidence and real filesystem/Git adapters, not a newly executed native review. Consumer failure receipts remain private and unchanged; no consumer or global deployment was modified. Composition source SHA-256: 035768a57e4c5041cafd63caa43b7997d1006a4488b1e2766bc2da612ebdd4a2. The final all-scope harness checks gate exited zero with tests, Biome, typecheck and drift/skills gates passing; architecture, Markdown and Windows advisories remain. A read-only candidate verifier also accepted the reported live consumer original composition and its eight stored successful check receipts with warnings retained. This did not rerun its checks, perform review intake, rewrite receipts or activate the global runtime.",
+          "links": [
+            "../plan.dd.json#acceptance_criteria/ac-0009",
+            "../plan.dd.json#acceptance_criteria/ac-000b"
+          ]
         }
       ]
     }

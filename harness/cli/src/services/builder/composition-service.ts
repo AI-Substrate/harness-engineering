@@ -208,7 +208,12 @@ export async function builderHead(deps: BuilderDeps): Promise<BuilderResult<stri
       );
 }
 
-/** Plan evidence is deliberately uncommitted; executable source never is. */
+/** The record writer's reserved data namespace, not executable harness extensions. */
+function isHarnessRecord(repoRoot: string, path: string): boolean {
+  return isWithin(posixJoin(repoRoot, '.harness/records'), resolveInRepo(path, repoRoot));
+}
+
+/** Plan and harness records may be uncommitted; executable source never is. */
 export async function cleanBuilderSource(
   deps: BuilderDeps,
   context: BuilderContext,
@@ -223,6 +228,7 @@ export async function cleanBuilderSource(
     if (!result.ok) return result;
     const dirty = nulPaths(result.value).filter(
       (path) =>
+        !isHarnessRecord(deps.repoRoot, path) &&
         !isWithin(context.planDir, resolveInRepo(path, deps.repoRoot)) &&
         !isWithin(originalPlanDir, resolveInRepo(path, deps.repoRoot)),
     );
@@ -230,7 +236,7 @@ export async function cleanBuilderSource(
       return builderFailure(
         ErrorCodes.BUILDER_PROOF,
         'Uncommitted source would contaminate the artifact proof.',
-        'Commit the declared source changes before verification. Plan receipts may remain uncommitted.',
+        'Commit the source changes before verification. Plan and .harness/records receipts may remain uncommitted.',
         dirty,
       );
   }
@@ -562,11 +568,12 @@ export async function verifyBuilderComposition(
     head.value,
   ]);
   if (!delta.ok) return delta;
-  // Later factual plan/receipt commits do not turn unchanged code into a new artifact.
+  // Later plan/record commits do not turn unchanged code into a new artifact.
   const originalDir = posixDirname(baseline.value.value.plan.path);
   if (
     nulPaths(delta.value).some(
       (path) =>
+        !isHarnessRecord(deps.repoRoot, path) &&
         !isWithin(context.planDir, resolveInRepo(path, deps.repoRoot)) &&
         !isWithin(resolveInRepo(originalDir, deps.repoRoot), resolveInRepo(path, deps.repoRoot)),
     )
@@ -579,6 +586,8 @@ export async function verifyBuilderComposition(
   const clean = await cleanBuilderSource(deps, context, resolveInRepo(originalDir, deps.repoRoot));
   if (!clean.ok) return clean;
   for (const ref of value.files) {
+    // Historical snapshots may include records; do not rewrite those receipts.
+    if (isHarnessRecord(deps.repoRoot, ref.path)) continue;
     const checked = sameBuilderFile(deps, ref);
     if (!checked.ok) return checked;
   }
@@ -775,7 +784,11 @@ export async function composeBuilderUnits(
   if (!files.ok) return files;
   const snapshot: FileDigest[] = [];
   for (const file of nulPaths(files.value)) {
-    if (isWithin(context.planDir, resolveInRepo(file, deps.repoRoot))) continue;
+    if (
+      isHarnessRecord(deps.repoRoot, file) ||
+      isWithin(context.planDir, resolveInRepo(file, deps.repoRoot))
+    )
+      continue;
     const digest = digestBuilderFile(deps, file);
     if (!digest.ok) return digest;
     snapshot.push(digest.value);
