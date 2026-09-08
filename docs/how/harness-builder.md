@@ -185,6 +185,8 @@ harness builder tidy <allocation.dd.json> --preservation <preservation.dd.json>
 
 Each preservation generation writes its authoritative record under `receipt/preservation.dd.json`, with a separately staged schema namespace beside that control record. Copied workspace schemas remain evidence in sibling data directories, so several repositories cannot make the receipt's schema ambiguous. Use the returned receipt path rather than constructing it. A failed close may already have archived the plan; retry through `builder close` on that archived path into a fresh generation, preserving the failed generation and never moving the plan back by hand.
 
+Preservation receipts have a **64 MiB UTF-8 byte limit** because their inline inventory covers whole workspaces. Other Builder records and ordinary document reads keep their **4 MiB** limit. Preservation reads, identical retries and compare-and-swap writes use the same larger bound; the writer rejects an oversized document before publishing source or its rendered view. Existing preservation receipts between 4 and 64 MiB can be consumed unchanged—no repeat close, inventory truncation or WIP deletion is needed. Size limits do not waive schema, digest, filesystem confinement or preservation-freshness checks.
+
 Completed historical DD/Markdown plans retain their read path without conversion, new guide gates or node resurrection. Factual progress and archive relocation preserve material intent/guide/code bindings without circular rebaseline demands.
 
 ## Result and permission boundaries

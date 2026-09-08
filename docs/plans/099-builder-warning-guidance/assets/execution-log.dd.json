@@ -65,6 +65,14 @@
             "../plan.dd.json#acceptance_criteria/ac-0009",
             "../plan.dd.json#acceptance_criteria/ac-000b"
           ]
+        },
+        {
+          "id": "lg-0006",
+          "at": "2026-09-08T04:07:37.334570+00:00",
+          "text": "Post-activation preservation-reader repair: close could publish an inline inventory larger than the shared 4 MiB reader ceiling, leaving post-flight unable to consume its own successful receipt. Typed preservation reads now use a bounded 64 MiB limit; ordinary records and document reads remain at 4 MiB. The writer selects the matching limit for serialization and compare-and-swap reads, and refuses oversized UTF-8 source before rendering or publication instead of creating unreadable evidence. Existing receipt format, inventory and digests are unchanged; no close replay or WIP deletion is required. The large-preservation read and oversized ordinary-write regressions failed before the repair; all 200 contracts/lifecycle tests passed afterward, including full inventory round-trip, identical retries, digest-bound updates, stale-CAS refusal, ordinary size bounds, preservation upper bound and symlink refusal. A read-only candidate loaded the existing 16,388,651-byte consumer receipt with all 26,313 inventory entries, 26,196 WIP entries and 40 Git refs; the before/after receipt SHA-256 matched. This probe did not rerun close, advance the consumer, revalidate the stored file inventory or activate a global runtime. Record-service source SHA-256: 45019d46f185345f57294bf1330e7468ea692ca4db98e49c76c3b2f787c09df7. Final source and fresh offline packed-consumer Builder smokes passed. The all-scope harness checks gate exited zero: tests, Biome, typecheck and drift/skills gates passed; existing architecture, Markdown and Windows advisories remain. Focused independent stateless supplied-source critique found no material issue; it is not a native consumer review.",
+          "links": [
+            "../plan.dd.json#acceptance_criteria/ac-000b"
+          ]
         }
       ]
     }

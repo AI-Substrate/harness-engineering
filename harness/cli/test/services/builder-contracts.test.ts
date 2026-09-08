@@ -79,6 +79,80 @@ describe('Builder shared DD record contract', () => {
     if (saved.ok) expect(saved.value.ref.sha256).toBe(sha256(source));
   });
 
+  it('reads and safely updates preservation inventories beyond the ordinary record limit', () => {
+    const { deps, fs } = builderFixture();
+    const path = '/repo/records/preservation.dd.json';
+    const entry = fixturePreservation().inventory[0];
+    if (!entry) throw new Error('Missing fixture inventory entry.');
+    const record = fixturePreservation({
+      inventory: Array.from({ length: 10000 }, (_, index) => ({
+        ...entry,
+        source: `/workers/example/${'entry-'.repeat(24)}${index}.json`,
+        destination: `/survivor/example/${'entry-'.repeat(24)}${index}.json`,
+      })),
+    });
+    const saved = writeBuilderRecord(deps, path, record);
+    if (!saved.ok) throw new Error(saved.message);
+    const source = fs.readText(path);
+    if (source === null) throw new Error('The writer omitted the preservation receipt.');
+    expect(Buffer.byteLength(source, 'utf8')).toBeGreaterThan(4 * 1024 * 1024);
+    const loaded = readBuilderRecord<typeof record>(deps, path, 'preservation');
+    if (!loaded.ok) throw new Error(loaded.message);
+    expect(loaded).toEqual(saved);
+    expect(writeBuilderRecord(deps, path, record)).toEqual(saved);
+    const updated = writeBuilderRecord(
+      deps,
+      path,
+      { ...record, allocation_ids: [...record.allocation_ids, 'al-0002'] },
+      { expectedSha256: loaded.value.ref.sha256 },
+    );
+    if (!updated.ok) throw new Error(updated.message);
+    expect(readBuilderRecord(deps, path, 'preservation')).toEqual(updated);
+    expect(updated.value.value.inventory).toEqual(record.inventory);
+    expect(
+      writeBuilderRecord(deps, path, record, { expectedSha256: saved.value.ref.sha256 }),
+    ).toMatchObject({ ok: false, code: 'E472' });
+    expect(readBuilderRecord(deps, path, 'preservation')).toEqual(updated);
+  });
+
+  it('keeps ordinary reads bounded and preservation reads bounded and no-follow', () => {
+    const { deps, fs } = builderFixture();
+    expect(writeBuilderRecord(deps, target, fixtureAllocation()).ok).toBe(true);
+    fs.reportedSizes.set(target, 4 * 1024 * 1024 + 1);
+    expect(readBuilderRecord(deps, target, 'allocation')).toMatchObject({
+      ok: false,
+      code: 'E470',
+    });
+    const path = '/repo/records/preservation.dd.json';
+    expect(writeBuilderRecord(deps, path, fixturePreservation()).ok).toBe(true);
+    fs.reportedSizes.set(path, 64 * 1024 * 1024 + 1);
+    expect(readBuilderRecord(deps, path, 'preservation')).toMatchObject({
+      ok: false,
+      code: 'E470',
+    });
+    fs.reportedSizes.delete(path);
+    fs.symlinkPaths.add(path);
+    expect(readBuilderRecord(deps, path, 'preservation')).toMatchObject({
+      ok: false,
+      code: 'E470',
+    });
+  });
+
+  it('refuses unreadable-size writes by UTF-8 bytes without replacing the original record', () => {
+    const { deps, fs } = builderFixture();
+    const saved = writeBuilderRecord(deps, target, fixtureAllocation());
+    if (!saved.ok) throw new Error(saved.message);
+    const source = fs.readText(target);
+    const face = fs.readText(target.replace('.json', '.md'));
+    const oversized = fixtureAllocation({ journal: ['é'.repeat(2 * 1024 * 1024)] });
+    expect(
+      writeBuilderRecord(deps, target, oversized, { expectedSha256: saved.value.ref.sha256 }),
+    ).toMatchObject({ ok: false, code: 'E470' });
+    expect(fs.readText(target)).toBe(source);
+    expect(fs.readText(target.replace('.json', '.md'))).toBe(face);
+    expect(fs.exists(`${target}.lock`)).toBe(false);
+  });
+
   it('rejects unknown review verdicts and role-setting provenance at the DD boundary', () => {
     const { deps, fs } = builderFixture();
     const review = fixtureReview();

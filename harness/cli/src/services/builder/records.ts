@@ -24,6 +24,8 @@ import type {
 } from './types.js';
 
 const MAX_RECORD_BYTES = 4 * 1024 * 1024;
+// Preservation inventories scale with whole workspaces, unlike ordinary control records.
+const MAX_PRESERVATION_BYTES = 64 * 1024 * 1024;
 const READABLE_PACKET_SCHEMAS = ['builder/work-packet', 'builder/packet'] as const;
 const WRITABLE_SCHEMAS = new Set([
   'builder/plan',
@@ -244,14 +246,16 @@ export function readBuilderDocument(
   deps: BuilderDeps,
   input: string,
   schema: string | readonly string[],
+  maxBytes = MAX_RECORD_BYTES,
 ): BuilderResult<Stored<DdDoc>> {
   const path = resolveInRepo(input, deps.repoRoot);
-  const loaded = deps.fs.readTextFileNoFollow(posixDirname(path), path, MAX_RECORD_BYTES);
+  const loaded = deps.fs.readTextFileNoFollow(posixDirname(path), path, maxBytes);
   if (loaded.status !== 'ok')
     return builderFailure(
       ErrorCodes.BUILDER_INVALID,
       `Cannot read ${path}: ${loaded.reason}`,
-      'Supply a readable, bounded regular DD JSON document.',
+      `Supply a readable regular DD JSON document of at most ${maxBytes} bytes.`,
+      { max_bytes: maxBytes },
     );
   const doc = parse(loaded.text);
   if (
@@ -279,6 +283,7 @@ export function readBuilderRecord<T extends BuilderRecord>(
     deps,
     path,
     kind === 'packet' ? READABLE_PACKET_SCHEMAS : recordSchema(kind),
+    kind === 'preservation' ? MAX_PRESERVATION_BYTES : MAX_RECORD_BYTES,
   );
   if (!loaded.ok) return loaded;
   const sections = loaded.value.value.sections;
@@ -342,6 +347,20 @@ export function writeBuilderDocument(
       'Stage the required Builder schema before writing.',
     );
   const text = `${JSON.stringify(doc, null, 2)}\n`;
+  const maxBytes =
+    doc.dd.schema === 'builder/team' &&
+    doc.sections.length === 1 &&
+    doc.sections[0]?.name === 'preservation'
+      ? MAX_PRESERVATION_BYTES
+      : MAX_RECORD_BYTES;
+  const bytes = Buffer.byteLength(text, 'utf8');
+  if (bytes > maxBytes)
+    return builderFailure(
+      ErrorCodes.BUILDER_INVALID,
+      `Builder document exceeds its ${maxBytes}-byte limit: ${path}`,
+      'Keep the complete evidence and resolve the record-size limit before retrying; no existing record was replaced.',
+      { bytes, max_bytes: maxBytes },
+    );
   const face = renderDd(doc, { path, repoRoot: deps.repoRoot, schema: resolved.schema });
   const token = deps.nonce();
   if (!/^[A-Za-z0-9_-]+$/.test(token))
@@ -368,7 +387,7 @@ export function writeBuilderDocument(
         'Wait for the owning writer, or inspect an interrupted write before recovering its lock.',
       );
     const current = deps.fs.exists(path)
-      ? deps.fs.readTextFileNoFollow(root, path, MAX_RECORD_BYTES)
+      ? deps.fs.readTextFileNoFollow(root, path, maxBytes)
       : null;
     if (current !== null && current.status !== 'ok')
       return builderFailure(
