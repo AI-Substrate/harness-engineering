@@ -150,15 +150,24 @@ export const BUILDER_COMMANDS: BuilderCommand[] = [
     name: 'dispatch',
     argument: '<plan>',
     description:
-      'Prepare an isolated coder and send a map-first work packet; no acknowledgement gate',
+      'Prepare or bind an isolated coder and send a map-first packet; no acknowledgement gate',
     options: [
       {
         flags: '--unit <id>',
         description: 'Coder unit from the implementation guide',
         required: true,
       },
-      { flags: '--workspace <path>', description: 'New isolated coder directory', required: true },
+      {
+        flags: '--workspace <path>',
+        description: 'Isolated coder directory; existing when --adopt-peer is supplied',
+        required: true,
+      },
       { flags: '--parent <id>', description: 'Governing peer identity', required: true },
+      {
+        flags: '--adopt-peer <id>',
+        description:
+          'Bind an already-running peer without spawning, replaying or granting new work',
+      },
       {
         flags: '--kind <kind>',
         description: 'Guide isolation mode by default; an explicit checkout kind overrides it',
@@ -226,12 +235,18 @@ export const BUILDER_COMMANDS: BuilderCommand[] = [
         conflicts: ['verify'],
       },
       {
+        flags: '--already-integrated',
+        description: 'Prove supplied unit projections match committed PM HEAD; do not replay',
+        conflicts: ['verify'],
+      },
+      {
         flags: '--verify <sha>',
         description: 'Exact composed commit to exercise through the guide checks',
-        conflicts: ['import'],
+        conflicts: ['import', 'alreadyIntegrated'],
       },
     ],
     exactlyOne: ['import', 'verify'],
+    requires: { alreadyIntegrated: ['import'] },
     results: ['composition'],
   },
   {

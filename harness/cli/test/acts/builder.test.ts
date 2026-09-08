@@ -45,6 +45,35 @@ async function runBuilder(
 describe('Builder CLI composition boundary', () => {
   afterEach(() => vi.restoreAllMocks());
 
+  it.each([
+    ['compose', BUILDER_FIXTURE_PLAN, '--already-integrated'],
+    ['compose', BUILDER_FIXTURE_PLAN, '--verify', 'a'.repeat(40), '--already-integrated'],
+    [
+      'dispatch',
+      BUILDER_FIXTURE_PLAN,
+      '--unit',
+      'tk-0002',
+      '--workspace',
+      '/worker',
+      '--adopt-peer',
+      'coder',
+    ],
+  ])('rejects an incomplete or conflicting invocation before execution: %j', async (...args) => {
+    const fixture = builderFixture();
+    const output = vi.fn();
+    const program = new Command()
+      .exitOverride()
+      .configureOutput({ writeErr: () => {}, writeOut: () => {} });
+    registerBuilderAct(
+      program,
+      { mode: 'json', writers: { out: output, err: output } },
+      fixture.deps,
+    );
+    await expect(program.parseAsync(['builder', ...args], { from: 'user' })).rejects.toThrow();
+    expect(output).not.toHaveBeenCalled();
+    expect(fixture.exec.calls).toEqual([]);
+  });
+
   it('reads the canonical guide through the registered JSON command', async () => {
     const fixture = builderFixture();
     const result = await runBuilder(['guide', BUILDER_FIXTURE_PLAN], fixture);
@@ -173,6 +202,75 @@ describe('Builder CLI composition boundary', () => {
     expect((result.envelope.data as { roles: unknown[] }).roles).toHaveLength(1);
     const reread = await runBuilder(['guide', BUILDER_FIXTURE_PLAN], fixture);
     expect(reread.envelope.data).toEqual({ guide: fixture.guide });
+  });
+
+  it('does not turn existing-peer binding into a readiness bypass or a native launch', async () => {
+    /*
+    Test Doc:
+    - Why: an already-running peer does not replace the guide's sealed-source prerequisites.
+    - Contract: --adopt-peer still reports missing readiness without spawning or writing a packet.
+    - Usage Notes: the registered CLI uses the unsealed Builder fixture, not a service mock.
+    - Quality Contribution: catches accidental adoption shortcuts at the act boundary.
+    */
+    const fixture = builderFixture();
+    const result = await runBuilder(
+      [
+        'dispatch',
+        BUILDER_FIXTURE_PLAN,
+        '--unit',
+        'tk-0002',
+        '--workspace',
+        '/workers/existing',
+        '--parent',
+        'peer-pm',
+        '--adopt-peer',
+        'running-coder',
+      ],
+      fixture,
+    );
+    expect(result.code).toBe(1);
+    expect(result.envelope.error?.code).toBe(ErrorCodes.BUILDER_NOT_READY);
+    expect(fixture.exec.calls.filter((call) => call.command === 'pij-rs')).toEqual([]);
+    expect(fixture.fs.exists('/repo/docs/plans/001-example/assets/team')).toBe(false);
+  });
+
+  it('does not treat already-integrated as evidence when the sealed baseline is missing', async () => {
+    /*
+    Test Doc:
+    - Why: the import modifier must not manufacture success from a claim of prior integration.
+    - Contract: complete delivery input still needs immutable source evidence before any receipt.
+    - Usage Notes: the real import service reads an unsealed fixture; no Git replay is available.
+    - Quality Contribution: protects the CLI evidence boundary without forwarding-only mocks.
+    */
+    const fixture = builderFixture({
+      '/repo/deliveries.json': JSON.stringify([
+        {
+          unit_id: 'tk-0002',
+          peer_id: 'running-coder',
+          workspace: '/workers/existing',
+          commit_sha: 'b'.repeat(40),
+          packet_sha256: 'c'.repeat(64),
+          baseline_sha: 'a'.repeat(40),
+        },
+      ]),
+    });
+    const result = await runBuilder(
+      [
+        'compose',
+        BUILDER_FIXTURE_PLAN,
+        '--import',
+        '/repo/deliveries.json',
+        '--already-integrated',
+      ],
+      fixture,
+    );
+    expect(result.code).toBe(1);
+    expect(result.envelope.status).toBe('error');
+    expect(result.envelope.error?.code).toBe(ErrorCodes.BUILDER_INVALID);
+    expect(fixture.exec.calls).toEqual([]);
+    expect(fixture.fs.exists('/repo/docs/plans/001-example/assets/team/composition.dd.json')).toBe(
+      false,
+    );
   });
 
   it('rejects malformed JSON as a named input failure, not a raw exception', async () => {

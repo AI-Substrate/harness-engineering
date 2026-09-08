@@ -10,6 +10,8 @@ export interface ExecResult {
   /** Child process exit code (127 when the binary could not be spawned). */
   code: number;
   stdout: string;
+  /** Present only when stdout contains an exact-byte base64 capture. */
+  stdoutEncoding?: 'base64';
   stderr: string;
   /** Convenience: `code === 0`. */
   ok: boolean;
@@ -17,6 +19,8 @@ export interface ExecResult {
 
 export interface ExecOptions {
   cwd: string;
+  /** Opt into byte-safe stdout capture; omitted/utf8 retains the text result shape. */
+  stdoutEncoding?: 'utf8' | 'base64';
   /** Hard deadline. The adapter sends SIGKILL and resolves with code 124. */
   timeoutMs?: number;
   /** Overlay on the inherited process environment; `undefined` removes a key. */

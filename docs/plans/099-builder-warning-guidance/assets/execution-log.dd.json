@@ -73,6 +73,16 @@
           "links": [
             "../plan.dd.json#acceptance_criteria/ac-000b"
           ]
+        },
+        {
+          "id": "lg-0007",
+          "at": "2026-09-08T09:25:44.113828+00:00",
+          "text": "Post-activation existing-work repair: dispatch --adopt-peer binds an observed running OMP peer and its progressed full clone without spawning or provisioning another workspace. Original external/pij plan allocation, locator, source and WIP remain intact; a non-owning unit binding preserves actual ownership. Duplicate peer, wrong root/branch/runtime and forged or conflicting provenance still refuse. compose --import --already-integrated compares immutable per-unit Git tree projections including modes, object IDs, binary bytes and absence, retains original delivery SHAs even when they are not PM ancestors, and reapplies nothing. It still requires current --verify and independent review. Sealed file SHA-256 values are now checked against original committed blobs, not mutable PM working files, using byte-safe stdout capture; PM edits and deletions reach current composition checks. Factual implementation_summary/state/proof progress does not become new intent, and packets preserve matching historical clone inputs rather than overwriting them with newer PM views. A real native one-peer fixture bound the same process/session, observed non-ancestor already-integrated work, preserved original allocation/locator/seal/WIP and executed a current composition check after a PM baseline edit. Its readiness was injected fixture state, not an independent native decomposition review or authorship claim. Read-only probes on the reported consumer accepted the original seal and now report ready without changing the consumer. Static critique identified lossy Git filename decoding, post-check material-document mutation and inconsistent archive-link comparison; byte-safe UTF-8 observations, post-check basis checks and shared location-aware comparison now have targeted regressions, including identical-byte relocation that changes a link target. Initial failures and provider-review unavailability remain in private evidence; no failed run was relabelled. Source and packed CLI smokes passed before the final guarded recheck; the complete final gate is recorded separately. No global activation or consumer mutation was performed.",
+          "links": [
+            "../plan.dd.json#acceptance_criteria/ac-0003",
+            "../plan.dd.json#acceptance_criteria/ac-0008",
+            "../plan.dd.json#acceptance_criteria/ac-000b"
+          ]
         }
       ]
     }

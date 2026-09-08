@@ -93,45 +93,50 @@ function builderIntentProjection(doc: DdDoc, normalizePath: (path: string) => st
       Object.entries(row).filter(([key]) => key !== 'state' && key !== 'proven_by'),
     );
   };
-  const sections = doc.sections.map((section) => {
-    let value = section.value;
-    if (
-      section.name === 'meta' &&
-      value !== null &&
-      typeof value === 'object' &&
-      !Array.isArray(value)
-    ) {
-      value = Object.fromEntries(
-        Object.entries(value).filter(
-          ([key]) =>
-            !(doc.dd.schema === 'builder/plan' && key === 'status') &&
-            !(doc.dd.schema === 'builder/impl-guide' && key === 'updated'),
-        ),
-      );
-    }
-    if (doc.dd.schema === 'builder/plan') {
+  const sections = doc.sections
+    // This section reports execution outcomes; it is not product intent or authority.
+    .filter(
+      (section) => !(doc.dd.schema === 'builder/plan' && section.name === 'implementation_summary'),
+    )
+    .map((section) => {
+      let value = section.value;
       if (
-        ['acceptance_criteria', 'phases', 'tasks'].includes(section.name) &&
-        Array.isArray(value)
-      ) {
-        value = value.map(workRow);
-      }
-      if (
-        section.name === 'done_when' &&
+        section.name === 'meta' &&
         value !== null &&
         typeof value === 'object' &&
         !Array.isArray(value)
       ) {
         value = Object.fromEntries(
-          Object.entries(value).map(([key, rows]) => [
-            key,
-            Array.isArray(rows) ? rows.map(workRow) : rows,
-          ]),
+          Object.entries(value).filter(
+            ([key]) =>
+              !(doc.dd.schema === 'builder/plan' && key === 'status') &&
+              !(doc.dd.schema === 'builder/impl-guide' && key === 'updated'),
+          ),
         );
       }
-    }
-    return { ...section, value };
-  });
+      if (doc.dd.schema === 'builder/plan') {
+        if (
+          ['acceptance_criteria', 'phases', 'tasks'].includes(section.name) &&
+          Array.isArray(value)
+        ) {
+          value = value.map(workRow);
+        }
+        if (
+          section.name === 'done_when' &&
+          value !== null &&
+          typeof value === 'object' &&
+          !Array.isArray(value)
+        ) {
+          value = Object.fromEntries(
+            Object.entries(value).map(([key, rows]) => [
+              key,
+              Array.isArray(rows) ? rows.map(workRow) : rows,
+            ]),
+          );
+        }
+      }
+      return { ...section, value };
+    });
   const references = (doc.references ?? []).map((reference) => ({
     ...reference,
     path: normalizePath(reference.path),
@@ -161,6 +166,54 @@ export function sameBuilderDocumentIntent(left: DdDoc, right: DdDoc, planId: str
   return (
     builderIntentProjection(left, normalizePath) === builderIntentProjection(right, normalizePath)
   );
+}
+/** Only the canonical plan-to-archive move can relocate immutable evidence. */
+export function relocatedRef(
+  ref: FileDigest,
+  baseline: { plan: FileDigest },
+  context: BuilderContext,
+): FileDigest {
+  const oldDir = posixDirname(baseline.plan.path);
+  const currentDir = posixRelative(context.repoRoot, context.planDir);
+  if (currentDir === oldDir) return ref;
+  const plan = /^docs\/plans\/(?:archive\/)?([^/]+)$/.exec(oldDir);
+  if (!plan || ![`docs/plans/${plan[1]}`, `docs/plans/archive/${plan[1]}`].includes(currentDir))
+    return ref;
+  return ref.path.startsWith(`${oldDir}/`)
+    ? { ...ref, path: `${currentDir}${ref.path.slice(oldDir.length)}` }
+    : ref;
+}
+
+/** Resolve local DD addresses using their real source locations; shared records owns intent policy. */
+export function resolveDocumentAddresses(
+  doc: DdDoc,
+  documentPath: string,
+  repoRoot: string,
+): DdDoc {
+  const resolvePath = (path: string) =>
+    /^[a-z]+:\/\//i.test(path)
+      ? path
+      : posixRelative(repoRoot, resolveInRepo(path, posixDirname(documentPath)));
+  const resolveValue = (value: unknown): unknown => {
+    if (typeof value === 'string') {
+      const address = /^([^\s#]*\.dd\.(?:json|md))(#[^\s]*)?$/.exec(value);
+      return address ? `${resolvePath(address[1])}${address[2] ?? ''}` : value;
+    }
+    if (Array.isArray(value)) return value.map(resolveValue);
+    if (value !== null && typeof value === 'object')
+      return Object.fromEntries(
+        Object.entries(value).map(([key, child]) => [key, resolveValue(child)]),
+      );
+    return value;
+  };
+  return {
+    ...doc,
+    sections: doc.sections.map((section) => ({ ...section, value: resolveValue(section.value) })),
+    references: (doc.references ?? []).map((reference) => ({
+      ...reference,
+      path: resolvePath(reference.path),
+    })),
+  };
 }
 
 export function recordSchema(kind: RecordKind): string {
@@ -221,6 +274,135 @@ export function digestBuilderFile(deps: BuilderDeps, input: string): BuilderResu
       'Restore the required file without symlinks, then retry.',
     );
   return { ok: true, value: fileRef(deps, path, bytes) };
+}
+
+/** Verify immutable raw Git blobs without reading or materializing current working files. */
+export async function verifyBuilderFilesAtCommit(
+  deps: BuilderDeps,
+  sourceSha: string,
+  files: readonly FileDigest[],
+): Promise<BuilderResult<true>> {
+  const objectId = /^(?:[a-f0-9]{40}|[a-f0-9]{64})$/;
+  const refuse = (message: string, details?: unknown) =>
+    builderFailure(
+      ErrorCodes.BUILDER_PROOF,
+      message,
+      'Restore the original committed evidence and byte-capable Git access; never relabel the sealed receipt.',
+      details,
+    );
+  if (!objectId.test(sourceSha)) return refuse('The baseline does not name a full Git commit ID.');
+  const paths = new Set<string>();
+  for (const file of files) {
+    if (
+      !isCanonicalRelativePath(file.path) ||
+      file.path.endsWith('/') ||
+      !isWithin(deps.repoRoot, resolveInRepo(file.path, deps.repoRoot)) ||
+      paths.has(file.path) ||
+      !/^[a-f0-9]{64}$/.test(file.sha256)
+    )
+      return refuse(`Invalid or duplicate sealed file binding: ${file.path}`);
+    paths.add(file.path);
+  }
+  const options = {
+    cwd: deps.repoRoot,
+    timeoutMs: 30000,
+    env: { GIT_NO_REPLACE_OBJECTS: '1' },
+  };
+  try {
+    const commit = await deps.exec.run(
+      'git',
+      ['rev-parse', '--verify', '--end-of-options', `${sourceSha}^{commit}`],
+      options,
+    );
+    if (commit.code !== 0 || commit.stdout.trim() !== sourceSha)
+      return refuse(`The sealed source commit is absent or rewritten: ${sourceSha}`, commit);
+    if (files.length === 0) return { ok: true, value: true };
+    const tree = await deps.exec.run(
+      'git',
+      ['--literal-pathspecs', 'ls-tree', '-l', '-z', '--full-tree', sourceSha, '--', ...paths],
+      options,
+    );
+    if (tree.code !== 0)
+      return refuse(`Cannot observe the sealed file tree at ${sourceSha}.`, tree);
+    if (tree.stdout && !tree.stdout.endsWith('\0'))
+      return refuse('The committed file tree is truncated or malformed.');
+    const blobs = new Map<string, { oid: string; size: number }>();
+    for (const entry of tree.stdout.split('\0').slice(0, -1)) {
+      const match = /^(100644|100755) blob ([a-f0-9]+) +(0|[1-9][0-9]*)\t([\s\S]+)$/.exec(entry);
+      if (
+        !match ||
+        !objectId.test(match[2]) ||
+        !Number.isSafeInteger(Number(match[3])) ||
+        !paths.has(match[4]) ||
+        blobs.has(match[4])
+      )
+        return refuse(
+          'A committed input is not a unique regular-file blob with a valid size.',
+          entry,
+        );
+      blobs.set(match[4], { oid: match[2], size: Number(match[3]) });
+    }
+    for (const file of files) {
+      const blob = blobs.get(file.path);
+      if (!blob) return refuse(`Declared evidence is missing from the source commit: ${file.path}`);
+      const captured = await deps.exec.run('git', ['cat-file', 'blob', blob.oid], {
+        ...options,
+        stdoutEncoding: 'base64',
+      });
+      if (captured.code !== 0)
+        return refuse(`Cannot read the committed blob: ${file.path}`, captured);
+      if (captured.stdoutEncoding !== 'base64')
+        return refuse(`Exact Git byte capture is unsupported for sealed input: ${file.path}`);
+      const bytes = Buffer.from(captured.stdout, 'base64');
+      if (bytes.toString('base64') !== captured.stdout || bytes.length !== blob.size)
+        return refuse(`Committed blob encoding or byte count is corrupt: ${file.path}`);
+      if (sha256(bytes) !== file.sha256)
+        return refuse(`Committed blob does not match the sealed digest: ${file.path}`);
+    }
+    return { ok: true, value: true };
+  } catch (error) {
+    return refuse(
+      `Committed evidence observation failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
+/** Capture textual Git evidence through bytes, rejecting lossy filenames or document decoding. */
+export async function readBuilderGitText(
+  deps: BuilderDeps,
+  args: string[],
+  cwd = deps.repoRoot,
+): Promise<BuilderResult<string>> {
+  try {
+    const result = await deps.exec.run('git', args, {
+      cwd,
+      timeoutMs: 30000,
+      stdoutEncoding: 'base64',
+      env: { GIT_NO_REPLACE_OBJECTS: '1', GIT_OPTIONAL_LOCKS: '0' },
+    });
+    if (result.code !== 0 || result.stdoutEncoding !== 'base64')
+      return builderFailure(
+        ErrorCodes.BUILDER_PROOF,
+        'Git text evidence could not be captured without byte loss.',
+        'Restore byte-capable Git observation before binding committed evidence.',
+        result,
+      );
+    const bytes = Buffer.from(result.stdout, 'base64');
+    if (bytes.toString('base64') !== result.stdout)
+      return builderFailure(
+        ErrorCodes.BUILDER_PROOF,
+        'Git text evidence has corrupt encoding.',
+        'Recover a complete byte-preserving observation before retrying.',
+      );
+    return { ok: true, value: new TextDecoder('utf-8', { fatal: true }).decode(bytes) };
+  } catch (error) {
+    return builderFailure(
+      ErrorCodes.BUILDER_PROOF,
+      'Git paths or documents cannot be read as exact UTF-8 text.',
+      'Use readable UTF-8 Git paths and canonical DD JSON; no integration evidence was accepted.',
+      String(error),
+    );
+  }
 }
 
 function validateBuilderDocument(

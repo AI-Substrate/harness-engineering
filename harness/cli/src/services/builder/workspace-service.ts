@@ -9,9 +9,11 @@ import {
 } from '../shared/posix-path.js';
 import {
   allocationAuthority,
+  allocationPath,
   bindWorkspaceAllocation,
   isGitOid,
   listAllocations,
+  locateWorkspaceAllocation,
   reserveAllocation,
   saveAllocation,
   verifyAllocationAuthority,
@@ -23,6 +25,7 @@ import {
   builderFailure,
   isBuilderPreservationExcluded,
   readBuilderDocument,
+  readBuilderRecord,
   sha256,
 } from './records.js';
 import { stageBuilderPlanAssets, stageBuilderSchemas } from './schema-service.js';
@@ -494,6 +497,318 @@ export async function adoptBuilderWorkspace(
       ErrorCodes.BUILDER_CONFLICT,
       `Adoption could not be recorded: ${String(error)}`,
       'Repair the record target; no existing workspace was reallocated.',
+    );
+  }
+}
+
+/** Bind existing work to a unit without replacing its original workspace provenance. */
+export async function adoptBuilderUnitWorkspace(
+  deps: BuilderDeps,
+  input: WorkspaceInput,
+): Promise<BuilderResult<WorkspaceResult>> {
+  try {
+    if (
+      input.purpose !== 'unit' ||
+      input.kind !== 'clone' ||
+      !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(input.slug) ||
+      !input.actor.trim() ||
+      !input.target ||
+      !input.plan ||
+      !input.unit ||
+      !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(input.unit) ||
+      !input.base ||
+      !isGitOid(input.base)
+    )
+      return builderFailure(
+        ErrorCodes.BUILDER_INVALID,
+        'Existing-unit binding requires a full clone, actor, plan, unit and sealed commit SHA.',
+        'Pass the existing peer root and explicit sealed unit baseline; no workspace is provisioned.',
+      );
+    const targetText = toPosix(input.target);
+    const root = resolveInRepo(targetText, deps.repoRoot);
+    if (
+      targetText.split('/').includes('..') ||
+      targetText.includes('\0') ||
+      toPosix(deps.fs.normalizeBundleTargetIdentity(root)) !== root ||
+      toPosix(deps.fs.realpath(root) ?? '') !== root ||
+      toPosix(deps.fs.normalizeBundleTargetIdentity(deps.repoRoot)) !== deps.repoRoot ||
+      isWithin(root, deps.repoRoot) ||
+      isWithin(deps.repoRoot, root)
+    )
+      return builderFailure(
+        ErrorCodes.BUILDER_OWNERSHIP,
+        'Existing-unit roots must be distinct, exact and unaliased checkouts.',
+        'Use the actual PM and peer clone roots without nested paths or symlinks.',
+      );
+    const context = builderContext(deps, input.plan);
+    if (!context.ok) return context;
+    const planPath = posixRelative(deps.repoRoot, context.value.planPath);
+    if (
+      !context.value.planPath.endsWith('/plan.dd.json') ||
+      !deps.fs.exists(context.value.planPath)
+    )
+      return builderFailure(
+        ErrorCodes.BUILDER_INVALID,
+        'The unit plan is unavailable in the parent checkout.',
+        'Pass the canonical in-repository plan source.',
+      );
+    const schemas = stageBuilderSchemas(deps, deps.repoRoot);
+    if (!schemas.ok) return schemas;
+    const locatedParent = await locateWorkspaceAllocation(deps);
+    if (!locatedParent.ok) return locatedParent;
+    const parent = locatedParent.value;
+    if (parent === null)
+      return builderFailure(
+        ErrorCodes.BUILDER_NOT_READY,
+        'The PM checkout has no original allocation locator.',
+        'Adopt the existing PM root with `harness builder adopt <plan> --owner external|pij --actor <actor>`, then retry; keep its current work.',
+      );
+    if (
+      (input.parent && JSON.stringify(input.parent) !== JSON.stringify(parent)) ||
+      !Number.isSafeInteger(parent.ordinal) ||
+      parent.ordinal < 0 ||
+      parent.plan_path !== planPath
+    )
+      return builderFailure(
+        ErrorCodes.BUILDER_OWNERSHIP,
+        'The supplied parent or plan does not match the PM checkout allocation.',
+        'Use the actual PM workspace allocation; its creator need not be the executing actor.',
+      );
+    const authority = await allocationAuthority(deps, parent);
+    if (!authority.ok) return authority;
+    if (isWithin(root, authority.value) || isWithin(authority.value, root))
+      return builderFailure(
+        ErrorCodes.BUILDER_OWNERSHIP,
+        'The peer root overlaps the PM allocation authority.',
+        'Keep the unit binding in the original PM authority, outside the peer clone.',
+      );
+    return await withAllocationLock(
+      deps,
+      posixJoin(authority.value, 'builder/allocations/reserve.lock'),
+      async () => {
+        const allocations = listAllocations(deps, authority.value);
+        if (!allocations.ok) return allocations;
+        const currentParent = allocations.value.find((record) => record.value.id === parent.id);
+        if (!currentParent || JSON.stringify(currentParent.value) !== JSON.stringify(parent))
+          return builderFailure(
+            ErrorCodes.BUILDER_CONFLICT,
+            'The PM allocation changed while binding the unit.',
+            'Re-read its original allocation and retry without replacing the parent.',
+          );
+        const observed = await inspectWorkspace(deps, root);
+        if (!observed.ok) return observed;
+        if (
+          observed.value.gitDir !== posixJoin(root, '.git') ||
+          observed.value.commonDir !== observed.value.gitDir
+        )
+          return builderFailure(
+            ErrorCodes.BUILDER_OWNERSHIP,
+            'Existing-unit adoption requires the original full clone Git directory.',
+            'Use the live peer full clone, not a linked worktree or relocated Git directory.',
+          );
+        const staged = stageBuilderSchemas(deps, root);
+        if (!staged.ok) return staged;
+        const local = { ...deps, repoRoot: root };
+        const located = await locateWorkspaceAllocation(local);
+        if (!located.ok) return located;
+        const source = located.value;
+        if (source === null)
+          return builderFailure(
+            ErrorCodes.BUILDER_NOT_READY,
+            'The existing peer root has no original allocation provenance.',
+            'Run `harness builder adopt <plan> --owner external|pij --actor <actor>` in that existing root, then retry dispatch --adopt-peer; do not respawn or replay its work.',
+          );
+        const sourceAuthority = await allocationAuthority(local, source);
+        if (!sourceAuthority.ok) return sourceAuthority;
+        if (
+          sourceAuthority.value !== authority.value &&
+          sourceAuthority.value !== observed.value.commonDir
+        )
+          return builderFailure(
+            ErrorCodes.BUILDER_OWNERSHIP,
+            'The peer allocation belongs to an unrelated Git authority.',
+            'Recover the original peer adoption or the matching unit in this PM authority.',
+          );
+        const sourceRecords =
+          sourceAuthority.value === authority.value
+            ? allocations
+            : listAllocations(deps, sourceAuthority.value);
+        if (!sourceRecords.ok) return sourceRecords;
+        const original = sourceRecords.value.find((record) => record.value.id === source.id);
+        if (
+          !original ||
+          JSON.stringify(original.value) !== JSON.stringify(source) ||
+          source.plan_path !== planPath ||
+          source.kind !== 'clone' ||
+          !isGitOid(source.base_sha) ||
+          (sourceAuthority.value !== authority.value &&
+            sourceRecords.value.some(
+              (record) => record.value.root === root && record.value.id !== source.id,
+            ))
+        )
+          return builderFailure(
+            ErrorCodes.BUILDER_OWNERSHIP,
+            'The peer has conflicting original allocation or plan provenance.',
+            'Preserve the original allocation and resolve its identity conflict explicitly.',
+          );
+        for (const [checkout, base, head] of [
+          [deps.repoRoot, input.base as string, 'HEAD'],
+          [root, input.base as string, observed.value.head],
+          [root, source.base_sha, observed.value.head],
+        ] as const) {
+          const ancestor = await workspaceGit(deps, checkout, [
+            'merge-base',
+            '--is-ancestor',
+            base,
+            head,
+          ]);
+          if (!ancestor.ok)
+            return builderFailure(
+              ErrorCodes.BUILDER_CONFLICT,
+              'The sealed or original allocation base is not reachable from the live workspace.',
+              'Use the original descendant history and sealed baseline; never reset existing work to make adoption pass.',
+              ancestor,
+            );
+        }
+        const provenance = [
+          'unit-bound-existing-workspace',
+          `source-allocation-path:${original.ref.path}`,
+          `source-allocation-id:${source.id}`,
+          `source-allocation-sha256:${original.ref.sha256}`,
+        ];
+        const claims = allocations.value.filter(
+          (record) =>
+            record.value.root === root ||
+            (record.value.parent_id === parent.id &&
+              record.value.plan_path === planPath &&
+              record.value.unit_id === input.unit),
+        );
+        const prior = claims.find((record) => record.value.purpose === 'unit');
+        const boundHeads = prior?.value.journal
+          .filter((event) => event.startsWith('observed-head:'))
+          .map((event) => event.slice('observed-head:'.length));
+        if (
+          claims.some(
+            (record) =>
+              record !== prior && !(source.purpose === 'plan' && record.value.id === source.id),
+          ) ||
+          (prior &&
+            (prior.value.retired_at !== undefined ||
+              prior.value.root !== root ||
+              prior.value.git_dir !== observed.value.gitDir ||
+              prior.value.branch !== observed.value.branch ||
+              prior.value.kind !== 'clone' ||
+              prior.value.slug !== input.slug ||
+              prior.value.parent_id !== parent.id ||
+              prior.value.plan_path !== planPath ||
+              prior.value.unit_id !== input.unit ||
+              prior.value.base_sha !== input.base ||
+              prior.value.owner !== source.owner ||
+              (source.purpose === 'unit'
+                ? prior.ref.sha256 !== original.ref.sha256
+                : prior.value.ordinal !== parent.ordinal ||
+                  boundHeads?.length !== 1 ||
+                  !isGitOid(boundHeads?.[0] as string) ||
+                  !provenance.every((event) => prior.value.journal.includes(event)))))
+        )
+          return builderFailure(
+            ErrorCodes.BUILDER_CONFLICT,
+            'The existing workspace or unit already has an incompatible allocation.',
+            'Keep the original root, parent, unit, base and ownership; resolve competing bindings explicitly.',
+          );
+        if (
+          source.purpose !== 'unit' &&
+          (source.purpose !== 'plan' ||
+            !['external', 'pij'].includes(source.owner) ||
+            !source.journal.includes('adopted') ||
+            source.slug !== input.slug ||
+            source.parent_id !== undefined ||
+            source.unit_id !== undefined)
+        )
+          return builderFailure(
+            ErrorCodes.BUILDER_OWNERSHIP,
+            'A new unit binding requires an original external/pij plan adoption.',
+            'Use its live non-owning adoption; managed plan allocations cannot be repurposed.',
+          );
+        if (source.purpose === 'unit' && !prior)
+          return builderFailure(
+            ErrorCodes.BUILDER_CONFLICT,
+            'The original unit allocation does not belong to this PM authority.',
+            'Use its original matching parent and unit; do not rebind an independent unit.',
+          );
+        if (source.purpose === 'plan' && prior) {
+          const retained = await workspaceGit(deps, root, [
+            'merge-base',
+            '--is-ancestor',
+            boundHeads?.[0] as string,
+            observed.value.head,
+          ]);
+          if (!retained.ok)
+            return builderFailure(
+              ErrorCodes.BUILDER_CONFLICT,
+              'The peer no longer contains the HEAD observed by its existing unit binding.',
+              'Preserve the original binding and reconcile the changed history explicitly.',
+              retained,
+            );
+        }
+        const latest = await inspectWorkspace(deps, root);
+        if (!latest.ok) return latest;
+        const currentSource = readBuilderRecord<AllocationRecord>(
+          deps,
+          allocationPath(source.authority_root, source.id),
+          'allocation',
+        );
+        const currentLocator = await locateWorkspaceAllocation(local);
+        if (
+          JSON.stringify(latest.value) !== JSON.stringify(observed.value) ||
+          !currentSource.ok ||
+          currentSource.value.ref.sha256 !== original.ref.sha256 ||
+          !currentLocator.ok ||
+          JSON.stringify(currentLocator.value) !== JSON.stringify(source)
+        )
+          return builderFailure(
+            ErrorCodes.BUILDER_CONFLICT,
+            'The peer HEAD or original provenance changed during unit binding.',
+            'Retry against a stable observation; no existing work has been replayed or replaced.',
+          );
+        const bound: BuilderResult<Stored<AllocationRecord>> = prior
+          ? { ok: true, value: prior }
+          : saveAllocation(deps, {
+              record_type: 'allocation',
+              id: `al-unit-bind-${deps.nonce()}`,
+              owner: source.owner,
+              kind: 'clone',
+              purpose: 'unit',
+              root,
+              authority_root: authority.value,
+              git_dir: observed.value.gitDir,
+              branch: observed.value.branch,
+              base_sha: input.base as string,
+              ordinal: parent.ordinal,
+              slug: input.slug,
+              actor: input.actor,
+              recorded_at: deps.clock.nowIso(),
+              journal: [...provenance, `observed-head:${observed.value.head}`],
+              plan_path: planPath,
+              parent_id: parent.id,
+              unit_id: input.unit,
+            });
+        if (!bound.ok) return bound;
+        return {
+          ok: true,
+          value: {
+            allocation: bound.value,
+            plan: resolveInRepo(planPath, root),
+            flow: resolveInRepo(posixRelative(deps.repoRoot, context.value.flowPath), root),
+          },
+        };
+      },
+    );
+  } catch (error) {
+    return builderFailure(
+      ErrorCodes.BUILDER_CONFLICT,
+      `Existing-unit binding could not be recorded: ${String(error)}`,
+      'Repair the original allocation prerequisite; existing workspace and ownership are retained.',
     );
   }
 }

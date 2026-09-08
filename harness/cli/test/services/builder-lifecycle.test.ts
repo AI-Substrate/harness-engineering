@@ -1,6 +1,6 @@
-import { symlinkSync, unlinkSync } from 'node:fs';
+import { chmodSync, lstatSync, readlinkSync, symlinkSync, unlinkSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { FakeEnv } from '../../src/adapters/env/fake-env.js';
 import type { ExecOptions, ExecResult } from '../../src/adapters/exec/exec-port.js';
 import { NodeExec } from '../../src/adapters/exec/node-exec.js';
@@ -14,6 +14,10 @@ import {
   verifyBuilderComposition,
 } from '../../src/services/builder/composition-service.js';
 import {
+  checkBuilderReadiness,
+  sealBuilderContracts,
+} from '../../src/services/builder/contracts-service.js';
+import {
   advanceBuilderStage,
   builderChoresSatisfied,
   verifyBuilderPreservation,
@@ -25,6 +29,7 @@ import {
   digestBuilderFile,
   readBuilderRecord,
   sha256,
+  verifyBuilderFilesAtCommit,
   writeBuilderRecord,
 } from '../../src/services/builder/records.js';
 import {
@@ -32,6 +37,7 @@ import {
   verifyBuilderReview,
 } from '../../src/services/builder/review-service.js';
 import type {
+  BaselineReceipt,
   BuilderDeps,
   BuilderRecord,
   BuilderResult,
@@ -60,6 +66,7 @@ import {
   fixtureAllocation,
   fixtureBaseline,
   fixtureCheck,
+  fixtureCommittedGit,
   fixtureComposition,
   fixtureDispatch,
   fixtureObservation,
@@ -137,6 +144,14 @@ function scenario() {
   };
   f.fs.writeText(FLOW, JSON.stringify(doc));
   const success = (stdout = ''): ExecResult => ({ code: 0, stdout, stderr: '', ok: true });
+  const historicalFiles = new Map(
+    [BUILDER_FIXTURE_PLAN, BUILDER_FIXTURE_GUIDE, 'contracts.ts'].map((path) => {
+      const bytes = f.fs.readBytesNoFollow(`/repo/${path}`);
+      if (bytes === null) throw new Error(`Missing historical fixture file: ${path}`);
+      return [path, bytes.slice()] as const;
+    }),
+  );
+  const historicalCommits = new Map([[A, historicalFiles]]);
   const whoami = success(
     JSON.stringify({ ok: true, command: 'pij whoami', v: 2, data: { id: 'peer-pm' } }),
   );
@@ -151,6 +166,8 @@ function scenario() {
       )
         return whoami;
       if (command === 'git') {
+        const historical = fixtureCommittedGit(historicalCommits, args, opts);
+        if (historical) return historical;
         const rest = args.slice(2);
         if (rest[0] === 'symbolic-ref')
           return success(
@@ -901,6 +918,41 @@ describe('Builder committed composition', () => {
     expect(result.value.files.map((file) => file.path)).toEqual(['contracts.ts', 'src/main.ts']);
   });
 
+  it.each([
+    'comment',
+    'binary',
+    'deleted',
+  ] as const)('runs composition checks after a PM %s baseline-file edit without changing the old receipt', async (change) => {
+    const s = scenario();
+    s.composition({ artifact_sha: undefined, checks: [] });
+    const original = s.fs.readBytesNoFollow(`${TEAM}/baseline.dd.json`);
+    if (change === 'deleted') {
+      s.fs.deleteFile('/repo/contracts.ts');
+      s.scripts['git -c core.hooksPath= ls-files -z'] = {
+        ok: true,
+        code: 0,
+        stdout: 'src/main.ts\0',
+        stderr: '',
+      };
+    } else if (change === 'binary')
+      s.fs.writeBytes('/repo/contracts.ts', new Uint8Array([0, 255, 128]));
+    else s.fs.writeText('/repo/contracts.ts', '// PM integration comment\n');
+    const verified = value(
+      await composeBuilderUnits(s.deps, { plan: BUILDER_FIXTURE_PLAN, mode: 'verify', sha: C }),
+    );
+    expect(verified.value.checks).toMatchObject([
+      { id: 'vd-0004', exit_code: 0, stdout: 'actual integration output' },
+    ]);
+    expect(s.fs.readBytesNoFollow(`${TEAM}/baseline.dd.json`)).toEqual(original);
+    s.state.head = D;
+    s.state.delta = 'src/main.ts\0';
+    expect(await verifyBuilderComposition(s.deps, s.context, s.guide)).toMatchObject({
+      ok: false,
+      code: 'E475',
+      message: expect.stringContaining('Code changed'),
+    });
+  });
+
   it('persists red check evidence but refuses completion', async () => {
     const s = scenario();
     s.composition({ artifact_sha: undefined, checks: [] });
@@ -1145,6 +1197,50 @@ describe('Builder committed composition', () => {
     }
   });
 
+  it('compares canonical archive links by their resolved targets without accepting another plan', async () => {
+    const s = scenario();
+    const originalText = s.fs.readText(`/repo/${BUILDER_FIXTURE_PLAN}`);
+    const guideText = s.fs.readText(`/repo/${BUILDER_FIXTURE_GUIDE}`);
+    if (originalText === null || guideText === null) throw new Error('Missing fixture documents.');
+    const original = JSON.parse(originalText);
+    original.sections.find((section: { name: string }) => section.name === 'summary').value =
+      '../002-shared/plan.dd.json#summary';
+    const historical = JSON.stringify(original);
+    const basis = {
+      ...s.baseline.value,
+      plan: { path: BUILDER_FIXTURE_PLAN, sha256: sha256(historical) },
+    };
+    const archived = value(builderContext(s.deps, 'docs/plans/archive/001-example/plan.dd.json'));
+    const relocated = structuredClone(original);
+    relocated.sections.find((section: { name: string }) => section.name === 'summary').value =
+      '../../002-shared/plan.dd.json#summary';
+    s.fs.mkdirp(archived.teamDir);
+    s.fs.writeText(archived.planPath, JSON.stringify(relocated));
+    s.fs.writeText(archived.guidePath, guideText);
+    s.fs.writeText(`${archived.teamDir}/basis-${basis.plan.sha256}.json`, historical);
+    expect(await verifyBuilderBasis(s.deps, archived, basis)).toEqual({ ok: true, value: true });
+    s.fs.writeText(archived.planPath, historical);
+    expect(await verifyBuilderBasis(s.deps, archived, basis)).toMatchObject({
+      ok: false,
+      code: 'E475',
+    });
+    relocated.sections.find((section: { name: string }) => section.name === 'summary').value =
+      '../../003-different/plan.dd.json#summary';
+    s.fs.writeText(archived.planPath, JSON.stringify(relocated));
+    expect(await verifyBuilderBasis(s.deps, archived, basis)).toMatchObject({
+      ok: false,
+      code: 'E475',
+    });
+    const unrelated = value(builderContext(s.deps, 'docs/plans/archive/009-other/plan.dd.json'));
+    s.fs.mkdirp(unrelated.teamDir);
+    s.fs.writeText(unrelated.planPath, historical);
+    s.fs.writeText(unrelated.guidePath, guideText);
+    expect(await verifyBuilderBasis(s.deps, unrelated, basis)).toMatchObject({
+      ok: false,
+      code: 'E475',
+    });
+  });
+
   it('invalidates stale source bytes and post-proof code commits', async () => {
     const s = scenario();
     s.composition();
@@ -1155,6 +1251,757 @@ describe('Builder committed composition', () => {
     s.state.delta = 'src/new.ts\0';
     expect((await verifyBuilderComposition(s.deps, s.context, s.guide)).ok).toBe(false);
   });
+});
+
+describe('Builder already-integrated observation through real Git', () => {
+  const temporary: string[] = [];
+  const fs = new NodeFs();
+  afterEach(() => {
+    for (const root of temporary.splice(0)) fs.removeDir(root);
+  });
+
+  type FixtureOptions = {
+    unmapped?: boolean;
+    empty?: boolean;
+    merge?: boolean;
+    sealed?: boolean;
+    baselineBytes?: Uint8Array;
+  };
+
+  async function fixture(options: FixtureOptions = {}) {
+    const root = toPosix(fs.realpath(fs.mkdtemp('builder-integrated-')) as string);
+    temporary.push(root);
+    const repo = posixJoin(root, 'pm');
+    const seed = scenario();
+    const exec = new NodeExec();
+    const calls: Array<{ command: string; args: string[]; cwd: string }> = [];
+    const gitEnv = {
+      ...Object.fromEntries(Object.keys(process.env).map((key) => [key, undefined])),
+      ...hermeticGitEnv(),
+      GIT_OPTIONAL_LOCKS: '0',
+    };
+    const runGit = async (args: string[], cwd = repo) => {
+      const result = await exec.run('git', ['-c', 'core.hooksPath=', ...args], {
+        cwd,
+        env: gitEnv,
+        timeoutMs: 30000,
+      });
+      if (!result.ok) throw new Error(`${args.join(' ')}: ${result.stderr}`);
+      return result.stdout;
+    };
+    fs.mkdirp(repo);
+    for (const file of seed.fs.listRegularFilesNoFollow('/repo') ?? []) {
+      if (file.startsWith('docs/plans/001-example/assets/team/')) continue;
+      const target = posixJoin(repo, file);
+      fs.mkdirp(posixDirname(target));
+      fs.writeBytes(target, seed.fs.readBytesNoFollow(`/repo/${file}`) as Uint8Array);
+    }
+    const guide = seed.guide;
+    for (const unit of guide.units.filter((row) => row.role === 'coder')) {
+      unit.paths = options.unmapped
+        ? [`not-created/${unit.id}/**`]
+        : [unit.id === 'tk-0002' ? 'src/parser/**' : 'src/renderer/'];
+    }
+    fs.writeText(
+      posixJoin(repo, BUILDER_FIXTURE_GUIDE),
+      JSON.stringify({
+        dd: { schema: 'builder/impl-guide' },
+        sections: Object.entries(guide).map(([name, content]) => ({ name, value: content })),
+      }),
+    );
+    fs.mkdirp(posixJoin(repo, 'src/parser'));
+    fs.mkdirp(posixJoin(repo, 'src/renderer'));
+    fs.writeText(posixJoin(repo, 'src/parser/run'), 'old executable\n');
+    fs.writeText(posixJoin(repo, 'src/parser/removed.txt'), 'remove this\n');
+    fs.writeText(posixJoin(repo, 'src/parser/steady.txt'), 'unchanged unit contract\n');
+    fs.writeBytes(posixJoin(repo, 'src/parser/data.bin'), new Uint8Array([0, 255, 1]));
+    fs.writeText(posixJoin(repo, 'src/renderer/index.ts'), 'old renderer\n');
+    fs.mkdirp(posixJoin(repo, 'test'));
+    fs.writeText(
+      posixJoin(repo, 'test/integration.mjs'),
+      [
+        'import assert from "node:assert/strict";',
+        'import { readFileSync, existsSync } from "node:fs";',
+        'assert.deepEqual([...readFileSync("src/parser/data.bin")], [0, 254, 2]);',
+        'assert.equal(existsSync("src/parser/removed.txt"), false);',
+        'assert.equal(readFileSync("src/renderer/index.ts", "utf8"), "delivered renderer\\n");',
+        'console.log("real committed composition passed");',
+      ].join('\n'),
+    );
+    if (options.baselineBytes)
+      fs.writeBytes(posixJoin(repo, 'contracts.ts'), options.baselineBytes);
+    if (options.sealed) {
+      const planPath = posixJoin(repo, BUILDER_FIXTURE_PLAN);
+      const planSource = fs.readText(planPath);
+      if (planSource === null) throw new Error('Missing fixture plan source.');
+      const plan = JSON.parse(planSource);
+      plan.sections.find(
+        (section: { name: string }) => section.name === 'acceptance_criteria',
+      ).value = ['ac-0001', 'ac-0002'].map((id) => ({
+        id,
+        claim: `Observable ${id}`,
+        state: 'unchecked',
+      }));
+      fs.writeText(planPath, JSON.stringify(plan));
+      const contractBytes = fs.readBytesNoFollow(posixJoin(repo, 'contracts.ts'));
+      if (contractBytes === null) throw new Error('Missing fixture baseline bytes.');
+      fs.writeText(
+        posixJoin(repo, 'test/contracts.mjs'),
+        `import assert from 'node:assert/strict';\nimport { readFileSync } from 'node:fs';\nassert.deepEqual([...readFileSync('contracts.ts')], ${JSON.stringify([...contractBytes])});\n`,
+      );
+    }
+    await runGit(['init', '-b', 'builder/example']);
+    await runGit(['add', '.']);
+    await runGit(['commit', '-m', 'sealed fixture baseline']);
+    const sourceSha = (await runGit(['rev-parse', 'HEAD'])).trim();
+    const deps: CompositionDeps = {
+      ...seed.deps,
+      fs,
+      repoRoot: repo,
+      schemasDir: toPosix(
+        fileURLToPath(new URL('../../../../.dd/schemas/builder', import.meta.url)),
+      ),
+      exec: {
+        run: async (command, args, opts) => {
+          calls.push({ command, args, cwd: opts.cwd });
+          if (command !== 'git' && command !== 'node')
+            throw new Error(`No native process is modelled by this Git fixture: ${command}`);
+          return exec.run(command, args, { ...opts, env: { ...gitEnv, ...opts.env } });
+        },
+      },
+      // Sealed scenarios use real readiness; native observations remain explicit fixture inputs.
+      readiness: async (input) =>
+        options.sealed
+          ? checkBuilderReadiness(deps, input)
+          : {
+              ok: true,
+              value: { status: 'ready', issues: [], context, guide, baseline },
+            },
+    };
+    const context = value(builderContext(deps, BUILDER_FIXTURE_PLAN));
+    const digest = (path: string) => value(digestBuilderFile(deps, path));
+    const store = <T extends BuilderRecord>(record: T, path: string) =>
+      value(
+        writeBuilderRecord(
+          deps,
+          path,
+          record,
+          record.record_type === 'allocation' ? { root } : undefined,
+        ),
+      );
+    let baseline: Stored<BaselineReceipt>;
+    if (options.sealed) {
+      const report = posixJoin(context.planDir, 'assets/reviews/baseline-review.txt');
+      fs.mkdirp(posixDirname(report));
+      fs.writeText(report, 'Fixture independent review of the exact committed binary baseline.');
+      const review = store(
+        fixtureReview({
+          subject_sha: sourceSha,
+          plan: digest(BUILDER_FIXTURE_PLAN),
+          guide: digest(BUILDER_FIXTURE_GUIDE),
+          report: digest(report),
+        }),
+        builderRecordPath(context, 'review', 'decomposition'),
+      );
+      baseline = value(
+        await sealBuilderContracts(deps, {
+          plan: BUILDER_FIXTURE_PLAN,
+          review: review.ref.path,
+        }),
+      );
+    } else {
+      baseline = store(
+        fixtureBaseline({
+          source_sha: sourceSha,
+          plan: digest(BUILDER_FIXTURE_PLAN),
+          guide: digest(BUILDER_FIXTURE_GUIDE),
+          files: [digest('contracts.ts')],
+        }),
+        builderRecordPath(context, 'baseline'),
+      );
+    }
+    const deliveries: UnitDelivery[] = [];
+    for (const unit of guide.units.filter((row) => row.role === 'coder')) {
+      const workspace = posixJoin(root, unit.id);
+      await runGit(['clone', '--no-hardlinks', '--', repo, workspace]);
+      await runGit(['checkout', '-b', `builder/${unit.id}`], workspace);
+      if (!options.empty) {
+        if (unit.id === 'tk-0002') {
+          fs.writeText(posixJoin(workspace, 'src/parser/run'), '#!/bin/sh\nprintf delivered\\n\n');
+          chmodSync(posixJoin(workspace, 'src/parser/run'), 0o755);
+          fs.deleteFile(posixJoin(workspace, 'src/parser/removed.txt'));
+          fs.writeBytes(posixJoin(workspace, 'src/parser/data.bin'), new Uint8Array([0, 254, 2]));
+          fs.writeText(posixJoin(workspace, 'outside.txt'), 'actual out-of-map delivery\n');
+        } else {
+          fs.writeText(posixJoin(workspace, 'src/renderer/index.ts'), 'delivered renderer\n');
+        }
+      }
+      await runGit(['add', '.'], workspace);
+      await runGit(['commit', '--allow-empty', '-m', `worker ${unit.id} delivery`], workspace);
+      if (options.merge && unit.id === 'tk-0002') {
+        await runGit(['checkout', '-b', 'fixture-side', sourceSha], workspace);
+        fs.writeText(posixJoin(workspace, 'side.txt'), 'merged side history\n');
+        await runGit(['add', 'side.txt'], workspace);
+        await runGit(['commit', '-m', 'side delivery'], workspace);
+        await runGit(['checkout', `builder/${unit.id}`], workspace);
+        await runGit(
+          ['merge', '--no-ff', 'fixture-side', '-m', 'merged worker delivery'],
+          workspace,
+        );
+      }
+      const commitSha = (await runGit(['rev-parse', 'HEAD'], workspace)).trim();
+      const key = `${unit.id}-${sourceSha}`;
+      const peer = `fixture-peer-${unit.id}`;
+      const allocationPath = posixJoin(root, 'authority', `${unit.id}.dd.json`);
+      const allocation = store(
+        fixtureAllocation({
+          id: `al-${unit.id}`,
+          root: workspace,
+          branch: `builder/${unit.id}`,
+          git_dir: posixJoin(workspace, '.git'),
+          authority_root: repo,
+          base_sha: sourceSha,
+          unit_id: unit.id,
+          peer_id: peer,
+        }),
+        allocationPath,
+      );
+      const allocationRef = { ...allocation.ref, path: allocationPath };
+      const packet = store(
+        fixturePacket({
+          id: `packet-${key}`,
+          unit,
+          workspace,
+          source_sha: sourceSha,
+          baseline: baseline.ref,
+          allocation: allocationRef,
+          plan: baseline.value.plan,
+          guide: baseline.value.guide,
+        }),
+        builderRecordPath(context, 'packet', key),
+      );
+      store(
+        fixtureDispatch({
+          id: `dispatch-${key}`,
+          unit_id: unit.id,
+          observed: fixtureObservation({
+            peer_id: peer,
+            root: workspace,
+            native_session: `fixture-session-${unit.id}`,
+          }),
+          packet: packet.ref,
+          allocation: allocationRef,
+          baseline: baseline.ref,
+        }),
+        builderRecordPath(context, 'dispatch', key),
+      );
+      deliveries.push({
+        unit_id: unit.id,
+        peer_id: peer,
+        workspace,
+        commit_sha: commitSha,
+        baseline_sha: sourceSha,
+        packet_sha256: packet.ref.sha256,
+      });
+    }
+    const apply = async () => {
+      for (const delivery of deliveries) {
+        await runGit([
+          'fetch',
+          '--no-tags',
+          '--no-write-fetch-head',
+          '--',
+          delivery.workspace,
+          delivery.commit_sha,
+        ]);
+        const commits = (
+          await runGit(
+            ['rev-list', '--reverse', '--first-parent', `${sourceSha}..${delivery.commit_sha}`],
+            delivery.workspace,
+          )
+        )
+          .trim()
+          .split('\n');
+        for (const commit of commits) {
+          await runGit([
+            'cherry-pick',
+            '--no-commit',
+            ...(options.merge && delivery.unit_id === 'tk-0002' && commit === delivery.commit_sha
+              ? ['-m', '1']
+              : []),
+            commit,
+          ]);
+        }
+      }
+      await runGit(['commit', '-m', 'PM independently recommitted the deliveries']);
+    };
+    const snapshot = async () => {
+      const repositories = [];
+      for (const cwd of [repo, ...deliveries.map((delivery) => delivery.workspace)]) {
+        const gitDir = posixJoin(cwd, '.git');
+        const paths = (await runGit(['ls-files', '-z'], cwd)).split('\0').filter(Boolean);
+        const index = fs.readBytesNoFollow(posixJoin(gitDir, 'index'));
+        if (index === null) throw new Error(`Fixture Git index is unreadable: ${gitDir}`);
+        repositories.push({
+          git: {
+            head: (await runGit(['rev-parse', 'HEAD'], cwd)).trim(),
+            refs: await runGit(['for-each-ref', '--format=%(refname) %(objectname)'], cwd),
+            index: sha256(index),
+          },
+          source: paths.map((path) => {
+            const absolute = posixJoin(cwd, path);
+            const stat = lstatSync(absolute, { throwIfNoEntry: false });
+            return [
+              path,
+              stat?.mode,
+              !stat
+                ? null
+                : stat.isSymbolicLink()
+                  ? readlinkSync(absolute)
+                  : sha256(fs.readBytesNoFollow(absolute) as Uint8Array),
+            ];
+          }),
+          untracked: (await runGit(['ls-files', '--others', '--exclude-standard', '-z'], cwd))
+            .split('\0')
+            .filter((path) => path && !path.startsWith('docs/plans/001-example/')),
+        });
+      }
+      const authorityFiles = fs.listRegularFilesNoFollow(posixJoin(root, 'authority'));
+      const teamFiles = fs.listRegularFilesNoFollow(context.teamDir);
+      if (authorityFiles === null || teamFiles === null)
+        throw new Error('Fixture evidence cannot be enumerated.');
+      return {
+        repositories,
+        evidence: [
+          ...authorityFiles.map((path) => posixJoin(root, 'authority', path)),
+          ...teamFiles
+            .filter((path) => !path.startsWith('composition.dd.'))
+            .map((path) => posixJoin(context.teamDir, path)),
+        ].map((path) => [path, sha256(fs.readBytesNoFollow(path) as Uint8Array)]),
+      };
+    };
+    const importObserved = () =>
+      composeBuilderUnits(deps, {
+        plan: BUILDER_FIXTURE_PLAN,
+        mode: 'import',
+        deliveries,
+        alreadyIntegrated: true,
+      });
+    return {
+      root,
+      repo,
+      deps,
+      context,
+      baseline,
+      deliveries,
+      sourceSha,
+      runGit,
+      apply,
+      snapshot,
+      importObserved,
+      calls,
+    };
+  }
+
+  it('preserves a real binary seal across committed PM edits/deletion while verifying current composition', async () => {
+    const s = await fixture({ sealed: true, baselineBytes: new Uint8Array([0, 255, 128, 10]) });
+    const receiptPath = builderRecordPath(s.context, 'baseline');
+    const original = fs.readBytesNoFollow(receiptPath);
+    const rendered = fs.readBytesNoFollow(receiptPath.replace('.json', '.md'));
+    await s.apply();
+    value(await s.importObserved());
+    for (const [name, bytes] of [
+      ['let-chain', Buffer.from('if let Some(x) = value && let Some(y) = x.next() {}\n')],
+      ['comment', Buffer.from('// PM composition comment\n')],
+      ['binary', new Uint8Array([0, 254, 129, 10])],
+      ['deleted', null],
+    ] as const) {
+      if (bytes === null) fs.deleteFile(posixJoin(s.repo, 'contracts.ts'));
+      else fs.writeBytes(posixJoin(s.repo, 'contracts.ts'), bytes);
+      await s.runGit(['add', '--', 'contracts.ts']);
+      await s.runGit(['commit', '-m', `PM ${name} baseline-path edit`]);
+      const head = (await s.runGit(['rev-parse', 'HEAD'])).trim();
+      expect(
+        value(await checkBuilderReadiness(s.deps, { plan: BUILDER_FIXTURE_PLAN })).status,
+      ).toBe('ready');
+      const verified = value(
+        await composeBuilderUnits(s.deps, {
+          plan: BUILDER_FIXTURE_PLAN,
+          mode: 'verify',
+          sha: head,
+        }),
+      );
+      expect(verified.value.checks).toMatchObject([
+        { id: 'vd-0004', exit_code: 0, stdout: 'real committed composition passed\n' },
+      ]);
+      expect(fs.readBytesNoFollow(receiptPath)).toEqual(original);
+      expect(fs.readBytesNoFollow(receiptPath.replace('.json', '.md'))).toEqual(rendered);
+    }
+    fs.writeText(posixJoin(s.repo, 'src/renderer/index.ts'), 'actually broken PM artifact\n');
+    await s.runGit(['add', '--', 'src/renderer/index.ts']);
+    await s.runGit(['commit', '-m', 'actual artifact drift after proof']);
+    const changed = (await s.runGit(['rev-parse', 'HEAD'])).trim();
+    const loaded = value(loadBuilderGuide(s.deps, BUILDER_FIXTURE_PLAN));
+    expect(await verifyBuilderComposition(s.deps, s.context, loaded.guide.value)).toMatchObject({
+      ok: false,
+      code: 'E475',
+      message: expect.stringContaining('Code changed'),
+    });
+    expect(
+      await composeBuilderUnits(s.deps, {
+        plan: BUILDER_FIXTURE_PLAN,
+        mode: 'verify',
+        sha: changed,
+      }),
+    ).toMatchObject({
+      ok: false,
+      code: 'E475',
+      details: { value: { checks: [expect.objectContaining({ id: 'vd-0004', exit_code: 1 })] } },
+    });
+    expect(fs.readBytesNoFollow(receiptPath)).toEqual(original);
+    const blob = (await s.runGit(['rev-parse', `${s.sourceSha}:contracts.ts`])).trim();
+    expect(await verifyBuilderFilesAtCommit(s.deps, blob, s.baseline.value.files)).toMatchObject({
+      ok: false,
+      code: 'E475',
+      message: expect.stringContaining('source commit'),
+    });
+    symlinkSync('contracts.ts', posixJoin(s.repo, 'baseline-link'));
+    await s.runGit(['add', '--', 'baseline-link']);
+    await s.runGit(['commit', '-m', 'nonregular historical input']);
+    expect(
+      await verifyBuilderFilesAtCommit(s.deps, (await s.runGit(['rev-parse', 'HEAD'])).trim(), [
+        { path: 'baseline-link', sha256: sha256('contracts.ts') },
+      ]),
+    ).toMatchObject({
+      ok: false,
+      code: 'E475',
+      message: expect.stringContaining('regular-file'),
+    });
+  }, 60000);
+
+  it('refuses Git filenames that cannot be decoded without byte loss', async () => {
+    const s = await fixture();
+    await s.apply();
+    const delivery = s.deliveries[0];
+    if (!delivery) throw new Error('Missing fixture delivery.');
+    const oldHead = (await s.runGit(['rev-parse', 'HEAD'], delivery.workspace)).trim();
+    const tree = await s.deps.exec.run('git', ['cat-file', 'tree', `${oldHead}^{tree}`], {
+      cwd: delivery.workspace,
+      stdoutEncoding: 'base64',
+    });
+    expect(tree.code).toBe(0);
+    const blob = (
+      await s.runGit(['rev-parse', `${oldHead}:src/parser/data.bin`], delivery.workspace)
+    ).trim();
+    const rawTree = posixJoin(posixDirname(s.repo), 'invalid-name-tree.bin');
+    fs.writeBytes(
+      rawTree,
+      Buffer.concat([
+        Buffer.from(tree.stdout, 'base64'),
+        Buffer.from('100644 '),
+        Buffer.from([0xff, 0]),
+        Buffer.from(blob, 'hex'),
+      ]),
+    );
+    const treeId = (
+      await s.runGit(['hash-object', '-w', '-t', 'tree', '--', rawTree], delivery.workspace)
+    ).trim();
+    const commit = (
+      await s.runGit(
+        ['commit-tree', treeId, '-p', oldHead, '-m', 'Raw filename fixture'],
+        delivery.workspace,
+      )
+    ).trim();
+    await s.runGit(['update-ref', 'HEAD', commit, oldHead], delivery.workspace);
+    delivery.commit_sha = commit;
+    const before = await s.snapshot();
+    expect(await s.importObserved()).toMatchObject({ ok: false, code: 'E475' });
+    expect(fs.exists(builderRecordPath(s.context, 'composition'))).toBe(false);
+    expect(await s.snapshot()).toEqual(before);
+  }, 30000);
+
+  it('does not publish successful verification after a check changes material plan intent', async () => {
+    const s = await fixture();
+    await s.apply();
+    fs.writeText(
+      posixJoin(s.repo, 'test/integration.mjs'),
+      `import {readFileSync,writeFileSync} from 'node:fs';\nconst path=${JSON.stringify(BUILDER_FIXTURE_PLAN)};\nconst plan=JSON.parse(readFileSync(path,'utf8'));\nplan.sections.find(s=>s.name==='summary').value='Changed product intent during check';\nwriteFileSync(path,JSON.stringify(plan));\n`,
+    );
+    await s.runGit(['add', 'test/integration.mjs']);
+    await s.runGit(['commit', '-m', 'A check with a material document side effect']);
+    const head = (await s.runGit(['rev-parse', 'HEAD'])).trim();
+    const imported = value(await s.importObserved());
+    const before = fs.readText(builderRecordPath(s.context, 'composition'));
+    expect(
+      await composeBuilderUnits(s.deps, {
+        plan: BUILDER_FIXTURE_PLAN,
+        mode: 'verify',
+        sha: head,
+      }),
+    ).toMatchObject({ ok: false, code: 'E475' });
+    expect(fs.readText(builderRecordPath(s.context, 'composition'))).toBe(before);
+    expect(imported.value.artifact_sha).toBeUndefined();
+  }, 30000);
+
+  it('binds cherry-picked-without-commit then recommitted trees, preserving original non-ancestor identities and all source', async () => {
+    const s = await fixture();
+    await s.apply();
+    // Scope is the unit map, not a claim that every out-of-map delivery byte was integrated.
+    fs.deleteFile(posixJoin(s.repo, 'outside.txt'));
+    await s.runGit(['add', 'outside.txt']);
+    await s.runGit(['commit', '-m', 'PM omits out-of-map source']);
+    const head = (await s.runGit(['rev-parse', 'HEAD'])).trim();
+    const ancestors = (await s.runGit(['rev-list', 'HEAD'])).trim().split('\n');
+    for (const delivery of s.deliveries) {
+      expect(ancestors).not.toContain(delivery.commit_sha);
+      fs.writeText(
+        posixJoin(delivery.workspace, 'docs/plans/001-example/assets/later-evidence.json'),
+        '{}',
+      );
+      await s.runGit(
+        ['add', 'docs/plans/001-example/assets/later-evidence.json'],
+        delivery.workspace,
+      );
+      await s.runGit(['commit', '-m', 'later worker evidence'], delivery.workspace);
+    }
+    const before = await s.snapshot();
+    const imported = value(await s.importObserved());
+    expect(imported.value.integration_sha).toBe(head);
+    expect(imported.value.units).toEqual(s.deliveries);
+    expect(imported.value.integration_method).toBe('already-integrated');
+    expect(imported.value.artifact_sha).toBeUndefined();
+    expect(imported.value.checks).toEqual([]);
+    const expectedPaths = [
+      ['src/parser/data.bin', 'src/parser/removed.txt', 'src/parser/run', 'src/parser/steady.txt'],
+      ['src/renderer/index.ts'],
+    ];
+    const expectedProofs = [];
+    for (const [index, delivery] of s.deliveries.entries()) {
+      const expected = expectedPaths[index];
+      if (!expected) throw new Error('Unexpected fixture delivery.');
+      const projection = [];
+      for (const path of expected) {
+        const entry = await s.runGit(['ls-tree', '-z', head, '--', path]);
+        const metadata = entry
+          ? entry.slice(0, entry.indexOf('\t')).split(' ')
+          : [null, null, null];
+        projection.push([path, ...metadata]);
+      }
+      expectedProofs.push({
+        unit_id: delivery.unit_id,
+        delivery_sha: delivery.commit_sha,
+        scope: 'unit-map',
+        compared_paths: expected.length,
+        tree_sha256: sha256(JSON.stringify(projection)),
+      });
+    }
+    expect(imported.value.integration_proofs).toEqual(expectedProofs);
+    expect(imported.value.warnings).toContainEqual({
+      file: 'outside.txt',
+      owning_unit: 'unmapped',
+      stage: 'delivery',
+      unit_id: 'tk-0002',
+    });
+    expect(imported.value.warnings).toContainEqual({
+      file: 'src/parser/data.bin',
+      owning_unit: 'tk-0002',
+      stage: 'import',
+    });
+    expect(await s.snapshot()).toEqual(before);
+    expect(s.calls.every((call) => call.command === 'git')).toBe(true);
+    expect(
+      s.calls.some((call) =>
+        call.args.some((arg) =>
+          ['fetch', 'cherry-pick', 'reset', 'commit', 'update-index', 'write-tree'].includes(arg),
+        ),
+      ),
+    ).toBe(false);
+    const verified = value(
+      await composeBuilderUnits(s.deps, {
+        plan: BUILDER_FIXTURE_PLAN,
+        mode: 'verify',
+        sha: head,
+      }),
+    );
+    expect(verified.value.artifact_sha).toBe(head);
+    expect(verified.value.integration_proofs).toEqual(expectedProofs);
+    expect(verified.value.checks).toMatchObject([
+      { exit_code: 0, stdout: 'real committed composition passed\n' },
+    ]);
+  }, 30000);
+
+  it.each([
+    ['binary', 'src/parser/data.bin'],
+    ['fallback-bytes', 'src/parser/data.bin'],
+    ['mode', 'src/parser/run'],
+    ['type', 'src/parser/run'],
+    ['deletion', 'src/parser/removed.txt'],
+    ['unchanged-map', 'src/parser/steady.txt'],
+    ['pm-only', 'src/parser/extra.txt'],
+    ['later-unit', 'src/renderer/index.ts'],
+  ])(
+    'refuses %s mismatch without writing a receipt or mutating any repository',
+    async (kind, path) => {
+      const s = await fixture({ unmapped: kind === 'fallback-bytes' });
+      await s.apply();
+      const target = posixJoin(s.repo, path);
+      if (kind === 'binary' || kind === 'fallback-bytes')
+        fs.writeBytes(target, new Uint8Array([0, 255, 2]));
+      else if (kind === 'mode') chmodSync(target, 0o644);
+      else if (kind === 'type') {
+        fs.deleteFile(target);
+        // Same blob bytes as the executable, but a different Git entry kind/mode.
+        symlinkSync('#!/bin/sh\nprintf delivered\\n\n', target);
+      } else fs.writeText(target, 'PM differs from the immutable delivery\n');
+      await s.runGit(['add', path]);
+      await s.runGit(['commit', '-m', `PM ${kind} mismatch`]);
+      const before = await s.snapshot();
+      const result = await s.importObserved();
+      expect(result).toMatchObject({
+        ok: false,
+        code: 'E475',
+        details: {
+          unit_id: kind === 'later-unit' ? 'tk-0003' : 'tk-0002',
+          path,
+        },
+        next_action: expect.any(String),
+      });
+      expect(fs.exists(builderRecordPath(s.context, 'composition'))).toBe(false);
+      expect(await s.snapshot()).toEqual(before);
+    },
+    30000,
+  );
+
+  it('uses actual delivery-touched paths when the map has no concrete entries', async () => {
+    const s = await fixture({ unmapped: true });
+    await s.apply();
+    const before = await s.snapshot();
+    const result = value(await s.importObserved());
+    expect(result.value.integration_proofs).toMatchObject([
+      { unit_id: 'tk-0002', scope: 'delivery-changes', compared_paths: 4 },
+      { unit_id: 'tk-0003', scope: 'delivery-changes', compared_paths: 1 },
+    ]);
+    expect(result.value.warnings).toContainEqual({
+      file: 'src/parser/data.bin',
+      owning_unit: 'unmapped',
+      stage: 'delivery',
+      unit_id: 'tk-0002',
+    });
+    expect(await s.snapshot()).toEqual(before);
+  }, 30000);
+
+  it('refuses an empty map and empty delivery rather than asserting vacuous tree equality', async () => {
+    const s = await fixture({ unmapped: true, empty: true });
+    const before = await s.snapshot();
+    expect(await s.importObserved()).toMatchObject({
+      ok: false,
+      code: 'E475',
+      message: expect.stringContaining('tk-0002'),
+      next_action: expect.any(String),
+    });
+    expect(fs.exists(builderRecordPath(s.context, 'composition'))).toBe(false);
+    expect(await s.snapshot()).toEqual(before);
+  }, 30000);
+
+  it('observes a merged delivery without requesting a replay mainline', async () => {
+    const s = await fixture({ merge: true });
+    await s.apply();
+    const before = await s.snapshot();
+    expect(value(await s.importObserved()).value.units).toEqual(s.deliveries);
+    expect(await s.snapshot()).toEqual(before);
+    expect(s.calls.some((call) => call.args.includes('cherry-pick'))).toBe(false);
+  }, 30000);
+
+  it.each([
+    'packet-bytes',
+    'duplicate-peer',
+  ])('keeps the existing %s integrity refusal in observation mode', async (kind) => {
+    const s = await fixture();
+    await s.apply();
+    const first = s.deliveries[0];
+    const second = s.deliveries[1];
+    if (!first || !second) throw new Error('Missing fixture deliveries.');
+    if (kind === 'duplicate-peer') second.peer_id = first.peer_id;
+    else {
+      const path = builderRecordPath(s.context, 'packet', `tk-0002-${s.sourceSha}`);
+      fs.writeText(path, `${fs.readText(path)}\n`);
+    }
+    const before = await s.snapshot();
+    expect(await s.importObserved()).toMatchObject({ ok: false, code: 'E474' });
+    expect(fs.exists(builderRecordPath(s.context, 'composition'))).toBe(false);
+    expect(await s.snapshot()).toEqual(before);
+  }, 30000);
+
+  it.each([
+    'head',
+    'source',
+  ])('rechecks PM %s after projection reads and writes no stale receipt', async (kind) => {
+    const s = await fixture();
+    await s.apply();
+    const run = s.deps.exec.run;
+    const second = s.deliveries[1];
+    if (!second) throw new Error('Missing fixture delivery.');
+    let intervened = false;
+    let changedState: Awaited<ReturnType<typeof s.snapshot>> | undefined;
+    s.deps.exec = {
+      run: async (command, args, opts) => {
+        const result = await run(command, args, opts);
+        if (!intervened && args.includes('ls-tree') && opts.cwd === second.workspace) {
+          intervened = true;
+          if (kind === 'head')
+            await s.runGit(['commit', '--allow-empty', '-m', 'concurrent PM commit']);
+          else fs.writeText(posixJoin(s.repo, 'src/parser/steady.txt'), 'concurrent PM work\n');
+          changedState = await s.snapshot();
+        }
+        return result;
+      },
+    };
+    expect(await s.importObserved()).toMatchObject({ ok: false, code: 'E475' });
+    expect(intervened).toBe(true);
+    expect(fs.exists(builderRecordPath(s.context, 'composition'))).toBe(false);
+    expect(await s.snapshot()).toEqual(changedState);
+  }, 30000);
+
+  it('does not let Git replacement refs forge already-integrated tree equality', async () => {
+    const s = await fixture();
+    await s.apply();
+    const delivery = s.deliveries[0];
+    if (!delivery) throw new Error('Missing fixture delivery.');
+    fs.writeBytes(posixJoin(s.repo, 'src/parser/data.bin'), new Uint8Array([1, 2, 3]));
+    await s.runGit(['add', 'src/parser/data.bin']);
+    await s.runGit(['commit', '-m', 'Different PM bytes']);
+    const head = (await s.runGit(['rev-parse', 'HEAD'])).trim();
+    await s.runGit(['fetch', '--no-tags', s.repo, head], delivery.workspace);
+    await s.runGit(['replace', delivery.commit_sha, head], delivery.workspace);
+    const before = await s.snapshot();
+    expect(await s.importObserved()).toMatchObject({ ok: false, code: 'E475' });
+    expect(fs.exists(builderRecordPath(s.context, 'composition'))).toBe(false);
+    expect(await s.snapshot()).toEqual(before);
+  }, 30000);
+
+  it('still replays real deliveries on ordinary import', async () => {
+    const s = await fixture();
+    const before = (await s.runGit(['rev-parse', 'HEAD'])).trim();
+    const imported = value(
+      await composeBuilderUnits(s.deps, {
+        plan: BUILDER_FIXTURE_PLAN,
+        mode: 'import',
+        deliveries: s.deliveries,
+      }),
+    );
+    const after = (await s.runGit(['rev-parse', 'HEAD'])).trim();
+    expect(after).not.toBe(before);
+    expect(imported.value.integration_sha).toBe(after);
+    expect(imported.value.integration_method).toBe('replayed');
+    expect(imported.value.integration_proofs).toBeUndefined();
+    expect(imported.value.artifact_sha).toBeUndefined();
+    expect(s.calls.filter((call) => call.args.includes('cherry-pick'))).toHaveLength(2);
+    const binary = fs.readBytesNoFollow(posixJoin(s.repo, 'src/parser/data.bin'));
+    if (binary === null) throw new Error('Missing imported binary fixture.');
+    expect([...binary]).toEqual([0, 254, 2]);
+    expect(fs.exists(posixJoin(s.repo, 'src/parser/removed.txt'))).toBe(false);
+    expect(fs.readText(posixJoin(s.repo, 'src/renderer/index.ts'))).toBe('delivered renderer\n');
+  }, 30000);
 });
 
 describe('Builder caller identity transport', () => {

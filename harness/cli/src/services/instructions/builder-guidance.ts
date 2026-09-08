@@ -7,7 +7,7 @@ Separate files alone are not a reason to fan out.
 
 Brief workers with owned paths, mapped read paths/owners, the job/interface
 and observable done conditions first; then the actual packet pointer/digest.
-Receiving a work packet starts that unit without a separate release.
+Receiving a new work packet starts that unit without a separate release.
 Maps guide coders and PM; out-of-map work needs no approval or justification.
 
 Start with \`harness builder --help\` and \`harness docs harness-builder\`.
@@ -31,6 +31,14 @@ Every Builder command has its own \`--help\`; use its real argument contract.
    \`harness builder self-check <packet> --sha256 <digest>\` compares packet bytes,
    actual checkout root and HEAD/source SHA with cause/fix warnings only.
    It changes no state and supplies no permission or import prerequisite.
+   \`builder dispatch --adopt-peer <id>\` instead binds an already-running native
+   worker at the supplied existing workspace, retaining \`--parent\` and kind/role
+   controls. Preserve original adopted ownership, authority, sealed source,
+   progressed HEAD and WIP. Seed only missing metadata; no spawn, replay, reset
+   or new work grant. Native observations are not provider identity attestation.
+   Current native OMP requires a full clone. A matching allocation binding may
+   be reused, but an existing durable dispatch is not resent: inspect its
+   original peer/packet/evidence rather than respawning.
 6. \`builder compose\` imports committed deliveries in guide order, then verifies
    the actual committed composition. Import still refuses wrong tree/branch/
    commit, mismatched or forged current packet/dispatch/allocation evidence,
@@ -38,6 +46,14 @@ Every Builder command has its own \`--help\`; use its real argument contract.
    recover original evidence or review/seal new contracts as the cause requires;
    never alter evidence to fit a claim. Startup receipts, transport outcome,
    nonce challenges and clock windows are not import gates.
+   \`builder compose --import <path> --already-integrated\` proves every supplied
+   unit's frozen map projection equals the current committed PM HEAD, using
+   delivery-touched paths only when no concrete mapped paths exist. Empty scope
+   is missing proof. Compare modes/types/Git object IDs and absence, not working
+   text. Write the receipt without replaying changes; preserve original worker
+   SHAs. Missing evidence and digest/tree mismatch remain failures. This flag
+   requires --import and conflicts with --verify; it is not product proof.
+   Still run \`builder compose --verify <sha>\` and independent composition review.
    Guide, coder delivery and PM map deviations are visible warnings, not an
    ownership veto. Retain file/owning_unit/stage rows in independent review,
    including when a real Git, structural or executable-check failure occurs.

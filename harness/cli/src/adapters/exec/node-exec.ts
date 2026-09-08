@@ -17,6 +17,7 @@ export class NodeExec implements ExecPort {
   run(command: string, args: string[], opts: ExecOptions): Promise<ExecResult> {
     return new Promise((resolve) => {
       let stdout = '';
+      const stdoutChunks: Buffer[] | undefined = opts.stdoutEncoding === 'base64' ? [] : undefined;
       let stderr = '';
       let settled = false;
       let timer: ReturnType<typeof setTimeout> | undefined;
@@ -24,6 +25,10 @@ export class NodeExec implements ExecPort {
         if (settled) return;
         settled = true;
         if (timer !== undefined) clearTimeout(timer);
+        if (stdoutChunks !== undefined) {
+          result.stdout = Buffer.concat(stdoutChunks).toString('base64');
+          result.stdoutEncoding = 'base64';
+        }
         resolve(result);
       };
 
@@ -35,8 +40,9 @@ export class NodeExec implements ExecPort {
           windowsVerbatimArguments: spec.windowsVerbatimArguments ?? false,
           ...(opts.env !== undefined && { env: { ...process.env, ...opts.env } }),
         });
-        child.stdout?.on('data', (chunk) => {
-          stdout += chunk.toString();
+        child.stdout?.on('data', (chunk: Buffer) => {
+          if (stdoutChunks !== undefined) stdoutChunks.push(chunk);
+          else stdout += chunk.toString();
         });
         child.stderr?.on('data', (chunk) => {
           stderr += chunk.toString();
