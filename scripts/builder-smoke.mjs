@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { ErrorCodes } from '../harness/cli/dist/output/error-codes.js';
 import { toPosix } from '../harness/cli/dist/services/shared/posix-path.js';
 
@@ -78,7 +78,7 @@ function assertBootstrap(planPath) {
   assert.ok(existsSync(join(assets, 'impl-guide.dd.json')), 'initialization delegates the separate guide to its owning command');
 }
 
-function compositionWarnings() {
+async function compositionWarnings() {
   // Seeded import evidence isolates the real composition CLI/Git path. This
   // fixture does not claim native dispatch, review, or live lane acceptance.
   const cwd = join(root, 'composition');
@@ -225,6 +225,45 @@ function compositionWarnings() {
   const readable = readFileSync(join(cwd, teamDir, 'composition.dd.md'), 'utf8');
   assert.ok(readable.includes('worker.txt') && readable.includes('tk-0002') && readable.includes('unmapped'),
     'reviewer-visible receipt includes the files and mapped owners');
+  const record = '.harness/records/retro/2026-09-08/001-composition.md';
+  save(record, 'Observed composition friction.\n');
+  cli(cwd, ['builder', 'compose', planPath, '--verify', candidate]);
+  git(cwd, 'add', '--', record);
+  cli(cwd, ['builder', 'compose', planPath, '--verify', candidate]);
+  git(cwd, 'commit', '-m', 'Retain harness record without changing product code');
+  const load = (relative) => import(pathToFileURL(join(packageRoot, 'harness/cli/dist', relative)).href);
+  const { NodeFs } = await load('adapters/fs/node-fs.js');
+  const { NodeExec } = await load('adapters/exec/node-exec.js');
+  const { loadBuilderGuide, verifyBuilderComposition } = await load('services/builder/composition-service.js');
+  const exec = new NodeExec();
+  const deps = {
+    repoRoot: toPosix(cwd), fs: new NodeFs(),
+    exec: { run: (command, args, opts) => exec.run(command, args, { ...opts, env }) },
+  };
+  const loaded = loadBuilderGuide(deps, planPath);
+  assert.equal(loaded.ok, true, JSON.stringify(loaded));
+  const reobserve = () => verifyBuilderComposition(deps, loaded.value.context, loaded.value.guide.value);
+  const recordOnly = await reobserve();
+  assert.equal(recordOnly.ok, true, JSON.stringify(recordOnly));
+  assert.equal(recordOnly.value.value.artifact_sha, candidate);
+  assert.deepEqual(recordOnly.value.value.warnings, warnings);
+  save(record, 'Updated record after proof.\n');
+  assert.equal((await reobserve()).ok, true, 'unstaged records leave the original artifact usable');
+  save('.harness/extensions/extra/extension.js', 'export default {};\n');
+  assert.equal((await reobserve()).ok, false, 'untracked extension source is not a record');
+  git(cwd, 'add', '--', '.harness/extensions/extra/extension.js');
+  git(cwd, 'commit', '-m', 'Add source outside the old composition snapshot');
+  assert.equal((await reobserve()).ok, false, 'new committed extension source invalidates old proof');
+  git(cwd, 'rm', '--', '.harness/extensions/extra/extension.js');
+  git(cwd, 'commit', '-m', 'Remove the smoke-only extension');
+  git(cwd, 'add', '--', record);
+  git(cwd, 'commit', '-m', 'Retain updated harness record');
+  // The record is now tracked before verification; later edits still remain evidence-only.
+  const recordProof = cli(cwd, ['builder', 'compose', planPath, '--verify', git(cwd, 'rev-parse', 'HEAD')]);
+  save(record, 'Another factual update.\n');
+  assert.equal((await reobserve()).ok, true, 'new snapshots do not bind mutable record bytes');
+  checks.push('harness-records-untracked-staged-committed', 'record-only-proof-reobservation',
+    'new-extension-source-still-invalidates-proof');
   save('worker.txt', 'broken\n');
   git(cwd, 'add', '--', 'worker.txt');
   git(cwd, 'commit', '-m', 'Keep actual proof failure visible');
@@ -232,7 +271,8 @@ function compositionWarnings() {
   assert.equal(red.error.code, ErrorCodes.BUILDER_PROOF);
   const receipt = JSON.parse(readFileSync(join(cwd, teamDir, 'composition.dd.json'), 'utf8')).sections[0].value;
   assert.equal(receipt.checks[0].exit_code, 7);
-  assert.deepEqual(receipt.warnings, warnings, 'red proof retains ownership observations');
+  assert.deepEqual(receipt.warnings, recordProof.data.composition.value.warnings,
+    'red proof retains ownership observations');
   checks.push('real-git-composition-warnings', 'rendered-warning-owners', 'real-check-failure-with-warnings');
 }
 
@@ -366,7 +406,7 @@ try {
   assert.ok(existsSync(adoptedGuide), 'explicit guide initialization consumes the packaged capability');
   checks.push('external-adoption-preserves-identity-and-content', 'explicit-guide-initialization');
 
-  compositionWarnings();
+  await compositionWarnings();
 
   complete = true;
   process.stdout.write(`${JSON.stringify({ status: 'ok', mode: packedMode ? 'packed-consumer' : 'source', package_integrity: packageIntegrity, scope: 'public briefings, workspace, bootstrap, guide, readiness and ownership CLI contracts', checks }, null, 2)}\n`);
