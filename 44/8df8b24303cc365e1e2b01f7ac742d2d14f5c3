@@ -1,0 +1,30 @@
+docs/how/harness-builder.md
+  h_9e71e8b09f7cf2 102-103
+harness/cli/src/acts/builder.ts
+  h_9e71e8b09f7cf2 385-387
+harness/cli/src/services/builder/contracts-service.ts
+  h_9e71e8b09f7cf2 52,310-318,533,565
+harness/cli/src/services/builder/dispatch-service.ts
+  h_9e71e8b09f7cf2 32,458-478,710
+harness/cli/src/services/builder/types.ts
+  h_9e71e8b09f7cf2 35
+harness/cli/src/services/docs/docs-content.ts
+  h_9e71e8b09f7cf2 130
+harness/cli/test/acts/builder.test.ts
+  h_9e71e8b09f7cf2 8,113-153
+harness/cli/test/services/builder-dispatch.test.ts
+  h_9e71e8b09f7cf2 704-720
+harness/cli/test/services/builder-guide.test.ts
+  h_9e71e8b09f7cf2 779-833
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "448df8b24303cc365e1e2b01f7ac742d2d14f5c3",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
