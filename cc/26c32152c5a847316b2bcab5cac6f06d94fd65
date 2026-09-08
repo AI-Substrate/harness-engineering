@@ -1,0 +1,26 @@
+docs/how/harness-builder.md
+  h_9e71e8b09f7cf2 25-26
+docs/plans/099-builder-warning-guidance/assets/impl-guide.dd.json
+  h_9e71e8b09f7cf2 197-198
+docs/plans/099-builder-warning-guidance/assets/impl-guide.dd.md
+  h_9e71e8b09f7cf2 60
+harness/cli/src/services/builder/allocation-store.ts
+  h_9e71e8b09f7cf2 37-46,113,117-118,130,137
+harness/cli/src/services/builder/workspace-service.ts
+  h_9e71e8b09f7cf2 449-450,478-480,489
+harness/cli/src/services/docs/docs-content.ts
+  h_9e71e8b09f7cf2 130
+harness/cli/test/services/builder-workspace.test.ts
+  h_9e71e8b09f7cf2 347,351-352,366,608-678,773-777
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.21",
+  "base_commit_sha": "cc26c32152c5a847316b2bcab5cac6f06d94fd65",
+  "prompts": {},
+  "humans": {
+    "h_9e71e8b09f7cf2": {
+      "author": "Jordan Knight <jakkaj@gmail.com>"
+    }
+  }
+}
