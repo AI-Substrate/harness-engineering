@@ -79,7 +79,9 @@ jobs:
         # @ai-substrate/dd is a git dependency (github:AI-Substrate/dd#sha). npm@latest
         # refused it here with EALLOWGIT on 2026-08-30 and the 0.14.0 publish silently
         # failed (backlog row 57). Allow git deps explicitly for this install.
-        run: NPM_CONFIG_ALLOW_GIT=all npm ci
+        # Preparing that git dep installs dd's own lockfile, which resolves through the
+        # public Microsoft npm feed (remote tarballs) — allow remote fetches as well.
+        run: NPM_CONFIG_ALLOW_GIT=all NPM_CONFIG_ALLOW_REMOTE=all npm ci
 
       - name: Build
         run: npm run build
@@ -125,7 +127,9 @@ jobs:
         # @ai-substrate/dd is a git dependency (github:AI-Substrate/dd#sha). npm@latest
         # refused it here with EALLOWGIT on 2026-08-30 and the 0.14.0 publish silently
         # failed (backlog row 57). Allow git deps explicitly for this install.
-        run: NPM_CONFIG_ALLOW_GIT=all npm ci
+        # Preparing that git dep installs dd's own lockfile, which resolves through the
+        # public Microsoft npm feed (remote tarballs) — allow remote fetches as well.
+        run: NPM_CONFIG_ALLOW_GIT=all NPM_CONFIG_ALLOW_REMOTE=all npm ci
 
       - name: Set ephemeral canary version (never committed)
         run: |
