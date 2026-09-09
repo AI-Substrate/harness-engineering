@@ -13,6 +13,50 @@
 * **exec:** opt into exact-byte stdout with `stdoutEncoding: 'base64'`; the result explicitly marks encoded output while default text behavior stays unchanged.
 * **cli:** portable verb I/O (plan 031) — new optional capabilities on the verb contract so extensions run cross-platform with **no** `bash`/coreutil shell-outs: `ctx.fsWrite` (write / mkdir / rename / CWE-59-confined copy), `ctx.fs.realpath`, `ctx.clock.sleep`, and `ctx.background.spawnDetached` (detached fire-and-forget worker; reuses the core `.cmd` resolver, never a bare `.cmd` spawn).
 
+## [0.15.0](https://github.com/AI-Substrate/harness-engineering/compare/v0.14.0...v0.15.0) (2026-09-09)
+
+
+### Features
+
+* **builder:** architecture-led team lifecycle for dogfooding ([7194a37](https://github.com/AI-Substrate/harness-engineering/commit/7194a379ca0edab26fda9ba445ce7d2fcce32b28))
+* **builder:** bind already-integrated work at a historical commit ([aa18514](https://github.com/AI-Substrate/harness-engineering/commit/aa185146c01b07bdb4e7e9ff872673a64fce363c))
+* **builder:** bind existing peers and integrated work without replay ([6e5ff58](https://github.com/AI-Substrate/harness-engineering/commit/6e5ff58acc8407b6e675a46799bea537ae0f79c8))
+* **builder:** bind existing peers and integrated work without replay ([a45a5fa](https://github.com/AI-Substrate/harness-engineering/commit/a45a5fa9bbbee3461174ede8e04b8690aa50567e))
+* **builder:** bind historical integration points without checkout ([94b50ca](https://github.com/AI-Substrate/harness-engineering/commit/94b50ca60039fee87346bb9765e95ee4e3318caf))
+* **builder:** finish warning-first delivery and on-track guidance ([2c00ef9](https://github.com/AI-Substrate/harness-engineering/commit/2c00ef930f8e0fa65501d4afd8589234e734734f))
+* **builder:** make delivery maps advisory and add on-track inspection ([6ff4f57](https://github.com/AI-Substrate/harness-engineering/commit/6ff4f571d5df3190421d4fef0153614ce16d9832))
+* **builder:** make PM composition ownership advisory ([1a63983](https://github.com/AI-Substrate/harness-engineering/commit/1a639835ed498792caefb830198c28ff32a14771))
+* **builder:** replace acknowledgement ceremony with advisory self-check ([495cbaf](https://github.com/AI-Substrate/harness-engineering/commit/495cbaf79db5f847bce80a259fac8083dee0a0cc))
+* **builder:** replace startup handshake with advisory self-check ([fe3a2de](https://github.com/AI-Substrate/harness-engineering/commit/fe3a2de0b752bb0641913656c6c40ce361e91e0d))
+* **builder:** report PM composition map deviations as warnings ([46f237b](https://github.com/AI-Substrate/harness-engineering/commit/46f237be8c92678e2ae75b0f656d6a2f0eeb5cb0))
+* **builder:** ship architecture-led team workflow for dogfooding ([44c9dd3](https://github.com/AI-Substrate/harness-engineering/commit/44c9dd3ca98b816d09b1a316f6034413eb1f8b1c))
+
+
+### Bug Fixes
+
+* **builder:** a unit reservation resolves its parent allocation from the workspace locator ([45ac8b2](https://github.com/AI-Substrate/harness-engineering/commit/45ac8b2b98e550852f2250809ac80872629c1762))
+* **builder:** a unit reservation resolves its parent allocation from the workspace locator ([de7fee4](https://github.com/AI-Substrate/harness-engineering/commit/de7fee4c07e9e249e8b76f90110667f4ecd29ca3))
+* **builder:** bind adopted plan locators without changing ownership ([cc26c32](https://github.com/AI-Substrate/harness-engineering/commit/cc26c32152c5a847316b2bcab5cac6f06d94fd65))
+* **builder:** decouple dependency proof from maps and preserve failure warnings ([448df8b](https://github.com/AI-Substrate/harness-engineering/commit/448df8b24303cc365e1e2b01f7ac742d2d14f5c3))
+* **builder:** dispatch accepts a plan-root HEAD that descends from the sealed source ([cd533bb](https://github.com/AI-Substrate/harness-engineering/commit/cd533bb4d671c426815128fbc4d5fa8ea36e75ec))
+* **builder:** dispatch accepts a plan-root HEAD that descends from the sealed source ([cf05657](https://github.com/AI-Substrate/harness-engineering/commit/cf05657fae5af3bf0b62db70d4a193a767991d20))
+* **builder:** isolate preservation receipt schemas from copied evidence ([82a481e](https://github.com/AI-Substrate/harness-engineering/commit/82a481e9a482bac03b80c88d726e051d91ecdc74))
+* **builder:** keep harness records outside composition source proof ([90fda4f](https://github.com/AI-Substrate/harness-engineering/commit/90fda4f0f5964c22712af592a6a0afc1500acd72))
+* **builder:** preserve composition proof across harness records ([bc83f51](https://github.com/AI-Substrate/harness-engineering/commit/bc83f517542994ea02ab693798d488f64d7ce4e3))
+* **builder:** read large preservation receipts with a matching bound ([67117a8](https://github.com/AI-Substrate/harness-engineering/commit/67117a8e7004b86214c85e44335b040f6a667365))
+* **builder:** stage current packet schema beside legacy consumers ([52b7225](https://github.com/AI-Substrate/harness-engineering/commit/52b72257483dafe6f8eb0856cdb80b8af1fcaf88))
+* **builder:** support large preservation receipts without rewriting evidence ([1ef1425](https://github.com/AI-Substrate/harness-engineering/commit/1ef1425b882bf8daca95fe139828cd347654b638))
+* **cli:** envelopes over 64 KiB are no longer truncated when stdout is a pipe ([b4c45d2](https://github.com/AI-Substrate/harness-engineering/commit/b4c45d2e7264dc515bcc115e53a451e3acccbd55))
+* **cli:** envelopes over 64 KiB are no longer truncated when stdout is a pipe ([5eeed5d](https://github.com/AI-Substrate/harness-engineering/commit/5eeed5dc31e188208435065e7fec6d8d73d0f11a))
+* **convo:** resolve session identity from the harness's own env; never discard an unresolvable identity silently ([#190](https://github.com/AI-Substrate/harness-engineering/issues/190)) ([7401708](https://github.com/AI-Substrate/harness-engineering/commit/74017086f14c917d2add3784332314ddbdfc1c95))
+* **flow-eval:** admit packaged Builder schemas in consumer preparation ([4ca45e7](https://github.com/AI-Substrate/harness-engineering/commit/4ca45e7406e803c19de38e513125fbd180ccbfa9))
+* **flow-eval:** prepare packaged Builder schemas and preserve local evidence ([39094cd](https://github.com/AI-Substrate/harness-engineering/commit/39094cdeee23519be8eaab5cdd9476418b53c2d0))
+* **flow-eval:** preserve local run evidence and runtime links safely ([8a5cb71](https://github.com/AI-Substrate/harness-engineering/commit/8a5cb719e04a7473960b00c070de994d15c560a0))
+* **release:** allow git and remote fetches when installing for publish ([8eeb1bb](https://github.com/AI-Substrate/harness-engineering/commit/8eeb1bb1db5fa193035709a2d4bb22abc5b3a0cd))
+* **release:** allow git dependencies in the publish and canary installs ([fad228b](https://github.com/AI-Substrate/harness-engineering/commit/fad228b7391f788d1ca1cf7275713666474413ff))
+* **release:** also allow remote tarballs while preparing the dd git dependency ([c57af4c](https://github.com/AI-Substrate/harness-engineering/commit/c57af4c31a676ba37058ea28d1f1c70269b07775))
+* **settings:** a linked worktree with no tracked settings inherits the MAIN checkout's ([#192](https://github.com/AI-Substrate/harness-engineering/issues/192)) ([7933f5f](https://github.com/AI-Substrate/harness-engineering/commit/7933f5fbfe7b207012510993e17388d7740214f8))
+
 ## [0.14.0](https://github.com/AI-Substrate/harness-engineering/compare/v0.13.0...v0.14.0) (2026-08-30)
 
 
